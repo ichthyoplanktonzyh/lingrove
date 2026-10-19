@@ -188,11 +188,10 @@ def build_release_app(repo_root: Path, architectures: tuple[str, ...]) -> Path:
         str(derived_data),
         f"ARCHS={' '.join(architectures)}",
         "ONLY_ACTIVE_ARCH=NO",
-        "CODE_SIGN_IDENTITY=-",
-        "CODE_SIGN_STYLE=Manual",
-        "DEVELOPMENT_TEAM=",
-        "CODE_SIGNING_ALLOWED=YES",
-        "CODE_SIGNING_REQUIRED=YES",
+        # Sign only the clean staging copy below. Xcode's embed-script sandbox cannot
+        # create codesign's sibling .cstemp file, and compilation needs no signature.
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
         "ENABLE_HARDENED_RUNTIME=NO",
         "build",
     ]
