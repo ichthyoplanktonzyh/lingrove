@@ -9,6 +9,7 @@ struct LearningDictionaryCard: View {
     let close: () -> Void
     let sizeChanged: (CGSize) -> Void
     let lookup: (String, NSButton) -> Void
+    var speech: LearningSpeechController?
     @State private var definitionHeight: CGFloat = 60
 
     var body: some View {
@@ -20,6 +21,10 @@ struct LearningDictionaryCard: View {
                         comment: "Header for the dictionary page for a complete expression."))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
+                if let speech, let request = speechRequest {
+                    LearningSpeechButton(speech: speech, request: request,
+                        playLabel: speechLabels.play, stopLabel: speechLabels.stop)
+                }
                 Button(action: close) { Image(systemName: "xmark") }.buttonStyle(.plain)
                     .help(String(localized: "Close dictionary · Esc", table: "Learning",
                         comment: "Tooltip for closing the learning dictionary panel with Escape."))
@@ -77,6 +82,36 @@ struct LearningDictionaryCard: View {
         })
         .onPreferenceChange(LearningCardSizePreference.self, perform: sizeChanged)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .onChange(of: session.query) { oldQuery, newQuery in
+            guard oldQuery != newQuery, let documentID = session.documentID else { return }
+            speech?.stop(target: SpeechTarget(ownerID: documentID, itemID: "detail.\(oldQuery)"))
+        }
+    }
+
+    private var speechRequest: SpeechRequest? {
+        guard let unit = session.unit, let documentID = session.documentID else { return nil }
+        let text: String?
+        if let selectedWord = session.selectedWord {
+            text = SpeechTextPolicy.sanitizedText(selectedWord.text)
+        } else {
+            text = SpeechTextPolicy.spokenText(for: unit)
+        }
+        guard let text else { return nil }
+        return SpeechRequest(
+            target: SpeechTarget(ownerID: documentID, itemID: "detail.\(session.query)"),
+            text: text, language: session.contentLanguage,
+            context: session.speechContext ?? SpeechTextPolicy.spokenText(for: unit))
+    }
+
+    private var speechLabels: (play: String, stop: String) {
+        if session.selectedWord != nil || session.unit?.kind == .word {
+            return (
+                String(localized: "Play word aloud", table: "Learning"),
+                String(localized: "Stop speaking word", table: "Learning"))
+        }
+        return (
+            String(localized: "Play expression aloud", table: "Learning"),
+            String(localized: "Stop speaking expression", table: "Learning"))
     }
 
     @ViewBuilder private var definition: some View {

@@ -41,7 +41,13 @@ final class SystemMetricsStore: ObservableObject {
 
     private let sampleInterval: TimeInterval
     private let sampler: () -> SystemResourceSample
-    private let gpuSampler: () -> GPUStatisticsReading
+    private let gpuSampler: (() -> GPUStatisticsReading)?
+    /// The composition root supplies only app-owned helper PIDs. Sampling these adds no timer;
+    /// it runs on the existing visible-pane cadence and stops with the same reference count.
+    var ownedProcessIDs: () -> [pid_t] = { [] }
+    var ownedProcessSampler: (pid_t) -> OwnedProcessResourceReading? = { OwnedProcessResourceReader.read(pid: $0) }
+    private var previousOwnedCPU: [pid_t: (reading: OwnedProcessResourceReading, uptime: TimeInterval)] = [:]
+    private var previousGPUPIDs: Set<pid_t> = [getpid()]
     /// Monotonic seconds used to time the GPU share. Wall-clock `Date` can jump when the clock is
     /// set, which would skew the share for one sample, and tests inject a fixed step to get exact
     /// percentages.
@@ -58,7 +64,7 @@ final class SystemMetricsStore: ObservableObject {
         sampleInterval: TimeInterval = SystemMetricsStore.defaultInterval,
         physicalMemoryBytes: UInt64 = ProcessInfo.processInfo.physicalMemory,
         sampler: @escaping () -> SystemResourceSample = { SystemResourceSampler.sample() },
-        gpuSampler: @escaping () -> GPUStatisticsReading = { GPUStatisticsReader.read() },
+        gpuSampler: (() -> GPUStatisticsReading)? = nil,
         uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.sampleInterval = sampleInterval
@@ -103,6 +109,8 @@ final class SystemMetricsStore: ObservableObject {
         samples = []
         nextSampleID = 0
         previousGPUReading = nil
+        previousOwnedCPU = [:]
+        previousGPUPIDs = [getpid()]
     }
 
     private func startTimer() {
@@ -133,8 +141,24 @@ final class SystemMetricsStore: ObservableObject {
 
     private func captureSample() {
         let reading = sampler()
-        let gpu = gpuSampler()
         let readAt = uptime()
+        var cpu = reading.cpuPercent
+        var footprint = reading.footprintBytes
+        var ownedReadings: [pid_t: (reading: OwnedProcessResourceReading, uptime: TimeInterval)] = [:]
+        for pid in Set(ownedProcessIDs()) where pid != getpid() {
+            guard let child = ownedProcessSampler(pid) else { continue }
+            let previous = previousOwnedCPU[pid]
+            cpu += OwnedProcessResourceReader.cpuPercent(previous: previous?.reading,
+                current: child, elapsed: readAt - (previous?.uptime ?? readAt))
+            footprint &+= child.footprintBytes
+            ownedReadings[pid] = (child, readAt)
+        }
+        previousOwnedCPU = ownedReadings
+        let pids = Set(ownedReadings.keys).union([getpid()])
+        // Adding a new helper introduces a cumulative counter with another epoch. Reset the GPU
+        // baseline on membership changes so startup/exit never becomes a false utilization spike.
+        if pids != previousGPUPIDs { previousGPUReading = nil; previousGPUPIDs = pids }
+        let gpu = gpuSampler?() ?? GPUStatisticsReader.read(pids: pids)
         let gpuPercent = previousGPUReading.flatMap { previous in
             GPUStatisticsReader.processUtilizationPercent(
                 previousNanoseconds: previous.nanoseconds,
@@ -146,8 +170,8 @@ final class SystemMetricsStore: ObservableObject {
         let sample = SystemMetricSample(
             id: nextSampleID,
             timestamp: Date(),
-            cpuPercent: reading.cpuPercent,
-            footprintBytes: reading.footprintBytes,
+            cpuPercent: cpu,
+            footprintBytes: footprint,
             gpuPercent: gpuPercent,
             deviceGPUPercent: gpu.deviceUtilizationPercent,
             gpuMemoryBytes: gpu.inUseMemoryBytes

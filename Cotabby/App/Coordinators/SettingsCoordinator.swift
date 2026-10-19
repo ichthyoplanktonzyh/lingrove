@@ -12,6 +12,9 @@ import SwiftUI
 @MainActor
 final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let learningModels: LearningModelCollection?
+    /// Borrow the app-owned speaker so settings previews share playback with the learning cards.
+    /// Reopening this window must never create a second synthesizer or a separate voice preference.
+    private let speech: LearningSpeechController?
     private let appUpdateManager: AppUpdateManager
     private let permissionManager: PermissionManager
     private let permissionGuidanceController: PermissionGuidanceController
@@ -35,6 +38,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
 
     init(
         learningModels: LearningModelCollection? = nil,
+        speech: LearningSpeechController? = nil,
         appUpdateManager: AppUpdateManager,
         permissionManager: PermissionManager,
         permissionGuidanceController: PermissionGuidanceController,
@@ -53,6 +57,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         typingHistoryStore: TypingHistoryStore
     ) {
         self.learningModels = learningModels
+        self.speech = speech
         self.appUpdateManager = appUpdateManager
         self.permissionManager = permissionManager
         self.permissionGuidanceController = permissionGuidanceController
@@ -94,6 +99,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
             rootView: AnyView(
                 SettingsContainerView(
                     learningModels: learningModels,
+                    speech: speech,
                     attentionModel: attentionModel,
                     appUpdateManager: appUpdateManager,
                     permissionManager: permissionManager,

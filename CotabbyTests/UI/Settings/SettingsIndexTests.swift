@@ -15,6 +15,12 @@ final class SettingsIndexTests: XCTestCase {
         }
     }
 
+    func test_selectionTranslationSearchFindsBehaviorAndShortcut() {
+        XCTAssertTrue(SettingsItem.results(for: "划词").contains(.selectionTranslation))
+        XCTAssertTrue(SettingsItem.results(for: "白名单").contains(.selectionTranslationApps))
+        XCTAssertEqual(SettingsItem.selectionTranslationShortcut.category, .shortcuts)
+    }
+
     func test_ghostSearchIncludesHostSizeMatching() {
         XCTAssertTrue(SettingsItem.results(for: "ghost").contains(.matchHostTextSize))
     }
@@ -91,10 +97,37 @@ final class SettingsIndexTests: XCTestCase {
         }
     }
 
+    func test_ttsAndReadAloudSettingsAreSearchable() {
+        XCTAssertTrue(SettingsItem.results(for: "tts").contains(.speechProvider))
+        XCTAssertTrue(SettingsItem.results(for: "voice language").contains(.speechLanguage))
+        XCTAssertTrue(SettingsItem.results(for: "test voice").contains(.speechVoice))
+        XCTAssertTrue(SettingsItem.results(for: "audio decoder").contains(.speechDecoder))
+        XCTAssertTrue(SettingsItem.results(for: "speech api key").contains(.speechEndpoint))
+        XCTAssertTrue(SettingsItem.results(for: "voice identifier").contains(.speechEndpointVoice))
+        XCTAssertTrue(SettingsItem.results(for: "speech server model").contains(.speechEndpointModel))
+        XCTAssertTrue(SettingsItem.results(for: "read aloud speed").contains(.readAloudSpeed))
+        XCTAssertTrue(SettingsItem.results(for: "朗读").contains(.readAloudSpeed))
+    }
+
     func test_blankQueryReturnsNothing() {
         for query in ["", "   ", "\n\t"] {
             XCTAssertEqual(SettingsItem.results(for: query), [], "query \(query.debugDescription)")
         }
+    }
+
+    func test_translationBehaviorAndModelsHaveSearchableSeparateHomes() {
+        let behavior: [SettingsItem] = [.translationEnabled, .sentencePreview, .translationTargetLanguage,
+            .translationSourceLanguages, .translationReferenceMode, .chunkAlignment]
+        for item in behavior { XCTAssertEqual(item.category, .languageLearning) }
+        XCTAssertEqual(SettingsItem.translationModel.category, .engineAndModel)
+        XCTAssertEqual(SettingsItem.alignmentModel.category, .engineAndModel)
+        for (query, item) in [("translation reference", SettingsItem.translationReferenceMode),
+                              ("source languages", .translationSourceLanguages),
+                              ("translation model", .translationModel), ("alignment model", .alignmentModel)] {
+            XCTAssertTrue(SettingsItem.results(for: query).contains(item), query)
+        }
+        XCTAssertEqual(SettingsItem.languages.category, .writing,
+            "Autocomplete language preference keeps its original search destination")
     }
 
     #if DEBUG

@@ -9,13 +9,15 @@ struct LearningDetailCard: View {
     let close: () -> Void
     let sizeChanged: (CGSize) -> Void
     var session: LearningDictionarySession? = nil
+    var speech: LearningSpeechController?
     // Start close to the short quote/word layout; measured content can grow up to the scroll cap.
     // Keeping the former explanation-sized fallback would leave a large blank area on first paint.
     @State private var contentHeight: CGFloat = 140
 
     var body: some View {
         if let session {
-            LearningDictionaryCard(session: session, close: close, sizeChanged: sizeChanged, lookup: selectWord)
+            LearningDictionaryCard(session: session, close: close, sizeChanged: sizeChanged,
+                lookup: selectWord, speech: speech)
         } else {
             legacyCorrespondence
         }

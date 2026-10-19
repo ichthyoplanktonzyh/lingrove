@@ -7,4 +7,5 @@ nonisolated struct LearningLocalModelConfiguration: Equatable, Sendable {
     let modelURL: URL
     let template: LearningChatTemplate
     let contextWindowTokens: Int
+    var samplingOverrides = ModelSamplingOverrides()
 }

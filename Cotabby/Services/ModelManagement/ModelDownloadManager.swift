@@ -81,6 +81,9 @@ final class ModelDownloadManager: ObservableObject {
 
     var onModelDirectoryChanged: (() -> Void)?
 
+    /// A standalone asset catalog opts out of completion/LM Studio discovery. Audio decoders
+    /// are resources in a model package, even though the completion picker must exclude them.
+    private let assetCatalog: [DownloadableRuntimeModel]?
     private let runtimeDirectoryURL: URL
     private var runtimeSearchDirectories: [URL]
     /// GGUF filenames discovered across every search directory, recomputed whenever the search set
@@ -103,11 +106,13 @@ final class ModelDownloadManager: ObservableObject {
     }
     private var requestedOutcomes: [String: RequestedOutcome] = [:]
 
-    init(runtimeDirectoryURL: URL? = nil) {
+    init(runtimeDirectoryURL: URL? = nil, assetCatalog: [DownloadableRuntimeModel]? = nil) {
         let primaryDirectoryURL =
             runtimeDirectoryURL ?? BundledRuntimeLocator.userRuntimeDirectoryURL()
         self.runtimeDirectoryURL = primaryDirectoryURL
-        runtimeSearchDirectories = Self.resolveSearchDirectories(primary: primaryDirectoryURL)
+        self.assetCatalog = assetCatalog
+        runtimeSearchDirectories = assetCatalog == nil
+            ? Self.resolveSearchDirectories(primary: primaryDirectoryURL) : [primaryDirectoryURL]
 
         refreshModelStates()
     }
@@ -128,13 +133,14 @@ final class ModelDownloadManager: ObservableObject {
     /// Reloads the set of search directories (e.g. after the LM Studio toggle changes in Settings).
     /// Updates the installed-filename cache and all model states to match the new search paths.
     func refreshSearchDirectories() {
-        runtimeSearchDirectories = Self.resolveSearchDirectories(primary: runtimeDirectoryURL)
+        runtimeSearchDirectories = assetCatalog == nil
+            ? Self.resolveSearchDirectories(primary: runtimeDirectoryURL) : [runtimeDirectoryURL]
         refreshModelStates()
         onModelDirectoryChanged?()
     }
 
     var models: [DownloadableRuntimeModel] {
-        RuntimeModelCatalog.downloadableModels
+        assetCatalog ?? RuntimeModelCatalog.downloadableModels
     }
 
     func state(for model: DownloadableRuntimeModel) -> ModelDownloadState {
@@ -757,6 +763,14 @@ final class ModelDownloadManager: ObservableObject {
 
     /// Rebuilds the discovered-filename cache by recursively scanning every search directory.
     private func recomputeInstalledModelFilenames() {
+        if let assetCatalog {
+            let filenames = assetCatalog.flatMap(\.allKnownFilenames)
+            installedModelFilenames = Set(filenames.filter { filename in
+                let url = runtimeDirectoryURL.appendingPathComponent(filename)
+                return (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            })
+            return
+        }
         var filenames: Set<String> = []
         for directoryURL in runtimeSearchDirectories {
             for modelURL in BundledRuntimeLocator.discoverGGUFModelURLs(in: directoryURL) {

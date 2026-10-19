@@ -15,6 +15,10 @@ nonisolated enum LearningTranslationPrompt {
             }
         }
 
+        /// TranslateGemma exposes a fixed translation contract, not a style instruction API.
+        /// Generic instruction models and Hy-MT's documented register prompt support this slot.
+        var supportsStyleInstructions: Bool { self != .translateGemma }
+
         /// Specialist training/runtime limits apply on both native and endpoint transports.
         var maximumInputTokens: Int { self == .translateGemma ? 2_048 : .max }
 
@@ -38,7 +42,7 @@ nonisolated enum LearningTranslationPrompt {
         input: LearningTranslationInput, sourceLanguage: LearningLanguage,
         targetLanguage: LearningLanguage, family: Family
     ) throws -> Request {
-        let target = try render(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, family: family)
+        let target = try render(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, family: family, style: input.style)
         guard !input.referenceBefore.isEmpty || !input.referenceAfter.isEmpty else { return target }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -52,17 +56,29 @@ nonisolated enum LearningTranslationPrompt {
     }
 
     static func render(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
-                       family: Family) throws -> Request {
+                       family: Family, style: LearningTranslationStyle = .init()) throws -> Request {
+        if style.instruction != nil, !family.supportsStyleInstructions {
+            throw LearningFailure.message(String(localized: "This model does not support translation style instructions.", table: "Learning"))
+        }
         // Reuse the existing source budget/encoding boundary for every model. Nothing silently
         // truncates a sentence merely because its specialist uses a different prompt format.
         let generic = try LearningExpressionPrompt.translation(source: source,
             sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+        // Style is an independent, quoted preference, never part of the literal target. The
+        // natural default emits no extra bytes, preserving the existing specialist contracts.
+        let preference: String
+        if let instruction = style.instruction {
+            let data = try JSONEncoder().encode(instruction)
+            preference = "Translation style preference (JSON): " + String(decoding: data, as: UTF8.self) + ". "
+                + "Apply only the requested register. Preserve meaning, facts, negation, names and numbers. "
+                + "Return only the target translation, with no commentary.\n"
+        } else { preference = "" }
         switch family {
         case .generic:
-            return .init(prompt: generic, userOnly: false, sampling: .standard)
+            return .init(prompt: preference + generic, userOnly: false, sampling: .standard)
         case .hyMT:
             let target = targetLanguage == .chinese ? "Chinese" : targetLanguage.name
-            return .init(prompt: "Translate the following text into \(target). " +
+            return .init(prompt: preference + "Translate the following text into \(target). " +
                 "Note that you should only output the translated result without any additional explanation:\n" + source,
                 userOnly: true, sampling: .hyMT)
         case .translateGemma:
@@ -70,7 +86,7 @@ nonisolated enum LearningTranslationPrompt {
             // Ollama publishes this plaintext translation guide. Google's HF processor instead
             // accepts structured language-code content; a server requiring that processor needs
             // its own adapter. Two blank lines separate this instruction from the literal source.
-            let prompt = "You are a professional \(from.name) (\(from.code)) to \(to.name) (\(to.code)) translator. " +
+            let prompt = preference + "You are a professional \(from.name) (\(from.code)) to \(to.name) (\(to.code)) translator. " +
                 "Your goal is to accurately convey the meaning and nuances of the original \(from.name) text while adhering to \(to.name) grammar, vocabulary, and cultural sensitivities.\n" +
                 "Produce only the \(to.name) translation, without any additional explanations or commentary. " +
                 "Please translate the following \(from.name) text into \(to.name):\n\n\n" + source
@@ -98,6 +114,10 @@ nonisolated struct LearningInstructionSampling: Sendable {
     let topP: Double
     let topK: Int
     let repetitionPenalty: Double
+
+    var values: ModelSamplingValues {
+        .init(temperature: temperature, topP: topP, topK: topK, repetitionPenalty: repetitionPenalty)
+    }
 
     static let standard = Self(temperature: 0.3, topP: 0.9, topK: 40, repetitionPenalty: 1)
     static let hyMT = Self(temperature: 0.7, topP: 0.6, topK: 20, repetitionPenalty: 1.05)

@@ -1177,7 +1177,12 @@ struct SuggestionSettingsStore {
                 ),
                 acceptance: override.acceptance,
                 fullAcceptance: override.fullAcceptance,
-                behavior: override.behavior.map(normalizedPerAppBehavior)
+                behavior: override.behavior.map(normalizedPerAppBehavior),
+                selectionTranslationAllowed: override.selectionTranslationAllowed,
+                pointerTranslationAllowed: override.pointerTranslationAllowed,
+                screenshotTranslationAllowed: override.screenshotTranslationAllowed,
+                selectionIcon: override.selectionIcon,
+                writingTranslationShortcutsAllowed: override.writingTranslationShortcutsAllowed
             )
         }
 

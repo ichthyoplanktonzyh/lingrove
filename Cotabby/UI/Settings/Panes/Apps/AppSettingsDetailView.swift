@@ -61,6 +61,34 @@ struct AppSettingsDetailView: View {
                 )
             }
         }
+        Section(String(localized: "Translation", table: "Learning")) {
+            Toggle(String(localized: "Allow selection translation shortcut", table: "Learning"), isOn: Binding(
+                get: { suggestionSettings.selectionTranslationAllowed(in: bundleIdentifier) },
+                set: { value in updateTranslationPolicy { $0.selectionTranslationAllowed = value } }))
+            Toggle(String(localized: "Allow pointer translation shortcut", table: "Learning"), isOn: Binding(
+                get: { suggestionSettings.readingTranslationAllowed(.pointer, in: bundleIdentifier) },
+                set: { value in updateTranslationPolicy { $0.pointerTranslationAllowed = value } }))
+            Toggle(String(localized: "Allow screen region translation shortcut", table: "Learning"), isOn: Binding(
+                get: { suggestionSettings.readingTranslationAllowed(.screenshot, in: bundleIdentifier) },
+                set: { value in updateTranslationPolicy { $0.screenshotTranslationAllowed = value } }))
+            ForEach(LearningReadingSource.allCases, id: \.rawValue) { source in
+                if suggestionSettings.languageLearning.readingEnabled(source),
+                   suggestionSettings.readingTranslationAllowed(source, in: bundleIdentifier),
+                   let reason = suggestionSettings.readingShortcutConflict(source, bundleIdentifier: bundleIdentifier) {
+                    Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.", table: "Learning"))
+                        .font(.caption).foregroundStyle(.red)
+                }
+            }
+            Toggle(String(localized: "Allow writing translation shortcuts", table: "Learning"), isOn: Binding(
+                get: { suggestionSettings.writingTranslationShortcutsAllowed(in: bundleIdentifier) },
+                set: { value in updateTranslationPolicy { $0.writingTranslationShortcutsAllowed = value } }))
+            Picker(String(localized: "Selection translation icon", table: "Learning"), selection: Binding(
+                get: { translationPolicy?.selectionIcon ?? .useDefault },
+                set: { value in updateTranslationPolicy { $0.selectionIcon = value == .useDefault ? nil : value } })) {
+                defaultAndOffChoices
+                Text("On", tableName: "Learning").tag(PerAppToggle.on)
+            }
+        }
         Section("Keys") {
             LabeledContent(
                 String(localized: "Accept Word"),
@@ -134,6 +162,12 @@ struct AppSettingsDetailView: View {
     }
 
     private var behavior: PerAppBehavior { suggestionSettings.perAppBehavior(forBundleIdentifier: bundleIdentifier) }
+    private var translationPolicy: PerAppShortcutOverride? {
+        suggestionSettings.perAppShortcutOverrides.first { $0.bundleIdentifier == bundleIdentifier }
+    }
+    private func updateTranslationPolicy(_ change: (inout PerAppShortcutOverride) -> Void) {
+        suggestionSettings.updatePerAppTranslationPolicy(bundleIdentifier: bundleIdentifier, displayName: displayName, change)
+    }
     private var inputCount: Int { typingHistory.recordCountsByApp[bundleIdentifier] ?? 0 }
 
     private var completionsBinding: Binding<PerAppToggle> {
@@ -173,6 +207,9 @@ struct AppSettingsDetailView: View {
     private func resetToDefaults() {
         suggestionSettings.removeDisabledApplication(bundleIdentifier: bundleIdentifier)
         suggestionSettings.updatePerAppBehavior(bundleIdentifier: bundleIdentifier, displayName: displayName) { $0 = PerAppBehavior() }
+        updateTranslationPolicy {
+            $0.pointerTranslationAllowed = nil; $0.screenshotTranslationAllowed = nil; $0.selectionTranslationAllowed = nil; $0.selectionIcon = nil; $0.writingTranslationShortcutsAllowed = nil
+        }
         typingHistory.setExcluded(bundleIdentifier, excluded: false)
     }
 }

@@ -233,6 +233,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// before Metal teardown. The 1.5s autocomplete grace period never permits freeing live native
     /// work. Ordinary decoding exits promptly; already-started model loading can delay termination.
     func applicationWillTerminate(_ notification: Notification) {
+        // Read-aloud works in Settings even before Accessibility/input services are allowed.
+        // Retire its request and playback on every quit path, independently of that startup gate.
+        environment.speechController.shutdown()
         guard didStartServices else {
             return
         }

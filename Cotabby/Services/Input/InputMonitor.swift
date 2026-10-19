@@ -580,10 +580,6 @@ final class InputMonitor {
                 return Unmanaged.passUnretained(event)
             }
 
-            guard shouldProcessEventsProvider() else {
-                return Unmanaged.passUnretained(event)
-            }
-
             // Holding Accept Word repeats its key-down. The flag lets double-tap recognition treat
             // those repeats as one long press instead of a second tap.
             let keyEvent = InputMonitorKeyEvent(
@@ -608,9 +604,12 @@ final class InputMonitor {
     /// means no capture is active, so the accept-key path takes over. Mirrors `handleAcceptTap`'s
     /// keydown branch without CoreGraphics event allocation.
     func resolveAcceptKeyDown(_ keyEvent: InputMonitorKeyEvent) -> InputMonitorAcceptTapDecision {
-        if shouldProcessEventsProvider(), let decision = learningKeyDecider?(keyEvent), decision != .notHandled {
+        // Reading can be explicitly allowed in an app where autocomplete is off. Learning owns
+        // its own global/pause/permission/App checks; the autocomplete gate must not hide its key.
+        if let decision = learningKeyDecider?(keyEvent), decision != .notHandled {
             return decision
         }
+        guard shouldProcessEventsProvider() else { return .passThrough }
         if let emojiCaptureKeyDecider {
             let decision = emojiCaptureKeyDecider(keyEvent)
             if decision != .notHandled {

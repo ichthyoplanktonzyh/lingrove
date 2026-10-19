@@ -33,6 +33,7 @@ You need:
 - An Apple ID added to Xcode (Settings > Accounts) if you want to launch the app from the IDE. A
   free account is enough; the paid Apple Developer Program is not required for local development.
   Run `scripts/dev-setup.sh` once to configure your own signing team (see Local Setup).
+- CMake and Ninja for the pinned native TTS helper (`brew install cmake ninja`).
 - SwiftLint for local lint checks. CI installs it with Homebrew when needed.
 - XcodeGen if you need to change the project structure (targets, build settings, dependencies,
   or scheme). Install it with `brew install xcodegen`. CI installs it the same way.
@@ -50,6 +51,26 @@ scripts/dev-setup.sh
 scripts/prepare_cotabby_workspace.sh
 open build/cotabby-dependencies/Cotabby.xcworkspace
 ```
+
+Workspace preparation also builds `native/tts` against its separate pinned llama.cpp revision.
+This native helper supports local Qwen3-TTS audio without changing the autocomplete inference
+package. Its source and build artifacts stay under `build/tts-native`; Xcode embeds the prepared
+binary in `Contents/Helpers` for both app targets. The helper builds separate arm64 and x86_64 slices and combines them for Release archives;
+set `CMAKE_OSX_ARCHITECTURES=arm64` for a faster Apple Silicon-only development build.
+The embed phase verifies that every app architecture has a matching helper slice. Downloading neural speech weights is a separate optional
+runtime action; building the app does not download them.
+
+The TTS build applies `patches/llama-tts-streaming.patch` to the exact pinned checkout and rejects
+other source changes. Local speech uses framed PCM pipes; only explicit model-backed validation
+may save audio artifacts under `build/`. To check decoder continuity after changing the overlay,
+build the optional `lingrove-tts-decoder-check` target in the host CMake directory and pass the
+matching talker and decoder GGUF paths. It compares 4/8/16-frame blocks with 72-frame decoding,
+including one-frame tails and attention-window boundaries. Metal acceptance requires matching
+sample/state sizes, finite output and relative PCM RMS error below 1%. `--cpu` is a diagnostic
+comparison, not an equality acceptance: the mixed Q8/F16/F32 decoder has shape-dependent CPU
+numerical differences, already present in the first block before any state is carried forward.
+The Release latency comparison uses identical text, model files and request order, and records
+first PCM separately from full generation. Device playback must also be checked in the app.
 
 The committed `Config/Signing.xcconfig` has no shared development-team default. `scripts/dev-setup.sh`
 writes a gitignored `Config/Signing.local.xcconfig` with your own Apple Development team
@@ -395,3 +416,8 @@ before release, as a structurally valid translation can still be awkward or clip
 The shared test scheme runs in English because existing search fixtures assert English titles.
 Compiled-resource tests explicitly check every translated locale. When checking a non-English
 test host, select the localization and interface-language suites rather than the English fixtures.
+
+Speech diagnostics share the existing logging bootstrap: `speech` events appear in Console and in
+the main JSONL sink when `-cotabby-debug` is enabled. Filter by `source == "speech"` and join by
+`request_id`; no text/audio/API keys are captured. Performance tracking uses the existing preference
+and history ring. Resource sampling includes the app-owned speech helper only while the pane is open.

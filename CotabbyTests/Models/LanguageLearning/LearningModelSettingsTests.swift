@@ -147,6 +147,108 @@ struct LearningModelSettingsTests {
     }
 
     @Test
+    func translationContextDefaultsFollowPinnedModelsAndStoredOverrides() throws {
+        let name = "cotabby.test.learningContextDefaults.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        profile.localModel = "Hy-MT2-1.8B-Q4_K_M.gguf"
+        #expect(profile.snapshot.contextWindowTokens == 8_192)
+
+        profile.localModel = "TRANSLATEGEMMA-4B-IT-Q4_K_M.GGUF"
+        #expect(profile.snapshot.contextWindowTokens == 4_096)
+        let gemmaIdentity = profile.contextIdentity
+        profile.setContextWindowTokens(8_192, expectedIdentity: gemmaIdentity)
+        #expect(profile.snapshot.contextWindowTokens == 8_192)
+
+        profile.localModel = "Hy-MT2-1.8B-Q4_K_M.gguf"
+        #expect(profile.snapshot.contextWindowTokens == 8_192)
+        profile.localModel = "TRANSLATEGEMMA-4B-IT-Q4_K_M.GGUF"
+        #expect(profile.snapshot.contextWindowTokens == 8_192,
+            "An explicit per-model choice takes precedence over the catalog recommendation")
+
+        let restored = LearningModelSettings(role: .translation, defaults: defaults)
+        #expect(restored.snapshot.contextWindowTokens == 8_192,
+            "The override is recovered with the selected model after settings are recreated")
+        restored.setContextWindowTokens(nil, expectedIdentity: restored.contextIdentity)
+        #expect(restored.snapshot.contextWindowTokens == 4_096,
+            "Resetting only this model's override returns to its catalog recommendation")
+    }
+
+    @Test
+    func staleContextEditCannotBeAppliedAfterSwitchingModels() throws {
+        let name = "cotabby.test.learningContextIdentity.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        profile.localModel = "Hy-MT2-1.8B-Q4_K_M.gguf"
+        let oldIdentity = profile.contextIdentity
+        profile.localModel = "translategemma-4b-it-Q4_K_M.gguf"
+
+        profile.setContextWindowTokens(16_384, expectedIdentity: oldIdentity)
+        #expect(profile.snapshot.contextWindowTokens == 4_096)
+        #expect(profile.contexts.tokens(for: profile.contextIdentity) == nil,
+            "A delayed control write from the previous model cannot create a new model override")
+    }
+
+    @Test
+    func contextDefaultsStayScopedToTranslationLocalModels() throws {
+        let name = "cotabby.test.learningContextScope.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let translation = LearningModelSettings(role: .translation, defaults: defaults)
+        translation.localModel = "custom-translategemma-4b-it-Q4_K_M.gguf"
+        #expect(translation.snapshot.contextWindowTokens == 8_192,
+            "A model name containing a pinned name is not an exact catalog match")
+        translation.localModel = "TranslateGemma 4B"
+        translation.template = .translateGemma
+        #expect(translation.snapshot.contextWindowTokens == 8_192,
+            "Display and template names do not infer a model-specific budget")
+        translation.backend = .endpoint
+        translation.endpointModel = "translategemma-4b-it-Q4_K_M.gguf"
+        #expect(translation.snapshot.contextWindowTokens == 8_192,
+            "An endpoint keeps the existing fallback even when its model field resembles a GGUF filename")
+
+        let analysis = LearningModelSettings(role: .analysis, defaults: defaults)
+        analysis.localModel = "translategemma-4b-it-Q4_K_M.gguf"
+        #expect(analysis.snapshot.contextWindowTokens == 8_192,
+            "Translation recommendations do not change analysis defaults")
+    }
+
+    @Test
+    func batteryAndPluggedInProfilesResolveTheirOwnContextDefaults() throws {
+        let name = "cotabby.test.learningPowerContextDefaults.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        profile.localModel = "manual.gguf"
+        profile.setPowerSwitchingEnabled(true)
+        profile.batteryProfile = .local("Hy-MT2-1.8B-Q4_K_M.gguf")
+        profile.pluggedInProfile = .local("translategemma-4b-it-Q4_K_M.gguf")
+        #expect(profile.snapshot.contextWindowTokens == 4_096)
+
+        let pluggedInIdentity = profile.contextIdentity
+        profile.setContextWindowTokens(16_384, expectedIdentity: pluggedInIdentity)
+        profile.updatePowerSource(isPluggedIn: false)
+        #expect(profile.snapshot.contextWindowTokens == 8_192)
+        profile.updatePowerSource(isPluggedIn: true)
+        #expect(profile.snapshot.contextWindowTokens == 16_384,
+            "The plugged-in override follows the active profile across power changes")
+        profile.setContextWindowTokens(nil, expectedIdentity: pluggedInIdentity)
+        #expect(profile.snapshot.contextWindowTokens == 4_096)
+
+        let restored = LearningModelSettings(role: .translation, defaults: defaults)
+        #expect(restored.snapshot.localModel == "translategemma-4b-it-Q4_K_M.gguf")
+        #expect(restored.snapshot.contextWindowTokens == 4_096)
+        restored.updatePowerSource(isPluggedIn: false)
+        #expect(restored.snapshot.contextWindowTokens == 8_192)
+    }
+
+    @Test
     func specialistDownloadCannotBecomeFallbackAutocomplete() {
         #expect(!LearningRuntimeCatalog.isCompletionCandidate(filename: "Hy-MT2-1.8B-Q4_K_M.gguf"))
         #expect(!LearningRuntimeCatalog.isCompletionCandidate(filename: "Hy-MT2-7B-Q4_K_M.gguf"))

@@ -109,6 +109,10 @@ targetTemplates:
         buildPhase: resources
       - path: THIRD_PARTY_LICENSES.md
         buildPhase: resources
+      - path: native/tts/THIRD_PARTY_NOTICES.txt
+        buildPhase: resources
+      - path: native/tts/LLAMA_LICENSE.txt
+        buildPhase: resources
     dependencies:
       - package: Sparkle
         product: Sparkle
@@ -120,6 +124,15 @@ targetTemplates:
         product: Logging
       - package: LaunchAtLogin
         product: LaunchAtLogin
+    postBuildScripts:
+      - name: Embed local speech runtime
+        script: '"${SRCROOT}/scripts/embed_tts_runtime.sh"'
+        inputFiles:
+          - $(SRCROOT)/scripts/embed_tts_runtime.sh
+          - $(SRCROOT)/build/tts-native/install/bin/lingrove-tts-helper
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/lingrove-tts-helper
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -128,7 +141,7 @@ targetTemplates:
         CODE_SIGN_IDENTITY[sdk=macosx*]: Apple Development
         CODE_SIGN_STYLE: Automatic
         COMBINE_HIDPI_IMAGES: YES
-        CURRENT_PROJECT_VERSION: "1"
+        CURRENT_PROJECT_VERSION: "2"
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_PREVIEWS: YES
@@ -139,7 +152,7 @@ targetTemplates:
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"
-        MARKETING_VERSION: "0.5"
+        MARKETING_VERSION: "0.5.1"
         # Keep source/module and scheme names stable during the identity migration. PRODUCT_NAME
         # owns the installed bundle, executable, and data-folder name; PRODUCT_MODULE_NAME keeps
         # existing `@testable import Cotabby` references valid without a simultaneous source rename.

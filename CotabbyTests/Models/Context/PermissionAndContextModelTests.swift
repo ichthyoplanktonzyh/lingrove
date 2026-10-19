@@ -20,7 +20,7 @@ final class CotabbyPermissionKindTests: XCTestCase {
                 .screenRecording,
                 "Screen Recording",
                 "rectangle.dashed.badge.record",
-                "Optional: capture screen context for richer suggestions."
+                "Optional: screen context and OCR translation."
             )
         ]
 

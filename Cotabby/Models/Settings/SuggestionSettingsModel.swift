@@ -1661,6 +1661,40 @@ final class SuggestionSettingsModel: ObservableObject {
         return existingPerAppOverride(bundleIdentifier: normalized)?.behavior ?? PerAppBehavior()
     }
 
+    /// App management owns permission; the central shortcut pane owns the actual key binding.
+    func updatePerAppTranslationPolicy(bundleIdentifier: String, displayName: String,
+                                       _ change: (inout PerAppShortcutOverride) -> Void) {
+        guard var row = perAppOverrideForMutation(bundleIdentifier: bundleIdentifier, displayName: displayName) else { return }
+        change(&row)
+        upsertPerAppOverride(row)
+    }
+
+    func selectionTranslationAllowed(in bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return existingPerAppOverride(bundleIdentifier: bundleIdentifier)?.selectionTranslationAllowed == true
+    }
+
+    func readingTranslationAllowed(_ source: LearningReadingSource, in bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        let row = existingPerAppOverride(bundleIdentifier: bundleIdentifier)
+        switch source {
+        case .selection: return row?.selectionTranslationAllowed == true
+        case .pointer: return row?.pointerTranslationAllowed == true
+        case .screenshot: return row?.screenshotTranslationAllowed == true
+        }
+    }
+
+    func selectionIconAllowed(in bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        let row = existingPerAppOverride(bundleIdentifier: bundleIdentifier)
+        return (row?.selectionIcon ?? .useDefault).resolve(default: languageLearning.selectionIconEnabled)
+    }
+
+    func writingTranslationShortcutsAllowed(in bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return existingPerAppOverride(bundleIdentifier: bundleIdentifier)?.writingTranslationShortcutsAllowed != false
+    }
+
     func removePerAppOverride(bundleIdentifier: String) {
         guard let normalizedBundleIdentifier = SuggestionSettingsStore.normalizedBundleIdentifier(bundleIdentifier) else {
             return
@@ -1763,6 +1797,12 @@ final class SuggestionSettingsModel: ObservableObject {
                 return other.displayName
             }
         }
+        if includingLearningShortcut, languageLearning.translationEnabled {
+            for source in LearningReadingSource.allCases where languageLearning.readingEnabled(source) {
+                let binding = languageLearning.readingBinding(source)
+                if binding.key == keyCode, binding.modifiers == modifiers { return source.title }
+            }
+        }
         if includingLearningShortcut, languageLearning.translationEnabled,
             languageLearning.replacementKeyCode == keyCode, languageLearning.replacementModifiers == modifiers {
             return String(localized: "Replace preview translation", table: "Learning")
@@ -1803,6 +1843,12 @@ final class SuggestionSettingsModel: ObservableObject {
         // The global toggle tap would consume a matching per-app accept key first.
         if globalToggleKeyCode == keyCode, globalToggleKeyModifiers == modifiers {
             return ShortcutAction.toggleTabby.displayName
+        }
+        if includingLearningShortcut, languageLearning.translationEnabled {
+            for source in LearningReadingSource.allCases where languageLearning.readingEnabled(source) {
+                let binding = languageLearning.readingBinding(source)
+                if binding.key == keyCode, binding.modifiers == modifiers { return source.title }
+            }
         }
         if includingLearningShortcut, languageLearning.translationEnabled,
             languageLearning.replacementKeyCode == keyCode, languageLearning.replacementModifiers == modifiers {

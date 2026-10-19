@@ -6,7 +6,7 @@ import SwiftUI
 extension EngineAndModelPaneView {
 // MARK: - OpenAI-compatible endpoint
 
-    /// The completion connection remains available even when completion uses a local engine.
+    /// The connection appears only for the selected endpoint engine.
     /// The connection model owns discovery, the settings model owns durable
     /// values, and the key draft lives in this view until an explicit Connect saves it to Keychain.
     var endpointConnectionSection: some View {
@@ -57,6 +57,11 @@ extension EngineAndModelPaneView {
             }
             .settingsItem(.endpointModel)
 
+        }
+    }
+
+    var endpointFormatSection: some View {
+        Section(String(localized: "API Format")) {
             Picker(selection: endpointAPIModeBinding) {
                 Text("Chat Completions").tag(OpenAICompatibleAPIMode.chatCompletions)
                 Text("Text Completions").tag(OpenAICompatibleAPIMode.completions)

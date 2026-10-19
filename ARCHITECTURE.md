@@ -690,13 +690,26 @@ namespace. Legacy learning model/address/key migrate once into translation; late
 cannot redirect it. Analysis defaults off and never inherits a remote address or credential.
 
 Model controls live in Engine & Model. `SettingsNavigationModel.engineTask` is window-owned
-navigation state for the fixed completion/translation/analysis tabs; it never writes runtime
-selection. Completion retains its existing grouped form. `LearningModelConfigurationView` uses
-the same scaffold, section structure and row controls for each learning role. Writing observes
-profile summaries and routes through `openLearningModel`; it contains no server or key editors.
+navigation state for the fixed completion/translation/analysis/speech tabs; it never writes runtime
+selection. Each task shows current configuration first, with technical controls in collapsed
+`SettingsAdvancedSections`. `LanguageLearningPaneView` uses the same fixed segmented-picker layout for translation,
+chunk alignment and read-aloud behavior. `SettingsNavigationModel.learningTask` is window-only state;
+search selects the appropriate area before revealing its row. Each area has its own Form identity,
+so a long translation disclosure cannot carry scroll position into read-aloud preferences.
+Writing owns autocomplete behavior. Learning profile summaries route through
+`openLearningModel` and contain no server or key editors.
 Learning page identity is bound to its role so an unsaved key draft cannot carry into another role.
 Existing engine search anchors navigate back to the completion page before scrolling.
-The three forms reuse `ModelsFolderSection`, `InstalledRuntimeModelRow` and
+Task-scoped `SettingsModelManagementSheet` instances reuse the app-owned download services and
+original installed/catalog/folder controls. Downloaded files are distinct from the selected model;
+configured lazy runtimes report that they load on first use. Speech resource deletion protects
+both saved asset choices and the exact asset names held by a still-running helper session. Inactive endpoint controls are hidden.
+Search retains stable row IDs, opens resource sheets or advanced sections before scrolling, and
+requires an explicit action to inspect a dormant backend without changing the active engine. The short arrival pulse and retained
+search destination are separate window state, so the action remains usable after the pulse fades.
+A reveal sequence lets explicit configuration actions reveal the newly mounted target once, even
+if its search ID has not changed; background updates never issue another scroll.
+The forms reuse `ModelsFolderSection`, `InstalledRuntimeModelRow` and
 `ModelEndpointConnectionSection`: layout parity comes from common presentation code, while each
 role retains its own controller, endpoint catalog and unsaved credential draft. Catalog entries are
 task-specific (Hy-MT2 1.8B / 7B and TranslateGemma 4B translation, Gemma 4 E4B / Qwen3.5 4B alignment candidates). The global LM Studio source
@@ -809,6 +822,81 @@ trigger, while the details shortcut can still request a selection or current-sen
 routes both learning commands without another event tap. The legacy `LanguageLearningCoordinator`
 and translation panel remain compatibility/test surfaces; the composition root no longer starts them.
 
+`LearningSpeechController` is a separate app-owned playback boundary shared by settings and learning
+cards. `LearningSpeechSettings` persists the provider, local model pair/reference paths, endpoint profile,
+speed multiplier and per-language system voice choices. TTS credentials use an independent Keychain
+namespace; the suggestion snapshot and translation model profiles remain independent. `SystemSpeechProvider`
+creates its AVSpeechSynthesizer only for explicit playback. Voice enumeration is cached and refreshed
+from explicit settings/playback actions, never from the focus or typing stream. Requests contain only
+a captured text/language hint, optional same-side sentence context and a stable card target; no AX
+element enters speech. On a speaker click, `SpeechLanguageResolver` checks bounded text using a
+fresh NaturalLanguage recognizer. Confident text overrides the hint; short/ambiguous words use
+their captured sentence before the hint. Recognition is never restricted to provider capabilities.
+The controller freezes the result before voice/provider selection, then discards context from the
+outgoing request. Settings auditions explicitly retain the chosen language. Recognition never runs
+from view rendering or the typing stream; mixed passages use one dominant language in this version.
+The controller invalidates the previous playback token before stopping or starting an utterance, so
+late native completion/cancel callbacks cannot reset a newer speaker. Dismissing or replacing a card
+stops its owned playback. Voice resolution stays within the requested language, and expression patterns
+read their actual constituent words instead of dictionary placeholders or display ellipses.
+`SpeechModelPairingPolicy` holds exact companion filenames for the tested 0.6B and 1.7B packages,
+including the original 0.6B decoder filename alias. Model selection asks the controller to pair an
+installed decoder from the model folder or the app speech folder; a missing known companion clears
+the previous decoder. Settings reject a known cross-package pairing before starting the helper.
+Unknown imports keep their explicitly selected decoder, and labels include the package size.
+Selection performs only bounded file-availability checks; weights still load on the next speaker action.
+For generated audio, `SpeechAudioGenerator` routes an immutable request to `SpeechEndpointClient`
+or the `LocalSpeechRuntime` actor. Endpoint bytes use `SpeechAudioPlayer`; local Float32 PCM blocks
+use `SpeechPCMPlayer` at the selected rate. It owns per-utterance accounting on MainActor, while
+`SpeechPCMRenderer` exclusively owns AVAudioEngine, its nodes, buffer copies and device work on an
+actor. On an explicit local request, device preparation overlaps model loading/generation using
+the helper's fixed Qwen 24 kHz format. The first start is followed immediately by pause, preserving
+allocated resources without idle hardware rendering. Playback resumes when enough PCM is buffered;
+drain/cancel pauses and reuses the graph, device changes invalidate it, and shutdown releases it.
+Monotonic renderer revisions reject out-of-order stop/prepare calls, while utterance tokens reject
+old buffer completions. Native completions pass through the audio actor's active-revision guard
+before reaching MainActor, so buffers discarded by device invalidation cannot falsely drain an
+EOS queue before its failure notification arrives. The player schedules at most two seconds
+ahead plus one bounded block; suspending its receiver backpressures the native pipe. Generation EOS
+and audible queue drain are separate conditions. Cancellation invalidates tokens before stopping nodes;
+route changes and a bounded drain watchdog fail playback instead of leaving the speaker stuck. The HTTP adapter bounds streamed responses, rejects redirects, and cancels the exact request.
+The local actor owns a persistent helper, an explicit teardown barrier and a two-minute idle unload.
+A lazy kernel memory-pressure observer releases idle weights sooner. A request cannot start another helper until the previous process is reaped; cancellation,
+timeouts and app exit release native resources. A parent-PID kqueue watcher also handles app crashes.
+
+`native/tts` builds a static, Metal-enabled audio helper from its own exact llama.cpp revision. This
+keeps libmtmd audio support out of autocomplete's older pinned CotabbyInference ABI; it is not a
+second generic engine-provider framework. The helper loads one Qwen3-TTS Base model/decoder pair,
+retains the immutable audio embedding cache, and resets KV/sampling state per utterance. Input,
+reference duration, frames and PCM output are bounded. A versioned length-prefixed JSON header and
+bounded raw PCM payload carry request IDs and ordered chunk indices; generation creates no audio files.
+`patches/llama-tts-streaming.patch` makes Qwen code2wav consume actual frames while retaining its full
+attention window and causal state. Rear-padding partial streaming blocks would advance decoder state
+through synthetic frames, so graph shape, group-major input and output length change together.
+`DecoderCheck.cpp` compares fixed codec inputs decoded in 4/8/16-frame blocks against 72-frame output,
+including attention-window boundaries and one-frame tails. Models are downloaded only on an explicit action using the existing checksum
+verified download manager into a separate `SpeechModels` directory. The app bundles no Python
+runtime and never enumerates models or launches audio inference while the user is simply typing.
+
+Engine & Model's TTS page owns provider/voice management; the Language Learning pane owns
+translation direction/reference/preview behavior and read-aloud speed. Both reuse the existing settings scaffold, while a small shared speaker
+button observes playback locally without making every card or settings root observe the controller.
+
+`SpeechTelemetry` is created beside the shared `PerformanceMetricsStore` and injected into the
+controller/generator. It records content-free events under the `speech` log category, with the
+same request/operation/source/model/engine correlation schema as learning. Its `.speech` entries
+obey the original tracking preference and shared 100-entry cap; speech latency is the wait until
+playback starts, with optional load/first-audio/generation-complete/playback stages, rather than passage duration.
+Delayed model-load events can fill an existing row but cannot resurrect cleared or evicted history.
+No speech content enters the LLM I/O sink.
+
+The native session enqueues immutable, ordered telemetry events instead of awaiting UI/log delivery
+on generation or teardown paths. Runtime-wide generations and per-session sequence numbers reject
+stale state. The published helper PID remains until reaping, so `SystemMetricsStore` includes its
+physical footprint and CPU deltas; `GPUStatisticsReader` collects host/helper Metal clients in one
+registry traversal. PID membership changes reset GPU baselines. Child resource reads validate the
+parent PID and process start time, and the existing visible-pane timer remains the only polling owner.
+
 `LanguageLearningSettings` owns source languages, target language, reference mode and the two separate
 shortcuts. The default reference mode translates the current sentence or explicit selection with no
 extra draft excerpts; draft mode adds bounded text before/after that exact target. Selecting the whole
@@ -818,15 +906,26 @@ work and clear caches. Translation cache keys include the effective model and bo
 
 For explicit previews, one enabled source language is the user's direction preference; with several,
 Natural Language must resolve a confident choice excluding the target. Positive marked IME evidence
-blocks the request. Missing proof of committed text permits copy-only preview, never replacement.
+blocks the request. Missing AX marked-range evidence remains unknown, including when a composition-capable
+input source is selected; it does not establish active preedit. The user's Replace click or configured
+chord confirms the saved preview, and the transaction still revalidates its complete capture before writing.
+Malformed negative marked-range lengths remain copy-only.
 Learning includes no screen contents, clipboard data or typing history. Each explicitly configured
 endpoint retains its own credentials and disclosure and may be local or public HTTPS.
 
 Clicking Replace or pressing its configured shortcut confirms the currently displayed version. The
 card identifies current sentence versus selection. Tab, Return and ordinary typing stay with the host.
 Details expand independently; a complete translation can be replaced before alignment finishes.
-`LearningSelectionReplacement` revalidates field/session, UTF-16 text, selection and IME capability,
+Unsupported captures show a separate replacement explanation, independent of analysis status, and a
+disabled Replace button. Their replacement chord expands that explanation without AX reads or writes.
+`LearningSelectionReplacement` revalidates field/session, UTF-16 text, selection and marked-range evidence,
 then performs one native selected-text write or target-PID Paste with final selection validation.
+When confirmation selects a current sentence, it sets the range once and briefly waits for the raw AX
+receipt and focus snapshot to acknowledge that exact selection. Only the saved caret or intended range
+may appear during that read-only wait; changed text, field, composition or an unrelated selection aborts.
+Changes between permitted marked-range evidence states do not by themselves invalidate the capture.
+Confirmed Paste resolves the host's current menu item for each transaction; only autocomplete reuses
+cached menu handles. A successful menu acknowledgement still requires the final full-value check.
 It never derives a range from model-output length, retries an uncertain write or rolls back user edits.
 A failed write expands source/translation copy recovery and disables repeat replacement. A document-ID
 transaction gate survives cancellation until verification ends; an older write cannot label a new

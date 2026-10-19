@@ -78,7 +78,7 @@ OpenAI-compatible endpoint. Translation and analysis use their separately config
 
 There is no Lingrove Homebrew cask or independent production download established yet. Follow
 [this repository's Releases](https://github.com/ichthyoplanktonzyh/lingrove/releases) for future builds.
-Download the v0.5 test DMG from the [v0.5-test.1 prerelease](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5-test.1).
+Download the v0.5.1 test DMG from the [v0.5.1-test.1 prerelease](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1).
 This is an ad-hoc-signed, unnotarized test build with manual updates. Follow the
 [Simplified Chinese install guide](assets/testing/INSTALL.zh-CN.txt), included in the DMG as `INSTALL.txt`.
 Ordinary installation only needs the DMG; checksum verification is optional and no terminal is required.
@@ -101,7 +101,7 @@ for the independent update plan.
 ## Permissions
 
 Grant Accessibility and Input Monitoring for text access, typing detection, and insertion.
-Screen Recording is optional for screenshot-based context. Generation and insertion remain blocked
+Screen Recording is needed for screenshot-based context, explicit region OCR, and pointer lookup OCR fallback. Generation and insertion remain blocked
 in secure fields. Follow the permission guidance using the installed app's actual name in System
 Settings.
 
@@ -119,13 +119,15 @@ and learning source/target languages. The stable English bundle names keep stora
 
 
 Language learning can be enabled independently of inline autocomplete. In **Settings → Writing**,
-choose one or more source languages, a target
-language and a detail shortcut (default **Option+T**). Model summaries link to their configuration
+choose one or more source languages and a target language. Configure the detail shortcut (default
+**Option+T**) and replacement shortcut (default **Control+Option+T**) in **Settings → Shortcuts → Translation**.
+Model summaries link to their configuration
 in **Settings → Engine & Model**.
 The master feature is off by default; enabling it enables automatic sentence preview.
 
-Use your input method as usual: confirm the candidate and pause briefly. A read-only target-language
-expression appears beside the caret without stealing focus. A dedicated translation model delivers the
+Use your input method as usual: confirm the candidate and pause briefly. A target-language
+preview appears beside the caret without stealing focus. Click Replace or press Control+Option+T to
+confirm replacement of its saved sentence or selection. A dedicated translation model delivers the
 expression first. When optional analysis is enabled, its independently configured model prepares
 meaning chunks for that exact expression. Option+T or the expand
 button reveals the source and target as matching colored meaning units, with small gaps between target
@@ -137,12 +139,32 @@ then correspondence details; continuing to type closes both. Alignment generates
 explanations are deferred to a future independent feature.
 Tab and Return retain their ordinary behavior; Escape dismisses the learning card.
 
+The small speaker on a preview or expression-detail card reads its text aloud without taking
+typing focus. Click it again to stop; choosing another speaker replaces the current playback.
+Choose **Apple system speech**, a **local Qwen3-TTS Base model through llama.cpp**, or a
+compatible **TTS endpoint** in **Settings → Engine & Model → TTS**. Adjust the default speed in
+**Settings → Language Learning → Read Aloud**. System speech uses installed macOS voices and
+reports a missing voice instead of reading with an unrelated language. The local option provides
+verified downloads for a matching model and audio decoder (about 1.48 GB), plus an optional
+WAV/MP3 reference voice. It streams PCM directly to playback without temporary audio files. It loads on the first click,
+stays ready for two idle minutes, and releases idle weights sooner under memory pressure.
+An endpoint must support `/audio/speech`; only the chosen text is sent, with its separately stored
+TTS credential. Playback starts only on a click, shows progress during synthesis, and can be
+stopped from the same speaker. Editing speech settings or dismissing its card cancels that playback.
+The TTS page follows the existing engine/runtime/model/folder/installed/connection layout, with
+provider-specific voice controls. **Performance → Request Type → TTS** shares the existing opt-in
+history and 100-request limit. Live CPU, memory and available GPU readings include the app-owned
+local speech process, sampled only while Performance is open. Correlated speech lifecycle logs use
+the normal Console/JSONL sinks and contain no spoken text, audio, reference paths or credentials.
+
 Pauses trigger previews without ending a sentence. Extending an unfinished sentence updates that
 sentence; punctuation and newlines distinguish a new sentence. The preceding sentence's translation
 can remain visible while the new one arrives. An older version is labelled while typing continues.
 Focus entry alone never sends existing text: automatic requests require a new edit in the same field.
 No particular input-method brand or switch to ABC is required. Known active marked composition blocks
-generation; unavailable composition evidence permits only the read-only preview.
+generation. Some editors omit marked-range information even after candidates are committed; selecting
+a Chinese input source alone does not disable explicit replacement. Missing evidence remains unknown,
+and each confirmed replacement still revalidates the saved field, full text and selection before writing.
 
 Turning off automatic sentence preview restores the explicit selected-text/current-sentence preview,
 including its verified click-to-replace operation. Customized shortcuts are preserved; the old default
@@ -208,6 +230,11 @@ Endpoint model IDs select the plaintext guide; opaque aliases retain the generic
 TranslateGemma rejects input above 2,048 actual tokens, including instructions and framing, without
 truncation. Endpoint token limits are enforced by the selected server. Native sampling is model-specific;
 the shared OpenAI-compatible transport forwards only temperature and top_p.
+
+Pinned local translation defaults are 8,192 total tokens for Hy-MT2 1.8B and 4,096 for TranslateGemma
+4B. Each total covers the prompt, source, references and output reserve; TranslateGemma's 2,048-token
+task-input cap remains separate. Saved per-model overrides survive switching and restart, and reset
+returns that model to its recommendation. Endpoints, unknown local models and analysis retain 8,192.
 
 Performance tracking uses the existing opt-in switch. Its request-type picker separates autocomplete,
 translation and analysis; old history remains autocomplete history. The shared ring retains the most

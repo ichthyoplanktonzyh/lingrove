@@ -836,6 +836,14 @@ enum AXHelper {
         return (AXTextMarkerRangeCopyStartMarker(range), AXTextMarkerRangeCopyEndMarker(range))
     }
 
+    /// Reading deliberately asks for the selection alone. Unlike editable receipts this never
+    /// reads the field value, the page, or marker ranges before/after the selected text.
+    static func selectedReadingText(on element: AXUIElement) -> String? {
+        if let text = stringValue(for: kAXSelectedTextAttribute as CFString, on: element), !text.isEmpty { return text }
+        guard let markers = copyOpaqueAttribute(selectedTextMarkerRangeAttribute, on: element) else { return nil }
+        return stringForMarkerRange(markers, on: element)
+    }
+
     /// Exact editing evidence, separate from the best-effort prompt window above. Marker objects
     /// are borrowed only within this synchronous read and released before any model await. Every
     /// fragment must resolve and agree with the full field; missing selected/after text is failure,
@@ -908,6 +916,11 @@ enum AXHelper {
     }
 
     // MARK: - Tree Traversal
+
+    /// Typed element attributes keep CF type checks out of selection readers and other callers.
+    static func elementValue(for attribute: CFString, on element: AXUIElement) -> AXUIElement? {
+        axElement(from: copyAttributeValue(attribute, on: element))
+    }
 
     /// Returns the currently focused UI element from the system-wide AX object.
     static func focusedElement() -> AXUIElement? {

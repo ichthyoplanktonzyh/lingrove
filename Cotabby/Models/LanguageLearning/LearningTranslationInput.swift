@@ -11,6 +11,11 @@ nonisolated struct LearningTranslationInput: Equatable, Hashable, Sendable {
     let source: String
     var referenceBefore: String = ""
     var referenceAfter: String = ""
+    var style = LearningTranslationStyle()
+    var origin: LearningTranslationOrigin = .writing
+    /// Reading eligibility follows the captured source through planning and generation. Writing
+    /// ignores this field; legacy selected-text callers retain their explicit selection default.
+    var readingSource: LearningReadingSource = .selection
 
     static func captured(value: String, range: NSRange, source: String, mode: LearningReferenceMode) -> Self {
         guard mode == .draft, NSMaxRange(range) <= value.utf16.count else { return .init(source: source) }
@@ -22,3 +27,6 @@ nonisolated struct LearningTranslationInput: Equatable, Hashable, Sendable {
         return .init(source: source, referenceBefore: String(before.suffix(65_536)), referenceAfter: String(after.prefix(65_536)))
     }
 }
+
+/// Origin chooses eligibility and direction, never a separate prompt template or runtime.
+nonisolated enum LearningTranslationOrigin: Hashable, Sendable { case writing, reading }

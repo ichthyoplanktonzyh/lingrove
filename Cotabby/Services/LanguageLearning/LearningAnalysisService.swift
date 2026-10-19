@@ -14,22 +14,30 @@ final class LearningAnalysisService {
 
     func generate(source: String, translation: String, sourceLanguage: LearningLanguage,
                   targetLanguage: LearningLanguage,
+                  origin: LearningTranslationOrigin = .writing,
+                  readingSource: LearningReadingSource = .selection,
                   onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
         try await telemetry.perform(source: .analysis, profile: model.profile.snapshot) {
             try await self.generateValidated(source: source, translation: translation,
-                sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, onUpdate: onUpdate)
+                sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, origin: origin,
+                readingSource: readingSource, onUpdate: onUpdate)
         }
     }
 
     private func generateValidated(source: String, translation: String, sourceLanguage: LearningLanguage,
                   targetLanguage: LearningLanguage,
+                  origin: LearningTranslationOrigin,
+                  readingSource: LearningReadingSource,
                   onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
         let learning = settings.languageLearning
         let profile = learning.analysis.snapshot
         let validate: () throws -> Void = {
             try Task.checkCancellation()
+            let directionAllowed = origin == .reading
+                ? learning.readingEnabled(readingSource) && learning.readingTargetLanguage == targetLanguage
+                : learning.sourceLanguages.contains(sourceLanguage) && learning.targetLanguage == targetLanguage
             guard learning.translationEnabled, learning.analysisEnabled, learning.analysis.snapshot == profile,
-                  learning.sourceLanguages.contains(sourceLanguage), learning.targetLanguage == targetLanguage,
+                  directionAllowed,
                   self.settings.isGloballyEnabled, !self.settings.isTemporarilyPaused else { throw CancellationError() }
         }
         try validate()

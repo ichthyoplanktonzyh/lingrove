@@ -9,6 +9,8 @@ struct HuggingFaceModelBrowserView: View {
     let onRefreshModels: () -> Void
 
     @State private var isExpanded = false
+    @Environment(\.settingsHighlightedItem) private var highlightedItem
+    @Environment(\.settingsRevealSequence) private var revealSequence
 
     var body: some View {
         DisclosureGroup("Browse HuggingFace", isExpanded: $isExpanded) {
@@ -22,6 +24,9 @@ struct HuggingFaceModelBrowserView: View {
             if !expanded {
                 searchService.reset()
             }
+        }
+        .onChange(of: revealSequence, initial: true) { _, _ in
+            if highlightedItem == .huggingFaceBrowser { isExpanded = true }
         }
     }
 

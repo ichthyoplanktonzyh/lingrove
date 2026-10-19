@@ -70,7 +70,17 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
         for model in LearningRuntimeCatalog.translationModels
         where
             ["Hy-MT2-1.8B-Q4_K_M.gguf", "translategemma-4b-it-Q4_K_M.gguf"].contains(model.filename) {
-            let url = URL(fileURLWithPath: directory).appendingPathComponent(model.filename)
+            let modelFilename = model.filename
+            let url = URL(fileURLWithPath: directory).appendingPathComponent(modelFilename)
+            let contextWindowTokens = try await contextWindowTokens(for: modelFilename)
+            let configuration = LearningLocalModelConfiguration(
+                modelURL: url, template: .automatic, contextWindowTokens: contextWindowTokens)
+            let selected = LearningTranslationInput(
+                source: "我们今天完成了代码审查。明天将发布更新。",
+                referenceBefore: "团队已经确认这次修改解决了编译问题。",
+                referenceAfter: "发布前仍会进行最后一次检查。")
+            let selectedOutput = try ModelContextBudget.translationOutputTokens(
+                source: selected.source, total: contextWindowTokens)
             let results = try await Task.detached {
                 let runtime = LearningLocalRuntime(), id = UUID()
                 runtime.claim(id)
@@ -78,16 +88,36 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
                 var rows: [[String: String]] = []
                 for (name, input, source, target) in cases {
                     let plan = try runtime.translationPlan(
-                        configuration: .init(modelURL: url, template: .automatic, contextWindowTokens: 8_192), input: input,
+                        configuration: configuration, input: input,
                         sourceLanguage: source, targetLanguage: target, output: 512, operationID: id, trace: nil)
                     let output = try runtime.generate(
-                        configuration: .init(modelURL: url, template: .automatic, contextWindowTokens: 8_192), prompt: plan.prompt,
+                        configuration: configuration, prompt: plan.prompt,
                         maxTokens: 512, operationID: id, trace: nil, onLoad: nil, onDelta: { _ in })
                     rows.append([
-                        "model": model.filename, "case": name, "source": input.source,
+                        "model": modelFilename, "case": name, "source": input.source,
                         "prompt": plan.prompt, "translation": output
                     ])
                 }
+
+                // A modest multi-sentence selection exercises the same total-budget reserve as
+                // production while keeping its adjacent draft excerpts as bounded reference data.
+                let selectedPlan = try runtime.translationPlan(
+                    configuration: configuration, input: selected, sourceLanguage: .chinese,
+                    targetLanguage: .english, output: selectedOutput, operationID: id, trace: nil)
+                guard selectedPlan.prompt.contains(selected.source) else {
+                    throw LearningFailure.message("Native planner shortened the complete selected target")
+                }
+                let selectedText = try runtime.generate(
+                    configuration: configuration, prompt: selectedPlan.prompt, maxTokens: selectedOutput,
+                    operationID: id, trace: nil, onLoad: nil, onDelta: { _ in })
+                rows.append([
+                    "model": modelFilename, "case": "selection-reference", "source": selected.source,
+                    "prompt": selectedPlan.prompt, "translation": selectedText
+                ])
+
+                try Self.validateNativeBudgetBoundaries(
+                    runtime: runtime, configuration: configuration, operationID: id)
+
                 // A huge reference must be cropped as complete data, while the target stays exact.
                 let bounded = try runtime.translationPlan(
                     configuration: .init(modelURL: url, template: .automatic, contextWindowTokens: 2_048),
@@ -111,6 +141,78 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
         }
         let output = URL(fileURLWithPath: directory).appendingPathComponent("native-reference-translations.json")
         try JSONSerialization.data(withJSONObject: evidence, options: [.prettyPrinted, .sortedKeys]).write(to: output)
+    }
+
+    private nonisolated static func validateNativeBudgetBoundaries(
+        runtime: LearningLocalRuntime, configuration: LearningLocalModelConfiguration, operationID: UUID
+    ) throws {
+        let longSource = String(repeating: "This is a small draft for tomorrow and it must stay complete.", count: 80)
+        let longInput = LearningTranslationInput(
+            source: longSource, referenceBefore: "Earlier notes explain why the draft must remain complete.")
+        let originalLongSource = longInput.source
+        let isTranslateGemma = configuration.modelURL.lastPathComponent
+            .caseInsensitiveCompare("translategemma-4b-it-Q4_K_M.gguf") == .orderedSame
+        // This target's production reserve fits Hy-MT's 8,192 total and exceeds TranslateGemma's
+        // 4,096 total. A rejection leaves the immutable source untouched.
+        let longOutput = try? ModelContextBudget.translationOutputTokens(
+            source: longInput.source, total: configuration.contextWindowTokens)
+        XCTAssertEqual(longOutput == nil, isTranslateGemma,
+            "The production output reserve should reject this target at 4,096 and accept it at 8,192")
+        XCTAssertEqual(longInput.source, originalLongSource,
+            "Budget rejection must leave the selected target unchanged")
+        if let longOutput {
+            let plan = try runtime.translationPlan(
+                configuration: configuration, input: longInput, sourceLanguage: .english,
+                targetLanguage: .chinese, output: longOutput, operationID: operationID, trace: nil)
+            XCTAssertTrue(plan.prompt.contains(longInput.source),
+                "The 8,192-token Hy-MT default should preserve the complete long target")
+        }
+
+        guard isTranslateGemma else { return }
+
+        let overGemmaInputCap = LearningTranslationInput(source: String(repeating: " hello", count: 2_200))
+        // Gemma 3 and TranslateGemma share turn delimiters. This control uses the same payload and
+        // GGUF tokenizer without the specialist-only cap; at total 4,096 the general allowance is 3,552.
+        let genericConfiguration = LearningLocalModelConfiguration(
+            modelURL: configuration.modelURL, template: .gemma3,
+            contextWindowTokens: configuration.contextWindowTokens)
+        let genericBudgetAllowsInput: Bool
+        do {
+            let control = try runtime.translationPlan(
+                configuration: genericConfiguration, input: overGemmaInputCap,
+                sourceLanguage: .english, targetLanguage: .chinese,
+                output: 512, operationID: operationID, trace: nil)
+            genericBudgetAllowsInput = control.prompt.contains(overGemmaInputCap.source)
+        } catch { genericBudgetAllowsInput = false }
+        XCTAssertTrue(genericBudgetAllowsInput,
+            "The same GGUF tokenizer should fit the source within the general 4,096-token allowance")
+
+        let translateGemmaInputCapRejected: Bool
+        do {
+            _ = try runtime.translationPlan(
+                configuration: configuration, input: overGemmaInputCap,
+                sourceLanguage: .english, targetLanguage: .chinese,
+                output: 512, operationID: operationID, trace: nil)
+            translateGemmaInputCapRejected = false
+        } catch {
+            translateGemmaInputCapRejected = error.localizedDescription ==
+                ModelContextBudget.oversizedTarget().localizedDescription
+        }
+        XCTAssertTrue(translateGemmaInputCapRejected,
+            "Native tokenization must reject a TranslateGemma input above its 2,048-token task cap")
+    }
+
+    private func contextWindowTokens(for modelFilename: String) async throws -> Int {
+        let suiteName = "cotabby.test.nativeLearningContext.\(UUID())"
+        return try await MainActor.run {
+            guard let defaults = UserDefaults(suiteName: suiteName) else {
+                throw LearningFailure.message("Could not create isolated learning settings for native validation")
+            }
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let settings = LearningModelSettings(role: .translation, defaults: defaults)
+            settings.localModel = modelFilename
+            return settings.snapshot.contextWindowTokens
+        }
     }
 
     func testShutdownCancelsLiveDecodeBeforeUnloading() async throws {

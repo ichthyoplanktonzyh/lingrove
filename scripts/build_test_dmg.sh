@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build or package the local, ad-hoc-signed Lingrove 0.5 test installer.
+# Build or package the local, ad-hoc-signed Lingrove test installer.
 # Use --app-path to package a Release app that has already been built.
 set -euo pipefail
 

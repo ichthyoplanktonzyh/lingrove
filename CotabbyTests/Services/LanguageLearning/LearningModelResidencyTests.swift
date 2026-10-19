@@ -128,6 +128,58 @@ struct LearningModelResidencyTests {
         controller.shutdownSync()
     }
 
+    @Test
+    func styleAndSamplerEditsCancelRequestsWithoutEvictingWarmWeights() async throws {
+        let name = "cotabby.test.parameterResidency.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        let core = FakeNative()
+        let controller = LearningModelController(profile: profile,
+            client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+        profile.localModel = "fixture.gguf"
+        controller.applyResidency(.warm, generationAllowed: true)
+        await waitUntil { core.loadCount == 1 }
+        for _ in 0..<20 { await Task.yield() }
+        profile.setGenerationProfile(.init(style: .init(register: .formal), sampling: .init(topK: 8)))
+        controller.applyResidency(.warm, generationAllowed: true)
+        #expect(try await controller.generate(prompt: "fixture", maxTokens: 1) == "Hello")
+        #expect(core.loadCount == 1 && core.unloadCount == 0)
+        profile.localModel = "another.gguf"
+        profile.setGenerationProfile(.init(sampling: .init(topK: 12)))
+        await waitUntil { core.unloadCount == 1 }
+        controller.shutdownSync()
+    }
+
+    @Test(arguments: [LearningChatTemplate.hyMT, .translateGemma])
+    func firstAutomaticRequestWaitsForMetadataAndKeepsItsSavedStyle(_ template: LearningChatTemplate) async throws {
+        let name = "cotabby.test.firstStyledRequest.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".gguf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var data = Data("GGUF".utf8)
+        func integer(_ n: UInt64, _ bytes: Int) { for shift in 0..<bytes { data.append(UInt8(truncatingIfNeeded: n >> (shift * 8))) } }
+        func string(_ value: String) { integer(UInt64(value.utf8.count), 8); data.append(Data(value.utf8)) }
+        integer(3, 4); integer(0, 8); integer(2, 8)
+        string("general.architecture"); integer(8, 4); string(template == .hyMT ? "hunyuan-dense" : "gemma3")
+        string("general.name"); integer(8, 4); string(template == .hyMT ? "Hy-MT" : "TranslateGemma")
+        try data.write(to: url)
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        profile.localModel = "renamed.gguf"
+        profile.setGenerationProfile(.init(style: .init(register: .formal)))
+        let controller = LearningModelController(profile: profile,
+            client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
+            core: FakeNative(), localModelURL: { _ in url })
+        let request = try await controller.translationPlan(input: .init(source: "你好"),
+            sourceLanguage: .chinese, targetLanguage: .english, output: 128)
+        #expect(request.prompt.contains("formal written register") == (template == .hyMT))
+        #expect(profile.snapshot.translationStyle.register == .formal)
+        #expect(profile.recommendedSampling == LearningInstructionSampling.forTemplate(template).values)
+        controller.shutdownSync()
+    }
+
     private func waitUntil(_ predicate: () -> Bool) async {
         for _ in 0..<200 {
             if predicate() { return }

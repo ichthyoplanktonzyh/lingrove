@@ -30,6 +30,10 @@ nonisolated struct LearningSentenceResult: Equatable, Sendable {
 @MainActor
 protocol LearningSentenceGenerating: LearningDisplayReporting {
     var settings: SuggestionSettingsModel { get }
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource) async throws -> String
+    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
+                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource) async throws -> LearningSentenceResult
     func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String
@@ -43,6 +47,15 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
 }
 
 extension LearningSentenceGenerating {
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource = .selection) async throws -> String {
+        try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+    }
+    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
+                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection) async throws -> LearningSentenceResult {
+        try await analyzeSentence(source: source, translation: translation, sourceLanguage: sourceLanguage,
+                                  targetLanguage: targetLanguage, onUpdate: { _ in })
+    }
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String {
         try await translateSentence(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
@@ -78,9 +91,23 @@ struct LearningSentencePresentation {
     var unitStage: LearningUnitStage = .pending
     var targetIsSelection = false
     var canReplace = false
+    /// Shown independently of generation and analysis messages so a read-only capture stays
+    /// understandable after those messages are cleared or replaced.
+    var replacementUnavailableReason: String?
     var replacementShortcutLabel = ""
     var isCommitting = false
     var isError = false
+    var readingSource: LearningReadingSource?
+
+    var targetLabel: String {
+        switch readingSource {
+        case .pointer: String(localized: "Target: Pointed word", table: "Learning")
+        case .screenshot: String(localized: "Target: Screen region", table: "Learning")
+        default: targetIsSelection
+            ? String(localized: "Target: Selection", table: "Learning")
+            : String(localized: "Target: Current sentence", table: "Learning")
+        }
+    }
 }
 
 @MainActor

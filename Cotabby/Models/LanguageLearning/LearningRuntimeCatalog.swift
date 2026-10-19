@@ -3,6 +3,20 @@ import Foundation
 /// Task-specific recommendations share the existing download manager and GGUF directory. Keeping
 /// this list separate prevents translation specialists from becoming recommended base completions.
 nonisolated enum LearningRuntimeCatalog {
+    /// These are application total budgets for prompt, source, references and output reserve;
+    /// TranslateGemma's separate 2,048-token task-input cap is still enforced by its planner.
+    /// Exact pinned filenames avoid inspecting files or inferring a family from aliases.
+    static func defaultTranslationContextWindowTokens(for filename: String) -> Int? {
+        guard let model = translationModels.first(where: {
+            $0.filename.caseInsensitiveCompare(filename) == .orderedSame
+        }) else { return nil }
+        return switch model.filename.lowercased() {
+        case "hy-mt2-1.8b-q4_k_m.gguf": 8_192
+        case "translategemma-4b-it-q4_k_m.gguf": 4_096
+        default: nil
+        }
+    }
+
     /// Shared storage must not make a downloaded translation specialist the fallback completion
     /// model. Keep custom imports eligible; only our task-specific catalog entries are excluded.
     static func isCompletionCandidate(filename: String) -> Bool {

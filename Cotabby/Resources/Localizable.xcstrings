@@ -27894,95 +27894,6 @@
         }
       }
     },
-    "Install LM Studio to load models from its library here.": {
-      "comment": "Used in: UI/Settings/Panes/Engine/EngineAndModelPaneView+OpenSource.swift",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ثبّت LM Studio لتحميل النماذج من مكتبته هنا."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installiere LM Studio, um Modelle aus seiner Bibliothek hier zu laden."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instala LM Studio para cargar aquí modelos de su biblioteca."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installez LM Studio pour charger ici les modèles de sa bibliothèque."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "यहाँ अपनी लाइब्रेरी से मॉडल लोड करने के लिए LM Studio इंस्टॉल करें।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pasang LM Studio untuk memuat model dari pustakanya di sini."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installa LM Studio per caricare qui i modelli dalla sua libreria."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このライブラリからモデルを読み込むにはLM Studioをインストールしてください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio를 설치하면 여기에서 해당 라이브러리의 모델을 불러올 수 있습니다."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instale o LM Studio para carregar modelos da biblioteca dele aqui."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Установите LM Studio, чтобы загружать модели из его библиотеки сюда."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelleri kitaplığından buraya yüklemek için LM Studio'yu yükleyin."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安装 LM Studio，即可在此处从其模型库加载模型。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安裝 LM Studio，以便在這裡載入其模型庫中的模型。"
-          }
-        }
-      }
-    },
     "Installed": {
       "comment": "Used in: Services/ModelManagement/ModelDownloadManager.swift, UI/Settings/ModelManagement/DownloadableModelCatalogView.swift, UI/Settings/Panes/Engine/EngineAndModelPaneView+OpenSource.swift",
       "localizations": {
@@ -29492,6 +29403,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "LM Studio 模型"
+          }
+        }
+      }
+    },
+    "LM Studio's default model folder (~/.lmstudio/models) was not found, so this switch is unavailable. Only the default folder is currently supported.": {
+      "comment": "Explains the missing default model folder, rather than assuming LM Studio is not installed. Used in: UI/Settings/ModelManagement/ModelsFolderSection.swift",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يُعثر على مجلد النماذج الافتراضي لـ LM Studio ‏(~/.lmstudio/models)، لذا فإن هذا المفتاح غير متاح. لا يُدعم حاليًا سوى المجلد الافتراضي."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Standard-Modellordner von LM Studio (~/.lmstudio/models) wurde nicht gefunden. Daher ist dieser Schalter nicht verfügbar. Derzeit wird nur der Standardordner unterstützt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró la carpeta de modelos predeterminada de LM Studio (~/.lmstudio/models), por lo que este interruptor no está disponible. Actualmente solo se admite la carpeta predeterminada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le dossier de modèles par défaut de LM Studio (~/.lmstudio/models) est introuvable. Cette option est donc indisponible. Seul le dossier par défaut est actuellement pris en charge."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio का डिफ़ॉल्ट मॉडल फ़ोल्डर (~/.lmstudio/models) नहीं मिला, इसलिए यह स्विच उपलब्ध नहीं है। फ़िलहाल केवल डिफ़ॉल्ट फ़ोल्डर समर्थित है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder model bawaan LM Studio (~/.lmstudio/models) tidak ditemukan, sehingga sakelar ini tidak tersedia. Saat ini hanya folder bawaan yang didukung."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cartella dei modelli predefinita di LM Studio (~/.lmstudio/models) non è stata trovata, quindi questa opzione non è disponibile. Al momento è supportata solo la cartella predefinita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio の既定のモデルフォルダ（~/.lmstudio/models）が見つからないため、このスイッチは使用できません。現在は既定のフォルダのみ対応しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio의 기본 모델 폴더(~/.lmstudio/models)를 찾을 수 없어 이 스위치를 사용할 수 없습니다. 현재는 기본 폴더만 지원합니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pasta padrão de modelos do LM Studio (~/.lmstudio/models) não foi encontrada, por isso esta opção está indisponível. No momento, apenas a pasta padrão é compatível."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стандартная папка моделей LM Studio (~/.lmstudio/models) не найдена, поэтому этот переключатель недоступен. Сейчас поддерживается только стандартная папка."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio varsayılan model klasörü (~/.lmstudio/models) bulunamadığı için bu anahtar kullanılamıyor. Şu anda yalnızca varsayılan klasör destekleniyor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 LM Studio 默认模型目录（~/.lmstudio/models），因此此开关暂不可用。目前仅支持此默认目录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 LM Studio 預設模型目錄（~/.lmstudio/models），因此此開關暫時無法使用。目前僅支援此預設目錄。"
           }
         }
       }
@@ -65965,6 +65965,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "⌘F"
+          }
+        }
+      }
+    },
+    "Optional: screen context and OCR translation.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional: screen context and OCR translation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可选：屏幕上下文与 OCR 翻译。"
           }
         }
       }

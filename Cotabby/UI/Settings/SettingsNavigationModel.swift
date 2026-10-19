@@ -3,17 +3,33 @@ import SwiftUI
 
 /// The fixed Engine & Model tabs select which task's settings are visible. This is window
 /// navigation state, independent of the engine/model values that control actual generation.
-enum SettingsEngineTask: String, CaseIterable, Identifiable {
-    case completion, translation, analysis
+enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
+    case completion, translation, analysis, speech
     var id: String { rawValue }
     var label: String {
         switch self {
         case .completion: String(localized: "Autocomplete")
         case .translation: String(localized: "Translation", table: "Learning")
         case .analysis: String(localized: "Chunk alignment", table: "Learning")
+        case .speech: String(localized: "TTS", table: "Learning")
         }
     }
     init(role: LearningModelRole) { self = role == .translation ? .translation : .analysis }
+}
+
+/// The three behavior areas in Language Learning are window navigation, not feature toggles.
+/// The settings window retains the selected area while model links visit Engine & Model;
+/// search selects the area before mounting its Form so row reveal always has a visible target.
+enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
+    case translation, alignment, readAloud
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .translation: String(localized: "Translation", table: "Learning")
+        case .alignment: String(localized: "Chunk alignment", table: "Learning")
+        case .readAloud: String(localized: "Read Aloud", table: "Learning")
+        }
+    }
 }
 
 /// File overview:
@@ -41,9 +57,40 @@ final class SettingsNavigationModel: ObservableObject {
         }
     }
     @Published var engineTask: SettingsEngineTask = .completion
+    @Published var learningTask: SettingsLearningTask = .translation
+    @Published var modelManagerTask: SettingsEngineTask?
+    @Published private(set) var expandedEngineTasks: Set<SettingsEngineTask> = []
+    /// Browsing a dormant completion backend is UI navigation, so users can configure endpoint
+    /// credentials before adding a power profile without changing the engine currently running.
+    @Published var inspectedCompletionEngine: SuggestionEngineKind?
+
+    /// Window-only routes keep management, advanced controls and search in one state machine.
+    /// Selecting a file remains the task controller's job, never a side effect of opening a sheet.
+    func openModelManager(_ task: SettingsEngineTask) {
+        openEngineTask(task)
+        modelManagerTask = task
+    }
+
+    func modelManagerBinding(for task: SettingsEngineTask) -> Binding<Bool> {
+        Binding(get: { self.modelManagerTask == task }, set: { presented in
+            if presented { self.modelManagerTask = task }
+            else if self.modelManagerTask == task { self.modelManagerTask = nil }
+        })
+    }
+
+    func advancedBinding(for task: SettingsEngineTask) -> Binding<Bool> {
+        Binding(get: { self.expandedEngineTasks.contains(task) }, set: { expanded in
+            if expanded { self.expandedEngineTasks.insert(task) }
+            else { self.expandedEngineTasks.remove(task) }
+        })
+    }
     /// The setting search navigated to, while its arrival pulse is active. Distributed to rows
     /// through the `settingsHighlightedItem` environment value.
     @Published private(set) var highlightedItem: SettingsItem?
+    /// The search destination survives its short arrival pulse, so an explicit backend action
+    /// remains available until the user navigates away. Search itself never changes a backend.
+    @Published private(set) var revealedItem: SettingsItem?
+    @Published private(set) var revealSequence = 0
     /// True while Home owes the hero search field focus (set by the window-level Cmd-F shortcut).
     /// Home consumes and clears it, so a later visit to Home does not steal focus again.
     @Published private(set) var pendingSearchFocus = false
@@ -57,6 +104,8 @@ final class SettingsNavigationModel: ObservableObject {
     /// Plain pane navigation (sidebar click, Home quick link). Cancels any in-flight highlight so
     /// a stale pulse cannot replay when the user later returns to that pane.
     func open(_ category: SettingsCategory) {
+        inspectedCompletionEngine = nil
+        modelManagerTask = nil
         cancelHighlight()
         selectCategory(category)
     }
@@ -74,14 +123,54 @@ final class SettingsNavigationModel: ObservableObject {
         open(.engineAndModel)
     }
 
+    /// A manual tab change clears an old search pulse, while ordinary sidebar navigation keeps
+    /// this window's last selected learning area. No model or generation setting is written.
+    func openLearningTask(_ task: SettingsLearningTask) {
+        learningTask = task
+        open(.languageLearning)
+    }
+
     /// Search navigation: selects the item's pane and pulses the row. The pane's scaffold watches
     /// `highlightedItem` to perform the scroll.
     func reveal(_ item: SettingsItem) {
+        inspectedCompletionEngine = nil
+        modelManagerTask = nil
         // Existing engine search anchors belong to the original completion page. A prior visit
         // to translation must not leave those search hits scrolling an unrelated learning form.
-        if item.category == .engineAndModel { engineTask = .completion }
+        if item.category == .engineAndModel {
+            switch item {
+            case .translationModel, .translationSampling: engineTask = .translation
+            case .alignmentModel: engineTask = .analysis
+            case .speechSampling, .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint, .speechEndpointModel, .speechEndpointVoice:
+                engineTask = .speech
+            default:
+                engineTask = .completion
+            }
+        }
+        if item.category == .languageLearning {
+            switch item {
+            case .chunkAlignment: learningTask = .alignment
+            case .readAloudSpeed: learningTask = .readAloud
+            default: learningTask = .translation
+            }
+        }
+        if item.opensModelManager { modelManagerTask = engineTask }
+        if item.opensEngineAdvanced { expandedEngineTasks.insert(engineTask) }
         selectCategory(item.category)
+        revealedItem = item
+        showArrival(for: item)
+    }
+
+    /// An explicit configure action has mounted the previously hidden row. Re-run its one-shot
+    /// arrival after layout, even if the same search target's decorative pulse is still active.
+    func refreshReveal() {
+        guard let item = revealedItem else { return }
+        showArrival(for: item)
+    }
+
+    private func showArrival(for item: SettingsItem) {
         highlightedItem = item
+        revealSequence &+= 1
 
         highlightClearTask?.cancel()
         highlightClearTask = Task { [weak self] in
@@ -108,6 +197,7 @@ final class SettingsNavigationModel: ObservableObject {
         highlightClearTask?.cancel()
         highlightClearTask = nil
         highlightedItem = nil
+        revealedItem = nil
     }
 
     /// Re-selecting a category can still clear a search pulse or retarget its app/task, but it
@@ -126,7 +216,15 @@ private struct SettingsHighlightedItemKey: EnvironmentKey {
     static let defaultValue: SettingsItem? = nil
 }
 
+private struct SettingsRevealSequenceKey: EnvironmentKey {
+    static let defaultValue = 0
+}
+
 extension EnvironmentValues {
+    var settingsRevealSequence: Int {
+        get { self[SettingsRevealSequenceKey.self] }
+        set { self[SettingsRevealSequenceKey.self] = newValue }
+    }
     var settingsHighlightedItem: SettingsItem? {
         get { self[SettingsHighlightedItemKey.self] }
         set { self[SettingsHighlightedItemKey.self] = newValue }

@@ -62,6 +62,17 @@ nonisolated struct LearningModelSnapshot: Equatable, Hashable, Sendable {
     let endpointModel: String
     let credentialRevision: Int
     var contextWindowTokens: Int = 8_192
+    var translationStyle = LearningTranslationStyle()
+    var samplingOverrides = ModelSamplingOverrides()
+
+    /// Parameters affect one request; only this projection identifies native allocation/warmup.
+    /// Keeping it separate lets a style edit cancel stale work without evicting resident weights.
+    func usesSameRuntime(as other: Self) -> Bool {
+        var lhs = self, rhs = other
+        lhs.translationStyle = .init(); rhs.translationStyle = .init()
+        lhs.samplingOverrides = .init(); rhs.samplingOverrides = .init()
+        return lhs == rhs
+    }
 }
 
 /// A learning task's battery/AC choice. Server address and key remain owned by its role; a power
@@ -83,7 +94,9 @@ nonisolated struct LearningPowerProfile: Codable, Equatable, Hashable, Sendable 
 final class LearningModelSettings: ObservableObject {
     let role: LearningModelRole
     let contexts: ModelContextSettings
+    private var parameters: ModelParameterSettings<LearningGenerationProfile>
     private var contextIdentities = ModelContextIdentityCache()
+    private var resolvedTemplates: [String: LearningChatTemplate] = [:]
     private let defaults: UserDefaults
     private let credentials: any OpenAICompatibleCredentialStoring
     private var prefix: String { "learning.\(role.rawValue)." }
@@ -108,6 +121,7 @@ final class LearningModelSettings: ObservableObject {
          credentials: (any OpenAICompatibleCredentialStoring)? = nil) {
         self.role = role
         contexts = ModelContextSettings(role: role.rawValue, defaults: defaults)
+        parameters = ModelParameterSettings(key: "learning.\(role.rawValue).parameters.v1", defaults: defaults)
         self.defaults = defaults
         self.credentials = credentials ?? (defaults === UserDefaults.standard &&
             ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
@@ -143,8 +157,17 @@ final class LearningModelSettings: ObservableObject {
 
     var snapshot: LearningModelSnapshot {
         let selection = activeSelection
+        let identity = contextIdentity(for: selection)
+        let generation = parameters.profile(for: identity) ?? .init()
         // Dormant endpoint credentials and the other power source are not request identity. This
         // avoids unloading a local model while the user prepares an endpoint for future use.
+        let catalogDefault = role == .translation && selection.backend == .local
+            ? LearningRuntimeCatalog.defaultTranslationContextWindowTokens(for: selection.localModel)
+            : nil
+        // A saved per-destination choice wins, then a known local translation recommendation;
+        // every other role, backend, and unknown model retains the existing 8,192-token fallback.
+        let contextWindowTokens = contexts.tokens(for: identity)
+            ?? catalogDefault ?? 8_192
         return .init(backend: selection.backend,
             localModel: selection.backend == .local ? selection.localModel : "",
             template: selection.backend == .local ? selection.template : .automatic,
@@ -152,8 +175,45 @@ final class LearningModelSettings: ObservableObject {
             endpointModel: selection.backend == .endpoint ? selection.endpointModel : "",
             credentialRevision: selection.backend == .endpoint ? credentialRevision : 0,
             contextWindowTokens: min(
-                contexts.tokens(for: contextIdentity(for: selection)) ?? 8_192,
-                selection.backend == .local ? ModelContextBudget.maximumLocalTokens : ModelContextBudget.maximumEndpointTokens))
+                contextWindowTokens,
+                selection.backend == .local ? ModelContextBudget.maximumLocalTokens : ModelContextBudget.maximumEndpointTokens),
+            translationStyle: role == .translation ? generation.style.effective : .init(),
+            samplingOverrides: selection.backend == .local ? generation.sampling.normalized : generation.sampling.endpointOnly)
+    }
+
+    var generationProfile: LearningGenerationProfile { parameters.profile(for: contextIdentity) ?? .init() }
+
+    func setGenerationProfile(_ value: LearningGenerationProfile, expectedIdentity: String? = nil) {
+        if let expectedIdentity, expectedIdentity != contextIdentity { return }
+        guard parameters.set(.init(style: value.style.normalized, sampling: value.sampling.normalized), for: contextIdentity) else { return }
+        objectWillChange.send()
+        publishEffectiveChange()
+    }
+
+    /// GGUF metadata arrives from the controller's detached read, never from a SwiftUI body.
+    /// Until Automatic resolves, controls cannot turn guessed recommendations into overrides.
+    func setResolvedTemplate(_ template: LearningChatTemplate, expectedIdentity: String) {
+        guard expectedIdentity == contextIdentity, template != .automatic,
+              resolvedTemplates[expectedIdentity] != template else { return }
+        resolvedTemplates[expectedIdentity] = template
+        objectWillChange.send()
+        publishEffectiveChange()
+    }
+
+    private var promptFamily: LearningTranslationPrompt.Family? {
+        let selection = activeSelection
+        if selection.backend == .endpoint { return .init(endpointModel: selection.endpointModel) }
+        let template = selection.template == .automatic ? resolvedTemplates[contextIdentity] : selection.template
+        return template.map { .init(template: $0) }
+    }
+    var translationStyleAvailable: Bool? { promptFamily.map(\.supportsStyleInstructions) }
+    var recommendedSampling: ModelSamplingValues? {
+        switch promptFamily {
+        case .hyMT: return LearningInstructionSampling.hyMT.values
+        case .translateGemma: return LearningInstructionSampling.translateGemma.values
+        case .generic: return LearningInstructionSampling.standard.values
+        case nil: return nil
+        }
     }
 
     var contextIdentity: String {
@@ -236,6 +296,7 @@ final class LearningModelSettings: ObservableObject {
 
     func reset() {
         contexts.reset()
+        parameters.reset()
         powerSwitchingEnabled = false
         backend = .local; localModel = ""; template = .automatic
         baseURL = OpenAICompatibleEndpointConfiguration.defaultBaseURLString; endpointModel = ""

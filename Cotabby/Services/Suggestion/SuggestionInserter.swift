@@ -203,13 +203,16 @@ final class SuggestionInserter {
     /// verify the selection immediately before the menu action and verify the resulting value
     /// afterward; this method's Bool means dispatched, never "replacement succeeded".
     func pasteSelectedText(
-        _ text: String, inApplicationPID pid: pid_t, validateSelection: @escaping () -> Bool
+        _ text: String, inApplicationPID pid: pid_t, onDispatchPhase: ((String) -> Void)? = nil,
+        validateSelection: @escaping () -> Bool
     ) -> Bool {
-        insertViaPaste(text, requiredApplicationPID: pid, validateSelection: validateSelection)
+        insertViaPaste(text, requiredApplicationPID: pid, validateSelection: validateSelection,
+            onDispatchPhase: onDispatchPhase)
     }
 
     private func insertViaPaste(
-        _ text: String, requiredApplicationPID: pid_t? = nil, validateSelection: (() -> Bool)? = nil
+        _ text: String, requiredApplicationPID: pid_t? = nil, validateSelection: (() -> Bool)? = nil,
+        onDispatchPhase: ((String) -> Void)? = nil
     ) -> Bool {
         let pasteboard = NSPasteboard.general
         // Snapshot the user's clipboard only when no restore is already pending. If one is (an
@@ -222,6 +225,7 @@ final class SuggestionInserter {
 
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
+            onDispatchPhase?("pasteboard_write_failed")
             pendingPasteboardRestore?.cancel()
             Self.restorePasteboard(saved, to: pasteboard)
             clearPendingPasteboardRestore()
@@ -237,7 +241,8 @@ final class SuggestionInserter {
         // session source still never pasted in Chrome. The menu press drives the same paste command
         // those key events would have reached, one IPC hop earlier.
         let menuDispatch = pressPasteMenuItem(
-            requiredApplicationPID: requiredApplicationPID, validateSelection: validateSelection
+            requiredApplicationPID: requiredApplicationPID, validateSelection: validateSelection,
+            onDispatchPhase: onDispatchPhase
         )
         if menuDispatch != .notDispatched {
             CotabbyLogger.suggestion.debug("Paste menu action dispatched; editor verification belongs to the caller")
@@ -292,35 +297,54 @@ final class SuggestionInserter {
 
     /// Presses the focused app's Edit > Paste menu item via Accessibility. The owning app is resolved
     /// from the focused element (not the frontmost app) so accessory panels that hold focus without
-    /// frontmost status still target the right process. The located item is cached per pid; a cached
-    /// press that fails (menu rebuilt, app relaunched into the same pid) evicts and re-walks once
-    /// only for legacy autocomplete. Scoped replacement never retries an uncertain action.
+    /// frontmost status still target the right process. Legacy autocomplete caches menu items and
+    /// re-walks once after a failed cached press. Explicit selection replacement always locates a
+    /// fresh item because a stale cached AX handle can acknowledge a press without changing the field.
     private func pressPasteMenuItem(
-        requiredApplicationPID: pid_t? = nil, validateSelection: (() -> Bool)? = nil
+        requiredApplicationPID: pid_t? = nil, validateSelection: (() -> Bool)? = nil,
+        onDispatchPhase: ((String) -> Void)? = nil
     ) -> PasteMenuDispatch {
         guard let focusedElement = AXHelper.focusedElement(),
               let application = AXHelper.owningApplication(of: focusedElement) else {
+            onDispatchPhase?("focused_application_unavailable")
             return .notDispatched
         }
         let pid = application.processIdentifier
-        guard requiredApplicationPID == nil || requiredApplicationPID == pid else { return .notDispatched }
-        if let cached = cachedPasteMenuItems[pid] {
-            guard validateSelection?() ?? true else { return .notDispatched }
+        guard requiredApplicationPID == nil || requiredApplicationPID == pid else {
+            onDispatchPhase?("target_process_mismatch")
+            return .notDispatched
+        }
+        let isScoped = requiredApplicationPID != nil
+        if !isScoped, let cached = cachedPasteMenuItems[pid] {
+            guard validateSelection?() ?? true else {
+                onDispatchPhase?("cached_selection_validation_failed")
+                return .notDispatched
+            }
             if AXUIElementPerformAction(cached, kAXPressAction as CFString) == .success {
+                onDispatchPhase?("cached_press_acknowledged")
                 return .dispatched
             }
             cachedPasteMenuItems[pid] = nil
-            // A failed scoped action may have been queued by the host. Do not re-walk and
-            // press again; retain our pasteboard briefly and let the caller verify the edit.
-            if requiredApplicationPID != nil { return .uncertain }
         }
-        guard let item = AXHelper.pasteMenuItem(forApplicationPID: pid),
-              validateSelection?() ?? true else { return .notDispatched }
+        guard let item = AXHelper.pasteMenuItem(forApplicationPID: pid) else {
+            let phase = isScoped ? "scoped_fresh_paste_menu_unavailable" : "paste_menu_unavailable"
+            onDispatchPhase?(phase)
+            return .notDispatched
+        }
+        guard validateSelection?() ?? true else {
+            let phase = isScoped ? "scoped_fresh_selection_validation_failed" : "fresh_selection_validation_failed"
+            onDispatchPhase?(phase)
+            return .notDispatched
+        }
         let result = AXUIElementPerformAction(item, kAXPressAction as CFString)
         guard result == .success else {
-            return requiredApplicationPID == nil ? .notDispatched : .uncertain
+            let phase = isScoped ? "scoped_fresh_press_uncertain" : "fresh_press_failed"
+            onDispatchPhase?(phase)
+            return isScoped ? .uncertain : .notDispatched
         }
-        cachedPasteMenuItems[pid] = item
+        if !isScoped { cachedPasteMenuItems[pid] = item }
+        let phase = isScoped ? "scoped_fresh_press_acknowledged" : "fresh_press_acknowledged"
+        onDispatchPhase?(phase)
         return .dispatched
     }
 

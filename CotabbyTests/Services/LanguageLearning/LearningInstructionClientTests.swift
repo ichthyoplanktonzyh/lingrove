@@ -9,6 +9,42 @@ import Testing
 @MainActor
 struct LearningInstructionClientTests {
     @Test
+    func readingUsesSharedTranslationTransportWithoutWritingDirectionOrDraft() async throws {
+        configureStub(body: try instructionResponse(reason: "stop", content: "请随时告知进展。"))
+        defer { LearningInstructionStubURLProtocol.reset() }
+        let suite = "test.reading.transport.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        let learning = settings.languageLearning
+        learning.translationEnabled = true
+        learning.selectionTranslationEnabled = true
+        learning.sourceLanguages = [.chinese]
+        learning.targetLanguage = .english
+        learning.readingTargetLanguage = .chinese
+        learning.translation.backend = .endpoint
+        learning.translation.endpointModel = "reader-translator"
+        let service = LearningExpressionService(settings: settings, client: makeClient())
+        defer { service.models.shutdownSync() }
+        let text = "Please keep me posted on the progress."
+        let result = try await service.translateReadingSelection(source: text, sourceLanguage: .english, targetLanguage: .chinese)
+        #expect(result == "请随时告知进展。")
+        #expect(learning.sourceLanguages == [.chinese] && learning.targetLanguage == .english)
+        let body = try requestBody(#require(LearningInstructionStubURLProtocol.requestBodies.last ?? nil))
+        #expect(body["model"] as? String == "reader-translator")
+        let messages = try #require(body["messages"] as? [[String: Any]])
+        #expect(messages.last?["content"] as? String != nil)
+        #expect(String(describing: messages).contains("Please keep me posted"))
+        let count = LearningInstructionStubURLProtocol.requests.count
+        learning.selectionTranslationEnabled = false
+        do {
+            _ = try await service.translateReadingSelection(source: text, sourceLanguage: .english, targetLanguage: .chinese)
+            Issue.record("Disabled reading must not reach the endpoint")
+        } catch { }
+        #expect(LearningInstructionStubURLProtocol.requests.count == count)
+    }
+
+    @Test
     func specialistReceivesOnlyUserMessageWithoutChangingDefaultInstructionContract() async throws {
         configureStub(body: try instructionResponse(reason: "stop", content: "Hello"))
         defer { LearningInstructionStubURLProtocol.reset() }
@@ -64,6 +100,26 @@ struct LearningInstructionClientTests {
         }
         if includesDone { records.append("data: [DONE]\n\n") }
         return Data(records.joined().utf8)
+    }
+
+    @Test
+    func controllerSendsOnlySupportedSamplingOverridesFromItsSnapshot() async throws {
+        configureStub(body: try instructionResponse(reason: "stop", content: "Hello"))
+        defer { LearningInstructionStubURLProtocol.reset() }
+        let name = "cotabby.test.endpointParameters.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let profile = LearningModelSettings(role: .translation, defaults: defaults)
+        profile.backend = .endpoint
+        profile.endpointModel = "translator"
+        profile.setGenerationProfile(.init(sampling: .init(temperature: 0.11, topP: 0.75,
+            topK: 2, repetitionPenalty: 1.2, seedMode: .fixed, fixedSeed: 9)))
+        let controller = LearningModelController(profile: profile, client: makeClient())
+        #expect(try await controller.generate(prompt: "fixture", maxTokens: 50, sampling: .translateGemma) == "Hello")
+        let body = try requestBody(#require(LearningInstructionStubURLProtocol.requestBodies.first ?? nil))
+        #expect(body["temperature"] as? Double == 0.11 && body["top_p"] as? Double == 0.75)
+        #expect(body["top_k"] == nil && body["seed"] == nil && body["repetition_penalty"] == nil)
+        controller.shutdownSync()
     }
 
     @Test

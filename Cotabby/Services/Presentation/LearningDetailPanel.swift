@@ -9,6 +9,7 @@ final class LearningDetailPanel {
     let state = LearningDetailState()
     let dictionarySession: LearningDictionarySession
     private let dictionary: LearningSystemDictionaryPresenter
+    private let speech: LearningSpeechController?
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningDetailCard>?
     private var layoutRevision = UUID()
@@ -22,8 +23,10 @@ final class LearningDetailPanel {
     private var anchorOffsetFromTop: CGFloat = 0
     private(set) var isVisible = false
 
-    init(dictionary: LearningSystemDictionaryPresenter? = nil, provider: (any LearningDictionaryProviding)? = nil) {
+    init(dictionary: LearningSystemDictionaryPresenter? = nil, provider: (any LearningDictionaryProviding)? = nil,
+         speech: LearningSpeechController? = nil) {
         self.dictionary = dictionary ?? LearningSystemDictionaryPresenter()
+        self.speech = speech
         dictionarySession = LearningDictionarySession(provider: provider ?? LearningLexiconService(
             resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")))
     }
@@ -42,22 +45,24 @@ final class LearningDetailPanel {
 
     func dismissDictionary() -> Bool { dictionary.dismiss() }
 
-    func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement) {
+    func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement, speechContext: String? = nil) {
         // Retain the correspondence entry point for existing callers. Product unit clicks pass
         // an independently recognized unit, rather than using alignment grain for dictionary grain.
         let range = NSRange(location: 0, length: chunk.target.utf16.count)
         let unit = LearningUnit(id: 0, surface: chunk.target, query: chunk.target, kind: .expression,
             ranges: [range], words: LearningUnitPolicy.words(in: chunk.target, language: chunk.language))
-        show(unit, documentID: chunk.documentID, language: chunk.language, correspondence: chunk, placement: placement)
+        show(unit, documentID: chunk.documentID, language: chunk.language, correspondence: chunk,
+            placement: placement, speechContext: speechContext)
     }
 
     func selectCorrespondence(_ chunk: LearningChunkDetail) { state.chunk = chunk }
 
     func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage,
-              correspondence: LearningChunkDetail?, placement: LearningDetailPlacement) {
+              correspondence: LearningChunkDetail?, placement: LearningDetailPlacement, speechContext: String? = nil) {
+        stopCurrentSpeech()
         dictionary.dismiss()
         state.chunk = correspondence
-        dictionarySession.open(unit, documentID: documentID, language: language)
+        dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext)
         anchorY = placement.anchorY
         anchorOffsetFromTop = placement.parent.maxY - placement.anchorY
         layoutRevision = UUID()
@@ -67,7 +72,7 @@ final class LearningDetailPanel {
                 self?.selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
             },
             close: { [weak self] in self?.hide() }, sizeChanged: { [weak self] in self?.scheduleLayout($0, revision: revision) },
-            session: dictionarySession)
+            session: dictionarySession, speech: speech)
         let window = panel ?? LearningDetailWindow(contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         if let hosting { hosting.rootView = card } else {
@@ -120,6 +125,7 @@ final class LearningDetailPanel {
     /// A word lookup closes the expression window while its meaning selection stays in the
     /// sentence card. Document replacement and full dismissal use the default to clear both.
     func hide(preservingCorrespondence: Bool = false) {
+        stopCurrentSpeech()
         dictionary.dismiss()
         dictionarySession.close()
         layoutRevision = UUID()
@@ -128,6 +134,13 @@ final class LearningDetailPanel {
         contentSize = nil
         isVisible = false
         panel?.orderOut(nil)
+    }
+
+    /// Closing one dictionary target stops only its utterance. A sentence's source or translation
+    /// may continue reading while the user closes or changes the separate detail panel.
+    private func stopCurrentSpeech() {
+        guard let documentID = dictionarySession.documentID else { return }
+        speech?.stop(target: SpeechTarget(ownerID: documentID, itemID: "detail.\(dictionarySession.query)"))
     }
 
     /// Geometry preferences are delivered during view layout. Queue only the latest valid size

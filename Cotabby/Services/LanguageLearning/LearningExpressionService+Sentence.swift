@@ -3,6 +3,17 @@ import Foundation
 /// The coordinator uses the two explicit methods so analysis settings can cancel/restart only
 /// analysis. The combined method remains a convenience for callers outside the passive pipeline.
 extension LearningExpressionService: LearningSentenceGenerating {
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource = .selection) async throws -> String {
+        try await translator.generate(input: .init(source: source, origin: .reading, readingSource: readingSource),
+                                      task: .translation(source: sourceLanguage, target: targetLanguage))
+    }
+
+    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
+                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection) async throws -> LearningSentenceResult {
+        try await analyzer.generate(source: source, translation: translation, sourceLanguage: sourceLanguage,
+                                    targetLanguage: targetLanguage, origin: .reading, readingSource: readingSource, onUpdate: { _ in })
+    }
     func translateSentence(
         input: LearningTranslationInput, sourceLanguage: LearningLanguage,
         targetLanguage: LearningLanguage

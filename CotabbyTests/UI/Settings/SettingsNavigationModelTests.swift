@@ -13,6 +13,19 @@ final class SettingsNavigationModelTests: XCTestCase {
     /// stored properties.
     private var models: [SettingsNavigationModel] = []
 
+    func test_parameterSearchOpensTheMatchingTaskAndAdvancedSection() {
+        let model = makeModel()
+        model.reveal(.translationStyle)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .translation)
+        model.reveal(.translationSampling)
+        XCTAssertEqual(model.engineTask, .translation)
+        XCTAssertTrue(model.advancedBinding(for: .translation).wrappedValue)
+        model.reveal(.speechSampling)
+        XCTAssertEqual(model.engineTask, .speech)
+        XCTAssertTrue(model.advancedBinding(for: .speech).wrappedValue)
+    }
+
     private func makeModel() -> SettingsNavigationModel {
         let model = SettingsNavigationModel()
         models.append(model)
@@ -26,6 +39,7 @@ final class SettingsNavigationModelTests: XCTestCase {
         XCTAssertNil(model.highlightedItem)
         XCTAssertFalse(model.pendingSearchFocus)
         XCTAssertEqual(model.engineTask, .completion)
+        XCTAssertEqual(model.learningTask, .translation)
     }
 
     func test_appShortcutLinksRetargetTheSameVisiblePane() {
@@ -66,6 +80,27 @@ final class SettingsNavigationModelTests: XCTestCase {
         XCTAssertEqual(model.selection, .engineAndModel)
         XCTAssertEqual(model.engineTask, .completion)
         XCTAssertEqual(model.highlightedItem, .selectedModel)
+    }
+
+    func test_searchRoutesSpeechControlsToTTSAndKeepsExistingEngineSearchOnCompletion() {
+        let model = makeModel()
+        model.openLearningModel(.analysis)
+
+        for item in [SettingsItem.speechVoice, .speechModel, .speechDecoder, .speechEndpoint, .speechEndpointModel, .speechEndpointVoice] {
+            model.reveal(item)
+            XCTAssertEqual(model.selection, .engineAndModel)
+            XCTAssertEqual(model.engineTask, .speech)
+            XCTAssertEqual(model.highlightedItem, item)
+        }
+
+        model.reveal(.selectedModel)
+        XCTAssertEqual(model.engineTask, .completion,
+            "Existing autocomplete engine anchors must continue to reveal in Completion")
+
+        model.reveal(.readAloudSpeed)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .readAloud)
+        XCTAssertEqual(model.highlightedItem, .readAloudSpeed)
     }
 
     func test_homeEngineLinkReturnsToCompletionAfterInspectingAnalysis() {
@@ -134,5 +169,127 @@ final class SettingsNavigationModelTests: XCTestCase {
 
         model.consumeSearchFocusRequest()
         XCTAssertFalse(model.pendingSearchFocus, "Home clears the request so a later visit does not steal focus")
+    }
+
+    func test_modelSearchKeepsRoleAndLanguageBehaviorDestinationsDistinct() {
+        let model = makeModel()
+        for (item, task) in [(SettingsItem.translationModel, SettingsEngineTask.translation), (.alignmentModel, .analysis)] {
+            model.reveal(item)
+            XCTAssertEqual(model.selection, .engineAndModel)
+            XCTAssertEqual(model.engineTask, task)
+            XCTAssertNil(model.modelManagerTask)
+        }
+        for item in [SettingsItem.translationEnabled, .sentencePreview, .translationTargetLanguage,
+                     .translationSourceLanguages, .translationReferenceMode, .chunkAlignment] {
+            model.reveal(item)
+            XCTAssertEqual(model.selection, .languageLearning)
+            XCTAssertEqual(model.learningTask, item == .chunkAlignment ? .alignment : .translation)
+            XCTAssertEqual(model.highlightedItem, item)
+        }
+    }
+
+    func test_resourceSearchOpensCompletionManagerWithoutChangingTheEngine() {
+        let model = makeModel()
+        model.openEngineTask(.speech)
+        for item in [SettingsItem.downloadModels, .huggingFaceBrowser, .modelsFolder, .lmStudio] {
+            model.reveal(item)
+            XCTAssertEqual(model.selection, .engineAndModel)
+            XCTAssertEqual(model.engineTask, .completion)
+            XCTAssertEqual(model.modelManagerTask, .completion)
+            XCTAssertEqual(model.highlightedItem, item)
+        }
+        model.openEngineTask(.translation)
+        XCTAssertNil(model.modelManagerTask)
+        XCTAssertNil(model.revealedItem)
+        XCTAssertNil(model.highlightedItem)
+    }
+
+    func test_learningTabsKeepTheirSelectionAcrossModelLinksAndSidebarNavigation() {
+        let model = makeModel()
+        model.openLearningTask(.alignment)
+        XCTAssertEqual(model.selection, .languageLearning)
+        model.openLearningModel(.analysis)
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.engineTask, .analysis)
+        model.open(.languageLearning)
+        XCTAssertEqual(model.learningTask, .alignment)
+        model.openLearningTask(.readAloud)
+        model.openEngineTask(.speech)
+        model.open(.languageLearning)
+        XCTAssertEqual(model.learningTask, .readAloud)
+    }
+
+    func test_searchChoosesTheLearningTabAndManualTabChangesClearItsPulse() {
+        let model = makeModel()
+        for item in [SettingsItem.translationEnabled, .sentencePreview, .translationTargetLanguage,
+                     .translationSourceLanguages, .translationReferenceMode] {
+            model.openLearningTask(.readAloud)
+            model.reveal(item)
+            XCTAssertEqual(model.learningTask, .translation)
+            XCTAssertEqual(model.highlightedItem, item)
+        }
+        model.reveal(.chunkAlignment)
+        XCTAssertEqual(model.learningTask, .alignment)
+        model.reveal(.readAloudSpeed)
+        XCTAssertEqual(model.learningTask, .readAloud)
+        model.openLearningTask(.translation)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertNil(model.highlightedItem)
+        XCTAssertNil(model.revealedItem)
+    }
+
+    func test_advancedSearchExpandsBeforeRevealAndExpansionIsPerTask() {
+        let model = makeModel()
+        model.reveal(.batteryModel)
+        XCTAssertTrue(model.advancedBinding(for: .completion).wrappedValue)
+        XCTAssertFalse(model.advancedBinding(for: .translation).wrappedValue)
+        model.advancedBinding(for: .translation).wrappedValue = true
+        model.advancedBinding(for: .completion).wrappedValue = false
+        model.openEngineTask(.translation)
+        XCTAssertTrue(model.advancedBinding(for: .translation).wrappedValue)
+        XCTAssertFalse(model.advancedBinding(for: .completion).wrappedValue)
+        model.reveal(.endpointAPIMode)
+        XCTAssertEqual(model.engineTask, .completion)
+        XCTAssertTrue(model.advancedBinding(for: .completion).wrappedValue)
+    }
+
+    func test_dormantEngineInspectionIsWindowStateAndResetsOnNavigation() {
+        let model = makeModel()
+        model.reveal(.endpointBaseURL)
+        model.inspectedCompletionEngine = .openAICompatible
+        let arrival = model.revealSequence
+        model.refreshReveal()
+        XCTAssertGreaterThan(model.revealSequence, arrival)
+        XCTAssertEqual(model.revealedItem, .endpointBaseURL)
+        XCTAssertEqual(model.highlightedItem, .endpointBaseURL)
+        XCTAssertEqual(model.inspectedCompletionEngine, .openAICompatible)
+        model.openEngineTask(.translation)
+        XCTAssertNil(model.inspectedCompletionEngine)
+        model.reveal(.speechDecoder)
+        XCTAssertEqual(model.engineTask, .speech)
+        XCTAssertTrue(model.advancedBinding(for: .speech).wrappedValue)
+    }
+
+    func test_dismissingAnOldTaskSheetCannotCloseANewTaskSheet() {
+        let model = makeModel()
+        model.openModelManager(.speech)
+        let oldSheet = model.modelManagerBinding(for: .speech)
+        model.openModelManager(.translation)
+        oldSheet.wrappedValue = false
+        XCTAssertEqual(model.modelManagerTask, .translation)
+        XCTAssertEqual(model.engineTask, .translation)
+        model.modelManagerBinding(for: .translation).wrappedValue = false
+        XCTAssertNil(model.modelManagerTask)
+    }
+
+    func test_searchDestinationRemainsUsableAfterItsArrivalPulseFades() async throws {
+        let model = makeModel()
+        model.reveal(.endpointBaseURL)
+        try await Task.sleep(for: .milliseconds(2_600))
+        XCTAssertNil(model.highlightedItem)
+        XCTAssertEqual(model.revealedItem, .endpointBaseURL,
+            "The backend configuration action must not disappear with its decorative pulse")
+        model.open(.writing)
+        XCTAssertNil(model.revealedItem)
     }
 }

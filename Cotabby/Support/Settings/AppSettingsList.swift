@@ -36,6 +36,9 @@ enum AppSettingsList {
         let disabled = Set(disabledRules.map { $0.bundleIdentifier })
         let customizedOverrides = overrides.filter { override in
             override.acceptance != nil || override.fullAcceptance != nil || override.behavior != nil
+                || override.selectionTranslationAllowed != nil || override.selectionIcon != nil
+                || override.pointerTranslationAllowed != nil || override.screenshotTranslationAllowed != nil
+                || override.writingTranslationShortcutsAllowed != nil
         }
         let customized = Set(customizedOverrides.map { $0.bundleIdentifier })
         let excluded = Set(excludedFromHistory)

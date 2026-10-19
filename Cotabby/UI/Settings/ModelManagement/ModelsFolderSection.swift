@@ -6,6 +6,7 @@ import SwiftUI
 struct ModelsFolderSection: View {
     @ObservedObject var downloads: ModelDownloadManager
     let refresh: () -> Void
+    var allowsAdditionalSources = true
     @State private var lmStudioModelsURL: URL?
     @AppStorage(BundledRuntimeLocator.lmStudioSourceEnabledKey) private var lmStudioEnabled = false
 
@@ -28,23 +29,29 @@ struct ModelsFolderSection: View {
                 )
             }
             .settingsItem(.modelsFolder)
-            Toggle(isOn: $lmStudioEnabled) {
-                SettingsRowLabel(
-                    title: String(localized: "Also Use LM Studio Models"),
-                    description: lmStudioModelsURL == nil
-                        ? String(localized: "Install LM Studio to load models from its library here.")
-                        : String(localized: """
-                        Add models from your LM Studio library (~/.lmstudio/models) to the picker above. Downloads still save to \
-                        Lingrove's own folder.
-                        """, table: "Learning"),
-                    systemImage: "square.stack.3d.up"
-                )
+            if allowsAdditionalSources {
+                Toggle(isOn: $lmStudioEnabled) {
+                    SettingsRowLabel(
+                        title: String(localized: "Also Use LM Studio Models"),
+                        description: lmStudioModelsURL == nil
+                            ? String(localized: """
+                            LM Studio's default model folder (~/.lmstudio/models) was not found, so this switch is unavailable. \
+                            Only the default folder is currently supported.
+                            """, comment: "Explains the missing default model folder, rather than assuming LM Studio is not installed.")
+                            : String(localized: """
+                            Add models from your LM Studio library (~/.lmstudio/models) to the picker above. Downloads still save to \
+                            Lingrove's own folder.
+                            """, table: "Learning"),
+                        systemImage: "square.stack.3d.up"
+                    )
+                }
+                .disabled(lmStudioModelsURL == nil)
+                .onChange(of: lmStudioEnabled) { _, _ in downloads.refreshSearchDirectories(); refresh() }
+                .settingsItem(.lmStudio)
             }
-            .disabled(lmStudioModelsURL == nil)
-            .onChange(of: lmStudioEnabled) { _, _ in downloads.refreshSearchDirectories(); refresh() }
-            .settingsItem(.lmStudio)
         }
         .onAppear {
+            guard allowsAdditionalSources else { return }
             lmStudioModelsURL = BundledRuntimeLocator.lmStudioModelsDirectoryIfAvailable()
             if lmStudioModelsURL == nil, lmStudioEnabled { lmStudioEnabled = false }
         }

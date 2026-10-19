@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a local Lingrove 0.5 test DMG, or package an existing Release app.
+"""Build a local Lingrove test DMG, or package an existing Release app.
 
 The shell entry point stays small; this module owns the installer contents and
 publication rules. It only stages the finished app and explicit legal/install
@@ -27,8 +27,8 @@ from typing import Iterator, Sequence
 
 PRODUCT_NAME = "Lingrove"
 EXPECTED_BUNDLE_ID = "io.ichthyoplanktonzyh.lingrove"
-EXPECTED_VERSION = "0.5"
-EXPECTED_BUILD = "1"
+EXPECTED_VERSION = "0.5.1"
+EXPECTED_BUILD = "2"
 REQUIRED_ARCHITECTURES = ("arm64", "x86_64")
 SIGNING_HELPER = Path(__file__).with_name("sign_local_app.py")
 INSTALL_GUIDE = Path(__file__).resolve().parents[1] / "assets" / "testing" / "INSTALL.zh-CN.txt"
@@ -38,6 +38,8 @@ REQUIRED_LEGAL_FILES = (
     Path("Cotabby/Resources/ThirdPartyLicenses"),
     Path("Cotabby/Resources/SpellingDictionaries/NOTICE.md"),
     Path("Cotabby/Resources/learning-expressions.NOTICE.md"),
+    Path("native/tts/THIRD_PARTY_NOTICES.txt"),
+    Path("native/tts/LLAMA_LICENSE.txt"),
 )
 APP_BUILD_INPUT_PATHS = (
     "Cotabby/",
@@ -49,6 +51,9 @@ APP_BUILD_INPUT_PATHS = (
     "project.yml",
     "scripts/create-inference-workspace.py",
     "scripts/prepare_cotabby_workspace.sh",
+    "native/tts/",
+    "scripts/prepare_tts_runtime.sh",
+    "scripts/embed_tts_runtime.sh",
 )
 FORBIDDEN_SUFFIXES = {".gguf", ".p8", ".p12", ".key"}
 FORBIDDEN_NAMES = {".env", "Signing.local.xcconfig"}
@@ -120,7 +125,7 @@ def exclusive_build_lock(lock_path: Path) -> Iterator[None]:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build the Lingrove 0.5 test DMG. Without --app-path, prepares the pinned workspace "
+            "Build the Lingrove test DMG. Without --app-path, prepares the pinned workspace "
             "and builds Release into build/DerivedData."
         )
     )
@@ -147,8 +152,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def locate_prepared_workspace(repo_root: Path) -> Path:
     workspace = repo_root / "build/cotabby-dependencies/Cotabby.xcworkspace"
-    if not workspace.exists():
-        run_command([str(repo_root / "scripts/prepare_cotabby_workspace.sh")], cwd=repo_root)
+    # An existing workspace does not prove that its separate speech helper is current or
+    # universal. Preparation verifies both pins and rebuilds missing slices before packaging.
+    run_command([str(repo_root / "scripts/prepare_cotabby_workspace.sh")], cwd=repo_root)
     if not workspace.exists():
         raise PackageError(f"Prepared workspace was not created at {workspace}")
     return workspace
@@ -307,6 +313,16 @@ def validate_app(app_path: Path, expected_architectures: tuple[str, ...]) -> dic
             f"expected exactly {', '.join(expected_architectures)}"
         )
 
+    helper = app_path / "Contents/Helpers/lingrove-tts-helper"
+    if not helper.is_file() or not os.access(helper, os.X_OK):
+        raise PackageError("The local speech helper is missing or not executable")
+    helper_architectures = set(run_output(["lipo", "-archs", str(helper)]).split())
+    if not set(expected_architectures).issubset(helper_architectures):
+        raise PackageError("The local speech helper must support every app architecture")
+    for name in ("THIRD_PARTY_NOTICES.txt", "LLAMA_LICENSE.txt"):
+        if not (app_path / "Contents/Resources" / name).is_file():
+            raise PackageError(f"The local speech license resource is missing: {name}")
+
     for path in app_path.rglob("*"):
         if path.is_symlink():
             continue
@@ -349,6 +365,10 @@ def copy_package_contents(repo_root: Path, app_path: Path, staging_root: Path) -
         repo_root / "Cotabby/Resources/ThirdPartyLicenses",
         staging_root / "ThirdPartyLicenses",
     )
+    shutil.copy2(repo_root / "native/tts/THIRD_PARTY_NOTICES.txt",
+                 staging_root / "ThirdPartyLicenses/LocalSpeech-NOTICES.txt")
+    shutil.copy2(repo_root / "native/tts/LLAMA_LICENSE.txt",
+                 staging_root / "ThirdPartyLicenses/LocalSpeech-llama-LICENSE.txt")
     return staged_app
 
 

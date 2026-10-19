@@ -58,9 +58,14 @@ def main():
         magic = {b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf",
                  b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca",
                  b"\xca\xfe\xba\xbf", b"\xbf\xba\xfe\xca"}
+        app_info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+        main_executable = app / "Contents/MacOS" / app_info["CFBundleExecutable"]
         candidates = []
         for path in app.rglob("*"):
-            if path.is_symlink():
+            if path.is_symlink() or path == main_executable:
+                # Signing the principal executable also validates its enclosing app. Leave it
+                # to the final bundle signature, after every sibling helper has been signed;
+                # equal directory depth alone cannot order MacOS/ before Helpers/ safely.
                 continue
             if path.is_dir() and path.suffix in (".app", ".framework", ".xpc", ".xctest"):
                 candidates.append(path)

@@ -8,14 +8,15 @@ import SwiftUI
 /// Intelligence vs. Open Source) lives inside the single Engine & Model pane and is switched via
 /// the engine dropdown at the top of that pane.
 ///
-/// Order reflects a top-down reading: core behavior, how suggestions look, the emoji feature, what
-/// the model is told (writing then context), the model itself, input bindings, then system and info.
+/// Order reflects a top-down reading: core behavior and look, writing and language learning,
+/// model context and engines, input bindings, then system and diagnostics.
 enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
     case home
     case general
     case appearance
     case emoji
     case writing
+    case languageLearning
     case context
     case engineAndModel
     case shortcuts
@@ -33,6 +34,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return String(localized: "Appearance")
         case .emoji: return String(localized: "Emoji")
         case .writing: return String(localized: "Writing")
+        case .languageLearning: return String(localized: "Language Learning", table: "Learning")
         case .context: return String(localized: "Context")
         case .engineAndModel: return String(localized: "Engine & Model")
         case .shortcuts: return String(localized: "Shortcuts")
@@ -51,6 +53,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return "paintbrush.fill"
         case .emoji: return "face.smiling"
         case .writing: return "square.and.pencil"
+        case .languageLearning: return "speaker.wave.2"
         case .context: return "doc.text"
         case .engineAndModel: return "cpu.fill"
         case .shortcuts: return "keyboard.fill"
@@ -71,6 +74,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return .purple
         case .emoji: return .yellow
         case .writing: return .indigo
+        case .languageLearning: return .purple
         case .context: return .teal
         case .engineAndModel: return .orange
         case .shortcuts: return .pink
@@ -89,6 +93,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return String(localized: "Ghost text style and display")
         case .emoji: return String(localized: "The inline emoji picker")
         case .writing: return String(localized: "Length, profile, and corrections")
+        case .languageLearning: return String(localized: "Translation and read-aloud preferences", table: "Learning")
         case .context: return String(localized: "What the model can reference")
         case .engineAndModel: return String(localized: "Choose the engine and models")
         case .shortcuts: return String(localized: "Keys that accept suggestions")
@@ -106,7 +111,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
     static let sidebarGroups: [[SettingsCategory]] = [
         [.home],
         [.general, .appearance, .emoji],
-        [.writing, .context, .engineAndModel],
+        [.writing, .languageLearning, .context, .engineAndModel],
         [.shortcuts, .apps, .permissions],
         [.performance, .about]
     ]

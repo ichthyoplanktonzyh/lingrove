@@ -14,6 +14,7 @@ import Foundation
 final class InlineCommandCoordinator {
     private let learning: LanguageLearningCoordinator?
     private let sentencePreview: LearningSentencePreviewCoordinator?
+    private let reading: LearningReadingCoordinator?
     private let emoji: EmojiPickerController
     private let macro: MacroController
     private let inputMonitor: any EmojiInputIntercepting
@@ -23,10 +24,12 @@ final class InlineCommandCoordinator {
         macro: MacroController,
         inputMonitor: any EmojiInputIntercepting,
         learning: LanguageLearningCoordinator? = nil,
-        sentencePreview: LearningSentencePreviewCoordinator? = nil
+        sentencePreview: LearningSentencePreviewCoordinator? = nil,
+        reading: LearningReadingCoordinator? = nil
     ) {
         self.learning = learning
         self.sentencePreview = sentencePreview
+        self.reading = reading
         self.emoji = emoji
         self.macro = macro
         self.inputMonitor = inputMonitor
@@ -40,6 +43,7 @@ final class InlineCommandCoordinator {
         }
         learning?.start()
         sentencePreview?.start()
+        reading?.start()
         emoji.start()
         macro.start()
     }
@@ -47,6 +51,7 @@ final class InlineCommandCoordinator {
     func stop() {
         learning?.stop()
         sentencePreview?.stop()
+        reading?.stop()
         emoji.stop()
         macro.stop()
         inputMonitor.emojiCaptureKeyDecider = nil

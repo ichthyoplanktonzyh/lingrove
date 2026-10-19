@@ -49,6 +49,39 @@ enum WindowScreenshotError: LocalizedError {
 }
 
 struct WindowScreenshotService: WindowScreenshotCapturing {
+    /// Explicit reading capture is a display crop, independent of editable focus and completion's
+    /// visual-context preference. Excluding our process keeps picker/card pixels out of OCR.
+    @MainActor
+    func captureRegion(_ cocoaRect: CGRect) async throws -> CGImage {
+        guard CGPreflightScreenCaptureAccess() else {
+            throw LearningFailure.message(String(localized: "Allow Screen Recording for Lingrove in System Settings to translate screen text.", table: "Learning"))
+        }
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(cocoaRect) }),
+              let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+            throw LearningFailure.message(String(localized: "Select a region within one display.", table: "Learning"))
+        }
+        let content = try await currentShareableContent()
+        try Task.checkCancellation()
+        guard let display = content.displays.first(where: { $0.displayID == number.uint32Value }) else { throw CancellationError() }
+        let rect = LearningReadingTextPolicy.displayCrop(cocoaRect, in: screen.frame)
+        // SCDisplay.width and frame are both in logical points (their ratio is always one).
+        // Output dimensions need the matched NSScreen's backing scale to retain Retina glyphs.
+        let scale = screen.backingScaleFactor
+        guard rect.width >= 4, rect.height >= 4, rect.width * rect.height * scale * scale <= 20_000_000 else {
+            throw LearningFailure.message(String(localized: "Select a smaller screen region.", table: "Learning"))
+        }
+        let excluded = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+        let filter = SCContentFilter(display: display, excludingApplications: excluded, exceptingWindows: [])
+        let configuration = SCStreamConfiguration()
+        configuration.sourceRect = rect
+        configuration.width = max(1, Int((rect.width * scale).rounded(.up)))
+        configuration.height = max(1, Int((rect.height * scale).rounded(.up)))
+        configuration.showsCursor = false
+        let image = try await captureImage(filter: filter, configuration: configuration)
+        try Task.checkCancellation()
+        return image
+    }
+
     private enum CaptureMetrics {
         /// Extra horizontal context captured around the focused field. ScreenCaptureKit works in
         /// display points here, which map to physical pixels later through `backingScaleFactor`.

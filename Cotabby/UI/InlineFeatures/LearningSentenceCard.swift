@@ -12,7 +12,8 @@ struct LearningSentenceCard: View {
     let dismiss: () -> Void
     var lookup: (String, NSButton) -> Void = { _, _ in }
     var lookupText: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
-    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)? = nil
+    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
+    var speech: LearningSpeechController?
     let sizeChanged: (CGSize) -> Void
     // Begin with the sentence pair's short layout; longer content measures itself below.
     // The former instruction-sized fallback leaves a blank block after the guide text is removed.
@@ -24,15 +25,7 @@ struct LearningSentenceCard: View {
             header
             if !presentation.isError {
                 HStack {
-                    Text(
-                        presentation.targetIsSelection
-                            ? String(
-                                localized: "Target: Selection", table: "Learning",
-                                comment: "The confirmed translation replaces only the selected source.")
-                            : String(
-                                localized: "Target: Current sentence", table: "Learning",
-                                comment: "The confirmed translation replaces only the current sentence.")
-                    )
+                    Text(presentation.targetLabel)
                     .font(.caption).foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                     if presentation.canReplace, let replace {
@@ -44,7 +37,20 @@ struct LearningSentenceCard: View {
                         .font(.caption).buttonStyle(.bordered)
                     } else if presentation.isCommitting {
                         ProgressView().controlSize(.small)
+                    } else if !presentation.translation.isEmpty, !presentation.isStale,
+                              let reason = presentation.replacementUnavailableReason {
+                        Button(
+                            String(
+                                localized: "Replace · \(presentation.replacementShortcutLabel)", table: "Learning",
+                                comment: "Replaces the exact source of this preview; includes its configured shortcut."),
+                            action: {}
+                        )
+                        .font(.caption).buttonStyle(.bordered).disabled(true).help(reason)
                     }
+                }
+                if let reason = presentation.replacementUnavailableReason {
+                    Text(reason).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             if presentation.isError {
@@ -121,10 +127,16 @@ struct LearningSentenceCard: View {
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
+            if !presentation.isExpanded, let speech, let request = translationSpeechRequest {
+                LearningSpeechButton(speech: speech, request: request,
+                    playLabel: String(localized: "Play translation aloud", table: "Learning"),
+                    stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
+            }
             if !presentation.isError {
                 Button(
                     presentation.isExpanded
-                        ? String(localized: "Collapse", table: "Learning", comment: "Button that collapses the expanded sentence-learning card.")
+                        ? String(localized: "Collapse", table: "Learning",
+                            comment: "Button that collapses the expanded sentence-learning card.")
                 : String(localized: "Expand · \(presentation.shortcutLabel)", table: "Learning",
                     comment: """
                     Button that expands the sentence-learning card; the shortcut label is the user's configured key combination.
@@ -143,13 +155,29 @@ struct LearningSentenceCard: View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(String(localized: "Source text", table: "Learning",
-                        comment: "Label above the original sentence in the expanded learning card."))
-                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Text(String(localized: "Source text", table: "Learning",
+                            comment: "Label above the original sentence in the expanded learning card."))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        if let speech, let request = sourceSpeechRequest {
+                            LearningSpeechButton(speech: speech, request: request,
+                                playLabel: String(localized: "Play source text aloud", table: "Learning"),
+                                stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
+                        }
+                    }
                     sentence(presentation.source, source: true)
-                    Text(String(localized: "Target expression", table: "Learning",
-                        comment: "Label above the translated sentence in the expanded learning card."))
-                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Text(String(localized: "Target expression", table: "Learning",
+                            comment: "Label above the translated sentence in the expanded learning card."))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        if let speech, let request = translationSpeechRequest {
+                            LearningSpeechButton(speech: speech, request: request,
+                                playLabel: String(localized: "Play translation aloud", table: "Learning"),
+                                stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
+                        }
+                    }
                     sentence(presentation.translation, source: false)
                     if presentation.chunks.isEmpty {
                         Text(presentation.isGenerating
@@ -222,4 +250,61 @@ struct LearningSentenceCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var sourceSpeechRequest: SpeechRequest? {
+        guard !presentation.source.isEmpty, !presentation.isStale, !presentation.isError else { return nil }
+        return SpeechRequest(
+            target: SpeechTarget(ownerID: presentation.id, itemID: "preview.source"),
+            text: presentation.source, language: presentation.sourceLanguage)
+    }
+
+    private var translationSpeechRequest: SpeechRequest? {
+        // `isGenerating` also covers alignment work after a full translation is already visible.
+        // A nonempty, nonstale value is the completed snapshot and is safe to read independently.
+        guard !presentation.translation.isEmpty, !presentation.isStale, !presentation.isError else { return nil }
+        return SpeechRequest(
+            target: SpeechTarget(ownerID: presentation.id, itemID: "preview.translation"),
+            text: presentation.translation, language: presentation.targetLanguage)
+    }
+
+}
+
+/// A tiny child observes only the shared playback controller. Cards keep their measured layout
+/// stable during ordinary playback; an error caption appears only when the provider reports one.
+struct LearningSpeechButton: View {
+    @ObservedObject var speech: LearningSpeechController
+    let request: SpeechRequest
+    let playLabel: String
+    let stopLabel: String
+
+    private var isPlaying: Bool { speech.isPlaying(request.target) }
+    private var error: String? { speech.error(for: request.target) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Button { speech.toggle(request) } label: {
+                Group {
+                    if speech.isPreparing(request.target) {
+                        ProgressView().controlSize(.mini)
+                    } else {
+                        Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.wave.2")
+                    }
+                }
+                .foregroundStyle(isPlaying ? Color.accentColor : Color.secondary)
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(error ?? (isPlaying ? stopLabel : playLabel))
+            .accessibilityLabel(isPlaying ? stopLabel : playLabel)
+            .accessibilityHint(error ?? "")
+            .accessibilityValue(speech.isPreparing(request.target)
+                ? String(localized: "Generating speech…", table: "Learning") : "")
+
+            if let error {
+                Text(error).font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(error)
+            }
+        }
+    }
 }

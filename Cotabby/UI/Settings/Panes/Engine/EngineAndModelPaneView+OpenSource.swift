@@ -1,87 +1,64 @@
 import SwiftUI
 
-/// In-process GGUF runtime, model discovery, downloads, and folder controls.
-/// These members are internal because Swift extensions in separate files cannot share lexical `private` access;
-/// the owning view itself remains module-internal.
+/// Daily local configuration stays on the task page; file installation and deletion live in its
+/// management sheet. The existing runtime/download services own selection and transfer lifetimes.
 extension EngineAndModelPaneView {
-// MARK: - Open Source
-
-    @ViewBuilder
     var openSourceSections: some View {
-        Section("Runtime") {
-            LabeledContent {
-                Text(runtimeModel.state.summary)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
+        Section(String(localized: "Model")) {
+            Picker(selection: selectedModelBinding) {
+                if runtimeModel.availableModels.isEmpty { Text(String(localized: "Choose a model", table: "Learning")).tag("") }
+                ForEach(runtimeModel.availableModels) { Text($0.displayName).tag($0.filename) }
             } label: {
-                SettingsRowLabel(
-                    title: String(localized: "Model Status"),
-                    description: String(localized: """
-                    Whether the local model is loaded and ready to generate. Loading takes a few seconds the first time.
-                    """),
-                    systemImage: "info.circle"
-                )
+                SettingsRowLabel(title: String(localized: "Selected Model"),
+                    description: String(localized: "Choose from downloaded or imported GGUF files.", table: "Learning"),
+                    systemImage: "shippingbox")
             }
-            .settingsItem(.modelStatus)
+            .disabled(suggestionSettings.isPowerBasedModelSwitchingEnabled)
+            .settingsItem(.selectedModel)
+            LabeledContent(String(localized: "Model Status"), value: completionRuntimeStatus).settingsItem(.modelStatus)
         }
+    }
 
-        Section("Models") {
-            Text("Download a model or add your own below. Models are stored locally on your Mac.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if runtimeModel.availableModels.isEmpty {
-                Text("No local GGUF models found. Download one below or add your own model file.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Picker(selection: selectedModelBinding) {
-                    ForEach(runtimeModel.availableModels) { model in
-                        Text(model.displayName).tag(model.filename)
-                    }
-                } label: {
-                    SettingsRowLabel(
-                        title: String(localized: "Selected Model"),
-                        description: suggestionSettings.isPowerBasedModelSwitchingEnabled
-                            ? String(localized: """
-                            Set automatically by power source. Use the On Battery / Plugged In pickers in the Power section, or turn \
-                            off power-based switching.
-                            """)
-                            : String(localized: """
-                            Which downloaded model file generates suggestions. Larger models are slower but write better.
-                            """),
-                        systemImage: "shippingbox"
-                    )
-                }
-                // Redundant while power-based switching owns the active model: the Power section's
-                // per-source profile pickers are the source of truth, and any pick here would be
-                // reverted on the next power evaluation.
-                .disabled(suggestionSettings.isPowerBasedModelSwitchingEnabled)
-                .settingsItem(.selectedModel)
-            }
-
-            DownloadableModelCatalogView(
-                modelDownloadManager: modelDownloadManager,
-                onRefreshModels: refreshModels
-            )
-            .settingsItem(.downloadModels)
-
-            HuggingFaceModelBrowserView(
-                searchService: huggingFaceSearchService,
-                modelDownloadManager: modelDownloadManager,
-                onRefreshModels: refreshModels
-            )
-            .settingsItem(.huggingFaceBrowser)
+    var modelManagementButton: some View {
+        Button { navigation.openModelManager(.completion) } label: {
+            Label(String(localized: "Manage models", table: "Learning"), systemImage: "shippingbox")
         }
+    }
 
-        ModelsFolderSection(downloads: modelDownloadManager, refresh: refreshModels)
+    private var completionRuntimeStatus: String {
+        switch runtimeModel.state {
+        case .idle:
+            runtimeModel.selectedModelFilename == nil
+                ? String(localized: "Choose a model", table: "Learning")
+                : String(localized: "Configured · loads on first use", table: "Learning")
+        default: runtimeModel.state.summary
+        }
+    }
 
-        if !runtimeModel.availableModels.isEmpty {
-            Section("Installed") {
+    var completionModelManagementSections: some View {
+        Group {
+            Section(String(localized: "Installed")) {
                 ForEach(runtimeModel.availableModels) { model in
-                    installedModelRow(model)
+                    InstalledRuntimeModelRow(model: model, selected: model.filename == runtimeModel.selectedModelFilename,
+                        downloads: modelDownloadManager,
+                        select: suggestionSettings.isPowerBasedModelSwitchingEnabled ? nil : {
+                            if suggestionSettings.selectedEngine == .llamaOpenSource
+                                || (suggestionSettings.selectedEngine == .appleIntelligence && suggestionSettings.keepsLocalRuntimeLoaded) {
+                                selectedModelBinding.wrappedValue = model.filename
+                            } else {
+                                runtimeModel.selectModelWithoutLoading(model.filename)
+                            }
+                        }, delete: { pendingDeletionModel = model })
                 }
             }
+            Section(String(localized: "Get models", table: "Learning")) {
+                DownloadableModelCatalogView(modelDownloadManager: modelDownloadManager, onRefreshModels: refreshModels)
+                    .settingsItem(.downloadModels)
+                HuggingFaceModelBrowserView(searchService: huggingFaceSearchService,
+                    modelDownloadManager: modelDownloadManager, onRefreshModels: refreshModels)
+                    .settingsItem(.huggingFaceBrowser)
+            }
+            ModelsFolderSection(downloads: modelDownloadManager, refresh: refreshModels)
         }
     }
 }

@@ -6,14 +6,15 @@ struct InstalledRuntimeModelRow: View {
     let model: RuntimeModelOption
     let selected: Bool
     @ObservedObject var downloads: ModelDownloadManager
-    var select: (() -> Void)? = nil
+    var title: String?
+    var select: (() -> Void)?
     let delete: () -> Void
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.displayName)
-                if model.displayName != model.actualModelName {
+                Text(title ?? model.displayName)
+                if (title ?? model.displayName) != model.actualModelName {
                     Text(model.actualModelName).font(.caption).foregroundStyle(.secondary)
                 }
             }

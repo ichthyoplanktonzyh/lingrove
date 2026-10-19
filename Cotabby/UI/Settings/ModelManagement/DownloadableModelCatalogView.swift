@@ -11,7 +11,9 @@ struct DownloadableModelCatalogView: View {
     @ObservedObject var modelDownloadManager: ModelDownloadManager
 
     let onRefreshModels: () -> Void
-    var catalog: [DownloadableRuntimeModel]? = nil
+    var catalog: [DownloadableRuntimeModel]?
+    var allowsImport = true
+    var showsImportHint = true
 
     var body: some View {
         VStack(spacing: 8) {
@@ -33,15 +35,17 @@ struct DownloadableModelCatalogView: View {
             }
 
             HStack(spacing: 12) {
-                Button {
-                    modelDownloadManager.importModel()
-                    onRefreshModels()
-                } label: {
-                    Label("Add Your Own", systemImage: "folder.badge.plus")
-                        .font(.system(size: 12))
+                if allowsImport {
+                    Button {
+                        modelDownloadManager.importModel()
+                        onRefreshModels()
+                    } label: {
+                        Label("Add Your Own", systemImage: "folder.badge.plus")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
 
                 Button {
                     onRefreshModels()
@@ -54,10 +58,12 @@ struct DownloadableModelCatalogView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("Import any .gguf model from your computer.")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if allowsImport && showsImportHint {
+                Text("Import any .gguf model from your computer.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }
@@ -152,9 +158,9 @@ private struct DownloadableModelRow: View {
                 onCancel: onCancel
             )
         case .downloaded:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .font(.system(size: 16))
+            // The row's metadata already says Installed. A selection check belongs only to the
+            // task's active installed-model row, otherwise downloading looks like activation.
+            EmptyView()
         case .failed:
             // Refresh symbol gives the button a visual cue that it's not just
             // any "tap to do something"; pairs with the warning row below to

@@ -36,6 +36,24 @@ struct LearningDictionarySessionTests {
     }
 
     @Test
+    func speechContextFollowsWordNavigationAndIsClearedForTheNextDocument() {
+        let session = LearningDictionarySession(provider: ControlledLearningDictionary())
+        defer { session.close() }
+        let expression = unit()
+        let context = "We look forward to seeing you tomorrow."
+        session.open(expression, documentID: UUID(), language: .english, speechContext: context)
+        session.select(expression.words[1])
+        #expect(session.speechContext == context)
+        session.returnToExpression()
+        #expect(session.speechContext == context)
+        session.open(expression, documentID: UUID(), language: .english)
+        #expect(session.speechContext == nil)
+        session.open(expression, documentID: UUID(), language: .english, speechContext: context)
+        session.close()
+        #expect(session.speechContext == nil)
+    }
+
+    @Test
     func outOfOrderQueryAndClosedSessionNeverPublishLateDefinitions() async {
         let provider = ControlledLearningDictionary(delayed: true)
         let session = LearningDictionarySession(provider: provider)

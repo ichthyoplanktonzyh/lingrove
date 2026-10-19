@@ -61,6 +61,36 @@ struct SettingsPaneScaffoldTests {
         }.environment(\.settingsHighlightedItem, highlight))
     }
 
+    @Test
+    func explicitConfigurationRevealsTheNewRowForTheSameSearchTarget() async throws {
+        func page(configured: Bool, sequence: Int) -> AnyView {
+            AnyView(SettingsPaneScaffold {
+                Section {
+                    if !configured { Text("Configure selected setting").settingsItem(.endpointAPIKey) }
+                    ForEach(0..<30) { index in Text("Setting \(index)").frame(height: 36) }
+                    if configured { Text("Endpoint API key").settingsItem(.endpointAPIKey) }
+                }
+            }
+            .environment(\.settingsHighlightedItem, .endpointAPIKey)
+            .environment(\.settingsRevealSequence, sequence))
+        }
+        let size = NSSize(width: 760, height: 480)
+        let host = NSHostingView(rootView: page(configured: false, sequence: 1))
+        host.frame = NSRect(origin: .zero, size: size)
+        let window = NSPanel(contentRect: NSRect(origin: NSPoint(x: -3000, y: -3000), size: size),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.contentView = nil; window.close() }
+        try await settle(host)
+        let scroll = try #require(scrollViews(in: host).first)
+        let initial = scroll.contentView.bounds.origin.y
+        host.rootView = page(configured: true, sequence: 2)
+        try await settle(host)
+        #expect(scroll.contentView.bounds.origin.y > initial + 300,
+            "Mounting the real control must reveal it even while the original search pulse is active")
+    }
+
     private func scrollViews(in view: NSView) -> [NSScrollView] {
         (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews(in: $0) }
     }

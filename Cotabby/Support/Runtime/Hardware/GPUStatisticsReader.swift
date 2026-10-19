@@ -51,7 +51,11 @@ nonisolated enum GPUStatisticsReader {
     /// Reads the accelerator statistics and `pid`'s GPU time. Finding `pid`'s clients takes one
     /// property read per GPU client on the Mac (68 clients took about 0.5 ms on an M3 Pro), cheap
     /// enough for the store's one-second timer on the main thread.
-    static func read(pid: pid_t = getpid()) -> GPUStatisticsReading {
+    static func read(pid: pid_t = getpid()) -> GPUStatisticsReading { read(pids: [pid]) }
+
+    /// App-owned native helpers contribute to the same graph. Read their clients in one registry
+    /// traversal, rather than scanning every Metal client separately for each PID.
+    static func read(pids: Set<pid_t>) -> GPUStatisticsReading {
         var services: io_iterator_t = 0
         guard IOServiceGetMatchingServices(
             kIOMainPortDefault, IOServiceMatching("IOAccelerator"), &services
@@ -70,7 +74,7 @@ nonisolated enum GPUStatisticsReader {
             if statistics == nil {
                 statistics = property("PerformanceStatistics", of: service) as? [String: Any]
             }
-            appUsages += appUsageOfClients(of: service, pid: pid)
+            appUsages += appUsageOfClients(of: service, pids: pids)
         }
         return GPUStatisticsReading(
             deviceUtilizationPercent: deviceUtilizationPercent(from: statistics),
@@ -129,20 +133,20 @@ nonisolated enum GPUStatisticsReader {
 
     /// `AppUsage` arrays of the accelerator's clients that `pid` created, one element per client.
     /// A client whose `AppUsage` is missing or not an array of dictionaries contributes `nil`.
-    private static func appUsageOfClients(of service: io_object_t, pid: pid_t) -> [[[String: Any]]?] {
+    private static func appUsageOfClients(of service: io_object_t, pids: Set<pid_t>) -> [[[String: Any]]?] {
         var children: io_iterator_t = 0
         guard IORegistryEntryGetChildIterator(service, kIOServicePlane, &children) == KERN_SUCCESS else {
             return []
         }
         defer { IOObjectRelease(children) }
 
-        let creatorPrefix = "pid \(pid),"
+        let creatorPrefixes = pids.map { "pid \($0)," }
         var usages: [[[String: Any]]?] = []
         while case let child = IOIteratorNext(children), child != 0 {
             defer { IOObjectRelease(child) }
             // The trailing comma keeps pid 12 from matching pid 123's clients.
             guard let creator = property("IOUserClientCreator", of: child) as? String,
-                  creator.hasPrefix(creatorPrefix)
+                  creatorPrefixes.contains(where: { creator.hasPrefix($0) })
             else { continue }
             usages.append(property("AppUsage", of: child) as? [[String: Any]])
         }

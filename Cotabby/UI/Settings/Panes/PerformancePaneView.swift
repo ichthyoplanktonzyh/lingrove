@@ -31,8 +31,8 @@ struct PerformancePaneView: View {
                         title: String(localized: "Enable Performance Tracking"),
                         description: String(
                             localized: """
-                            Record the timestamp, model, and elapsed time of every LLM request across completion, translation and \
-                            analysis. Only the most recent \(PerformanceMetricsStore.maximumEntries) requests are retained.
+                            Record the timestamp, model, and elapsed time of requests across autocomplete, translation, analysis and TTS. \
+                            Only the most recent \(PerformanceMetricsStore.maximumEntries) requests are retained.
                             """,
                             table: "Learning"
                         ),
@@ -190,10 +190,9 @@ struct PerformancePaneView: View {
         } footer: {
             Text(
                 String(localized: """
-                Updated every second while this pane is open. CPU can exceed 100% across multiple cores. Memory is the app's physical \
-                footprint. GPU is Lingrove's own share of the GPU, where the Open Source engine runs its model. Apple Intelligence and \
-                endpoint servers such as Ollama run outside Lingrove, so they don't count toward it. The line below the GPU graph \
-                covers every app on this Mac.
+                Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and \
+                its local speech process. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run \
+                separately and are excluded. The line below the GPU graph covers every app on this Mac.
                 """, table: "Learning")
             )
             .font(.caption)
@@ -373,16 +372,24 @@ struct PerformancePaneView: View {
     }
 
     private func stageSummary(_ entry: PerformanceMetricEntry) -> String {
-        [
-            (String(localized: "Load", table: "Learning"), entry.modelLoadMs),
-            (String(localized: "First output", table: "Learning"), entry.firstOutputMs),
-            (String(localized: "First usable", table: "Learning"), entry.usableResultMs),
-            (String(localized: "Displayed", table: "Learning"), entry.displayMs)
-        ]
-        .compactMap { name, time in
-            time.map { String(localized: "\(name) \($0) ms", table: "Learning") }
+        let stages: [(String, Int?)]
+        if entry.source == .ocr {
+            stages = [(String(localized: "Screenshot captured", table: "Learning"), entry.firstOutputMs),
+                (String(localized: "Text recognized", table: "Learning"), entry.usableResultMs)]
+        } else if entry.source == .speech {
+            stages = [(String(localized: "Load", table: "Learning"), entry.modelLoadMs),
+                (String(localized: "First audio", table: "Learning"), entry.firstOutputMs),
+                (String(localized: "Playback started", table: "Learning"), entry.displayMs),
+                (String(localized: "Generation completed", table: "Learning"), entry.usableResultMs)]
+        } else {
+            stages = [(String(localized: "Load", table: "Learning"), entry.modelLoadMs),
+                (String(localized: "First output", table: "Learning"), entry.firstOutputMs),
+                (String(localized: "First usable", table: "Learning"), entry.usableResultMs),
+                (String(localized: "Displayed", table: "Learning"), entry.displayMs)]
         }
-        .joined(separator: " · ")
+        return stages.compactMap { name, time in
+            time.map { String(localized: "\(name) \($0) ms", table: "Learning") }
+        }.joined(separator: " · ")
     }
 
     // MARK: - Bindings

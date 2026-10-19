@@ -61,6 +61,16 @@ final class PerformanceMetricsStore: ObservableObject {
         persist(updated)
     }
 
+    /// Native loading events may reach the UI after playback finishes. Fill that one missing
+    /// stage without resurrecting cleared/evicted rows or replacing an earlier measurement.
+    func recordLoad(entryID: UUID, elapsedMs: Int) {
+        guard let index = entries.firstIndex(where: { $0.id == entryID }), entries[index].modelLoadMs == nil else { return }
+        var updated = entries
+        updated[index].modelLoadMs = max(0, elapsedMs)
+        entries = updated
+        persist(updated)
+    }
+
     func clear() {
         guard !entries.isEmpty else { return }
         entries = []

@@ -241,6 +241,48 @@ struct LearningSentenceCardTests {
         }
     }
 
+    @Test
+    func unsupportedReplacementReasonAndDisabledActionStayVisibleCollapsedAndExpanded() async throws {
+        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 480, height: 300),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .aqua)
+        defer { window.close() }
+        let state = LearningDetailState(), id = UUID()
+        let reason = LearningInputMethodPolicy.unavailableMarkedRangeReason
+        let replacementShortcutLabel = "⌃⌥T"
+        func card(expanded: Bool) -> LearningSentenceCard {
+            var presentation = Self.presentation(id: id, expanded: expanded)
+            presentation.canReplace = false
+            presentation.replacementShortcutLabel = replacementShortcutLabel
+            presentation.replacementUnavailableReason = reason
+            return LearningSentenceCard(presentation: presentation, detailState: state,
+                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+        }
+        let hosting = NSHostingView(rootView: card(expanded: false))
+        window.contentView = hosting
+        window.orderFrontRegardless()
+
+        for expanded in [false, true] {
+            hosting.rootView = card(expanded: expanded)
+            await settle(hosting, in: window)
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            let request = VNRecognizeTextRequest()
+            request.recognitionLanguages = [Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true ? "zh-Hans" : "en-US"]
+            request.recognitionLevel = .accurate
+            try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([request])
+            let visible = (request.results?.compactMap { $0.topCandidates(1).first?.string } ?? [])
+                .joined().lowercased().filter { $0.isLetter || $0.isNumber }
+            let reasonPrefix = String(reason.lowercased().filter { $0.isLetter || $0.isNumber }.prefix(30))
+            #expect(visible.contains(reasonPrefix), "The replacement reason remains visible in both card sizes.")
+            let replacementLabel = String(localized: "Replace · \(replacementShortcutLabel)", table: "Learning")
+            let actionLabel = replacementLabel.split(separator: "·", maxSplits: 1).first ?? ""
+            let actionPrefix = String(actionLabel.lowercased().filter { $0.isLetter || $0.isNumber })
+            #expect(visible.contains(actionPrefix), "The Replace label remains visible in both card sizes.")
+        }
+    }
+
     private func settle(_ hosting: NSHostingView<LearningSentenceCard>, in window: NSWindow) async {
         for _ in 0..<8 {
             hosting.layoutSubtreeIfNeeded()

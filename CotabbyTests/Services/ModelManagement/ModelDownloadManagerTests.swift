@@ -38,6 +38,23 @@ final class ModelDownloadManagerTests: XCTestCase {
         XCTAssertTrue(manager.isModelInstalled(filename: "test-model.gguf"))
     }
 
+    func test_standaloneAssetCatalogIncludesDecoderAndRefreshesAfterRemoval() throws {
+        let assets = [SpeechModelCatalog.model, SpeechModelCatalog.decoder]
+        for asset in assets {
+            try "GGUF".write(to: tempDir.appendingPathComponent(asset.filename), atomically: true, encoding: .utf8)
+        }
+        let manager = ModelDownloadManager(runtimeDirectoryURL: tempDir, assetCatalog: assets)
+        Self.retainedManagers.append(manager)
+        XCTAssertEqual(manager.models.map(\.filename), assets.map(\.filename))
+        XCTAssertEqual(manager.state(for: assets[0]), .downloaded)
+        XCTAssertEqual(manager.state(for: assets[1]), .downloaded)
+        try FileManager.default.removeItem(at: tempDir.appendingPathComponent(assets[1].filename))
+        manager.refreshSearchDirectories()
+        XCTAssertEqual(manager.state(for: assets[0]), .downloaded)
+        XCTAssertEqual(manager.state(for: assets[1]), .idle)
+        XCTAssertFalse(manager.isModelInstalled(filename: "gemma-4-E2B.i1-Q6_K.gguf"))
+    }
+
     func test_canDeleteModel_onlyAllowsUserRuntimeDirectoryFiles() throws {
         let testFile = tempDir.appendingPathComponent("deletable.gguf")
         try "content".write(to: testFile, atomically: true, encoding: .utf8)

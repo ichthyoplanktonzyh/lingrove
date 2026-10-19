@@ -110,3 +110,17 @@ license. Source links, attribution, transformation details and download checksum
 in `learning-expressions.NOTICE.md` and `learning-expressions.provenance.json`; the expression
 window also exposes entry source and license links. No quotations, usage examples or media
 are included. Full license: https://creativecommons.org/licenses/by-sa/4.0/legalcode.en
+
+## Local speech runtime
+
+`lingrove-tts-helper` statically links llama.cpp, ggml and libmtmd from revision
+`2a667032dc788c3a071d538e0b572e45a3f12731`. Its generation sequence is adapted from
+llama.cpp's TTS tool. llama.cpp is Copyright (c) 2023–2026 The ggml authors and is
+licensed under MIT. The full notice is included in `native/tts/LLAMA_LICENSE.txt`
+and bundled in the app's resources. AudioToolbox is provided by macOS.
+
+Optional Qwen3-TTS 1.7B Base model and decoder downloads are provided by the
+[ggml-org conversion](https://huggingface.co/ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF)
+of [Qwen/Qwen3-TTS-12Hz-1.7B-Base](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base),
+under Apache 2.0. Model weights are not bundled with Lingrove; download URLs,
+revision and SHA-256 digests are pinned in `SpeechModelCatalog.swift`.

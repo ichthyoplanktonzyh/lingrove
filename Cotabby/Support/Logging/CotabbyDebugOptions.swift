@@ -131,6 +131,7 @@ nonisolated enum CotabbyLogger {
     static let models = Logger(label: "com.cotabby.models")
     static let suggestion = Logger(label: "com.cotabby.suggestion")
     static let learning = Logger(label: "com.cotabby.learning")
+    static let speech = Logger(label: "com.cotabby.speech")
     /// Full prompts and completions, one structured JSON record per generation. Writes to
     /// `~/Library/Logs/Cotabby/llm-io.jsonl` only when `-cotabby-debug` is set.
     static let llmIO = Logger(label: llmIOLabel)

@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Logging
+import NaturalLanguage
 @preconcurrency import Vision
 
 /// File overview:
@@ -19,12 +20,21 @@ struct ExtractedScreenText: Sendable {
     /// real values instead of a synthesized constant. Defaults to empty for callers (and tests) that
     /// only supply joined text.
     let lines: [OCRTextHygiene.OCRLine]
+    let words: [ScreenTextWord]
 
-    init(text: String, lineCount: Int, lines: [OCRTextHygiene.OCRLine] = []) {
+    init(text: String, lineCount: Int, lines: [OCRTextHygiene.OCRLine] = [], words: [ScreenTextWord] = []) {
         self.text = text
         self.lineCount = lineCount
         self.lines = lines
+        self.words = words
     }
+}
+
+/// Optional word geometry belongs to OCR output, not the view. Only explicit pointer queries
+/// request it; ordinary autocomplete extraction pays no per-word tokenization/box-query cost.
+nonisolated struct ScreenTextWord: Sendable {
+    let text: String
+    let boundingBox: CGRect
 }
 
 /// Test seam for screenshot OCR.
@@ -71,6 +81,30 @@ private final class OCRContinuationResumer {
     }
 }
 
+/// A task cancellation can arrive before Vision is installed or while perform() is running.
+/// The lock protects that handoff only; native cancellation runs outside it. One instance belongs
+/// to one extraction, so replacing a reading query cannot cancel autocomplete's separate request.
+private final class OCRRequestCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var request: VNRecognizeTextRequest?
+    private var cancelled = false
+    func install(_ request: VNRecognizeTextRequest) -> Bool {
+        lock.lock()
+        let allowed = !cancelled
+        if allowed { self.request = request }
+        lock.unlock()
+        if !allowed { request.cancel() }
+        return allowed
+    }
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        let request = request
+        lock.unlock()
+        request?.cancel()
+    }
+}
+
 struct ScreenTextExtractor: ScreenTextExtracting {
     /// Vision cannot produce useful text from near-zero-sized request images. Treating those as
     /// empty OCR keeps degenerate screenshots on the same unavailable-context path as blank windows.
@@ -78,6 +112,10 @@ struct ScreenTextExtractor: ScreenTextExtracting {
 
     let maxImageDimension: Int
     let maxRecognizedCharacters: Int
+    var capturesWordBounds = false
+    var minimumTextHeight: Float = 0.008
+    var logsTextPreview = true
+    var detectsLanguageAutomatically = false
 
     init(
         maxImageDimension: Int = VisualContextConfiguration.default.maxImageDimension,
@@ -111,7 +149,10 @@ struct ScreenTextExtractor: ScreenTextExtracting {
             throw ScreenTextExtractionError.noRecognizedText
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
+        let cancellation = OCRRequestCancellation()
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            let result: ExtractedScreenText = try await withCheckedThrowingContinuation { continuation in
             let resumer = OCRContinuationResumer()
 
             DispatchQueue.global(qos: .userInitiated).async {
@@ -150,6 +191,19 @@ struct ScreenTextExtractor: ScreenTextExtracting {
 
                     let joinedText = recognizedLines.map(\.text).joined(separator: "\n")
                     let cappedText = String(joinedText.prefix(maxRecognizedCharacters))
+                    let words: [ScreenTextWord] = capturesWordBounds ? observations.flatMap { observation in
+                        guard let candidate = observation.topCandidates(1).first else { return [ScreenTextWord]() }
+                        let tokenizer = NLTokenizer(unit: .word)
+                        tokenizer.string = candidate.string
+                        var result: [ScreenTextWord] = []
+                        tokenizer.enumerateTokens(in: candidate.string.startIndex..<candidate.string.endIndex) { range, _ in
+                            if let box = try? candidate.boundingBox(for: range) {
+                                result.append(ScreenTextWord(text: String(candidate.string[range]), boundingBox: box.boundingBox))
+                            }
+                            return true
+                        }
+                        return result
+                    } : []
 
                     guard !cappedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                         resumer.resume {
@@ -164,14 +218,14 @@ struct ScreenTextExtractor: ScreenTextExtracting {
                         let elapsedMilliseconds = Int(Date().timeIntervalSince(startedAt) * 1000)
                         self.log(
                             "ocr-success elapsed_ms=\(elapsedMilliseconds) lines=\(recognizedLines.count) chars=\(cappedText.count) " +
-                                "preview=\(self.preview(cappedText))"
+                                "preview=\(self.logsTextPreview ? self.preview(cappedText) : "<omitted>")"
                         )
 
                         continuation.resume(
                             returning: ExtractedScreenText(
                                 text: cappedText,
                                 lineCount: recognizedLines.count,
-                                lines: recognizedLines
+                                lines: recognizedLines, words: words
                             )
                         )
                     }
@@ -184,7 +238,13 @@ struct ScreenTextExtractor: ScreenTextExtracting {
                 // downstream hygiene filters can only drop junk, not repair it.
                 request.recognitionLevel = .accurate
                 request.usesLanguageCorrection = true
-                request.minimumTextHeight = 0.008
+                request.minimumTextHeight = minimumTextHeight
+                request.automaticallyDetectsLanguage = detectsLanguageAutomatically
+
+                guard cancellation.install(request) else {
+                    resumer.resume { continuation.resume(throwing: CancellationError()) }
+                    return
+                }
 
                 do {
                     let handler = VNImageRequestHandler(cgImage: preparedImage, options: [:])
@@ -199,6 +259,11 @@ struct ScreenTextExtractor: ScreenTextExtracting {
                     }
                 }
             }
+            }
+            try Task.checkCancellation()
+            return result
+        } onCancel: {
+            cancellation.cancel()
         }
     }
 

@@ -9,6 +9,9 @@ import Logging
 /// Ordinary typing, Tab and Return remain owned by the host and autocomplete pipeline.
 @MainActor
 final class LearningSentencePreviewCoordinator {
+    /// Reading owns a separate lifetime but uses the same card UI. Yield presentation while a
+    /// reading session is active, so a late focus poll cannot reopen the writing card beside it.
+    var isReadingActive: () -> Bool = { false }
     private let service: any LearningSentenceGenerating
     private let reader: any LearningSelectionReplacing
     private let focus: any SuggestionFocusProviding
@@ -18,6 +21,7 @@ final class LearningSentencePreviewCoordinator {
     private let unitRecognizer: (any LearningUnitRecognizing)?
     private let waitForPause: @MainActor (Duration) async throws -> Void
     private let isFrontmost: @MainActor (Int32) -> Bool
+    private let frontmostBundle: @MainActor () -> String?
     private var subscriptions = Set<AnyCancellable>()
     private var work: Task<Void, Never>?
     private var analysisWork: Task<Void, Never>?
@@ -94,6 +98,7 @@ final class LearningSentencePreviewCoordinator {
         isFrontmost: @escaping @MainActor (Int32) -> Bool = {
             NSWorkspace.shared.frontmostApplication?.processIdentifier == $0
         },
+        frontmostBundle: @escaping @MainActor () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier },
         availability: @escaping () -> String? = { nil }
     ) {
         self.service = service
@@ -104,6 +109,7 @@ final class LearningSentencePreviewCoordinator {
         self.unitRecognizer = unitRecognizer
         self.waitForPause = waitForPause
         self.isFrontmost = isFrontmost
+        self.frontmostBundle = frontmostBundle
         self.availability = availability
     }
 
@@ -148,6 +154,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     func decide(_ event: InputMonitorKeyEvent) -> InputMonitorAcceptTapDecision {
+        guard !isReadingActive() else { return .notHandled }
         // Closing already visible UI must remain possible after availability changes (for
         // example Low Power Mode). Eligibility gates new work, not dismissal of existing panels.
         if event.keyCode == 53, panel.dismissDetail() { return .consume }
@@ -155,17 +162,10 @@ final class LearningSentencePreviewCoordinator {
             dismiss()
             return .consume
         }
-        guard enabled, availability() == nil else { return .notHandled }
+        guard enabled, availability() == nil, let bundle = frontmostBundle(), bundle == focus.snapshot.bundleIdentifier,
+              service.settings.writingTranslationShortcutsAllowed(in: bundle) else { return .notHandled }
         if matchesReplacement(event.keyCode, flags: event.flags) {
-            guard !replacementConflicts, panel.isVisible, let document, !document.isStale,
-                !document.replacementBlocked, document.capture.supportsReplacement,
-                !document.translation.isEmpty
-            else { return .notHandled }
-            if !event.isAutorepeat, !committing {
-                let identifier = document.id
-                Task { [weak self] in self?.replacePreview(identifier) }
-            }
-            return .consume
+            return decideReplacement(event)
         }
         guard matchesShortcut(event.keyCode, flags: event.flags), !shortcutConflicts else { return .notHandled }
         guard !event.isAutorepeat else { return .consume }
@@ -177,6 +177,39 @@ final class LearningSentencePreviewCoordinator {
             self.expandOrRequest()
         }
         return .consume
+    }
+
+    /// Handles a replacement chord after `decide` has matched its configured key and modifiers.
+    /// Read-only captures consume the chord for feedback; writable captures schedule one confirmed
+    /// transaction, leaving AX freshness checks outside the synchronous global-tap callback.
+    private func decideReplacement(_ event: InputMonitorKeyEvent) -> InputMonitorAcceptTapDecision {
+        guard let document = replacementDocument() else { return .notHandled }
+        if !document.capture.supportsReplacement {
+            // Expansion and UI publication happen in a task, and this branch never asks the reader
+            // to inspect AX or attempts a write.
+            guard !event.isAutorepeat else { return .consume }
+            let identifier = document.id
+            Task { @MainActor [weak self] in
+                guard let self, self.running, self.panel.isVisible,
+                    let current = self.document, current.id == identifier, !current.isStale,
+                    !current.capture.supportsReplacement, !current.translation.isEmpty else { return }
+                self.expanded = true
+                self.render()
+            }
+            return .consume
+        }
+        guard !document.replacementBlocked else { return .notHandled }
+        if !event.isAutorepeat, !committing {
+            let identifier = document.id
+            Task { @MainActor [weak self] in self?.replacePreview(identifier, confirmedBy: "shortcut") }
+        }
+        return .consume
+    }
+
+    private func replacementDocument() -> Document? {
+        guard !replacementConflicts, panel.isVisible, let document, !document.isStale,
+            !document.translation.isEmpty else { return nil }
+        return document
     }
 
     private var enabled: Bool {
@@ -209,6 +242,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func changed(_ context: FocusedInputSnapshot?) {
+        guard !isReadingActive() else { clear(); return }
         let old = previousContext
         previousContext = context
         // Our confirmed transaction may select the saved sentence before replacing it. Its AX
@@ -512,6 +546,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func render() {
+        guard !isReadingActive() else { return }
         // Keep prior source/translation evidence for cache and sentence-history reconciliation,
         // but never let a settings callback or late render make it visible during renewed input.
         guard let document, !document.isStale, enabled else { return }
@@ -524,9 +559,11 @@ final class LearningSentencePreviewCoordinator {
                 targetIsSelection: document.capture.originalSelection.length > 0,
                 canReplace: !committing && !document.replacementBlocked && !document.translation.isEmpty
                     && document.capture.supportsReplacement,
+                replacementUnavailableReason: document.capture.supportsReplacement ? nil :
+                    (document.capture.replacementUnavailableReason ?? LearningInputMethodPolicy.unavailableMarkedRangeReason),
                 replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id),
             expand: { [weak self] in self?.expandOrRequest() }, dismiss: { [weak self] in self?.dismiss() },
-            replace: { [weak self] in self?.replacePreview(document.id) })
+            replace: { [weak self] in self?.replacePreview(document.id, confirmedBy: "button") })
         if panel.isVisible, !document.isStale, !document.translation.isEmpty {
             service.recordDisplay(source: .translation, requestID: document.traceID)
             if expanded, !document.chunks.isEmpty {
@@ -537,11 +574,26 @@ final class LearningSentencePreviewCoordinator {
 
     /// The click/shortcut itself confirms this exact preview version. The AX service rechecks the
     /// capture immediately before its single scoped write; an uncertain write is never retried.
-    private func replacePreview(_ identifier: UUID) {
-        guard !committing, let current = document, current.id == identifier, !current.isStale,
-            !current.replacementBlocked, current.capture.supportsReplacement, !current.translation.isEmpty,
-            isCurrent(identifier, capture: current.capture, verifyCapture: true)
-        else { return }
+    private func replacePreview(_ identifier: UUID, confirmedBy source: String) {
+        let traceID = document?.traceID ?? LearningRequestTrace.requestID ?? "untracked"
+        guard !committing else {
+            logReplacement(.warning, traceID: traceID, status: "preflight_rejected", details: ["reason": "already_committing"])
+            return
+        }
+        guard let current = document, current.id == identifier else {
+            logReplacement(.warning, traceID: traceID, status: "preflight_rejected", details: ["reason": "preview_changed"])
+            return
+        }
+        logReplacement(.info, traceID: current.traceID, status: "confirmation_received", details: ["source": source])
+        guard !current.isStale, !current.replacementBlocked, current.capture.supportsReplacement,
+              !current.translation.isEmpty else {
+            logReplacement(.warning, traceID: current.traceID, status: "preflight_rejected", details: ["reason": "preview_not_replaceable"])
+            return
+        }
+        guard isCurrent(identifier, capture: current.capture, verifyCapture: true) else {
+            logReplacement(.warning, traceID: current.traceID, status: "preflight_rejected", details: ["reason": "saved_capture_changed"])
+            return
+        }
         committingID = identifier
         document?.generating = false
         analysisWork?.cancel(); unitWork?.cancel()
@@ -557,11 +609,15 @@ final class LearningSentencePreviewCoordinator {
             do {
                 try Task.checkCancellation()
                 guard self.requestID == identifier, self.availability() == nil else { throw CancellationError() }
-                try await self.reader.replace(current.capture, with: current.translation)
+                try await LearningRequestTrace.$requestID.withValue(current.traceID) {
+                    try await self.reader.replace(current.capture, with: current.translation)
+                }
                 guard self.requestID == identifier else { return }
                 self.clear()
             } catch {
                 guard self.requestID == identifier else { return }
+                self.logReplacement(.warning, traceID: current.traceID, status: "coordinator_result",
+                    details: ["result": Task.isCancelled ? "cancelled" : "service_failed"])
                 self.work = nil
                 self.document?.replacementBlocked = true
                 self.document?.message = error.localizedDescription
@@ -572,6 +628,17 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func dismiss() { dismissedSource = document?.capture.source; cancelWork(); panel.hide() }
+
+    private func logReplacement(
+        _ level: Logger.Level, traceID: String, status: String, details: [String: String] = [:]
+    ) {
+        var metadata: Logger.Metadata = ["request_id": .string(traceID), "status": .string(status)]
+        details.forEach { metadata[$0.key] = .string($0.value) }
+        let suffix = details.keys.sorted().map { "\($0)=\(details[$0] ?? "")" }.joined(separator: " ")
+        let message = "Learning replacement trace_id=\(traceID) status=\(status) \(suffix)"
+        CotabbyLogger.learning.log(level: level, "\(message)", metadata: metadata)
+    }
+
     private func suspendPreview() {
         cancelWork()
         expanded = false

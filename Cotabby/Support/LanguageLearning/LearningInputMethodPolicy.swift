@@ -7,8 +7,10 @@ nonisolated enum LearningInputMethodPolicy {
     enum MarkedRangeEvidence: Equatable, Sendable {
         /// The host returned a zero-length range, which is an explicit report that no text is marked.
         case explicitlyEmpty
-        /// No range was available and no composing input method was selected, so existing write
-        /// behavior remains available for direct keyboard layouts and native fields.
+        /// AX did not report a range while a composition-capable input source was selected. That
+        /// source selection does not establish whether this exact field currently has preedit text.
+        case unavailableWithComposition
+        /// No range was available and no composition-capable input source was selected.
         case unavailableWithoutComposition
     }
 
@@ -45,10 +47,17 @@ nonisolated enum LearningInputMethodPolicy {
     """,
         table: "Learning", comment: "Explains why a learning preview is read-only when editor or input-method state cannot be verified.")
 
-    /// Manual expression preview is allowed when AX positively reports no marked text or when no
-    /// composing input method is selected. Missing AX evidence under a composing input method still
-    /// permits the caller's bounded, explicit preview, but never a write into the host field.
+    /// A positive marked range is the only evidence here that the field currently has preedit text.
+    /// The selected input source describes a capability, not the editor's live composition state;
+    /// a missing range therefore stays unknown. A later Replace click or configured chord confirms
+    /// this exact saved preview, and the replacement transaction must still revalidate its capture.
     static func assess(markedRange: NSRange?, isComposingInputMethod: Bool) -> Assessment {
+        if let markedRange, markedRange.length < 0 {
+            // A negative length is malformed AX evidence, not a report of active composition or an
+            // explicit empty range. Keep the bounded preview available but require manual copying.
+            return .copyOnly(reason: unavailableMarkedRangeReason)
+        }
+
         if let markedRange, markedRange.length > 0 {
             return .rejectPreview(reason: markedTextConfirmationMessage)
         }
@@ -58,7 +67,7 @@ nonisolated enum LearningInputMethodPolicy {
         }
 
         if isComposingInputMethod {
-            return .copyOnly(reason: unavailableMarkedRangeReason)
+            return .replacementAllowed(.unavailableWithComposition)
         }
 
         return .replacementAllowed(.unavailableWithoutComposition)

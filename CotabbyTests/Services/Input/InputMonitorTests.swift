@@ -294,4 +294,25 @@ final class InputMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.resolveAcceptKeyDown(InputMonitorKeyEvent(keyCode: Self.tab)), .consume)
         XCTAssertEqual(monitor.resolveAcceptKeyDown(InputMonitorKeyEvent(keyCode: 125)), .notHandled)
     }
+
+    func test_readingCanConsumeItsOwnKeyWhenAutocompleteIsDisabledWithoutEnablingOtherCapture() {
+        let monitor = makeMonitor()
+        monitor.shouldProcessEventsProvider = { false }
+        var emojiCalled = false
+        monitor.emojiCaptureKeyDecider = { _ in emojiCalled = true; return .consume }
+        monitor.learningKeyDecider = { event in event.keyCode == 17 ? .consume : .notHandled }
+        XCTAssertEqual(monitor.resolveAcceptKeyDown(.init(keyCode: 17, flags: [.maskShift, .maskAlternate])), .consume)
+        XCTAssertEqual(monitor.resolveAcceptKeyDown(.init(keyCode: Self.tab)), .passThrough)
+        XCTAssertFalse(emojiCalled)
+        // Construct native events without posting them: the production callback must use the
+        // same ordering as the semantic resolver, including its old outer autocomplete gate.
+        guard let reading = CGEvent(keyboardEventSource: nil, virtualKey: 17, keyDown: true),
+              let tab = CGEvent(keyboardEventSource: nil, virtualKey: Self.tab, keyDown: true) else {
+            return XCTFail("Could not allocate test keyboard events")
+        }
+        reading.flags = [.maskShift, .maskAlternate]
+        XCTAssertNil(monitor.handleAcceptTap(type: .keyDown, event: reading))
+        XCTAssertNotNil(monitor.handleAcceptTap(type: .keyDown, event: tab))
+        XCTAssertFalse(emojiCalled)
+    }
 }

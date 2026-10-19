@@ -75,10 +75,10 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
             try LearningLocalPrompt.validateTokenBudget(
                 input: tokens.count, output: maxTokens, template: resolved,
                 contextWindowTokens: actualContextWindowTokens)
-            let parameters = LearningInstructionSampling.forTemplate(resolved)
+            let parameters = LearningInstructionSampling.forTemplate(resolved).values.applying(configuration.samplingOverrides)
             let sampling = SamplingConfig(temperature: Float(parameters.temperature), top_k: Int32(parameters.topK),
                 top_p: Float(parameters.topP), min_p: 0, repetition_penalty: Float(parameters.repetitionPenalty),
-                seed: UInt32.max, single_line: false)
+                seed: parameters.seed, single_line: false)
             let sequence = native.engine.createSequence(sampling)
             guard sequence >= 0 else {
                 throw LearningFailure.message(String(localized: "Could not create a model generation sequence.",
@@ -92,7 +92,10 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
             }
             try validate(operationID)
             if let trace { LearningRequestLog.emit(trace, phase: "prefill_started", details: [
-                "prompt_tokens": String(tokens.count), "tokenization_reused": String(cachedTokens != nil)]) }
+                "prompt_tokens": String(tokens.count), "tokenization_reused": String(cachedTokens != nil),
+                "temperature": String(parameters.temperature), "top_p": String(parameters.topP),
+                "top_k": String(parameters.topK), "repetition_penalty": String(parameters.repetitionPenalty),
+                "seed": String(parameters.seed)]) }
             let decoded = tokens.withUnsafeMutableBufferPointer {
                 native.engine.decodePrompt(sequence, $0.baseAddress, Int32($0.count), 0)
             }

@@ -1,13 +1,90 @@
 import Combine
 import Foundation
 
-/// Owned once by SuggestionSettingsModel. The model persists only the sentence translation preferences; legacy vocabulary keys are intentionally left untouched and never read.
+/// Owned once by SuggestionSettingsModel. The model persists writing and reading translation preferences; legacy vocabulary keys are intentionally left untouched and never read.
 /// UI observes this object while each service request captures its immutable snapshot.
 @MainActor
 final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
     let analysis: LearningModelSettings
+    /// Reading has its own direction; changing it never reverses the writing preview.
+    @Published var selectionTranslationEnabled: Bool {
+        didSet { defaults.set(selectionTranslationEnabled, forKey: "learningSelectionEnabled") }
+    }
+    @Published var selectionIconEnabled: Bool { didSet { defaults.set(selectionIconEnabled, forKey: "learningSelectionIcon") } }
+    @Published var readingTargetLanguage: LearningLanguage {
+        didSet { defaults.set(readingTargetLanguage.rawValue, forKey: "learningReadingTarget") }
+    }
+    @Published var selectionKeyCode: UInt16 { didSet { defaults.set(Int(selectionKeyCode), forKey: "learningSelectionKey") } }
+    @Published var selectionModifiers: ShortcutModifierMask {
+        didSet { defaults.set(Int(selectionModifiers.rawValue), forKey: "learningSelectionModifiers") }
+    }
+    @Published var selectionKeyLabel: String { didSet { defaults.set(selectionKeyLabel, forKey: "learningSelectionLabel") } }
+
+    @Published var pointerTranslationEnabled: Bool { didSet { defaults.set(pointerTranslationEnabled, forKey: "learningPointerEnabled") } }
+    @Published var screenshotTranslationEnabled: Bool {
+        didSet { defaults.set(screenshotTranslationEnabled, forKey: "learningScreenshotEnabled") }
+    }
+    @Published var pointerKeyCode: UInt16 { didSet { defaults.set(Int(pointerKeyCode), forKey: "learningPointerKey") } }
+    @Published var pointerModifiers: ShortcutModifierMask {
+        didSet { defaults.set(Int(pointerModifiers.rawValue), forKey: "learningPointerModifiers") }
+    }
+    @Published var pointerKeyLabel: String { didSet { defaults.set(pointerKeyLabel, forKey: "learningPointerLabel") } }
+    @Published var screenshotKeyCode: UInt16 { didSet { defaults.set(Int(screenshotKeyCode), forKey: "learningScreenshotKey") } }
+    @Published var screenshotModifiers: ShortcutModifierMask {
+        didSet { defaults.set(Int(screenshotModifiers.rawValue), forKey: "learningScreenshotModifiers") }
+    }
+    @Published var screenshotKeyLabel: String { didSet { defaults.set(screenshotKeyLabel, forKey: "learningScreenshotLabel") } }
+
+    func readingEnabled(_ source: LearningReadingSource) -> Bool {
+        switch source {
+        case .selection: selectionTranslationEnabled
+        case .pointer: pointerTranslationEnabled
+        case .screenshot: screenshotTranslationEnabled
+        }
+    }
+    func readingBinding(_ source: LearningReadingSource) -> (key: UInt16, modifiers: ShortcutModifierMask, label: String) {
+        switch source {
+        case .selection: (selectionKeyCode, selectionModifiers, selectionKeyLabel)
+        case .pointer: (pointerKeyCode, pointerModifiers, pointerKeyLabel)
+        case .screenshot: (screenshotKeyCode, screenshotModifiers, screenshotKeyLabel)
+        }
+    }
+    func setReadingBinding(_ source: LearningReadingSource, key: UInt16, modifiers: ShortcutModifierMask, label: String) {
+        switch source {
+        case .selection:
+            selectionKeyCode = key
+            selectionModifiers = modifiers
+            selectionKeyLabel = label
+        case .pointer:
+            pointerKeyCode = key
+            pointerModifiers = modifiers
+            pointerKeyLabel = label
+        case .screenshot:
+            screenshotKeyCode = key
+            screenshotModifiers = modifiers
+            screenshotKeyLabel = label
+        }
+    }
+
+    /// The coordinator retires only receipts from the edited source. Keeping these events typed
+    /// prevents an unrelated entry switch from cancelling an otherwise valid translation.
+    var readingSourceChanges: AnyPublisher<LearningReadingSource, Never> {
+        Publishers.MergeMany([
+            $pointerTranslationEnabled.dropFirst().map { _ in LearningReadingSource.pointer }.eraseToAnyPublisher(),
+            $screenshotTranslationEnabled.dropFirst().map { _ in LearningReadingSource.screenshot }.eraseToAnyPublisher(),
+            $selectionTranslationEnabled.dropFirst().map { _ in LearningReadingSource.selection }.eraseToAnyPublisher(),
+        ]).eraseToAnyPublisher()
+    }
+
+    var readingChanges: AnyPublisher<Void, Never> {
+        Publishers.MergeMany([
+            $readingTargetLanguage.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $translationEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            translation.changes,
+        ]).eraseToAnyPublisher()
+    }
     @Published var analysisEnabled: Bool {
         didSet { defaults.set(analysisEnabled, forKey: "learningAnalysisEnabled") }
     }
@@ -51,13 +128,15 @@ final class LanguageLearningSettings: ObservableObject {
     /// A generation snapshots all settings that can change its prompt or eligibility. The
     /// publisher lets coordinators cancel work as soon as one of those values is edited.
     var changes: AnyPublisher<Void, Never> {
-        Publishers.MergeMany([
-            $translationEnabled.map { _ in () }.eraseToAnyPublisher(),
-            $sourceLanguages.map { _ in () }.eraseToAnyPublisher(),
-            $targetLanguage.map { _ in () }.eraseToAnyPublisher(),
-            $sentencePreviewEnabled.map { _ in () }.eraseToAnyPublisher(),
-                $referenceMode.map { _ in () }.eraseToAnyPublisher()
-            ].map { $0.dropFirst().eraseToAnyPublisher() } + [translation.changes]).eraseToAnyPublisher()
+        Publishers.MergeMany(
+            [
+                $translationEnabled.map { _ in () }.eraseToAnyPublisher(),
+                $sourceLanguages.map { _ in () }.eraseToAnyPublisher(),
+                $targetLanguage.map { _ in () }.eraseToAnyPublisher(),
+                $sentencePreviewEnabled.map { _ in () }.eraseToAnyPublisher(),
+                $referenceMode.map { _ in () }.eraseToAnyPublisher(),
+            ].map { $0.dropFirst().eraseToAnyPublisher() } + [translation.changes]
+        ).eraseToAnyPublisher()
     }
 
     /// Bindings affect presentation, not the meaning of a generated translation. Repaint labels
@@ -70,7 +149,16 @@ final class LanguageLearningSettings: ObservableObject {
                 $keyLabel.map { _ in () }.eraseToAnyPublisher(),
                 $replacementKeyCode.map { _ in () }.eraseToAnyPublisher(),
                 $replacementModifiers.map { _ in () }.eraseToAnyPublisher(),
-                $replacementKeyLabel.map { _ in () }.eraseToAnyPublisher()
+                $replacementKeyLabel.map { _ in () }.eraseToAnyPublisher(),
+                $selectionKeyCode.map { _ in () }.eraseToAnyPublisher(),
+                $selectionModifiers.map { _ in () }.eraseToAnyPublisher(),
+                $pointerKeyCode.map { _ in () }.eraseToAnyPublisher(),
+                $pointerModifiers.map { _ in () }.eraseToAnyPublisher(),
+                $pointerKeyLabel.map { _ in () }.eraseToAnyPublisher(),
+                $screenshotKeyCode.map { _ in () }.eraseToAnyPublisher(),
+                $screenshotModifiers.map { _ in () }.eraseToAnyPublisher(),
+                $screenshotKeyLabel.map { _ in () }.eraseToAnyPublisher(),
+                $selectionKeyLabel.map { _ in () }.eraseToAnyPublisher(),
             ].map { $0.dropFirst().eraseToAnyPublisher() }
         ).eraseToAnyPublisher()
     }
@@ -92,10 +180,22 @@ final class LanguageLearningSettings: ObservableObject {
 
     /// App-wide reset keeps the shortcut contract while disabling both explicit language features.
     func resetToDefaults() {
+        pointerTranslationEnabled = false
+        screenshotTranslationEnabled = false
+        setReadingBinding(.pointer, key: 17, modifiers: [.control, .shift], label: "⌃⇧T")
+        setReadingBinding(.screenshot, key: 17, modifiers: [.control, .option, .shift], label: "⌃⌥⇧T")
+        selectionTranslationEnabled = false
+        selectionIconEnabled = false
+        readingTargetLanguage = .chinese
+        selectionKeyCode = 17
+        selectionModifiers = [.option, .shift]
+        selectionKeyLabel = "⌥⇧T"
         translationEnabled = false
         sentencePreviewEnabled = true
         referenceMode = .currentSentence
-        replacementKeyCode = 17; replacementModifiers = [.control, .option]; replacementKeyLabel = "⌃⌥T"
+        replacementKeyCode = 17
+        replacementModifiers = [.control, .option]
+        replacementKeyLabel = "⌃⌥T"
         sourceLanguages = [.chinese]
         targetLanguage = .english
         model = ""
@@ -107,17 +207,38 @@ final class LanguageLearningSettings: ObservableObject {
         keyLabel = "⌥T"
     }
 
-    init(defaults: UserDefaults = .standard,
-         translationCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
-         analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil) {
+    init(
+        defaults: UserDefaults = .standard,
+        translationCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
+        analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil
+    ) {
         self.defaults = defaults
+        pointerTranslationEnabled = defaults.bool(forKey: "learningPointerEnabled")
+        screenshotTranslationEnabled = defaults.bool(forKey: "learningScreenshotEnabled")
+        pointerKeyCode = UInt16(clamping: defaults.object(forKey: "learningPointerKey") as? Int ?? 17)
+        pointerModifiers = ShortcutModifierMask(
+            rawValue: UInt32(clamping: defaults.object(forKey: "learningPointerModifiers") as? Int ?? 10))
+        pointerKeyLabel = defaults.string(forKey: "learningPointerLabel") ?? "⌃⇧T"
+        screenshotKeyCode = UInt16(clamping: defaults.object(forKey: "learningScreenshotKey") as? Int ?? 17)
+        screenshotModifiers = ShortcutModifierMask(
+            rawValue: UInt32(clamping: defaults.object(forKey: "learningScreenshotModifiers") as? Int ?? 14))
+        screenshotKeyLabel = defaults.string(forKey: "learningScreenshotLabel") ?? "⌃⌥⇧T"
+        selectionTranslationEnabled = defaults.bool(forKey: "learningSelectionEnabled")
+        selectionIconEnabled = defaults.bool(forKey: "learningSelectionIcon")
+        readingTargetLanguage = LearningLanguage(rawValue: defaults.string(forKey: "learningReadingTarget") ?? "") ?? .chinese
+        selectionKeyCode = UInt16(clamping: defaults.object(forKey: "learningSelectionKey") as? Int ?? 17)
+        selectionModifiers = ShortcutModifierMask(
+            rawValue: UInt32(clamping: defaults.object(forKey: "learningSelectionModifiers") as? Int ?? 6))
+        selectionKeyLabel = defaults.string(forKey: "learningSelectionLabel") ?? "⌥⇧T"
         translation = LearningModelSettings(role: .translation, defaults: defaults, credentials: translationCredentials)
         analysis = LearningModelSettings(role: .analysis, defaults: defaults, credentials: analysisCredentials)
         analysisEnabled = defaults.bool(forKey: "learningAnalysisEnabled")
         translationEnabled = defaults.bool(forKey: "learningTranslationEnabled")
-        sourceLanguages = defaults.stringArray(forKey: "learningSourceLanguages")?
+        sourceLanguages =
+            defaults.stringArray(forKey: "learningSourceLanguages")?
             .compactMap(LearningLanguage.init(rawValue:)) ?? [.chinese]
-        targetLanguage = LearningLanguage(rawValue: defaults.string(forKey: "learningTargetLanguage") ?? "en")
+        targetLanguage =
+            LearningLanguage(rawValue: defaults.string(forKey: "learningTargetLanguage") ?? "en")
             ?? .english
         sentencePreviewEnabled = defaults.object(forKey: "learningSentencePreviewEnabled") as? Bool ?? true
         referenceMode = LearningReferenceMode(rawValue: defaults.string(forKey: "learningReferenceMode") ?? "") ?? .currentSentence

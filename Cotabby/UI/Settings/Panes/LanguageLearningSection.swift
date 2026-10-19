@@ -1,42 +1,44 @@
 import SwiftUI
 
 /// Presents the cross-language learning controls from the app-owned settings model.
-/// The shared settings object owns persistence; this section only edits language choices,
-/// the two independent model profiles, and the detail shortcut.
+/// The shared settings object owns persistence; the selected role only chooses visible Form
+/// sections. Translation owns its directions and expression style; alignment owns its toggle/model
+/// link. Both route technical configuration and shortcuts through the window's navigation.
 struct LanguageLearningSection: View {
     @ObservedObject var settings: LanguageLearningSettings
-    let suggestionSettings: SuggestionSettingsModel
+    let role: LearningModelRole
     var configureModel: (LearningModelRole) -> Void = { _ in }
     var openShortcuts: () -> Void = {}
+    var openApps: () -> Void = {}
     @State private var sourceLanguagesExpanded = false
+    @Environment(\.settingsHighlightedItem) private var highlightedItem
+    @Environment(\.settingsRevealSequence) private var revealSequence
 
     var body: some View {
-        Section(String(localized: "Language Learning", table: "Learning",
+        switch role {
+        case .translation:
+            translationSection
+            selectionSection
+            LearningTranslationStyleSection(profile: settings.translation)
+        case .analysis:
+            alignmentSection
+        }
+    }
+
+    private var translationSection: some View {
+        Section(String(localized: "Writing translation", table: "Learning",
             comment: "Settings section for language translation and sentence-learning controls.")) {
             Toggle(String(localized: "Enable expression translation", table: "Learning",
                 comment: "Turns explicit translation previews on or off."),
-                isOn: $settings.translationEnabled)
+                isOn: $settings.translationEnabled).settingsItem(.translationEnabled)
             Toggle(String(localized: "Show sentence expressions after a pause", table: "Learning",
                 comment: "Automatically translates newly typed complete sentences after a brief pause."),
                 isOn: $settings.sentencePreviewEnabled)
-                .disabled(!settings.translationEnabled)
+                .disabled(!settings.translationEnabled).settingsItem(.sentencePreview)
             translationControls
             Text(String(localized: """
-            Type as usual and confirm text with your input method. After a pause, the target expression appears beside the field. When \
-            chunk alignment is enabled, aligned meaning appears shortly afterward. Use the shortcut to expand the source and \
-            translation. Click a highlighted match to inspect both sides, or double-click an expression to open its dictionary entry. \
-            No specific input method or ABC keyboard is required. Translation and chunk alignment use separate models, each with a \
-            local GGUF or its own endpoint.
-            """,
-                table: "Learning",
-                comment: """
-                Overview of automatic sentence translation, chunk alignment, dictionary lookup, input-method compatibility, and the \
-                separate model choices.
-                """))
-                .font(.caption).foregroundStyle(.secondary)
-            Text(String(localized: """
-            Translation sends the target and optional draft excerpts from the same field to the chosen engine. Alignment receives \
-            only the target and translation. Screens, clipboard and history are excluded.
+            Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized \
+            text and style instructions. Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded.
             """,
                 table: "Learning", comment: """
                 Privacy disclosure describing the data sent for learning requests and context that is never included.
@@ -46,10 +48,45 @@ struct LanguageLearningSection: View {
                 comment: "Name of the model profile used for translation."), profile: settings.translation) {
                 configureModel(.translation)
             }
+            LabeledContent {
+                Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
+            } label: {
+                Text(
+                    String(
+                        localized: "Translation shortcuts", table: "Learning", comment: "Read-only route to the central shortcut editor."))
+            }
+        }
+    }
+
+    private var selectionSection: some View {
+        Section(String(localized: "Reading translation", table: "Learning")) {
+            Toggle(String(localized: "Enable selection translation", table: "Learning"), isOn: $settings.selectionTranslationEnabled)
+                .disabled(!settings.translationEnabled).settingsItem(.selectionTranslation)
+            Toggle(String(localized: "Enable pointer translation", table: "Learning"), isOn: $settings.pointerTranslationEnabled)
+                .disabled(!settings.translationEnabled).settingsItem(.pointerTranslation)
+            Toggle(String(localized: "Enable screen region translation", table: "Learning"), isOn: $settings.screenshotTranslationEnabled)
+                .disabled(!settings.translationEnabled).settingsItem(.screenshotTranslation)
+            Picker(String(localized: "Reading target language", table: "Learning"), selection: $settings.readingTargetLanguage) {
+                ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
+            }.disabled(!settings.translationEnabled).settingsItem(.readingTargetLanguage)
+            Toggle(String(localized: "Show selection translation icon", table: "Learning"), isOn: $settings.selectionIconEnabled)
+                .disabled(!settings.translationEnabled || !settings.selectionTranslationEnabled).settingsItem(.selectionTranslationIcon)
+            Button(String(localized: "Manage allowed apps", table: "Learning"), action: openApps)
+                .settingsItem(.selectionTranslationApps)
+            Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
+        }
+    }
+
+    private var alignmentSection: some View {
+        Section(String(localized: "Chunk alignment", table: "Learning")) {
+            if !settings.translationEnabled {
+                Text(String(localized: "Enable translation in the Translation tab to use chunk alignment.", table: "Learning"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Toggle(String(localized: "Enable chunk alignment", table: "Learning",
                 comment: "Turns source-to-translation phrase alignment on or off."),
                 isOn: $settings.analysisEnabled)
-                .disabled(!settings.translationEnabled)
+                .disabled(!settings.translationEnabled).settingsItem(.chunkAlignment)
             Text(String(localized: """
             You can still read the translation, compare it with the source, and look up words when chunk alignment is off. Matching \
             only identifies corresponding excerpts; it does not translate again or generate explanations.
@@ -60,21 +97,6 @@ struct LanguageLearningSection: View {
                 comment: "Name of the model profile used to align source and target phrases."), profile: settings.analysis) {
                 configureModel(.analysis)
             }
-            LabeledContent {
-                Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
-            } label: {
-                Text(
-                    String(
-                        localized: "Translation shortcuts", table: "Learning", comment: "Read-only route to the central shortcut editor."))
-            }
-            Text(String(localized: """
-            After a pause, preview the current sentence. Use Replace to write it back, or select text to translate a larger range. \
-            The details shortcut opens a preview or toggles details. Tab and Return stay with the editor; Escape dismisses.
-            """,
-                table: "Learning", comment: """
-                Explains when automatic preview runs, how sentence boundaries are detected, and how the overlay interacts with typing.
-                """))
-                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -91,6 +113,7 @@ struct LanguageLearningSection: View {
                 Text(String(localized: "Draft context", table: "Learning", comment: "Use budgeted reference from the current draft.")).tag(
                     LearningReferenceMode.draft)
             }
+            .settingsItem(.translationReferenceMode)
             Text(
                 String(
                     localized:
@@ -102,7 +125,7 @@ struct LanguageLearningSection: View {
                 comment: "Picker label for the language to translate into."),
                 selection: $settings.targetLanguage) {
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
-            }
+            }.settingsItem(.translationTargetLanguage)
             DisclosureGroup(String(localized: "Source languages (optional; \(settings.sourceLanguages.count) selected)", table: "Learning",
                 comment: "Disclosure label for source-language choices; the selected language count is inserted."),
                             isExpanded: sourceExpansionBinding) {
@@ -122,7 +145,10 @@ struct LanguageLearningSection: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
+            .settingsItem(.translationSourceLanguages)
+            .onChange(of: revealSequence, initial: true) { _, _ in
+                if highlightedItem == .translationSourceLanguages { sourceLanguagesExpanded = true }
+            }
         }
     }
 
@@ -137,8 +163,7 @@ struct LanguageLearningSection: View {
     }
 
 }
-
-/// Writing shows the role's current selection and a route into Engine & Model. It observes the
+/// Language Learning shows the role's current selection and a route into Engine & Model. It observes the
 /// app-owned profile, while the navigation owner performs the jump. No model services or editable
 /// server/key fields live in this summary, so there is one configuration surface per task.
 private struct LearningModelSummaryRow: View {
@@ -160,18 +185,19 @@ private struct LearningModelSummaryRow: View {
     }
 
     private var summary: String {
-        switch profile.backend {
+        let selection = profile.snapshot
+        return switch selection.backend {
         case .local:
-            profile.localModel.isEmpty
+            selection.localModel.isEmpty
                 ? String(localized: "Local GGUF · no model selected", table: "Learning",
                     comment: "Summary shown when the local backend is selected but this task has no GGUF model.")
-                : String(localized: "Local GGUF · \(profile.localModel)", table: "Learning",
+                : String(localized: "Local GGUF · \(selection.localModel)", table: "Learning",
                     comment: "Summary of the local GGUF backend and selected model filename.")
         case .endpoint:
-            profile.endpointModel.isEmpty
+            selection.endpointModel.isEmpty
                 ? String(localized: "Endpoint · no model entered", table: "Learning",
                     comment: "Summary shown when the endpoint backend is selected but its model identifier is empty.")
-                : String(localized: "Endpoint · \(profile.endpointModel)", table: "Learning",
+                : String(localized: "Endpoint · \(selection.endpointModel)", table: "Learning",
                     comment: "Summary of the endpoint backend and user-configured model identifier.")
         }
     }

@@ -5,11 +5,12 @@ import SwiftUI
 /// Owns one nonactivating learning window and its correspondence panel. Updating its hosting
 /// root preserves SwiftUI selection within a document; a new request ID resets that selection.
 /// The window never becomes key, so showing, expanding or clicking learning content leaves typing
-/// focus in the host editor. Its position follows the existing caret geometry policy.
+/// focus in the host editor. Its position follows the existing caret/selection geometry policy.
 @MainActor
 final class LearningSentencePanel: LearningSentencePresenting {
     private let detailPanel: LearningDetailPanel
     private let sentenceDictionary: LearningSystemDictionaryPresenter
+    private let speech: LearningSpeechController?
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningSentenceCard>?
     private(set) var isVisible = false
@@ -29,11 +30,13 @@ final class LearningSentencePanel: LearningSentencePresenting {
     /// generation. A later completion can move this panel even when no new translation arrives.
     init(reservedFramePublisher: AnyPublisher<CGRect?, Never>? = nil,
          dictionary: LearningSystemDictionaryPresenter? = nil,
-         dictionaryProvider: (any LearningDictionaryProviding)? = nil) {
+         dictionaryProvider: (any LearningDictionaryProviding)? = nil,
+         speech: LearningSpeechController? = nil) {
         // Default arguments are evaluated by the caller, outside this actor-isolated body.
         // Construct the AppKit collaborator here so its initialization always stays on MainActor.
         sentenceDictionary = dictionary ?? LearningSystemDictionaryPresenter()
-        detailPanel = LearningDetailPanel(provider: dictionaryProvider)
+        self.speech = speech
+        detailPanel = LearningDetailPanel(provider: dictionaryProvider, speech: speech)
         reservationSubscription = reservedFramePublisher?.removeDuplicates().sink { [weak self] frame in
             guard let self else { return }
             self.reservedFrame = frame
@@ -56,10 +59,13 @@ final class LearningSentencePanel: LearningSentencePresenting {
     }
 
     func hide() {
+        if let documentID = currentPresentation?.id { speech?.stop(ownerID: documentID) }
         isVisible = false
         sentenceDictionary.dismiss()
         detailPanel.hide()
         panel?.orderOut(nil)
+        panel?.contentView = nil
+        hosting = nil
         dismissAction = nil
         currentPresentation = nil
         contentSize = nil
@@ -77,6 +83,14 @@ final class LearningSentencePanel: LearningSentencePresenting {
         _ presentation: LearningSentencePresentation, expand: @escaping () -> Void, dismiss: @escaping () -> Void,
         replace: (() -> Void)?
     ) {
+        if let currentPresentation,
+           currentPresentation.id != presentation.id || presentation.isStale || currentPresentation.source != presentation.source {
+            // Source/document changes invalidate every target owned by the old preview.
+            speech?.stop(ownerID: currentPresentation.id)
+        } else if let currentPresentation, currentPresentation.translation != presentation.translation {
+            speech?.stop(target: SpeechTarget(ownerID: currentPresentation.id, itemID: "preview.translation"))
+        }
+        if presentation.isStale { speech?.stop(ownerID: presentation.id) }
         // Compact word lookup remains anchored to the same fixed translation while analysis
         // streams in. Dismiss when its text/view mode changes, rather than on every chunk update.
         if currentPresentation?.id != presentation.id || presentation.isStale ||
@@ -112,6 +126,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
             lookupUnit: { [weak self] anchor, view in
                 self?.inspectUnit(anchor, documentID: presentation.id, view: view)
             },
+            speech: speech,
             sizeChanged: { [weak self] size in
                 self?.scheduleLayout(size: size, revision: revision)
             }
@@ -154,7 +169,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
         guard let current = currentPresentation, current.id == documentID, !current.isStale,
               view.window === panel, view.string == current.translation,
               let parent = visibleFrame else { return }
-        let units = current.units.isEmpty ? LearningUnitPolicy.fallback(in: current.translation, language: current.targetLanguage) : current.units
+        let units = current.units.isEmpty
+            ? LearningUnitPolicy.fallback(in: current.translation, language: current.targetLanguage) : current.units
         guard units.contains(anchor.unit) else { return }
         if anchor.unit.kind == .word {
             // Native presentation preserves pronunciation, word classes, senses and examples.
@@ -171,7 +187,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
             // group from its extent or replace the group selected by a preceding single click.
             correspondence: detailPanel.state.chunk,
             placement: .init(parent: parent, caret: current.caret, reserved: reservedFrame,
-                screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchorFrame.maxY + 12))
+                screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchorFrame.maxY + 12),
+            speechContext: current.translation)
     }
 
     private func detail(_ chunk: LearningMeaningChunk, presentation: LearningSentencePresentation) -> LearningChunkDetail {
@@ -213,7 +230,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
         let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
         detailPanel.show(detail, placement: LearningDetailPlacement(parent: parent, caret: presentation.caret, reserved: reservedFrame,
             screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
-            anchorY: parent.contains(mouse) ? mouse.y + 18 : parent.maxY))
+            anchorY: parent.contains(mouse) ? mouse.y + 18 : parent.maxY), speechContext: presentation.translation)
     }
 
     /// Preferences arrive during SwiftUI layout/commit. Changing an AppKit window there can start

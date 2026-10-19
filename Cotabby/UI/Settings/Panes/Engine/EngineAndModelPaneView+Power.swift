@@ -31,12 +31,13 @@ extension EngineAndModelPaneView {
             }
             .settingsItem(.powerBasedModelSwitching)
 
-            if suggestionSettings.isPowerBasedModelSwitchingEnabled {
+            Group {
                 powerProfilePicker(
                     title: String(localized: "On Battery"),
                     systemImage: "battery.25",
                     selection: batteryProfileBinding
                 )
+                .disabled(!suggestionSettings.isPowerBasedModelSwitchingEnabled)
                 .settingsItem(.batteryModel)
 
                 powerProfilePicker(
@@ -44,6 +45,7 @@ extension EngineAndModelPaneView {
                     systemImage: "powerplug",
                     selection: pluggedInProfileBinding
                 )
+                .disabled(!suggestionSettings.isPowerBasedModelSwitchingEnabled)
                 .settingsItem(.pluggedInModel)
             }
         }

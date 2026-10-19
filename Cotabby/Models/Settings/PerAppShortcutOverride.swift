@@ -1,6 +1,6 @@
 import Foundation
 
-/// Per-app overrides for one app: accept keys and suggestion behavior. A `nil` action inherits its
+/// Per-app overrides for one app: accept keys, suggestion behavior, and translation permissions. A `nil` action inherits its
 /// global binding; the disabled-key sentinel remains an explicit override. The type keeps its
 /// original name because its JSON is persisted under `cotabbyPerAppShortcutOverrides`.
 struct PerAppShortcutOverride: Codable, Equatable, Identifiable, Sendable {
@@ -11,6 +11,14 @@ struct PerAppShortcutOverride: Codable, Equatable, Identifiable, Sendable {
     /// App-specific suggestion behavior (mid-line, autocorrect, instructions). Optional so records
     /// saved before this existed decode unchanged; nil means every behavior follows the global setting.
     var behavior: PerAppBehavior?
+    /// An explicit allowlist for the new reading shortcut. Optional fields preserve old JSON.
+    var selectionTranslationAllowed: Bool? = nil
+    var pointerTranslationAllowed: Bool? = nil
+    var screenshotTranslationAllowed: Bool? = nil
+    /// nil follows Language Learning's global selection-icon switch.
+    var selectionIcon: PerAppToggle? = nil
+    /// Existing writing commands retain their previous default; a conflict can disable them here.
+    var writingTranslationShortcutsAllowed: Bool? = nil
 
     var id: String { bundleIdentifier }
 }

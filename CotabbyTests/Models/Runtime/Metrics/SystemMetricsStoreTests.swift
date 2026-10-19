@@ -95,6 +95,30 @@ final class SystemMetricsStoreTests: XCTestCase {
         return true
     }
 
+    func test_ownedHelperContributesCPUAndFootprintOnlyWhilePaneSamples() {
+        let store = makeStore(probe: SamplerProbe(), sampleInterval: 0.01, gpu: GPUProbe(nanoseconds: [0, 0, 0]))
+        var reads = 0
+        runOnMainActor {
+            store.ownedProcessIDs = { [42] }
+            store.ownedProcessSampler = { _ in
+                reads += 1
+                return OwnedProcessResourceReading(cpuNanoseconds: UInt64(reads) * 1_000_000_000,
+                    footprintBytes: 1_000, startTime: 1)
+            }
+            store.beginSampling()
+        }
+        XCTAssertTrue(pumpRunLoop(timeout: 5) { runOnMainActor { store.samples.count >= 2 } })
+        runOnMainActor {
+            XCTAssertEqual(store.samples[0].footprintBytes, 1_100)
+            XCTAssertEqual(store.samples[1].footprintBytes, 1_200)
+            XCTAssertEqual(store.samples[1].cpuPercent, 52, accuracy: 0.01)
+            store.endSampling()
+        }
+        let count = reads
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        XCTAssertEqual(reads, count)
+    }
+
     // MARK: - GPU
 
     func test_gpuShare_isGPUTimeOverMonotonicTimeFromTheSecondSample() {

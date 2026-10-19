@@ -8,6 +8,102 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct LearningExpressionServiceTests {
+    @Test(arguments: LearningReadingSource.allCases)
+    func eachReadingSourceTranslatesAndAlignsWithOtherEntrypointsDisabled(_ source: LearningReadingSource) async throws {
+        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,
+            sourceLanguages: [.english], targetLanguage: .chinese,
+            reply: instructionResponse("I can do it."), analysisReply: sentenceReply(malformed: false))
+        defer { harness.cleanUp() }
+        let learning = harness.settings.languageLearning
+        learning.readingTargetLanguage = .english
+        setReadingSource(source, enabled: true, in: learning)
+        let translation = try await harness.service.translateReadingSelection(source: "我能做到",
+            sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
+        let result = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: translation,
+            sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
+        #expect(translation == "I can do it." && result.chunks.count == 3)
+        #expect(harness.exchange.requestCount == 2)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases)
+    func disabledReadingSourceCannotBorrowAnotherSourcesSwitch(_ source: LearningReadingSource) async throws {
+        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true)
+        defer { harness.cleanUp() }
+        let learning = harness.settings.languageLearning
+        learning.readingTargetLanguage = .english
+        for entry in LearningReadingSource.allCases { setReadingSource(entry, enabled: entry != source, in: learning) }
+        do {
+            _ = try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
+                targetLanguage: .english, readingSource: source)
+            Issue.record("A disabled source must never start translation")
+        } catch is LearningFailure {} catch { Issue.record("Expected disabled-direction failure, got \(error)") }
+        do {
+            _ = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
+                sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
+            Issue.record("A disabled source must never start analysis")
+        } catch is CancellationError {} catch { Issue.record("Expected cancellation, got \(error)") }
+        #expect(harness.exchange.requestCount == 0)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases, [false, true])
+    func closingReadingSourceRejectsLateTranslationAndAnalysis(_ source: LearningReadingSource, analysis: Bool) async throws {
+        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true, holdResponse: true)
+        defer { harness.cleanUp() }
+        let learning = harness.settings.languageLearning
+        learning.readingTargetLanguage = .english
+        setReadingSource(source, enabled: true, in: learning)
+        let operation = Task {
+            if analysis {
+                _ = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
+                    sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
+            } else {
+                _ = try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
+                    targetLanguage: .english, readingSource: source)
+            }
+        }
+        _ = await harness.exchange.waitForRequest()
+        setReadingSource(source, enabled: false, in: learning)
+        harness.exchange.release(with: try analysis ? sentenceReply(malformed: false) : instructionResponse("I can do it."))
+        do {
+            try await operation.value
+            Issue.record("A late result must be discarded when its own entry closes")
+        } catch is CancellationError {} catch { Issue.record("Expected cancellation, got \(error)") }
+        #expect(harness.exchange.requestCount == 1)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases, [false, true])
+    func closingOtherSourcesKeepsPendingReadingWork(_ source: LearningReadingSource, analysis: Bool) async throws {
+        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true, holdResponse: true)
+        defer { harness.cleanUp() }
+        let learning = harness.settings.languageLearning
+        learning.readingTargetLanguage = .english
+        for entry in LearningReadingSource.allCases { setReadingSource(entry, enabled: true, in: learning) }
+        let operation = Task {
+            if analysis {
+                let result = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
+                    sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
+                #expect(result.chunks.count == 3)
+            } else {
+                let text = try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
+                    targetLanguage: .english, readingSource: source)
+                #expect(text == "I can do it.")
+            }
+        }
+        _ = await harness.exchange.waitForRequest()
+        for entry in LearningReadingSource.allCases where entry != source { setReadingSource(entry, enabled: false, in: learning) }
+        harness.exchange.release(with: try analysis ? sentenceReply(malformed: false) : instructionResponse("I can do it."))
+        try await operation.value
+        #expect(harness.exchange.requestCount == 1)
+    }
+
+    private func setReadingSource(_ source: LearningReadingSource, enabled: Bool, in settings: LanguageLearningSettings) {
+        switch source {
+        case .selection: settings.selectionTranslationEnabled = enabled
+        case .pointer: settings.pointerTranslationEnabled = enabled
+        case .screenshot: settings.screenshotTranslationEnabled = enabled
+        }
+    }
+
     @Test(arguments: ["translategemma:4b", "hy-mt2:7b", "learning-instruction-model"])
     func specialistEndpointUsesItsOwnPromptAndSampling(_ model: String) async throws {
         let harness = try makeHarness(translationEnabled: true, reply: instructionResponse("Hello."))

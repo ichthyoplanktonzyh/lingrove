@@ -1,7 +1,7 @@
 import CoreGraphics
 import SwiftUI
 
-/// Translation's two independent commands borrow the existing recorder and conflict policy.
+/// Translation's independent commands borrow the existing recorder and conflict policy.
 /// This editor appears only in Shortcuts; other panes show a summary/navigation action.
 struct LearningShortcutRows: View {
     @ObservedObject var settings: LanguageLearningSettings
@@ -12,6 +12,35 @@ struct LearningShortcutRows: View {
         Section(String(localized: "Translation", table: "Learning", comment: "Translation shortcuts section.")) {
             row(replacement: true)
             row(replacement: false)
+            ForEach(LearningReadingSource.allCases, id: \.rawValue) { readingRow($0) }
+        }
+    }
+
+    @ViewBuilder private func readingRow(_ source: LearningReadingSource) -> some View {
+        let binding = settings.readingBinding(source)
+        LabeledContent(source.title) {
+            KeybindRow(label: binding.label, keyCode: CGKeyCode(binding.key),
+                isRecording: recording.binding(for: "translation." + source.rawValue),
+                onRecord: { key, modifiers, label in settings.setReadingBinding(source, key: key, modifiers: modifiers, label: label) },
+                onReset: {
+                    switch source {
+                    case .selection: settings.setReadingBinding(source, key: 17, modifiers: [.option, .shift], label: "⌥⇧T")
+                    case .pointer: settings.setReadingBinding(source, key: 17, modifiers: [.control, .shift], label: "⌃⇧T")
+                    case .screenshot: settings.setReadingBinding(source, key: 17, modifiers: [.control, .option, .shift], label: "⌃⌥⇧T")
+                    }
+                },
+                resetLabel: String(localized: "Reset"), shouldShowReset: true,
+                onClear: { settings.setReadingBinding(source, key: UInt16.max, modifiers: [], label: SuggestionSettingsModel.disabledKeyLabel) },
+                clearLabel: String(localized: "Clear"),
+                clearHelp: String(localized: "Disable this shortcut", table: "Learning"),
+                conflictChecker: { code, modifiers in
+                    suggestionSettings.readingShortcutConflict(source, keyCode: code, modifiers: modifiers)
+                })
+        }.settingsItem(source == .selection ? .selectionTranslationShortcut : source == .pointer ? .pointerTranslationShortcut : .screenshotTranslationShortcut)
+        if settings.translationEnabled, settings.readingEnabled(source),
+           let reason = suggestionSettings.readingShortcutConflict(source) {
+            Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.", table: "Learning"))
+                .font(.caption).foregroundStyle(.red)
         }
     }
 

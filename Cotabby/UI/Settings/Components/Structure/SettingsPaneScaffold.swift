@@ -20,6 +20,14 @@ struct SettingsPaneScaffold<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @Environment(\.settingsHighlightedItem) private var highlightedItem
+    @Environment(\.settingsRevealSequence) private var revealSequence
+
+    /// A short-lived task identity combines the row and the explicit navigation action.
+    /// The scaffold owns it so ordinary layout updates cannot trigger repeated scrolling.
+    private struct Arrival: Hashable {
+        let item: SettingsItem?
+        let sequence: Int
+    }
 
     init(
         callout: SettingsPaneCallout? = nil,
@@ -46,7 +54,7 @@ struct SettingsPaneScaffold<Content: View>: View {
             // Header-less first sections need the same clearance below the title bar. The shared
             // callout is a section of this document, so it continues scrolling with the controls.
             .padding(.top, 12)
-            .task(id: highlightedItem) {
+            .task(id: Arrival(item: highlightedItem, sequence: revealSequence)) {
                 // The first reveal can precede row layout after `.id(selection)` rebuilds the
                 // pane. SwiftUI cancels this task when a new target arrives or the pane disappears.
                 // Reveal once, rather than issuing a delayed repair that can pull the viewport

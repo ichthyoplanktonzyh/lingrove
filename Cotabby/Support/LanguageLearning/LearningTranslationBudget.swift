@@ -46,7 +46,7 @@ nonisolated enum LearningTranslationBudget {
             ModelContextBudget.inputAllowance(total: limits.total, output: limits.output, estimated: limits.estimated))
         let bare = try LearningTranslationPrompt.render(
             source: input.source, sourceLanguage: sourceLanguage,
-            targetLanguage: targetLanguage, family: family)
+            targetLanguage: targetLanguage, family: family, style: input.style)
         let bareMeasurement = try measure(bare.prompt)
         guard bareMeasurement.count <= allowance else { throw ModelContextBudget.oversizedTarget() }
         var best = Plan(request: bare, payload: bareMeasurement.payload)
@@ -63,7 +63,7 @@ nonisolated enum LearningTranslationBudget {
             let candidate = LearningTranslationInput(
                 source: input.source,
                 referenceBefore: String(input.referenceBefore.suffix(beforeCount + extraBefore)),
-                referenceAfter: String(input.referenceAfter.prefix(afterCount)))
+                referenceAfter: String(input.referenceAfter.prefix(afterCount)), style: input.style)
             let request = try LearningTranslationPrompt.render(
                 input: candidate, sourceLanguage: sourceLanguage,
                 targetLanguage: targetLanguage, family: family)

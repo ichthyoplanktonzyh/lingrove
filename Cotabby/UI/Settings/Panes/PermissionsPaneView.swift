@@ -2,7 +2,7 @@ import SwiftUI
 
 /// File overview:
 /// "Permissions" detail pane of the redesigned Settings window. Renders status rows for the three
-/// permissions Cotabby requires (Accessibility, Input Monitoring, Screen Recording) and offers a
+/// permissions Cotabby uses (Accessibility, Input Monitoring, Screen Recording) and offers a
 /// shortcut into the relevant System Settings pane when one of them is missing.
 struct PermissionsPaneView: View {
     @ObservedObject var permissionManager: PermissionManager
@@ -13,8 +13,8 @@ struct PermissionsPaneView: View {
         SettingsPaneScaffold(callout: callout) {
             Section("Permissions") {
                 Text(String(localized: """
-                Lingrove needs Accessibility and Input Monitoring for autocomplete. Screen Recording is optional and adds on-screen \
-                visual context.
+                Lingrove needs Accessibility and Input Monitoring for autocomplete. Screen Recording enables screen context \
+                and OCR translation.
                 """, table: "Learning"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -42,8 +42,8 @@ struct PermissionsPaneView: View {
                 SettingsPermissionRow(
                     permission: .screenRecording,
                     description: String(localized: """
-                    Optional. Lets Lingrove screenshot the focused window for extra context. Without it, suggestions still work, but \
-                    screen context is unavailable.
+                    Enables screen context and, when you trigger OCR translation, capture of the chosen region or text near the pointer. \
+                    Text-only autocomplete works without it.
                     """, table: "Learning"),
                     granted: permissionManager.screenRecordingGranted,
                     permissionGuidanceController: permissionGuidanceController

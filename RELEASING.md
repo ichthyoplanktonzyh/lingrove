@@ -17,21 +17,21 @@ installed copies discover it. App lifecycle stays in `AppUpdateManager`, packagi
   Leave it unset until the steps below are complete. The upstream Homebrew dispatch is removed.
 - Developer signing has no shared team default. Each developer uses `Config/Signing.local.xcconfig`;
   CI supplies its own distribution team and certificate.
-- The v0.5 build 1 test app is ad-hoc signed and packaged in a DMG for the public `v0.5-test.1` prerelease. It
+- The v0.5.1 build 2 test app is ad-hoc signed and packaged in a DMG for the public `v0.5.1-test.1` prerelease. It
   is not Developer ID signed, notarized, or connected to automatic updates; this does not enable
   the production release or Pages workflows.
 
 Local development can continue without a paid Apple Developer Program membership. The production
 Developer ID signing and notarization flow described here requires that membership; keep release
-jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.5
+jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.5.1
 test package also does not require a paid membership; its test status and Gatekeeper steps
 are documented below.
 
-## v0.5 test package (public prerelease)
+## v0.5.1 test package (public prerelease)
 
-The current test artifact is `build/distributions/Lingrove-0.5-test-universal.dmg`, accompanied by
+The current test artifact is `build/distributions/v0.5.1-test.1/Lingrove-0.5.1-test-universal.dmg`, accompanied by
 `SHA256SUMS.txt` and `build-info.json`. The DMG, Chinese install guide, checksum, and build metadata
-are published at the [v0.5-test.1 prerelease](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5-test.1).
+are published at the [v0.5-test.1 prerelease](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1).
 The app is an ad-hoc-signed, unnotarized test build, has no automatic updates, and is not a public
 production release. The DMG includes the Simplified Chinese `INSTALL.txt` guide (copied from the
 source file `assets/testing/INSTALL.zh-CN.txt`), the app, an Applications shortcut, and license
@@ -44,7 +44,23 @@ actual architecture slices, minimum macOS version, signing/notarization state, a
 Its `sourceDirty` flag reports whether tracked or untracked app build inputs were modified;
 `workingTreeDirty` reports whether anything in the full checkout was modified. The checkout can
 therefore be dirty because of documentation or packaging work while the built app inputs remain
-clean.
+clean. For public test publication, commit all source and packaging inputs before building and
+publish the matching commit/tag; the artifact must report `sourceDirty=false`. Native speech sources
+and preparation/embed scripts participate in this check. The packager also requires an executable
+speech helper supporting every advertised app architecture and its embedded license resources.
+TTS notices are copied into `ThirdPartyLicenses/` alongside the existing materials.
+
+Build the current test package with:
+
+```sh
+scripts/build_test_dmg.sh --output-dir build/distributions/v0.5.1-test.1
+```
+
+Use `--app-path /absolute/path/Lingrove.app` only for a Release app built from that exact clean
+source revision. The build path prepares both pinned runtimes and cleans repo-scoped DerivedData
+after packaging; app-path mode leaves cleanup to its caller. Final publication checks include
+DMG verification, mounted contents, signatures/entitlements, embedded binary slices and a local
+launch smoke test. Keep unnotarized and unverified-hardware limitations visible in release notes.
 
 The Xcode deployment target is macOS 14.0. The universal app contains `arm64` and `x86_64` slices.
 Build, package-integrity, and basic-launch checks run locally on Apple Silicon; Intel hardware and
@@ -66,7 +82,7 @@ stop and contact the distributor; do not bypass the warning, remove quarantine, 
 disable Gatekeeper. See Apple's [Gatekeeper guidance](https://support.apple.com/en-us/102445).
 
 Accessibility and Input Monitoring are required for autocomplete. Screen Recording is optional and
-is needed only when a tester enables screenshot-based visual context. After granting the first two
+is needed for screenshot-based visual context, explicit region OCR, and pointer lookup OCR fallback. After granting the first two
 permissions the first time, quit Lingrove and reopen it once so the input listener starts with the
 updated permission state. This package uses the production bundle identifier, while Lingrove Dev
 uses a separate identifier and separate preferences/model storage; settings and models are not
@@ -81,11 +97,14 @@ automatically imported from Lingrove Dev.
 
 For autocomplete, use Settings → Appearance → **Show Field Indicator** if the focus indicator is
 helpful, then type in a supported text field and press **Tab** to accept the suggestion. Acceptance
-keys can be changed in Settings → Shortcuts. To try language learning, open Settings → Writing,
-enable expression translation and (optionally) sentence previews, choose a target language, and
-configure a translation model in Engine & Model. A pause after newly typed text can show its target
-expression; the configured learning-detail shortcut expands source/translation alignment when that
-feature and its separate model are enabled. Double-click an expression to try dictionary lookup.
+keys can be changed in Settings → Shortcuts. Language Learning has separate Translation, Chunk
+alignment, and Read Aloud tabs. Engine & Model owns translation/analysis/TTS provider configuration.
+Writing translation can replace the current sentence or explicit selection after confirmation;
+reading translation reuses the existing card but remains read-only. Its selection, pointer, and
+region OCR entries have independent switches, per-app permissions, and centrally managed shortcuts.
+Pointer lookup currently translates the pointed word; contextual sense disambiguation is deferred.
+Card speakers support system voices, the optional local Qwen3-TTS model/decoder pair, or an explicitly
+configured speech endpoint. Speech weights are downloaded separately and are not included in the DMG.
 Autocomplete and language learning are both core test areas.
 
 Send feedback at [GitHub Issues](https://github.com/ichthyoplanktonzyh/lingrove/issues) with the

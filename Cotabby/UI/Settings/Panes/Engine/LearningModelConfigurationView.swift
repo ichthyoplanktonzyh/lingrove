@@ -6,6 +6,7 @@ import SwiftUI
 struct LearningModelConfigurationView: View {
     @ObservedObject var controller: LearningModelController
     @ObservedObject var profile: LearningModelSettings
+    @ObservedObject var navigation: SettingsNavigationModel
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     var downloads: ModelDownloadManager?
     var searchService: HuggingFaceSearchService? = nil
@@ -15,56 +16,50 @@ struct LearningModelConfigurationView: View {
 
     var body: some View {
         let contextIdentity = profile.contextIdentity
-        return Group {
-            Section(String(localized: "Engine", table: "Learning",
-                comment: "Settings section for choosing this learning task's local or endpoint engine.")) {
+        return SettingsPaneScaffold {
+            Section(String(localized: "Current configuration", table: "Learning")) {
                 Picker(selection: backendBinding) {
                     ForEach(LearningModelBackend.allCases) { Text($0.label).tag($0) }
                 } label: {
-                    SettingsRowLabel(title: String(localized: "Engine", table: "Learning",
-                        comment: "Label for the setting that selects this task's model engine."),
+                    SettingsRowLabel(title: String(localized: "Run using", table: "Learning"),
                         description: taskDescription, systemImage: "cpu")
                 }
                 .pickerStyle(.menu).disabled(profile.powerSwitchingEnabled)
-            }
-            powerSection
-            if profile.role == .translation {
-                ModelContextSection(
-                    tokens: Binding(get: { profile.snapshot.contextWindowTokens }, set: { profile.setContextWindowTokens($0, expectedIdentity: contextIdentity) }),
-                    maximum: profile.snapshot.backend == .local
-                        ? ModelContextBudget.maximumLocalTokens : ModelContextBudget.maximumEndpointTokens,
-                    isEndpoint: profile.snapshot.backend == .endpoint, reset: { profile.setContextWindowTokens(nil, expectedIdentity: contextIdentity) })
-                    .id(contextIdentity)
-            }
-            if profile.snapshot.backend == .local { Section(String(localized: "Runtime", table: "Learning",
-                comment: "Settings section for the current state of this task's local runtime.")) {
-                LabeledContent {
-                    Text(controller.status).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
-                } label: {
-                    SettingsRowLabel(title: String(localized: "Model status", table: "Learning",
-                        comment: "Label for the current readiness state of the local model."),
-                        description: String(localized: "Shows whether this task's local model is loaded and ready to generate.",
-                            table: "Learning", comment: "Description of the local model status field."),
-                        systemImage: "info.circle")
+                if profile.powerSwitchingEnabled {
+                    Text(String(localized: "Model selection follows your power profiles in Advanced settings.", table: "Learning"))
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                LabeledContent {
-                    Text(selectedModel).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
-                } label: {
-                    SettingsRowLabel(title: String(localized: "Current model", table: "Learning",
-                        comment: "Label for the model file or endpoint model currently selected for this task."),
-                        description: String(localized: "Shows the active selection. Downloaded models must also be selected here.",
-                            table: "Learning", comment: "Explains that downloading a model does not select it automatically."),
-                        systemImage: "shippingbox")
+                if downloads != nil {
+                    Button(String(localized: "Manage models", table: "Learning")) { navigation.openModelManager(task) }
                 }
-            } }
+            }
             switch profile.snapshot.backend {
-            case .local: localSections
+            case .local: localSelectionSection
             case .endpoint:
                 endpointModelSection
+                endpointConnectionSection
             }
-            endpointConnectionSection
+            SettingsAdvancedSections(isExpanded: navigation.advancedBinding(for: task)) {
+                powerSection
+                if profile.role == .translation {
+                    ModelContextSection(
+                        tokens: Binding(get: { profile.snapshot.contextWindowTokens },
+                            set: { profile.setContextWindowTokens($0, expectedIdentity: contextIdentity) }),
+                        maximum: profile.snapshot.backend == .local
+                            ? ModelContextBudget.maximumLocalTokens : ModelContextBudget.maximumEndpointTokens,
+                        isEndpoint: profile.snapshot.backend == .endpoint,
+                        reset: { profile.setContextWindowTokens(nil, expectedIdentity: contextIdentity) })
+                        .id(contextIdentity)
+                }
+                if profile.role == .translation {
+                    ModelSamplingSection(overrides: Binding(get: { profile.generationProfile.sampling }, set: {
+                        var value = profile.generationProfile; value.sampling = $0
+                        profile.setGenerationProfile(value, expectedIdentity: contextIdentity)
+                    }), recommended: profile.recommendedSampling ?? LearningInstructionSampling.standard.values, local: profile.snapshot.backend == .local, item: .translationSampling)
+                    .id(contextIdentity + ".sampling").disabled(profile.recommendedSampling == nil)
+                }
+                if profile.snapshot.backend == .local { instructionTemplateSection }
+            }
         }
         .onAppear {
             controller.refreshModels()
@@ -79,22 +74,26 @@ struct LearningModelConfigurationView: View {
                 Task { await controller.discoverEndpoint() }
             }
         }
-        .alert(String(localized: "Delete model?", table: "Learning",
-            comment: "Confirmation alert shown before removing a local model file."),
-            isPresented: Binding(get: { pendingDeletion != nil },
-            set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { model in
-            Button(String(localized: "Delete", table: "Learning",
-                comment: "Confirms removing a downloaded local model.")) {
-                downloads?.deleteModel(filename: model.filename); refreshModels(); pendingDeletion = nil
+        .sheet(isPresented: navigation.modelManagerBinding(for: task)) {
+            SettingsModelManagementSheet(task: task) { modelManagementSections }
+            .onAppear(perform: refreshModels)
+            .alert(String(localized: "Delete model?", table: "Learning",
+                comment: "Confirmation alert shown before removing a local model file."),
+                isPresented: Binding(get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { model in
+                Button(String(localized: "Delete", table: "Learning",
+                    comment: "Confirms removing a downloaded local model.")) {
+                    downloads?.deleteModel(filename: model.filename); refreshModels(); pendingDeletion = nil
+                }
+                Button(String(localized: "Cancel", table: "Learning",
+                    comment: "Cancels removing a downloaded local model."), role: .cancel) { pendingDeletion = nil }
+            } message: { model in
+                Text(String(
+                    localized: "Remove \(model.displayName) from Lingrove's local models folder?",
+                    table: "Learning",
+                    comment: "Confirmation message naming the local model file that will be removed."
+                ))
             }
-            Button(String(localized: "Cancel", table: "Learning",
-                comment: "Cancels removing a downloaded local model."), role: .cancel) { pendingDeletion = nil }
-        } message: { model in
-            Text(String(
-                localized: "Remove \(model.displayName) from Lingrove's local models folder?",
-                table: "Learning",
-                comment: "Confirmation message naming the local model file that will be removed."
-            ))
         }
     }
 
@@ -111,65 +110,67 @@ struct LearningModelConfigurationView: View {
                 table: "Learning", comment: "Description of the chunk-alignment task's engine setting.")
     }
 
-    private var selectedModel: String {
-        let selection = profile.snapshot
-        let name = selection.backend == .local ? selection.localModel : selection.endpointModel
-        return name.isEmpty
-            ? String(localized: "No model configured", table: "Learning",
-                comment: "Value shown when this learning task has no active model selection.")
-            : name
+    private var task: SettingsEngineTask { SettingsEngineTask(role: profile.role) }
+    private var modelItem: SettingsItem { profile.role == .translation ? .translationModel : .alignmentModel }
+
+    /// A saved choice does not mean the task has loaded native weights. Loading is intentionally
+    /// deferred until a real request; the status makes that lifecycle visible without starting it.
+    private var localStatus: String {
+        if controller.status == String(localized: "Not loaded", table: "Learning"),
+           controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {
+            return String(localized: "Configured · loads on first use", table: "Learning")
+        }
+        return controller.status
     }
 
-    @ViewBuilder
-    private var localSections: some View {
-        Section(String(localized: "Models", table: "Learning",
-            comment: "Settings section for selecting or downloading a local model.")) {
-            Text(profile.role == .translation
-                ? String(localized: "Choose a translation model. It runs on this Mac.", table: "Learning",
-                    comment: "Instruction above the local model picker for the translation task.")
-                : String(localized: """
-                Choose an instruction-tuned model for chunk alignment. Base continuation models are not suited to this task.
-                """,
-                    table: "Learning", comment: "Instruction above the local model picker for chunk alignment."))
-                .font(.caption).foregroundStyle(.secondary)
-            if controller.availableModels.isEmpty {
-                Text(String(localized: "No local GGUF models found. Download one below or add your own model file.",
-                    table: "Learning", comment: "Empty state shown when no local GGUF model is installed."))
-                    .foregroundStyle(.secondary)
-            }
+    private var localSelectionSection: some View {
+        Section(String(localized: "Model", table: "Learning")) {
             Picker(selection: localModelBinding) {
-                Text(String(localized: "Choose a model", table: "Learning",
-                    comment: "Empty choice shown before the user selects a local learning model.")).tag("")
-                if !profile.snapshot.localModel.isEmpty, !controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {
-                    Text(String(localized: "\(profile.snapshot.localModel) (file unavailable)", table: "Learning",
-                        comment: "Picker entry for a previously selected local model file that is no longer available."))
+                Text(String(localized: "Choose a model", table: "Learning")).tag("")
+                if !profile.snapshot.localModel.isEmpty,
+                   !controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {
+                    Text(String(localized: "\(profile.snapshot.localModel) (file unavailable)", table: "Learning"))
                         .tag(profile.snapshot.localModel)
                 }
                 ForEach(controller.availableModels) { Text($0.displayName).tag($0.filename) }
             } label: {
-                SettingsRowLabel(title: String(localized: "Selected model", table: "Learning",
-                    comment: "Label for choosing the local GGUF model used by this learning task."),
-                    description: profile.powerSwitchingEnabled
-                        ? String(localized: "Set automatically by power source. Use the On Battery / Plugged In pickers above.",
-                            table: "Learning", comment: "Explains that power profiles choose the active model automatically.")
-                        : String(localized: "Choose from downloaded or imported GGUF files.",
-                            table: "Learning", comment: "Explains that the local model picker lists downloaded and imported GGUF files."),
+                SettingsRowLabel(title: String(localized: "Selected model", table: "Learning"),
+                    description: String(localized: "Choose from downloaded or imported GGUF files.", table: "Learning"),
                     systemImage: "shippingbox")
             }
-            .pickerStyle(.menu).disabled(profile.powerSwitchingEnabled)
+            .pickerStyle(.menu).disabled(profile.powerSwitchingEnabled).settingsItem(modelItem)
+            LabeledContent(String(localized: "Model status", table: "Learning"), value: localStatus)
+        }
+    }
+
+    private var instructionTemplateSection: some View {
+        Section(String(localized: "Instruction template", table: "Learning")) {
             Picker(selection: templateBinding) {
                 ForEach(LearningChatTemplate.available(for: profile.role)) { Text($0.label).tag($0) }
             } label: {
-                SettingsRowLabel(title: String(localized: "Instruction template", table: "Learning",
-                    comment: "Label for choosing the prompt format expected by a local instruction model."),
-                    description: String(localized: """
-                    Detected automatically by default. Choose one manually for renamed models or unusual variants.
-                    """,
-                        table: "Learning", comment: "Explains when the local model's instruction template may need manual selection."),
-                    systemImage: "text.alignleft")
+                SettingsRowLabel(title: String(localized: "Instruction template", table: "Learning"),
+                    description: String(localized:
+                        "Detected automatically by default. Choose one manually for renamed models or unusual variants.",
+                        table: "Learning"), systemImage: "text.alignleft")
             }
             .pickerStyle(.menu).disabled(profile.powerSwitchingEnabled)
-            if let downloads {
+        }
+    }
+
+    @ViewBuilder
+    private var modelManagementSections: some View {
+        if let downloads {
+            if !controller.availableModels.isEmpty {
+                Section(String(localized: "Installed", table: "Learning")) {
+                    ForEach(controller.availableModels) { model in
+                        InstalledRuntimeModelRow(model: model, selected: model.filename == profile.snapshot.localModel,
+                            downloads: downloads,
+                            select: profile.powerSwitchingEnabled ? nil : { profile.localModel = model.filename },
+                            delete: { pendingDeletion = model })
+                    }
+                }
+            }
+            Section(String(localized: "Get models", table: "Learning")) {
                 DownloadableModelCatalogView(modelDownloadManager: downloads, onRefreshModels: refreshModels,
                     catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels : LearningRuntimeCatalog.analysisModels)
                 if let searchService {
@@ -177,21 +178,7 @@ struct LearningModelConfigurationView: View {
                         modelDownloadManager: downloads, onRefreshModels: refreshModels)
                 }
             }
-        }
-        if let downloads { ModelsFolderSection(downloads: downloads, refresh: refreshModels) }
-        if !controller.availableModels.isEmpty {
-            Section(String(localized: "Installed", table: "Learning",
-                comment: "Settings section listing installed local learning models.")) {
-                ForEach(controller.availableModels) { model in
-                    if let downloads {
-                        InstalledRuntimeModelRow(model: model, selected: model.filename == profile.snapshot.localModel,
-                            downloads: downloads,
-                            select: profile.powerSwitchingEnabled ? nil : { profile.localModel = model.filename },
-                            delete: { pendingDeletion = model })
-                    }
-
-                }
-            }
+            ModelsFolderSection(downloads: downloads, refresh: refreshModels)
         }
     }
 
@@ -226,6 +213,7 @@ struct LearningModelConfigurationView: View {
                         table: "Learning", comment: "Explains that this endpoint model choice is independent of other tasks."),
                     systemImage: "shippingbox")
             }
+            .settingsItem(modelItem)
             LabeledContent(String(localized: "API format", table: "Learning",
                 comment: "Label for the API request format used by this learning endpoint."),
                 value: String(localized: "Chat Completions", table: "Learning",
@@ -238,7 +226,7 @@ struct LearningModelConfigurationView: View {
             connection: controller.endpointConnection, credentialError: credentialError,
             privacyWarning: privacyWarning,
             transmissionNote: profile.role == .translation
-                ? String(localized: "With this endpoint, the service receives the current source text and language direction.",
+                ? String(localized: "With this endpoint, the service receives the target, language direction, optional draft excerpts and style instructions.",
                     table: "Learning", comment: "Disclosure of what the configured endpoint receives for translation requests.")
                 : String(localized: """
                 With this endpoint, the service receives the current source text, displayed translation, and language direction.

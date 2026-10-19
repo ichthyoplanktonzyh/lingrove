@@ -3,13 +3,15 @@ import Foundation
 /// Request kind is independent of model/backend: one server can serve several tasks without
 /// making their durations or quality counters comparable. Performance defaults to completion.
 nonisolated enum ModelRequestSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    case completion, translation, analysis
+    case completion, translation, analysis, speech, ocr
     var id: String { rawValue }
     var label: String {
         switch self {
         case .completion: String(localized: "Autocomplete")
         case .translation: String(localized: "Translation", table: "Learning")
         case .analysis: String(localized: "Learning Analysis", table: "Learning")
+        case .ocr: String(localized: "Screen OCR", table: "Learning")
+        case .speech: String(localized: "TTS", table: "Learning")
         }
     }
 }
@@ -40,7 +42,7 @@ nonisolated struct PerformanceMetricEntry: Identifiable, Codable, Equatable, Has
     let source: ModelRequestSource
     let outcome: ModelRequestOutcome
     let requestID: String?
-    let modelLoadMs: Int?
+    var modelLoadMs: Int?
     let firstOutputMs: Int?
     let usableResultMs: Int?
     var displayMs: Int?
@@ -60,15 +62,15 @@ nonisolated struct PerformanceMetricEntry: Identifiable, Codable, Equatable, Has
         case modelLoadMs, firstOutputMs, usableResultMs, displayMs
     }
     init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(UUID.self, forKey: .id); timestamp = try c.decode(Date.self, forKey: .timestamp)
-        modelName = try c.decode(String.self, forKey: .modelName); latencyMs = try c.decode(Int.self, forKey: .latencyMs)
-        source = try c.decodeIfPresent(ModelRequestSource.self, forKey: .source) ?? .completion
-        outcome = try c.decodeIfPresent(ModelRequestOutcome.self, forKey: .outcome) ?? .completed
-        requestID = try c.decodeIfPresent(String.self, forKey: .requestID)
-        modelLoadMs = try c.decodeIfPresent(Int.self, forKey: .modelLoadMs)
-        firstOutputMs = try c.decodeIfPresent(Int.self, forKey: .firstOutputMs)
-        usableResultMs = try c.decodeIfPresent(Int.self, forKey: .usableResultMs)
-        displayMs = try c.decodeIfPresent(Int.self, forKey: .displayMs)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id); timestamp = try container.decode(Date.self, forKey: .timestamp)
+        modelName = try container.decode(String.self, forKey: .modelName); latencyMs = try container.decode(Int.self, forKey: .latencyMs)
+        source = try container.decodeIfPresent(ModelRequestSource.self, forKey: .source) ?? .completion
+        outcome = try container.decodeIfPresent(ModelRequestOutcome.self, forKey: .outcome) ?? .completed
+        requestID = try container.decodeIfPresent(String.self, forKey: .requestID)
+        modelLoadMs = try container.decodeIfPresent(Int.self, forKey: .modelLoadMs)
+        firstOutputMs = try container.decodeIfPresent(Int.self, forKey: .firstOutputMs)
+        usableResultMs = try container.decodeIfPresent(Int.self, forKey: .usableResultMs)
+        displayMs = try container.decodeIfPresent(Int.self, forKey: .displayMs)
     }
 }

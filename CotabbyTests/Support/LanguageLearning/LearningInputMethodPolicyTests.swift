@@ -20,7 +20,7 @@ struct LearningInputMethodPolicyTests {
     @Test
     func explicitZeroMarkedRangePreservesWritableBehaviorEvenForComposingInputMethod() {
         let assessment = LearningInputMethodPolicy.assess(
-            markedRange: NSRange(location: 4, length: 0),
+            markedRange: NSRange(location: NSNotFound, length: 0),
             isComposingInputMethod: true
         )
 
@@ -28,16 +28,28 @@ struct LearningInputMethodPolicyTests {
         #expect(assessment.permitsReplacement)
     }
 
+    @Test(arguments: [false, true])
+    func negativeMarkedRangeStaysCopyOnlyRegardlessOfInputSource(_ isComposingInputMethod: Bool) {
+        let assessment = LearningInputMethodPolicy.assess(
+            markedRange: NSRange(location: 4, length: -1),
+            isComposingInputMethod: isComposingInputMethod
+        )
+
+        #expect(assessment == .copyOnly(reason: LearningInputMethodPolicy.unavailableMarkedRangeReason))
+        #expect(!assessment.permitsReplacement)
+        #expect(assessment.replacementUnavailableReason == LearningInputMethodPolicy.unavailableMarkedRangeReason)
+    }
+
     @Test
-    func missingRangeUnderComposingInputMethodAllowsOnlyCopyablePreview() {
+    func missingRangeUnderCompositionCapableInputMethodStaysUnknownAndAllowsConfirmedReplacement() {
         let assessment = LearningInputMethodPolicy.assess(
             markedRange: nil,
             isComposingInputMethod: true
         )
 
-        #expect(assessment == .copyOnly(reason: LearningInputMethodPolicy.unavailableMarkedRangeReason))
-        #expect(!assessment.permitsReplacement)
-        #expect(assessment.replacementUnavailableReason?.contains("read-only") == true)
+        #expect(assessment == .replacementAllowed(.unavailableWithComposition))
+        #expect(assessment.permitsReplacement)
+        #expect(assessment.replacementUnavailableReason == nil)
     }
 
     @Test

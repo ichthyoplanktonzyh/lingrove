@@ -21,9 +21,11 @@ final class LearningModelController: ObservableObject {
     private var subscriptions = Set<AnyCancellable>()
     private var missingSelectedFile = false
     private var preparedSnapshot: LearningModelSnapshot?
+    private var observedSnapshot: LearningModelSnapshot
     private var nativeMayBeResident = false
     private var lastNativeTrace: LearningRequestContext?
     private var warmupWork: Task<Void, Never>?
+    private var templateWork: Task<Void, Never>?
     private var warmupID = UUID()
     /// Live policy reads close the gap between a @Published edit and the coalesced UI update.
     var generationEligibility: () -> Bool = { true }
@@ -42,10 +44,11 @@ final class LearningModelController: ObservableObject {
          }) {
         self.core = core; self.localModelURL = localModelURL
         self.profile = profile
+        observedSnapshot = profile.snapshot
         self.client = client
         endpointConnection = OpenAICompatibleConnectionModel(client: client)
         refreshModels()
-        profile.changes.sink { [weak self] in self?.stop() }.store(in: &subscriptions)
+        profile.changes.sink { [weak self] in self?.profileChanged() }.store(in: &subscriptions)
         endpointConnection.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &subscriptions)
         Publishers.Merge(profile.$baseURL.dropFirst().map { _ in () },
@@ -54,6 +57,7 @@ final class LearningModelController: ObservableObject {
     }
 
     func refreshModels() {
+        resolveModelTemplate()
         availableModels = BundledRuntimeLocator().availableModels(configuration: .default)
         let selection = profile.snapshot
         if selection.backend == .local, !selection.localModel.isEmpty,
@@ -97,11 +101,27 @@ final class LearningModelController: ObservableObject {
         targetLanguage: LearningLanguage, output: Int
     ) async throws -> LearningTranslationPrompt.Request {
         guard generationAllowed, generationEligibility() else { throw CancellationError() }
+        let initial = profile.snapshot, identity = profile.contextIdentity
+        if initial.backend == .local, initial.template == .automatic {
+            // Background metadata is a UI convenience, not a request correctness guarantee.
+            // Await the shared read before freezing a saved style on the very first request.
+            // Awaiting yields MainActor; a changed destination must still cancel this caller.
+            if templateWork == nil { resolveModelTemplate() }
+            await templateWork?.value
+            try Task.checkCancellation()
+            guard profile.contextIdentity == identity, initial == profile.snapshot,
+                  generationAllowed, generationEligibility() else { throw CancellationError() }
+        }
         let snapshot = profile.snapshot
+        var input = input
+        // The snapshot retains saved intent for stale-result checks. Capability resolution is
+        // transient: an unsupported dormant preference must not mutate that identity mid-request.
+        input.style = profile.translationStyleAvailable == false ? .init() : snapshot.translationStyle
+        let frozenInput = input
         if snapshot.backend == .endpoint {
             let work = Task.detached(priority: .userInitiated) {
                 try LearningTranslationBudget.prompt(
-                    input: input, sourceLanguage: sourceLanguage,
+                    input: frozenInput, sourceLanguage: sourceLanguage,
                     targetLanguage: targetLanguage, family: .init(endpointModel: snapshot.endpointModel),
                     total: snapshot.contextWindowTokens, output: output, estimated: true
                 ) { text in
@@ -131,8 +151,8 @@ final class LearningModelController: ObservableObject {
         lastNativeTrace = trace
         let work = Task.detached(priority: .userInitiated) {
             try core.translationPlan(
-                configuration: .init(modelURL: url, template: snapshot.template, contextWindowTokens: snapshot.contextWindowTokens),
-                input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage,
+                configuration: .init(modelURL: url, template: snapshot.template, contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides),
+                input: frozenInput, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage,
                 output: output, operationID: id, trace: trace)
         }
         do {
@@ -161,7 +181,7 @@ final class LearningModelController: ObservableObject {
         measurement?.beginGeneration(prompt: prompt)
         task?.cancel()
         let id = UUID(), snapshot = profile.snapshot
-        let sampling = sampling ?? (userOnly ? .hyMT : .standard)
+        let sampling = (sampling ?? (userOnly ? .hyMT : .standard)).values.applying(snapshot.samplingOverrides)
         taskID = id
         status = snapshot.backend == .local
             ? String(localized: "Loading / generating", table: "Learning",
@@ -239,7 +259,7 @@ final class LearningModelController: ObservableObject {
         let nativeTask = Task.detached(priority: profile.role == .translation ? .userInitiated : .utility) {
             do {
                 let text = try core.generate(configuration: .init(modelURL: model, template: snapshot.template,
-                    contextWindowTokens: snapshot.contextWindowTokens), prompt: prompt,
+                    contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides), prompt: prompt,
                     maxTokens: maxTokens, operationID: id, trace: trace,
                     onLoad: { pair.continuation.yield(.loaded($0)) }) { pair.continuation.yield(.text($0)) }
                 pair.continuation.finish()
@@ -272,6 +292,39 @@ final class LearningModelController: ObservableObject {
         try .init(baseURLString: snapshot.baseURL, modelName: snapshot.endpointModel, apiMode: .chatCompletions)
     }
 
+    private func resolveModelTemplate() {
+        templateWork?.cancel()
+        let snapshot = profile.snapshot, identity = profile.contextIdentity
+        guard snapshot.backend == .local, snapshot.template == .automatic,
+              !snapshot.localModel.isEmpty, let url = try? localModelURL(snapshot.localModel) else { return }
+        templateWork = Task { [weak self] in
+            let work = Task.detached(priority: .utility) { try LearningLocalPrompt.resolve(.automatic, modelURL: url) }
+            let resolved = await withTaskCancellationHandler { try? await work.value } onCancel: { work.cancel() }
+            guard !Task.isCancelled, let resolved, let self else { return }
+            self.profile.setResolvedTemplate(resolved, expectedIdentity: identity)
+        }
+    }
+
+    private func profileChanged() {
+        let next = profile.snapshot
+        let previous = observedSnapshot
+        observedSnapshot = next
+        guard previous.usesSameRuntime(as: next) else { stop(); resolveModelTemplate(); return }
+        // A committed request preference invalidates previews and active decode, but not weights.
+        // invalidate changes the native lease so even planning work that has not returned cannot
+        // publish an old prompt. The following operation reuses the same native allocation.
+        warmupID = UUID(); warmupWork?.cancel(); warmupWork = nil
+        taskID = UUID(); task?.cancel(); task = nil
+        // stop() may already have queued a release for the previous destination. With no
+        // active native ownership, changing its lease here would invalidate that release and
+        // leave old weights resident without bookkeeping. HTTP cancellation needs no core lease.
+        if nativeMayBeResident { _ = core.invalidate() }
+        if preparedSnapshot?.usesSameRuntime(as: next) == true { preparedSnapshot = next }
+        status = preparedSnapshot == nil
+            ? String(localized: "Not loaded", table: "Learning") : String(localized: "Ready", table: "Learning")
+        scheduleIdleRelease()
+    }
+
     func stop() {
         warmupID = UUID(); warmupWork?.cancel(); warmupWork = nil
         idleRelease?.cancel(); idleRelease = nil
@@ -289,7 +342,7 @@ final class LearningModelController: ObservableObject {
     func prepare() async {
         let snapshot = profile.snapshot
         guard !Task.isCancelled, generationAllowed, generationEligibility(), warmupEligibility(), residency == .warm, snapshot.backend == .local,
-              !snapshot.localModel.isEmpty, preparedSnapshot != snapshot, task == nil else { return }
+              !snapshot.localModel.isEmpty, preparedSnapshot?.usesSameRuntime(as: snapshot) != true, task == nil else { return }
         idleRelease?.cancel(); idleRelease = nil
         let id = UUID(); taskID = id
         let core = self.core
@@ -370,6 +423,7 @@ final class LearningModelController: ObservableObject {
     }
 
     func shutdownSync() {
+        templateWork?.cancel(); templateWork = nil
         warmupID = UUID(); warmupWork?.cancel(); warmupWork = nil
         idleRelease?.cancel(); idleRelease = nil
         task?.cancel(); task = nil

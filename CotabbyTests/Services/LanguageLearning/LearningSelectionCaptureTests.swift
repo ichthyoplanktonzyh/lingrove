@@ -21,15 +21,20 @@ struct LearningSelectionCaptureTests {
     }
 
     @Test
-    func changingMarkedRangeEvidenceInvalidatesTheSavedWriteDecision() {
+    func allowedMarkedRangeEvidenceCanBecomeMoreExplicitDuringSelectionAcknowledgement() {
         let explicitZero = makeCapture(assessment: .replacementAllowed(.explicitlyEmpty))
         let unavailableOnDirectLayout = makeCapture(
             assessment: .replacementAllowed(.unavailableWithoutComposition)
         )
+        let unavailableWithComposition = makeCapture(
+            assessment: .replacementAllowed(.unavailableWithComposition)
+        )
 
         #expect(explicitZero.supportsReplacement)
         #expect(unavailableOnDirectLayout.supportsReplacement)
-        #expect(!explicitZero.hasSameReplacementSafety(as: unavailableOnDirectLayout))
+        #expect(unavailableWithComposition.supportsReplacement)
+        #expect(explicitZero.hasSameReplacementSafety(as: unavailableOnDirectLayout))
+        #expect(unavailableWithComposition.hasSameReplacementSafety(as: explicitZero))
     }
 
     @Test
@@ -39,6 +44,30 @@ struct LearningSelectionCaptureTests {
 
         #expect(first.supportsReplacement)
         #expect(first.hasSameReplacementSafety(as: recaptured))
+    }
+
+    @Test
+    func selectingTheSavedSentenceMayChangeFocusSignatureWithoutChangingWriteSafety() {
+        let source = "A short source sentence."
+        let length = (source as NSString).length
+        let caret = NSRange(location: length, length: 0)
+        let target = NSRange(location: 0, length: length)
+        let originalContext = CotabbyTestFixtures.focusedInputSnapshot(
+            precedingText: source, selection: caret, documentLength: length)
+        let selectedContext = CotabbyTestFixtures.focusedInputSnapshot(
+            precedingText: source, selection: target, documentLength: length)
+        let element = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
+        let original = LearningSelectionCapture(element: element, context: originalContext,
+            value: source, range: target, source: source, editorSelection: caret,
+            inputMethodAssessment: .replacementAllowed(.unavailableWithComposition))
+        let selected = LearningSelectionCapture(element: element, context: selectedContext,
+            value: source, range: target, source: source, editorSelection: target,
+            inputMethodAssessment: .replacementAllowed(.explicitlyEmpty))
+
+        #expect(originalContext.sessionIdentity == selectedContext.sessionIdentity)
+        #expect(originalContext.contentSignature != selectedContext.contentSignature)
+        #expect(original.value.utf16.elementsEqual(selected.value.utf16))
+        #expect(original.hasSameReplacementSafety(as: selected))
     }
 
     @Test

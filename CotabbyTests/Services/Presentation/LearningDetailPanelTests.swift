@@ -139,6 +139,25 @@ struct LearningDetailPanelTests {
         #expect(displayed.count == 2)
     }
 
+    @Test(arguments: [false, true])
+    func unitAndMeaningChunkEntriesCarryTheSameSentenceContext(meaningChunk: Bool) throws {
+        let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
+        defer { panel.hide() }
+        let chunk = Self.chunk()
+        let context = "I can do it if you give me enough time."
+        if meaningChunk {
+            panel.show(chunk, placement: try placement(), speechContext: context)
+        } else {
+            let unit = LearningUnit(id: 0, surface: chunk.target, query: chunk.target, kind: .expression,
+                ranges: [], words: LearningUnitPolicy.words(in: chunk.target, language: .english))
+            panel.show(unit, documentID: chunk.documentID, language: .english,
+                correspondence: nil, placement: try placement(), speechContext: context)
+        }
+        #expect(panel.dictionarySession.speechContext == context)
+        panel.hide()
+        #expect(panel.dictionarySession.speechContext == nil)
+    }
+
     private static func chunk(identifier: Int = 0) -> LearningChunkDetail {
         .init(documentID: UUID(), chunkID: identifier, source: "能做到", target: "can do it",
             language: .english, words: ["can", "do", "it"])

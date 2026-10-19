@@ -13,6 +13,7 @@ import SwiftUI
 /// the first sidebar pick doesn't always re-render the detail column.
 struct SettingsContainerView: View {
     var learningModels: LearningModelCollection?
+    var speech: LearningSpeechController?
     var renderDiagnostics: SettingsRenderDiagnostics? = .process
     @ObservedObject var attentionModel: SettingsAttentionModel
     let appUpdateManager: AppUpdateManager
@@ -77,6 +78,7 @@ struct SettingsContainerView: View {
                 ) : navigation.selection.label)
         }
         .environment(\.settingsHighlightedItem, navigation.highlightedItem)
+        .environment(\.settingsRevealSequence, navigation.revealSequence)
         // Window-level Cmd-F: jump to the search surface from any pane. The button renders
         // nothing; it exists to host the keyboard shortcut inside this window's responder chain.
         .background(
@@ -145,6 +147,7 @@ struct SettingsContainerView: View {
             EngineAndModelPaneView(
                 navigation: navigation,
                 learningModels: learningModels,
+                speech: speech,
                 suggestionSettings: suggestionSettings,
                 openAICompatibleConnectionModel: openAICompatibleConnectionModel,
                 foundationModelAvailabilityService: foundationModelAvailabilityService,
@@ -154,8 +157,12 @@ struct SettingsContainerView: View {
             )
         case .writing:
             WritingPaneView(
-                suggestionSettings: suggestionSettings, configureLearningModel: navigation.openLearningModel,
-                openShortcuts: { navigation.openShortcuts() }, renderDiagnostics: renderDiagnostics)
+                suggestionSettings: suggestionSettings, renderDiagnostics: renderDiagnostics)
+        case .languageLearning:
+            LanguageLearningPaneView(navigation: navigation, suggestionSettings: suggestionSettings, speech: speech,
+                configureModel: navigation.openLearningModel,
+                openSpeechSettings: { navigation.openEngineTask(.speech) },
+                openShortcuts: { navigation.openShortcuts() }, openApps: { navigation.open(.apps) })
         case .context:
             ContextPaneView(suggestionSettings: suggestionSettings, typingHistory: typingHistoryStore)
         case .shortcuts:

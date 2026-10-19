@@ -42,6 +42,14 @@ class TestDMGPackageTests(unittest.TestCase):
         }
         with (contents / "Info.plist").open("wb") as stream:
             plistlib.dump(info, stream)
+        helper = contents / "Helpers/lingrove-tts-helper"
+        helper.parent.mkdir()
+        helper.write_bytes(b"test helper")
+        helper.chmod(0o755)
+        resources = contents / "Resources"
+        resources.mkdir()
+        for name in ("THIRD_PARTY_NOTICES.txt", "LLAMA_LICENSE.txt"):
+            (resources / name).write_text("test license")
         self.output = self.root / "distributions"
         self.output.mkdir()
 
@@ -106,7 +114,7 @@ class TestDMGPackageTests(unittest.TestCase):
                 expected_architectures=("arm64", "x86_64"),
             )
 
-        self.assertEqual(dmg.name, "Lingrove-0.5-test-universal.dmg")
+        self.assertEqual(dmg.name, "Lingrove-0.5.1-test-universal.dmg")
         self.assertTrue(dmg.is_file())
         self.assertEqual(
             checksum_file.read_text(encoding="utf-8"),
@@ -114,8 +122,8 @@ class TestDMGPackageTests(unittest.TestCase):
         )
         metadata = json.loads(info_file.read_text(encoding="utf-8"))
         self.assertEqual(metadata["bundleIdentifier"], packaging.EXPECTED_BUNDLE_ID)
-        self.assertEqual(metadata["version"], "0.5")
-        self.assertEqual(metadata["build"], "1")
+        self.assertEqual(metadata["version"], "0.5.1")
+        self.assertEqual(metadata["build"], "2")
         self.assertEqual(metadata["architectures"], ["arm64", "x86_64"])
         self.assertEqual(metadata["minimumMacOS"], "14.0")
         self.assertEqual(metadata["codeIdentity"], "ad-hoc")
@@ -151,6 +159,48 @@ class TestDMGPackageTests(unittest.TestCase):
                 )
         run_command.assert_not_called()
 
+    def test_rejects_a_missing_or_single_architecture_speech_helper(self):
+        helper = self.app / "Contents/Helpers/lingrove-tts-helper"
+        with mock.patch.object(packaging, "run_output", side_effect=lambda command, **_: (
+            "arm64" if Path(command[-1]).resolve() == helper.resolve() else "arm64 x86_64"
+        )):
+            with self.assertRaisesRegex(packaging.PackageError, "every app architecture"):
+                packaging.validate_app(self.app, ("arm64", "x86_64"))
+        helper.unlink()
+        with mock.patch.object(packaging, "run_output", return_value="arm64 x86_64"):
+            with self.assertRaisesRegex(packaging.PackageError, "helper is missing"):
+                packaging.validate_app(self.app, ("arm64", "x86_64"))
+
+    def test_existing_workspace_still_prepares_and_verifies_native_helpers(self):
+        workspace = self.root / "build/cotabby-dependencies/Cotabby.xcworkspace"
+        workspace.mkdir(parents=True)
+        with mock.patch.object(packaging, "run_command") as command:
+            self.assertEqual(packaging.locate_prepared_workspace(self.root), workspace)
+        command.assert_called_once_with(
+            [str(self.root / "scripts/prepare_cotabby_workspace.sh")], cwd=self.root
+        )
+
+    def test_missing_embedded_speech_license_is_rejected(self):
+        (self.app / "Contents/Resources/THIRD_PARTY_NOTICES.txt").unlink()
+        with mock.patch.object(packaging, "run_output", return_value="arm64 x86_64"):
+            with self.assertRaisesRegex(packaging.PackageError, "speech license resource is missing"):
+                packaging.validate_app(self.app, ("arm64", "x86_64"))
+
+    def test_uncommitted_native_helper_source_marks_the_package_source_dirty(self):
+        repo = self.root / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        source = repo / "native/tts/SpeechHelper.cpp"
+        source.parent.mkdir(parents=True)
+        source.write_text("initial helper")
+        subprocess.run(["git", "add", "native"], cwd=repo, check=True)
+        subprocess.run(["git", "-c", "user.name=Package Test", "-c", "user.email=test@example.invalid",
+                        "commit", "-qm", "Initial fixture"], cwd=repo, check=True)
+        source.write_text("modified helper")
+        _, source_dirty, working_dirty = packaging.source_snapshot(repo)
+        self.assertTrue(source_dirty)
+        self.assertTrue(working_dirty)
+
     def test_refuses_sparkle_enabled_or_configured_app(self):
         info_path = self.app / "Contents/Info.plist"
         with info_path.open("rb") as stream:
@@ -166,7 +216,7 @@ class TestDMGPackageTests(unittest.TestCase):
         run_output.assert_not_called()
 
     def test_rejects_gguf_and_private_key_material_inside_app(self):
-        (self.app / "Contents/Resources").mkdir()
+        (self.app / "Contents/Resources").mkdir(exist_ok=True)
         (self.app / "Contents/Resources/model.gguf").write_bytes(b"model")
         with mock.patch.object(packaging, "run_output", return_value="arm64 x86_64"):
             with self.assertRaisesRegex(packaging.PackageError, "model.gguf"):
@@ -179,7 +229,7 @@ class TestDMGPackageTests(unittest.TestCase):
                 packaging.validate_app(self.app, ("arm64", "x86_64"))
 
     def test_never_overwrites_any_existing_package_output(self):
-        existing = self.output / "Lingrove-0.5-test-universal.dmg"
+        existing = self.output / "Lingrove-0.5.1-test-universal.dmg"
         existing.write_bytes(b"previous package")
         run, output = self.package_mocks([])
         with (
@@ -232,7 +282,7 @@ class TestDMGPackageTests(unittest.TestCase):
         derived_data = (build_dir / "DerivedData").resolve()
         lock_path = build_dir / ".DerivedData.test-dmg.lock"
         package_outputs = (
-            self.output / "Lingrove-0.5-test-universal.dmg",
+            self.output / "Lingrove-0.5.1-test-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )
@@ -331,7 +381,7 @@ class TestDMGPackageTests(unittest.TestCase):
         sentinel = derived_data / "another-build-product"
         sentinel.write_text("preserve")
         package_outputs = (
-            self.output / "Lingrove-0.5-test-universal.dmg",
+            self.output / "Lingrove-0.5.1-test-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )

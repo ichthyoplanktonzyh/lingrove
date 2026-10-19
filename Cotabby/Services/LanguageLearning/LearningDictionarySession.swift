@@ -15,6 +15,9 @@ final class LearningDictionarySession: ObservableObject {
     @Published private(set) var documentID: UUID?
     @Published private(set) var selectedWord: LearningDictionaryWord?
     @Published private(set) var content: Content = .loading
+    /// Captured from the same translation that supplied the unit. It lives only as long as this
+    /// session and helps speech resolve short words without reading the editor or definitions.
+    private(set) var speechContext: String?
     private let provider: any LearningDictionaryProviding
     private var language: LearningLanguage = .english
     private var revision = UUID()
@@ -30,11 +33,12 @@ final class LearningDictionarySession: ObservableObject {
     /// words' visual reading order without inferring direction from the UI locale or term text.
     var contentLanguage: LearningLanguage { language }
 
-    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage) {
+    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil) {
         close()
         self.unit = unit
         self.documentID = documentID
         self.language = language
+        self.speechContext = speechContext
         request()
     }
 
@@ -54,6 +58,7 @@ final class LearningDictionarySession: ObservableObject {
         revision = UUID()
         work?.cancel(); work = nil
         unit = nil; documentID = nil; selectedWord = nil
+        speechContext = nil
         content = .loading
         cache.removeAll()
     }

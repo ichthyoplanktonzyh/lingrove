@@ -44,6 +44,9 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Install native speech build tools
+        run: brew install cmake ninja
+
       - name: Prepare matching inference dependency
         run: scripts/prepare_cotabby_workspace.sh
 

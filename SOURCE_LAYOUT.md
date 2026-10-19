@@ -43,8 +43,10 @@ Cotabby/
 │   ├── Onboarding/                   onboarding templates
 │   ├── Permissions/                  TCC permission values
 │   ├── Runtime/                      native allocation snapshots and runtime contracts
-│   │   └── Metrics/                  performance and system metric stores
+│   │   ├── Metrics/                  performance and system metric stores
+│   │   └── Parameters/               per-model request preferences, sampler overrides and recommendations
 │   ├── Settings/                     durable settings and UI-facing settings models, including interface language
+│   ├── Speech/                       provider, voice, playback/runtime identities, and durable read-aloud preferences
 │   ├── Spelling/                     spelling catalog values
 │   └── Suggestion/
 │       ├── Request/                  immutable request inputs and configuration
@@ -64,6 +66,7 @@ Cotabby/
 │   │   └── Guidance/                 permission overlay and System Settings guidance
 │   ├── Power/                        power-source observation
 │   ├── Presentation/                 process-level AppKit panels and indicators
+│   ├── Speech/                       playback state, isolated audio graph, content-free telemetry, system voices, endpoint audio, and local helper lifecycle
 │   ├── Runtime/
 │   │   ├── AppleIntelligence/        Foundation Models availability and engine
 │   │   ├── Llama/                    autocomplete engine, manager, and KV/cache policy
@@ -105,6 +108,7 @@ Cotabby/
 │   │   ├── TokenHealingPlan.swift    bounded word-fragment retokenization at the caret
 │   │   └── TokenHealingBuffer.swift  exact byte replay and lossless streamed UTF-8
 │   ├── Settings/                     persistence, language normalization, relaunch planning, and settings policies
+│   ├── Speech/                       language/voice selection, spoken text, bounded PCM framing and playback queue accounting
 │   │   └── InterfaceLanguageNormalizer.swift supported locale mapping without persisted-value mutation
 │   ├── Spelling/                     extraction, language, SymSpell, and typo rules
 │   ├── Suggestion/
@@ -299,6 +303,12 @@ that owns too many responsibilities and should be split by behavior rather than 
   viewport and the cancellable search reveal. Its real-AppKit scrolling tests are under
   `CotabbyTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
   initial search arrivals and subsequent searches in both scroll directions.
+- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud
+  tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
+  task-scoped resource sheets, advanced expansion and search destinations without changing models.
+- `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
+  native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
+  callers provide the existing task-owned download services and actions.
 - `UI/Settings/Components/Structure/SettingsRenderDiagnostics.swift` is the opt-in body/layout
   probe, separate from reusable pane chrome. `CotabbyTests/UI/Settings/SettingsPerformanceTests.swift`
   measures the real container with isolated stores and verifies both background-update isolation
@@ -314,3 +324,45 @@ that owns too many responsibilities and should be split by behavior rather than 
   token plan for `LearningLocalRuntime`; it is separate from model sequences and KV state. Native
   operations serialize access and clear it on model reload/release. Tests mirror this responsibility
   under Support/LanguageLearning.
+
+`native/tts/` owns the pinned llama.cpp audio helper, its protocol boundary and upstream MIT notice.
+`scripts/prepare_tts_runtime.sh` builds it; `scripts/embed_tts_runtime.sh` embeds it in both app identities.
+The autocomplete inference package and its revision remain separate.
+
+## Reading Translation Sources
+
+- `Models/LanguageLearning/LearningReadingSelection.swift` is an immutable, memory-only read
+  receipt and capture contract. It deliberately has no write capability or replacement range.
+- `Support/LanguageLearning/LearningReadingPolicy.swift` rejects empty or oversized selections
+  before planning. The existing planner still budgets the complete target and shared style.
+- `Services/LanguageLearning/LearningReadingSelectionReader.swift` owns bounded AX selection
+  queries and selection notifications. It never reads a whole page or the clipboard; unavailable
+  selections remain explicit errors instead of triggering a synthetic copy.
+- `App/Coordinators/InlineFeatures/LearningReadingCoordinator.swift` owns reading request identity,
+  cancellation, language direction and optional affordance lifetime. `InlineCommandCoordinator`
+  starts/stops it; `CotabbyAppEnvironment` shares the existing models, lexicon and speech owner.
+- `Services/Presentation/LearningSelectionIconPanel.swift` is only a nonactivating trigger.
+  Reading results reuse `LearningSentencePanel` and its existing card/details with replacement
+  disabled. Reading and writing yield presentation to each other without changing card structure.
+- `PerAppShortcutOverride` persists explicit selection-shortcut permission and independent icon
+  policy. App management edits permission; `LearningShortcutRows` remains the single binding
+  editor. Unknown apps pass the selection chord through to the host.
+
+- `Services/LanguageLearning/LearningReadingSourceReader.swift` adapts explicit selection, pointer
+  and screen-region sources into the same immutable receipt. Pointer lookup tries bounded AX and
+  falls back to local Vision word boxes; region capture requires Screen Recording independently
+  of AX. Images stay within acquisition and never enter a model request or a persisted artifact.
+- `Services/Presentation/LearningRegionSelectionPanel.swift` owns disposable nonactivating panels
+  and one cancellable region-selection continuation. It has no translation or screenshot behavior.
+- `Support/LanguageLearning/LearningReadingTextPolicy.swift` owns display-local crop geometry,
+  UTF-16 word targeting and conservative OCR reading order, including simple columns. Reading uses
+  all recognized lines, never autocomplete's confidence/chrome filters or capped context string.
+- `WindowScreenshotService.captureRegion` matches the screen's display ID before computing its
+  local crop; no editable focus or automatic screen-context preference is needed. `ScreenTextExtractor`
+  optionally returns exact Vision word boxes only for explicit pointer queries, and cancels its own
+  native request when its task is retired. Existing autocomplete extraction defaults are preserved.
+- Each source has an independent default-off feature switch, explicit App permission, and central
+  shortcut. Legacy App rows gain no pointer/screenshot permission. OCR metrics use their own source
+  and the same trace ID as translation; persisted records contain timings and status, not text/images.
+- SelectedTextKit was evaluated, not integrated: its AX-only path duplicates the existing reader,
+  while automatic fallback may copy text. Lingrove retains its bounded AX receipt/currentness checks.

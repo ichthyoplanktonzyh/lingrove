@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import Logging
@@ -14,6 +15,8 @@ final class CotabbyAppEnvironment {
     let permissionManager: PermissionManager
     let runtimeModel: RuntimeBootstrapModel
     let learningModels: LearningModelCollection
+    /// One shared playback owner serves the settings voice preview and every learning card.
+    let speechController: LearningSpeechController
     let modelDownloadManager: ModelDownloadManager
     let focusModel: FocusTrackingModel
     let inputMonitor: InputMonitor
@@ -161,6 +164,12 @@ final class CotabbyAppEnvironment {
         // Live CPU/RAM graph backing for the Performance pane. Holds no state until the pane asks it
         // to start sampling, so constructing it eagerly here costs nothing.
         let systemMetricsStore = SystemMetricsStore()
+        let speechTelemetry = SpeechTelemetry(metrics: performanceMetricsStore,
+            trackingEnabled: { [weak suggestionSettings] in suggestionSettings?.isPerformanceTrackingEnabled == true })
+        let speechController = LearningSpeechController(settings: LearningSpeechSettings(), telemetry: speechTelemetry)
+        systemMetricsStore.ownedProcessIDs = { [weak speechTelemetry] in
+            speechTelemetry?.runtime.processID.map { [$0] } ?? []
+        }
         let suggestionInserter = SuggestionInserter(suppressionController: suppressionController)
         // Commit accepted text through an IME-safe path (Accessibility / paste) while a composing IME
         // is active; a synthetic keystroke would be re-absorbed into composition and the accept would
@@ -265,6 +274,7 @@ final class CotabbyAppEnvironment {
 
         let settingsCoordinator = SettingsCoordinator(
             learningModels: learningModels,
+            speech: speechController,
             appUpdateManager: appUpdateManager,
             permissionManager: permissionManager,
             permissionGuidanceController: permissionGuidanceController,
@@ -379,20 +389,40 @@ final class CotabbyAppEnvironment {
         let sentencePreview = LearningSentencePreviewCoordinator(
             service: learningService, reader: learningReader, focus: focusModel,
             panel: LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-                                         dictionaryProvider: learningLexicon),
+                                         dictionaryProvider: learningLexicon, speech: speechController),
             unitRecognizer: learningLexicon,
             availability: learningAvailability
         )
-        // One card and one tap slot handle both automatic and explicit translation. The preview
-        // coordinator gates automatic capture separately, so turning it off does not change UI.
-        inputMonitor.learningKeyDecider = { [weak sentencePreview] event in
-            sentencePreview?.decide(event) ?? .notHandled
+        let reading = LearningReadingCoordinator(
+            service: learningService, reader: LearningReadingSourceReader(metrics: performanceMetricsStore,
+                trackingEnabled: { suggestionSettings.isPerformanceTrackingEnabled }),
+            panel: LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
+                                         dictionaryProvider: learningLexicon, speech: speechController),
+            recognizer: learningLexicon,
+            availability: {
+                permissionManager.inputMonitoringGranted
+                    && !(suggestionSettings.isLowPowerModeAutoDisableEnabled && lowPowerModeMonitor.isLowPowerModeEnabled)
+                    && !calendarAccessibilityCaptureGuard.shouldSuppressCapture(
+                        for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+            }, sourceAvailability: { source in source != .selection || permissionManager.accessibilityGranted },
+            beforePresent: { [weak sentencePreview] in sentencePreview?.availabilityChanged() }
+        )
+        sentencePreview.isReadingActive = { [weak reading] in reading?.isActive == true }
+        Publishers.Merge(permissionManager.$accessibilityGranted, permissionManager.$inputMonitoringGranted)
+            .sink { [weak reading] _ in
+                Task { @MainActor [weak reading] in reading?.availabilityChanged() }
+            }.store(in: &cancellables)
+        // One tap slot arbitrates both origins. A denied reading command returns .notHandled,
+        // allowing the host (and the existing autocomplete arbitration) to receive the event.
+        inputMonitor.learningKeyDecider = { [weak sentencePreview, weak reading] event in
+            if let decision = reading?.decide(event), decision != .notHandled { return decision }
+            return sentencePreview?.decide(event) ?? .notHandled
         }
         let inlineCommandCoordinator = InlineCommandCoordinator(
             emoji: emojiPickerController,
             macro: macroController,
             inputMonitor: inputMonitor,
-            sentencePreview: sentencePreview
+            sentencePreview: sentencePreview, reading: reading
         )
         suggestionCoordinator.emojiInputObserver = { [weak inlineCommandCoordinator] event in
             inlineCommandCoordinator?.observe(event) ?? false
@@ -401,6 +431,7 @@ final class CotabbyAppEnvironment {
         self.permissionManager = permissionManager
         self.runtimeModel = runtimeModel
         self.learningModels = learningModels
+        self.speechController = speechController
         self.modelDownloadManager = modelDownloadManager
         self.focusModel = focusModel
         self.inputMonitor = inputMonitor
@@ -446,11 +477,12 @@ final class CotabbyAppEnvironment {
         .sink {
             [
                 weak lowPowerModeMonitor, weak suggestionSettings,
-                weak sentencePreview] _ in
+                weak sentencePreview, weak reading] _ in
                 Task { @MainActor in
                     guard lowPowerModeMonitor?.isLowPowerModeEnabled == true,
                           suggestionSettings?.isLowPowerModeAutoDisableEnabled == true else { return }
                     sentencePreview?.availabilityChanged()
+                    reading?.dismiss()
                 }
             }.store(in: &cancellables)
 

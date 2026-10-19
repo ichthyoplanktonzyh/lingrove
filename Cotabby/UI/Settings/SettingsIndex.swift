@@ -60,6 +60,24 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case offerTypoCorrections
     case spellingDictionaries
     case automaticallyFixTypos
+    // Language learning behavior and task-model routes
+    case translationEnabled
+    case selectionTranslation
+    case selectionTranslationIcon
+    case readingTargetLanguage
+    case selectionTranslationApps
+    case selectionTranslationShortcut
+    case pointerTranslation, screenshotTranslation, pointerTranslationShortcut, screenshotTranslationShortcut
+    case sentencePreview
+    case translationTargetLanguage
+    case translationSourceLanguages
+    case translationStyle
+    case translationSampling
+    case speechSampling
+    case translationReferenceMode
+    case chunkAlignment
+    case translationModel
+    case alignmentModel
     // Context
     case extendedContext
     case typingHistory
@@ -85,6 +103,16 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case endpointAPIKey
     case endpointStatus
     case endpointModel
+    // Speech
+    case speechProvider
+    case speechLanguage
+    case speechVoice
+    case speechModel
+    case speechDecoder
+    case speechEndpoint
+    case speechEndpointModel
+    case speechEndpointVoice
+    case readAloudSpeed
     // Shortcuts
     case acceptanceMode
     case acceptWord
@@ -112,10 +140,47 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Search reveals resources and collapsed controls without changing the selected backend.
+    var opensModelManager: Bool {
+        switch self {
+        case .downloadModels, .huggingFaceBrowser, .modelsFolder, .lmStudio: true
+        default: false
+        }
+    }
+
+    var opensEngineAdvanced: Bool {
+        switch self {
+        case .lowPowerModeAutoDisable, .powerBasedModelSwitching, .batteryModel, .pluggedInModel,
+             .appleIntelligenceAvailability, .appleLanguageFallback, .keepFallbackModelLoaded,
+             .appleLanguageFallbackModel, .endpointAPIMode, .speechDecoder, .translationSampling, .speechSampling: true
+        default: false
+        }
+    }
+
     /// Display copy is localized at its literal source; rawValue remains the stable navigation ID.
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .pointerTranslation: return String(localized: "Enable pointer translation", table: "Learning")
+        case .screenshotTranslation: return String(localized: "Enable screen region translation", table: "Learning")
+        case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
+        case .screenshotTranslationShortcut: return LearningReadingSource.screenshot.title
+        case .selectionTranslation: return String(localized: "Enable selection translation", table: "Learning")
+        case .selectionTranslationIcon: return String(localized: "Show selection translation icon", table: "Learning")
+        case .readingTargetLanguage: return String(localized: "Reading target language", table: "Learning")
+        case .selectionTranslationApps: return String(localized: "Manage allowed apps", table: "Learning")
+        case .selectionTranslationShortcut: return String(localized: "Translate selected text", table: "Learning")
+        case .translationEnabled: return String(localized: "Enable expression translation", table: "Learning")
+        case .sentencePreview: return String(localized: "Show sentence expressions after a pause", table: "Learning")
+        case .translationTargetLanguage: return String(localized: "Target language", table: "Learning")
+        case .translationSourceLanguages: return String(localized: "Source languages", table: "Learning")
+        case .translationStyle: return String(localized: "Translation style", table: "Learning")
+        case .translationSampling: return String(localized: "Translation generation parameters", table: "Learning")
+        case .speechSampling: return String(localized: "Speech generation parameters", table: "Learning")
+        case .translationReferenceMode: return String(localized: "Translation reference", table: "Learning")
+        case .chunkAlignment: return String(localized: "Enable chunk alignment", table: "Learning")
+        case .translationModel: return String(localized: "Translation model", table: "Learning")
+        case .alignmentModel: return String(localized: "Chunk alignment model", table: "Learning")
         case .enableGlobally: return String(localized: "Enable Globally")
         case .useScreenContext: return String(localized: "Use screen context")
         case .openAtLogin: return String(localized: "Open at Login")
@@ -183,6 +248,17 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return String(localized: "Endpoint API Key")
         case .endpointStatus: return String(localized: "Endpoint Status")
         case .endpointModel: return String(localized: "Endpoint Model")
+        case .speechProvider: return String(localized: "Speech provider", table: "Learning")
+        case .speechLanguage: return String(localized: "Audition language", table: "Learning")
+        case .speechVoice: return String(localized: "System voice", table: "Learning")
+        case .speechModel: return String(localized: "Speech model", table: "Learning")
+        case .speechDecoder: return String(localized: "Audio decoder", table: "Learning")
+        case .speechEndpoint: return String(localized: "TTS endpoint", table: "Learning")
+        case .speechEndpointModel:
+            return String(localized: "TTS endpoint", table: "Learning") + " · "
+                + String(localized: "Speech model", table: "Learning")
+        case .speechEndpointVoice: return String(localized: "Voice identifier", table: "Learning")
+        case .readAloudSpeed: return String(localized: "Default speaking speed", table: "Learning")
         case .acceptanceMode: return String(localized: "Acceptance Mode")
         case .acceptWord: return String(localized: "Accept Word")
         case .acceptEntireSuggestion: return String(localized: "Accept Entire Suggestion")
@@ -207,6 +283,14 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return "command"
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages:
+            return "character.bubble"
+        case .translationStyle: return "textformat"
+        case .translationSampling, .speechSampling: return "slider.horizontal.3"
+        case .translationReferenceMode: return "doc.text"
+        case .chunkAlignment: return "text.alignleft"
+        case .translationModel, .alignmentModel: return "shippingbox"
         case .enableGlobally: return "power"
         case .useScreenContext: return "text.viewfinder"
         case .openAtLogin: return "arrow.right.circle"
@@ -274,6 +358,12 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return "key"
         case .endpointStatus: return "info.circle"
         case .endpointModel: return "shippingbox"
+        case .speechProvider: return "speaker.wave.2"
+        case .speechLanguage: return "character.bubble"
+        case .speechVoice, .speechEndpointVoice: return "waveform"
+        case .speechModel, .speechDecoder, .speechEndpointModel: return "shippingbox"
+        case .speechEndpoint: return "network"
+        case .readAloudSpeed: return "speedometer"
         case .acceptanceMode: return "textformat.abc"
         case .acceptWord: return "arrow.right.to.line"
         case .acceptEntireSuggestion: return "text.insert"
@@ -298,6 +388,10 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return .shortcuts
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages,
+             .translationReferenceMode, .translationStyle, .chunkAlignment: return .languageLearning
+        case .translationModel, .alignmentModel, .translationSampling, .speechSampling: return .engineAndModel
         #if DEBUG
         case .developmentDebugOverlays: return .general
         #endif
@@ -320,8 +414,12 @@ enum SettingsItem: String, CaseIterable, Identifiable {
              .appleLanguageFallbackModel, .modelStatus, .selectedModel, .lowPowerModeAutoDisable,
              .powerBasedModelSwitching, .batteryModel, .pluggedInModel,
              .downloadModels, .huggingFaceBrowser, .modelsFolder, .lmStudio,
-             .endpointBaseURL, .endpointAPIMode, .endpointAPIKey, .endpointStatus, .endpointModel:
+             .endpointBaseURL, .endpointAPIMode, .endpointAPIKey, .endpointStatus, .endpointModel,
+             .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint,
+             .speechEndpointModel, .speechEndpointVoice:
             return .engineAndModel
+        case .readAloudSpeed:
+            return .languageLearning
         case .acceptanceMode, .acceptWord, .acceptEntireSuggestion, .toggleTabby:
             return .shortcuts
         case .disabledApps, .suggestInIntegratedTerminals:
@@ -340,6 +438,16 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
+        case .screenshotTranslationShortcut: return LearningReadingSource.screenshot.title
+        case .selectionTranslationShortcut: return String(localized: "Translate selected text", table: "Learning")
+        case .translationStyle: return String(localized: "Translation style", table: "Learning")
+        case .translationSampling, .speechSampling: return String(localized: "Generation parameters", table: "Learning")
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages,
+             .translationReferenceMode, .chunkAlignment:
+            return String(localized: "Translation direction, previews, and reference text.", table: "Learning")
+        case .translationModel, .alignmentModel:
+            return String(localized: "Choose the local model or endpoint used for this task.", table: "Learning")
         case .enableGlobally: return String(localized: "Turn Lingrove on or off everywhere without quitting.", table: "Learning")
         case .useScreenContext: return String(localized: """
         Help suggestions understand surrounding text using screenshots of the focused window.
@@ -422,6 +530,18 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return String(localized: "Optional bearer token stored securely in Keychain.")
         case .endpointStatus: return String(localized: "Whether Lingrove can reach the server and list its models.", table: "Learning")
         case .endpointModel: return String(localized: "The model identifier sent to the configured endpoint.")
+        case .speechProvider:
+            return String(localized: "Choose system voices, a local speech model, or your TTS endpoint.", table: "Learning")
+        case .speechModel, .speechDecoder:
+            return String(localized: "Choose both the Qwen3-TTS model and its matching audio decoder.", table: "Learning")
+        case .speechEndpoint, .speechEndpointModel, .speechEndpointVoice:
+            return String(localized: "Configure your speech server, model, voice, and API key.", table: "Learning")
+        case .speechLanguage:
+            return String(localized: "Choose the language to use when testing speech.", table: "Learning")
+        case .speechVoice:
+            return String(localized: "Choose and test an installed system voice for the selected language.", table: "Learning")
+        case .readAloudSpeed:
+            return String(localized: "Set the default speed for reading learning text aloud.", table: "Learning")
         case .acceptanceMode: return String(localized: "Whether the accept key takes a word or a phrase.")
         case .acceptWord: return String(localized: "The key that inserts the next word.")
         case .acceptEntireSuggestion: return String(localized: """
@@ -453,6 +573,23 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .translationStyle: return ["style", "formal", "conversational", "translation", "翻译风格", "书面", "口语"]
+        case .translationSampling: return ["translation", "temperature", "top-p", "top-k", "seed", "翻译参数", "采样"]
+        case .speechSampling: return ["speech", "tts", "temperature", "seed", "朗读参数", "语音参数", "采样"]
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut:
+            return ["ocr", "screenshot", "pointer", "截图", "鼠标", "selection", "reading", "translate selected text", "allowed apps", "划词", "选区", "阅读", "白名单"]
+        case .translationEnabled, .sentencePreview:
+            return ["translation", "sentence preview", "pause", "翻译", "预览"]
+        case .translationTargetLanguage, .translationSourceLanguages:
+            return ["translation language", "source language", "target language", "翻译语言", "源语言", "目标语言"]
+        case .translationReferenceMode:
+            return ["translation reference", "draft context", "sentence", "翻译上下文", "草稿", "参考"]
+        case .chunkAlignment:
+            return ["chunk alignment", "meaning", "语块", "意义对应"]
+        case .translationModel:
+            return ["translation model", "translator", "翻译模型"]
+        case .alignmentModel:
+            return ["alignment model", "analysis model", "对齐模型", "语块模型"]
         #if DEBUG
         case .developmentDebugOverlays:
             return ["development", "developer", "debug", "overlays", "caret", "outline", "focus", "ocr", "diagnostics"]
@@ -648,6 +785,25 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return ["connect", "connection", "server", "status", "refresh", "health", "models"]
         case .endpointModel:
             return ["model", "identifier", "ollama", "lm studio", "vllm", "endpoint"]
+        case .speechProvider:
+            return ["speech", "text to speech", "tts", "system speech", "provider", "read aloud", "local voice",
+                    "朗读", "语音", "文字转语音"]
+        case .speechDecoder:
+            return ["audio decoder", "projection", "mmproj", "speech decoder", "音频解码器", "解码器"]
+        case .speechModel:
+            return ["tts model", "speech model", "qwen3-tts", "llama", "语音模型", "朗读模型"]
+        case .speechEndpoint:
+            return ["tts endpoint", "speech server", "speech api key", "audio/speech", "朗读服务", "语音接口"]
+        case .speechEndpointModel:
+            return ["tts endpoint model", "speech server model", "语音接口模型"]
+        case .speechEndpointVoice:
+            return ["tts endpoint voice", "voice identifier", "speech server voice", "声音标识"]
+        case .speechLanguage:
+            return ["speech language", "voice language", "language", "pronunciation", "read aloud", "tts", "朗读", "语音"]
+        case .speechVoice:
+            return ["voice", "system voice", "speaker", "test voice", "pronunciation", "read aloud", "tts", "朗读", "语音"]
+        case .readAloudSpeed:
+            return ["read aloud", "speech", "tts", "speed", "rate", "slower", "faster", "pronunciation", "朗读", "语速"]
         case .acceptanceMode:
             return ["acceptance", "word", "phrase", "mode", "tap", "hold", "behavior",
                     "how to accept"]
