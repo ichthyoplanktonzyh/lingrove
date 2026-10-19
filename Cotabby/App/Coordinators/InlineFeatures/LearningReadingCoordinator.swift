@@ -85,7 +85,7 @@ final class LearningReadingCoordinator {
         Publishers.MergeMany([
             settings.languageLearning.readingChanges,
             settings.$isGloballyEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
-            settings.$pauseState.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            settings.$pauseState.dropFirst().map { _ in () }.eraseToAnyPublisher()
         ]).sink { [weak self] in self?.dismiss() }.store(in: &subscriptions)
         settings.languageLearning.readingSourceChanges.sink { [weak self] source in
             guard let self else { return }
@@ -137,8 +137,10 @@ final class LearningReadingCoordinator {
         workspaceObserver = nil
     }
 
+    // swiftlint:disable cyclomatic_complexity
     /// The consuming tap does no AX reads. Unknown apps and conflicting bindings return the
     /// original event to the host; capture and generation run after that synchronous decision.
+    /// Keep synchronous shortcut arbitration together so event consumption has one ordered exit path.
     func decide(_ event: InputMonitorKeyEvent) -> InputMonitorAcceptTapDecision {
         let learning = service.settings.languageLearning
         let mask = ShortcutModifierMask(eventFlags: event.flags)
@@ -169,8 +171,7 @@ final class LearningReadingCoordinator {
         if detailKey, enabled, service.settings.writingTranslationShortcutsAllowed(in: frontmostBundle()),
             service.settings.learningShortcutConflict(
                 keyCode: learning.keyCode, modifiers: learning.modifiers,
-                replacement: false, bundleIdentifier: frontmostBundle()) == nil
-        {
+                replacement: false, bundleIdentifier: frontmostBundle()) == nil {
             if !event.isAutorepeat {
                 let id = revision
                 Task { @MainActor [weak self] in
@@ -185,6 +186,7 @@ final class LearningReadingCoordinator {
         if isActive { dismiss() }
         return .notHandled
     }
+    // swiftlint:enable cyclomatic_complexity
 
     func dismiss() {
         revision = UUID()
@@ -279,7 +281,7 @@ final class LearningReadingCoordinator {
             "Reading translation requested",
             metadata: [
                 "request_id": .string(trace), "origin": .string(capture.source.rawValue),
-                "bundle": .string(capture.bundleIdentifier), "target_bytes": .stringConvertible(capture.text.utf8.count),
+                "bundle": .string(capture.bundleIdentifier), "target_bytes": .stringConvertible(capture.text.utf8.count)
             ])
         work = Task { [weak self] in
             guard let self else { return }

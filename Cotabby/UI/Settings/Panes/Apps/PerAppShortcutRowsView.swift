@@ -11,7 +11,6 @@ struct PerAppShortcutRowsView: View {
     let bundleIdentifier: String
     let displayName: String
 
-
     var body: some View {
         row(.acceptWord, title: String(localized: "Accept Word"), globalLabel: suggestionSettings.acceptanceKeyLabel)
         row(

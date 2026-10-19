@@ -44,7 +44,7 @@ nonisolated final class LlamaRuntimeCore: @unchecked Sendable {
         resolvedRuntime: ResolvedLlamaRuntime,
         configuration: LlamaRuntimeConfiguration
     ) throws -> PreparedLlamaRuntime {
-        return try native.withOperation {
+        try native.withOperation {
             let allocation = NativeLlamaModelConfiguration(modelURL: resolvedRuntime.modelFileURL,
                 gpuLayerCount: configuration.gpuLayerCount, contextWindowTokens: configuration.contextWindowTokens,
                 batchSize: configuration.batchSize)
@@ -117,7 +117,7 @@ nonisolated final class LlamaRuntimeCore: @unchecked Sendable {
         operationID: UUID = UUID(),
         onPartialRawText: ((String) -> Void)? = nil
     ) throws -> LlamaGenerationOutput {
-        return try native.withOperation {
+        try native.withOperation {
             try Task.checkCancellation()
             currentOperationID = operationID
             defer { currentOperationID = nil }
@@ -160,7 +160,7 @@ nonisolated final class LlamaRuntimeCore: @unchecked Sendable {
         options: LlamaGenerationOptions,
         operationID: UUID = UUID()
     ) throws {
-        return try native.withOperation {
+        try native.withOperation {
             try Task.checkCancellation()
             currentOperationID = operationID
             defer { currentOperationID = nil }

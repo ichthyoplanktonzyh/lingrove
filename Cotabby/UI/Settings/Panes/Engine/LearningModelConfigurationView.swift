@@ -9,7 +9,7 @@ struct LearningModelConfigurationView: View {
     @ObservedObject var navigation: SettingsNavigationModel
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     var downloads: ModelDownloadManager?
-    var searchService: HuggingFaceSearchService? = nil
+    var searchService: HuggingFaceSearchService?
     @State private var apiKey = ""
     @State private var credentialError: String?
     @State private var pendingDeletion: RuntimeModelOption?
@@ -55,7 +55,8 @@ struct LearningModelConfigurationView: View {
                     ModelSamplingSection(overrides: Binding(get: { profile.generationProfile.sampling }, set: {
                         var value = profile.generationProfile; value.sampling = $0
                         profile.setGenerationProfile(value, expectedIdentity: contextIdentity)
-                    }), recommended: profile.recommendedSampling ?? LearningInstructionSampling.standard.values, local: profile.snapshot.backend == .local, item: .translationSampling)
+                    }), recommended: profile.recommendedSampling ?? LearningInstructionSampling.standard.values,
+                        local: profile.snapshot.backend == .local, item: .translationSampling)
                     .id(contextIdentity + ".sampling").disabled(profile.recommendedSampling == nil)
                 }
                 if profile.snapshot.backend == .local { instructionTemplateSection }
@@ -63,8 +64,7 @@ struct LearningModelConfigurationView: View {
         }
         .onAppear {
             controller.refreshModels()
-            do { apiKey = try profile.apiKey() ?? ""; credentialError = nil }
-            catch { credentialError = error.localizedDescription }
+            do { apiKey = try profile.apiKey() ?? ""; credentialError = nil } catch { credentialError = error.localizedDescription }
             if profile.snapshot.backend == .endpoint, controller.endpointConnection.state == .idle {
                 Task { await controller.discoverEndpoint() }
             }
@@ -226,7 +226,9 @@ struct LearningModelConfigurationView: View {
             connection: controller.endpointConnection, credentialError: credentialError,
             privacyWarning: privacyWarning,
             transmissionNote: profile.role == .translation
-                ? String(localized: "With this endpoint, the service receives the target, language direction, optional draft excerpts and style instructions.",
+                ? String(localized: """
+                    With this endpoint, the service receives the target, language direction, optional draft excerpts and style instructions.
+                    """,
                     table: "Learning", comment: "Disclosure of what the configured endpoint receives for translation requests.")
                 : String(localized: """
                 With this endpoint, the service receives the current source text, displayed translation, and language direction.

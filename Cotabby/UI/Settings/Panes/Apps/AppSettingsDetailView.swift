@@ -75,7 +75,8 @@ struct AppSettingsDetailView: View {
                 if suggestionSettings.languageLearning.readingEnabled(source),
                    suggestionSettings.readingTranslationAllowed(source, in: bundleIdentifier),
                    let reason = suggestionSettings.readingShortcutConflict(source, bundleIdentifier: bundleIdentifier) {
-                    Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.", table: "Learning"))
+                    Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.",
+                        table: "Learning"))
                         .font(.caption).foregroundStyle(.red)
                 }
             }
@@ -208,7 +209,11 @@ struct AppSettingsDetailView: View {
         suggestionSettings.removeDisabledApplication(bundleIdentifier: bundleIdentifier)
         suggestionSettings.updatePerAppBehavior(bundleIdentifier: bundleIdentifier, displayName: displayName) { $0 = PerAppBehavior() }
         updateTranslationPolicy {
-            $0.pointerTranslationAllowed = nil; $0.screenshotTranslationAllowed = nil; $0.selectionTranslationAllowed = nil; $0.selectionIcon = nil; $0.writingTranslationShortcutsAllowed = nil
+            $0.pointerTranslationAllowed = nil
+            $0.screenshotTranslationAllowed = nil
+            $0.selectionTranslationAllowed = nil
+            $0.selectionIcon = nil
+            $0.writingTranslationShortcutsAllowed = nil
         }
         typingHistory.setExcluded(bundleIdentifier, excluded: false)
     }

@@ -15,8 +15,12 @@ extension EngineAndModelPaneView {
             privacyWarning: endpointPrivacyWarning, connect: refreshEndpointModels, reset: resetEndpointBaseURL,
             clearKey: {
                 endpointAPIKeyDraft = ""
-                do { try suggestionSettings.saveOpenAICompatibleAPIKey(nil); endpointCredentialError = nil }
-                catch { endpointCredentialError = error.localizedDescription }
+                do {
+                    try suggestionSettings.saveOpenAICompatibleAPIKey(nil)
+                    endpointCredentialError = nil
+                } catch {
+                    endpointCredentialError = error.localizedDescription
+                }
             })
     }
 

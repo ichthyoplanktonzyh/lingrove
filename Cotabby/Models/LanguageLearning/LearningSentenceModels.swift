@@ -32,8 +32,10 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
     var settings: SuggestionSettingsModel { get }
     func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource) async throws -> String
-    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
-                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource) async throws -> LearningSentenceResult
+    func analyzeReadingSelection(
+        source: String, translation: String, sourceLanguage: LearningLanguage,
+        targetLanguage: LearningLanguage, readingSource: LearningReadingSource
+    ) async throws -> LearningSentenceResult
     func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String
@@ -51,8 +53,10 @@ extension LearningSentenceGenerating {
                                    readingSource: LearningReadingSource = .selection) async throws -> String {
         try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
     }
-    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
-                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection) async throws -> LearningSentenceResult {
+    func analyzeReadingSelection(
+        source: String, translation: String, sourceLanguage: LearningLanguage,
+        targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection
+    ) async throws -> LearningSentenceResult {
         try await analyzeSentence(source: source, translation: translation, sourceLanguage: sourceLanguage,
                                   targetLanguage: targetLanguage, onUpdate: { _ in })
     }
@@ -103,9 +107,12 @@ struct LearningSentencePresentation {
         switch readingSource {
         case .pointer: String(localized: "Target: Pointed word", table: "Learning")
         case .screenshot: String(localized: "Target: Screen region", table: "Learning")
-        default: targetIsSelection
-            ? String(localized: "Target: Selection", table: "Learning")
-            : String(localized: "Target: Current sentence", table: "Learning")
+        default:
+            if targetIsSelection {
+                String(localized: "Target: Selection", table: "Learning")
+            } else {
+                String(localized: "Target: Current sentence", table: "Learning")
+            }
         }
     }
 }

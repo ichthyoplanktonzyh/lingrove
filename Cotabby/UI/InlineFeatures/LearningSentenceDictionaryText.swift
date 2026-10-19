@@ -10,11 +10,11 @@ struct LearningSentenceDictionaryText: NSViewRepresentable {
     let lookup: (LearningDictionaryTextAnchor, NSTextView) -> Void
     var units: [LearningUnit] = []
     var chunks: [LearningMeaningChunk] = []
-    var selectedChunk: Int? = nil
+    var selectedChunk: Int?
     var source = false
     var maximumLines = 0
     var fontSize: CGFloat = 16
-    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)? = nil
+    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
     var inspect: (Int) -> Void = { _ in }
 
     func makeNSView(context: Context) -> LearningDictionaryTextView {
@@ -166,7 +166,7 @@ final class LearningDictionaryTextView: NSTextView {
         var bounds = layoutManager.boundingRect(forGlyphRange: visibleGlyphs, in: textContainer)
         bounds.origin.x += textContainerOrigin.x
         bounds.origin.y += textContainerOrigin.y
-        if let lookupUnit { lookupUnit(.init(unit: unit, bounds: bounds, font: font), self) }
-        else { lookup(.init(word: word, bounds: bounds, font: font), self) }
+        if let lookupUnit { lookupUnit(.init(unit: unit, bounds: bounds, font: font), self) } else { lookup(.init(word: word,
+            bounds: bounds, font: font), self) }
     }
 }

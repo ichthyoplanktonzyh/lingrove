@@ -28,9 +28,11 @@ extension EngineAndModelPaneView {
     private var completionRuntimeStatus: String {
         switch runtimeModel.state {
         case .idle:
-            runtimeModel.selectedModelFilename == nil
-                ? String(localized: "Choose a model", table: "Learning")
-                : String(localized: "Configured · loads on first use", table: "Learning")
+            if runtimeModel.selectedModelFilename == nil {
+                String(localized: "Choose a model", table: "Learning")
+            } else {
+                String(localized: "Configured · loads on first use", table: "Learning")
+            }
         default: runtimeModel.state.summary
         }
     }

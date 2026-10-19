@@ -10,6 +10,10 @@
 # are only disabled because retrofitting them on existing code would touch
 # every file.
 
+# Exact legacy diagnostics exported from 2d5549c2 before the speech/reading integration.
+# New or changed violations still fail --strict; do not regenerate this from new feature work.
+baseline: .swiftlint-baseline.json
+
 included:
   - Cotabby
 

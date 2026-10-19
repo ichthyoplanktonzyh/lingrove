@@ -9,8 +9,10 @@ extension LearningExpressionService: LearningSentenceGenerating {
                                       task: .translation(source: sourceLanguage, target: targetLanguage))
     }
 
-    func analyzeReadingSelection(source: String, translation: String, sourceLanguage: LearningLanguage,
-                                 targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection) async throws -> LearningSentenceResult {
+    func analyzeReadingSelection(
+        source: String, translation: String, sourceLanguage: LearningLanguage,
+        targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection
+    ) async throws -> LearningSentenceResult {
         try await analyzer.generate(source: source, translation: translation, sourceLanguage: sourceLanguage,
                                     targetLanguage: targetLanguage, origin: .reading, readingSource: readingSource, onUpdate: { _ in })
     }
@@ -34,7 +36,7 @@ extension LearningExpressionService: LearningSentenceGenerating {
 
     func generateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                           onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
-        return try await LearningRequestTrace.$requestID.withValue(LearningRequestTrace.requestID ?? RequestID.generate()) {
+        try await LearningRequestTrace.$requestID.withValue(LearningRequestTrace.requestID ?? RequestID.generate()) {
             let translation = try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
             onUpdate(.translation(translation))
             guard settings.languageLearning.analysisEnabled else { return .init(translation: translation, chunks: []) }

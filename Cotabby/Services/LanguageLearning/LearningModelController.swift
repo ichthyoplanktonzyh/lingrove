@@ -151,7 +151,8 @@ final class LearningModelController: ObservableObject {
         lastNativeTrace = trace
         let work = Task.detached(priority: .userInitiated) {
             try core.translationPlan(
-                configuration: .init(modelURL: url, template: snapshot.template, contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides),
+                configuration: .init(modelURL: url, template: snapshot.template,
+                    contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides),
                 input: frozenInput, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage,
                 output: output, operationID: id, trace: trace)
         }
@@ -430,4 +431,3 @@ final class LearningModelController: ObservableObject {
         core.shutdownSync()
     }
 }
-

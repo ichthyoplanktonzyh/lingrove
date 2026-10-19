@@ -130,9 +130,11 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         }
     }
 
+    // swiftlint:disable cyclomatic_complexity
     /// All native values stay at this boundary. AX owns returned CF values; Swift's bridge retains
     /// them for this scope. Point/range bounds must agree, so an editor's nearest-character answer
     /// cannot translate a word from another line. Unsupported hosts fall back to explicit local OCR.
+    /// AX ancestors have distinct optional capabilities; every guard protects the same hit-test walk.
     private func pointedText(at point: CGPoint, pid: Int32) throws -> PointedText? {
         var candidate = AXHelper.element(atCocoaPoint: point)
         if let hit = candidate, let owner = AXHelper.owningApplication(of: hit), owner.processIdentifier != pid {
@@ -161,8 +163,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 var result: CFTypeRef?
                 if AXUIElementCopyParameterizedAttributeValue(
                     element, kAXRangeForPositionParameterizedAttribute as CFString,
-                    parameter, &result) == .success, let result, CFGetTypeID(result) == AXValueGetTypeID()
-                {
+                    parameter, &result) == .success, let result, CFGetTypeID(result) == AXValueGetTypeID() {
                     var hitRange = CFRange()
                     let axValue = unsafeBitCast(result, to: AXValue.self)
                     guard AXValueGetType(axValue) == .cfRange, AXValueGetValue(axValue, .cfRange, &hitRange)
@@ -176,16 +177,14 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                         if let text = AXHelper.parameterizedStringValue(
                             for: kAXStringForRangeParameterizedAttribute as CFString,
                             range: range, on: element),
-                            let word = LearningReadingTextPolicy.word(in: text, utf16Index: index - start)
-                        {
+                            let word = LearningReadingTextPolicy.word(in: text, utf16Index: index - start) {
                             guard start == 0 || word.range.location > 0,
                                 start + range.length == count || NSMaxRange(word.range) < text.utf16.count
                             else { return nil }
                             let target = NSRange(location: start + word.range.location, length: word.range.length)
                             if let bounds = AXHelper.parameterizedRectValue(
                                 for: kAXBoundsForRangeParameterizedAttribute as CFString,
-                                range: target, on: element)
-                            {
+                                range: target, on: element) {
                                 let anchor = AXHelper.validatedCocoaTextRect(
                                     fromAccessibilityRect: bounds,
                                     anchorFrame: CGRect(x: point.x - 2, y: point.y - 2, width: 4, height: 4))
@@ -202,6 +201,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         }
         return nil
     }
+    // swiftlint:enable cyclomatic_complexity
 
     private func recognize(region: CGRect, pointer: CGPoint?, trace: String) async throws -> (
         text: String, hint: LearningLanguage?
@@ -218,7 +218,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                     "origin": .string(pointer == nil ? "screenshot" : "pointer"), "stage": "ocr",
                     "capture_ms": .stringConvertible(captureMs),
                     "ocr_ms": .stringConvertible(max(0, elapsed - captureMs)),
-                    "latency_ms": .stringConvertible(elapsed), "outcome": .string(outcome.rawValue),
+                    "latency_ms": .stringConvertible(elapsed), "outcome": .string(outcome.rawValue)
                 ])
             if trackingEnabled() {
                 metrics?.record(

@@ -24,7 +24,7 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     let bundleIdentifier: String
     let anchor: CGRect
     var source: LearningReadingSource = .selection
-    var languageHint: LearningLanguage? = nil
+    var languageHint: LearningLanguage?
 }
 
 /// The app environment owns one reader. This narrow seam lets lifecycle tests change a selection

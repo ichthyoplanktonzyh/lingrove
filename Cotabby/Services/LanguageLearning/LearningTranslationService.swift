@@ -16,7 +16,7 @@ final class LearningTranslationService {
     }
 
     func generate(input: LearningTranslationInput, task: LearningExpressionTask) async throws -> String {
-        return try await telemetry.perform(source: .translation, profile: model.profile.snapshot) {
+        try await telemetry.perform(source: .translation, profile: model.profile.snapshot) {
             try await self.generateValidated(input: input, task: task)
         }
     }

@@ -108,8 +108,7 @@ nonisolated struct LearningUnitRecognizer: Sendable {
                     // richer noun-phrase slots need a separate grammatical recognizer.
                     guard ["it", "this", "that", "these", "those", "something", "anything", "everything", "nothing"].contains(key) else { matches = false; break }
                     slots.append(word)
-                } else if token == key { fixed.append(word.range) }
-                else { matches = false; break }
+                } else if token == key { fixed.append(word.range) } else { matches = false; break }
             }
             let extent = NSRange(location: parts[0].range.location,
                 length: NSMaxRange(parts.last!.range) - parts[0].range.location)

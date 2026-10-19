@@ -22,8 +22,7 @@ extension SuggestionSettingsModel {
             if keyCode == binding.key, modifiers == binding.modifiers,
                 (bundleIdentifier.map { [$0] } ?? perAppShortcutOverrides.map(\.bundleIdentifier)).contains(where: {
                     readingTranslationAllowed(source, in: $0) && writingTranslationShortcutsAllowed(in: $0)
-                })
-            {
+                }) {
                 return source.title
             }
         }
@@ -31,8 +30,7 @@ extension SuggestionSettingsModel {
         for app in apps {
             if let conflict = conflictingPerAppShortcutName(
                 forBundleIdentifier: app, keyCode: keyCode, modifiers: modifiers,
-                excluding: .toggleTabby, includingLearningShortcut: false)
-            {
+                excluding: .toggleTabby, includingLearningShortcut: false) {
                 return conflict
             }
         }
@@ -64,8 +62,7 @@ extension SuggestionSettingsModel {
             }.map(\.bundleIdentifier)
         if apps.contains(where: { writingTranslationShortcutsAllowed(in: $0) }),
             (key == languageLearning.keyCode && mask == languageLearning.modifiers)
-                || (key == languageLearning.replacementKeyCode && mask == languageLearning.replacementModifiers)
-        {
+                || (key == languageLearning.replacementKeyCode && mask == languageLearning.replacementModifiers) {
             return String(localized: "Translation shortcut", table: "Learning")
         }
         for other in LearningReadingSource.allCases where other != source && languageLearning.readingEnabled(other) {
@@ -77,8 +74,7 @@ extension SuggestionSettingsModel {
         for app in apps.isEmpty ? [""] : apps {
             if let reason = conflictingPerAppShortcutName(
                 forBundleIdentifier: app, keyCode: key, modifiers: mask,
-                excluding: .toggleTabby, includingLearningShortcut: false)
-            {
+                excluding: .toggleTabby, includingLearningShortcut: false) {
                 return reason
             }
         }

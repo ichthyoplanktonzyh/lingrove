@@ -44,6 +44,8 @@ final class LanguageLearningSettings: ObservableObject {
         case .screenshot: screenshotTranslationEnabled
         }
     }
+    // A binding exposes its physical key, modifiers and presentation label as one named value.
+    // swiftlint:disable:next large_tuple
     func readingBinding(_ source: LearningReadingSource) -> (key: UInt16, modifiers: ShortcutModifierMask, label: String) {
         switch source {
         case .selection: (selectionKeyCode, selectionModifiers, selectionKeyLabel)
@@ -74,7 +76,7 @@ final class LanguageLearningSettings: ObservableObject {
         Publishers.MergeMany([
             $pointerTranslationEnabled.dropFirst().map { _ in LearningReadingSource.pointer }.eraseToAnyPublisher(),
             $screenshotTranslationEnabled.dropFirst().map { _ in LearningReadingSource.screenshot }.eraseToAnyPublisher(),
-            $selectionTranslationEnabled.dropFirst().map { _ in LearningReadingSource.selection }.eraseToAnyPublisher(),
+            $selectionTranslationEnabled.dropFirst().map { _ in LearningReadingSource.selection }.eraseToAnyPublisher()
         ]).eraseToAnyPublisher()
     }
 
@@ -82,7 +84,7 @@ final class LanguageLearningSettings: ObservableObject {
         Publishers.MergeMany([
             $readingTargetLanguage.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $translationEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
-            translation.changes,
+            translation.changes
         ]).eraseToAnyPublisher()
     }
     @Published var analysisEnabled: Bool {
@@ -134,7 +136,7 @@ final class LanguageLearningSettings: ObservableObject {
                 $sourceLanguages.map { _ in () }.eraseToAnyPublisher(),
                 $targetLanguage.map { _ in () }.eraseToAnyPublisher(),
                 $sentencePreviewEnabled.map { _ in () }.eraseToAnyPublisher(),
-                $referenceMode.map { _ in () }.eraseToAnyPublisher(),
+                $referenceMode.map { _ in () }.eraseToAnyPublisher()
             ].map { $0.dropFirst().eraseToAnyPublisher() } + [translation.changes]
         ).eraseToAnyPublisher()
     }
@@ -158,7 +160,7 @@ final class LanguageLearningSettings: ObservableObject {
                 $screenshotKeyCode.map { _ in () }.eraseToAnyPublisher(),
                 $screenshotModifiers.map { _ in () }.eraseToAnyPublisher(),
                 $screenshotKeyLabel.map { _ in () }.eraseToAnyPublisher(),
-                $selectionKeyLabel.map { _ in () }.eraseToAnyPublisher(),
+                $selectionKeyLabel.map { _ in () }.eraseToAnyPublisher()
             ].map { $0.dropFirst().eraseToAnyPublisher() }
         ).eraseToAnyPublisher()
     }
@@ -277,6 +279,6 @@ nonisolated struct LearningSettingsSnapshot: Equatable, Sendable {
     var sentencePreviewEnabled: Bool = true
     let sourceLanguages: [LearningLanguage]
     let targetLanguage: LearningLanguage
-    var translationModel: LearningModelSnapshot? = nil
+    var translationModel: LearningModelSnapshot?
     var referenceMode: LearningReferenceMode = .currentSentence
 }

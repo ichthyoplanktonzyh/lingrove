@@ -12,13 +12,13 @@ struct PerAppShortcutOverride: Codable, Equatable, Identifiable, Sendable {
     /// saved before this existed decode unchanged; nil means every behavior follows the global setting.
     var behavior: PerAppBehavior?
     /// An explicit allowlist for the new reading shortcut. Optional fields preserve old JSON.
-    var selectionTranslationAllowed: Bool? = nil
-    var pointerTranslationAllowed: Bool? = nil
-    var screenshotTranslationAllowed: Bool? = nil
+    var selectionTranslationAllowed: Bool?
+    var pointerTranslationAllowed: Bool?
+    var screenshotTranslationAllowed: Bool?
     /// nil follows Language Learning's global selection-icon switch.
-    var selectionIcon: PerAppToggle? = nil
+    var selectionIcon: PerAppToggle?
     /// Existing writing commands retain their previous default; a conflict can disable them here.
-    var writingTranslationShortcutsAllowed: Bool? = nil
+    var writingTranslationShortcutsAllowed: Bool?
 
     var id: String { bundleIdentifier }
 }

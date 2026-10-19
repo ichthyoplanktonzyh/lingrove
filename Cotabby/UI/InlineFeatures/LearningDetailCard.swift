@@ -8,7 +8,7 @@ struct LearningDetailCard: View {
     let selectWord: (String, NSButton) -> Void
     let close: () -> Void
     let sizeChanged: (CGSize) -> Void
-    var session: LearningDictionarySession? = nil
+    var session: LearningDictionarySession?
     var speech: LearningSpeechController?
     // Start close to the short quote/word layout; measured content can grow up to the scroll cap.
     // Keeping the former explanation-sized fallback would leave a large blank area on first paint.

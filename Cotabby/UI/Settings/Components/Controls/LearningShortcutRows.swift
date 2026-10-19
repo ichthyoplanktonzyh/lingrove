@@ -30,13 +30,16 @@ struct LearningShortcutRows: View {
                     }
                 },
                 resetLabel: String(localized: "Reset"), shouldShowReset: true,
-                onClear: { settings.setReadingBinding(source, key: UInt16.max, modifiers: [], label: SuggestionSettingsModel.disabledKeyLabel) },
+                onClear: { settings.setReadingBinding(source, key: UInt16.max, modifiers: [],
+                    label: SuggestionSettingsModel.disabledKeyLabel) },
                 clearLabel: String(localized: "Clear"),
                 clearHelp: String(localized: "Disable this shortcut", table: "Learning"),
                 conflictChecker: { code, modifiers in
                     suggestionSettings.readingShortcutConflict(source, keyCode: code, modifiers: modifiers)
                 })
-        }.settingsItem(source == .selection ? .selectionTranslationShortcut : source == .pointer ? .pointerTranslationShortcut : .screenshotTranslationShortcut)
+        }.settingsItem(
+            source == .selection ? .selectionTranslationShortcut
+                : source == .pointer ? .pointerTranslationShortcut : .screenshotTranslationShortcut)
         if settings.translationEnabled, settings.readingEnabled(source),
            let reason = suggestionSettings.readingShortcutConflict(source) {
             Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.", table: "Learning"))

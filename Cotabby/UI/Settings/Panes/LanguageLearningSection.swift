@@ -37,8 +37,9 @@ struct LanguageLearningSection: View {
                 .disabled(!settings.translationEnabled).settingsItem(.sentencePreview)
             translationControls
             Text(String(localized: """
-            Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized \
-            text and style instructions. Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded.
+            Translation sends the target, optional draft excerpts and style instructions to the chosen engine. \
+            Reading sends only selected, pointed or OCR-recognized text and style instructions. \
+            Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded.
             """,
                 table: "Learning", comment: """
                 Privacy disclosure describing the data sent for learning requests and context that is never included.

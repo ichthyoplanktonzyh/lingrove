@@ -284,7 +284,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return "command"
-        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages:
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
+            .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
+            .translationSourceLanguages:
             return "character.bubble"
         case .translationStyle: return "textformat"
         case .translationSampling, .speechSampling: return "slider.horizontal.3"
@@ -389,7 +391,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var category: SettingsCategory {
         switch self {
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return .shortcuts
-        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages,
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
+            .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
+            .translationSourceLanguages,
              .translationReferenceMode, .translationStyle, .chunkAlignment: return .languageLearning
         case .translationModel, .alignmentModel, .translationSampling, .speechSampling: return .engineAndModel
         #if DEBUG
@@ -443,7 +447,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .selectionTranslationShortcut: return String(localized: "Translate selected text", table: "Learning")
         case .translationStyle: return String(localized: "Translation style", table: "Learning")
         case .translationSampling, .speechSampling: return String(localized: "Generation parameters", table: "Learning")
-        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage, .translationSourceLanguages,
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
+            .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
+            .translationSourceLanguages,
              .translationReferenceMode, .chunkAlignment:
             return String(localized: "Translation direction, previews, and reference text.", table: "Learning")
         case .translationModel, .alignmentModel:
@@ -576,8 +582,11 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationStyle: return ["style", "formal", "conversational", "translation", "翻译风格", "书面", "口语"]
         case .translationSampling: return ["translation", "temperature", "top-p", "top-k", "seed", "翻译参数", "采样"]
         case .speechSampling: return ["speech", "tts", "temperature", "seed", "朗读参数", "语音参数", "采样"]
-        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon, .readingTargetLanguage, .selectionTranslationApps, .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut:
-            return ["ocr", "screenshot", "pointer", "截图", "鼠标", "selection", "reading", "translate selected text", "allowed apps", "划词", "选区", "阅读", "白名单"]
+        case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
+            .readingTargetLanguage, .selectionTranslationApps, .selectionTranslationShortcut, .pointerTranslationShortcut,
+            .screenshotTranslationShortcut:
+            return ["ocr", "screenshot", "pointer", "截图", "鼠标", "selection", "reading", "translate selected text", "allowed apps",
+                "划词", "选区", "阅读", "白名单"]
         case .translationEnabled, .sentencePreview:
             return ["translation", "sentence preview", "pause", "翻译", "预览"]
         case .translationTargetLanguage, .translationSourceLanguages:

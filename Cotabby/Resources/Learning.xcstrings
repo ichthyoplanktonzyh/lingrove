@@ -2007,6 +2007,78 @@
             "state": "translated",
             "value": "允許劃詞翻譯快捷鍵"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲の翻訳ショートカットを許可"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역 번역 단축키 허용"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser le raccourci de traduction de la sélection"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl für die Übersetzung der Auswahl erlauben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir el atajo de traducción de la selección"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir atalho de tradução da seleção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti scorciatoia di traduzione della selezione"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить сочетание клавиш для перевода выделения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح باختصار ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ के अनुवाद का शॉर्टकट अनुमति दें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izinkan pintasan terjemahan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metin çevirisi kısayoluna izin ver"
+          }
         }
       }
     },
@@ -2029,6 +2101,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "允許寫作翻譯快捷鍵"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力中の翻訳ショートカットを許可"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 중 번역 단축키 허용"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser les raccourcis de traduction pendant la saisie"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehle für die Übersetzung beim Schreiben erlauben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir los atajos de traducción al escribir"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir atalhos de tradução ao escrever"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti scorciatoie di traduzione durante la scrittura"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить сочетания клавиш для перевода при вводе"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح باختصارات الترجمة أثناء الكتابة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लिखते समय अनुवाद के शॉर्टकट अनुमति दें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izinkan pintasan terjemahan saat menulis"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazarken çeviri kısayollarına izin ver"
           }
         }
       }
@@ -9900,7 +10044,8 @@
             "value": "無法識別選取文字的語言，請多選一些文字。"
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "Could not safely select the current sentence. Copy the translation or select the source manually.": {
       "comment": "Recovery guidance when the current sentence cannot be selected safely for replacement.",
@@ -13206,6 +13351,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "啟用劃詞翻譯"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲の翻訳を有効にする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역 번역 활성화"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer la traduction de la sélection"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung der Auswahl aktivieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar la traducción de la selección"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar tradução da seleção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abilita traduzione della selezione"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить перевод выделения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفعيل ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ का अनुवाद चालू करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktifkan terjemahan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metin çevirisini etkinleştir"
           }
         }
       }
@@ -22528,6 +22745,78 @@
             "state": "translated",
             "value": "管理允許的 App"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可するアプリを管理"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용된 앱 관리"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gérer les apps autorisées"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zugelassene Apps verwalten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestionar apps permitidas"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerenciar apps permitidos"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci app consentite"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление разрешёнными приложениями"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إدارة التطبيقات المسموح بها"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुमति प्राप्त ऐप प्रबंधित करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kelola app yang diizinkan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin verilen uygulamaları yönet"
+          }
         }
       }
     },
@@ -28339,6 +28628,78 @@
             "state": "translated",
             "value": "閱讀目標語言"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読解時の翻訳先言語"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기 번역의 대상 언어"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue cible pour la lecture"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zielsprache beim Lesen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de destino al leer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de destino para leitura"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingua di destinazione per la lettura"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Язык перевода при чтении"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لغة الترجمة المستهدفة أثناء القراءة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पढ़ते समय अनुवाद की लक्ष्य भाषा"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa tujuan saat membaca"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma çevirisi hedef dili"
+          }
         }
       }
     },
@@ -32190,6 +32551,78 @@
             "state": "translated",
             "value": "請先選取文字再翻譯。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳するテキストを選択してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역할 텍스트를 먼저 선택하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez du texte avant de traduire."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle vor dem Übersetzen Text aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona texto antes de traducir."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione o texto antes de traduzir."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona del testo prima di tradurre."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перед переводом выделите текст."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدد نصًا قبل الترجمة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुवाद से पहले पाठ चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih teks sebelum menerjemahkan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevirmeden önce metin seçin."
+          }
         }
       }
     },
@@ -32302,6 +32735,78 @@
             "state": "translated",
             "value": "此 App 暫時無法讀取選取範圍。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアプリでは選択範囲を取得できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앱에서는 선택 영역을 사용할 수 없습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sélection est indisponible dans cette app."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dieser App ist keine Auswahl verfügbar."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selección no está disponible en esta app."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A seleção não está disponível neste app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selezione non è disponibile in questa app."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом приложении выделение недоступно."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التحديد غير متاح في هذا التطبيق."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस ऐप में चयन उपलब्ध नहीं है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilihan teks tidak tersedia di app ini."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu uygulamada metin seçimi kullanılamıyor."
+          }
         }
       }
     },
@@ -32324,6 +32829,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "劃詞翻譯"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲の翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduction de la sélection"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung der Auswahl"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción de la selección"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tradução da seleção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzione della selezione"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод выделения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ का अनुवाद"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metin çevirisi"
           }
         }
       }
@@ -32348,6 +32925,78 @@
             "state": "translated",
             "value": "劃詞翻譯圖示"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲の翻訳アイコン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역 번역 아이콘"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Icône de traduction de la sélection"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbol für die Übersetzung der Auswahl"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Icono de traducción de la selección"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ícone de tradução da seleção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Icona di traduzione della selezione"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значок перевода выделения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أيقونة ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ के अनुवाद का आइकन"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ikon terjemahan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metin çevirisi simgesi"
+          }
         }
       }
     },
@@ -32370,6 +33019,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法翻譯敏感輸入框中的內容。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "機密情報を含む入力欄は翻訳できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "민감한 입력란은 번역할 수 없습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les champs sensibles ne peuvent pas être traduits."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertrauliche Eingabefelder können nicht übersetzt werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los campos sensibles no se pueden traducir."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Campos confidenciais não podem ser traduzidos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I campi sensibili non possono essere tradotti."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поля с конфиденциальными данными нельзя переводить."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن ترجمة الحقول الحساسة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संवेदनशील फ़ील्ड का अनुवाद नहीं किया जा सकता।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolom sensitif tidak dapat diterjemahkan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hassas alanlar çevrilemez."
           }
         }
       }
@@ -32755,6 +33476,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "顯示劃詞翻譯圖示"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲の翻訳アイコンを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역 번역 아이콘 표시"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher l’icône de traduction de la sélection"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbol für die Übersetzung der Auswahl anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar el icono de traducción de la selección"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar ícone de tradução da seleção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra l’icona di traduzione della selezione"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать значок перевода выделения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إظهار أيقونة ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ के अनुवाद का आइकन दिखाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan ikon terjemahan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metin çevirisi simgesini göster"
           }
         }
       }
@@ -40348,7 +41141,8 @@
             "value": "選取文字已經是閱讀目標語言。"
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "The source language could not be confirmed or matches the target. Adjust the source-language settings or select more text.": {
       "comment": "Error shown when a translation direction cannot be resolved from the selected source languages and target.",
@@ -41914,6 +42708,78 @@
             "state": "translated",
             "value": "此 App 未提供選取文字。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアプリは選択されたテキストを提供していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앱에서 선택한 텍스트를 제공하지 않았습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app n’a pas fourni le texte sélectionné."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App hat keinen ausgewählten Text bereitgestellt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no proporcionó el texto seleccionado."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este app não forneceu o texto selecionado."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa app non ha fornito il testo selezionato."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение не предоставило выделенный текст."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يوفر هذا التطبيق النص المحدد."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस ऐप ने चुना हुआ पाठ उपलब्ध नहीं कराया।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App ini tidak menyediakan teks yang dipilih."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu uygulama seçili metni sağlamadı."
+          }
         }
       }
     },
@@ -43207,6 +44073,78 @@
             "state": "translated",
             "value": "翻譯選取文字"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択したテキストを翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 텍스트 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire le texte sélectionné"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewählten Text übersetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir el texto seleccionado"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir texto selecionado"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci il testo selezionato"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести выделенный текст"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة النص المحدد"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चुने हुए पाठ का अनुवाद करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahkan teks terpilih"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili metni çevir"
+          }
         }
       }
     },
@@ -44337,7 +45275,8 @@
             "value": "翻譯會向所選引擎傳送待譯文字、可選的草稿片段和風格指令。閱讀翻譯僅傳送選取文字和風格指令。語塊對齊僅接收待譯文字與譯文，不包含螢幕、無關剪貼簿內容或歷史記錄。"
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "Translation shortcut": {
       "localizations": {
@@ -48738,6 +49677,78 @@
             "state": "translated",
             "value": "寫作翻譯"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力中の翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 중 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduction pendant la saisie"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung beim Schreiben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al escribir"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tradução ao escrever"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzione durante la scrittura"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод при вводе"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الترجمة أثناء الكتابة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लिखते समय अनुवाद"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan saat menulis"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazarken çeviri"
+          }
         }
       }
     },
@@ -49383,6 +50394,84 @@
             "state": "translated",
             "value": "请在系统设置中允许拾语录制屏幕，以翻译屏幕文字。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面上の文字を翻訳するには、システム設定で Lingrove の画面収録を許可してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면의 텍스트를 번역하려면 시스템 설정에서 Lingrove의 화면 기록을 허용하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour traduire le texte à l’écran, autorisez l’enregistrement de l’écran pour Lingrove dans Réglages Système."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erlaube Lingrove in den Systemeinstellungen die Bildschirmaufnahme, um Bildschirmtext zu übersetzen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para traducir texto en pantalla, permite la grabación de pantalla para Lingrove en Ajustes del Sistema."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para traduzir texto na tela, permita a gravação de tela para o Lingrove nos Ajustes do Sistema."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per tradurre il testo sullo schermo, consenti la registrazione dello schermo per Lingrove in Impostazioni di Sistema."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы переводить текст на экране, разрешите Lingrove запись экрана в Системных настройках."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لترجمة النص على الشاشة، اسمح لـ Lingrove بتسجيل الشاشة في إعدادات النظام."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन के पाठ का अनुवाद करने के लिए सिस्टम सेटिंग्ज़ में Lingrove को स्क्रीन रिकॉर्डिंग की अनुमति दें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untuk menerjemahkan teks layar, izinkan Perekaman Layar bagi Lingrove di Pengaturan Sistem."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekrandaki metni çevirmek için Sistem Ayarları’nda Lingrove’a Ekran Kaydı izni verin."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若要翻譯螢幕上的文字，請在系統設定中允許 Lingrove 錄製螢幕。"
+          }
         }
       }
     },
@@ -49399,6 +50488,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "允许鼠标指向翻译快捷键"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタ位置の翻訳ショートカットを許可"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포인터 위치 번역 단축키 허용"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser le raccourci de traduction sous le pointeur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl für die Übersetzung unter dem Zeiger erlauben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir el atajo de traducción bajo el puntero"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir atalho de tradução sob o ponteiro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti scorciatoia di traduzione sotto il puntatore"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить сочетание клавиш для перевода под указателем"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح باختصار الترجمة تحت المؤشر"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पॉइंटर के नीचे अनुवाद के शॉर्टकट की अनुमति दें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izinkan pintasan terjemahan di bawah penunjuk"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretçi altındaki metni çevirme kısayoluna izin ver"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允許滑鼠取詞翻譯快捷鍵"
           }
         }
       }
@@ -49417,6 +50584,84 @@
             "state": "translated",
             "value": "允许屏幕区域翻译快捷键"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面領域の翻訳ショートカットを許可"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면 영역 번역 단축키 허용"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser le raccourci de traduction d’une zone de l’écran"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl für die Übersetzung eines Bildschirmbereichs erlauben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir el atajo de traducción de una zona de pantalla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir atalho de tradução de região da tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti scorciatoia di traduzione di un’area dello schermo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить сочетание клавиш для перевода области экрана"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح باختصار ترجمة منطقة من الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन क्षेत्र के अनुवाद के शॉर्टकट की अनुमति दें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izinkan pintasan terjemahan area layar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran bölgesi çevirisi kısayoluna izin ver"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允許螢幕區域翻譯快捷鍵"
+          }
         }
       }
     },
@@ -49433,6 +50678,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法识别原文语言，请尝试更大的文字范围。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストの言語を判別できませんでした。より広い範囲を指定してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 언어를 식별할 수 없습니다. 더 넓은 텍스트 영역을 선택하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’identifier la langue. Essayez une zone de texte plus grande."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Textsprache konnte nicht erkannt werden. Versuche einen größeren Textbereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo identificar el idioma. Prueba con una zona de texto más grande."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível identificar o idioma. Tente uma região de texto maior."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile identificare la lingua. Prova con un’area di testo più ampia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось определить язык текста. Выберите большую область текста."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذر تحديد لغة النص. جرب منطقة نص أكبر."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पाठ की भाषा नहीं पहचानी जा सकी। बड़ा पाठ क्षेत्र चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa teks tidak dapat dikenali. Coba area teks yang lebih besar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metnin dili belirlenemedi. Daha büyük bir metin bölgesi deneyin."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法辨識文字語言，請選取較大的文字區域。"
           }
         }
       }
@@ -49451,6 +50774,84 @@
             "state": "translated",
             "value": "启用鼠标指向翻译"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタ位置の翻訳を有効にする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포인터 위치 번역 활성화"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer la traduction sous le pointeur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung unter dem Zeiger aktivieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar la traducción bajo el puntero"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar tradução sob o ponteiro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abilita traduzione sotto il puntatore"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить перевод под указателем"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفعيل الترجمة تحت المؤشر"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पॉइंटर के नीचे अनुवाद चालू करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktifkan terjemahan di bawah penunjuk"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretçi altındaki metin çevirisini etkinleştir"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用滑鼠取詞翻譯"
+          }
         }
       }
     },
@@ -49467,6 +50868,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "启用屏幕区域翻译"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面領域の翻訳を有効にする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면 영역 번역 활성화"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer la traduction d’une zone de l’écran"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung von Bildschirmbereichen aktivieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar la traducción de zonas de pantalla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar tradução de região da tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abilita traduzione di un’area dello schermo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить перевод области экрана"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفعيل ترجمة منطقة من الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन क्षेत्र का अनुवाद चालू करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktifkan terjemahan area layar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran bölgesi çevirisini etkinleştir"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用螢幕區域翻譯"
           }
         }
       }
@@ -49485,6 +50964,84 @@
             "state": "translated",
             "value": "鼠标下未找到可识别的词。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタの下に単語が見つかりませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포인터 아래에서 단어를 찾지 못했습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mot trouvé sous le pointeur."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unter dem Zeiger wurde kein Wort gefunden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró ninguna palabra bajo el puntero."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma palavra foi encontrada sob o ponteiro."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna parola trovata sotto il puntatore."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Под указателем не найдено слово."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يتم العثور على كلمة تحت المؤشر."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पॉइंटर के नीचे कोई शब्द नहीं मिला।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada kata yang ditemukan di bawah penunjuk."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretçinin altında sözcük bulunamadı."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "滑鼠指標下方找不到單字。"
+          }
         }
       }
     },
@@ -49501,6 +51058,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "阅读翻译"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読解時の翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduction en lecture"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzung beim Lesen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al leer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tradução ao ler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzione durante la lettura"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод при чтении"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الترجمة أثناء القراءة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पढ़ते समय अनुवाद"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan saat membaca"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okurken çeviri"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閱讀翻譯"
           }
         }
       }
@@ -49519,6 +51154,84 @@
             "state": "translated",
             "value": "屏幕文字识别"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面 OCR"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면 OCR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR à l’écran"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildschirm-OCR"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR de pantalla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR da tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR dello schermo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR экрана"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التعرف الضوئي على نص الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन OCR"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR layar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran OCR"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "螢幕 OCR"
+          }
         }
       }
     },
@@ -49535,6 +51248,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "截图完成"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットを取得しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스크린샷 캡처됨"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture d’écran effectuée"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildschirmfoto aufgenommen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura de pantalla realizada"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura de tela realizada"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schermata acquisita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снимок экрана получен"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم التقاط لقطة الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीनशॉट लिया गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangkapan layar diambil"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran görüntüsü alındı"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已擷取螢幕截圖"
           }
         }
       }
@@ -49553,6 +51344,84 @@
             "state": "translated",
             "value": "请在同一块屏幕内框选区域。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 台のディスプレイ内で範囲を選択してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하나의 디스플레이 안에서 영역을 선택하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez une zone sur un seul écran."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen Bereich innerhalb eines einzelnen Displays aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona una zona dentro de una sola pantalla."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione uma região em uma única tela."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona un’area all’interno di un solo schermo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите область в пределах одного дисплея."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدد منطقة ضمن شاشة واحدة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "एक ही डिस्प्ले के भीतर क्षेत्र चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih area dalam satu layar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tek bir ekranın içinde bölge seçin."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請在單一顯示器內選取區域。"
+          }
         }
       }
     },
@@ -49569,6 +51438,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "请框选更小的屏幕区域。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "より小さい画面領域を選択してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "더 작은 화면 영역을 선택하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez une zone d’écran plus petite."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen kleineren Bildschirmbereich aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona una zona de pantalla más pequeña."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione uma região menor da tela."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona un’area dello schermo più piccola."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите меньшую область экрана."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدد منطقة أصغر من الشاشة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन का छोटा क्षेत्र चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih area layar yang lebih kecil."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha küçük bir ekran bölgesi seçin."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請選取較小的螢幕區域。"
           }
         }
       }
@@ -49587,6 +51534,84 @@
             "state": "translated",
             "value": "目标：鼠标指向的词"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "対象：ポインタ位置の単語"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대상: 포인터가 가리키는 단어"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible : mot sous le pointeur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel: Wort unter dem Zeiger"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino: palabra bajo el puntero"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alvo: palavra sob o ponteiro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinazione: parola sotto il puntatore"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект: слово под указателем"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الهدف: الكلمة تحت المؤشر"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लक्ष्य: पॉइंटर के नीचे का शब्द"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sasaran: kata di bawah penunjuk"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hedef: işaretçi altındaki sözcük"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目標：指標下的單字"
+          }
         }
       }
     },
@@ -49603,6 +51628,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "目标：屏幕区域"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "対象：画面領域"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대상: 화면 영역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible : zone de l’écran"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel: Bildschirmbereich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino: zona de pantalla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alvo: região da tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinazione: area dello schermo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект: область экрана"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الهدف: منطقة من الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लक्ष्य: स्क्रीन क्षेत्र"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sasaran: area layar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hedef: ekran bölgesi"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目標：螢幕區域"
           }
         }
       }
@@ -49621,6 +51724,84 @@
             "state": "translated",
             "value": "文字识别完成"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを認識しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 인식됨"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texte reconnu"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text erkannt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto reconocido"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto reconhecido"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testo riconosciuto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текст распознан"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم التعرف على النص"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पाठ पहचाना गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks dikenali"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metin tanındı"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已辨識文字"
+          }
         }
       }
     },
@@ -49637,6 +51818,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "原文已经是阅读翻译的目标语言。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストはすでに読解時の翻訳先言語です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트가 이미 읽기 번역의 대상 언어로 되어 있습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le texte est déjà dans la langue cible pour la lecture."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Text ist bereits in der Zielsprache zum Lesen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto ya está en el idioma de destino para la lectura."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O texto já está no idioma de destino para leitura."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il testo è già nella lingua di destinazione per la lettura."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текст уже написан на языке перевода при чтении."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النص مكتوب بالفعل باللغة المستهدفة للترجمة أثناء القراءة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पाठ पहले से पढ़ते समय अनुवाद की लक्ष्य भाषा में है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks sudah dalam bahasa tujuan untuk membaca."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metin zaten okuma çevirisinin hedef dilinde."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字已是閱讀翻譯的目標語言。"
           }
         }
       }
@@ -49655,6 +51914,84 @@
             "state": "translated",
             "value": "翻译屏幕区域"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面領域を翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면 영역 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire une zone de l’écran"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildschirmbereich übersetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir una zona de pantalla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir região da tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci un’area dello schermo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести область экрана"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة منطقة من الشاشة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन क्षेत्र का अनुवाद करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahkan area layar"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran bölgesini çevir"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯螢幕區域"
+          }
         }
       }
     },
@@ -49671,6 +52008,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "翻译鼠标指向的文字"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタ位置のテキストを翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포인터 아래 텍스트 번역"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire le texte sous le pointeur"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text unter dem Zeiger übersetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir el texto bajo el puntero"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir texto sob o ponteiro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci il testo sotto il puntatore"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести текст под указателем"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة النص تحت المؤشر"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पॉइंटर के नीचे के पाठ का अनुवाद करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahkan teks di bawah penunjuk"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretçi altındaki metni çevir"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯滑鼠指標下的文字"
           }
         }
       }
@@ -49689,6 +52104,84 @@
             "state": "translated",
             "value": "翻译会向所选引擎发送原文、可选的草稿参考和风格指令。阅读翻译仅发送所选、鼠标指向或 OCR 识别的文字及风格指令。语块对齐接收原文与译文，不包含原始截图、无关剪贴板内容或历史记录。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳では、対象テキスト、任意の下書き抜粋、文体の指示を選択したエンジンに送信します。読解時は、選択した文字、ポインタ位置の文字、または OCR で認識した文字と文体の指示のみを送信します。対応付けには対象テキストと訳文を使用します。元のスクリーンショット、無関係なクリップボード内容、履歴は含めません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역은 대상 텍스트, 선택적 초안 발췌문과 문체 지시를 선택한 엔진으로 보냅니다. 읽기 번역은 선택한 텍스트, 포인터 위치의 텍스트 또는 OCR로 인식한 텍스트와 문체 지시만 보냅니다. 정렬에는 대상 텍스트와 번역문을 전달합니다. 원본 스크린샷, 관련 없는 클립보드 내용과 기록은 제외합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduction transmet le texte cible, les éventuels extraits du brouillon et les consignes de style au moteur choisi. La lecture transmet uniquement le texte sélectionné, pointé ou reconnu par OCR et les consignes de style. L’alignement reçoit le texte cible et sa traduction. Les captures d’écran brutes, le contenu du presse-papiers sans rapport et l’historique sont exclus."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Übersetzung sendet den Zieltext, optionale Entwurfsauszüge und Stilvorgaben an die gewählte Engine. Beim Lesen werden nur ausgewählter, anvisierter oder per OCR erkannter Text und Stilvorgaben gesendet. Die Zuordnung erhält Zieltext und Übersetzung. Rohe Bildschirmfotos, unbeteiligte Zwischenablageinhalte und Verlauf sind ausgeschlossen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción envía el texto de destino, los extractos opcionales del borrador y las instrucciones de estilo al motor elegido. La lectura solo envía el texto seleccionado, señalado o reconocido por OCR y las instrucciones de estilo. La alineación recibe el texto de destino y la traducción. Se excluyen las capturas sin procesar, el contenido del portapapeles no relacionado y el historial."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tradução envia o texto-alvo, trechos opcionais do rascunho e instruções de estilo ao mecanismo escolhido. A leitura envia apenas o texto selecionado, apontado ou reconhecido por OCR e instruções de estilo. O alinhamento recebe o texto-alvo e a tradução. Capturas de tela brutas, conteúdo não relacionado da área de transferência e histórico são excluídos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduzione invia il testo di destinazione, gli estratti facoltativi della bozza e le istruzioni di stile al motore scelto. La lettura invia solo il testo selezionato, indicato o riconosciuto tramite OCR e le istruzioni di stile. L’allineamento riceve il testo di destinazione e la traduzione. Sono esclusi schermate originali, contenuti degli appunti non pertinenti e cronologia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод отправляет целевой текст, необязательные фрагменты черновика и указания по стилю выбранной системе. При чтении отправляются только выделенный, указанный или распознанный OCR текст и указания по стилю. Сопоставление получает целевой текст и перевод. Исходные снимки экрана, постороннее содержимое буфера обмена и история не передаются."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترسل الترجمة النص المستهدف ومقتطفات المسودة الاختيارية وتعليمات الأسلوب إلى المحرك المختار. وترسل القراءة فقط النص المحدد أو المشار إليه أو المستخرج ضوئيًا وتعليمات الأسلوب. وتتلقى المحاذاة النص المستهدف والترجمة. وتُستبعد لقطات الشاشة الأصلية ومحتويات الحافظة غير ذات الصلة والسجل."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुवाद चुने गए इंजन को लक्ष्य पाठ, वैकल्पिक मसौदा अंश और शैली निर्देश भेजता है। पढ़ते समय केवल चुना हुआ, पॉइंटर द्वारा इंगित या OCR से पहचाना गया पाठ और शैली निर्देश भेजे जाते हैं। संरेखण को लक्ष्य पाठ और अनुवाद मिलता है। मूल स्क्रीनशॉट, असंबंधित क्लिपबोर्ड सामग्री और इतिहास शामिल नहीं होते।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan mengirim teks sasaran, kutipan draf opsional, dan instruksi gaya ke mesin yang dipilih. Saat membaca, hanya teks yang dipilih, ditunjuk, atau dikenali OCR beserta instruksi gaya yang dikirim. Penyelarasan menerima teks sasaran dan terjemahan. Tangkapan layar mentah, isi papan klip yang tidak terkait, dan riwayat tidak disertakan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çeviri; hedef metni, isteğe bağlı taslak alıntılarını ve üslup talimatlarını seçilen motora gönderir. Okuma çevirisi yalnızca seçilen, işaret edilen veya OCR ile tanınan metni ve üslup talimatlarını gönderir. Hizalama hedef metni ve çeviriyi alır. Ham ekran görüntüleri, ilgisiz pano içeriği ve geçmiş dahil edilmez."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯會將目標文字、選用的草稿片段與風格指示傳送至所選引擎。閱讀翻譯僅傳送選取、指向或 OCR 辨識的文字與風格指示。語塊對齊接收目標文字及譯文，不包含原始截圖、無關的剪貼簿內容或歷史紀錄。"
+          }
         }
       }
     },
@@ -49706,6 +52199,84 @@
             "state": "translated",
             "value": "拾语的自动补全需要辅助功能和输入监控权限。屏幕录制用于屏幕上下文和 OCR 翻译。"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動補完には、Lingrove のアクセシビリティと入力監視の許可が必要です。画面収録を許可すると、画面の文脈と OCR 翻訳を利用できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 완성을 위해 Lingrove에 손쉬운 사용 및 입력 모니터링 권한이 필요합니다. 화면 기록은 화면 맥락과 OCR 번역에 사용됩니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove nécessite les autorisations Accessibilité et Surveillance de l’entrée pour l’autocomplétion. L’enregistrement de l’écran permet le contexte visuel et la traduction OCR."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove benötigt für die Autovervollständigung Bedienungshilfen und Eingabeüberwachung. Die Bildschirmaufnahme ermöglicht Bildschirmkontext und OCR-Übersetzung."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove necesita Accesibilidad y Monitorización de entrada para el autocompletado. La grabación de pantalla permite el contexto visual y la traducción OCR."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Lingrove precisa de Acessibilidade e Monitoramento de Entrada para o preenchimento automático. A gravação de tela permite contexto visual e tradução OCR."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove richiede Accessibilità e Monitoraggio input per il completamento automatico. La registrazione dello schermo abilita il contesto visivo e la traduzione OCR."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для автодополнения Lingrove нужны разрешения «Универсальный доступ» и «Мониторинг ввода». Запись экрана позволяет использовать экранный контекст и перевод OCR."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتاج Lingrove إلى إذني تسهيلات الاستخدام ومراقبة الإدخال للإكمال التلقائي. يتيح تسجيل الشاشة سياق الشاشة والترجمة بالتعرف الضوئي."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्वतः पूर्ण करने के लिए Lingrove को सुलभता और इनपुट मॉनिटरिंग की अनुमति चाहिए। स्क्रीन रिकॉर्डिंग से स्क्रीन संदर्भ और OCR अनुवाद उपलब्ध होते हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove memerlukan Aksesibilitas dan Pemantauan Input untuk pelengkapan otomatis. Perekaman Layar memungkinkan konteks layar dan terjemahan OCR."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove, otomatik tamamlama için Erişilebilirlik ve Giriş İzleme izinlerine ihtiyaç duyar. Ekran Kaydı, ekran bağlamı ve OCR çevirisini etkinleştirir."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingrove 的自動補全需要輔助使用與輸入監控權限；螢幕錄製可啟用螢幕上下文和 OCR 翻譯。"
+          }
         }
       }
     },
@@ -49722,6 +52293,84 @@
           "stringUnit": {
             "state": "translated",
             "value": "用于屏幕上下文，以及主动触发 OCR 翻译时截取所选区域或鼠标附近文字。纯文字补全无需此权限。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面の文脈を有効にし、OCR 翻訳を実行したときに選択領域またはポインタ付近の文字を取得します。文字のみの自動補完には不要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면 맥락을 활성화하고 OCR 번역을 직접 실행할 때 선택한 영역이나 포인터 주변의 텍스트를 캡처합니다. 텍스트 전용 자동 완성에는 필요하지 않습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active le contexte visuel et capture la zone choisie ou le texte près du pointeur lorsque vous déclenchez la traduction OCR. L’autocomplétion de texte seul fonctionne sans cette autorisation."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiviert Bildschirmkontext und erfasst beim Auslösen einer OCR-Übersetzung den gewählten Bereich oder Text nahe dem Zeiger. Reine Text-Autovervollständigung funktioniert auch ohne diese Berechtigung."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activa el contexto visual y, cuando inicias la traducción OCR, captura la zona elegida o el texto cerca del puntero. El autocompletado de texto funciona sin este permiso."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativa o contexto visual e, quando você aciona a tradução OCR, captura a região escolhida ou o texto perto do ponteiro. O preenchimento automático somente de texto funciona sem essa permissão."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abilita il contesto visivo e, quando avvii la traduzione OCR, acquisisce l’area scelta o il testo vicino al puntatore. Il completamento automatico del solo testo funziona senza questa autorizzazione."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включает экранный контекст и при запуске перевода OCR захватывает выбранную область или текст рядом с указателем. Автодополнение только по тексту работает без этого разрешения."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يفعّل سياق الشاشة ويلتقط المنطقة المختارة أو النص قرب المؤشر عندما تبدأ الترجمة بالتعرف الضوئي. يعمل الإكمال التلقائي المعتمد على النص فقط دون هذا الإذن."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्क्रीन संदर्भ चालू करता है और जब आप OCR अनुवाद शुरू करते हैं, तब चुने हुए क्षेत्र या पॉइंटर के पास का पाठ कैप्चर करता है। केवल पाठ पर आधारित स्वतः पूर्ण करना इस अनुमति के बिना भी चलता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mengaktifkan konteks layar dan menangkap area yang dipilih atau teks di dekat penunjuk saat Anda memicu terjemahan OCR. Pelengkapan otomatis berbasis teks tetap berfungsi tanpa izin ini."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran bağlamını etkinleştirir ve OCR çevirisini başlattığınızda seçilen bölgeyi veya işaretçinin yakınındaki metni yakalar. Yalnızca metne dayalı otomatik tamamlama bu izin olmadan çalışır."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用螢幕上下文，並在你主動觸發 OCR 翻譯時擷取所選區域或指標附近的文字。純文字自動補全不需要此權限。"
           }
         }
       }

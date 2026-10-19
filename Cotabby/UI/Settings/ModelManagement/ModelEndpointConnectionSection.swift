@@ -8,7 +8,7 @@ struct ModelEndpointConnectionSection: View {
     @ObservedObject var connection: OpenAICompatibleConnectionModel
     var credentialError: String?
     var privacyWarning: String?
-    var transmissionNote: String? = nil
+    var transmissionNote: String?
     let connect: () -> Void
     let reset: () -> Void
     let clearKey: () -> Void
@@ -33,8 +33,11 @@ struct ModelEndpointConnectionSection: View {
                 HStack(spacing: 8) {
                     HStack(spacing: 6) {
                         Group {
-                            if connection.state == .connecting { ProgressView().controlSize(.small) }
-                            else { Image(systemName: symbol).foregroundStyle(color) }
+                            if connection.state == .connecting {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: symbol).foregroundStyle(color)
+                            }
                         }.frame(width: 14)
                         Text(connection.state.summary).font(.caption.weight(.medium))
                             .foregroundStyle(color).lineLimit(2)

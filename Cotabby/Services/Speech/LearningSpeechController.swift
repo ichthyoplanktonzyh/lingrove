@@ -232,7 +232,8 @@ final class LearningSpeechController: ObservableObject {
         activeTarget = request.target
         activeRequest = request
         phase = .preparing
-        let audioRequest = SpeechAudioRequest(token: token, text: text, language: request.language, source: source, sampling: settings.generationProfile.sampling)
+        let audioRequest = SpeechAudioRequest(token: token, text: text, language: request.language, source: source,
+            sampling: settings.generationProfile.sampling)
         let isLocal: Bool
         if case .local = source { isLocal = true } else { isLocal = false }
         if isLocal { pcmPlayer.begin(sampleRate: SpeechLocalConfiguration.outputSampleRate, rate: rate, token: token) }

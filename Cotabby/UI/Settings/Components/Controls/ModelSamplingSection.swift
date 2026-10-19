@@ -33,14 +33,21 @@ struct ModelSamplingSection: View {
                             : String(localized: "Repetition penalty", table: "Learning"),
                         binding: field(\.repetitionPenalty, fallback: recommended.repetitionPenalty), range: 1...2, step: 0.05)
                     Picker(String(localized: "Random seed", table: "Learning"), selection: Binding(
-                        get: { overrides.seedMode }, set: { guard !overrides.isRecommended else { return }; var next = overrides; next.seedMode = $0; overrides = next })) {
+                        get: { overrides.seedMode },
+                        set: {
+                            guard !overrides.isRecommended else { return }
+                            var next = overrides
+                            next.seedMode = $0
+                            overrides = next
+                        })) {
                         ForEach(ModelSamplingOverrides.SeedMode.allCases) { Text($0.label).tag($0) }
                     }.pickerStyle(.menu)
                     if overrides.seedMode == .fixed {
                         LabeledContent(String(localized: "Seed value", table: "Learning")) {
                             TextField("", value: Binding(get: { Int(overrides.fixedSeed) }, set: {
                                 guard !overrides.isRecommended, overrides.seedMode == .fixed else { return }
-                                var next = overrides; next.fixedSeed = UInt32(clamping: min(max($0, 0), Int(UInt32.max - 1))); overrides = next
+                                var next = overrides; next.fixedSeed = UInt32(clamping: min(max($0, 0),
+                                    Int(UInt32.max - 1))); overrides = next
                             }), format: .number.grouping(.never))
                             .textFieldStyle(.roundedBorder).frame(width: 160)
                             .accessibilityLabel(String(localized: "Seed value", table: "Learning"))

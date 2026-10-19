@@ -185,7 +185,8 @@ final class LearningModelSettings: ObservableObject {
 
     func setGenerationProfile(_ value: LearningGenerationProfile, expectedIdentity: String? = nil) {
         if let expectedIdentity, expectedIdentity != contextIdentity { return }
-        guard parameters.set(.init(style: value.style.normalized, sampling: value.sampling.normalized), for: contextIdentity) else { return }
+        guard parameters.set(.init(style: value.style.normalized, sampling: value.sampling.normalized),
+            for: contextIdentity) else { return }
         objectWillChange.send()
         publishEffectiveChange()
     }

@@ -61,8 +61,7 @@ final class SuggestionEngineRouter {
             return try await generateRoutedSuggestion(for: request, onPartial: onPartial, onFallback: {
                 modelName = self.llamaModelNameProvider() ?? "Llama"
             })
-        }
-        catch {
+        } catch {
             let duration = began.duration(to: .now).components
             let ms = max(0, Int(duration.seconds * 1_000 + duration.attoseconds / 1_000_000_000_000_000))
             if suggestionSettings.isPerformanceTrackingEnabled {

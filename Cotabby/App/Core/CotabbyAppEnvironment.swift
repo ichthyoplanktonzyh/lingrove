@@ -52,6 +52,8 @@ final class CotabbyAppEnvironment {
 
     private var cancellables = Set<AnyCancellable>()
 
+    // This composition root assembles optional dependencies once; branches select collaborators.
+    // swiftlint:disable:next cyclomatic_complexity
     init() {
         CotabbyLogger.app.info("Building dependency graph")
         let configuration = SuggestionConfiguration.standard
@@ -474,10 +476,7 @@ final class CotabbyAppEnvironment {
         // pausing, rather than waiting for another edit or a model response to reach its guard.
         Publishers.Merge(lowPowerModeMonitor.$isLowPowerModeEnabled.map { _ in () },
             suggestionSettings.$isLowPowerModeAutoDisableEnabled.map { _ in () })
-        .sink {
-            [
-                weak lowPowerModeMonitor, weak suggestionSettings,
-                weak sentencePreview, weak reading] _ in
+        .sink { [weak lowPowerModeMonitor, weak suggestionSettings, weak sentencePreview, weak reading] _ in
                 Task { @MainActor in
                     guard lowPowerModeMonitor?.isLowPowerModeEnabled == true,
                           suggestionSettings?.isLowPowerModeAutoDisableEnabled == true else { return }

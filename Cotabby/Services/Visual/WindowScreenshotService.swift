@@ -54,7 +54,9 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
     @MainActor
     func captureRegion(_ cocoaRect: CGRect) async throws -> CGImage {
         guard CGPreflightScreenCaptureAccess() else {
-            throw LearningFailure.message(String(localized: "Allow Screen Recording for Lingrove in System Settings to translate screen text.", table: "Learning"))
+            throw LearningFailure.message(String(
+                localized: "Allow Screen Recording for Lingrove in System Settings to translate screen text.",
+                table: "Learning"))
         }
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(cocoaRect) }),
               let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {

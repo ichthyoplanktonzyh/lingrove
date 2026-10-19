@@ -188,6 +188,10 @@ sections in [ARCHITECTURE.md](ARCHITECTURE.md) before changing coordinator logic
 
 ## Test
 
+The strict SwiftLint gate uses `.swiftlint-baseline.json`, exported from commit `2d5549c2` before
+speech/reading integration. It preserves exact historical diagnostics while rejecting new or
+changed violations. Do not regenerate the baseline to absorb new feature warnings.
+
 Run the unit test suite:
 
 ```sh

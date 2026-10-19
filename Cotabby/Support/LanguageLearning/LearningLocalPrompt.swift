@@ -136,17 +136,14 @@ nonisolated enum LearningLocalPrompt {
                         table: "Learning", comment: "Error shown when a GGUF metadata string exceeds the supported read size."))
                 }
                 _ = try read(Int(length))
-            }
-            else if type == 9 {
+            } else if type == 9 {
                 let subtype = try integer(4), count = try integer(8)
                 guard count <= 1_000_000, subtype != 9 else {
                     throw LearningFailure.message(String(localized: "A GGUF metadata array is invalid.",
                         table: "Learning", comment: "Error shown when GGUF metadata contains an unsupported or oversized array."))
                 }
-                if let length = lengths[subtype] { _ = try read(Int(count) * length) }
-                else { for _ in 0..<count { try skip(subtype) } }
-            } else if let length = lengths[type] { _ = try read(length) }
-            else {
+                if let length = lengths[subtype] { _ = try read(Int(count) * length) } else { for _ in 0..<count { try skip(subtype) } }
+            } else if let length = lengths[type] { _ = try read(length) } else {
                 throw LearningFailure.message(String(localized: "A GGUF metadata type is invalid.",
                     table: "Learning", comment: "Error shown when GGUF metadata contains a type this parser cannot read."))
             }
@@ -164,10 +161,9 @@ nonisolated enum LearningLocalPrompt {
         var architecture: String?, name: String?, chatTemplate: String?
         for _ in 0..<count {
             let key = try string(), type = try integer(4)
-            if key == "general.architecture", type == 8 { architecture = try string() }
-            else if key == "general.name", type == 8 { name = try string() }
-            else if key == "tokenizer.chat_template", type == 8 { chatTemplate = try string() }
-            else { try skip(type) }
+            if key == "general.architecture", type == 8 { architecture = try string() } else if key == "general.name",
+                type == 8 { name = try string() } else if key == "tokenizer.chat_template",
+                type == 8 { chatTemplate = try string() } else { try skip(type) }
             // Most GGUFs put these fields first. Other families do not need the name, avoiding
             // a scan of the tokenizer arrays on every request. Gemma 3 needs its name; Hy-MT
             // needs its embedded template to distinguish incompatible tokenizer generations.

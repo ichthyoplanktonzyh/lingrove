@@ -24,11 +24,14 @@ final class LearningAnalysisService {
         }
     }
 
-    private func generateValidated(source: String, translation: String, sourceLanguage: LearningLanguage,
-                  targetLanguage: LearningLanguage,
-                  origin: LearningTranslationOrigin,
-                  readingSource: LearningReadingSource,
-                  onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
+    // These immutable request values jointly validate the source and model at each async boundary.
+    // swiftlint:disable:next function_parameter_count
+    private func generateValidated(
+        source: String, translation: String, sourceLanguage: LearningLanguage,
+        targetLanguage: LearningLanguage, origin: LearningTranslationOrigin,
+        readingSource: LearningReadingSource,
+        onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void
+    ) async throws -> LearningSentenceResult {
         let learning = settings.languageLearning
         let profile = learning.analysis.snapshot
         let validate: () throws -> Void = {

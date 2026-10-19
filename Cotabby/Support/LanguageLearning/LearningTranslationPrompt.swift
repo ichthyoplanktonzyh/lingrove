@@ -26,9 +26,13 @@ nonisolated enum LearningTranslationPrompt {
         /// adapter; opaque/custom aliases retain the existing generic instruction behavior.
         init(endpointModel: String) {
             let name = endpointModel.lowercased().filter { $0.isLetter || $0.isNumber }
-            if name.contains("translategemma") { self = .translateGemma }
-            else if name.contains("hymt") || name.contains("hunyuanmt") { self = .hyMT }
-            else { self = .generic }
+            if name.contains("translategemma") {
+                self = .translateGemma
+            } else if name.contains("hymt") || name.contains("hunyuanmt") {
+                self = .hyMT
+            } else {
+                self = .generic
+            }
         }
     }
 
@@ -42,7 +46,8 @@ nonisolated enum LearningTranslationPrompt {
         input: LearningTranslationInput, sourceLanguage: LearningLanguage,
         targetLanguage: LearningLanguage, family: Family
     ) throws -> Request {
-        let target = try render(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, family: family, style: input.style)
+        let target = try render(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage,
+            family: family, style: input.style)
         guard !input.referenceBefore.isEmpty || !input.referenceAfter.isEmpty else { return target }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -58,7 +63,8 @@ nonisolated enum LearningTranslationPrompt {
     static func render(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                        family: Family, style: LearningTranslationStyle = .init()) throws -> Request {
         if style.instruction != nil, !family.supportsStyleInstructions {
-            throw LearningFailure.message(String(localized: "This model does not support translation style instructions.", table: "Learning"))
+            throw LearningFailure.message(String(localized: "This model does not support translation style instructions.",
+                table: "Learning"))
         }
         // Reuse the existing source budget/encoding boundary for every model. Nothing silently
         // truncates a sentence merely because its specialist uses a different prompt format.
@@ -69,6 +75,8 @@ nonisolated enum LearningTranslationPrompt {
         let preference: String
         if let instruction = style.instruction {
             let data = try JSONEncoder().encode(instruction)
+            // JSONEncoder guarantees UTF-8, so decoding cannot discard a valid instruction.
+            // swiftlint:disable:next optional_data_string_conversion
             preference = "Translation style preference (JSON): " + String(decoding: data, as: UTF8.self) + ". "
                 + "Apply only the requested register. Preserve meaning, facts, negation, names and numbers. "
                 + "Return only the target translation, with no commentary.\n"

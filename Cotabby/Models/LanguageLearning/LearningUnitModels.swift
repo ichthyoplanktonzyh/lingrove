@@ -11,7 +11,7 @@ nonisolated struct LearningUnit: Equatable, Sendable, Identifiable {
     let kind: Kind
     let ranges: [NSRange]
     let words: [LearningDictionaryWord]
-    var entryID: String? = nil
+    var entryID: String?
 
     static func word(_ word: LearningDictionaryWord) -> Self {
         .init(id: word.range.location, surface: word.text, query: word.text, kind: .word,

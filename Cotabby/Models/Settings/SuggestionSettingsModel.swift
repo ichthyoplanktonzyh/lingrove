@@ -1815,8 +1815,10 @@ final class SuggestionSettingsModel: ObservableObject {
         return nil
     }
 
+    // swiftlint:disable cyclomatic_complexity
     /// Checks the same app's effective accept bindings plus the app-spanning global toggle. The
     /// enabled learning shortcut participates by default so per-app recorders also detect it.
+    /// Check all competing commands in a fixed priority order shared by the shortcut recorders.
     func conflictingPerAppShortcutName(
         forBundleIdentifier bundleIdentifier: String,
         keyCode: CGKeyCode,
@@ -1861,6 +1863,7 @@ final class SuggestionSettingsModel: ObservableObject {
         }
         return nil
     }
+    // swiftlint:enable cyclomatic_complexity
 
     private func shortcutBinding(for action: ShortcutAction) -> (keyCode: CGKeyCode, modifiers: ShortcutModifierMask) {
         switch action {

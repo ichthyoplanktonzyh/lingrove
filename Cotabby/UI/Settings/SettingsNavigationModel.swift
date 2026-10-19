@@ -73,15 +73,13 @@ final class SettingsNavigationModel: ObservableObject {
 
     func modelManagerBinding(for task: SettingsEngineTask) -> Binding<Bool> {
         Binding(get: { self.modelManagerTask == task }, set: { presented in
-            if presented { self.modelManagerTask = task }
-            else if self.modelManagerTask == task { self.modelManagerTask = nil }
+            if presented { self.modelManagerTask = task } else if self.modelManagerTask == task { self.modelManagerTask = nil }
         })
     }
 
     func advancedBinding(for task: SettingsEngineTask) -> Binding<Bool> {
         Binding(get: { self.expandedEngineTasks.contains(task) }, set: { expanded in
-            if expanded { self.expandedEngineTasks.insert(task) }
-            else { self.expandedEngineTasks.remove(task) }
+            if expanded { self.expandedEngineTasks.insert(task) } else { self.expandedEngineTasks.remove(task) }
         })
     }
     /// The setting search navigated to, while its arrival pulse is active. Distributed to rows
@@ -130,8 +128,10 @@ final class SettingsNavigationModel: ObservableObject {
         open(.languageLearning)
     }
 
+    // swiftlint:disable cyclomatic_complexity
     /// Search navigation: selects the item's pane and pulses the row. The pane's scaffold watches
     /// `highlightedItem` to perform the scroll.
+    /// One exhaustive navigation map keeps every searchable destination in the same transaction.
     func reveal(_ item: SettingsItem) {
         inspectedCompletionEngine = nil
         modelManagerTask = nil
@@ -141,7 +141,8 @@ final class SettingsNavigationModel: ObservableObject {
             switch item {
             case .translationModel, .translationSampling: engineTask = .translation
             case .alignmentModel: engineTask = .analysis
-            case .speechSampling, .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint, .speechEndpointModel, .speechEndpointVoice:
+            case .speechSampling, .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint,
+                .speechEndpointModel, .speechEndpointVoice:
                 engineTask = .speech
             default:
                 engineTask = .completion
@@ -160,6 +161,7 @@ final class SettingsNavigationModel: ObservableObject {
         revealedItem = item
         showArrival(for: item)
     }
+    // swiftlint:enable cyclomatic_complexity
 
     /// An explicit configure action has mounted the previously hidden row. Re-run its one-shot
     /// arrival after layout, even if the same search target's decorative pulse is still active.

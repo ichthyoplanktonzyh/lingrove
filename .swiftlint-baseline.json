@@ -1,0 +1,1606 @@
+[
+  {
+    "text": "            service.settings.snapshotPublisher.map(\\.disabledAppBundleIdentifiers).removeDuplicates().dropFirst().map { _ in () }.eraseToAnyPublisher(),",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
+        "line": 53
+      },
+      "reason": "Line should be 140 characters or less; currently it has 152 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            service.settings.snapshotPublisher.map(\\.isLowPowerModeAutoDisableEnabled).removeDuplicates().dropFirst().map { _ in () }.eraseToAnyPublisher()",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
+        "line": 54
+      },
+      "reason": "Line should be 140 characters or less; currently it has 155 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            service.settings.snapshotPublisher.map(\\.isLowPowerModeAutoDisableEnabled).removeDuplicates().dropFirst().map { _ in () }.eraseToAnyPublisher(),",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "line": 119
+      },
+      "reason": "Line should be 140 characters or less; currently it has 156 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            service.settings.snapshotPublisher.map(\\.disabledAppBundleIdentifiers).removeDuplicates().dropFirst().map { _ in () }.eraseToAnyPublisher()",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "line": 120
+      },
+      "reason": "Line should be 140 characters or less; currently it has 151 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private func startAnalysis() {",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "line": 406
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 12",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private func clear() { cancelWork(); document = nil; expanded = false; dismissedSource = nil; cache.removeAll(); analysisCache.removeAll(); unitCache.removeAll(); panel.hide() }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "line": 586
+      },
+      "reason": "Line should be 140 characters or less; currently it has 181 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    init() {",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 52
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 13",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: \"learning-expressions\", withExtension: \"json\"))",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 378
+      },
+      "reason": "Line should be 140 characters or less; currently it has 142 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                weak lowPowerModeMonitor, weak suggestionSettings,",
+    "violation": {
+      "location": {
+        "character": 22,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 448
+      },
+      "reason": "Closure parameters should be on the same line as opening brace",
+      "ruleDescription": "Closure parameters should be on the same line as opening brace",
+      "ruleIdentifier": "closure_parameter_position",
+      "ruleName": "Closure Parameter Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                weak lowPowerModeMonitor, weak suggestionSettings,",
+    "violation": {
+      "location": {
+        "character": 48,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 448
+      },
+      "reason": "Closure parameters should be on the same line as opening brace",
+      "ruleDescription": "Closure parameters should be on the same line as opening brace",
+      "ruleIdentifier": "closure_parameter_position",
+      "ruleName": "Closure Parameter Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                weak sentencePreview] _ in",
+    "violation": {
+      "location": {
+        "character": 22,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 449
+      },
+      "reason": "Closure parameters should be on the same line as opening brace",
+      "ruleDescription": "Closure parameters should be on the same line as opening brace",
+      "ruleIdentifier": "closure_parameter_position",
+      "ruleName": "Closure Parameter Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                weak sentencePreview] _ in",
+    "violation": {
+      "location": {
+        "character": 39,
+        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "line": 449
+      },
+      "reason": "Closure parameters should be on the same line as opening brace",
+      "ruleDescription": "Closure parameters should be on the same line as opening brace",
+      "ruleIdentifier": "closure_parameter_position",
+      "ruleName": "Closure Parameter Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var translationModel: LearningModelSnapshot? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Models/LanguageLearning/LanguageLearningSettings.swift",
+        "line": 159
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func generate(modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "line": 9
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 8",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func generate(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "line": 16
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 7",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func translationPlan(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "line": 21
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 7",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func generate(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "line": 34
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 7",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func translationPlan(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "line": 43
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 7",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    @Published var batteryProfile: LearningPowerProfile { didSet { saveProfile(batteryProfile, \"batteryProfile\"); publishEffectiveChange() } }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "line": 101
+      },
+      "reason": "Line should be 140 characters or less; currently it has 142 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    @Published var pluggedInProfile: LearningPowerProfile { didSet { saveProfile(pluggedInProfile, \"pluggedInProfile\"); publishEffectiveChange() } }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "line": 102
+      },
+      "reason": "Line should be 140 characters or less; currently it has 148 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            template: initialBackend == .local ? LearningChatTemplate(rawValue: defaults.string(forKey: key + \"template\") ?? \"\") ?? .automatic : .automatic)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "line": 131
+      },
+      "reason": "Line should be 140 characters or less; currently it has 156 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        try await generateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, onUpdate: { _ in }).translation",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Models/LanguageLearning/LearningSentenceModels.swift",
+        "line": 51
+      },
+      "reason": "Line should be 140 characters or less; currently it has 146 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var entryID: String? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Models/LanguageLearning/LearningUnitModels.swift",
+        "line": 14
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        let c = try decoder.container(keyedBy: CodingKeys.self)",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/Models/Runtime/Metrics/ModelRequestMetrics.swift",
+        "line": 63
+      },
+      "reason": "Variable name 'c' should be between 2 and 40 characters long",
+      "ruleDescription": "Identifier names should only contain alphanumeric characters and start with a lowercase character or should only contain capital letters. In an exception to the above, variable names may start with a capital letter when they are declared as static. Variable names should not be too long or too short.",
+      "ruleIdentifier": "identifier_name",
+      "ruleName": "Identifier Name",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func applyingContext(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Models/Settings/SuggestionSettingsModel+Context.swift",
+        "line": 71
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 6",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private func restoringBlockBreaks(",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/Services/Focus/Resolution/FocusSnapshotResolver.swift",
+        "line": 1555
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 6",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                  targetLanguage: LearningLanguage,",
+    "violation": {
+      "location": {
+        "character": 19,
+        "file": "Cotabby/Services/LanguageLearning/LearningAnalysisService.swift",
+        "line": 25
+      },
+      "reason": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
+      "ruleDescription": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
+      "ruleIdentifier": "vertical_parameter_alignment",
+      "ruleName": "Vertical Parameter Alignment",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                  onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {",
+    "violation": {
+      "location": {
+        "character": 19,
+        "file": "Cotabby/Services/LanguageLearning/LearningAnalysisService.swift",
+        "line": 26
+      },
+      "reason": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
+      "ruleDescription": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
+      "ruleIdentifier": "vertical_parameter_alignment",
+      "ruleName": "Vertical Parameter Alignment",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return try await LearningRequestTrace.$requestID.withValue(LearningRequestTrace.requestID ?? RequestID.generate()) {",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/LanguageLearning/LearningExpressionService+Sentence.swift",
+        "line": 26
+      },
+      "reason": "Prefer implicit returns in closures, functions and getters",
+      "ruleDescription": "Prefer implicit returns in closures, functions and getters",
+      "ruleIdentifier": "implicit_return",
+      "ruleName": "Implicit Return",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func generate(modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "line": 52
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 6",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func generate(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "line": 61
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 12",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    onDelta(String(decoding: bytes[emitted...], as: UTF8.self))",
+    "violation": {
+      "location": {
+        "character": 29,
+        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "line": 131
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    func translationPlan(",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "line": 144
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 7",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            let cancelled = work.isCancelled || Task.isCancelled || taskID != id || profile.snapshot != snapshot || error is CancellationError",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "line": 215
+      },
+      "reason": "Line should be 140 characters or less; currently it has 142 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private func runLocal(model: URL, snapshot: LearningModelSnapshot, prompt: String, maxTokens: Int,",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "line": 229
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 6",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    onLoad: { pair.continuation.yield(.loaded($0)) }) { pair.continuation.yield(.text($0)) }",
+    "violation": {
+      "location": {
+        "character": 71,
+        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "line": 244
+      },
+      "reason": "Trailing closure syntax should not be used when passing more than one closure argument",
+      "ruleDescription": "Trailing closure syntax should not be used when passing more than one closure argument",
+      "ruleIdentifier": "multiple_closures_with_trailing_closure",
+      "ruleName": "Multiple Closures with Trailing Closure",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        guard !Task.isCancelled, generationAllowed, generationEligibility(), warmupEligibility(), residency == .warm, snapshot.backend == .local,",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "line": 291
+      },
+      "reason": "Line should be 140 characters or less; currently it has 145 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "",
+    "violation": {
+      "location": {
+        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "line": 379
+      },
+      "reason": "Files should have a single trailing newline",
+      "ruleDescription": "Files should have a single trailing newline",
+      "ruleIdentifier": "trailing_newline",
+      "ruleName": "Trailing Newline",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            rawOutput += String(decoding: delta.utf8.prefix(48_000 - rawOutput.utf8.count), as: UTF8.self)",
+    "violation": {
+      "location": {
+        "character": 26,
+        "file": "Cotabby/Services/LanguageLearning/LearningRequestTelemetry.swift",
+        "line": 38
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return try await telemetry.perform(source: .translation, profile: model.profile.snapshot) {",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/LanguageLearning/LearningTranslationService.swift",
+        "line": 19
+      },
+      "reason": "Prefer implicit returns in closures, functions and getters",
+      "ruleDescription": "Prefer implicit returns in closures, functions and getters",
+      "ruleIdentifier": "implicit_return",
+      "ruleName": "Implicit Return",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        let units = current.units.isEmpty ? LearningUnitPolicy.fallback(in: current.translation, language: current.targetLanguage) : current.units",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Services/Presentation/LearningSentencePanel.swift",
+        "line": 157
+      },
+      "reason": "Line should be 140 characters or less; currently it has 146 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return try native.withOperation {",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "line": 47
+      },
+      "reason": "Prefer implicit returns in closures, functions and getters",
+      "ruleDescription": "Prefer implicit returns in closures, functions and getters",
+      "ruleIdentifier": "implicit_return",
+      "ruleName": "Implicit Return",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return try native.withOperation {",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "line": 120
+      },
+      "reason": "Prefer implicit returns in closures, functions and getters",
+      "ruleDescription": "Prefer implicit returns in closures, functions and getters",
+      "ruleIdentifier": "implicit_return",
+      "ruleName": "Implicit Return",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return try native.withOperation {",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "line": 163
+      },
+      "reason": "Prefer implicit returns in closures, functions and getters",
+      "ruleDescription": "Prefer implicit returns in closures, functions and getters",
+      "ruleIdentifier": "implicit_return",
+      "ruleName": "Implicit Return",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                     cancelSequence: { engine.cancelSequence($0) }) {",
+    "violation": {
+      "location": {
+        "character": 69,
+        "file": "Cotabby/Services/Runtime/Native/NativeLlamaSession.swift",
+        "line": 72
+      },
+      "reason": "Trailing closure syntax should not be used when passing more than one closure argument",
+      "ruleDescription": "Trailing closure syntax should not be used when passing more than one closure argument",
+      "ruleIdentifier": "multiple_closures_with_trailing_closure",
+      "ruleName": "Multiple Closures with Trailing Closure",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        }",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/Services/Runtime/SuggestionEngineRouter.swift",
+        "line": 64
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            recordPerformanceMetric(modelName: endpointModelNameProvider() ?? \"Local Endpoint\", latency: result.latency, requestID: request.requestID)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Services/Runtime/SuggestionEngineRouter.swift",
+        "line": 142
+      },
+      "reason": "Line should be 140 characters or less; currently it has 150 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        var located: [(index: Int, source: NSRange, target: NSRange)] = []",
+    "violation": {
+      "location": {
+        "character": 23,
+        "file": "Cotabby/Support/LanguageLearning/LearningAlignmentParser.swift",
+        "line": 33
+      },
+      "reason": "Tuples should have at most 2 members",
+      "ruleDescription": "Tuples shouldn't have too many members. Create a custom type instead.",
+      "ruleIdentifier": "large_tuple",
+      "ruleName": "Large Tuple",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            var unresolved: [(index: Int, source: [NSRange], target: [NSRange])] = []",
+    "violation": {
+      "location": {
+        "character": 30,
+        "file": "Cotabby/Support/LanguageLearning/LearningAlignmentParser.swift",
+        "line": 36
+      },
+      "reason": "Tuples should have at most 2 members",
+      "ruleDescription": "Tuples shouldn't have too many members. Create a custom type instead.",
+      "ruleIdentifier": "large_tuple",
+      "ruleName": "Large Tuple",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        Copy exact continuous fragments; do not rewrite. Pair by meaning, not word order. A pair should expose a reusable phrase or grammar construction. Keep collocations, negation and conditions intact. Split long sentences by clause. Only greetings or fixed expressions may stay whole.",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningAnalysisPrompt.swift",
+        "line": 17
+      },
+      "reason": "Line should be 200 characters or less; currently it has 288 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "error"
+    }
+  },
+  {
+    "text": "        \\(String(decoding: evidence, as: UTF8.self))",
+    "violation": {
+      "location": {
+        "character": 11,
+        "file": "Cotabby/Support/LanguageLearning/LearningAnalysisPrompt.swift",
+        "line": 22
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    static func resolve(_ template: LearningChatTemplate, modelURL: URL) throws -> LearningChatTemplate {",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 7
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 11",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        case .llama3: return (\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\n\", \"<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\")",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 78
+      },
+      "reason": "Line should be 140 characters or less; currently it has 157 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private static func modelMetadata(_ url: URL) throws -> (architecture: String, name: String?, chatTemplate: String?) {",
+    "violation": {
+      "location": {
+        "character": 61,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 87
+      },
+      "reason": "Tuples should have at most 2 members",
+      "ruleDescription": "Tuples shouldn't have too many members. Create a custom type instead.",
+      "ruleIdentifier": "large_tuple",
+      "ruleName": "Large Tuple",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            return String(decoding: try read(Int(length)), as: UTF8.self)",
+    "violation": {
+      "location": {
+        "character": 20,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 128
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            }",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 139
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                if let length = lengths[subtype] { _ = try read(Int(count) * length) }",
+    "violation": {
+      "location": {
+        "character": 86,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 146
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            } else if let length = lengths[type] { _ = try read(length) }",
+    "violation": {
+      "location": {
+        "character": 73,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 148
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            if key == \"general.architecture\", type == 8 { architecture = try string() }",
+    "violation": {
+      "location": {
+        "character": 87,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 167
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            else if key == \"general.name\", type == 8 { name = try string() }",
+    "violation": {
+      "location": {
+        "character": 76,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 168
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            else if key == \"tokenizer.chat_template\", type == 8 { chatTemplate = try string() }",
+    "violation": {
+      "location": {
+        "character": 95,
+        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "line": 169
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    static func prompt(",
+    "violation": {
+      "location": {
+        "character": 12,
+        "file": "Cotabby/Support/LanguageLearning/LearningTranslationBudget.swift",
+        "line": 23
+      },
+      "reason": "Function should have 5 parameters or less: it currently has 8",
+      "ruleDescription": "Number of function parameters should be low.",
+      "ruleIdentifier": "function_parameter_count",
+      "ruleName": "Function Parameter Count",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            if name.contains(\"translategemma\") { self = .translateGemma }",
+    "violation": {
+      "location": {
+        "character": 73,
+        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "line": 25
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            else if name.contains(\"hymt\") || name.contains(\"hunyuanmt\") { self = .hyMT }",
+    "violation": {
+      "location": {
+        "character": 88,
+        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "line": 26
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            + \"REFERENCE EXCERPTS (JSON):\\n\" + String(decoding: reference, as: UTF8.self) + \"\\n\\nTARGET TRANSLATION TASK:\\n\"",
+    "violation": {
+      "location": {
+        "character": 48,
+        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "line": 50
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                \"Your goal is to accurately convey the meaning and nuances of the original \\(from.name) text while adhering to \\(to.name) grammar, vocabulary, and cultural sensitivities.\\n\" +",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "line": 74
+      },
+      "reason": "Line should be 140 characters or less; currently it has 191 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    query: surface.split(whereSeparator: \\.isWhitespace).joined(separator: \" \"), kind: .expression, ranges: [range], words: parts, entryID: match.entry.id))",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 71
+      },
+      "reason": "Line should be 140 characters or less; currently it has 172 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private func pattern(at index: Int, words: [LearningDictionaryWord], value: NSString)",
+    "violation": {
+      "location": {
+        "character": 13,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 87
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 14",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        -> (unit: LearningUnit, slots: [LearningDictionaryWord], length: Int)? {",
+    "violation": {
+      "location": {
+        "character": 12,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 88
+      },
+      "reason": "Tuples should have at most 2 members",
+      "ruleDescription": "Tuples shouldn't have too many members. Create a custom type instead.",
+      "ruleIdentifier": "large_tuple",
+      "ruleName": "Large Tuple",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    let contractions = [\"it's\", \"that's\", \"there's\", \"here's\", \"what's\", \"who's\", \"where's\", \"when's\", \"why's\", \"how's\", \"let's\", \"he's\", \"she's\"]",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 98
+      },
+      "reason": "Line should be 140 characters or less; currently it has 162 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                          [\"my\", \"your\", \"his\", \"her\", \"its\", \"our\", \"their\"].contains(key) || key.hasSuffix(\"'s\") else { matches = false; break }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 100
+      },
+      "reason": "Line should be 140 characters or less; currently it has 146 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    guard [\"me\", \"you\", \"him\", \"her\", \"us\", \"them\", \"someone\", \"somebody\"].contains(key) || word.text.first?.isUppercase == true else { matches = false; break }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 103
+      },
+      "reason": "Line should be 140 characters or less; currently it has 176 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    guard [\"it\", \"this\", \"that\", \"these\", \"those\", \"something\", \"anything\", \"everything\", \"nothing\"].contains(key) else { matches = false; break }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 109
+      },
+      "reason": "Line should be 140 characters or less; currently it has 162 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                } else if token == key { fixed.append(word.range) }",
+    "violation": {
+      "location": {
+        "character": 67,
+        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "line": 111
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    private static func allocate(_ sections: [PromptSection], contextBudget: Int, tokenBudget: Int?, conservative: Bool) -> [PromptSection] {",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/Prompting/BaseCompletionPromptRenderer.swift",
+        "line": 132
+      },
+      "reason": "Line should be 140 characters or less; currently it has 141 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        let notes: [(String, String, Int)] = [",
+    "violation": {
+      "location": {
+        "character": 21,
+        "file": "Cotabby/Support/Prompting/FoundationModelPromptRenderer.swift",
+        "line": 96
+      },
+      "reason": "Tuples should have at most 2 members",
+      "ruleDescription": "Tuples shouldn't have too many members. Create a custom type instead.",
+      "ruleIdentifier": "large_tuple",
+      "ruleName": "Large Tuple",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    static func prompt(for request: SuggestionRequest) -> String {",
+    "violation": {
+      "location": {
+        "character": 5,
+        "file": "Cotabby/Support/Prompting/FoundationModelPromptRenderer.swift",
+        "line": 125
+      },
+      "reason": "Function should have complexity 10 or less; currently complexity is 11",
+      "ruleDescription": "Complexity of function bodies should be limited.",
+      "ruleIdentifier": "cyclomatic_complexity",
+      "ruleName": "Cyclomatic Complexity",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        return String(decoding: (try? JSONEncoder().encode(fields)) ?? Data(), as: UTF8.self)",
+    "violation": {
+      "location": {
+        "character": 16,
+        "file": "Cotabby/Support/Prompting/ModelContextBudget.swift",
+        "line": 29
+      },
+      "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleDescription": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
+      "ruleIdentifier": "optional_data_string_conversion",
+      "ruleName": "Optional Data -> String Conversion",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    \"The full target and output reserve exceed this model's budget. Select less text or raise the budget. Nothing was shortened or replaced.\",",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/Support/Prompting/ModelContextBudget.swift",
+        "line": 52
+      },
+      "reason": "Line should be 140 characters or less; currently it has 158 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var session: LearningDictionarySession? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/InlineFeatures/LearningDetailCard.swift",
+        "line": 11
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceCard.swift",
+        "line": 15
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                        ? String(localized: \"Collapse\", table: \"Learning\", comment: \"Button that collapses the expanded sentence-learning card.\")",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceCard.swift",
+        "line": 127
+      },
+      "reason": "Line should be 140 characters or less; currently it has 145 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var selectedChunk: Int? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "line": 13
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "line": 17
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "              layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer).contains(local) else { return }",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "line": 150
+      },
+      "reason": "Line should be 140 characters or less; currently it has 143 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            if let chunk = chunks.first(where: { (source ? $0.sourceRanges : $0.targetRanges).contains { NSLocationInRange(location, $0) } }) {",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "line": 153
+      },
+      "reason": "Line should be 140 characters or less; currently it has 143 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        if let lookupUnit { lookupUnit(.init(unit: unit, bounds: bounds, font: font), self) }",
+    "violation": {
+      "location": {
+        "character": 93,
+        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "line": 169
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                keybindRow(title: String(localized: \"Toggle Lingrove\", table: \"Learning\"), keyLabel: suggestionSettings.globalToggleKeyLabel)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Onboarding/Welcome/WelcomeKeybindStepView.swift",
+        "line": 30
+      },
+      "reason": "Line should be 140 characters or less; currently it has 141 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                PerAppShortcutRowsView(suggestionSettings: settings, recording: recording, bundleIdentifier: app.bundleIdentifier, displayName: app.displayName)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Components/Controls/AppShortcutSection.swift",
+        "line": 43
+      },
+      "reason": "Line should be 140 characters or less; currently it has 160 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var catalog: [DownloadableRuntimeModel]? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/Settings/ModelManagement/DownloadableModelCatalogView.swift",
+        "line": 14
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var select: (() -> Void)? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/Settings/ModelManagement/InstalledRuntimeModelRow.swift",
+        "line": 9
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var transmissionNote: String? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
+        "line": 11
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                            if connection.state == .connecting { ProgressView().controlSize(.small) }",
+    "violation": {
+      "location": {
+        "character": 101,
+        "file": "Cotabby/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
+        "line": 36
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Apps/PerAppShortcutRowsView.swift",
+        "line": 14
+      },
+      "reason": "Limit vertical whitespace to a single empty line; currently 2",
+      "ruleDescription": "Limit vertical whitespace to a single empty line",
+      "ruleIdentifier": "vertical_whitespace",
+      "ruleName": "Vertical Whitespace",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                do { try suggestionSettings.saveOpenAICompatibleAPIKey(nil); endpointCredentialError = nil }",
+    "violation": {
+      "location": {
+        "character": 108,
+        "file": "Cotabby/UI/Settings/Panes/Engine/EngineAndModelPaneView+Endpoint.swift",
+        "line": 18
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "        for name in [profile.endpointModel, profile.batteryProfile.endpointModel, profile.pluggedInProfile.endpointModel] where !name.isEmpty {",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
+        "line": 86
+      },
+      "reason": "Line should be 140 characters or less; currently it has 143 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                ? String(localized: \"Endpoint · enter model identifier\", table: \"Learning\",",
+    "violation": {
+      "location": {
+        "character": 17,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
+        "line": 99
+      },
+      "reason": "Using ternary to call Void functions should be avoided",
+      "ruleDescription": "Using ternary to call Void functions should be avoided",
+      "ruleIdentifier": "void_function_in_ternary",
+      "ruleName": "Void Function in Ternary",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "    var searchService: HuggingFaceSearchService? = nil",
+    "violation": {
+      "location": {
+        "character": 9,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 11
+      },
+      "reason": "Optional should be implicitly initialized without nil",
+      "ruleDescription": "Optionals should be consistently initialized, either with `= nil` or without.",
+      "ruleIdentifier": "implicit_optional_initialization",
+      "ruleName": "Implicit Optional Initialization",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    tokens: Binding(get: { profile.snapshot.contextWindowTokens }, set: { profile.setContextWindowTokens($0, expectedIdentity: contextIdentity) }),",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 33
+      },
+      "reason": "Line should be 140 characters or less; currently it has 163 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    isEndpoint: profile.snapshot.backend == .endpoint, reset: { profile.setContextWindowTokens(nil, expectedIdentity: contextIdentity) })",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 36
+      },
+      "reason": "Line should be 140 characters or less; currently it has 153 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            do { apiKey = try profile.apiKey() ?? \"\"; credentialError = nil }",
+    "violation": {
+      "location": {
+        "character": 77,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 71
+      },
+      "reason": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleDescription": "Else and catch should be on the same line, one space after the previous declaration",
+      "ruleIdentifier": "statement_position",
+      "ruleName": "Statement Position",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                if !profile.snapshot.localModel.isEmpty, !controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 143
+      },
+      "reason": "Line should be 140 characters or less; currently it has 150 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                    catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels : LearningRuntimeCatalog.analysisModels)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "line": 174
+      },
+      "reason": "Line should be 140 characters or less; currently it has 141 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                        \"The target remains the current sentence or your selection. Only reference text may be shortened to fit the budget.\",",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "line": 97
+      },
+      "reason": "Line should be 140 characters or less; currently it has 141 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                ? String(localized: \"Local GGUF · no model selected\", table: \"Learning\",",
+    "violation": {
+      "location": {
+        "character": 17,
+        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "line": 166
+      },
+      "reason": "Using ternary to call Void functions should be avoided",
+      "ruleDescription": "Using ternary to call Void functions should be avoided",
+      "ruleIdentifier": "void_function_in_ternary",
+      "ruleName": "Void Function in Ternary",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "                ? String(localized: \"Endpoint · no model entered\", table: \"Learning\",",
+    "violation": {
+      "location": {
+        "character": 17,
+        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "line": 172
+      },
+      "reason": "Using ternary to call Void functions should be avoided",
+      "ruleDescription": "Using ternary to call Void functions should be avoided",
+      "ruleIdentifier": "void_function_in_ternary",
+      "ruleName": "Void Function in Ternary",
+      "severity": "warning"
+    }
+  },
+  {
+    "text": "            LearningShortcutRows(settings: suggestionSettings.languageLearning, suggestionSettings: suggestionSettings, recording: recording)",
+    "violation": {
+      "location": {
+        "character": 1,
+        "file": "Cotabby/UI/Settings/Panes/ShortcutsPaneView.swift",
+        "line": 145
+      },
+      "reason": "Line should be 140 characters or less; currently it has 141 characters",
+      "ruleDescription": "Lines should not span too many characters.",
+      "ruleIdentifier": "line_length",
+      "ruleName": "Line Length",
+      "severity": "warning"
+    }
+  }
+]

@@ -20,7 +20,10 @@ nonisolated struct LearningTranslationStyle: Codable, Equatable, Hashable, Senda
     var customInstruction = ""
 
     var normalized: Self {
-        .init(register: register, customInstruction: String(String(decoding: customInstruction.utf8.prefix(4_000), as: UTF8.self).prefix(1_000)))
+        // The byte cap may split the final UTF-8 scalar; decoding deliberately replaces it.
+        // swiftlint:disable:next optional_data_string_conversion
+        .init(register: register, customInstruction: String(String(decoding: customInstruction.utf8.prefix(4_000),
+            as: UTF8.self).prefix(1_000)))
     }
 
     var effective: Self { register == .custom ? normalized : .init(register: register) }
