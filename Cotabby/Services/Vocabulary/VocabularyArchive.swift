@@ -22,7 +22,7 @@ actor VocabularyArchive {
             do {
                 loaded = try JSONDecoder().decode(VocabularyDocument.self, from: Data(contentsOf: url))
             } catch { throw VocabularyError.invalidArchive }
-            guard loaded.schemaVersion == 1 else { throw VocabularyError.unsupportedVersion }
+            guard loaded.schemaVersion == 2 else { throw VocabularyError.unsupportedVersion }
             guard Set(loaded.entries.map(\.id)).count == loaded.entries.count else { throw VocabularyError.invalidArchive }
             guard Set(loaded.entries.map(VocabularyPolicy.entryKey)).count == loaded.entries.count,
                   loaded.entries.allSatisfy({ entry in
@@ -70,6 +70,10 @@ actor VocabularyArchive {
             VocabularyMeaning(text: entry.meaning, language: entry.meaningLanguage))
         merged.meaning = meaning.text
         merged.meaningLanguage = meaning.language
+        if entry.meaning != baseline.meaning || entry.meaningLanguage != baseline.meaningLanguage ||
+            entry.meaningOrigin == .user && baseline.meaningOrigin != .user {
+            merged.meaningOrigin = .user
+        }
         if entry.meaning != baseline.meaning || entry.meaningLanguage != baseline.meaningLanguage,
            merged.isSavedWithoutContext {
             if let index = merged.standaloneMeanings.firstIndex(where: { $0.language == meaning.language }) {
@@ -111,7 +115,16 @@ actor VocabularyArchive {
             }
             guard example != before else { continue }
             guard let index = merged.firstIndex(where: { $0.id == example.id }) else { throw VocabularyError.editConflict }
-            merged[index] = try merge(before, merged[index], example)
+            var editedExample = example
+            if example.text != before.text, example.meaning.isEmpty {
+                // The editor clears a stale sense when the source changes. That automatic clear
+                // is not a user-authored blank; a new explanation may fill the new occurrence.
+                editedExample.meaningOrigin = .captured
+            } else if example.meaning != before.meaning || example.meaningLanguage != before.meaningLanguage {
+                editedExample.captureIdentity = before.captureIdentity ?? .init(meaningLanguage: before.meaningLanguage)
+                editedExample.meaningOrigin = .user
+            }
+            merged[index] = try merge(before, merged[index], editedExample)
         }
         for before in baseline where !edited.contains(where: { $0.id == before.id }) {
             if let item = merged.first(where: { $0.id == before.id }), item != before { throw VocabularyError.editConflict }

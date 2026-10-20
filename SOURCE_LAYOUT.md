@@ -400,11 +400,15 @@ The autocomplete inference package and its revision remain separate.
 
 ## Vocabulary notebook
 
-`Models/Vocabulary` owns durable entries, examples with UTF-16 spans, dictionary attribution,
-and the versioned export schema. `Support/Vocabulary` turns immutable card snapshots into
+`Models/Vocabulary` owns durable entries, examples with UTF-16 spans, meaning ownership,
+and the schema-v2 export format. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
-`Services/Vocabulary` owns the lazy UI store and serialized atomic local archive; no notebook
-operation starts model inference. `UI/Vocabulary` owns browsing and explicit editing drafts.
+`Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
+`VocabularyNotebookSession` belongs to the library window, retains a lightweight explanation
+session per visible usage, and cancels them on navigation/closure. Browsing only restores records;
+generation remains explicit in the notebook. `UI/Vocabulary` owns browsing and editing drafts.
+`VocabularyDictionarySection` queries only while expanded, sharing the provider/settings,
+`LearningDictionarySourcePicker`, `LearningDictionaryDefinitionView`, and attribution with cards.
 `VocabularyWindowController` provides one normal library window; floating cards retain their
 existing nonactivating lifetime. The shared fish-tail button lives in `UI/Components`.
 
@@ -418,14 +422,21 @@ Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not c
 occurrence spans; it also defines the validated two-part explanation and durable record.
 `Support/LanguageLearning/LearningExplanationPolicy.swift` builds target-preserving prompts,
 bounds only surrounding reference context, excludes translation specialists and validates results.
+The input marks complete-sentence, fragment or absent context; clipped references downgrade to a
+fragment. Local occurrence receipts separate equal sentences saved with different translations and
+are never sent to the model. The prompt permits uncertainty and general senses without context.
 `Services/LanguageLearning/LearningExplanationService.swift` borrows the independent explanation
 controller from `LearningModelCollection`, shares request telemetry and bounds its completed cache.
-Each card/window owns a lightweight `LearningExplanationSession` for cancellation and stale replies;
-all generation is explicit, with no typing observer or background explanation queue.
+Each card or saved usage owns a lightweight `LearningExplanationSession` for cancellation and stale
+replies. An explicit non-sentence lookup opens the contextual page and starts one explanation;
+the dictionary page is lazy, and tabs/source changes never restart stopped AI work. Whole-sentence
+explanations and notebook generation remain explicit, with no typing observer or background queue.
 
 `UI/InlineFeatures/LearningExplanationView.swift` presents the same result/actions in dictionary,
-sentence and notebook surfaces. `UI/Vocabulary/VocabularyExplanationSection.swift` chooses an
-existing captured usage. The archive retains annotations separately from user meanings and notes;
-only explicit adoption writes a meaning to a precise entry/example and language slot. Editing or
+sentence and notebook surfaces. The contextual presentation leads with the sense and folds details.
+`UI/Vocabulary/VocabularyExplanationSection.swift` places it beside its saved example. Completed
+results fill/refresh captured or AI draft meanings; user-edited meanings require explicit
+replacement. The archive retains explanations separately from meanings and notes. Collection before
+or after generation produces the same usage, without persisting dictionary snapshots. Editing or
 removing a usage prunes its obsolete explanation context. Tests mirror these boundaries under
 Support/LanguageLearning, Services/LanguageLearning and Services/Vocabulary.

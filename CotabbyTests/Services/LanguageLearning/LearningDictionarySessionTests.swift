@@ -145,7 +145,7 @@ struct LearningDictionarySessionTests {
     }
 
     @Test
-    func componentFavoriteKeepsItsSentenceAndOnlyItsOwnDefinition() async throws {
+    func componentFavoriteKeepsItsSentenceWithoutCopyingDictionaryContent() async throws {
         let sentence = "We look forward to seeing you."
         let range = (sentence as NSString).range(of: "look forward to")
         let words = LearningUnitPolicy.words(in: sentence, language: .english).filter { NSIntersectionRange($0.range, range).length > 0 }
@@ -165,7 +165,6 @@ struct LearningDictionarySessionTests {
         #expect(saved.expression == "forward" && saved.kind == .word)
         #expect(saved.example?.text == sentence && saved.example?.translation == "我们期待见到你。")
         #expect(saved.example?.ranges == [VocabularyTextRange(words[1].range)])
-        #expect(saved.definitions.map(\.text) == ["Fixture definition."])
         session.returnToExpression()
         await settle { session.content == .result(.notFound) }
         #expect(session.favoriteCapture?.expression == expression.surface)
@@ -252,7 +251,8 @@ private actor ControlledLearningDictionary: LearningDictionaryProviding {
         await withCheckedContinuation { waiters[query] = $0 }
     }
     init(delayed: Bool = false) { self.delayed = delayed }
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource,
+                configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls.append((expression ? "expression:" : "word:") + query)
         if delayed {
             return await withCheckedContinuation {

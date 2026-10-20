@@ -24,7 +24,9 @@ struct VocabularyEntryEditor: View {
                 Section {
                     TextField(String(localized: "Expression", table: "Vocabulary"), text: $draft.expression)
                     TextField(String(localized: "Dictionary form", table: "Vocabulary"), text: $draft.dictionaryForm)
-                    TextField(String(localized: "Meaning", table: "Vocabulary"), text: $draft.meaning, axis: .vertical)
+                    if draft.isSavedWithoutContext {
+                        TextField(String(localized: "Meaning", table: "Vocabulary"), text: $draft.meaning, axis: .vertical)
+                    }
                     TextField(String(localized: "Notes", table: "Vocabulary"), text: $draft.note, axis: .vertical)
                     TextField(String(localized: "Tags", table: "Vocabulary"), text: $tags)
                 }
@@ -37,6 +39,7 @@ struct VocabularyEntryEditor: View {
                                 example.translationLanguage = nil
                                 example.meaning = ""
                                 example.meaningLanguage = nil
+                                example.meaningOrigin = .captured
                                 example.completeness = .fragment
                             }
                         TextField(String(localized: "Translation", table: "Vocabulary"), text: $example.translation, axis: .vertical)

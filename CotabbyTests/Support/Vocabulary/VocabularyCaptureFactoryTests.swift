@@ -34,7 +34,6 @@ struct VocabularyCaptureFactoryTests {
         #expect(capture.example?.text == preview.translation)
         #expect(capture.example?.translation == preview.source)
         #expect(capture.meaning.isEmpty)
-        #expect(capture.definitions.isEmpty)
     }
 
     @Test func staleAndStreamingResultsCannotBeSaved() {

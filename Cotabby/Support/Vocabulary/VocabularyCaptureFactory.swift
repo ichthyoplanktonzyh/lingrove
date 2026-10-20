@@ -84,24 +84,6 @@ nonisolated enum VocabularyCaptureFactory {
             kind: kind, meaning: meaning, meaningLanguage: otherLanguage, example: example)
     }
 
-    @MainActor static func definitions(_ result: LearningDictionarySession.Content) -> [VocabularyDefinition] {
-        guard case .result(let result) = result else { return [] }
-        switch result {
-        case .systemText(let text):
-            return [VocabularyDefinition(text: text, source: "macOS Dictionary", sourceURL: "", licenseURL: "")]
-        case .notFound, .website: return []
-        case .article(let article):
-            return [VocabularyDefinition(text: article.text, source: article.sourceName,
-                                         sourceURL: article.sourceURL, licenseURL: article.licenseURL)]
-        case .entries(let entries): return entries.map { entry in
-            VocabularyDefinition(text: entry.senses.flatMap(\.definitions).joined(separator: "\n"),
-                source: entry.sourceName ?? "Wiktionary contributors / Kaikki", sourceURL: entry.sourceURL,
-                licenseURL: entry.licenseURL ?? "https://creativecommons.org/licenses/by-sa/4.0/",
-                licenseName: entry.licenseName ?? "CC BY-SA 4.0")
-        }
-        }
-    }
-
     static func component(_ word: LearningDictionaryWord, unit: LearningUnit, capture: VocabularyCapture) -> VocabularyCapture? {
         guard unit.words.contains(word) else { return nil }
         var example = capture.example

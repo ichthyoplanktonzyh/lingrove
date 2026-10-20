@@ -6,16 +6,74 @@ import SwiftUI
 struct LearningExplanationView: View {
     /// A surrounding card may already own the target and generation button. Embedded results
     /// observe the same session while omitting those duplicate controls and adding separation.
-    enum Presentation { case complete, embedded }
+    enum Presentation { case complete, embedded, contextual }
     @ObservedObject var session: LearningExplanationSession
     var configure: () -> Void = {}
     var adopt: ((LearningExplanationRecord) -> Void)?
     var presentation: Presentation = .complete
+    var meaning: String?
+    var context: VocabularyExample?
+    @State private var showsDetails = false
 
     var body: some View {
-        if presentation == .complete || session.record != nil || session.isGenerating || session.error != nil {
+        if presentation == .contextual {
+            contextualContent
+        } else if presentation == .complete || session.record != nil || session.isGenerating || session.error != nil {
             content
         }
+    }
+
+    /// Contextual lookup leads with the sense of this occurrence. The same result can be used
+    /// in the notebook with a user-owned meaning; a new model result then remains a proposal
+    /// inside Details until explicitly adopted, rather than silently replacing the user's text.
+    private var contextualContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let text = meaning ?? session.record?.result.meaning, !text.isEmpty {
+                Text(text).font(.callout.weight(.semibold)).textSelection(.enabled)
+            }
+            if let context {
+                VStack(alignment: .leading, spacing: 6) {
+                    if context.completeness == .fragment {
+                        Text(String(localized: "Context fragment", table: "Vocabulary")).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(contextualExample(context)).font(.callout).textSelection(.enabled)
+                    if !context.translation.isEmpty {
+                        Text(context.translation).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                }
+            }
+            if let record = session.record {
+                DisclosureGroup(String(localized: "Details", table: "Learning"), isExpanded: $showsDetails) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let meaning, meaning != record.result.meaning {
+                            Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
+                            if let adopt {
+                                Button(String(localized: "Replace contextual meaning", table: "Learning")) { adopt(record) }
+                                    .buttonStyle(.link).font(.caption)
+                            }
+                        }
+                        Text(record.result.explanation).font(.callout).textSelection(.enabled)
+                    }.padding(.top, 6)
+                }.font(.caption)
+            }
+            if session.isGenerating {
+                Text(String(localized: "Explaining…", table: "Learning")).font(.caption).foregroundStyle(.secondary)
+            } else if let error = session.error {
+                Text(error).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: session.input) { _, _ in showsDetails = false }
+    }
+
+    private func contextualExample(_ example: VocabularyExample) -> AttributedString {
+        var result = AttributedString(example.text)
+        for value in example.ranges {
+            guard let range = Range(value.nsRange, in: example.text), let converted = Range(range, in: result) else { continue }
+            result[converted].foregroundColor = .blue
+            result[converted].font = .body.bold()
+        }
+        return result
     }
 
     private var content: some View {
@@ -129,10 +187,12 @@ struct LearningCapturedExplanationView: View {
     let capture: VocabularyCapture
     var configure: () -> Void = {}
     var presentation: LearningExplanationView.Presentation = .complete
+    var context: VocabularyExample?
     var body: some View {
         let destination = store.explanationDestination(capture)
         LearningExplanationView(session: session, configure: configure, adopt: destination.map { destination in
             { record in Task { _ = await store.adoptExplanation(record, at: destination) } }
-        }, presentation: presentation)
+        }, presentation: presentation, meaning: presentation == .contextual ? destination.flatMap(store.userMeaning) : nil,
+            context: context)
     }
 }

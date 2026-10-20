@@ -11,9 +11,9 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     let kind: Kind
     var meaning: String
     var meaningLanguage: LearningLanguage?
+    var meaningOrigin: VocabularyMeaningOrigin = .captured
     var note: String
     var tags: [String]
-    var definitions: [VocabularyDefinition]
     var examples: [VocabularyExample]
     var isSavedWithoutContext = false
     var standaloneMeanings: [VocabularyMeaning] = []
@@ -21,6 +21,10 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     let createdAt: Date
     var updatedAt: Date
 }
+
+/// The archive records who owns a meaning, independently of its text. Model refreshes may
+/// replace captured/AI drafts, while an explicit edit or adoption transfers ownership to the user.
+nonisolated enum VocabularyMeaningOrigin: String, Codable, Equatable, Sendable { case captured, ai, user }
 
 /// A word can be saved without sentence context in several translation languages. Keep those
 /// translations distinct instead of pretending they are full example-sentence translations.
@@ -42,6 +46,7 @@ nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable
     var completeness: Completeness
     var meaning: String
     var meaningLanguage: LearningLanguage?
+    var meaningOrigin: VocabularyMeaningOrigin = .captured
     var appBundleIdentifier: String?
     let createdAt: Date
     /// Adopting another language changes annotation content, not the identity of the saved usage.
@@ -57,16 +62,6 @@ nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
     var nsRange: NSRange { NSRange(location: location, length: length) }
 }
 
-/// Dictionary quotations retain their attribution separately from the user's contextual meaning.
-/// The system source supplies plain text; bundled quotations keep their source and license URLs.
-nonisolated struct VocabularyDefinition: Codable, Equatable, Sendable {
-    let text: String
-    let source: String
-    let sourceURL: String
-    let licenseURL: String
-    var licenseName: String?
-}
-
 /// Short-lived card input. It is copied with the displayed sentence, so saving never rereads
 /// whichever editor happens to be focused after the user clicks a nonactivating card.
 nonisolated struct VocabularyCapture: Equatable, Sendable {
@@ -77,50 +72,19 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var meaning = ""
     var meaningLanguage: LearningLanguage?
     var example: VocabularyExample?
-    var definitions: [VocabularyDefinition] = []
     var explanation: LearningExplanationRecord?
 }
 
 /// Versioned JSON is also the lossless backup format. Unknown versions fail closed instead of
 /// silently replacing a newer notebook with an empty archive.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    var schemaVersion = 1
+    var schemaVersion = 2
     var entries: [VocabularyEntry] = []
 }
 
 nonisolated struct VocabularySnapshot: Sendable {
     let revision: UInt64
     let document: VocabularyDocument
-}
-
-extension VocabularyEntry {
-    nonisolated private enum CodingKeys: String, CodingKey {
-        case id, expression, dictionaryForm, language, kind, meaning, meaningLanguage
-        case note, tags, definitions, examples, isSavedWithoutContext, standaloneMeanings, explanations, createdAt, updatedAt
-    }
-
-    /// Earlier schema-v1 exports did not distinguish a contextless save from saved examples.
-    /// Decode the missing flag from the old content rather than stranding an otherwise valid book.
-    nonisolated init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        id = try values.decode(UUID.self, forKey: .id)
-        expression = try values.decode(String.self, forKey: .expression)
-        dictionaryForm = try values.decode(String.self, forKey: .dictionaryForm)
-        language = try values.decode(LearningLanguage.self, forKey: .language)
-        kind = try values.decode(Kind.self, forKey: .kind)
-        meaning = try values.decode(String.self, forKey: .meaning)
-        meaningLanguage = try values.decodeIfPresent(LearningLanguage.self, forKey: .meaningLanguage)
-        note = try values.decode(String.self, forKey: .note)
-        tags = try values.decode([String].self, forKey: .tags)
-        definitions = try values.decode([VocabularyDefinition].self, forKey: .definitions)
-        examples = try values.decode([VocabularyExample].self, forKey: .examples)
-        isSavedWithoutContext = try values.decodeIfPresent(Bool.self, forKey: .isSavedWithoutContext) ?? examples.isEmpty
-        standaloneMeanings = try values.decodeIfPresent([VocabularyMeaning].self, forKey: .standaloneMeanings) ??
-            (isSavedWithoutContext ? [VocabularyMeaning(text: meaning, language: meaningLanguage)] : [])
-        explanations = try values.decodeIfPresent([LearningExplanationRecord].self, forKey: .explanations)
-        createdAt = try values.decode(Date.self, forKey: .createdAt)
-        updatedAt = try values.decode(Date.self, forKey: .updatedAt)
-    }
 }
 
 /// Storage destination is separate from semantic input: two saved translations can share one

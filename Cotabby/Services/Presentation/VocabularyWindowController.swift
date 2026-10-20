@@ -7,12 +7,13 @@ import SwiftUI
 final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let store: VocabularyStore
     private let speech: LearningSpeechController
-    private let explanation: LearningExplanationSession
+    private let learning: VocabularyNotebookSession
 
-    init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil) {
+    init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil,
+         dictionaryProvider: any LearningDictionaryProviding, dictionarySettings: LearningDictionarySettings) {
         self.store = store
         self.speech = speech
-        explanation = LearningExplanationSession(service: explanationService)
+        learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider, settings: dictionarySettings)
         super.init(window: nil)
         store.openEntry = { [weak self] in self?.show(selectedID: $0) }
     }
@@ -34,8 +35,9 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         // the root with its requested selection, resetting filters that might otherwise hide it.
         if window?.contentView == nil || (selectedID != nil && window?.attachedSheet == nil) {
             window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID,
-                explanation: explanation.service == nil ? nil : explanation))
+                learning: learning))
         }
+        learning.resume()
         store.loadIfNeeded()
         NSApplication.shared.activate(ignoringOtherApps: true)
         showWindow(nil)
@@ -43,7 +45,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        explanation.cancel()
+        learning.cancel()
         guard let target = speech.activeTarget, target.itemID.hasPrefix("vocabulary.") else { return }
         speech.stop(target: target)
     }

@@ -27,7 +27,7 @@ nonisolated enum VocabularyPolicy {
         }
         // Keep the exact text: normalized whitespace would change the interpretation of spans.
         return key([example.text, example.ranges.map { "\($0.location):\($0.length)" }.joined(separator: ","),
-            example.translationLanguage?.rawValue ?? "", meaningLanguage?.rawValue ?? ""])
+            example.translationLanguage?.rawValue ?? "", meaningLanguage?.rawValue ?? "", example.completeness.rawValue])
     }
 
     static func captureKey(_ capture: VocabularyCapture) -> String {
@@ -99,6 +99,11 @@ nonisolated enum VocabularyPolicy {
         try validate(capture)
         if let index = document.entries.firstIndex(where: { entryKey($0) == entryKey(capture) }) {
             if capture.example == nil {
+                if !document.entries[index].isSavedWithoutContext, document.entries[index].meaningOrigin != .user {
+                    document.entries[index].meaning = capture.meaning
+                    document.entries[index].meaningLanguage = capture.meaningLanguage
+                    document.entries[index].meaningOrigin = .captured
+                }
                 document.entries[index].isSavedWithoutContext = true
                 if !document.entries[index].standaloneMeanings.contains(where: { $0.language == capture.meaningLanguage }) {
                     document.entries[index].standaloneMeanings.append(
@@ -109,23 +114,21 @@ nonisolated enum VocabularyPolicy {
                !document.entries[index].examples.contains(where: { exampleKey($0) == exampleKey(example) }) {
                 document.entries[index].examples.append(distinctExample(example, among: document.entries[index].examples))
             }
-            for definition in capture.definitions where !document.entries[index].definitions.contains(definition) {
-                document.entries[index].definitions.append(definition)
-            }
             if let record = capture.explanation { storeExplanation(record, in: &document.entries[index]) }
             // User-edited meanings/notes are never overwritten by a later model or dictionary.
             document.entries[index].updatedAt = now
             return document.entries[index].id
         }
         var entry = VocabularyEntry(id: UUID(), expression: capture.expression, dictionaryForm: capture.dictionaryForm,
-            language: capture.language, kind: capture.kind, meaning: capture.meaning, meaningLanguage: capture.meaningLanguage,
+            language: capture.language, kind: capture.kind, meaning: capture.example == nil ? capture.meaning : "",
+            meaningLanguage: capture.meaningLanguage,
             note: "", tags: [],
-            definitions: capture.definitions, examples: capture.example.map { [$0] } ?? [], createdAt: now, updatedAt: now)
+            examples: capture.example.map { [$0] } ?? [], createdAt: now, updatedAt: now)
         entry.isSavedWithoutContext = capture.example == nil
-        if let record = capture.explanation { storeExplanation(record, in: &entry) }
         if capture.example == nil {
             entry.standaloneMeanings = [VocabularyMeaning(text: capture.meaning, language: capture.meaningLanguage)]
         }
+        if let record = capture.explanation { storeExplanation(record, in: &entry) }
         document.entries.append(entry)
         return entry.id
     }
@@ -138,7 +141,7 @@ nonisolated enum VocabularyPolicy {
         guard existing.contains(where: { $0.id == example.id }) else { return example }
         return VocabularyExample(id: UUID(), text: example.text, translation: example.translation,
             translationLanguage: example.translationLanguage, ranges: example.ranges, completeness: example.completeness,
-            meaning: example.meaning, meaningLanguage: example.meaningLanguage,
+            meaning: example.meaning, meaningLanguage: example.meaningLanguage, meaningOrigin: example.meaningOrigin,
             appBundleIdentifier: example.appBundleIdentifier, createdAt: example.createdAt, captureIdentity: example.captureIdentity)
     }
 
@@ -147,7 +150,7 @@ nonisolated enum VocabularyPolicy {
         guard !terms.isEmpty else { return true }
         let fields = [entry.expression, entry.dictionaryForm, entry.meaning, entry.note] + entry.tags +
             entry.standaloneMeanings.map(\.text) +
-            entry.examples.flatMap { [$0.text, $0.translation, $0.meaning] } + entry.definitions.map(\.text)
+            entry.examples.flatMap { [$0.text, $0.translation, $0.meaning] }
         return terms.allSatisfy { term in fields.contains { $0.localizedStandardContains(term) } }
     }
 
@@ -167,6 +170,24 @@ nonisolated enum VocabularyPolicy {
         records.removeAll { $0.input == record.input && $0.language == record.language }
         records.append(record)
         entry.explanations = Array(records.suffix(24))
+        // The captured occurrence remains the identity even if the explanation uses a different
+        // output language. Draft meanings follow AI results; explicit user meanings do not.
+        for index in entry.examples.indices {
+            guard entry.examples[index].meaningOrigin != .user,
+                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: entry.examples[index])) == record.input
+            else { continue }
+            entry.examples[index].captureIdentity = entry.examples[index].captureIdentity ??
+                .init(meaningLanguage: entry.examples[index].meaningLanguage)
+            entry.examples[index].meaning = record.result.meaning
+            entry.examples[index].meaningLanguage = record.language
+            entry.examples[index].meaningOrigin = .ai
+        }
+        if entry.isSavedWithoutContext, entry.meaningOrigin != .user,
+           LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: nil)) == record.input {
+            entry.meaning = record.result.meaning
+            entry.meaningLanguage = record.language
+            entry.meaningOrigin = .ai
+        }
     }
 
     private static func key(_ parts: [String]) -> String {

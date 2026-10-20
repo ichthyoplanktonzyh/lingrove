@@ -68,6 +68,14 @@ final class VocabularyStore: ObservableObject {
         return entry.isSavedWithoutContext ? .init(entryID: entry.id, exampleID: nil) : nil
     }
 
+    func userMeaning(at destination: VocabularyExplanationDestination) -> String? {
+        guard let entry = entries.first(where: { $0.id == destination.entryID }) else { return nil }
+        if let id = destination.exampleID {
+            return entry.examples.first { $0.id == id && $0.meaningOrigin == .user }?.meaning
+        }
+        return entry.meaningOrigin == .user ? entry.meaning : nil
+    }
+
     func adoptExplanation(_ record: LearningExplanationRecord, at destination: VocabularyExplanationDestination) async -> Bool {
         guard let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
         var edited = original
@@ -80,12 +88,14 @@ final class VocabularyStore: ObservableObject {
                 .init(meaningLanguage: original.examples[index].meaningLanguage)
             edited.examples[index].meaning = record.result.meaning
             edited.examples[index].meaningLanguage = record.language
+            edited.examples[index].meaningOrigin = .user
         } else {
             guard original.isSavedWithoutContext,
                   LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, example: nil)) == record.input
             else { return false }
             edited.meaning = record.result.meaning
             edited.meaningLanguage = record.language
+            edited.meaningOrigin = .user
         }
         return await update(edited, basedOn: original)
     }

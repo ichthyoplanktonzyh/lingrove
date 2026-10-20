@@ -105,13 +105,4 @@ struct DictionaryExpandedSettingsTests {
         #expect(!reopened.configuration.order.contains(website.source))
     }
 
-    @Test func savedQuotesKeepSourceSpecificLicense() {
-        let entry = LearningLexiconEntry(id: "test", language: "en", headword: "hello", forms: [],
-            senses: [.init(partOfSpeech: "noun", definitions: ["A greeting."], labels: [])],
-            sourceURL: "https://example.org/hello", sourceName: "Example", licenseURL: "https://example.org/license",
-            licenseName: "Example license")
-        let values = VocabularyCaptureFactory.definitions(.result(.entries([entry])))
-        #expect(values.first?.source == "Example" && values.first?.licenseName == "Example license")
-        #expect(values.first?.licenseURL == "https://example.org/license")
-    }
 }

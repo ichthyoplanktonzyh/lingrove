@@ -14,13 +14,13 @@ struct VocabularyNotebookViewTests {
                 kind: .word, meaning: ""))
         }
         let initial = try #require(store.entries.first { $0.expression == "first" })
-        let session = LearningExplanationSession()
+        let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
         let suite = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
-            selectedID: initial.id, explanation: session))
+            selectedID: initial.id, learning: learning))
         let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 940, height: 640),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host
@@ -29,17 +29,17 @@ struct VocabularyNotebookViewTests {
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
         let table = try #require(tableView(in: host))
         #expect(table.numberOfRows == 2)
-        #expect(session.input?.target == "first")
+        #expect(learning.explanations["standalone"]?.input?.target == "first")
         // Select the other row through the real SwiftUI List's AppKit backing, then publish
         // an archive revision exactly as a completed model request does.
         table.selectRowIndexes(IndexSet(integer: table.selectedRow == 0 ? 1 : 0), byExtendingSelection: false)
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
-        let input = try #require(session.input)
+        let input = try #require(learning.explanations["standalone"]?.input)
         #expect(input.target == "second")
         await store.saveExplanation(.init(id: UUID(), input: input, language: .english,
             result: .init(meaning: "Next after first", explanation: "An ordinal."), model: "fixture", createdAt: Date()))
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
-        #expect(session.input == input)
+        #expect(learning.explanations["standalone"]?.input == input)
     }
 
     private func tableView(in view: NSView) -> NSTableView? {

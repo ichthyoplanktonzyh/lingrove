@@ -1,6 +1,10 @@
 import Combine
 import Foundation
 
+/// Acquisition completeness describes what evidence the model actually receives. It is separate
+/// from target granularity: a word or a sentence can both be studied with incomplete context.
+nonisolated enum LearningExplanationContext: String, Codable, Hashable, Sendable { case sentence, fragment, none }
+
 /// A frozen explanation target contains only the text the user chose and its captured usage.
 /// It survives card navigation and can be saved with a vocabulary item without retaining AX
 /// elements, an editor, a dictionary provider or a model runtime.
@@ -11,6 +15,18 @@ nonisolated struct LearningExplanationInput: Codable, Equatable, Hashable, Senda
     let kind: VocabularyEntry.Kind
     let context: String
     let ranges: [VocabularyTextRange]
+    let contextKind: LearningExplanationContext
+    /// Matching equal text is not enough to identify separately saved translations/usages.
+    /// This receipt stays local and is never included in the model prompt.
+    let occurrenceIdentity: String?
+
+    init(target: String, dictionaryForm: String, language: LearningLanguage, kind: VocabularyEntry.Kind,
+         context: String, ranges: [VocabularyTextRange], contextKind: LearningExplanationContext = .fragment,
+         occurrenceIdentity: String? = nil) {
+        self.target = target; self.dictionaryForm = dictionaryForm; self.language = language; self.kind = kind
+        self.context = context; self.ranges = ranges; self.contextKind = contextKind
+        self.occurrenceIdentity = occurrenceIdentity
+    }
 }
 
 /// The short meaning is independently adoptable; the explanation remains a learning annotation,

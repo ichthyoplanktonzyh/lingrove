@@ -260,8 +260,13 @@ final class CotabbyAppEnvironment {
             trackingEnabled: { [weak suggestionSettings] in suggestionSettings?.isPerformanceTrackingEnabled == true })
         let learningModels = LearningModelCollection(settings: suggestionSettings.languageLearning, client: learningClient,
             powerSource: powerSourceMonitor, appSettings: suggestionSettings, lowPower: lowPowerModeMonitor, telemetry: learningTelemetry)
+        // One offline resource/index owner serves both asynchronous unit recognition and lookup.
+        // Panels borrow it; none creates a second dictionary or recognition worker in a view.
+        let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
+        let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
-            explanationService: learningModels.explainer)
+            explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
+            dictionarySettings: suggestionSettings.languageLearning.dictionary)
         vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
             var capture = capture
             let input = LearningExplanationPolicy.input(capture)
@@ -411,10 +416,6 @@ final class CotabbyAppEnvironment {
             focus: focusModel, inputSource: keyboardInputSourceMonitor, inserter: suggestionInserter
         )
         learningModels.explainer.configure = { [weak settingsCoordinator] in settingsCoordinator?.showLearningModel(.explanation) }
-        // One offline resource/index owner serves both asynchronous unit recognition and lookup.
-        // Panels borrow it; none creates a second dictionary or recognition worker in a view.
-        let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
-        let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let writingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
             dictionaryProvider: learningDictionary, dictionarySettings: suggestionSettings.languageLearning.dictionary,
             speech: speechController, vocabulary: vocabularyStore, explanationService: learningModels.explainer)

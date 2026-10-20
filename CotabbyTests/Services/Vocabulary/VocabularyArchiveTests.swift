@@ -3,18 +3,15 @@ import Testing
 @testable import Cotabby
 
 nonisolated struct VocabularyArchiveTests {
-    @Test @MainActor func systemDictionaryTextAndSourceSurviveCollectionAndReopen() async throws {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
-        var capture = VocabularyCapture(expression: "posted", dictionaryForm: "posted", language: .english, kind: .word)
-        capture.definitions = VocabularyCaptureFactory.definitions(.result(.systemText("Keep someone informed.")))
-        _ = try await VocabularyArchive(url: url).save(capture)
-        let reopened = try await VocabularyArchive(url: url).load()
-        let definition = try #require(reopened.document.entries.first?.definitions.first)
-        #expect(definition.text == "Keep someone informed.")
-        #expect(definition.source == "macOS Dictionary")
-        #expect(definition.sourceURL.isEmpty && definition.licenseURL.isEmpty)
+    @Test func exportsOnlyLearningContentInSchemaTwo() async throws {
+        let archive = VocabularyArchive(url: nil)
+        let snapshot = try await archive.save(capture())
+        let encoded = try JSONEncoder().encode(snapshot.document)
+        let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let entries = try #require(object["entries"] as? [[String: Any]])
+        #expect(snapshot.document.schemaVersion == 2)
+        #expect(entries[0]["definitions"] == nil)
+        #expect(entries[0]["meaningOrigin"] != nil)
     }
 
     @Test func repeatedWordComponentsKeepDistinctUsageIDsAcrossReopen() async throws {
@@ -219,21 +216,15 @@ nonisolated struct VocabularyArchiveTests {
         #expect(try Data(contentsOf: url) == bytes)
     }
 
-    @Test func earlySchemaOneContextlessExportsRemainReadable() async throws {
-        let archive = VocabularyArchive(url: nil)
-        var value = capture()
-        value.example = nil
-        let snapshot = try await archive.save(value)
-        let encoded = try JSONEncoder().encode(snapshot.document)
-        var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        var entries = try #require(object["entries"] as? [[String: Any]])
-        entries[0].removeValue(forKey: "isSavedWithoutContext")
-        entries[0].removeValue(forKey: "meaningLanguage")
-        object["entries"] = entries
-        let legacy = try JSONSerialization.data(withJSONObject: object)
-        let decoded = try JSONDecoder().decode(VocabularyDocument.self, from: legacy)
-        #expect(decoded.entries[0].isSavedWithoutContext)
-        #expect(decoded.entries[0].id == snapshot.document.entries[0].id)
+    @Test func oldSchemaIsRejectedWithoutRewritingIt() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent("notebook.json")
+        let bytes = Data("{\"schemaVersion\":1,\"entries\":[]}".utf8)
+        try bytes.write(to: url)
+        await #expect(throws: VocabularyError.unsupportedVersion) { try await VocabularyArchive(url: url).load() }
+        #expect(try Data(contentsOf: url) == bytes)
     }
 
     @Test func contextlessTranslationsInDifferentLanguagesAreBothRetained() async throws {

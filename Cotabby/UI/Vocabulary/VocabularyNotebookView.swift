@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 struct VocabularyNotebookView: View {
     @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
-    var explanation: LearningExplanationSession?
+    var learning: VocabularyNotebookSession?
     @State private var selection: UUID?
     @State private var query = ""
     @State private var language: LearningLanguage?
@@ -17,10 +17,10 @@ struct VocabularyNotebookView: View {
     @State private var requestedID: UUID?
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil,
-         explanation: LearningExplanationSession? = nil) {
+         learning: VocabularyNotebookSession? = nil) {
         self.store = store
         self.speech = speech
-        self.explanation = explanation
+        self.learning = learning
         _selection = State(initialValue: selectedID)
         // A loaded archive already supplies the initial selection. Only a cold load needs
         // to retain the request; otherwise saving an annotation can replay it over browsing.
@@ -38,7 +38,8 @@ struct VocabularyNotebookView: View {
                 ForEach(visibleEntries) { entry in
                     VStack(alignment: .leading, spacing: 5) {
                         Text(entry.expression).font(.headline).lineLimit(2)
-                        if !entry.meaning.isEmpty { Text(entry.meaning).font(.callout).foregroundStyle(.secondary).lineLimit(1) }
+                        let meaning = entry.meaning.isEmpty ? (entry.examples.first?.meaning ?? "") : entry.meaning
+                        if !meaning.isEmpty { Text(meaning).font(.callout).foregroundStyle(.secondary).lineLimit(1) }
                         if let example = entry.examples.first, example.text != entry.expression {
                             Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
@@ -55,7 +56,7 @@ struct VocabularyNotebookView: View {
             .navigationSplitViewColumnWidth(min: 230, ideal: 290, max: 420)
         } detail: {
             if let entry = store.entries.first(where: { $0.id == selection }) {
-                VocabularyEntryDetail(entry: entry, speech: speech, store: store, explanation: explanation,
+                VocabularyEntryDetail(entry: entry, speech: speech, store: store, learning: learning,
                     edit: { editing = entry }, delete: { deleting = entry })
                     .id(entry.id)
             } else {
@@ -85,6 +86,7 @@ struct VocabularyNotebookView: View {
         }
         .frame(minWidth: 760, minHeight: 460)
         .onAppear { store.loadIfNeeded() }
+        .onChange(of: store.entries.first { $0.id == selection }, initial: true) { _, entry in learning?.select(entry) }
         .onChange(of: store.entries) { _, entries in
             if let requestedID, entries.contains(where: { $0.id == requestedID }) {
                 selection = requestedID
@@ -123,7 +125,7 @@ private struct VocabularyEntryDetail: View {
     let entry: VocabularyEntry
     let speech: LearningSpeechController
     @ObservedObject var store: VocabularyStore
-    var explanation: LearningExplanationSession?
+    var learning: VocabularyNotebookSession?
     let edit: () -> Void
     let delete: () -> Void
 
@@ -140,8 +142,11 @@ private struct VocabularyEntryDetail: View {
                 if entry.dictionaryForm != entry.expression {
                     Text(entry.dictionaryForm).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
-                if !entry.meaning.isEmpty { Text(entry.meaning).textSelection(.enabled) }
-                if let explanation { VocabularyExplanationSection(entry: entry, store: store, session: explanation) }
+                if entry.isSavedWithoutContext {
+                    if let learning {
+                        VocabularyExplanationSection(entry: entry, store: store, learning: learning)
+                    } else if !entry.meaning.isEmpty { Text(entry.meaning).textSelection(.enabled) }
+                }
                 ForEach(entry.standaloneMeanings.filter { !$0.text.isEmpty && $0.language != entry.meaningLanguage }) { meaning in
                     VStack(alignment: .leading, spacing: 5) {
                         if let language = meaning.language { Text(language.label).font(.caption).foregroundStyle(.secondary) }
@@ -169,7 +174,9 @@ private struct VocabularyEntryDetail: View {
                                     language: example.translationLanguage ?? entry.language)
                             }
                         }
-                        if !example.meaning.isEmpty { Text(example.meaning).font(.callout).textSelection(.enabled) }
+                        if let learning {
+                            VocabularyExplanationSection(entry: entry, example: example, store: store, learning: learning)
+                        } else if !example.meaning.isEmpty { Text(example.meaning).font(.callout).textSelection(.enabled) }
                         if let app = example.appBundleIdentifier,
                            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
                             Text(FileManager.default.displayName(atPath: url.path))
@@ -177,25 +184,7 @@ private struct VocabularyEntryDetail: View {
                         }
                     }
                 }
-                if !entry.definitions.isEmpty {
-                    DisclosureGroup(String(localized: "Dictionary", table: "Vocabulary")) {
-                        ForEach(Array(entry.definitions.enumerated()), id: \.offset) { _, definition in
-                            section(definition.source) {
-                                Text(definition.text).textSelection(.enabled)
-                                if let url = DictionaryLinkPolicy.externalURL(definition.sourceURL) {
-                                    Link(definition.source, destination: url).font(.caption)
-                                } else {
-                                    Text(definition.source).font(.caption).foregroundStyle(.secondary)
-                                }
-                                if let license = DictionaryLinkPolicy.externalURL(definition.licenseURL) {
-                                    Link(definition.licenseName ?? "CC BY-SA 4.0", destination: license).font(.caption2)
-                                } else if let name = definition.licenseName, !name.isEmpty {
-                                    Text(name).font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
+                if let learning { VocabularyDictionarySection(entry: entry, learning: learning) }
                 Text(entry.createdAt, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.tertiary)
             }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
         }

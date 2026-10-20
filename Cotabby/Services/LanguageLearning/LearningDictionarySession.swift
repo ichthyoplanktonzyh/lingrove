@@ -8,6 +8,11 @@ import Logging
 @MainActor
 final class LearningDictionarySession: ObservableObject {
     let explanation: LearningExplanationSession
+    /// A query owns one target and two independently loaded presentations. Changing tabs is
+    /// navigation, not another model request; dictionary sources remain lazy until selected.
+    enum Page: Hashable { case contextual, dictionary }
+    @Published private(set) var page: Page = .dictionary
+    private var dictionaryRequested = false
     enum Content: Equatable {
         case loading
         case result(LearningDictionaryResult)
@@ -26,6 +31,9 @@ final class LearningDictionarySession: ObservableObject {
     private(set) var vocabularyCapture: VocabularyCapture?
     private let provider: any LearningDictionaryProviding
     private var language: LearningLanguage = .english
+    /// Target lifetime differs from dictionary request lifetime: source/tab changes keep it,
+    /// while navigating to another occurrence or reopening the same spelling retires it.
+    private(set) var targetIdentity = UUID()
     private var revision = UUID()
     private var work: Task<Void, Never>?
     private var cache: [String: LearningDictionaryResult] = [:]
@@ -49,7 +57,7 @@ final class LearningDictionarySession: ObservableObject {
                 }
                 self.cache.removeAll()
                 self.cacheOrder.removeAll()
-                self.request()
+                if self.dictionaryRequested { self.requestDictionary() }
             }
         }
     }
@@ -109,9 +117,7 @@ final class LearningDictionarySession: ObservableObject {
     }
 
     var favoriteCapture: VocabularyCapture? {
-        guard content != .loading, var capture = activeCapture else { return nil }
-        capture.definitions = VocabularyCaptureFactory.definitions(content)
-        return capture
+        activeCapture
     }
 
     func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil,
@@ -122,7 +128,7 @@ final class LearningDictionarySession: ObservableObject {
         self.language = language
         self.speechContext = speechContext
         self.vocabularyCapture = vocabularyCapture
-        request()
+        beginQuery()
     }
 
     func select(_ word: LearningDictionaryWord) {
@@ -130,7 +136,7 @@ final class LearningDictionarySession: ObservableObject {
         selectedWord = word
         referenceQuery = nil
         sourceOverride = nil
-        request()
+        beginQuery()
     }
 
     func returnToExpression() {
@@ -138,13 +144,14 @@ final class LearningDictionarySession: ObservableObject {
         selectedWord = nil
         referenceQuery = nil
         sourceOverride = nil
-        request()
+        beginQuery()
     }
 
     func selectSource(_ source: LearningDictionarySource) {
         guard unit != nil, availableSources.contains(source) else { return }
         sourceOverride = source
-        request()
+        page = .dictionary
+        requestDictionary()
     }
 
     /// A dictionary cross-reference need not occur in the captured sentence. Preserve the home
@@ -154,11 +161,13 @@ final class LearningDictionarySession: ObservableObject {
         referenceQuery = query
         selectedWord = nil
         sourceOverride = selectedSource
-        request()
+        beginQuery()
     }
 
     func close() {
+        targetIdentity = UUID()
         explanation.clear()
+        dictionaryRequested = false
         revision = UUID()
         work?.cancel(); work = nil
         unit = nil; documentID = nil; selectedWord = nil
@@ -197,8 +206,25 @@ final class LearningDictionarySession: ObservableObject {
         return result
     }
 
-    private func request() {
+    func selectPage(_ page: Page, targetIdentity: UUID? = nil) {
+        guard unit != nil, targetIdentity == nil || targetIdentity == self.targetIdentity, self.page != page else { return }
+        self.page = page
+        if page == .dictionary, !dictionaryRequested { requestDictionary() }
+    }
+
+    private func beginQuery() {
+        targetIdentity = UUID()
+        revision = UUID()
+        work?.cancel(); work = nil
+        content = .loading
+        dictionaryRequested = false
         explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input))
+        page = explanation.service == nil ? .dictionary : .contextual
+        if page == .dictionary { requestDictionary() } else if explanation.isConfigured { explanation.explain() }
+    }
+
+    private func requestDictionary() {
+        dictionaryRequested = true
         revision = UUID()
         work?.cancel(); work = nil
         guard let unit else { return }
