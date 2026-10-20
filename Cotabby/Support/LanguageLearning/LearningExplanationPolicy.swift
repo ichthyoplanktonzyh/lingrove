@@ -11,10 +11,14 @@ nonisolated enum LearningExplanationPolicy {
             occurrenceIdentity: capture.example.map { VocabularyPolicy.exampleKey($0) })
     }
 
-    static func capture(_ entry: VocabularyEntry, example: VocabularyExample?) -> VocabularyCapture {
-        .init(expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
-            kind: entry.kind, meaning: example?.meaning ?? entry.meaning,
-            meaningLanguage: example?.meaningLanguage ?? entry.meaningLanguage, example: example)
+    static func capture(_ entry: VocabularyEntry, sense: VocabularySense? = nil, example: VocabularyExample?) -> VocabularyCapture {
+        let owner = sense ?? entry.senses.first { candidate in
+            if let example { return candidate.examples.contains { $0.id == example.id } }
+            return candidate.isSavedWithoutContext
+        }
+        return .init(expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
+            kind: entry.kind, meaning: example?.meaning ?? owner?.meaning ?? "",
+            meaningLanguage: example?.meaningLanguage ?? owner?.meaningLanguage, example: example, senseID: owner?.id)
     }
 
     static func input(_ presentation: LearningSentencePresentation) -> LearningExplanationInput? {

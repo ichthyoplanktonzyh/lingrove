@@ -19,26 +19,19 @@ nonisolated enum VocabularyPolicy {
 
     static func exampleKey(_ example: VocabularyExample?) -> String {
         guard let example else { return "no-context" }
-        // Freeze collection language when adopting an explanation: a mutable meaning must not
-        // turn the blue fish back into an unsaved occurrence or duplicate that example on recapture.
-        let meaningLanguage: LearningLanguage?
-        if let identity = example.captureIdentity { meaningLanguage = identity.meaningLanguage } else {
-            meaningLanguage = example.meaningLanguage
-        }
-        // Keep the exact text: normalized whitespace would change the interpretation of spans.
+        // The encountered text and exact spans are the usage identity. Annotation/translation
+        // language is mutable content and cannot split a sense or turn an existing fish tail off.
         return key([example.text, example.ranges.map { "\($0.location):\($0.length)" }.joined(separator: ","),
-            example.translationLanguage?.rawValue ?? "", meaningLanguage?.rawValue ?? "", example.completeness.rawValue])
+            example.completeness.rawValue])
     }
 
     static func captureKey(_ capture: VocabularyCapture) -> String {
-        let context = capture.example.map { exampleKey($0) } ?? "standalone:" + (capture.meaningLanguage?.rawValue ?? "unknown")
-        return entryKey(capture) + ":" + context
+        entryKey(capture) + ":" + (capture.example.map { exampleKey($0) } ?? "standalone")
     }
 
     static func contains(_ capture: VocabularyCapture, in entries: [VocabularyEntry]) -> Bool {
         guard let entry = entries.first(where: { entryKey($0) == entryKey(capture) }) else { return false }
-        guard capture.example != nil else { return entry.standaloneMeanings.contains { $0.language == capture.meaningLanguage } }
-        return entry.examples.contains { exampleKey($0) == exampleKey(capture.example) }
+        return VocabularySensePolicy.destination(capture, in: entry) != nil
     }
 
     static func validate(_ capture: VocabularyCapture) throws {
@@ -97,97 +90,78 @@ nonisolated enum VocabularyPolicy {
 
     static func save(_ capture: VocabularyCapture, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         try validate(capture)
-        if let index = document.entries.firstIndex(where: { entryKey($0) == entryKey(capture) }) {
-            if capture.example == nil {
-                if !document.entries[index].isSavedWithoutContext, document.entries[index].meaningOrigin != .user {
-                    document.entries[index].meaning = capture.meaning
-                    document.entries[index].meaningLanguage = capture.meaningLanguage
-                    document.entries[index].meaningOrigin = .captured
-                }
-                document.entries[index].isSavedWithoutContext = true
-                if !document.entries[index].standaloneMeanings.contains(where: { $0.language == capture.meaningLanguage }) {
-                    document.entries[index].standaloneMeanings.append(
-                        VocabularyMeaning(text: capture.meaning, language: capture.meaningLanguage))
-                }
-            }
-            if let example = capture.example,
-               !document.entries[index].examples.contains(where: { exampleKey($0) == exampleKey(example) }) {
-                document.entries[index].examples.append(distinctExample(example, among: document.entries[index].examples))
-            }
-            if let record = capture.explanation { storeExplanation(record, in: &document.entries[index]) }
-            // User-edited meanings/notes are never overwritten by a later model or dictionary.
-            document.entries[index].updatedAt = now
-            return document.entries[index].id
+        var capture = capture
+        if let example = capture.example, document.entries.contains(where: {
+            entryKey($0) != entryKey(capture) && $0.examples.contains { $0.id == example.id }
+        }) { capture.example = example.copiedWithNewID() }
+        let index: Int
+        if let existing = document.entries.firstIndex(where: { entryKey($0) == entryKey(capture) }) { index = existing } else {
+            guard capture.senseID == nil else { throw VocabularyError.invalidContent }
+            document.entries.append(VocabularyEntry(id: UUID(), expression: capture.expression, dictionaryForm: capture.dictionaryForm,
+                language: capture.language, kind: capture.kind, senses: [], createdAt: now, updatedAt: now))
+            index = document.entries.count - 1
         }
-        var entry = VocabularyEntry(id: UUID(), expression: capture.expression, dictionaryForm: capture.dictionaryForm,
-            language: capture.language, kind: capture.kind, meaning: capture.example == nil ? capture.meaning : "",
-            meaningLanguage: capture.meaningLanguage,
-            note: "", tags: [],
-            examples: capture.example.map { [$0] } ?? [], createdAt: now, updatedAt: now)
-        entry.isSavedWithoutContext = capture.example == nil
-        if capture.example == nil {
-            entry.standaloneMeanings = [VocabularyMeaning(text: capture.meaning, language: capture.meaningLanguage)]
-        }
-        if let record = capture.explanation { storeExplanation(record, in: &entry) }
-        document.entries.append(entry)
-        return entry.id
-    }
-
-    /// Component captures can share one source receipt while pointing at different occurrences
-    /// of the same word. Persisted usage identity belongs to the occurrence, not that receipt.
-    /// Preserve existing IDs for editor reconciliation and assign only the colliding new usage
-    /// a fresh ID; content-based deduplication has already rejected repeated saves above.
-    private static func distinctExample(_ example: VocabularyExample, among existing: [VocabularyExample]) -> VocabularyExample {
-        guard existing.contains(where: { $0.id == example.id }) else { return example }
-        return VocabularyExample(id: UUID(), text: example.text, translation: example.translation,
-            translationLanguage: example.translationLanguage, ranges: example.ranges, completeness: example.completeness,
-            meaning: example.meaning, meaningLanguage: example.meaningLanguage, meaningOrigin: example.meaningOrigin,
-            appBundleIdentifier: example.appBundleIdentifier, createdAt: example.createdAt, captureIdentity: example.captureIdentity)
+        try VocabularySensePolicy.save(capture, in: &document.entries[index], now: now)
+        return document.entries[index].id
     }
 
     static func matches(_ entry: VocabularyEntry, query: String) -> Bool {
         let terms = query.split(whereSeparator: \.isWhitespace)
-        guard !terms.isEmpty else { return true }
-        let fields = [entry.expression, entry.dictionaryForm, entry.meaning, entry.note] + entry.tags +
-            entry.standaloneMeanings.map(\.text) +
-            entry.examples.flatMap { [$0.text, $0.translation, $0.meaning] }
+        var fields = [entry.expression, entry.dictionaryForm]
+        for sense in entry.senses {
+            fields += [sense.meaning, sense.note] + sense.tags + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
+            for example in sense.examples {
+                fields += [example.text, example.translation, example.meaning]
+                fields += example.translationVariants.map(\.text)
+            }
+        }
         return terms.allSatisfy { term in fields.contains { $0.localizedStandardContains(term) } }
     }
 
-    /// Only an unchanged saved usage may receive a generated annotation. Notes and meanings are
-    /// separate fields, and a late response cannot recreate a deleted word or edited example.
+    /// A saved explanation can follow a moved usage, but cannot recreate a removed/edited one.
+    /// The owner is resolved from current data at commit time rather than a captured sense index.
     static func accepts(_ record: LearningExplanationRecord, entry: VocabularyEntry) -> Bool {
-        if entry.isSavedWithoutContext,
-           LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: nil)) == record.input { return true }
-        return entry.examples.contains {
-            LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: $0)) == record.input
+        entry.senses.contains { sense in
+            sense.isSavedWithoutContext && LearningExplanationPolicy.input(
+                LearningExplanationPolicy.capture(entry, sense: sense, example: nil)) == record.input ||
+                sense.examples.contains { LearningExplanationPolicy.input(
+                    LearningExplanationPolicy.capture(entry, sense: sense, example: $0)) == record.input }
         }
     }
+
     static func storeExplanation(_ record: LearningExplanationRecord, in entry: inout VocabularyEntry) {
-        guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result),
-              accepts(record, entry: entry) else { return }
-        var records = entry.explanations ?? []
+        guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result) else { return }
+        for index in entry.senses.indices {
+            let sense = entry.senses[index]
+            if sense.isSavedWithoutContext, LearningExplanationPolicy.input(
+                LearningExplanationPolicy.capture(entry, sense: sense, example: nil)) == record.input {
+                append(record, to: &entry.senses[index].explanations)
+                // A first general result can fill an empty summary. Later regeneration belongs
+                // to the saved explanation; it cannot silently redefine the stable core meaning.
+                if sense.meaning.isEmpty, sense.meaningOrigin != .user {
+                    entry.senses[index].meaning = record.result.meaning
+                    entry.senses[index].meaningLanguage = record.language
+                    entry.senses[index].meaningOrigin = .ai
+                }
+            }
+            for usage in sense.examples.indices {
+                guard LearningExplanationPolicy.input(
+                    LearningExplanationPolicy.capture(entry, sense: sense, example: sense.examples[usage])) == record.input
+                else { continue }
+                append(record, to: &entry.senses[index].examples[usage].explanations)
+                if sense.examples[usage].meaningOrigin != .user {
+                    entry.senses[index].examples[usage].meaning = record.result.meaning
+                    entry.senses[index].examples[usage].meaningLanguage = record.language
+                    entry.senses[index].examples[usage].meaningOrigin = .ai
+                }
+            }
+        }
+    }
+
+    private static func append(_ record: LearningExplanationRecord, to records: inout [LearningExplanationRecord]) {
         records.removeAll { $0.input == record.input && $0.language == record.language }
         records.append(record)
-        entry.explanations = Array(records.suffix(24))
-        // The captured occurrence remains the identity even if the explanation uses a different
-        // output language. Draft meanings follow AI results; explicit user meanings do not.
-        for index in entry.examples.indices {
-            guard entry.examples[index].meaningOrigin != .user,
-                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: entry.examples[index])) == record.input
-            else { continue }
-            entry.examples[index].captureIdentity = entry.examples[index].captureIdentity ??
-                .init(meaningLanguage: entry.examples[index].meaningLanguage)
-            entry.examples[index].meaning = record.result.meaning
-            entry.examples[index].meaningLanguage = record.language
-            entry.examples[index].meaningOrigin = .ai
-        }
-        if entry.isSavedWithoutContext, entry.meaningOrigin != .user,
-           LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: nil)) == record.input {
-            entry.meaning = record.result.meaning
-            entry.meaningLanguage = record.language
-            entry.meaningOrigin = .ai
-        }
+        records = Array(records.suffix(24))
     }
 
     private static func key(_ parts: [String]) -> String {

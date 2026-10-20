@@ -11,14 +11,14 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var pending: Set<String> = []
     @Published private(set) var isLoaded = false
     @Published var errorMessage: String?
-    var openEntry: ((UUID?) -> Void)?
+    var openSelection: ((VocabularySelection?) -> Void)?
     /// Composition supplies cached annotations only; saving a favorite never starts a model.
     var enrichCapture: ((VocabularyCapture) -> VocabularyCapture)?
     private let archive: VocabularyArchive
     private var loadWork: Task<Void, Never>?
     private var revision: UInt64 = 0
     private var savedKeys: Set<String> = []
-    private var entryIDs: [String: UUID] = [:]
+    private var pendingCounts: [String: Int] = [:]
     private var standaloneKeys: Set<String> = []
 
     init(archive: VocabularyArchive) { self.archive = archive }
@@ -38,6 +38,7 @@ final class VocabularyStore: ObservableObject {
     func load() async { loadIfNeeded(); await loadWork?.value }
 
     func contains(_ capture: VocabularyCapture) -> Bool {
+        if capture.senseID != nil { return VocabularyPolicy.contains(capture, in: entries) }
         if capture.example == nil { return standaloneKeys.contains(VocabularyPolicy.captureKey(capture)) }
         return savedKeys.contains(VocabularyPolicy.captureKey(capture))
     }
@@ -60,12 +61,7 @@ final class VocabularyStore: ObservableObject {
     /// In particular, two usages with different translation languages must not alias on adoption.
     func explanationDestination(_ capture: VocabularyCapture) -> VocabularyExplanationDestination? {
         guard let entry = entries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }) else { return nil }
-        if let example = capture.example {
-            guard let saved = entry.examples.first(where: { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example) })
-            else { return nil }
-            return .init(entryID: entry.id, exampleID: saved.id)
-        }
-        return entry.isSavedWithoutContext ? .init(entryID: entry.id, exampleID: nil) : nil
+        return VocabularySensePolicy.destination(capture, in: entry)
     }
 
     func userMeaning(at destination: VocabularyExplanationDestination) -> String? {
@@ -73,31 +69,57 @@ final class VocabularyStore: ObservableObject {
         if let id = destination.exampleID {
             return entry.examples.first { $0.id == id && $0.meaningOrigin == .user }?.meaning
         }
-        return entry.meaningOrigin == .user ? entry.meaning : nil
+        guard let index = VocabularySensePolicy.index(destination.senseID, in: entry) else { return nil }
+        let sense = entry.senses[index]
+        return sense.meaningOrigin == .user ? sense.meaning : nil
     }
 
     func adoptExplanation(_ record: LearningExplanationRecord, at destination: VocabularyExplanationDestination) async -> Bool {
         guard let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
         var edited = original
         if let exampleID = destination.exampleID {
-            guard let index = original.examples.firstIndex(where: { $0.id == exampleID }),
-                  LearningExplanationPolicy.input(
-                    LearningExplanationPolicy.capture(original, example: original.examples[index])) == record.input
-            else { return false }
-            edited.examples[index].captureIdentity = original.examples[index].captureIdentity ??
-                .init(meaningLanguage: original.examples[index].meaningLanguage)
-            edited.examples[index].meaning = record.result.meaning
-            edited.examples[index].meaningLanguage = record.language
-            edited.examples[index].meaningOrigin = .user
+            // A move can finish while the model runs. Stable usage identity resolves its current
+            // owner; a late reply must never recreate the old sense or an already deleted usage.
+            guard let owner = original.senses.firstIndex(where: { $0.examples.contains { $0.id == exampleID } }),
+                  let index = original.senses[owner].examples.firstIndex(where: { $0.id == exampleID }),
+                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, sense: original.senses[owner],
+                    example: original.senses[owner].examples[index])) == record.input else { return false }
+            edited.senses[owner].examples[index].meaning = record.result.meaning
+            edited.senses[owner].examples[index].meaningLanguage = record.language
+            edited.senses[owner].examples[index].meaningOrigin = .user
         } else {
-            guard original.isSavedWithoutContext,
-                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, example: nil)) == record.input
-            else { return false }
-            edited.meaning = record.result.meaning
-            edited.meaningLanguage = record.language
-            edited.meaningOrigin = .user
+            guard let owner = VocabularySensePolicy.index(destination.senseID, in: original),
+                  original.senses[owner].isSavedWithoutContext,
+                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, sense: original.senses[owner],
+                    example: nil)) == record.input else { return false }
+            edited.senses[owner].meaning = record.result.meaning
+            edited.senses[owner].meaningLanguage = record.language
+            edited.senses[owner].meaningOrigin = .user
         }
         return await update(edited, basedOn: original)
+    }
+
+    func mergeSenses(entryID: UUID, source: UUID, target: UUID) async -> Bool {
+        do {
+            apply(try await archive.mergeSenses(entryID: entryID, source: source, target: target))
+            return true
+        } catch { report(error); return false }
+    }
+
+    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) async -> Bool {
+        do {
+            apply(try await archive.moveExample(entryID: entryID, exampleID: exampleID, source: source, target: target))
+            return true
+        } catch { report(error); return false }
+    }
+
+    func createSense(entryID: UUID) async -> UUID? {
+        let id = UUID()
+        do { apply(try await archive.createSense(entryID: entryID, senseID: id)); return id } catch { report(error); return nil }
+    }
+
+    func removeSense(entryID: UUID, senseID: UUID) async -> Bool {
+        do { apply(try await archive.removeSense(entryID: entryID, senseID: senseID)); return true } catch { report(error); return false }
     }
 
     func remove(_ capture: VocabularyCapture) async {
@@ -118,26 +140,30 @@ final class VocabularyStore: ObservableObject {
     }
 
     func show(_ capture: VocabularyCapture) {
-        let id = entryIDs[VocabularyPolicy.entryKey(capture)]
+        let destination = explanationDestination(capture)
+        let selection = destination.map { VocabularySelection(entryID: $0.entryID, senseID: $0.senseID) }
         CotabbyLogger.learning.debug("Vocabulary open requested", metadata: [
-            "entry_found": .stringConvertible(id != nil), "handler_available": .stringConvertible(openEntry != nil)
+            "sense_found": .stringConvertible(selection != nil), "handler_available": .stringConvertible(openSelection != nil)
         ])
-        openEntry?(id)
+        openSelection?(selection)
     }
 
     private func change(_ capture: VocabularyCapture, operation: () async throws -> VocabularySnapshot) async {
         let key = VocabularyPolicy.captureKey(capture)
-        guard pending.insert(key).inserted else { return }
-        defer { pending.remove(key) }
+        pendingCounts[key, default: 0] += 1
+        if pendingCounts[key] == 1 { pending.insert(key) }
+        defer {
+            let remaining = (pendingCounts[key] ?? 1) - 1
+            if remaining == 0 { pendingCounts.removeValue(forKey: key); pending.remove(key) } else { pendingCounts[key] = remaining }
+        }
         do { apply(try await operation()) } catch { report(error) }
     }
 
     private func apply(_ snapshot: VocabularySnapshot) {
         guard !isLoaded || snapshot.revision >= revision else { return }
         entries = snapshot.document.entries
-        entryIDs = Dictionary(entries.map { (VocabularyPolicy.entryKey($0), $0.id) }, uniquingKeysWith: { first, _ in first })
         standaloneKeys = Set(entries.flatMap { entry in
-            entry.standaloneMeanings.map { VocabularyPolicy.entryKey(entry) + ":standalone:" + $0.id }
+            entry.senses.filter(\.isSavedWithoutContext).map { _ in VocabularyPolicy.entryKey(entry) + ":standalone" }
         })
         savedKeys = Set(entries.flatMap { entry in
             entry.examples.map { VocabularyPolicy.entryKey(entry) + ":" + VocabularyPolicy.exampleKey($0) }

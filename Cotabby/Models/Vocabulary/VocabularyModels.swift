@@ -9,17 +9,46 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     var dictionaryForm: String
     let language: LearningLanguage
     let kind: Kind
+    var senses: [VocabularySense]
+    let createdAt: Date
+    var updatedAt: Date
+
+    /// Read-only projections support headword-wide search and dictionary lookup. Storage and
+    /// editing always name a sense; these projections never create a second owner of a usage.
+    var examples: [VocabularyExample] { senses.flatMap(\.examples) }
+    var explanations: [LearningExplanationRecord]? {
+        let records = senses.flatMap { $0.explanations + $0.examples.flatMap(\.explanations) }
+        var seen = Set<UUID>()
+        let unique = records.filter { seen.insert($0.id).inserted }
+        return unique.isEmpty ? nil : unique
+    }
+}
+
+/// A stable learning identity for one core meaning. The entry groups senses; this value owns
+/// its summary, notes and usages and will be the future review/Anki reference. Rewording a
+/// summary does not change its UUID. Merged IDs remain resolvable instead of being recycled.
+nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
+    let id: UUID
     var meaning: String
     var meaningLanguage: LearningLanguage?
     var meaningOrigin: VocabularyMeaningOrigin = .captured
-    var note: String
-    var tags: [String]
-    var examples: [VocabularyExample]
+    var note = ""
+    var tags: [String] = []
+    var examples: [VocabularyExample] = []
     var isSavedWithoutContext = false
     var standaloneMeanings: [VocabularyMeaning] = []
-    var explanations: [LearningExplanationRecord]?
+    var explanations: [LearningExplanationRecord] = []
+    var alternateMeanings: [VocabularyMeaning] = []
+    var mergedFrom: [UUID] = []
     let createdAt: Date
     var updatedAt: Date
+}
+
+/// Window navigation and durable destinations use both levels. Sense IDs stay independent of
+/// presentation order, labels and generated explanation language.
+nonisolated struct VocabularySelection: Equatable, Hashable, Sendable {
+    let entryID: UUID
+    let senseID: UUID
 }
 
 /// The archive records who owns a meaning, independently of its text. Model refreshes may
@@ -42,6 +71,7 @@ nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable
     var text: String
     var translation: String
     var translationLanguage: LearningLanguage?
+    var translationVariants: [VocabularyMeaning] = []
     var ranges: [VocabularyTextRange]
     var completeness: Completeness
     var meaning: String
@@ -49,10 +79,14 @@ nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable
     var meaningOrigin: VocabularyMeaningOrigin = .captured
     var appBundleIdentifier: String?
     let createdAt: Date
-    /// Adopting another language changes annotation content, not the identity of the saved usage.
-    /// The wrapper distinguishes an originally unknown language from a missing legacy identity.
-    struct CaptureIdentity: Codable, Equatable, Sendable { let meaningLanguage: LearningLanguage? }
-    var captureIdentity: CaptureIdentity?
+    var explanations: [LearningExplanationRecord] = []
+
+    func copiedWithNewID() -> Self {
+        .init(id: UUID(), text: text, translation: translation, translationLanguage: translationLanguage,
+            translationVariants: translationVariants, ranges: ranges, completeness: completeness, meaning: meaning,
+            meaningLanguage: meaningLanguage, meaningOrigin: meaningOrigin, appBundleIdentifier: appBundleIdentifier,
+            createdAt: createdAt, explanations: explanations)
+    }
 }
 
 nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
@@ -73,12 +107,14 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var meaningLanguage: LearningLanguage?
     var example: VocabularyExample?
     var explanation: LearningExplanationRecord?
+    /// Supplied only by an explicit notebook destination, never by model-generated text.
+    var senseID: UUID?
 }
 
 /// Versioned JSON is also the lossless backup format. Unknown versions fail closed instead of
 /// silently replacing a newer notebook with an empty archive.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    var schemaVersion = 2
+    var schemaVersion = 3
     var entries: [VocabularyEntry] = []
 }
 
@@ -91,5 +127,6 @@ nonisolated struct VocabularySnapshot: Sendable {
 /// explanation while still owning independently editable meanings.
 nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
     let entryID: UUID
+    let senseID: UUID
     let exampleID: UUID?
 }

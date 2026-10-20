@@ -400,20 +400,22 @@ The autocomplete inference package and its revision remain separate.
 
 ## Vocabulary notebook
 
-`Models/Vocabulary` owns durable entries, examples with UTF-16 spans, meaning ownership,
-and the schema-v2 export format. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
+`Models/Vocabulary` owns durable expressions, stable senses, examples with UTF-16 spans, meaning ownership,
+and the schema-v3 export format. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
 `Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
-`VocabularyNotebookSession` belongs to the library window, retains a lightweight explanation
-session per visible usage, and cancels them on navigation/closure. Browsing only restores records;
+`VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
+no generated wording is used as an identity. `VocabularyNotebookSession` belongs to the library window, retains a lightweight explanation
+session per usage of the selected sense, and cancels them on navigation/closure. Browsing only restores records;
 generation remains explicit in the notebook. `UI/Vocabulary` owns browsing and editing drafts.
 `VocabularyDictionarySection` queries only while expanded, sharing the provider/settings,
 `LearningDictionarySourcePicker`, `LearningDictionaryDefinitionView`, and attribution with cards.
-`VocabularyWindowController` provides one normal library window; floating cards retain their
+`VocabularyWindowController` provides one normal library window and favorite navigation to an exact sense; floating cards retain their
 existing nonactivating lifetime. The shared fish-tail button lives in `UI/Components`.
 
 The environment constructs one store for both writing and reading cards, isolates the XCTest
 host from real user data, and keeps Dev/production archives in separate support directories.
+The v3 file is `Vocabulary/notebook-v3.json`; the retired `notebook.json` is not loaded or rewritten.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
 
 ## Contextual AI explanation

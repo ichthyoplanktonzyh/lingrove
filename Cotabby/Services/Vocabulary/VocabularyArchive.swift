@@ -22,19 +22,8 @@ actor VocabularyArchive {
             do {
                 loaded = try JSONDecoder().decode(VocabularyDocument.self, from: Data(contentsOf: url))
             } catch { throw VocabularyError.invalidArchive }
-            guard loaded.schemaVersion == 2 else { throw VocabularyError.unsupportedVersion }
-            guard Set(loaded.entries.map(\.id)).count == loaded.entries.count else { throw VocabularyError.invalidArchive }
-            guard Set(loaded.entries.map(VocabularyPolicy.entryKey)).count == loaded.entries.count,
-                  loaded.entries.allSatisfy({ entry in
-                    !VocabularyPolicy.normalized(entry.expression).isEmpty &&
-                        (entry.explanations?.count ?? 0) <= 24 && (entry.explanations ?? []).allSatisfy {
-                            LearningExplanationPolicy.isValid($0.input) && VocabularyPolicy.accepts($0, entry: entry) &&
-                                LearningExplanationPolicy.isValid($0.result)
-                        } &&
-                        Set(entry.examples.map(\.id)).count == entry.examples.count && entry.examples.allSatisfy { example in
-                            !example.text.isEmpty && example.ranges.allSatisfy { VocabularyPolicy.valid($0.nsRange, in: example.text) }
-                        }
-                  }) else { throw VocabularyError.invalidArchive }
+            guard loaded.schemaVersion == 3 else { throw VocabularyError.unsupportedVersion }
+            try validate(loaded)
         } else { loaded = VocabularyDocument() }
         document = loaded
         return .init(revision: revision, document: loaded)
@@ -50,49 +39,57 @@ actor VocabularyArchive {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entry.id }) else { throw VocabularyError.invalidContent }
         let original = next.entries[index]
-        guard baseline.id == entry.id else { throw VocabularyError.invalidContent }
+        guard baseline.id == entry.id,
+              Set(entry.senses.map(\.id)).count == entry.senses.count,
+              Set(entry.examples.map(\.id)).count == entry.examples.count else { throw VocabularyError.invalidContent }
         guard entry.language == original.language, entry.kind == original.kind,
-              !VocabularyPolicy.normalized(entry.expression).isEmpty,
-              entry.examples.allSatisfy({ example in
-                  !example.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && example.text.utf8.count <= 262_144 &&
-                      example.ranges.allSatisfy { VocabularyPolicy.valid($0.nsRange, in: example.text) }
-              })
-        else { throw VocabularyError.invalidContent }
+              !VocabularyPolicy.normalized(entry.expression).isEmpty else { throw VocabularyError.invalidContent }
         guard !next.entries.contains(where: { $0.id != entry.id && VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(entry) })
         else { throw VocabularyError.invalidContent }
         var merged = original
-        // Three-way field edits preserve examples collected while the sheet was open. If two
-        // editors changed the same field, report the conflict instead of silently choosing one.
         merged.expression = try merge(baseline.expression, original.expression, entry.expression)
         merged.dictionaryForm = try merge(baseline.dictionaryForm, original.dictionaryForm, entry.dictionaryForm)
-        let meaning = try merge(VocabularyMeaning(text: baseline.meaning, language: baseline.meaningLanguage),
-            VocabularyMeaning(text: original.meaning, language: original.meaningLanguage),
-            VocabularyMeaning(text: entry.meaning, language: entry.meaningLanguage))
-        merged.meaning = meaning.text
-        merged.meaningLanguage = meaning.language
-        if entry.meaning != baseline.meaning || entry.meaningLanguage != baseline.meaningLanguage ||
-            entry.meaningOrigin == .user && baseline.meaningOrigin != .user {
-            merged.meaningOrigin = .user
-        }
-        if entry.meaning != baseline.meaning || entry.meaningLanguage != baseline.meaningLanguage,
-           merged.isSavedWithoutContext {
-            if let index = merged.standaloneMeanings.firstIndex(where: { $0.language == meaning.language }) {
-                merged.standaloneMeanings[index] = meaning
-            } else { merged.standaloneMeanings.append(meaning) }
-        }
-        merged.note = try merge(baseline.note, original.note, entry.note)
-        merged.tags = try merge(baseline.tags, original.tags, entry.tags)
-        merged.examples = try mergeExamples(baseline: baseline.examples, current: original.examples, edited: entry.examples)
-        if merged.examples.isEmpty, !merged.isSavedWithoutContext {
-            // Deleting the last example normally keeps the word itself. If another action
-            // explicitly removed its standalone save meanwhile, do not recreate that save.
-            guard !baseline.isSavedWithoutContext else { throw VocabularyError.editConflict }
-            merged.isSavedWithoutContext = true
-            merged.standaloneMeanings = [VocabularyMeaning(text: merged.meaning, language: merged.meaningLanguage)]
-        }
+        merged.senses = try mergeSenses(baseline: baseline.senses, current: original.senses, edited: entry.senses)
+        merged.updatedAt = Date()
         next.entries[index] = merged
-        next.entries[index].updatedAt = Date()
         return try commit(next)
+    }
+
+    /// A sheet edits one sense while cards may append another. Merge by stable IDs and fields;
+    /// an explicit conflict is safer than losing a concurrent note, move or user-authored meaning.
+    private func mergeSenses(baseline: [VocabularySense], current: [VocabularySense],
+                             edited: [VocabularySense]) throws -> [VocabularySense] {
+        var result = current
+        for value in edited {
+            guard let before = baseline.first(where: { $0.id == value.id }) else {
+                guard !result.contains(where: { $0.id == value.id || $0.mergedFrom.contains(value.id) }) else {
+                    throw VocabularyError.editConflict
+                }
+                result.append(value); continue
+            }
+            guard value != before else { continue }
+            guard let index = result.firstIndex(where: { $0.id == value.id }) else { throw VocabularyError.editConflict }
+            let live = result[index]
+            var merged = live
+            let meaning = try merge(VocabularyMeaning(text: before.meaning, language: before.meaningLanguage),
+                VocabularyMeaning(text: live.meaning, language: live.meaningLanguage),
+                VocabularyMeaning(text: value.meaning, language: value.meaningLanguage))
+            merged.meaning = meaning.text; merged.meaningLanguage = meaning.language
+            if merged.isSavedWithoutContext, value.meaning != before.meaning || value.meaningLanguage != before.meaningLanguage,
+               !merged.standaloneMeanings.contains(meaning) { merged.standaloneMeanings.append(meaning) }
+            if value.meaning != before.meaning || value.meaningLanguage != before.meaningLanguage ||
+                value.meaningOrigin == .user && before.meaningOrigin != .user { merged.meaningOrigin = .user }
+            merged.note = try merge(before.note, live.note, value.note)
+            merged.tags = try merge(before.tags, live.tags, value.tags)
+            merged.examples = try mergeExamples(baseline: before.examples, current: live.examples, edited: value.examples)
+            merged.updatedAt = Date()
+            result[index] = merged
+        }
+        for before in baseline where !edited.contains(where: { $0.id == before.id }) {
+            if let live = result.first(where: { $0.id == before.id }), live != before { throw VocabularyError.editConflict }
+            result.removeAll { $0.id == before.id }
+        }
+        return result
     }
 
     private func merge<Value: Equatable>(_ baseline: Value, _ current: Value, _ edited: Value) throws -> Value {
@@ -121,7 +118,6 @@ actor VocabularyArchive {
                 // is not a user-authored blank; a new explanation may fill the new occurrence.
                 editedExample.meaningOrigin = .captured
             } else if example.meaning != before.meaning || example.meaningLanguage != before.meaningLanguage {
-                editedExample.captureIdentity = before.captureIdentity ?? .init(meaningLanguage: before.meaningLanguage)
                 editedExample.meaningOrigin = .user
             }
             merged[index] = try merge(before, merged[index], editedExample)
@@ -141,16 +137,58 @@ actor VocabularyArchive {
 
     func remove(_ capture: VocabularyCapture) throws -> VocabularySnapshot {
         var next = try load().document
-        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) })
-        else { return .init(revision: revision, document: next) }
-        if capture.example != nil {
-            next.entries[index].examples.removeAll { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(capture.example) }
-        } else {
-            next.entries[index].standaloneMeanings.removeAll { $0.language == capture.meaningLanguage }
-            next.entries[index].isSavedWithoutContext = !next.entries[index].standaloneMeanings.isEmpty
+        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
+              let destination = VocabularySensePolicy.destination(capture, in: next.entries[index]),
+              let sense = VocabularySensePolicy.index(destination.senseID, in: next.entries[index]) else {
+            return .init(revision: revision, document: next)
         }
-        // Removing this occurrence must not erase examples collected in other contexts.
-        if !next.entries[index].isSavedWithoutContext && next.entries[index].examples.isEmpty { next.entries.remove(at: index) }
+        if let id = destination.exampleID {
+            next.entries[index].senses[sense].examples.removeAll { $0.id == id }
+        } else {
+            next.entries[index].senses[sense].standaloneMeanings.removeAll()
+            next.entries[index].senses[sense].isSavedWithoutContext = false
+            next.entries[index].senses[sense].explanations.removeAll()
+        }
+        // Removing the exact favorite keeps other senses and their notes. A completely empty
+        // captured identity can disappear; annotated identities require an explicit delete.
+        let value = next.entries[index].senses[sense]
+        if value.examples.isEmpty, !value.isSavedWithoutContext, value.note.isEmpty, value.tags.isEmpty,
+           value.meaningOrigin != .user, value.mergedFrom.isEmpty {
+            next.entries[index].senses.remove(at: sense)
+        }
+        if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
+        return try commit(next)
+    }
+
+    func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        try VocabularySensePolicy.merge(source: source, into: target, in: &next.entries[index], now: Date())
+        return try commit(next)
+    }
+
+    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
+        return try commit(next)
+    }
+
+    func createSense(entryID: UUID, senseID: UUID) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        let now = Date()
+        next.entries[index].senses.append(VocabularySense(id: senseID, meaning: "", createdAt: now, updatedAt: now))
+        next.entries[index].updatedAt = now
+        return try commit(next)
+    }
+
+    func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let index = next.entries.firstIndex(where: { $0.id == entryID }),
+              let sense = next.entries[index].senses.firstIndex(where: { $0.id == senseID }) else { throw VocabularyError.invalidContent }
+        next.entries[index].senses.remove(at: sense)
+        if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
         return try commit(next)
     }
 
@@ -171,11 +209,26 @@ actor VocabularyArchive {
 
     private func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
         var next = document
-        // Removing/editing a usage also removes its retained explanation context from exports.
+        // Explanation snapshots remain attached to their exact current input. A moved usage
+        // retains them intact; editing its text cannot relabel an old answer as a current one.
         for index in next.entries.indices {
             let entry = next.entries[index]
-            next.entries[index].explanations = entry.explanations?.filter { VocabularyPolicy.accepts($0, entry: entry) }
+            for sense in entry.senses.indices {
+                let value = entry.senses[sense]
+                let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: value, example: nil))
+                next.entries[index].senses[sense].explanations = value.explanations.filter {
+                    value.isSavedWithoutContext && $0.input == generalInput
+                }
+                for usage in value.examples.indices {
+                    let input = LearningExplanationPolicy.input(
+                        LearningExplanationPolicy.capture(entry, sense: value, example: value.examples[usage]))
+                    next.entries[index].senses[sense].examples[usage].explanations = value.examples[usage].explanations.filter {
+                        $0.input == input
+                    }
+                }
+            }
         }
+        try validate(next)
         let data = try Self.encoded(next)
         guard data.count <= Self.maximumBytes else { throw VocabularyError.oversizedArchive }
         if let url {
@@ -186,6 +239,43 @@ actor VocabularyArchive {
         self.document = next
         revision &+= 1
         return .init(revision: revision, document: next)
+    }
+
+    /// Validate the whole ownership graph on load and every write. UUID uniqueness includes
+    /// retired aliases, preventing a later merge or edit from giving one identity two owners.
+    private func validate(_ document: VocabularyDocument) throws {
+        guard document.schemaVersion == 3,
+              Set(document.entries.map(VocabularyPolicy.entryKey)).count == document.entries.count else {
+            throw VocabularyError.invalidArchive
+        }
+        var ids = Set<UUID>()
+        for entry in document.entries {
+            guard ids.insert(entry.id).inserted, !VocabularyPolicy.normalized(entry.expression).isEmpty, !entry.senses.isEmpty else {
+                throw VocabularyError.invalidArchive
+            }
+            guard Set(entry.examples.map { VocabularyPolicy.exampleKey($0) }).count == entry.examples.count,
+                  entry.senses.filter(\.isSavedWithoutContext).count <= 1 else { throw VocabularyError.invalidArchive }
+            for sense in entry.senses {
+                let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: nil))
+                guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
+                      sense.explanations.count <= 128,
+                      sense.explanations.allSatisfy({
+                          LearningExplanationPolicy.isValid($0.input) && LearningExplanationPolicy.isValid($0.result) &&
+                              $0.input == generalInput
+                      })
+                else { throw VocabularyError.invalidArchive }
+                for usage in sense.examples {
+                    let usageInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: usage))
+                    guard ids.insert(usage.id).inserted, !usage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                          usage.text.utf8.count <= 262_144,
+                          usage.ranges.allSatisfy({ VocabularyPolicy.valid($0.nsRange, in: usage.text) }),
+                          usage.explanations.count <= 24, usage.explanations.allSatisfy({
+                              LearningExplanationPolicy.isValid($0.input) && LearningExplanationPolicy.isValid($0.result) &&
+                                  $0.input == usageInput
+                          }) else { throw VocabularyError.invalidArchive }
+                }
+            }
+        }
     }
 
     private static func encoded(_ document: VocabularyDocument) throws -> Data {

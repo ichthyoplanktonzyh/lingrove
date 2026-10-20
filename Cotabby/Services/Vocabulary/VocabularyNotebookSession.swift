@@ -11,6 +11,7 @@ final class VocabularyNotebookSession: ObservableObject {
     let dictionary: LearningDictionarySession
     private let service: (any LearningExplanationGenerating)?
     private(set) var entryID: UUID?
+    private(set) var senseID: UUID?
     private var dictionaryEntry: VocabularyEntry?
 
     init(service: (any LearningExplanationGenerating)? = nil, provider: any LearningDictionaryProviding,
@@ -21,21 +22,26 @@ final class VocabularyNotebookSession: ObservableObject {
 
     static func key(_ example: VocabularyExample?) -> String { example?.id.uuidString ?? "standalone" }
 
-    func select(_ entry: VocabularyEntry?) {
-        if entryID != entry?.id {
-            cancel()
-            explanations = [:]
-            dictionaryEntry = nil
+    func select(_ entry: VocabularyEntry?, senseID: UUID? = nil) {
+        let selectedSense = entry.flatMap { entry in
+            senseID.flatMap { VocabularySensePolicy.index($0, in: entry).map { entry.senses[$0] } } ?? entry.senses.first
         }
+        if entryID != entry?.id || self.senseID != selectedSense?.id {
+            for session in explanations.values { session.cancel() }
+            explanations = [:]
+        }
+        if entryID != entry?.id { dictionary.close(); dictionaryEntry = nil }
         entryID = entry?.id
-        guard let entry else { return }
+        self.senseID = selectedSense?.id
+        guard let entry, let sense = selectedSense else { return }
         var next: [String: LearningExplanationSession] = [:]
-        let examples: [VocabularyExample?] = (entry.isSavedWithoutContext ? [nil] : []) + entry.examples.map(Optional.some)
+        let examples: [VocabularyExample?] = (sense.isSavedWithoutContext ? [nil] : []) + sense.examples.map(Optional.some)
         for example in examples {
             let key = Self.key(example)
             let session = explanations[key] ?? LearningExplanationSession(service: service)
-            let input = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: example))
-            let saved = entry.explanations?.last { $0.input == input && $0.language == service?.language }
+            let input = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: example))
+            let records = example?.explanations ?? sense.explanations
+            let saved = records.last { $0.input == input && $0.language == service?.language }
             session.setTarget(input, saved: saved)
             next[key] = session
         }

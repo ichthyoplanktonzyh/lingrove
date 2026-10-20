@@ -20,31 +20,33 @@ struct VocabularyExplanationTests {
         #expect(try await archive.saveExplanation(result).document.entries.isEmpty)
         await store.save(capture)
         var baseline = try #require(store.entries.first), edited = baseline
-        edited.note = "User note"; edited.examples[0].meaning = "My meaning"
+        edited.senses[0].note = "User note"; edited.senses[0].examples[0].meaning = "My meaning"
         #expect(await store.update(edited, basedOn: baseline))
         await store.saveExplanation(result)
         baseline = try #require(store.entries.first)
-        #expect(baseline.note == "User note" && baseline.examples[0].meaning == "My meaning")
+        #expect(baseline.senses[0].note == "User note" && baseline.examples[0].meaning == "My meaning")
         #expect(baseline.explanations == [result])
-        #expect(await store.adoptExplanation(result, at: .init(entryID: baseline.id, exampleID: baseline.examples[0].id)))
-        #expect(store.entries[0].examples[0].meaning == "告知" && store.entries[0].note == "User note")
+        #expect(await store.adoptExplanation(result, at: .init(entryID: baseline.id, senseID: baseline.senses[0].id,
+                exampleID: baseline.examples[0].id)))
+        #expect(store.entries[0].examples[0].meaning == "告知" && store.entries[0].senses[0].note == "User note")
         #expect(store.contains(capture), "Adopting a meaning must not change favorite identity")
         await store.save(capture)
         #expect(store.entries[0].examples.count == 1 && store.entries[0].examples[0].meaning == "告知")
     }
 
-    @Test func adoptionUsesExplicitExampleEvenWhenInputsMatch() async throws {
+    @Test func adoptingAnotherLanguageKeepsTheUsageAndSenseIdentity() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         var first = capture(), second = first
         first.example?.translationLanguage = .chinese
         second.example?.translationLanguage = .japanese
         await store.save(first); await store.save(second)
         let entry = try #require(store.entries.first)
-        #expect(entry.examples.count == 2)
+        #expect(entry.examples.count == 1)
         let result = record(second)
-        #expect(await store.adoptExplanation(result, at: .init(entryID: entry.id, exampleID: entry.examples[1].id)))
-        #expect(store.entries[0].examples[0].meaning.isEmpty)
-        #expect(store.entries[0].examples[1].meaning == result.result.meaning)
+        #expect(await store.adoptExplanation(result,
+            at: .init(entryID: entry.id, senseID: entry.senses[0].id, exampleID: entry.examples[0].id)))
+        #expect(store.entries[0].examples[0].meaning == result.result.meaning)
+        #expect(store.entries[0].senses[0].id == entry.senses[0].id && store.entries[0].examples[0].id == entry.examples[0].id)
     }
 
     @Test func adoptingAnotherLanguagePreservesOriginalStandaloneMeaning() async throws {
@@ -55,10 +57,10 @@ struct VocabularyExplanationTests {
         let entry = try #require(store.entries.first)
         let result = LearningExplanationRecord(id: UUID(), input: LearningExplanationPolicy.input(capture), language: .english,
             result: .init(meaning: "be aware of", explanation: "A verb describing knowledge."), model: "fixture", createdAt: Date())
-        #expect(await store.adoptExplanation(result, at: .init(entryID: entry.id, exampleID: nil)))
-        #expect(store.entries[0].meaningLanguage == .english)
-        #expect(store.entries[0].standaloneMeanings.contains(.init(text: "知道", language: .chinese)))
-        #expect(store.entries[0].standaloneMeanings.contains(.init(text: "be aware of", language: .english)))
+        #expect(await store.adoptExplanation(result, at: .init(entryID: entry.id, senseID: entry.senses[0].id, exampleID: nil)))
+        #expect(store.entries[0].senses[0].meaningLanguage == .english)
+        #expect(store.entries[0].senses[0].standaloneMeanings.contains(.init(text: "知道", language: .chinese)))
+        #expect(store.entries[0].senses[0].standaloneMeanings.contains(.init(text: "be aware of", language: .english)))
     }
 
     @Test func deletingOrEditingAUsagePrunesItsSavedContextAndRejectsLateReplies() async throws {
@@ -71,11 +73,11 @@ struct VocabularyExplanationTests {
         _ = try await archive.saveExplanation(record(first))
         let baseline = try #require(try await archive.load().document.entries.first)
         var edited = baseline
-        edited.examples[0].text = "The user changed this example."; edited.examples[0].ranges = []
+        edited.senses[0].examples[0].text = "The user changed this example."; edited.senses[0].examples[0].ranges = []
         let updated = try await archive.update(edited, basedOn: baseline)
-        #expect(updated.document.entries[0].explanations?.isEmpty == true)
+        #expect(updated.document.entries[0].explanations == nil)
         #expect(!LearningExplanationPolicy.isValid(LearningExplanationPolicy.input(
-            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.examples[0]))))
+            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.senses[0].examples[0]))))
     }
 
     @Test func floatingSessionLoadsSavedAnnotationBeforeModelConfiguration() async throws {
@@ -109,7 +111,8 @@ struct VocabularyExplanationTests {
     @Test func oldArchiveAndNewAnnotationsBothReopenLosslessly() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json"), archive = VocabularyArchive(url: folder.appendingPathComponent("notebook.json"))
+        let url = folder.appendingPathComponent("notebook.json")
+        let archive = VocabularyArchive(url: url)
         let capture = capture(), result = record(capture)
         _ = try await archive.save(capture)
         #expect(try await VocabularyArchive(url: url).load().document.entries[0].explanations == nil)

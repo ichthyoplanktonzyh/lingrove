@@ -16,13 +16,18 @@ struct VocabularyNotebookSessionTests {
         let entry = try #require(store.entries.first)
         let provider = NotebookDictionaryProbe()
         let learning = VocabularyNotebookSession(provider: provider)
-        learning.select(entry)
-        #expect(learning.explanations.count == 2 && learning.dictionary.unit == nil)
+        learning.select(entry, senseID: entry.senses[0].id)
+        #expect(learning.explanations.count == 1 && learning.dictionary.unit == nil)
         #expect(await provider.calls.isEmpty)
-        for example in entry.examples {
+        for example in entry.senses[0].examples {
             let session = try #require(learning.explanations[example.id.uuidString])
             #expect(session.input?.context == example.text && !session.isGenerating)
         }
+        let firstSession = try #require(learning.explanations.values.first)
+        learning.select(entry, senseID: entry.senses[1].id)
+        #expect(learning.senseID == entry.senses[1].id && learning.explanations.count == 1)
+        #expect(learning.explanations[entry.senses[0].examples[0].id.uuidString] == nil)
+        #expect(!firstSession.isGenerating)
         learning.showDictionary(entry)
         await settle { learning.dictionary.content != .loading }
         #expect(await provider.calls == [.bundled])

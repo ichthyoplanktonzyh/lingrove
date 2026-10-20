@@ -29,7 +29,7 @@ struct VocabularyContextualMeaningTests {
         #expect(entry.examples.count == 1 && store.contains(capture))
         #expect(entry.examples[0].meaning == record.result.meaning && entry.examples[0].meaningOrigin == .ai)
         #expect(entry.examples[0].meaningLanguage == .chinese && entry.explanations == [record])
-        #expect(entry.meaning.isEmpty, "A contextual sense belongs to the occurrence, not a universal word definition")
+        #expect(entry.senses[0].meaning.isEmpty, "A contextual sense belongs to the occurrence, not a universal word definition")
         await store.save(capture)
         #expect(store.entries[0].examples.count == 1 && store.contains(capture))
         await store.remove(capture)
@@ -46,7 +46,7 @@ struct VocabularyContextualMeaningTests {
         var baseline = try #require(store.entries.first)
         #expect(baseline.examples[0].meaning == "持续通知" && baseline.examples[1].meaning.isEmpty)
         var edited = baseline
-        edited.examples[0].meaning = "My preferred wording"
+        edited.senses[0].examples[0].meaning = "My preferred wording"
         #expect(await store.update(edited, basedOn: baseline))
         baseline = try #require(store.entries.first)
         #expect(baseline.examples[0].meaningOrigin == .user)
@@ -67,11 +67,11 @@ struct VocabularyContextualMeaningTests {
         let baseline = try #require(store.entries.first)
         var edited = baseline
         let sentence = "They keep us posted."
-        edited.examples[0].text = sentence
-        edited.examples[0].ranges = ["keep", "posted"].map { VocabularyTextRange((sentence as NSString).range(of: $0)) }
-        edited.examples[0].meaning = ""
-        edited.examples[0].meaningLanguage = nil
-        edited.examples[0].meaningOrigin = .captured
+        edited.senses[0].examples[0].text = sentence
+        edited.senses[0].examples[0].ranges = ["keep", "posted"].map { VocabularyTextRange((sentence as NSString).range(of: $0)) }
+        edited.senses[0].examples[0].meaning = ""
+        edited.senses[0].examples[0].meaningLanguage = nil
+        edited.senses[0].examples[0].meaningOrigin = .captured
         #expect(await store.update(edited, basedOn: baseline))
         let current = store.entries[0]
         let fresh = LearningExplanationPolicy.capture(current, example: current.examples[0])
@@ -86,23 +86,22 @@ struct VocabularyContextualMeaningTests {
         var standalone = withContext; standalone.example = nil; standalone.meaning = "Captured draft"
         await store.save(withContext); await store.save(standalone)
         let baseline = try #require(store.entries.first)
-        var edited = baseline; edited.meaning = "User meaning"
+        var edited = baseline; edited.senses[1].meaning = "User meaning"
         #expect(await store.update(edited, basedOn: baseline))
-        await store.remove(standalone); await store.save(standalone)
-        #expect(store.entries[0].meaning == "User meaning" && store.entries[0].meaningOrigin == .user)
+        await store.save(standalone); await store.save(standalone)
+        #expect(store.entries[0].senses[1].meaning == "User meaning" && store.entries[0].senses[1].meaningOrigin == .user)
         #expect(store.entries[0].examples.count == 1)
     }
 
-    @Test func equalSentencesWithDifferentTranslationReceiptsDoNotShareAnAutomaticMeaning() async throws {
+    @Test func annotationLanguageDoesNotCreateAnotherSenseOrUsage() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         var first = capture(), second = capture()
         first.example?.translationLanguage = .chinese
         second.example?.translationLanguage = .spanish
         await store.save(first); await store.save(second)
         await store.saveExplanation(record(first))
+        #expect(store.entries[0].senses.count == 1 && store.entries[0].examples.count == 1)
         #expect(store.entries[0].examples[0].meaningOrigin == .ai)
-        #expect(store.entries[0].examples[1].meaning.isEmpty)
-        #expect(store.entries[0].examples[1].meaningOrigin == .captured)
     }
 
     @Test func completeAndFragmentReceiptsRetainTheirOwnExplanationScope() async throws {
@@ -126,8 +125,8 @@ struct VocabularyContextualMeaningTests {
         #expect(result.input.contextKind == .none)
         await store.save(generic); await store.saveExplanation(result)
         let entry = try #require(store.entries.first)
-        #expect(entry.examples.isEmpty && entry.isSavedWithoutContext)
-        #expect(entry.meaning == result.result.meaning && entry.meaningOrigin == .ai)
+        #expect(entry.examples.isEmpty && entry.senses[0].isSavedWithoutContext)
+        #expect(entry.senses[0].meaning == result.result.meaning && entry.senses[0].meaningOrigin == .ai)
         #expect(entry.explanations == [result])
     }
 

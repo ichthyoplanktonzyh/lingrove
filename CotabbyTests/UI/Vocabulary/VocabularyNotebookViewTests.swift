@@ -9,11 +9,12 @@ import Testing
 struct VocabularyNotebookViewTests {
     @Test func savingAnExplanationKeepsTheBrowsedEntrySelected() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
-        for word in ["first", "second"] {
-            await store.save(VocabularyCapture(expression: word, dictionaryForm: word, language: .english,
-                kind: .word, meaning: ""))
+        for text in ["The bank opens early.", "We walked along the bank."] {
+            await store.save(VocabularyCapture(expression: "bank", dictionaryForm: "bank", language: .english,
+                kind: .word, example: VocabularyPolicy.example(text: text,
+                    ranges: [(text as NSString).range(of: "bank")], language: .english)))
         }
-        let initial = try #require(store.entries.first { $0.expression == "first" })
+        let initial = try #require(store.entries.first)
         let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
         let suite = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -28,18 +29,53 @@ struct VocabularyNotebookViewTests {
         window.orderFrontRegardless()
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
         let table = try #require(tableView(in: host))
-        #expect(table.numberOfRows == 2)
-        #expect(learning.explanations["standalone"]?.input?.target == "first")
+        #expect(table.numberOfRows >= 3)
+        #expect(learning.senseID == initial.senses[0].id)
         // Select the other row through the real SwiftUI List's AppKit backing, then publish
         // an archive revision exactly as a completed model request does.
-        table.selectRowIndexes(IndexSet(integer: table.selectedRow == 0 ? 1 : 0), byExtendingSelection: false)
+        table.selectRowIndexes(IndexSet(integer: table.selectedRow == 1 ? 2 : 1), byExtendingSelection: false)
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
-        let input = try #require(learning.explanations["standalone"]?.input)
-        #expect(input.target == "second")
+        let input = try #require(learning.explanations.values.first?.input)
+        #expect(input.context == "We walked along the bank.")
         await store.saveExplanation(.init(id: UUID(), input: input, language: .english,
-            result: .init(meaning: "Next after first", explanation: "An ordinal."), model: "fixture", createdAt: Date()))
+            result: .init(meaning: "The edge of a river", explanation: "A geographical feature."), model: "fixture", createdAt: Date()))
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
-        #expect(learning.explanations["standalone"]?.input == input)
+        #expect(learning.explanations.values.first?.input == input)
+        #expect(learning.senseID == initial.senses[1].id)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_UI_SENSE_REVIEW"] == "1"))
+    func nativeSenseActionsCanBeReviewedWithoutUserData() async throws {
+        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let fixtures = [("I went to the bank.", "Financial institution"),
+                        ("The bank opened early.", "A financial institution"),
+                        ("We sat beside the bank.", "River edge")]
+        for (text, meaning) in fixtures {
+            let capture = VocabularyCapture(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
+                example: VocabularyPolicy.example(text: text, ranges: [(text as NSString).range(of: "bank")], language: .english))
+            await store.save(capture)
+            await store.saveExplanation(.init(id: UUID(), input: LearningExplanationPolicy.input(capture), language: .english,
+                result: .init(meaning: meaning, explanation: "A contextual explanation from an isolated acceptance fixture."),
+                model: "fixture", createdAt: Date()))
+        }
+        let entry = try #require(store.entries.first)
+        let suite = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
+        let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+            selectedID: entry.id, selectedSenseID: entry.senses[0].id, learning: learning))
+        let window = NSWindow(contentRect: .init(x: 120, y: 160, width: 1040, height: 720),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host
+        window.title = "Lingrove vocabulary sense acceptance"
+        window.level = .floating; window.makeKeyAndOrderFront(nil)
+        defer { learning.cancel(); window.close() }
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(learning.senseID == entry.senses[0].id)
+        #expect(entry.senses.count == 3 && store.entries[0].examples.count == 3)
+        try await Task.sleep(for: .seconds(45))
     }
 
     private func tableView(in view: NSView) -> NSTableView? {

@@ -13,15 +13,20 @@ struct VocabularyNotebookView: View {
     @State private var language: LearningLanguage?
     @State private var newestFirst = true
     @State private var editing: VocabularyEntry?
-    @State private var deleting: VocabularyEntry?
+    @State private var deleting: VocabularySelection?
     @State private var requestedID: UUID?
+    @State private var requestedSenseID: UUID?
+    @State private var expandedEntries: Set<UUID> = []
 
-    init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil,
+    init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
          learning: VocabularyNotebookSession? = nil) {
         self.store = store
         self.speech = speech
         self.learning = learning
-        _selection = State(initialValue: selectedID)
+        let entry = store.entries.first { $0.id == selectedID }
+        _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
+        _expandedEntries = State(initialValue: Set(entry.map { [$0.id] } ?? []))
+        _requestedSenseID = State(initialValue: selectedSenseID)
         // A loaded archive already supplies the initial selection. Only a cold load needs
         // to retain the request; otherwise saving an annotation can replay it over browsing.
         _requestedID = State(initialValue: store.isLoaded ? nil : selectedID)
@@ -36,14 +41,21 @@ struct VocabularyNotebookView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 ForEach(visibleEntries) { entry in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(entry.expression).font(.headline).lineLimit(2)
-                        let meaning = entry.meaning.isEmpty ? (entry.examples.first?.meaning ?? "") : entry.meaning
-                        if !meaning.isEmpty { Text(meaning).font(.callout).foregroundStyle(.secondary).lineLimit(1) }
-                        if let example = entry.examples.first, example.text != entry.expression {
-                            Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    DisclosureGroup(isExpanded: Binding(get: { expandedEntries.contains(entry.id) }, set: { expanded in
+                        if expanded { expandedEntries.insert(entry.id) } else { expandedEntries.remove(entry.id) }
+                    })) {
+                        ForEach(entry.senses) { sense in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(sense.displayTitle).font(.callout).lineLimit(2)
+                                Text(String(localized: "\(sense.examples.count) usages", table: "Vocabulary"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                if let example = sense.examples.first {
+                                    Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                            }.padding(.vertical, 4).tag(sense.id)
                         }
-                    }.padding(.vertical, 4).tag(entry.id)
+                    } label: { Text(entry.expression).font(.headline).lineLimit(2) }
+
                 }
             }
             .overlay {
@@ -55,10 +67,17 @@ struct VocabularyNotebookView: View {
             }
             .navigationSplitViewColumnWidth(min: 230, ideal: 290, max: 420)
         } detail: {
-            if let entry = store.entries.first(where: { $0.id == selection }) {
-                VocabularyEntryDetail(entry: entry, speech: speech, store: store, learning: learning,
-                    edit: { editing = entry }, delete: { deleting = entry })
-                    .id(entry.id)
+            if let entry = selectedEntry, let sense = selectedSense {
+                VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning,
+                    edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
+                    newSense: {
+                        Task { if let id = await store.createSense(entryID: entry.id) { selection = id } }
+                    }, merge: { target in
+                        Task {
+                            if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target) { selection = target }
+                        }
+                    })
+                    .id(sense.id)
             } else {
                 ContentUnavailableView(String(localized: "Vocabulary", table: "Vocabulary"), systemImage: "books.vertical")
             }
@@ -86,19 +105,27 @@ struct VocabularyNotebookView: View {
         }
         .frame(minWidth: 760, minHeight: 460)
         .onAppear { store.loadIfNeeded() }
-        .onChange(of: store.entries.first { $0.id == selection }, initial: true) { _, entry in learning?.select(entry) }
+        .onChange(of: selectedEntry, initial: true) { _, entry in learning?.select(entry, senseID: selection) }
+        .onChange(of: selection) { _, _ in learning?.select(selectedEntry, senseID: selection) }
         .onChange(of: store.entries) { _, entries in
-            if let requestedID, entries.contains(where: { $0.id == requestedID }) {
-                selection = requestedID
-                self.requestedID = nil
-            } else if let selection, !entries.contains(where: { $0.id == selection }) { self.selection = nil }
+            if let requestedID, let entry = entries.first(where: { $0.id == requestedID }) {
+                selection = requestedSenseID ?? entry.senses.first?.id
+                expandedEntries.insert(entry.id)
+                self.requestedID = nil; requestedSenseID = nil
+            } else if let selection, let entry = entries.first(where: { VocabularySensePolicy.index(selection, in: $0) != nil }),
+                      let index = VocabularySensePolicy.index(selection, in: entry) {
+                self.selection = entry.senses[index].id
+            } else if selection != nil { selection = nil }
         }
-        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store) }
-        .alert(String(localized: "Delete this expression?", table: "Vocabulary"), isPresented: Binding(
+        .onChange(of: query) { _, value in
+            if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
+        }
+        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
+        .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
                 Button(String(localized: "Delete"), role: .destructive) {
-                    if let id = deleting?.id { Task { _ = await store.remove(id: id) } }
+                    if let target = deleting { Task { _ = await store.removeSense(entryID: target.entryID, senseID: target.senseID) } }
                     deleting = nil
                 }
             }
@@ -106,6 +133,15 @@ struct VocabularyNotebookView: View {
             get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                 Button(String(localized: "OK"), role: .cancel) { store.errorMessage = nil }
             } message: { Text(store.errorMessage ?? "") }
+    }
+
+    private var selectedEntry: VocabularyEntry? {
+        guard let selection else { return nil }
+        return store.entries.first { VocabularySensePolicy.index(selection, in: $0) != nil }
+    }
+    private var selectedSense: VocabularySense? {
+        guard let selection, let entry = selectedEntry, let index = VocabularySensePolicy.index(selection, in: entry) else { return nil }
+        return entry.senses[index]
     }
 
     private func export() {
@@ -123,11 +159,14 @@ struct VocabularyNotebookView: View {
 /// so selecting another row cannot silently discard an in-progress note or sentence change.
 private struct VocabularyEntryDetail: View {
     let entry: VocabularyEntry
+    let sense: VocabularySense
     let speech: LearningSpeechController
     @ObservedObject var store: VocabularyStore
     var learning: VocabularyNotebookSession?
     let edit: () -> Void
     let delete: () -> Void
+    let newSense: () -> Void
+    let merge: (UUID) -> Void
 
     var body: some View {
         ScrollView {
@@ -142,22 +181,34 @@ private struct VocabularyEntryDetail: View {
                 if entry.dictionaryForm != entry.expression {
                     Text(entry.dictionaryForm).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
-                if entry.isSavedWithoutContext {
+                if sense.isSavedWithoutContext {
                     if let learning {
-                        VocabularyExplanationSection(entry: entry, store: store, learning: learning)
-                    } else if !entry.meaning.isEmpty { Text(entry.meaning).textSelection(.enabled) }
+                        VocabularyExplanationSection(entry: entry, sense: sense, store: store, learning: learning)
+                    } else if !sense.meaning.isEmpty { Text(sense.meaning).textSelection(.enabled) }
                 }
-                ForEach(entry.standaloneMeanings.filter { !$0.text.isEmpty && $0.language != entry.meaningLanguage }) { meaning in
+                if !sense.isSavedWithoutContext, !sense.meaning.isEmpty {
+                    section(String(localized: "Core meaning", table: "Vocabulary")) { Text(sense.meaning).textSelection(.enabled) }
+                }
+                ForEach(Array(sense.standaloneMeanings.filter {
+                    !$0.text.isEmpty && $0.language != sense.meaningLanguage
+                }.enumerated()), id: \.offset) { _, meaning in
                     VStack(alignment: .leading, spacing: 5) {
                         if let language = meaning.language { Text(language.label).font(.caption).foregroundStyle(.secondary) }
                         Text(meaning.text).textSelection(.enabled)
                     }
                 }
-                if !entry.tags.isEmpty { Text(entry.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
-                if !entry.note.isEmpty {
-                    section(String(localized: "Notes", table: "Vocabulary")) { Text(entry.note).textSelection(.enabled) }
+                if !sense.alternateMeanings.isEmpty {
+                    DisclosureGroup(String(localized: "Other wordings", table: "Vocabulary")) {
+                        ForEach(Array(sense.alternateMeanings.enumerated()), id: \.offset) { _, wording in
+                            Text(wording.text).font(.callout).textSelection(.enabled)
+                        }
+                    }
                 }
-                ForEach(entry.examples) { example in
+                if !sense.tags.isEmpty { Text(sense.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
+                if !sense.note.isEmpty {
+                    section(String(localized: "Notes", table: "Vocabulary")) { Text(sense.note).textSelection(.enabled) }
+                }
+                ForEach(sense.examples) { example in
                     section(example.completeness == .sentence
                         ? String(localized: "Example sentence", table: "Vocabulary")
                         : String(localized: "Context fragment", table: "Vocabulary")) {
@@ -174,8 +225,19 @@ private struct VocabularyEntryDetail: View {
                                     language: example.translationLanguage ?? entry.language)
                             }
                         }
+                        ForEach(Array(example.translationVariants.filter {
+                            $0.text != example.translation || $0.language != example.translationLanguage
+                        }.enumerated()), id: \.offset) { _, variant in
+                            Text(variant.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                        }
+                        Menu(String(localized: "Move usage", table: "Vocabulary")) {
+                            ForEach(entry.senses.filter { $0.id != sense.id }) { target in
+                                Button(target.displayTitle) { move(example, to: target.id) }
+                            }
+                            Button(String(localized: "New sense", table: "Vocabulary")) { move(example, to: nil) }
+                        }.menuStyle(.borderlessButton).fixedSize()
                         if let learning {
-                            VocabularyExplanationSection(entry: entry, example: example, store: store, learning: learning)
+                            VocabularyExplanationSection(entry: entry, sense: sense, example: example, store: store, learning: learning)
                         } else if !example.meaning.isEmpty { Text(example.meaning).font(.callout).textSelection(.enabled) }
                         if let app = example.appBundleIdentifier,
                            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
@@ -185,12 +247,19 @@ private struct VocabularyEntryDetail: View {
                     }
                 }
                 if let learning { VocabularyDictionarySection(entry: entry, learning: learning) }
-                Text(entry.createdAt, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.tertiary)
+                Text(sense.createdAt, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.tertiary)
             }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
         }
         .toolbar {
             ToolbarItemGroup {
                 Button(String(localized: "Edit", table: "Vocabulary"), action: edit)
+                Button(action: newSense) { Image(systemName: "plus") }
+                    .help(String(localized: "New sense", table: "Vocabulary"))
+                Menu(String(localized: "Merge sense", table: "Vocabulary")) {
+                    ForEach(entry.senses.filter { $0.id != sense.id }) { target in
+                        Button(target.displayTitle) { merge(target.id) }
+                    }
+                }.disabled(entry.senses.count < 2)
                 Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(entry.expression, forType: .string)
@@ -200,11 +269,15 @@ private struct VocabularyEntryDetail: View {
                     .help(String(localized: "Delete", table: "Vocabulary"))
             }
         }
-        .onDisappear { speech.stop(ownerID: entry.id) }
+        .onDisappear { speech.stop(ownerID: sense.id) }
+    }
+
+    private func move(_ example: VocabularyExample, to target: UUID?) {
+        Task { _ = await store.moveExample(entryID: entry.id, exampleID: example.id, source: sense.id, target: target) }
     }
 
     private func speaker(text: String, item: String, language: LearningLanguage) -> some View {
-        LearningSpeechButton(speech: speech, request: SpeechRequest(target: SpeechTarget(ownerID: entry.id, itemID: "vocabulary." + item),
+        LearningSpeechButton(speech: speech, request: SpeechRequest(target: SpeechTarget(ownerID: sense.id, itemID: "vocabulary." + item),
             text: text, language: language), playLabel: String(localized: "Read aloud", table: "Vocabulary"),
             stopLabel: String(localized: "Stop reading", table: "Vocabulary"))
     }
@@ -237,5 +310,15 @@ extension VocabularyEntry.Kind {
         case .pattern: String(localized: "Pattern", table: "Vocabulary")
         case .sentence: String(localized: "Sentence", table: "Vocabulary")
         }
+    }
+}
+
+/// A label is a projection, never an identity or a semantic matching key. A contextual draft
+/// can label an unnamed sense while its canonical summary remains explicitly editable.
+extension VocabularySense {
+    var displayTitle: String {
+        if !meaning.isEmpty { return meaning }
+        if let text = examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
+        return String(localized: "Meaning pending", table: "Vocabulary")
     }
 }

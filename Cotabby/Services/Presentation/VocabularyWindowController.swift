@@ -15,12 +15,12 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         self.speech = speech
         learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider, settings: dictionarySettings)
         super.init(window: nil)
-        store.openEntry = { [weak self] in self?.show(selectedID: $0) }
+        store.openSelection = { [weak self] in self?.show(selectedID: $0?.entryID, senseID: $0?.senseID) }
     }
 
     required init?(coder: NSCoder) { nil }
 
-    func show(selectedID: UUID? = nil) {
+    func show(selectedID: UUID? = nil, senseID: UUID? = nil) {
         if window == nil {
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 940, height: 640),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -34,7 +34,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         // Preserve browsing state on ordinary reopen; an explicit "show this entry" replaces
         // the root with its requested selection, resetting filters that might otherwise hide it.
         if window?.contentView == nil || (selectedID != nil && window?.attachedSheet == nil) {
-            window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID,
+            window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+                selectedID: selectedID, selectedSenseID: senseID,
                 learning: learning))
         }
         learning.resume()

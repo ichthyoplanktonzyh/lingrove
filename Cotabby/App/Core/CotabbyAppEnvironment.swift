@@ -245,7 +245,8 @@ final class CotabbyAppEnvironment {
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
         let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
-            .appendingPathComponent("Vocabulary/notebook.json")
+            .appendingPathComponent("Vocabulary/notebook-v3.json")
+        // Schema v3 starts a separate library; the retired two-level archive remains untouched.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is

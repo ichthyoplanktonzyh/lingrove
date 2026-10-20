@@ -3,15 +3,15 @@ import Testing
 @testable import Cotabby
 
 nonisolated struct VocabularyArchiveTests {
-    @Test func exportsOnlyLearningContentInSchemaTwo() async throws {
+    @Test func exportsOnlyLearningContentInSchemaThree() async throws {
         let archive = VocabularyArchive(url: nil)
         let snapshot = try await archive.save(capture())
         let encoded = try JSONEncoder().encode(snapshot.document)
         let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         let entries = try #require(object["entries"] as? [[String: Any]])
-        #expect(snapshot.document.schemaVersion == 2)
+        #expect(snapshot.document.schemaVersion == 3)
         #expect(entries[0]["definitions"] == nil)
-        #expect(entries[0]["meaningOrigin"] != nil)
+        #expect(entries[0]["senses"] != nil)
     }
 
     @Test func repeatedWordComponentsKeepDistinctUsageIDsAcrossReopen() async throws {
@@ -57,11 +57,11 @@ nonisolated struct VocabularyArchiveTests {
         #expect(store.entries.count == 1 && store.entries[0].examples.count == 2)
         let baseline = try #require(store.entries.first)
         var edited = baseline
-        edited.note = "Release acceptance note"
-        edited.tags = ["Work"]
+        edited.senses[0].note = "Release acceptance note"
+        edited.senses[0].tags = ["Work"]
         #expect(await store.update(edited, basedOn: baseline))
         var opened: UUID?
-        store.openEntry = { opened = $0 }
+        store.openSelection = { opened = $0?.entryID }
         store.show(first)
         #expect(opened == baseline.id)
         let exported = folder.appendingPathComponent("export.json")
@@ -72,7 +72,7 @@ nonisolated struct VocabularyArchiveTests {
         #expect(reopened.document == document)
         await store.remove(first)
         #expect(!store.contains(first) && store.contains(second))
-        #expect(store.entries[0].note == edited.note && store.entries[0].tags == edited.tags)
+        #expect(store.entries[0].senses[0].note == edited.senses[0].note && store.entries[0].senses[0].tags == edited.senses[0].tags)
         #expect(await store.remove(id: baseline.id))
         #expect(try await VocabularyArchive(url: url).load().document.entries.isEmpty)
     }
@@ -85,12 +85,12 @@ nonisolated struct VocabularyArchiveTests {
         let snapshot = try await archive.save(capture())
         let baseline = try #require(snapshot.document.entries.first)
         var entry = baseline
-        entry.note = "My note"; entry.tags = ["Work"]; entry.meaning = "Keep me informed"
+        entry.senses[0].note = "My note"; entry.senses[0].tags = ["Work"]; entry.senses[0].meaning = "Keep me informed"
         _ = try await archive.update(entry, basedOn: baseline)
         let reopened = try await VocabularyArchive(url: url).load()
         #expect(reopened.document.entries.first?.id == entry.id)
-        #expect(reopened.document.entries.first?.note == "My note")
-        #expect(reopened.document.entries.first?.tags == ["Work"])
+        #expect(reopened.document.entries.first?.senses.first?.note == "My note")
+        #expect(reopened.document.entries.first?.senses.first?.tags == ["Work"])
     }
 
     @Test func concurrentSavesSerializeWithoutLostEntries() async throws {
@@ -173,10 +173,10 @@ nonisolated struct VocabularyArchiveTests {
         next.example?.ranges = [VocabularyTextRange(NSRange(location: 5, length: 6))]
         _ = try await archive.save(next)
         var edited = baseline
-        edited.note = "Written while another example was saved"
+        edited.senses[0].note = "Written while another example was saved"
         let merged = try await archive.update(edited, basedOn: baseline)
         #expect(merged.document.entries[0].examples.count == 2)
-        #expect(merged.document.entries[0].note == edited.note)
+        #expect(merged.document.entries[0].senses[0].note == edited.senses[0].note)
     }
 
     @Test func conflictingEditsDoNotOverwriteEachOther() async throws {
@@ -184,10 +184,10 @@ nonisolated struct VocabularyArchiveTests {
         let snapshot = try await archive.save(capture())
         let baseline = try #require(snapshot.document.entries.first)
         var one = baseline, two = baseline
-        one.note = "First edit"; two.note = "Second edit"
+        one.senses[0].note = "First edit"; two.senses[0].note = "Second edit"
         _ = try await archive.update(one, basedOn: baseline)
         await #expect(throws: (any Error).self) { try await archive.update(two, basedOn: baseline) }
-        #expect(try await archive.load().document.entries[0].note == "First edit")
+        #expect(try await archive.load().document.entries[0].senses[0].note == "First edit")
     }
 
     @Test func removingStandaloneFavoriteDoesNotEraseSavedExamples() async throws {
@@ -200,7 +200,7 @@ nonisolated struct VocabularyArchiveTests {
         let removed = try await archive.remove(standalone)
         #expect(removed.document.entries.count == 1)
         #expect(removed.document.entries[0].examples.count == 1)
-        #expect(!removed.document.entries[0].isSavedWithoutContext)
+        #expect(!removed.document.entries[0].senses.contains { $0.isSavedWithoutContext })
     }
 
     @Test func invalidArchiveRangesFailWithoutChangingTheFile() async throws {
@@ -209,7 +209,7 @@ nonisolated struct VocabularyArchiveTests {
         let url = folder.appendingPathComponent("notebook.json")
         let snapshot = try await VocabularyArchive(url: url).save(capture())
         var invalid = snapshot.document
-        invalid.entries[0].examples[0].ranges = [VocabularyTextRange(NSRange(location: 9_999, length: 5))]
+        invalid.entries[0].senses[0].examples[0].ranges = [VocabularyTextRange(NSRange(location: 9_999, length: 5))]
         let bytes = try JSONEncoder().encode(invalid)
         try bytes.write(to: url)
         await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).save(capture()) }
@@ -235,12 +235,12 @@ nonisolated struct VocabularyArchiveTests {
         _ = try await archive.save(chinese)
         let result = try await archive.save(spanish)
         #expect(result.document.entries.count == 1)
-        #expect(result.document.entries[0].standaloneMeanings.map(\.text) == ["告知", "informar"])
+        #expect(result.document.entries[0].senses[0].standaloneMeanings.map(\.text) == ["告知", "informar"])
         #expect(VocabularyPolicy.contains(chinese, in: result.document.entries))
         #expect(VocabularyPolicy.contains(spanish, in: result.document.entries))
         let removed = try await archive.remove(chinese)
         #expect(!VocabularyPolicy.contains(chinese, in: removed.document.entries))
-        #expect(VocabularyPolicy.contains(spanish, in: removed.document.entries))
+        #expect(!VocabularyPolicy.contains(spanish, in: removed.document.entries))
     }
 
     @Test func manuallyAddedExampleSurvivesSaveAndCanBeRemovedWithoutDeletingTheWord() async throws {
@@ -250,19 +250,19 @@ nonisolated struct VocabularyArchiveTests {
         let first = try await archive.save(standalone)
         let baseline = try #require(first.document.entries.first)
         var edited = baseline
-        edited.examples = [try #require(capture().example)]
+        edited.senses[0].examples = [try #require(capture().example)]
         let added = try await archive.update(edited, basedOn: baseline)
         #expect(added.document.entries[0].examples.count == 1)
         let withExample = added.document.entries[0]
         edited = withExample
-        edited.examples = []
+        edited.senses[0].examples = []
         let removed = try await archive.update(edited, basedOn: withExample)
         #expect(removed.document.entries.count == 1)
         #expect(removed.document.entries[0].examples.isEmpty)
-        #expect(removed.document.entries[0].isSavedWithoutContext)
+        #expect(removed.document.entries[0].senses[0].isSavedWithoutContext)
     }
 
-    @Test func deletingLastExampleDoesNotResurrectConcurrentlyRemovedStandaloneSave() async throws {
+    @Test func deletingLastExampleDoesNotResurrectARemovedGeneralSense() async throws {
         let archive = VocabularyArchive(url: nil)
         _ = try await archive.save(capture())
         var standalone = capture()
@@ -273,12 +273,12 @@ nonisolated struct VocabularyArchiveTests {
         let baseline = try #require(snapshot.document.entries.first)
         _ = try await archive.remove(standalone)
         var edited = baseline
-        edited.examples = []
-        await #expect(throws: VocabularyError.editConflict) { try await archive.update(edited, basedOn: baseline) }
+        edited.senses[0].examples = []
+        _ = try await archive.update(edited, basedOn: baseline)
         let current = try await archive.load().document.entries[0]
-        #expect(!current.isSavedWithoutContext)
-        #expect(current.standaloneMeanings.isEmpty)
-        #expect(current.examples == baseline.examples)
+        #expect(!current.senses[0].isSavedWithoutContext)
+        #expect(current.senses[0].standaloneMeanings.isEmpty)
+        #expect(current.examples.isEmpty)
     }
 
     private func capture(_ expression: String = "posted") -> VocabularyCapture {

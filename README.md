@@ -43,6 +43,8 @@ language learning are its two core capabilities, developed together.
   alignment separately, using local models or endpoints you explicitly choose.
 - **Vocabulary notebook:** save expressions with their example sentences from the fish-tail button,
   then search, edit, listen to, or export the collection from the menu bar's Vocabulary window.
+  Expressions group stable senses, and each sense owns its usages and notes. Merge senses or move
+  a usage explicitly; regenerating an explanation never changes its identity.
 
 ### Additional writing tools
 
