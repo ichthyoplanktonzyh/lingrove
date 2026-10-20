@@ -9,6 +9,7 @@ import Foundation
 enum SuggestionAvailabilityEvaluator {
     static func disabledReason(
         globallyEnabled: Bool = true,
+        completionEnabled: Bool = true,
         temporarilyPaused: Bool = false,
         isLowPowerModeActive: Bool = false,
         isLowPowerModeAutoDisableEnabled: Bool = false,
@@ -21,6 +22,10 @@ enum SuggestionAvailabilityEvaluator {
     ) -> String? {
         guard globallyEnabled else {
             return "Cotabby is turned off."
+        }
+
+        guard completionEnabled else {
+            return String(localized: "Autocomplete is turned off", table: "Learning")
         }
 
         guard !temporarilyPaused else {
@@ -58,6 +63,7 @@ enum SuggestionAvailabilityEvaluator {
 
     static func shouldSchedulePrediction(
         globallyEnabled: Bool = true,
+        completionEnabled: Bool = true,
         temporarilyPaused: Bool = false,
         isLowPowerModeActive: Bool = false,
         isLowPowerModeAutoDisableEnabled: Bool = false,
@@ -69,6 +75,7 @@ enum SuggestionAvailabilityEvaluator {
     ) -> Bool {
         disabledReason(
             globallyEnabled: globallyEnabled,
+            completionEnabled: completionEnabled,
             temporarilyPaused: temporarilyPaused,
             isLowPowerModeActive: isLowPowerModeActive,
             isLowPowerModeAutoDisableEnabled: isLowPowerModeAutoDisableEnabled,
@@ -94,6 +101,7 @@ enum SuggestionAvailabilityEvaluator {
     ///   same text-only behavior as fast mode instead of disabling autocomplete.
     static func shouldCaptureVisualContext(
         globallyEnabled: Bool = true,
+        completionEnabled: Bool = true,
         temporarilyPaused: Bool = false,
         isLowPowerModeActive: Bool = false,
         isLowPowerModeAutoDisableEnabled: Bool = false,
@@ -115,6 +123,7 @@ enum SuggestionAvailabilityEvaluator {
 
         return disabledReason(
             globallyEnabled: globallyEnabled,
+            completionEnabled: completionEnabled,
             temporarilyPaused: temporarilyPaused,
             isLowPowerModeActive: isLowPowerModeActive,
             isLowPowerModeAutoDisableEnabled: isLowPowerModeAutoDisableEnabled,

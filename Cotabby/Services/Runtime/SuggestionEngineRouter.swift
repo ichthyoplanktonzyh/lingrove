@@ -196,7 +196,14 @@ final class SuggestionEngineRouter {
     /// Forwards the warmup hook only to the currently selected engine. The inactive backend has
     /// no benefit from warming caches the user is not about to hit, and the FM path specifically
     /// allocates a session as a side effect, so we keep that work out of the llama-selected path.
+    func cancelPrewarm() {
+        foundationModelEngine.cancelPrewarm()
+        llamaEngine.cancelPrewarm()
+        openAICompatibleEngine.cancelPrewarm()
+    }
+
     func prewarm(for request: SuggestionRequest) async {
+        guard !Task.isCancelled, suggestionSettings.isCompletionEnabled else { return }
         switch suggestionSettings.selectedEngine {
         case .appleIntelligence:
             await foundationModelEngine.prewarm(for: request)

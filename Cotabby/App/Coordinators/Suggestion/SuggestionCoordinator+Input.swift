@@ -22,6 +22,7 @@ extension SuggestionCoordinator {
 
         if SuggestionAvailabilityEvaluator.shouldSchedulePrediction(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
+            completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
             isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
             isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -42,6 +43,7 @@ extension SuggestionCoordinator {
 
         if SuggestionAvailabilityEvaluator.shouldSchedulePrediction(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
+            completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
             isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
             isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -81,6 +83,7 @@ extension SuggestionCoordinator {
         if let context = snapshot.context,
            SuggestionAvailabilityEvaluator.shouldCaptureVisualContext(
                globallyEnabled: settingsSnapshot.isGloballyEnabled,
+               completionEnabled: settingsSnapshot.isCompletionEnabled,
                temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
                isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
                isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -109,6 +112,16 @@ extension SuggestionCoordinator {
             disablePredictions(reason: "No focused text input.")
             return
         }
+        if let reason = currentDisabledReason(focusSnapshot: snapshot) {
+            disablePredictions(reason: reason)
+            return
+        }
+        handleEligibleSnapshot(snapshot, focusedContext: focusedContext)
+    }
+
+    /// This inner path assumes the shared entry gate succeeded; keeping it separate makes direct
+    /// focus reconciliation obey the same feature policy as keyboard-driven prediction.
+    private func handleEligibleSnapshot(_ snapshot: FocusSnapshot, focusedContext: FocusedInputSnapshot) {
 
         // The host is showing its own inline prediction or composing text: keep any live session,
         // but neither reconcile against, generate from, nor paint over the host-owned span.
@@ -129,6 +142,7 @@ extension SuggestionCoordinator {
         // earlier `shouldCaptureVisualContext` check already declined.
         if SuggestionAvailabilityEvaluator.shouldCaptureVisualContext(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
+            completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
             isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
             isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -203,14 +217,15 @@ extension SuggestionCoordinator {
         }
     }
 
-    /// Fire-and-forget warmup that builds a minimal request shape for the current focus and asks
+    /// Cancellable focus-time warmup that builds a minimal request shape for the current focus and asks
     /// the routed engine to prime itself. Generation 0 is intentional — prewarm requests must not
     /// burn real generation numbers, because those drive the stale-result drop logic.
     private func prewarmEngineForCurrentField(rawContext: FocusedInputSnapshot) {
         let settings = settingsSnapshot
         let configuration = configuration
         let suggestionEngine = suggestionEngine
-        Task { @MainActor [weak self] in
+        prewarmTask?.cancel()
+        prewarmTask = Task { @MainActor [weak self] in
             // If the coordinator has been torn down (app shutdown), skip prewarm entirely.
             // Using `guard let self` instead of the optional chain prevents prewarm from
             // racing past a missed cache-reset barrier when self has gone away.
@@ -219,6 +234,9 @@ extension SuggestionCoordinator {
             // the session that belongs to the previous editing context. Otherwise the reset can
             // null the freshly primed session out from under us.
             await self.awaitCachedGenerationContextResetIfNeeded()
+            guard !Task.isCancelled, self.settingsSnapshot == settings,
+                  self.currentDisabledReason(focusSnapshot: self.focusModel.snapshot) == nil,
+                  self.focusModel.snapshot.context?.identity == rawContext.identity else { return }
             let prewarmContext = FocusedInputContext(snapshot: rawContext, generation: 0)
             let request = SuggestionRequestFactory.buildRequest(
                 context: prewarmContext,

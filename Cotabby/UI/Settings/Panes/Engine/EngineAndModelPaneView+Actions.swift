@@ -66,7 +66,11 @@ extension EngineAndModelPaneView {
                     ?? ""
             },
             set: { filename in
-                Task { await runtimeModel.selectModel(filename) }
+                if suggestionSettings.keepsLocalRuntimeLoaded {
+                    Task { await runtimeModel.selectModel(filename) }
+                } else {
+                    runtimeModel.selectModelWithoutLoading(filename)
+                }
             }
         )
     }

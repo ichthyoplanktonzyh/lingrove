@@ -40,6 +40,7 @@ final class SuggestionSettingsModel: ObservableObject {
     var completionContextIdentities = ModelContextIdentityCache()
     @Published var completionLocalModelFilename = ""
     @Published private(set) var isGloballyEnabled: Bool
+    @Published private(set) var isCompletionEnabled: Bool
     /// The settings model owns pause lifetime so views and services observe one shared state.
     @Published private(set) var pauseState: SuggestionPauseState?
     @Published private(set) var showIndicator: Bool
@@ -249,6 +250,7 @@ final class SuggestionSettingsModel: ObservableObject {
         self.configuration = configuration
 
         isGloballyEnabled = data.isGloballyEnabled
+        isCompletionEnabled = data.isCompletionEnabled
         pauseState = data.pauseState
         showIndicator = data.showIndicator
         showAcceptanceHint = data.showAcceptanceHint
@@ -340,6 +342,7 @@ final class SuggestionSettingsModel: ObservableObject {
         let data = store.resetToDefaults(configuration: configuration)
 
         isGloballyEnabled = data.isGloballyEnabled
+        isCompletionEnabled = data.isCompletionEnabled
         pauseState = data.pauseState
         showIndicator = data.showIndicator
         showAcceptanceHint = data.showAcceptanceHint
@@ -467,7 +470,8 @@ final class SuggestionSettingsModel: ObservableObject {
                 addSpaceAfterAccept: addSpaceAfterAccept,
                 streamSuggestionsWhileGenerating: streamSuggestionsWhileGenerating,
                 predictAheadWhileTyping: predictAheadWhileTyping,
-                acceptanceGranularity: acceptanceGranularity
+                acceptanceGranularity: acceptanceGranularity,
+                isCompletionEnabled: isCompletionEnabled
             ),
             context: SuggestionContextSettings(
                 isClipboardContextEnabled: isClipboardContextEnabled,
@@ -571,7 +575,8 @@ final class SuggestionSettingsModel: ObservableObject {
             fullAcceptanceOverrideBundleIdentifiers: PerAppShortcutOverride.bundleIdentifiersOverridingFullAcceptance(
                 in: settings.shortcuts.perAppOverrides
             ),
-            perAppBehaviors: Self.behaviorMap(settings.shortcuts.perAppOverrides)
+            perAppBehaviors: Self.behaviorMap(settings.shortcuts.perAppOverrides),
+            isCompletionEnabled: settings.completion.isCompletionEnabled
         )
         return applyingContext(
             to: value, overrides: completionContexts.overrides, localModel: completionLocalModelFilename,
@@ -650,7 +655,8 @@ final class SuggestionSettingsModel: ObservableObject {
         LocalRuntimeResidencyPolicy.keepsModelLoaded(
             engine: selectedEngine,
             isAppleLanguageFallbackEnabled: isAppleLanguageFallbackEnabled,
-            keepsFallbackModelLoaded: keepsFallbackModelLoaded
+            keepsFallbackModelLoaded: keepsFallbackModelLoaded,
+            isCompletionEnabled: isCompletionEnabled
         )
     }
 
@@ -661,16 +667,18 @@ final class SuggestionSettingsModel: ObservableObject {
     /// Equal decisions are not collapsed: switching from Apple Intelligence to the endpoint emits
     /// `false` again, and that repeat is what releases a model the fallback loaded on demand.
     var localRuntimeResidencyPublisher: AnyPublisher<Bool, Never> {
-        Publishers.CombineLatest3(
+        Publishers.CombineLatest4(
             $selectedEngine.removeDuplicates(),
             $isAppleLanguageFallbackEnabled.removeDuplicates(),
-            $keepsFallbackModelLoaded.removeDuplicates()
+            $keepsFallbackModelLoaded.removeDuplicates(),
+            $isCompletionEnabled.removeDuplicates()
         )
-        .map { engine, isFallbackEnabled, keepsFallbackLoaded in
+        .map { engine, isFallbackEnabled, keepsFallbackLoaded, completionEnabled in
             LocalRuntimeResidencyPolicy.keepsModelLoaded(
                 engine: engine,
                 isAppleLanguageFallbackEnabled: isFallbackEnabled,
-                keepsFallbackModelLoaded: keepsFallbackLoaded
+                keepsFallbackModelLoaded: keepsFallbackLoaded,
+                isCompletionEnabled: completionEnabled
             )
         }
         .eraseToAnyPublisher()
@@ -1139,6 +1147,13 @@ final class SuggestionSettingsModel: ObservableObject {
         }
         acceptanceGranularity = granularity
         store.saveAcceptanceGranularity(granularity)
+    }
+
+    /// Persist only the feature gate; the coordinator and runtime residency subscribers own teardown.
+    func setCompletionEnabled(_ enabled: Bool) {
+        guard isCompletionEnabled != enabled else { return }
+        isCompletionEnabled = enabled
+        store.saveCompletionEnabled(enabled)
     }
 
     func setGloballyEnabled(_ enabled: Bool) {
@@ -1888,7 +1903,7 @@ extension SuggestionSettingsModel: SuggestionSettingsProviding {
         // via a second CombineLatest to avoid restructuring the existing groupings.
         let primary = Publishers.CombineLatest4(
             Publishers.CombineLatest4(
-                Publishers.CombineLatest($isGloballyEnabled, $pauseState),
+                Publishers.CombineLatest3($isGloballyEnabled, $pauseState, $isCompletionEnabled),
                 $disabledAppRules,
                 $selectedEngine,
                 $selectedWordCountPreset
@@ -1959,7 +1974,7 @@ extension SuggestionSettingsModel: SuggestionSettingsProviding {
             .map { primaryTuple, acceptanceTuple, extendedContextTuple, customRangeTuple in
                 let (combinedSettings, presentationToggles, profile, timing) = primaryTuple
                 let (globalState, disabledAppRules, engine, wordCountPreset) = combinedSettings
-                let (globallyEnabled, pauseState) = globalState
+                let (globallyEnabled, pauseState, completionEnabled) = globalState
                 let (clipboardContextEnabled, fastModeEnabled, mirrorPreference, typoToggles) = presentationToggles
                 let (suppressOnTypo, offerCorrections, automaticallyFixTypos) = typoToggles
                 let (userName, customRules, responseLanguages, enabledSpellingDictionaryCodes) = profile
@@ -2005,7 +2020,8 @@ extension SuggestionSettingsModel: SuggestionSettingsProviding {
                     doubleTapAcceptsEntireSuggestion: doubleTapAcceptsEntireSuggestion,
                     fullAcceptanceOverrideBundleIdentifiers:
                         PerAppShortcutOverride.bundleIdentifiersOverridingFullAcceptance(in: perAppOverrides),
-                    perAppBehaviors: Self.behaviorMap(perAppOverrides)
+                    perAppBehaviors: Self.behaviorMap(perAppOverrides),
+                    isCompletionEnabled: completionEnabled
                 )
             }
         .combineLatest(

@@ -131,7 +131,12 @@ final class OpenAICompatibleSuggestionEngine: SuggestionGenerating {
     /// Best-effort Ollama cold-start work runs through a request that is independent from the
     /// coordinator's cancellable prediction task. Typing again can therefore discard stale
     /// autocomplete work without aborting the model load that future requests need.
+    func cancelPrewarm() {
+        preloadWorkController.cancelAll()
+    }
+
     func prewarm(for _: SuggestionRequest) async {
+        guard !Task.isCancelled else { return }
         do {
             let configuration = try configurationProvider()
             guard configuration.defaultOllamaGenerateURL != nil else { return }
@@ -177,6 +182,11 @@ final class OllamaPreloadWorkController {
 
     private var flightsByModel: [String: Flight] = [:]
 
+    func cancelAll() {
+        for flight in flightsByModel.values { flight.task.cancel() }
+        flightsByModel.removeAll()
+    }
+
     func run(
         modelName: String,
         operation: @escaping @MainActor () async -> Void
@@ -190,6 +200,7 @@ final class OllamaPreloadWorkController {
         // This unstructured task deliberately outlives cancellation of any one focus caller. Model
         // loading is shared infrastructure; tying it to a stale field would recreate the 499 abort.
         let task = Task { @MainActor in
+            guard !Task.isCancelled else { return }
             await operation()
         }
         flightsByModel[modelName] = Flight(id: id, task: task)

@@ -15,6 +15,7 @@ import XCTest
 /// (the `InputMonitorTests` pattern) and all interactions run through `runOnMainActor`.
 final class RuntimeBootstrapModelTests: XCTestCase {
     @MainActor private static var retainedModels: [RuntimeBootstrapModel] = []
+    @MainActor private static var retainedManagers: [LlamaRuntimeManager] = []
 
     /// Persisted-selection key, mirrored from the production constant: it is a persistence
     /// contract across launches, so a silent rename should fail a test.
@@ -142,6 +143,65 @@ final class RuntimeBootstrapModelTests: XCTestCase {
                 "The repaired selection must be re-persisted"
             )
         }
+    }
+
+    func test_disabledCompletionCanSelectAndPersistAModelWithoutLoading() async throws {
+        let directory = try makeModelDirectory(filenames: ["alpha.gguf", "beta.gguf"])
+        let defaults = makeUserDefaults()
+        let model = await MainActor.run { makeModel(modelDirectory: directory, userDefaults: defaults) }
+        await MainActor.run { model.shouldLoadSelectedModel = { false } }
+        await model.selectModel("beta.gguf")
+        await MainActor.run { model.startIfNeeded() }
+        for _ in 0..<10 { await Task.yield() }
+        await MainActor.run {
+            XCTAssertEqual(model.state, .idle, "A fake GGUF would fail if native loading were attempted")
+            XCTAssertEqual(model.selectedModelFilename, "beta.gguf")
+            XCTAssertEqual(defaults.string(forKey: Self.selectionKey), "beta.gguf")
+        }
+    }
+
+    @MainActor
+    func test_disablingBetweenModelChoiceAndLoadKeepsTheNextRuntimeSelection() async throws {
+        let directory = try makeModelDirectory(filenames: ["alpha.gguf", "beta.gguf"])
+        let configuration = LlamaRuntimeConfiguration(runtimeDirectoryPath: directory.path,
+            preferredModelNames: [], contextWindowTokens: 512, batchSize: 128, gpuLayerCount: 0)
+        let manager = LlamaRuntimeManager(configuration: configuration, runtimeLocator: BundledRuntimeLocator())
+        Self.retainedManagers.append(manager)
+        let model = RuntimeBootstrapModel(runtimeManager: manager, userDefaults: makeUserDefaults())
+        Self.retainedModels.append(model)
+        model.onWillReloadModel = { [weak model] in model?.shouldLoadSelectedModel = { false } }
+        await model.selectModel("beta.gguf")
+        XCTAssertEqual(model.state, .idle)
+        XCTAssertEqual(model.selectedModelFilename, "beta.gguf")
+        XCTAssertEqual(manager.currentModelFilename, "beta.gguf")
+    }
+
+    @MainActor
+    func test_prepareAfterStopWaitsForThePreviousNativeUnload() async throws {
+        let directory = try makeModelDirectory(filenames: [])
+        let started = expectation(description: "Native unload started")
+        let gate = DispatchSemaphore(value: 0)
+        defer { gate.signal() }
+        let configuration = LlamaRuntimeConfiguration(runtimeDirectoryPath: directory.path,
+            preferredModelNames: [], contextWindowTokens: 512, batchSize: 128, gpuLayerCount: 0)
+        let manager = LlamaRuntimeManager(configuration: configuration, runtimeLocator: BundledRuntimeLocator(),
+            shutdownOperation: { started.fulfill(); gate.wait() })
+        Self.retainedManagers.append(manager)
+        manager.stop()
+        await fulfillment(of: [started], timeout: 1)
+        var finished = false
+        let restart = Task { @MainActor in
+            defer { finished = true }
+            do { try await manager.prepare() }
+            catch { /* Missing fixture model fails only after the unload barrier has completed. */ }
+        }
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertFalse(finished, "Preparation must not even resolve a new model while an old unload is pending")
+        XCTAssertEqual(manager.state, .idle)
+        gate.signal()
+        await restart.value
+        XCTAssertTrue(finished)
+        guard case .failed = manager.state else { return XCTFail("The fixture resolves only after the native unload") }
     }
 
     // MARK: - startIfNeeded

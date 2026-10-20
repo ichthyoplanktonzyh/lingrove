@@ -16,6 +16,20 @@ final class SuggestionSettingsStoreTests: XCTestCase {
     // @MainActor test blocks the main actor while the host app is still doing its own main-actor
     // startup, which can crash the native runtime. Yielding cooperatively avoids that.
 
+    func test_completionGateMigratesDefaultsAndRoundTripsWithoutChangingTheMasterSwitch() async {
+        let defaults = makeIsolatedDefaults()
+        defaults.set(false, forKey: "cotabbyGloballyEnabled")
+        let store = SuggestionSettingsStore(userDefaults: defaults)
+        XCTAssertTrue(store.load(configuration: .standard).isCompletionEnabled,
+                      "A missing key must preserve completion for existing users")
+        store.saveCompletionEnabled(false)
+        let stored = store.load(configuration: .standard)
+        XCTAssertFalse(stored.isCompletionEnabled)
+        XCTAssertFalse(stored.isGloballyEnabled)
+        XCTAssertEqual(defaults.object(forKey: "cotabbyCompletionEnabled") as? Bool, false)
+        XCTAssertTrue(store.resetToDefaults(configuration: .standard).isCompletionEnabled)
+    }
+
     func test_predictAheadPreservesDefaultUserChoiceAndReset() async {
         let defaults = makeIsolatedDefaults()
         let store = SuggestionSettingsStore(userDefaults: defaults)

@@ -145,6 +145,12 @@ struct MenuBarView: View {
                 }
             }
 
+            if !suggestionSettings.isCompletionEnabled {
+                Text(String(localized: "Autocomplete is turned off", table: "Learning"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Divider()
 
             // Context-shaping toggles that change what the model is fed.

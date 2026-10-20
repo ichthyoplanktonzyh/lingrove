@@ -72,6 +72,20 @@ struct AppSettingsRenderingTests {
         #expect(model.inheritedFullAcceptanceDisplayLabel(forBundleIdentifier: "com.apple.mail").contains("⌥R"))
     }
 
+    @Test(arguments: [false, true])
+    func writingShowsAnIndependentCompletionSwitch(enabled: Bool) async throws {
+        guard let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] else { return }
+        let suite = "cotabby.test.writing-render.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        Self.retained.append(model)
+        model.setCompletionEnabled(enabled)
+        try await paint(WritingPaneView(suggestionSettings: model), dark: false,
+            destination: URL(fileURLWithPath: output).appendingPathComponent("writing-\(enabled ? "on" : "off").png"))
+        #expect(model.isCompletionEnabled == enabled)
+    }
+
     private func paint<Content: View>(_ content: Content, dark: Bool, destination: URL) async throws {
         let host = NSHostingView(rootView: content.environment(\.colorScheme, dark ? .dark : .light))
         host.frame = CGRect(x: 0, y: 0, width: 800, height: 1200)

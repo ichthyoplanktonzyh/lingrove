@@ -81,6 +81,8 @@ final class SuggestionCoordinator: ObservableObject {
     // barrier task that the next generation must cross before it can ask the runtime for output.
     var cacheResetSequence: UInt64 = 0
     var pendingCacheReset: (sequence: UInt64, task: Task<Void, Never>)?
+    /// Retained separately from typing work: feature shutdown must also cancel focus-time warmup.
+    var prewarmTask: Task<Void, Never>?
     /// One accepted clipboard-relevance verdict per (field session, pasteboard state). The verdict
     /// used to be re-evaluated against the live prefix on every request, and because the clipboard
     /// section precedes the typed prefix in the prompt, every flip rewrote the prompt HEAD and
@@ -289,7 +291,7 @@ final class SuggestionCoordinator: ObservableObject {
         // session has gone stale the coordinator still needs one chance to hide the stale overlay
         // before the tap passes the original key through.
         inputMonitor.shouldConsumeAcceptKeyProvider = { [weak self] in
-            guard let self else { return false }
+            guard let self, self.settingsSnapshot.isCompletionEnabled else { return false }
             // Keep owning the accept key through the brief post-acceptance regeneration window too,
             // even though the overlay is hidden then. Otherwise a fast follow-up Tab in that gap
             // falls through to the host app as a real Tab and focus jumps out of the field — the

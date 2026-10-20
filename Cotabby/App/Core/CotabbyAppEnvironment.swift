@@ -467,6 +467,12 @@ final class CotabbyAppEnvironment {
         runtimeModel.$selectedModelFilename.sink { [weak suggestionSettings] filename in
             suggestionSettings?.setCompletionLocalModelFilename(filename)
         }.store(in: &cancellables)
+        runtimeModel.shouldLoadSelectedModel = { [weak suggestionSettings] in
+            suggestionSettings?.keepsLocalRuntimeLoaded == true
+        }
+        runtimeManager.isEnabledProvider = { [weak suggestionSettings] in
+            suggestionSettings?.isCompletionEnabled == true
+        }
         runtimeManager.contextWindowTokensProvider = { [weak suggestionSettings, weak runtimeModel] in
             guard let settings = suggestionSettings, let filename = runtimeModel?.selectedModelFilename else { return nil }
             return settings.localCompletionContextWindowTokens(modelFilename: filename)
@@ -618,8 +624,10 @@ final class CotabbyAppEnvironment {
                 return
             }
 
-            Task {
-                await runtimeModel.selectModel(filename)
+            if suggestionSettings.keepsLocalRuntimeLoaded {
+                Task { await runtimeModel.selectModel(filename) }
+            } else {
+                runtimeModel.selectModelWithoutLoading(filename)
             }
         case .openAICompatible(let modelName):
             guard !modelName.isEmpty else { return }

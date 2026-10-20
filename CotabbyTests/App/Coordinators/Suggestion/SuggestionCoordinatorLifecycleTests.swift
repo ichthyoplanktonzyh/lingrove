@@ -8,6 +8,94 @@ import XCTest
 /// into the state machine. A regression here leaks callbacks across shutdown, leaves stale
 /// suggestions alive across a model swap, or lets the accept tap own Tab with nothing on screen.
 final class SuggestionCoordinatorLifecycleTests: SuggestionCoordinatorRigTestCase {
+    func test_completionOffDropsReadyGhostAndRapidAcceptanceButKeepsInlineInputObservers() async {
+        let rig = retained(makeCoordinatorRig())
+        startVisibleSession(in: rig)
+        rig.coordinator.armPostExhaustionAcceptance()
+        var inlineEvents = 0
+        rig.coordinator.emojiInputObserver = { _ in inlineEvents += 1; return true }
+        var off = rig.coordinator.settingsSnapshot
+        off.isCompletionEnabled = false
+        rig.coordinator.handleSuggestionSettingsChange(off)
+        XCTAssertFalse(rig.coordinator.overlayState.isVisible)
+        XCTAssertNil(rig.interactionState.activeSession)
+        XCTAssertFalse(rig.coordinator.postExhaustionAcceptanceState.isArmed)
+        XCTAssertFalse(rig.inputMonitor.shouldConsumeAcceptKeyProvider())
+        XCTAssertNotNil(rig.inputMonitor.onEvent)
+        XCTAssertFalse(rig.coordinator.handleInputEvent(CotabbyTestFixtures.inputEvent(kind: .textMutation, characters: ":")),
+                       "Inline observation survives; actual key consumption belongs to the input tap")
+        XCTAssertEqual(inlineEvents, 1)
+        rig.coordinator.emojiInputObserver = nil
+        XCTAssertFalse(rig.coordinator.handleInputEvent(CotabbyTestFixtures.inputEvent(kind: .acceptance)))
+        XCTAssertTrue(rig.inserter.insertedChunks.isEmpty)
+        XCTAssertTrue(rig.inserter.replacements.isEmpty)
+        XCTAssertTrue(rig.visualContext.startedSessions.isEmpty)
+        XCTAssertNil(rig.coordinator.currentVisualRefreshContext())
+        XCTAssertGreaterThan(rig.engine.prewarmCancellationCount, 0)
+        await rig.coordinator.awaitCachedGenerationContextResetIfNeeded()
+    }
+
+    func test_completionOffCancelsPendingPredictionAndFocusPrewarmThenReenablesInTheSameField() async {
+        let rig = retained(makeCoordinatorRig(settingsSnapshot: CotabbyTestFixtures.settingsSnapshot(debounceMilliseconds: 1)))
+        rig.coordinator.handleSupportedSnapshot(rig.focusProvider.snapshot)
+        let capturesBeforeDisable = rig.visualContext.startedSessions.count
+        rig.coordinator.schedulePrediction()
+        var settings = rig.coordinator.settingsSnapshot
+        settings.isCompletionEnabled = false
+        rig.coordinator.handleSuggestionSettingsChange(settings)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertTrue(rig.engine.prewarmedRequests.isEmpty, "The cancelled focus task must not cross its reset barrier")
+        XCTAssertTrue(rig.engine.requests.isEmpty)
+        rig.coordinator.handleSupportedSnapshot(rig.focusProvider.snapshot)
+        XCTAssertEqual(rig.visualContext.startedSessions.count, capturesBeforeDisable)
+        settings.isCompletionEnabled = true
+        rig.coordinator.handleSuggestionSettingsChange(settings)
+        await waitUntil("Re-enabling must use the current focus without a focus change") {
+            !rig.engine.requests.isEmpty
+        }
+    }
+
+    func test_completionOffRejectsLatePartialsAndFinalReplyFromAnUncooperativeEngine() async {
+        let rig = retained(makeCoordinatorRig(settingsSnapshot: CotabbyTestFixtures.settingsSnapshot(
+            debounceMilliseconds: 1, streamSuggestionsWhileGenerating: true)))
+        var finish: CheckedContinuation<Void, Never>?
+        rig.engine.resultProvider = { request in
+            await withCheckedContinuation { finish = $0 }
+            return SuggestionResult(generation: request.generation, rawText: " world", text: " world", latency: 0.01)
+        }
+        rig.coordinator.schedulePrediction()
+        await waitUntil("Engine never started") { finish != nil }
+        let request = rig.engine.requests[0]
+        var off = rig.coordinator.settingsSnapshot
+        off.isCompletionEnabled = false
+        rig.coordinator.handleSuggestionSettingsChange(off)
+        rig.engine.latestPartial?(SuggestionResult(generation: request.generation, rawText: " world", text: " world", latency: 0.01))
+        finish?.resume()
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertNil(rig.interactionState.activeSession)
+        XCTAssertFalse(rig.coordinator.overlayState.isVisible)
+        XCTAssertFalse(rig.inputMonitor.shouldConsumeAcceptKeyProvider())
+    }
+
+    func test_completionOffBlocksAutomaticCorrectionAndDictionaryFallback() async {
+        var off = CotabbyTestFixtures.settingsSnapshot(
+            debounceMilliseconds: 1, suppressCompletionsOnTypo: true,
+            offerTypoCorrections: true, automaticallyFixTypos: true)
+        off.isCompletionEnabled = false
+        for text in ["I typed recieve ", "comple"] {
+            let rig = retained(makeCoordinatorRig(
+                snapshot: CotabbyTestFixtures.focusedInputSnapshot(precedingText: text), settingsSnapshot: off))
+            rig.coordinator.schedulePrediction()
+            for _ in 0..<10 { await Task.yield() }
+            XCTAssertTrue(rig.engine.requests.isEmpty)
+            XCTAssertTrue(rig.inserter.replacements.isEmpty)
+            XCTAssertNil(rig.interactionState.activeSession)
+            XCTAssertFalse(rig.coordinator.overlayState.isVisible)
+            XCTAssertNil(rig.coordinator.preparedContinuation)
+            XCTAssertNil(rig.coordinator.typingPrediction)
+        }
+    }
+
     // MARK: - Lifecycle commands
 
     func test_start_reconcilesOutOfAStaleDisabledState() {

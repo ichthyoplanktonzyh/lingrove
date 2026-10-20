@@ -50,6 +50,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case emojiPeopleStyle
     case emojiHistory
     // Writing
+    case completionEnabled
     case length
     case acceptPunctuation
     case addSpaceAfterAccept
@@ -181,6 +182,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .chunkAlignment: return String(localized: "Enable chunk alignment", table: "Learning")
         case .translationModel: return String(localized: "Translation model", table: "Learning")
         case .alignmentModel: return String(localized: "Chunk alignment model", table: "Learning")
+        case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Enable Globally")
         case .useScreenContext: return String(localized: "Use screen context")
         case .openAtLogin: return String(localized: "Open at Login")
@@ -293,6 +295,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationReferenceMode: return "doc.text"
         case .chunkAlignment: return "text.alignleft"
         case .translationModel, .alignmentModel: return "shippingbox"
+        case .completionEnabled: return "text.cursor"
         case .enableGlobally: return "power"
         case .useScreenContext: return "text.viewfinder"
         case .openAtLogin: return "arrow.right.circle"
@@ -409,7 +412,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return .appearance
         case .emojiPicker, .emojiSkinTone, .emojiPeopleStyle, .emojiHistory:
             return .emoji
-        case .length, .acceptPunctuation, .addSpaceAfterAccept, .name, .languages, .customRules,
+        case .completionEnabled, .length, .acceptPunctuation, .addSpaceAfterAccept, .name, .languages, .customRules,
              .hideSuggestionsOnTypo, .offerTypoCorrections, .spellingDictionaries, .automaticallyFixTypos:
             return .writing
         case .extendedContext, .contextLivePreview, .typingHistory:
@@ -454,6 +457,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return String(localized: "Translation direction, previews, and reference text.", table: "Learning")
         case .translationModel, .alignmentModel:
             return String(localized: "Choose the local model or endpoint used for this task.", table: "Learning")
+        case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Turn Lingrove on or off everywhere without quitting.", table: "Learning")
         case .useScreenContext: return String(localized: """
         Help suggestions understand surrounding text using screenshots of the focused window.
@@ -603,6 +607,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .developmentDebugOverlays:
             return ["development", "developer", "debug", "overlays", "caret", "outline", "focus", "ocr", "diagnostics"]
         #endif
+        case .completionEnabled:
+            return ["autocomplete", "completion", "enable", "disable", "on", "off", "启用补全", "关闭补全", "自动补全"]
         case .enableGlobally:
             return ["on", "off", "disable", "toggle", "global", "pause", "resume",
                     "active", "status", "stop", "start", "turn off", "turn on"]

@@ -27,6 +27,49 @@ final class SuggestionSettingsModelTests: XCTestCase {
         super.tearDown()
     }
 
+    func test_completionGatePublishesPersistsAndRemainsIndependentFromTranslation() {
+        let model = makeModel()
+        var values: [Bool] = []
+        let subscription = model.snapshotPublisher.sink { values.append($0.isCompletionEnabled) }
+        defer { subscription.cancel() }
+        XCTAssertTrue(model.isCompletionEnabled)
+        for translation in [false, true] {
+            model.languageLearning.translationEnabled = translation
+            for completion in [false, true] {
+                model.setCompletionEnabled(completion)
+                XCTAssertEqual(model.isCompletionEnabled, completion)
+                XCTAssertEqual(model.domainSettings.completion.isCompletionEnabled, completion)
+                XCTAssertEqual(model.snapshot.isCompletionEnabled, completion)
+                XCTAssertEqual(values.last, completion)
+                XCTAssertEqual(makeModel().isCompletionEnabled, completion)
+                XCTAssertEqual(model.languageLearning.translationEnabled, translation)
+                XCTAssertTrue(model.isGloballyEnabled)
+            }
+        }
+        model.setCompletionEnabled(false)
+        model.resetToDefaults()
+        XCTAssertTrue(model.isCompletionEnabled)
+        XCTAssertEqual(values.last, true)
+    }
+
+    func test_completionGateReleasesLocalAndFallbackResidencyFromTheEmittedValue() {
+        let model = makeModel()
+        model.selectEngine(.llamaOpenSource)
+        var decisions: [Bool] = []
+        let subscription = model.localRuntimeResidencyPublisher.sink { decisions.append($0) }
+        defer { subscription.cancel() }
+        model.setCompletionEnabled(false)
+        XCTAssertEqual(decisions, [true, false])
+        XCTAssertFalse(model.keepsLocalRuntimeLoaded)
+        model.selectEngine(.appleIntelligence)
+        model.setKeepsFallbackModelLoaded(true)
+        XCTAssertFalse(model.keepsLocalRuntimeLoaded)
+        XCTAssertEqual(decisions.last, false)
+        model.setCompletionEnabled(true)
+        XCTAssertTrue(model.keepsLocalRuntimeLoaded)
+        XCTAssertEqual(decisions.last, true)
+    }
+
     private func makeModel() -> SuggestionSettingsModel {
         SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
     }

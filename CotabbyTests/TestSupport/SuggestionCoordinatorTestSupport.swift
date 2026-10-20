@@ -177,6 +177,8 @@ final class RigSuggestionEngine: SuggestionGenerating {
     private(set) var requests: [SuggestionRequest] = []
     private(set) var resetCount = 0
     private(set) var prewarmedRequests: [SuggestionRequest] = []
+    private(set) var prewarmCancellationCount = 0
+    var latestPartial: (@MainActor (SuggestionResult) -> Void)?
 
     func generateSuggestion(for request: SuggestionRequest) async throws -> SuggestionResult {
         requests.append(request)
@@ -184,6 +186,7 @@ final class RigSuggestionEngine: SuggestionGenerating {
     }
 
     func generateSuggestion(for request: SuggestionRequest, onPartial: (@MainActor (SuggestionResult) -> Void)?) async throws -> SuggestionResult {
+        latestPartial = onPartial
         for text in partialTexts {
             onPartial?(SuggestionResult(generation: request.generation, rawText: text, text: text, latency: 0.01))
             await Task.yield()
@@ -194,6 +197,8 @@ final class RigSuggestionEngine: SuggestionGenerating {
     func resetCachedGenerationContext() async {
         resetCount += 1
     }
+
+    func cancelPrewarm() { prewarmCancellationCount += 1 }
 
     func prewarm(for request: SuggestionRequest) async {
         prewarmedRequests.append(request)

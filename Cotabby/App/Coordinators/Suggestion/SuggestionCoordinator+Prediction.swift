@@ -1300,6 +1300,7 @@ extension SuggestionCoordinator {
     func currentDisabledReason(focusSnapshot: FocusSnapshot) -> String? {
         SuggestionAvailabilityEvaluator.disabledReason(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
+            completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
             isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
             isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -1323,6 +1324,7 @@ extension SuggestionCoordinator {
         }
 
         CotabbyLogger.suggestion.debug("Predictions disabled: \(reason)")
+        cancelEnginePrewarm()
         cancelPredictionWork()
         resetCachedGenerationContext()
         visualContextCoordinator.cancel(resetState: true)
@@ -1451,7 +1453,8 @@ extension SuggestionCoordinator {
         focusModel.refreshNow()
         let snapshot = focusModel.snapshot
 
-        guard SuggestionAvailabilityEvaluator.shouldSchedulePredictionWhenVisualContextBecomesReady(
+        guard currentDisabledReason(focusSnapshot: snapshot) == nil,
+              SuggestionAvailabilityEvaluator.shouldSchedulePredictionWhenVisualContextBecomesReady(
             focusSnapshot: snapshot,
             matching: identity
         ) else {

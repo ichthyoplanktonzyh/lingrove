@@ -13,6 +13,11 @@ final class SuggestionEngineRouterRoutingTests: XCTestCase {
     /// process lifetime instead.
     private static var retained: [AnyObject] = []
 
+    private final class EmptyHistory: SuggestionHistoryProviding {
+        func historyExamples(for context: FocusedInputContext, engine: SuggestionEngineKind) -> [String] { [] }
+        func phraseContinuation(for request: SuggestionRequest, engine: SuggestionEngineKind) -> String? { nil }
+    }
+
     private struct Rig {
         let router: SuggestionEngineRouter
         let settings: SuggestionSettingsModel
@@ -29,6 +34,7 @@ final class SuggestionEngineRouterRoutingTests: XCTestCase {
         private(set) var requests: [SuggestionRequest] = []
         private(set) var prewarmCount = 0
         private(set) var resetCount = 0
+        private(set) var warmupCancellationCount = 0
 
         init(latency: TimeInterval = 0.02) {
             script = { request in
@@ -44,6 +50,8 @@ final class SuggestionEngineRouterRoutingTests: XCTestCase {
         func resetCachedGenerationContext() async {
             resetCount += 1
         }
+
+        func cancelPrewarm() { warmupCancellationCount += 1 }
 
         func prewarm(for request: SuggestionRequest) async {
             prewarmCount += 1
@@ -355,6 +363,23 @@ final class SuggestionEngineRouterRoutingTests: XCTestCase {
             // as silence, not as an error state.
         } catch {
             XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func test_completionOffPreventsAllPrewarmAndShutdownReachesInactiveBackends() async {
+        for engine in SuggestionEngineKind.allCases {
+            let rig = makeRig(engine: engine)
+            rig.settings.setCompletionEnabled(false)
+            await rig.router.prewarm(for: CotabbyTestFixtures.suggestionRequest())
+            XCTAssertEqual(rig.foundation.prewarmCount + rig.llama.prewarmCount + rig.endpoint.prewarmCount, 0)
+            let history = EmptyHistory()
+            let phrases = TypingHistoryPhraseEngine(wrapping: rig.router, history: history, engineKind: { engine })
+            let debug = DebugForcedSuggestionEngine(wrapping: phrases, userDefaults: makeDefaults())
+            Self.retained.append(contentsOf: [history, phrases, debug] as [AnyObject])
+            debug.cancelPrewarm()
+            XCTAssertEqual(rig.foundation.warmupCancellationCount, 1)
+            XCTAssertEqual(rig.llama.warmupCancellationCount, 1)
+            XCTAssertEqual(rig.endpoint.warmupCancellationCount, 1)
         }
     }
 

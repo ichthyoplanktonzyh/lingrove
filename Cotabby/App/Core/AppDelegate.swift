@@ -264,6 +264,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) {
         let settings = settings ?? suggestionSettings.snapshot
         guard settings.isGloballyEnabled,
+              settings.isCompletionEnabled,
               !settings.isTemporarilyPaused,
               !settings.disabledAppBundleIdentifiers.contains(snapshot.bundleIdentifier ?? ""),
               case .supported = snapshot.capability,

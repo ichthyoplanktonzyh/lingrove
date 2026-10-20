@@ -58,6 +58,10 @@ final class TypingHistoryPhraseEngine: SuggestionGenerating {
         await base.resetCachedGenerationContext()
     }
 
+    func cancelPrewarm() {
+        base.cancelPrewarm()
+    }
+
     func prewarm(for request: SuggestionRequest) async {
         await base.prewarm(for: request)
     }

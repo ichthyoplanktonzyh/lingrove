@@ -54,6 +54,8 @@ struct SuggestionCompletionSettings: Equatable {
     /// Keeps an on-device request alive through matching typing, independently of partial display.
     var predictAheadWhileTyping: Bool
     var acceptanceGranularity: AcceptanceGranularity
+    /// Independent from the app master switch: learning keeps observing input while completion is off.
+    var isCompletionEnabled: Bool = true
 }
 
 /// Optional request context and user-authored personalization.
@@ -147,6 +149,11 @@ struct SuggestionSettingsData: Equatable {
 }
 
 extension SuggestionSettingsData {
+    var isCompletionEnabled: Bool {
+        get { completion.isCompletionEnabled }
+        set { completion.isCompletionEnabled = newValue }
+    }
+
     var isGloballyEnabled: Bool {
         get { general.isGloballyEnabled }
         set { general.isGloballyEnabled = newValue }
