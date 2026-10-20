@@ -40,7 +40,9 @@ definitions come from the public text API; the native-popup presenter and its in
 accessory have been removed. Language Learning has a Dictionary tab for local-source enablement
 and priority, while card source selection affects only the current query. Current examples,
 collection, speech and source attribution remain in the existing learning/notebook flow.
-The replacement card's real-click collection/source/outside-dismiss acceptance is in progress.
+The user confirmed real-click acceptance in TextEdit: word lookup opens Lingrove's own card,
+collection and removal keep the card open, source switching works, and outside clicks dismiss it.
+This closes the former native-popup fish-tail dismissal issue for the verified flow.
 
 Dictionary validation passed 186 scoped tests (214 parameterized executions), with no failures
 or skips, plus 158 Python tests, strict SwiftLint and 1,362 active localization keys in 15 languages.
