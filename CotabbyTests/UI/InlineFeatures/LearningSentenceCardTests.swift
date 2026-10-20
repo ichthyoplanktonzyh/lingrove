@@ -288,13 +288,15 @@ struct LearningSentenceCardTests {
         // Order this nonactivating window without making it key or changing the user's editor.
         window.orderFrontRegardless()
         await settle(hosting, in: window)
-        #expect(hosting.fittingSize.height < 120)
+        let compactHeight = hosting.fittingSize.height
+        #expect(compactHeight < 120)
         // Reuse one host and document, matching the real panel's preservation of SwiftUI state.
         for expanded in [true, false, true] {
             hosting.rootView = makeCard(expanded)
             await settle(hosting, in: window)
         }
-        #expect(hosting.fittingSize.height > 160)
+        #expect(hosting.fittingSize.height > compactHeight,
+                "Expanding must add the original without relying on removed caption rows for height")
         #expect(hosting.fittingSize.height < 400)
         let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
@@ -353,6 +355,13 @@ struct LearningSentenceCardTests {
             presentation.targetIsSelection = true
             presentation.canReplace = true
             presentation.replacementShortcutLabel = replacementShortcutLabel
+            let input = LearningExplanationPolicy.input(presentation)
+            #expect(input != nil)
+            if let input {
+                explanation.setTarget(input, saved: .init(id: UUID(), input: input, language: .english,
+                    result: .init(meaning: "Contextual meaning.", explanation: "An explanation tied to this sentence."),
+                    model: "fixture", createdAt: Date()))
+            }
             return LearningSentenceCard(
                 presentation: presentation, detailState: state, explanation: explanation,
                 replace: { replacements += 1 }, inspect: { _ in }, expand: { expansions += 1 }, dismiss: {},
@@ -393,14 +402,18 @@ struct LearningSentenceCardTests {
             #expect(!visible.contains("shortcutsentinel"), "Keyboard shortcut hints must not occupy either card size")
             #expect(!visible.contains(normalized(String(localized: "Target expression", table: "Learning"))))
             #expect(visible.contains(normalized(LearningLanguage.english.label)))
+            #expect(visible.components(separatedBy: normalized(LearningLanguage.english.compactLabel)).count == 2,
+                "The language belongs in the header once, without a repeated body label")
+            let explanationLabel = String(localized: "AI explanation", table: "Learning")
+            #expect(!visible.contains(normalized(explanationLabel)))
             if expanded {
                 #expect(visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))))
                 #expect(visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))))
             }
-            if nativeReview, !dark, !expanded {
+            if nativeReview, !dark, expanded {
                 // Opt-in local acceptance exposes a normal window to an external AX client.
                 // NSHostingView's in-process children omit SwiftUI's virtual accessibility tree.
-                window.title = "Lingrove preview card acceptance"
+                window.title = "Lingrove card details acceptance"
                 try await Task.sleep(for: .seconds(45))
             }
         }

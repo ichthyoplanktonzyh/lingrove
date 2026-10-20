@@ -99,7 +99,8 @@ struct LearningSentenceCard: View {
             .size(withAttributes: [.font: NSFont.systemFont(ofSize: 18)]).width
         // The outer padding is already part of the panel's measured frame. A small glyph margin
         // keeps the final punctuation inside TextKit's line box despite fractional font advances.
-        return min(480, max(320, ceil(max(source, translation)) + 22))
+        let speechWidth: CGFloat = speech == nil ? 0 : 28
+        return min(480, max(320, ceil(max(source, translation)) + 22 + speechWidth))
     }
 
     /// Compact describes the viewport, not a shortened translation. TextKit lays out the entire
@@ -127,12 +128,16 @@ struct LearningSentenceCard: View {
                         localized: "Translation preview unavailable", table: "Learning",
                         comment: "Header for an explicit preview capture error.")
                 : presentation.isExpanded
-                    ? String(localized: "\(presentation.sourceLanguage.label) → \(presentation.targetLanguage.label)",
+                    ? String(localized: "\(presentation.sourceLanguage.compactLabel) → \(presentation.targetLanguage.compactLabel)",
                         table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
-                    : presentation.targetLanguage.label)
+                    : presentation.targetLanguage.compactLabel)
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
+            if let explanation {
+                LearningExplanationButton(session: explanation, prepare: { if !presentation.isExpanded { expand() } },
+                    configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+            }
             if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
                 VocabularyFavoriteButton(store: vocabulary, capture: capture)
             }
@@ -184,31 +189,22 @@ struct LearningSentenceCard: View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(presentation.sourceLanguage.label)
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation, original: true) {
-                            VocabularyFavoriteButton(store: vocabulary, capture: capture)
-                        }
+                    HStack(alignment: .top, spacing: 8) {
+                        sentence(presentation.source, source: true)
                         if let speech, let request = sourceSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play source text aloud", table: "Learning"),
                                 stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
                         }
                     }
-                    sentence(presentation.source, source: true)
-                    HStack {
-                        Text(presentation.targetLanguage.label)
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
+                    HStack(alignment: .top, spacing: 8) {
+                        sentence(presentation.translation, source: false)
                         if let speech, let request = translationSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play translation aloud", table: "Learning"),
                                 stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
                         }
                     }
-                    sentence(presentation.translation, source: false)
                     if !presentation.translation.isEmpty, presentation.chunks.isEmpty,
                        !presentation.isTranslating, presentation.isGenerating || !presentation.message.isEmpty {
                         Text(presentation.isGenerating
@@ -239,14 +235,12 @@ struct LearningSentenceCard: View {
                         Text(presentation.message).font(.caption).foregroundStyle(.secondary)
                     }
                     if let explanation {
-                        Divider()
-                        Text(String(localized: "AI explanation", table: "Learning")).font(.caption.weight(.semibold))
                         if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
                             LearningCapturedExplanationView(session: explanation, store: vocabulary, capture: capture,
-                                configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
                         } else {
                             LearningExplanationView(session: explanation,
-                                configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
                         }
                     }
                 }
