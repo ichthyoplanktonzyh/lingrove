@@ -394,11 +394,12 @@ final class CotabbyAppEnvironment {
         // One offline resource/index owner serves both asynchronous unit recognition and lookup.
         // Panels borrow it; none creates a second dictionary or recognition worker in a view.
         let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
+        let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let writingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-            dictionaryProvider: learningLexicon, dictionarySettings: suggestionSettings.languageLearning.dictionary,
+            dictionaryProvider: learningDictionary, dictionarySettings: suggestionSettings.languageLearning.dictionary,
             speech: speechController, vocabulary: vocabularyStore)
         let readingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-            dictionaryProvider: learningLexicon, dictionarySettings: suggestionSettings.languageLearning.dictionary,
+            dictionaryProvider: learningDictionary, dictionarySettings: suggestionSettings.languageLearning.dictionary,
             speech: speechController, vocabulary: vocabularyStore)
         let sentencePreview = LearningSentencePreviewCoordinator(
             service: learningService, reader: learningReader, focus: focusModel,

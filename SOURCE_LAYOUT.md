@@ -307,10 +307,18 @@ that owns too many responsibilities and should be split by behavior rather than 
 - `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud/dictionary
   tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
   task-scoped resource sheets, advanced expansion and search destinations without changing models.
-- `Models/LanguageLearning/LearningDictionarySettings.swift` persists the enabled local sources
+- `Models/LanguageLearning/LearningDictionarySettings.swift` persists the enabled dictionary sources
   and lookup order as one configuration. `LearningDictionarySession` observes only this store;
   dictionary changes do not invalidate translation or autocomplete. `DictionarySettingsSection`
   reuses the language-learning Form and its searchable settings-row anchor.
+- `LearningDictionarySources.swift` models stable source/book/website identities and file bookmarks.
+  `Services/LanguageLearning/LearningDictionaryRouter.swift` dispatches immutable query plans to
+  the lexicon, `MDictLibraryService`, `SystemDictionaryArticleService` and `OnlineDictionaryClient`.
+  `Packages/MDictReader` contains the attributed, bounded MDX/MDD parser and its independent tests.
+  `native/dictionary/system_dictionary.m` is the disposable private DCS helper; preparation and
+  embedding scripts build it for both app architectures. `DictionaryHTMLPolicy`, `DictionaryLinkPolicy`
+  and `DictionaryWebsitePolicy` own deterministic content/navigation rules. `DictionaryHTMLView`
+  owns disposable WebKit rendering and scoped resource requests inside the existing card.
 - `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.

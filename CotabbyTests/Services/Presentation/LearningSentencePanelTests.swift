@@ -263,7 +263,7 @@ struct LearningSentencePanelTests {
 private actor PanelDictionaryProbe: LearningDictionaryProviding {
     private(set) var calls = 0
     private(set) var queries: [String] = []
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls += 1
         queries.append(query)
         return .systemText("Fixture definition.")

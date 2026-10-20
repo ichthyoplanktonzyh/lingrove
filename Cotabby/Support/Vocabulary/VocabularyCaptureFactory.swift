@@ -71,11 +71,15 @@ nonisolated enum VocabularyCaptureFactory {
         switch result {
         case .systemText(let text):
             return [VocabularyDefinition(text: text, source: "macOS Dictionary", sourceURL: "", licenseURL: "")]
-        case .notFound: return []
+        case .notFound, .website: return []
+        case .article(let article):
+            return [VocabularyDefinition(text: article.text, source: article.sourceName,
+                                         sourceURL: article.sourceURL, licenseURL: article.licenseURL)]
         case .entries(let entries): return entries.map { entry in
             VocabularyDefinition(text: entry.senses.flatMap(\.definitions).joined(separator: "\n"),
-                source: "Wiktionary contributors / Kaikki", sourceURL: entry.sourceURL,
-                licenseURL: "https://creativecommons.org/licenses/by-sa/4.0/")
+                source: entry.sourceName ?? "Wiktionary contributors / Kaikki", sourceURL: entry.sourceURL,
+                licenseURL: entry.licenseURL ?? "https://creativecommons.org/licenses/by-sa/4.0/",
+                licenseName: entry.licenseName ?? "CC BY-SA 4.0")
         }
         }
     }

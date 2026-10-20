@@ -172,13 +172,15 @@ private struct VocabularyEntryDetail: View {
                 ForEach(Array(entry.definitions.enumerated()), id: \.offset) { _, definition in
                     section(String(localized: "Dictionary", table: "Vocabulary")) {
                         Text(definition.text).textSelection(.enabled)
-                        if !definition.sourceURL.isEmpty, let url = URL(string: definition.sourceURL) {
+                        if let url = DictionaryLinkPolicy.externalURL(definition.sourceURL) {
                             Link(definition.source, destination: url).font(.caption)
                         } else {
                             Text(definition.source).font(.caption).foregroundStyle(.secondary)
                         }
-                        if !definition.licenseURL.isEmpty, let license = URL(string: definition.licenseURL) {
-                            Link("CC BY-SA 4.0", destination: license).font(.caption2)
+                        if let license = DictionaryLinkPolicy.externalURL(definition.licenseURL) {
+                            Link(definition.licenseName ?? "CC BY-SA 4.0", destination: license).font(.caption2)
+                        } else if let name = definition.licenseName, !name.isEmpty {
+                            Text(name).font(.caption2).foregroundStyle(.secondary)
                         }
                     }
                 }

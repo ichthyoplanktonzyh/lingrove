@@ -21,7 +21,8 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
     }
 
     func lookup(_ query: String, language: LearningLanguage, expression: Bool,
-                source: LearningDictionarySource = .bundled) async throws -> LearningDictionaryResult {
+                source: LearningDictionarySource = .bundled,
+                configuration: LearningDictionaryConfiguration = .init()) async throws -> LearningDictionaryResult {
         try Task.checkCancellation()
         guard !query.isEmpty, query.utf8.count <= 256, InsertionSafetyGate.isSafeToInsert(query) else {
             throw LearningFailure.message(String(localized: "This lookup text is unavailable.",
@@ -33,6 +34,7 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
             }
             return entries.isEmpty ? .notFound : .entries(entries)
         }
+        guard source == .system else { return .notFound }
         let value = query as CFString
         let detected = DCSGetTermRangeInString(nil, value, 0)
         let whole = CFRange(location: 0, length: query.utf16.count)

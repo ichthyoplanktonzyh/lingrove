@@ -35,16 +35,25 @@ and the first vocabulary notebook. The notebook stores examples, notes, tags and
 attribution locally, reuses speech, and exports versioned JSON. This checkpoint does not change
 the published `v0.5.1-test.1` artifacts or enable automatic updates.
 
-Dictionary lookup now uses Lingrove's own nonactivating card for words and expressions. System
-definitions come from the public text API; the native-popup presenter and its injected favorite
-accessory have been removed. Language Learning has a Dictionary tab for local-source enablement
-and priority, while card source selection affects only the current query. Current examples,
-collection, speech and source attribution remain in the existing learning/notebook flow.
+Dictionary lookup uses Lingrove's own nonactivating card for words and expressions; the native
+popup and its injected favorite accessory have been removed. The Dictionary tab now manages
+built-in/system sources, imported MDX/MDD files and optional online English/API or HTTPS website
+sources. Network sources default off. Formatted system content uses an experimental private DCS
+helper with a deadline and public-text fallback; system images are not loaded. Imported static
+HTML/CSS/images use isolated WebKit rendering with scripts, remote assets and file URLs blocked.
+Current examples, collection, speech and source-specific attribution remain in the existing flow.
+
+The dictionary expansion passed 201 scoped tests (239 parameterized executions), zero failures
+or skips, plus seven independent parser tests, 158 Python tests, strict SwiftLint and 1,384 source
+keys in 15 languages. Coverage includes MDX 1/2, MDD PNG, zlib/LZO, truncation and block/work limits,
+import/reopen limits, website encoding and opt-in, API attribution, helper timeout/cancellation/
+oversize child cleanup, and real WebKit rendering with a reachable loopback image canary.
+These scoped results do not replace the historical full-suite run below.
 The user confirmed real-click acceptance in TextEdit: word lookup opens Lingrove's own card,
 collection and removal keep the card open, source switching works, and outside clicks dismiss it.
 This closes the former native-popup fish-tail dismissal issue for the verified flow.
 
-Dictionary validation passed 186 scoped tests (214 parameterized executions), with no failures
+The preceding own-card checkpoint passed 186 scoped tests (214 parameterized executions), with no failures
 or skips, plus 158 Python tests, strict SwiftLint and 1,362 active localization keys in 15 languages.
 The scoped run covers source settings and search, fallback/cancellation, captured examples,
 definition persistence, real SwiftUI detail popovers and writing/reading integration. It is not

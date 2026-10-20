@@ -111,6 +111,19 @@ in `learning-expressions.NOTICE.md` and `learning-expressions.provenance.json`; 
 window also exposes entry source and license links. No quotations, usage examples or media
 are included. Full license: https://creativecommons.org/licenses/by-sa/4.0/legalcode.en
 
+## MDict parser and external dictionaries
+
+The seven parser files under `Packages/MDictReader/Sources/MDictReader` originate from Easydict
+revision `b4eced749d492d283f451f88e5504413e4533f44`, Copyright © 2026 Kuroda Kayn / izual
+and Easydict contributors, under GPL-3.0. File notices remain intact; provenance, local changes
+and the full license are in that package and bundled as `MDict-NOTICE.md` / `MDict-LICENSE.txt`.
+Lingrove adds its own narrow facade and service integration. User-imported dictionaries are
+separate content with their own licenses; no MDict dictionary data is distributed with the app.
+
+The optional Free Dictionary API (dictionaryapi.dev) supplies entry-level source and license
+metadata, retained in cards and saved vocabulary. System dictionary content remains supplied
+by the user's installed macOS dictionaries. These content sources are distinct from app licenses.
+
 ## Local speech runtime
 
 `lingrove-tts-helper` statically links llama.cpp, ggml and libmtmd from revision

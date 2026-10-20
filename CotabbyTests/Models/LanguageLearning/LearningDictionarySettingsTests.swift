@@ -12,7 +12,7 @@ struct LearningDictionarySettingsTests {
         defaults.set(["system", "unknown", "system"], forKey: "learningDictionarySourceOrder")
         defaults.set([], forKey: "learningDictionaryEnabledSources")
         let settings = LearningDictionarySettings(defaults: defaults)
-        #expect(settings.configuration.order == [.system, .bundled])
+        #expect(settings.configuration.order == [.system, .bundled, .online])
         #expect(settings.configuration.activeSources == [.bundled])
         settings.setEnabled(false, for: .bundled)
         #expect(settings.configuration.activeSources == [.bundled], "The last source cannot be disabled")

@@ -211,13 +211,17 @@ configured target languages, with uneven coverage and English definitions. Recog
 headwords, recorded forms and conservative one-word slots in explicitly recorded expression
 patterns; it is not a comprehensive grammatical phrase detector. The data has separate
 [CC BY-SA attribution and provenance](Cotabby/Resources/learning-expressions.NOTICE.md).
-**Settings → Language Learning → Dictionary** enables and orders the built-in expression source
-and system Dictionary source. A new lookup displays the first hit in that order; choosing a source
-inside a card queries just that source for the current word or expression. System text comes from
-the public Dictionary Services API, without the native popup or undocumented rich-content APIs.
+**Settings → Language Learning → Dictionary** enables and orders built-in expressions, system
+dictionaries, imported MDX/MDD files and optional online sources. A new lookup displays the first
+hit in that order; choosing a source inside a card queries just that source for the current term.
+Formatted system content uses experimental private DCS calls isolated in a helper, with public
+plain-text fallback. External system dictionary images are not loaded. Imported local HTML/CSS/images
+render in the same app-owned card with scripts and remote subresources blocked.
 When available, the encountered sentence and its existing translation appear as the current example
-and remain attached when a component word is collected. No extra model request or app-managed hosted
-dictionary lookup is added.
+and remain attached when a component word is collected. Free Dictionary API is English-only and
+default-off; enabling it sends only the lookup term to dictionaryapi.dev. Custom HTTPS templates
+containing `{query}` are also default-off and open only on an explicit browser action. Source and
+license metadata remain attached to saved definitions. No extra model request is made.
 
 A sentence preview sends only the selected text or current sentence, up to 6 KB; larger scopes are
 rejected without truncation. Analysis additionally receives the exact displayed translation. Learning requests do not include screen contents, clipboard data or typing

@@ -178,7 +178,7 @@ struct LearningDetailPanelTests {
 }
 
 private actor ExpressionDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }
 }

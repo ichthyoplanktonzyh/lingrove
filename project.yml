@@ -10,6 +10,8 @@ options:
   groupSortPosition: top
   xcodeVersion: "2600"
 packages:
+  MDictReader:
+    path: Packages/MDictReader
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.9.1
@@ -113,7 +115,13 @@ targetTemplates:
         buildPhase: resources
       - path: native/tts/LLAMA_LICENSE.txt
         buildPhase: resources
+      - path: Cotabby/Resources/DictionaryNotices/MDict-LICENSE.txt
+        buildPhase: resources
+      - path: Cotabby/Resources/DictionaryNotices/MDict-NOTICE.md
+        buildPhase: resources
     dependencies:
+      - package: MDictReader
+        product: MDictReader
       - package: Sparkle
         product: Sparkle
       - package: CotabbyInference
@@ -125,6 +133,13 @@ targetTemplates:
       - package: LaunchAtLogin
         product: LaunchAtLogin
     postBuildScripts:
+      - name: Embed system dictionary helper
+        script: '"${SRCROOT}/scripts/embed_dictionary_helper.sh"'
+        inputFiles:
+          - $(SRCROOT)/scripts/embed_dictionary_helper.sh
+          - $(SRCROOT)/build/dictionary-native/lingrove-dictionary-helper
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/lingrove-dictionary-helper
       - name: Embed local speech runtime
         script: '"${SRCROOT}/scripts/embed_tts_runtime.sh"'
         inputFiles:

@@ -35,6 +35,11 @@ nonisolated struct LearningLexiconEntry: Codable, Equatable, Sendable {
     let forms: [String]
     let senses: [Sense]
     let sourceURL: String
+    var phonetics: [String]?
+    var examples: [String]?
+    var sourceName: String?
+    var licenseURL: String?
+    var licenseName: String?
 }
 
 nonisolated struct LearningLexiconResource: Codable, Sendable {
@@ -50,6 +55,8 @@ nonisolated struct LearningLexiconResource: Codable, Sendable {
 nonisolated enum LearningDictionaryResult: Equatable, Sendable {
     case entries([LearningLexiconEntry])
     case systemText(String)
+    case article(LearningDictionaryArticle)
+    case website(URL)
     case notFound
 }
 
@@ -59,5 +66,11 @@ nonisolated protocol LearningUnitRecognizing: Sendable {
 
 nonisolated protocol LearningDictionaryProviding: Sendable {
     func lookup(_ query: String, language: LearningLanguage, expression: Bool,
-                source: LearningDictionarySource) async throws -> LearningDictionaryResult
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult
+    func resource(_ path: String, libraryID: UUID, configuration: LearningDictionaryConfiguration) async throws -> DictionaryResource?
+}
+
+extension LearningDictionaryProviding {
+    nonisolated func resource(_ path: String, libraryID: UUID,
+                              configuration: LearningDictionaryConfiguration) async throws -> DictionaryResource? { nil }
 }

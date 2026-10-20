@@ -797,13 +797,24 @@ window. `LanguageLearningSettings` owns one `LearningDictionarySettings` shared 
 sessions. Its atomic source order/enabled configuration is independent of translation/model settings.
 New queries try enabled sources until the first hit; explicit card selection pins only that query.
 Query revisions, cancellation and a source-keyed per-open-unit cache reject stale results after word,
-source or preference changes, return or dismissal. `LearningDictionaryCard` separately renders structured offline senses,
-one raw system definition, missing entries and unavailable resources. Entry-level source,
+source or preference changes, return or dismissal. `LearningDictionaryCard` renders structured senses,
+rich articles, public system text, explicit website actions, missing entries and unavailable resources. Entry-level source,
 English-definition and license labels remain visible. Offline phrase lookup preserves multiple
 exact candidates; the system fallback requires the detected term range to cover the entire query,
 so a constituent definition cannot masquerade as a phrase entry. The public `DCSCopyTextDefinition`
-copy transfers Core Foundation ownership exactly once. No app HTTP dictionary client or additional
-model request exists. All lookup paths use the app-owned window; the former native-popup presenter
+copy transfers Core Foundation ownership exactly once. `LearningDictionaryRouter` selects built-in,
+system, imported MDict, or explicitly enabled Free Dictionary API sources. The API sends only the
+English lookup term through an ephemeral bounded request; website templates return an explicit
+browser action and are never fetched automatically. No additional model request is made.
+System formatted definitions use dynamically resolved private DCS symbols in a disposable helper,
+with a three-second watchdog, cancellation and public-text fallback. This is an experimental OS
+compatibility boundary, not a supported Apple API contract. `MDictLibraryService` serializes the
+vendored parser, user-selected bookmarks and bounded MDX/MDD resources. `DictionaryHTMLView`
+uses a nonpersistent WebKit store, disabled content JavaScript, restrictive CSP and a per-document
+custom resource origin. It never grants file URLs or remote subresources. Replacing a document
+revokes its resource tasks. Dictionary cross-references clear the original example rather than
+attaching unrelated context. Source-specific attribution and licenses survive vocabulary capture.
+All lookup paths use the app-owned window; the former native-popup presenter
 and injected accessory are removed. The captured vocabulary example stays separate from dictionary
 definitions, and component selection derives its exact range from the same immutable capture.
 Background unit/alignment updates preserve

@@ -118,7 +118,7 @@ struct LearningDictionaryCardTests {
 }
 
 private actor CardDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         if !expression || query == "system phrase" { return .systemText("Fixture definition.") }
         if query != "look forward to" { return .notFound }
         return .entries([.init(id: "fixture", language: "en", headword: query, forms: [],

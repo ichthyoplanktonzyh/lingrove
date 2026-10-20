@@ -59,6 +59,7 @@ nonisolated struct VocabularyDefinition: Codable, Equatable, Sendable {
     let source: String
     let sourceURL: String
     let licenseURL: String
+    var licenseName: String?
 }
 
 /// Short-lived card input. It is copied with the displayed sentence, so saving never rereads

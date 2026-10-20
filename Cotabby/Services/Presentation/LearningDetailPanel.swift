@@ -49,7 +49,7 @@ final class LearningDetailPanel {
     }
 
     func dismissDictionary() -> Bool {
-        guard dictionarySession.selectedWord != nil else { return false }
+        guard dictionarySession.isRelatedEntry else { return false }
         stopCurrentSpeech()
         dictionarySession.returnToExpression()
         return true

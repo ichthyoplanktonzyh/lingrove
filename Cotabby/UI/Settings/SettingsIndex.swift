@@ -587,7 +587,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
-        case .dictionarySources: return ["dictionary", "lexicon", "lookup", "source", "词典", "查词", "词库"]
+        case .dictionarySources:
+            return ["dictionary", "lexicon", "lookup", "source", "mdict", "mdx", "mdd", "website", "online", "import",
+                    "词典", "查词", "词库", "导入", "网址", "在线", "排版"]
         case .translationStyle: return ["style", "formal", "conversational", "translation", "翻译风格", "书面", "口语"]
         case .translationSampling: return ["translation", "temperature", "top-p", "top-k", "seed", "翻译参数", "采样"]
         case .speechSampling: return ["speech", "tts", "temperature", "seed", "朗读参数", "语音参数", "采样"]

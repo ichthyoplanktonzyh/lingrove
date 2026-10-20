@@ -1,75 +1,100 @@
 import Combine
 import Foundation
 
-/// A source identifies a local dictionary adapter, not an inference engine. Sessions can query
-/// either source through the same result contract; neither source sends the lookup off the Mac.
-nonisolated enum LearningDictionarySource: String, CaseIterable, Codable, Sendable, Identifiable {
-    case bundled, system
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .bundled: String(localized: "Built-in expressions", table: "Learning")
-        case .system: String(localized: "System Dictionary", table: "Learning")
-        }
-    }
-}
-
-/// One atomic preference value prevents publishing a disabled last source or duplicate order.
-/// Lookup tasks capture its enabled order, so a settings edit cannot mutate an in-flight plan.
-nonisolated struct LearningDictionaryConfiguration: Equatable, Sendable {
-    let order: [LearningDictionarySource]
-    let enabled: Set<LearningDictionarySource>
-
-    init(order: [LearningDictionarySource] = LearningDictionarySource.allCases,
-         enabled: Set<LearningDictionarySource> = Set(LearningDictionarySource.allCases)) {
-        var seen = Set<LearningDictionarySource>()
-        self.order = (order + LearningDictionarySource.allCases).filter { seen.insert($0).inserted }
-        self.enabled = enabled.isEmpty ? [.bundled] : enabled
-    }
-
-    var activeSources: [LearningDictionarySource] { order.filter { enabled.contains($0) } }
-}
-
-/// LanguageLearningSettings owns this store once and shares it with both writing/reading cards.
-/// Keeping dictionary preferences separate avoids cancelling translation or reloading a model
-/// when the user changes a lookup source. Only dictionary sessions subscribe to these changes.
+/// LanguageLearningSettings owns this store once. It persists source identities and selected
+/// file references; parsing and HTTP remain services. Existing flat order keys stay stable.
 @MainActor
 final class LearningDictionarySettings: ObservableObject {
     @Published private(set) var configuration: LearningDictionaryConfiguration
     private let defaults: UserDefaults
+    private struct Catalog: Codable {
+        var libraries: [MDictLibraryDescriptor] = []
+        var websites: [DictionaryWebsite] = []
+        var systemFormat: SystemDictionaryFormat = .formatted
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let order = defaults.stringArray(forKey: "learningDictionarySourceOrder")?
             .compactMap(LearningDictionarySource.init(rawValue:)) ?? LearningDictionarySource.allCases
         let enabled = defaults.stringArray(forKey: "learningDictionaryEnabledSources")?
-            .compactMap(LearningDictionarySource.init(rawValue:)) ?? LearningDictionarySource.allCases
-        configuration = .init(order: order, enabled: Set(enabled))
+            .compactMap(LearningDictionarySource.init(rawValue:)) ?? Array(LearningDictionarySource.defaultEnabled)
+        let data = defaults.data(forKey: "learningDictionaryCatalog")
+        let catalog = data.flatMap { $0.count <= 2_000_000 ? try? JSONDecoder().decode(Catalog.self, from: $0) : nil } ?? Catalog()
+        configuration = .init(order: order, enabled: Set(enabled), libraries: Array(catalog.libraries.prefix(32)),
+            websites: Array(catalog.websites.prefix(32)), systemFormat: catalog.systemFormat)
     }
 
     func setEnabled(_ enabled: Bool, for source: LearningDictionarySource) {
+        guard configuration.order.contains(source) else { return }
         var sources = configuration.enabled
         if enabled { sources.insert(source) } else {
             guard sources.count > 1 else { return }
             sources.remove(source)
         }
-        update(.init(order: configuration.order, enabled: sources))
+        update(replacing(enabled: sources))
     }
 
     func move(_ source: LearningDictionarySource, by offset: Int) {
         var order = configuration.order
         guard let index = order.firstIndex(of: source), order.indices.contains(index + offset) else { return }
         order.swapAt(index, index + offset)
-        update(.init(order: order, enabled: configuration.enabled))
+        update(replacing(order: order))
     }
 
+    @discardableResult func add(_ library: MDictLibraryDescriptor) -> Bool {
+        if let old = configuration.libraries.first(where: { $0.id == library.id || $0.mdx.path == library.mdx.path }) {
+            let replacement = MDictLibraryDescriptor(id: old.id, name: library.name, mdx: library.mdx,
+                resources: library.resources, folder: library.folder, entryCount: library.entryCount)
+            return update(replacing(libraries: configuration.libraries.map { $0.id == old.id ? replacement : $0 }))
+        }
+        guard configuration.libraries.count < 32 else { return false }
+        return update(replacing(enabled: configuration.enabled.union([library.source]), libraries: configuration.libraries + [library]))
+    }
+
+    func add(_ website: DictionaryWebsite) {
+        guard configuration.websites.count < 32 else { return }
+        // Creating a website does not enable it; its network switch remains an explicit choice.
+        update(replacing(websites: configuration.websites + [website]))
+    }
+
+    func remove(_ source: LearningDictionarySource) {
+        guard source.kind == .mdict || source.kind == .website else { return }
+        update(replacing(order: configuration.order.filter { $0 != source }, enabled: configuration.enabled.subtracting([source]),
+            libraries: configuration.libraries.filter { $0.source != source },
+            websites: configuration.websites.filter { $0.source != source }))
+    }
+
+    func save(_ website: DictionaryWebsite) {
+        guard !website.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              website.name.utf8.count <= 200,
+              DictionaryWebsitePolicy.url(template: website.template, query: "example") != nil else { return }
+        if configuration.websites.contains(where: { $0.id == website.id }) {
+            update(replacing(websites: configuration.websites.map { $0.id == website.id ? website : $0 }))
+        } else { add(website) }
+    }
+
+    func setSystemFormat(_ format: SystemDictionaryFormat) { update(replacing(format: format)) }
     func reset() { update(.init()) }
 
-    private func update(_ configuration: LearningDictionaryConfiguration) {
-        guard configuration != self.configuration else { return }
+    private func replacing(order: [LearningDictionarySource]? = nil, enabled: Set<LearningDictionarySource>? = nil,
+                           libraries: [MDictLibraryDescriptor]? = nil, websites: [DictionaryWebsite]? = nil,
+                           format: SystemDictionaryFormat? = nil) -> LearningDictionaryConfiguration {
+        .init(order: order ?? configuration.order, enabled: enabled ?? configuration.enabled,
+              libraries: libraries ?? configuration.libraries, websites: websites ?? configuration.websites,
+              systemFormat: format ?? configuration.systemFormat)
+    }
+
+    @discardableResult private func update(_ configuration: LearningDictionaryConfiguration) -> Bool {
+        guard configuration != self.configuration else { return true }
+        let catalog = Catalog(libraries: configuration.libraries, websites: configuration.websites,
+                              systemFormat: configuration.systemFormat)
+        guard let data = try? JSONEncoder().encode(catalog), data.count <= 2_000_000 else { return false }
+        defaults.set(data, forKey: "learningDictionaryCatalog")
         defaults.set(configuration.order.map(\.rawValue), forKey: "learningDictionarySourceOrder")
         defaults.set(configuration.order.filter { configuration.enabled.contains($0) }.map(\.rawValue),
                      forKey: "learningDictionaryEnabledSources")
         self.configuration = configuration
+        return true
     }
 }

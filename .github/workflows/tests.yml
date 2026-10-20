@@ -62,6 +62,9 @@ jobs:
       - name: Test Python tooling
         run: python3 -m unittest discover -s scripts/tests
 
+      - name: Test bounded MDict parser
+        run: swift test --package-path Packages/MDictReader --scratch-path build/mdict-package
+
       - name: Run tests
         # FoundationModelDriftEvalTests is excluded here: it drives the real on-device Apple
         # Intelligence model (absent on CI runners) and is non-deterministic. It self-skips via

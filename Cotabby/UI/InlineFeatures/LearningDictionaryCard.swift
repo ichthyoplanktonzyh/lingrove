@@ -13,6 +13,7 @@ struct LearningDictionaryCard: View {
     var vocabulary: VocabularyStore?
     var lookupWord: ((LearningDictionaryWord, NSButton) -> Void)?
     @State private var definitionHeight: CGFloat = 60
+    @State private var htmlHeight: CGFloat = 120
     @State private var showsSources = false
 
     var body: some View {
@@ -32,7 +33,7 @@ struct LearningDictionaryCard: View {
                     .help(String(localized: "Close dictionary · Esc", table: "Learning",
                         comment: "Tooltip for closing the learning dictionary panel with Escape."))
             }
-            if session.selectedWord != nil {
+            if session.isRelatedEntry {
                 Button(String(localized: "← Back to the full expression", table: "Learning",
                     comment: "Returns from a word entry to the dictionary page for the whole expression."),
                     action: session.returnToExpression).buttonStyle(.plain).font(.caption)
@@ -46,7 +47,7 @@ struct LearningDictionaryCard: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     definition
-                    if let unit = session.unit, unit.kind != .word, session.selectedWord == nil {
+                    if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry {
                         componentWords(unit)
                     }
                     if let example = session.contextExample { contextExample(example) }
@@ -61,7 +62,7 @@ struct LearningDictionaryCard: View {
             }
             .frame(height: min(max(definitionHeight, 24), 300))
             .id(session.query)
-            if case .result(.entries) = session.content,
+            if case .result(.entries) = session.content, session.selectedSource == .bundled,
                let url = URL(string: "https://creativecommons.org/licenses/by-sa/4.0/") {
                 // Attribution stays outside the scroll viewport, including for long entries.
                 Link(String(localized: "Wiktionary contributors / Kaikki · CC BY-SA 4.0", table: "Learning",
@@ -86,31 +87,33 @@ struct LearningDictionaryCard: View {
     private var sourceSelector: some View {
         Button { showsSources.toggle() } label: {
             HStack(spacing: 4) {
-                Text(session.selectedSource.label)
+                Text(session.sourceName).lineLimit(1)
                 if session.availableSources.count > 1 { Image(systemName: "chevron.down").font(.caption2) }
             }.font(.caption).foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
         .disabled(session.availableSources.count < 2)
         .accessibilityLabel(String(localized: "Dictionary sources", table: "Learning"))
-        .accessibilityValue(session.selectedSource.label)
+        .accessibilityValue(session.sourceName)
         // Match the favorite action's existing SwiftUI popover boundary. Its child window is
         // recognized by the panel's outside-click policy, so mouse-down cannot retire the card.
         .popover(isPresented: $showsSources) {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(session.availableSources) { source in
-                    Button {
-                        showsSources = false
-                        session.selectSource(source)
-                    } label: {
-                        HStack {
-                            Text(source.label)
-                            Spacer()
-                            if source == session.selectedSource { Image(systemName: "checkmark") }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(session.availableSources) { source in
+                        Button {
+                            showsSources = false
+                            session.selectSource(source)
+                        } label: {
+                            HStack {
+                                Text(session.name(for: source)).lineLimit(2)
+                                Spacer()
+                                if source == session.selectedSource { Image(systemName: "checkmark") }
+                            }
                         }
                     }
-                }
-            }.buttonStyle(.plain).padding(14).frame(minWidth: 180)
+                }.buttonStyle(.plain).padding(14)
+            }.frame(width: 240, height: min(320, CGFloat(session.availableSources.count) * 40 + 28))
         }
     }
 
@@ -151,7 +154,9 @@ struct LearningDictionaryCard: View {
     private var speechRequest: SpeechRequest? {
         guard let unit = session.unit, let documentID = session.documentID else { return nil }
         let text: String?
-        if let selectedWord = session.selectedWord {
+        if let reference = session.referenceQuery {
+            text = SpeechTextPolicy.sanitizedText(reference)
+        } else if let selectedWord = session.selectedWord {
             text = SpeechTextPolicy.sanitizedText(selectedWord.text)
         } else {
             text = SpeechTextPolicy.spokenText(for: unit)
@@ -190,10 +195,23 @@ struct LearningDictionaryCard: View {
                 .font(.callout).foregroundStyle(.secondary)
         case .result(.systemText(let text)):
             Text(text).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .result(.article(let article)):
+            DictionaryHTMLView(article: article, loadResource: session.resourceLoader(for: article.resourceLibrary),
+                               reference: session.followReference, height: $htmlHeight)
+                .frame(height: htmlHeight)
+                // Replacing the document also revokes its custom resource origin and tasks.
+                .id(session.requestIdentity)
+        case .result(.website(let url)):
+            Link(destination: url) {
+                Label(String(localized: "Open lookup website", table: "Learning"), systemImage: "arrow.up.right.square")
+            }.font(.callout)
         case .result(.entries(let entries)):
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(entries, id: \.id) { entry in
                     if entry.headword != session.query { Text(entry.headword).font(.headline) }
+                    if let phonetics = entry.phonetics, !phonetics.isEmpty {
+                        Text(phonetics.joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
+                    }
                     ForEach(Array(entry.senses.enumerated()), id: \.offset) { _, sense in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(sense.partOfSpeech + (sense.labels.isEmpty ? "" : " · " + sense.labels.joined(separator: ", ")))
@@ -203,10 +221,14 @@ struct LearningDictionaryCard: View {
                             }
                         }
                     }
-                    if let url = URL(string: entry.sourceURL) {
-                        Link(String(localized: "Source: Wiktionary · English definitions", table: "Learning",
-                            comment: "Source label for the bundled expression definition link."),
-                            destination: url).font(.caption2)
+                    ForEach(entry.examples ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                    if let url = DictionaryLinkPolicy.externalURL(entry.sourceURL) {
+                        Link(entry.sourceName ?? "Wiktionary / Kaikki", destination: url).font(.caption2)
+                    }
+                    if let licenseURL = entry.licenseURL, let url = DictionaryLinkPolicy.externalURL(licenseURL) {
+                        Link(entry.licenseName ?? String(localized: "License", table: "Learning"), destination: url).font(.caption2)
+                    } else if let name = entry.licenseName, !name.isEmpty {
+                        Text(name).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
             }

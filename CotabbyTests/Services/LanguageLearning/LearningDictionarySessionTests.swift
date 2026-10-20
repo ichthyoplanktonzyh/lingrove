@@ -180,7 +180,7 @@ struct LearningDictionarySessionTests {
 private actor SourceDictionaryProbe: LearningDictionaryProviding {
     var calls: [LearningDictionarySource] = []
     func lookup(_ query: String, language: LearningLanguage, expression: Bool,
-                source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls.append(source)
         return source == .bundled ? .notFound : .systemText("System definition")
     }
@@ -194,7 +194,7 @@ private actor DelayedSourceDictionary: LearningDictionaryProviding {
         await withCheckedContinuation { waiters[source] = $0 }
     }
     func lookup(_ query: String, language: LearningLanguage, expression: Bool,
-                source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         await withCheckedContinuation {
             pending[source] = $0
             waiters.removeValue(forKey: source)?.resume()
@@ -215,7 +215,7 @@ private actor ControlledLearningDictionary: LearningDictionaryProviding {
         await withCheckedContinuation { waiters[query] = $0 }
     }
     init(delayed: Bool = false) { self.delayed = delayed }
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls.append((expression ? "expression:" : "word:") + query)
         if delayed {
             return await withCheckedContinuation {
