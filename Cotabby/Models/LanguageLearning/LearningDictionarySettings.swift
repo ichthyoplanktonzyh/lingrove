@@ -11,6 +11,7 @@ final class LearningDictionarySettings: ObservableObject {
         var libraries: [MDictLibraryDescriptor] = []
         var websites: [DictionaryWebsite] = []
         var systemFormat: SystemDictionaryFormat = .formatted
+        var definitionLanguage: LearningLanguage?
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -22,7 +23,8 @@ final class LearningDictionarySettings: ObservableObject {
         let data = defaults.data(forKey: "learningDictionaryCatalog")
         let catalog = data.flatMap { $0.count <= 2_000_000 ? try? JSONDecoder().decode(Catalog.self, from: $0) : nil } ?? Catalog()
         configuration = .init(order: order, enabled: Set(enabled), libraries: Array(catalog.libraries.prefix(32)),
-            websites: Array(catalog.websites.prefix(32)), systemFormat: catalog.systemFormat)
+            websites: Array(catalog.websites.prefix(32)), systemFormat: catalog.systemFormat,
+            definitionLanguage: catalog.definitionLanguage)
     }
 
     func setEnabled(_ enabled: Bool, for source: LearningDictionarySource) {
@@ -45,17 +47,19 @@ final class LearningDictionarySettings: ObservableObject {
     @discardableResult func add(_ library: MDictLibraryDescriptor) -> Bool {
         if let old = configuration.libraries.first(where: { $0.id == library.id || $0.mdx.path == library.mdx.path }) {
             let replacement = MDictLibraryDescriptor(id: old.id, name: library.name, mdx: library.mdx,
-                resources: library.resources, folder: library.folder, entryCount: library.entryCount)
+                resources: library.resources, folder: library.folder, entryCount: library.entryCount,
+                languages: library.languages ?? old.languages)
             return update(replacing(libraries: configuration.libraries.map { $0.id == old.id ? replacement : $0 }))
         }
         guard configuration.libraries.count < 32 else { return false }
         return update(replacing(enabled: configuration.enabled.union([library.source]), libraries: configuration.libraries + [library]))
     }
 
-    func add(_ website: DictionaryWebsite) {
-        guard configuration.websites.count < 32 else { return }
+    @discardableResult func add(_ website: DictionaryWebsite) -> Bool {
+        if configuration.websites.contains(where: { $0.id == website.id }) { return true }
+        guard configuration.websites.count < 32 else { return false }
         // Creating a website does not enable it; its network switch remains an explicit choice.
-        update(replacing(websites: configuration.websites + [website]))
+        return update(replacing(websites: configuration.websites + [website]))
     }
 
     func remove(_ source: LearningDictionarySource) {
@@ -65,16 +69,28 @@ final class LearningDictionarySettings: ObservableObject {
             websites: configuration.websites.filter { $0.source != source }))
     }
 
-    func save(_ website: DictionaryWebsite) {
+    @discardableResult func save(_ website: DictionaryWebsite) -> Bool {
         guard !website.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               website.name.utf8.count <= 200,
-              DictionaryWebsitePolicy.url(template: website.template, query: "example") != nil else { return }
+              DictionaryWebsitePolicy.url(template: website.template, query: "example") != nil else { return false }
         if configuration.websites.contains(where: { $0.id == website.id }) {
-            update(replacing(websites: configuration.websites.map { $0.id == website.id ? website : $0 }))
-        } else { add(website) }
+            return update(replacing(websites: configuration.websites.map { $0.id == website.id ? website : $0 }))
+        } else { return add(website) }
     }
 
     func setSystemFormat(_ format: SystemDictionaryFormat) { update(replacing(format: format)) }
+    func setDefinitionLanguage(_ language: LearningLanguage?) {
+        var next = configuration
+        next.definitionLanguage = language
+        update(next)
+    }
+    @discardableResult func setLanguages(_ pair: DictionaryLanguagePair, for source: LearningDictionarySource) -> Bool {
+        update(replacing(libraries: configuration.libraries.map {
+            var book = $0
+            if book.source == source { book.languages = pair }
+            return book
+        }))
+    }
     func reset() { update(.init()) }
 
     private func replacing(order: [LearningDictionarySource]? = nil, enabled: Set<LearningDictionarySource>? = nil,
@@ -82,13 +98,13 @@ final class LearningDictionarySettings: ObservableObject {
                            format: SystemDictionaryFormat? = nil) -> LearningDictionaryConfiguration {
         .init(order: order ?? configuration.order, enabled: enabled ?? configuration.enabled,
               libraries: libraries ?? configuration.libraries, websites: websites ?? configuration.websites,
-              systemFormat: format ?? configuration.systemFormat)
+              systemFormat: format ?? configuration.systemFormat, definitionLanguage: configuration.definitionLanguage)
     }
 
     @discardableResult private func update(_ configuration: LearningDictionaryConfiguration) -> Bool {
         guard configuration != self.configuration else { return true }
         let catalog = Catalog(libraries: configuration.libraries, websites: configuration.websites,
-                              systemFormat: configuration.systemFormat)
+                              systemFormat: configuration.systemFormat, definitionLanguage: configuration.definitionLanguage)
         guard let data = try? JSONEncoder().encode(catalog), data.count <= 2_000_000 else { return false }
         defaults.set(data, forKey: "learningDictionaryCatalog")
         defaults.set(configuration.order.map(\.rawValue), forKey: "learningDictionarySourceOrder")

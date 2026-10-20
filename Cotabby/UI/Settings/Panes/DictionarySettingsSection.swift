@@ -9,9 +9,15 @@ struct DictionarySettingsSection: View {
     @State private var importing = false
     @State private var errorMessage: String?
     @State private var website: DictionaryWebsite?
+    @State private var libraryLanguages: MDictLibraryDescriptor?
 
     var body: some View {
         Section(String(localized: "Dictionary sources", table: "Learning")) {
+            Picker(String(localized: "Preferred definition language", table: "Learning"), selection: Binding(
+                get: { settings.configuration.definitionLanguage }, set: settings.setDefinitionLanguage)) {
+                Text(String(localized: "System language", table: "Learning")).tag(nil as LearningLanguage?)
+                ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
+            }
             ForEach(Array(settings.configuration.order.enumerated()), id: \.element) { index, source in
                 sourceRow(source, index: index)
             }
@@ -21,6 +27,12 @@ struct DictionarySettingsSection: View {
                 }.disabled(importing)
                 if importing { ProgressView().controlSize(.small) }
                 Spacer()
+                Menu(String(localized: "Recommended websites", table: "Learning")) {
+                    ForEach(DictionaryWebsiteCatalog.websites) { site in
+                        Button(site.name + " · " + (site.languages?.label ?? "")) { settings.add(site) }
+                            .disabled(settings.configuration.websites.contains { $0.id == site.id })
+                    }
+                }.fixedSize()
                 Button { website = .init(id: UUID(), name: "", template: "https://") } label: {
                     Label(String(localized: "Add lookup website…", table: "Learning"), systemImage: "plus")
                 }
@@ -39,6 +51,9 @@ struct DictionarySettingsSection: View {
             LabeledContent(String(localized: "Built-in expressions", table: "Learning"), value: "Wiktionary / Kaikki · CC BY-SA 4.0")
         }
         .sheet(item: $website) { draft in DictionaryWebsiteEditor(website: draft) { settings.save($0) } }
+        .sheet(item: $libraryLanguages) { library in
+            DictionaryBookLanguageEditor(library: library) { settings.setLanguages($0, for: library.source) }
+        }
         .alert(String(localized: "Dictionary", table: "Vocabulary"), isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button(String(localized: "Close", table: "Learning"), role: .cancel) { errorMessage = nil }
@@ -59,6 +74,9 @@ struct DictionarySettingsSection: View {
                     .accessibilityLabel(String(localized: "Edit website", table: "Learning"))
             }
             if let library = settings.configuration.libraries.first(where: { $0.source == source }) {
+                Button { libraryLanguages = library } label: { Image(systemName: "character.bubble") }
+                    .help(String(localized: "Dictionary languages", table: "Learning"))
+                    .accessibilityLabel(String(localized: "Dictionary languages", table: "Learning"))
                 Button { attachResources(library) } label: { Image(systemName: "paperclip") }
                     .disabled(importing).help(String(localized: "Resource files…", table: "Learning"))
                     .accessibilityLabel(String(localized: "Resource files…", table: "Learning"))
@@ -81,7 +99,7 @@ struct DictionarySettingsSection: View {
     }
 
     private func description(_ source: LearningDictionarySource) -> String {
-        switch source.kind {
+        let detail: String = switch source.kind {
         case .bundled: String(localized: "Phrases and fixed expressions", table: "Learning")
         case .system: String(localized: "Enabled macOS dictionaries", table: "Learning")
         case .online: String(localized: "dictionaryapi.dev · Sends only the lookup term when enabled", table: "Learning")
@@ -90,6 +108,9 @@ struct DictionarySettingsSection: View {
             URL(fileURLWithPath: $0.mdx.path).lastPathComponent + " · " + String($0.entryCount)
         } ?? "MDict"
         }
+        let pair = settings.configuration.languages(for: source) ?? (source.kind == .mdict ? DictionaryLanguagePair() : nil)
+        guard let pair else { return detail }
+        return pair.label + " · " + detail
     }
 
     private func importDictionary() {
@@ -101,9 +122,11 @@ struct DictionarySettingsSection: View {
         Task { @MainActor in
             defer { importing = false }
             do {
-                guard settings.add(try await MDictLibraryService.importedFile(url)) else {
+                let book = try await MDictLibraryService.importedFile(url)
+                guard settings.add(book) else {
                     throw DictionaryServiceFailure.tooLarge
                 }
+                libraryLanguages = settings.configuration.libraries.first { $0.mdx.path == book.mdx.path }
             } catch let failure as DictionaryServiceFailure {
                 errorMessage = failure.localizedDescription
             } catch { errorMessage = DictionaryServiceFailure.invalidFile.localizedDescription }

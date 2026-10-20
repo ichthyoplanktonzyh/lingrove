@@ -4,6 +4,19 @@ import Testing
 @testable import Cotabby
 
 struct SystemDictionaryArticleServiceTests {
+    @Test func languageArgumentsAndSuccessfulMissRemainDistinctFromHelperFailure() async throws {
+        let file = try helper("printf '{\"html\":\"\",\"text\":\"%s/%s\",\"sourceName\":\"Fixture\",' \"$2\" \"$3\"\nprintf '\"entryLanguage\":\"%s\",\"definitionLanguage\":\"%s\"}' \"$2\" \"$3\"\n")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let article = try #require(try await SystemDictionaryArticleService(executable: file)
+            .lookup("bonjour", language: .french, definitionLanguage: .chinese))
+        #expect(article.text == "fr/zh-Hans")
+        #expect(article.languages == .init(entry: .french, definition: .chinese))
+        let miss = try helper("printf '{\"html\":\"\",\"text\":\"\",\"sourceName\":\"\"}'\n")
+        defer { try? FileManager.default.removeItem(at: miss) }
+        let result = try #require(try await SystemDictionaryArticleService(executable: miss).lookup("chat", language: .french))
+        #expect(result.text.isEmpty && result.html.isEmpty)
+    }
+
     private func helper(_ body: String) throws -> URL {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try Data(("#!/bin/sh\n" + body).utf8).write(to: file)

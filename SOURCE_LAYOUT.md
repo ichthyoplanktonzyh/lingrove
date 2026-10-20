@@ -319,6 +319,18 @@ that owns too many responsibilities and should be split by behavior rather than 
   embedding scripts build it for both app architectures. `DictionaryHTMLPolicy`, `DictionaryLinkPolicy`
   and `DictionaryWebsitePolicy` own deterministic content/navigation rules. `DictionaryHTMLView`
   owns disposable WebKit rendering and scoped resource requests inside the existing card.
+- `DictionaryLanguagePair.swift` separates headword and gloss capabilities and owns the curated
+  website catalog. Optional metadata is backward-compatible with existing imported books/sites. Unannotated books
+  remain manually selectable and join automatic lookup only after an entry language or multilingual
+  capability has been explicitly recorded.
+  The immutable configuration filters known entry-language mismatches and ranks gloss preferences;
+  websites still require a separate explicit browser click. Original-text lookup uses the same
+  dictionary session and maps exact vocabulary occurrences back into a captured reading sentence.
+- `LearningDetailPanelLayout` accepts the previous frame as a preference, never as permission to
+  overlap an obstacle. The panel translates it with parent movement and anticipates the bounded
+  content viewport on first placement. `LearningDictionaryViewport` fixes the first measured definition's 120–300pt viewport through
+  loading/source changes and reserves its attribution row, preventing transient collapse and jumps.
+  Native language-candidate regression fixtures live in `native/dictionary/tests/`.
 - `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.

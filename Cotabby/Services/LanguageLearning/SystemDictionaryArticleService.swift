@@ -2,17 +2,20 @@ import Foundation
 import Darwin
 
 /// The router asks this service for optional rich content. A helper crash, timeout or missing
-/// private symbol is a normal absence; the caller then uses public Dictionary Services text.
+/// private symbol is a normal absence. The helper can use public text from the same language-
+/// matched book; if metadata selection itself is unavailable the router tries another provider.
 nonisolated struct SystemDictionaryArticleService: Sendable {
     var executable = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove-dictionary-helper")
 
-    func lookup(_ query: String) async throws -> LearningDictionaryArticle? {
+    func lookup(_ query: String, language: LearningLanguage? = nil,
+                definitionLanguage: LearningLanguage? = nil) async throws -> LearningDictionaryArticle? {
         let operation = DictionaryHelperOperation()
         let result = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        continuation.resume(returning: try operation.run(executable: executable, query: query))
+                        continuation.resume(returning: try operation.run(executable: executable, query: query,
+                            language: language, definitionLanguage: definitionLanguage))
                     } catch { continuation.resume(throwing: error) }
                 }
             }
@@ -39,11 +42,13 @@ private nonisolated final class DictionaryHelperOperation: @unchecked Sendable {
         lock.unlock()
     }
 
-    func run(executable: URL, query: String) throws -> LearningDictionaryArticle? {
+    func run(executable: URL, query: String, language: LearningLanguage?,
+             definitionLanguage: LearningLanguage?) throws -> LearningDictionaryArticle? {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else { return nil }
         let child = Process(), pipe = Pipe(), exited = DispatchSemaphore(value: 0)
         child.executableURL = executable
         child.arguments = [query]
+        if let language { child.arguments = [query, language.rawValue, definitionLanguage?.rawValue ?? "en"] }
         child.standardOutput = pipe
         child.standardError = FileHandle.nullDevice
         child.terminationHandler = { _ in exited.signal() }
@@ -82,9 +87,14 @@ private nonisolated final class DictionaryHelperOperation: @unchecked Sendable {
               child.terminationStatus == 0, !output.isEmpty else { return nil }
         // A consumed semaphore should not make defer wait another half second on success.
         exited.signal()
-        struct Payload: Decodable { let html: String; let text: String; let sourceName: String }
+        struct Payload: Decodable {
+            let html: String; let text: String; let sourceName: String
+            var entryLanguage: String?; var definitionLanguage: String?
+        }
         guard let result = try? JSONDecoder().decode(Payload.self, from: output) else { return nil }
-        return .init(html: result.html, text: result.text, sourceName: result.sourceName)
+        return .init(html: result.html, text: result.text, sourceName: result.sourceName,
+            languages: .init(entry: result.entryLanguage.flatMap(LearningLanguage.init(rawValue:)),
+                             definition: result.definitionLanguage.flatMap(LearningLanguage.init(rawValue:))))
     }
 
     private func readOutput(descriptor: Int32, deadline: ContinuousClock.Instant) throws -> Data? {

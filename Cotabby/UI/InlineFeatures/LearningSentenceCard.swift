@@ -301,7 +301,7 @@ struct LearningSentenceCard: View {
             lookup: lookupText, units: source ? [] : presentation.units, chunks: presentation.chunks,
             selectedChunk: detailState.chunk?.documentID == presentation.id ? detailState.chunk?.chunkID : nil,
             source: source, maximumLines: 0, fontSize: source ? 16 : 18,
-            lookupUnit: source ? nil : lookupUnit, inspect: inspect)
+            lookupUnit: lookupUnit, inspect: inspect)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 

@@ -55,6 +55,7 @@ nonisolated struct MDictLibraryDescriptor: Codable, Equatable, Sendable, Identif
     var entryCount: Int
     // An explicit reimport invalidates open-card caches even when file metadata is unchanged.
     var revision: UUID? = UUID()
+    var languages: DictionaryLanguagePair?
     var source: LearningDictionarySource { .mdict(id) }
 }
 
@@ -62,6 +63,7 @@ nonisolated struct DictionaryWebsite: Codable, Equatable, Sendable, Identifiable
     let id: UUID
     var name: String
     var template: String
+    var languages: DictionaryLanguagePair?
     var source: LearningDictionarySource { .website(id) }
 }
 
@@ -75,14 +77,16 @@ nonisolated struct LearningDictionaryConfiguration: Equatable, Sendable {
     var libraries: [MDictLibraryDescriptor]
     var websites: [DictionaryWebsite]
     var systemFormat: SystemDictionaryFormat
+    var definitionLanguage: LearningLanguage?
 
     init(order: [LearningDictionarySource] = LearningDictionarySource.allCases,
          enabled: Set<LearningDictionarySource> = LearningDictionarySource.defaultEnabled,
          libraries: [MDictLibraryDescriptor] = [], websites: [DictionaryWebsite] = [],
-         systemFormat: SystemDictionaryFormat = .formatted) {
+         systemFormat: SystemDictionaryFormat = .formatted, definitionLanguage: LearningLanguage? = nil) {
         self.libraries = libraries
         self.websites = websites
         self.systemFormat = systemFormat
+        self.definitionLanguage = definitionLanguage
         let sources = LearningDictionarySource.allCases + libraries.map(\.source) + websites.map(\.source)
         let valid = Set(sources)
         var seen = Set<LearningDictionarySource>()
@@ -91,8 +95,44 @@ nonisolated struct LearningDictionaryConfiguration: Equatable, Sendable {
         self.enabled = enabled.isEmpty ? [.bundled] : enabled
     }
     var activeSources: [LearningDictionarySource] { order.filter { enabled.contains($0) } }
-    // Website templates never preempt a real definition or open a browser automatically.
-    var automaticSources: [LearningDictionarySource] { activeSources.filter { $0.kind != .website } }
+    var preferredDefinitionLanguage: LearningLanguage {
+        if let definitionLanguage { return definitionLanguage }
+        return DictionaryLanguagePair.definitionLanguage(for: Locale.preferredLanguages.first ?? "en")
+    }
+    func languages(for source: LearningDictionarySource) -> DictionaryLanguagePair? {
+        switch source.kind {
+        case .bundled: .init(entry: nil, definition: .english, multilingual: true)
+        case .online: .init(entry: .english, definition: .english)
+        case .system: nil // The helper selects an enabled macOS book using its actual metadata.
+        case .mdict: libraries.first { $0.source == source }?.languages
+        case .website: websites.first { $0.source == source }?.languages
+        }
+    }
+    func sources(for language: LearningLanguage) -> [LearningDictionarySource] {
+        activeSources.filter { languages(for: $0)?.supports(language) ?? true }
+    }
+    func automaticSources(for language: LearningLanguage) -> [LearningDictionarySource] {
+        // Priority remains stable within each gloss tier. A different definition language may
+        // be a useful fallback; a different headword language is never a valid fallback.
+        let candidates = sources(for: language).filter { source in
+            guard source.kind != .website else { return false }
+            if source.kind == .mdict {
+                // Unknown books stay manually selectable. Guessing their index language from
+                // an encoding or a homograph would silently attach the wrong definition.
+                let pair = languages(for: source)
+                return pair?.entry != nil || pair?.multilingual == true
+            }
+            return true
+        }
+        func rank(_ source: LearningDictionarySource) -> Int {
+            guard let gloss = languages(for: source)?.definition else { return 1 }
+            return gloss == preferredDefinitionLanguage ? 0 : 2
+        }
+        return candidates.enumerated().sorted {
+            let lhs = rank($0.element), rhs = rank($1.element)
+            return lhs == rhs ? $0.offset < $1.offset : lhs < rhs
+        }.map(\.element)
+    }
     func name(for source: LearningDictionarySource) -> String {
         libraries.first { $0.source == source }?.name ?? websites.first { $0.source == source }?.name ?? source.label
     }

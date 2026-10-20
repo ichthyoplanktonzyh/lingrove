@@ -212,15 +212,23 @@ headwords, recorded forms and conservative one-word slots in explicitly recorded
 patterns; it is not a comprehensive grammatical phrase detector. The data has separate
 [CC BY-SA attribution and provenance](Cotabby/Resources/learning-expressions.NOTICE.md).
 **Settings → Language Learning → Dictionary** enables and orders built-in expressions, system
-dictionaries, imported MDX/MDD files and optional online sources. A new lookup displays the first
-hit in that order; choosing a source inside a card queries just that source for the current term.
-Formatted system content uses experimental private DCS calls isolated in a helper, with public
-plain-text fallback. External system dictionary images are not loaded. Imported local HTML/CSS/images
+dictionaries, imported MDX/MDD files and optional online sources. Entry language is captured from
+the original or translated sentence; double-click lookup works on either sentence in details.
+A preferred definition language is independent of the translation direction. Automatic lookup
+excludes known mismatching entry languages, prioritizes the preferred gloss language, and preserves
+source order within each tier. Choosing a source in a card queries only that source for the current term.
+Formatted system content uses experimental private DCS calls isolated in a helper. Its bundle
+metadata selects a matching entry language; public plain-text fallback uses that same book.
+Missing language metadata or an unavailable helper never falls back to an unfiltered system query. External system dictionary images are not loaded. Imported local HTML/CSS/images
 render in the same app-owned card with scripts and remote subresources blocked.
 When available, the encountered sentence and its existing translation appear as the current example
 and remain attached when a component word is collected. Free Dictionary API is English-only and
 default-off; enabling it sends only the lookup term to dictionaryapi.dev. Custom HTTPS templates
-containing `{query}` are also default-off and open only on an explicit browser action. Source and
+containing `{query}` are also default-off and open only on an explicit browser action. The recommended
+website menu includes Cambridge, Oxford, Wiktionary, 汉典 and DLE presets; imported books and custom
+websites can be annotated with their entry/definition languages. Unannotated imported books remain
+available for manual selection and are excluded from automatic lookup until annotated. Presets contain URLs, not licensed
+commercial dictionary data. The existing offline expression subset retains its English glosses. Source and
 license metadata remain attached to saved definitions. No extra model request is made.
 
 A sentence preview sends only the selected text or current sentence, up to 6 KB; larger scopes are

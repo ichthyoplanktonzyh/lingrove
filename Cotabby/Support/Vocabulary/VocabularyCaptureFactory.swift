@@ -37,33 +37,51 @@ nonisolated enum VocabularyCaptureFactory {
             meaning: meaning, meaningLanguage: otherLanguage, example: example)
     }
 
-    static func unit(_ unit: LearningUnit, in presentation: LearningSentencePresentation) -> VocabularyCapture? {
+    static func unit(_ unit: LearningUnit, in presentation: LearningSentencePresentation, original: Bool = false) -> VocabularyCapture? {
+        let text = original ? presentation.source : presentation.translation
+        let other = original ? presentation.translation : presentation.source
+        let language = original ? presentation.sourceLanguage : presentation.targetLanguage
+        let otherLanguage = original ? presentation.targetLanguage : presentation.sourceLanguage
         guard !presentation.isStale, !presentation.isError, !presentation.isTranslating,
-              unit.ranges.allSatisfy({ VocabularyPolicy.valid($0, in: presentation.translation) }) else { return nil }
-        var example = VocabularyPolicy.example(text: presentation.translation, ranges: unit.ranges,
-            language: presentation.targetLanguage, startsAtBoundary: presentation.readingSource != .screenshot,
+              unit.ranges.allSatisfy({ VocabularyPolicy.valid($0, in: text) }) else { return nil }
+        var example = VocabularyPolicy.example(text: text, ranges: unit.ranges,
+            language: language, startsAtBoundary: presentation.readingSource != .screenshot,
             endsAtBoundary: presentation.readingSource != .screenshot, app: presentation.vocabularyAppBundleIdentifier)
-        if LearningUnitPolicy.words(in: presentation.translation, language: presentation.targetLanguage).count <= 1 {
+        if original, let context = presentation.vocabularyContext,
+           context.ranges.count == 1, let selected = context.ranges.first?.nsRange,
+           VocabularyPolicy.valid(selected, in: context.text),
+           (context.text as NSString).substring(with: selected) == text {
+            // Pointer/selection lookup may translate only a word while retaining its sentence.
+            // Map exact UTF-16 occurrences, never search for the first matching repeated word.
+            let mapped = unit.ranges.map { NSRange(location: selected.location + $0.location, length: $0.length) }
+            if mapped.allSatisfy({ VocabularyPolicy.valid($0, in: context.text) }) {
+                example = context
+                example?.ranges = mapped.map(VocabularyTextRange.init)
+            }
+        } else if LearningUnitPolicy.words(in: text, language: language).count <= 1 {
             example = nil
         }
-        if example?.text == presentation.translation {
-            example?.translation = presentation.source
-            example?.translationLanguage = presentation.sourceLanguage
+        if example?.text == text {
+            example?.translation = other
+            example?.translationLanguage = otherLanguage
         }
         // A larger alignment group is not a contextual definition of one word within it.
         // Only exact span correspondence can supply this meaning without another model call.
-        let chunk = presentation.chunks.first { $0.targetRanges == unit.ranges }
-        let meaning = chunk.map { LearningChunkDisplay.quote(presentation.source, ranges: $0.sourceRanges) } ?? ""
+        let chunk = presentation.chunks.first { (original ? $0.sourceRanges : $0.targetRanges) == unit.ranges }
+        let wholeReadingTarget = original && presentation.readingSource != nil &&
+            unit.ranges == [NSRange(location: 0, length: text.utf16.count)]
+        let meaning = chunk.map { LearningChunkDisplay.quote(other, ranges: original ? $0.targetRanges : $0.sourceRanges) }
+            ?? (wholeReadingTarget ? other : "")
         example?.meaning = meaning
-        example?.meaningLanguage = presentation.sourceLanguage
+        example?.meaningLanguage = otherLanguage
         let kind: VocabularyEntry.Kind = switch unit.kind {
         case .word: .word
         case .expression: .expression
         case .pattern: .pattern
         }
         return VocabularyCapture(expression: unit.kind == .pattern ? unit.query : unit.surface,
-            dictionaryForm: unit.query, language: presentation.targetLanguage,
-            kind: kind, meaning: meaning, meaningLanguage: presentation.sourceLanguage, example: example)
+            dictionaryForm: unit.query, language: language,
+            kind: kind, meaning: meaning, meaningLanguage: otherLanguage, example: example)
     }
 
     @MainActor static func definitions(_ result: LearningDictionarySession.Content) -> [VocabularyDefinition] {

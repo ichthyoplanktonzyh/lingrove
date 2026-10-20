@@ -245,6 +245,32 @@ struct LearningSentencePanelTests {
         #expect(panel.detailState.chunk == nil)
     }
 
+    @Test func originalSentenceLookupKeepsItsLanguageAndExample() async throws {
+        let provider = PanelDictionaryProbe(), panel = LearningSentencePanel(dictionaryProvider: provider)
+        defer { panel.hide() }
+        let source = "Please keep me posted.", translation = "请随时告诉我进展。"
+        panel.show(.init(id: UUID(), source: source, translation: translation, chunks: [],
+            sourceLanguage: .english, targetLanguage: .chinese, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
+            isExpanded: true, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: ""),
+            expand: {}, dismiss: {})
+        await waitUntil { self.textView(in: panel, matching: source)?.frame.height ?? 0 > 0 }
+        let view = try #require(textView(in: panel, matching: source))
+        let manager = try #require(view.layoutManager), container = try #require(view.textContainer)
+        manager.ensureLayout(for: container)
+        let range = (source as NSString).range(of: "posted")
+        let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        let bounds = manager.boundingRect(forGlyphRange: glyphs, in: container)
+        view.handleClick(at: NSPoint(x: bounds.midX + view.textContainerOrigin.x,
+                                    y: bounds.midY + view.textContainerOrigin.y), count: 2)
+        await waitUntil { panel.dictionarySession.content != .loading }
+        #expect(panel.dictionarySession.title == "posted")
+        #expect(panel.dictionarySession.contentLanguage == .english)
+        let capture = try #require(panel.dictionarySession.favoriteCapture)
+        #expect(capture.language == .english)
+        #expect(capture.example?.text == source && capture.example?.translation == translation)
+        #expect(capture.example?.ranges == [VocabularyTextRange(range)])
+    }
+
     private func textView(in panel: LearningSentencePanel, matching text: String = "I like you.") -> LearningDictionaryTextView? {
         NSApp.windows.first {
             // AppKit can retain a dismissed popover's hidden parent for a later run-loop turn.

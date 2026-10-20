@@ -39,7 +39,9 @@ final class LearningDictionarySession: ObservableObject {
             settingsSubscription = settings.$configuration.dropFirst().sink { [weak self] configuration in
                 guard let self else { return }
                 self.configuration = configuration
-                if let source = self.sourceOverride, !configuration.enabled.contains(source) { self.sourceOverride = nil }
+                if let source = self.sourceOverride, !configuration.sources(for: self.language).contains(source) {
+                    self.sourceOverride = nil
+                }
                 self.cache.removeAll()
                 self.cacheOrder.removeAll()
                 self.request()
@@ -50,14 +52,32 @@ final class LearningDictionarySession: ObservableObject {
     var title: String { referenceQuery ?? selectedWord?.text ?? unit?.surface ?? "" }
     var query: String { referenceQuery ?? selectedWord?.text ?? unit?.query ?? "" }
     var isRelatedEntry: Bool { selectedWord != nil || referenceQuery != nil }
-    var sourceName: String { configuration.name(for: selectedSource) }
+    var sourceName: String {
+        availableSources.contains(selectedSource) ? configuration.name(for: selectedSource)
+            : String(localized: "No matching dictionary", table: "Learning")
+    }
     var requestIdentity: UUID { revision }
 
     /// The opening language is captured with the active unit. The card uses it for the component
     /// words' visual reading order without inferring direction from the UI locale or term text.
     var contentLanguage: LearningLanguage { language }
-    var availableSources: [LearningDictionarySource] { configuration.activeSources }
+    var availableSources: [LearningDictionarySource] { configuration.sources(for: language) }
     func name(for source: LearningDictionarySource) -> String { configuration.name(for: source) }
+    func languageLabel(for source: LearningDictionarySource) -> String? {
+        if source.kind == .mdict, configuration.languages(for: source) == nil {
+            return DictionaryLanguagePair().label
+        }
+        return configuration.languages(for: source)?.label
+    }
+    var definitionLanguageLabel: String? {
+        if case .loading = content { return nil }
+        let pair: DictionaryLanguagePair?
+        if case .result(.article(let article)) = content { pair = article.languages } else {
+            pair = configuration.languages(for: selectedSource)
+        }
+        guard let pair, let definition = pair.definition else { return nil }
+        return DictionaryLanguagePair(entry: language, definition: definition).label
+    }
     func resourceLoader(for libraryID: UUID?) -> DictionaryResourceLoader {
         let provider = provider, configuration = configuration
         return { path in
@@ -150,7 +170,9 @@ final class LearningDictionarySession: ObservableObject {
         if let cached = cache[key] { return cached }
         CotabbyLogger.learning.debug("Dictionary lookup", metadata: [
             "stage": "dictionary-lookup", "request_id": .string(requestID.uuidString),
-            "dictionary_source": .string(source.rawValue), "query_characters": .stringConvertible(text.count)
+            "dictionary_source": .string(source.rawValue), "query_characters": .stringConvertible(text.count),
+            "entry_language": .string(language.rawValue),
+            "preferred_definition_language": .string(configuration.preferredDefinitionLanguage.rawValue)
         ])
         let result = try await provider.lookup(text, language: language, expression: expression,
                                                source: source, configuration: configuration)
@@ -171,8 +193,9 @@ final class LearningDictionarySession: ObservableObject {
         let expression = referenceQuery.map { LearningUnitPolicy.words(in: $0, language: language).count > 1 }
             ?? (selectedWord == nil && unit.kind != .word)
         let configuration = configuration
-        let automatic = configuration.automaticSources
-        let sources = sourceOverride.map { [$0] } ?? (automatic.isEmpty ? Array(configuration.activeSources.prefix(1)) : automatic)
+        let automatic = configuration.automaticSources(for: language)
+        let websites = availableSources.filter { $0.kind == .website }
+        let sources = sourceOverride.map { [$0] } ?? (automatic.isEmpty ? Array(websites.prefix(1)) : automatic)
         selectedSource = sources.first ?? .bundled
         content = .loading
         work = Task { [weak self] in

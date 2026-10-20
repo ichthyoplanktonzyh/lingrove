@@ -4,6 +4,28 @@ import Testing
 
 @MainActor
 struct LearningDictionarySessionTests {
+    @Test func unknownBookIsNotQueriedAutomaticallyEvenWhenItIsTheOnlyEnabledSource() async throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = LearningDictionarySettings(defaults: defaults)
+        let file = DictionaryFileReference(path: "/fixture/book.mdx", bookmark: Data())
+        let book = MDictLibraryDescriptor(id: UUID(), name: "Unknown", mdx: file, resources: [], folder: file, entryCount: 1)
+        #expect(settings.add(book))
+        settings.setEnabled(false, for: .bundled)
+        settings.setEnabled(false, for: .system)
+        let provider = SourceDictionaryProbe()
+        let session = LearningDictionarySession(provider: provider, settings: settings)
+        defer { session.close() }
+        session.open(unit(), documentID: UUID(), language: .english)
+        await settle { session.content != .loading }
+        #expect(await provider.calls.isEmpty)
+        #expect(session.availableSources == [book.source])
+        session.selectSource(book.source)
+        await settle { session.content == .result(.systemText("System definition")) }
+        #expect(await provider.calls == [book.source])
+    }
+
     private func unit() -> LearningUnit {
         let text = "look forward to"
         return .init(id: 0, surface: text, query: text, kind: .expression,

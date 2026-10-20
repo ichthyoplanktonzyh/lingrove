@@ -21,6 +21,7 @@ final class LearningDetailPanel {
     private var screen = CGRect.zero
     private var anchorY: CGFloat = 0
     private var anchorOffsetFromTop: CGFloat = 0
+    private var placementFrame: CGRect?
     private(set) var isVisible = false
 
     init(provider: (any LearningDictionaryProviding)? = nil, dictionarySettings: LearningDictionarySettings? = nil,
@@ -78,6 +79,7 @@ final class LearningDetailPanel {
         anchorY = placement.anchorY
         anchorOffsetFromTop = placement.parent.maxY - placement.anchorY
         layoutRevision = UUID()
+        placementFrame = nil
         let revision = layoutRevision
         let card = LearningDetailCard(state: state,
             selectWord: { [weak self] word, button in
@@ -111,6 +113,10 @@ final class LearningDetailPanel {
     }
 
     func updateParent(_ parent: CGRect?, caret: CGRect, reserved: CGRect?, screen: CGRect) {
+        if parent == nil { placementFrame = nil }
+        if let previous = parentFrame, let parent, let frame = placementFrame {
+            placementFrame = frame.offsetBy(dx: parent.minX - previous.minX, dy: parent.maxY - previous.maxY)
+        }
         parentFrame = parent
         // The parent may move to avoid a completion that arrives later. Keep the selected point
         // relative to the card rather than retaining an obsolete absolute mouse position.
@@ -154,6 +160,7 @@ final class LearningDetailPanel {
         if !preservingCorrespondence { state.chunk = nil }
         parentFrame = nil
         contentSize = nil
+        placementFrame = nil
         isVisible = false
         panel?.orderOut(nil)
         panel?.contentView = nil
@@ -183,15 +190,29 @@ final class LearningDetailPanel {
     }
 
     private func layout() {
-        guard dictionarySession.unit != nil, let panel, let parentFrame, let size = contentSize,
-              let frame = LearningDetailPanelLayout.frame(parent: parentFrame, anchorY: anchorY,
-                size: CGSize(width: ceil(size.width), height: ceil(size.height)), screen: screen,
-                obstacles: [caretRect] + (reservedFrame.map { [$0] } ?? [])) else {
+        guard dictionarySession.unit != nil, let panel, let parentFrame, let size = contentSize else {
             stopCurrentSpeech()
-            panel?.orderOut(nil)
+            self.panel?.orderOut(nil)
             isVisible = false
             return
         }
+        let measured = CGSize(width: ceil(size.width), height: ceil(size.height))
+        let obstacles = [LearningDetailPanelLayout.protectedTextRect(caretRect, screen: screen)] +
+            (reservedFrame.map { [$0] } ?? [])
+        if placementFrame == nil {
+            // HTML is measured after WebKit paints. Choose a side with room for the bounded
+            // definition viewport before that paint, without reserving blank space in the UI.
+            placementFrame = LearningDetailPanelLayout.frame(parent: parentFrame, anchorY: anchorY,
+                size: CGSize(width: measured.width, height: max(measured.height, 480)), screen: screen, obstacles: obstacles)
+        }
+        guard let frame = LearningDetailPanelLayout.frame(parent: parentFrame, anchorY: anchorY,
+                size: measured, screen: screen, obstacles: obstacles, preferred: placementFrame) else {
+            stopCurrentSpeech()
+            panel.orderOut(nil)
+            isVisible = false
+            return
+        }
+        placementFrame = frame
         if panel.frame != frame { panel.setFrame(frame, display: true) }
         isVisible = true
         if !panel.isVisible { panel.orderFrontRegardless() }

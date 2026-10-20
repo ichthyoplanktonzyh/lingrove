@@ -4,6 +4,21 @@ import Testing
 
 @MainActor
 struct VocabularyCaptureFactoryTests {
+    @Test func originalReadingWordRetainsExactContextOccurrenceAndItsTranslation() throws {
+        let text = "🙂 Please keep me posted; previously posted notes remain."
+        let occurrence = (text as NSString).range(of: "posted", options: .backwards)
+        var preview = LearningSentencePresentation(id: UUID(), source: "posted", translation: "发布过的", chunks: [],
+            sourceLanguage: .english, targetLanguage: .chinese, caret: .zero, isExpanded: true, isGenerating: false,
+            message: "", previousTranslation: nil, shortcutLabel: "", readingSource: .pointer)
+        preview.vocabularyContext = VocabularyPolicy.example(text: text, ranges: [occurrence], language: .english)
+        let unit = LearningUnit.word(.init(text: "posted", range: .init(location: 0, length: 6)))
+        let capture = try #require(VocabularyCaptureFactory.unit(unit, in: preview, original: true))
+        #expect(capture.language == .english && capture.meaningLanguage == .chinese)
+        #expect(capture.meaning == "发布过的")
+        #expect(capture.example?.text == text && capture.example?.translation.isEmpty == true)
+        #expect(capture.example?.ranges == preview.vocabularyContext?.ranges)
+    }
+
     @Test func wordCaptureIncludesFixedSentenceAndTranslationWithoutDictionaryRequest() throws {
         let preview = presentation()
         let word = LearningDictionaryWord(text: "posted", range: (preview.translation as NSString).range(of: "posted"))

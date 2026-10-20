@@ -201,20 +201,23 @@ final class LearningSentencePanel: LearningSentencePresenting {
     /// word click remains useful while recognition is pending; later alignment cannot change it.
     private func inspectUnit(_ anchor: LearningUnitTextAnchor, documentID: UUID, view: NSTextView) {
         guard let current = currentPresentation, current.id == documentID, !current.isStale,
-              view.window === panel, view.string == current.translation,
+              let textView = view as? LearningDictionaryTextView, view.window === panel,
               let parent = visibleFrame else { return }
-        let units = current.units.isEmpty
-            ? LearningUnitPolicy.fallback(in: current.translation, language: current.targetLanguage) : current.units
+        let original = textView.source
+        let text = original ? current.source : current.translation
+        let language = original ? current.sourceLanguage : current.targetLanguage
+        guard view.string == text else { return }
+        let units = original || current.units.isEmpty
+            ? LearningUnitPolicy.fallback(in: text, language: language) : current.units
         guard units.contains(anchor.unit) else { return }
         let anchorFrame = view.window!.convertToScreen(view.convert(anchor.bounds, to: nil))
         let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
-        detailPanel.show(anchor.unit, documentID: current.id, language: current.targetLanguage,
-            // A unit can cross multiple colors. Dictionary lookup must not choose a meaning
-            // group from its extent or replace the group selected by a preceding single click.
+        detailPanel.show(anchor.unit, documentID: current.id, language: language,
             correspondence: detailPanel.state.chunk,
             placement: .init(parent: parent, caret: current.caret, reserved: reservedFrame,
                 screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchorFrame.maxY + 12),
-            speechContext: current.translation, vocabularyCapture: VocabularyCaptureFactory.unit(anchor.unit, in: current))
+            speechContext: text,
+            vocabularyCapture: VocabularyCaptureFactory.unit(anchor.unit, in: current, original: original))
     }
 
     private func detail(_ chunk: LearningMeaningChunk, presentation: LearningSentencePresentation) -> LearningChunkDetail {

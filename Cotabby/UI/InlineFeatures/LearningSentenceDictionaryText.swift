@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Displays the original compact translation as one text layout, preserving spaces, punctuation,
+/// Displays one original or translated sentence, preserving spaces, punctuation,
 /// wrapping and right-to-left reading order. SwiftUI owns this view through the sentence card;
 /// double-clicks carry only a word occurrence and native anchor to the panel's existing dictionary.
 struct LearningSentenceDictionaryText: NSViewRepresentable {
@@ -49,7 +49,7 @@ struct LearningSentenceDictionaryText: NSViewRepresentable {
         view.baseWritingDirection = language == .arabic ? .rightToLeft : .natural
         view.lookup = lookup
         view.toolTip = source
-            ? String(localized: "Click to inspect the source chunk alignment", table: "Learning",
+            ? String(localized: "Click to inspect alignment · double-click a word to look it up", table: "Learning",
                 comment: "Tooltip for the source sentence text; clicking a highlighted range inspects its target-language match.")
             : String(localized: "Double-click an expression to look it up · browse its words in Dictionary", table: "Learning",
                 comment: "Tooltip for translated sentence text; complete expressions and their words can be looked up.")
@@ -155,7 +155,7 @@ final class LearningDictionaryTextView: NSTextView {
             }
             return
         }
-        guard !source, let word = LearningDictionaryWordPolicy.word(atUTF16Location: location,
+        guard let word = LearningDictionaryWordPolicy.word(atUTF16Location: location,
             in: string, language: language.naturalLanguage) else { return }
         let unit = LearningUnitPolicy.unit(at: location, units: units) ?? .word(word)
         var lineRange = NSRange()

@@ -3,12 +3,13 @@ import Foundation
 /// A rendered article contains no native pointers. Resources are resolved for its dictionary
 /// identity only; favorites persist the separately attributed plain text rather than executable HTML.
 nonisolated struct LearningDictionaryArticle: Equatable, Sendable {
-    let html: String
+    var html: String
     let text: String
     let sourceName: String
     var sourceURL = ""
     var licenseURL = ""
     var resourceLibrary: UUID?
+    var languages: DictionaryLanguagePair?
 }
 
 nonisolated struct DictionaryResource: Sendable {
