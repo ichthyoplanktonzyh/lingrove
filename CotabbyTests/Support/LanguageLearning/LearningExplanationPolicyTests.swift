@@ -88,4 +88,12 @@ nonisolated struct LearningExplanationPolicyTests {
             #expect(throws: (any Error).self) { try LearningExplanationPolicy.parse(text) }
         }
     }
+
+    @Test(arguments: [LearningLanguage.chinese, .english, .japanese])
+    func responseLanguageGovernsBothFieldsIndependentlyOfTheTarget(_ language: LearningLanguage) throws {
+        let prompt = try LearningExplanationPolicy.prompt(input(), language: language, total: 8_192, output: 1_024)
+        #expect(prompt.contains("\"targetLanguage\":\"en\""))
+        #expect(prompt.contains("meaning AND explanation"))
+        #expect(prompt.hasSuffix("Required language for BOTH meaning and explanation: \(language.name) (\(language.rawValue))."))
+    }
 }

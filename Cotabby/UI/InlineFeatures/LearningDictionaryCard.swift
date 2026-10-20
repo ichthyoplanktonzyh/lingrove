@@ -66,35 +66,43 @@ struct LearningDictionaryCard: View {
                 }.pickerStyle(.segmented).labelsHidden()
 
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    if showsExplanation {
-                        if let vocabulary, let capture = session.favoriteCapture {
-                            LearningCapturedExplanationView(session: session.explanation, store: vocabulary,
-                                capture: capture, configure: configureExplanation,
-                                presentation: .contextual, context: session.contextExample)
-                        } else { LearningExplanationView(session: session.explanation, configure: configureExplanation,
-                            presentation: .contextual, context: session.contextExample) }
-                    } else {
-                        LearningDictionaryDefinitionView(session: session, measured: { measuredHTMLRequest = $0 })
-                            .id(session.requestIdentity)
+            ScrollViewReader { scroll in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if showsExplanation {
+                            explanationContent { expanded in
+                                guard !expanded else { return }
+                                let target = session.targetIdentity
+                                // Collapse changes the document's size. Reset after that layout turn,
+                                // retaining the target lifetime so old callbacks cannot scroll a new word.
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    guard session.targetIdentity == target else { return }
+                                    scroll.scrollTo("dictionary-body-top", anchor: .top)
+                                }
+                            }
+                        } else {
+                            LearningDictionaryDefinitionView(session: session, measured: { measuredHTMLRequest = $0 })
+                                .id(session.requestIdentity)
+                        }
+                        if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry {
+                            componentWords(unit)
+                        }
+                        if !showsExplanation, let example = session.contextExample { contextExample(example) }
                     }
-                    if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry {
-                        componentWords(unit)
-                    }
-                    if !showsExplanation, let example = session.contextExample { contextExample(example) }
+                        .id("dictionary-body-top")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .onGeometryChange(for: DictionaryBodyMeasurement.self) {
+                            .init(height: $0.size.height, query: query, requestID: requestID, resolved: resolved)
+                        } action: { measurement in
+                            guard measurement.requestID == session.requestIdentity else { return }
+                            viewport.measure(measurement.height, query: measurement.query, resolved: measurement.resolved)
+                        }
                 }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .onGeometryChange(for: DictionaryBodyMeasurement.self) {
-                        .init(height: $0.size.height, query: query, requestID: requestID, resolved: resolved)
-                    } action: { measurement in
-                        guard measurement.requestID == session.requestIdentity else { return }
-                        viewport.measure(measurement.height, query: measurement.query, resolved: measurement.resolved)
-                    }
+                .frame(height: viewport.height(for: query))
+                .id(session.query)
             }
-            .frame(height: viewport.height(for: query))
-            .id(session.query)
             Group {
                 if showsExplanation {
                     Text(session.explanation.record?.model ?? String(localized: "AI explanation", table: "Learning"))
@@ -123,6 +131,17 @@ struct LearningDictionaryCard: View {
 
     private func configureExplanation() {
         (session.explanation.service as? LearningExplanationService)?.configure?()
+    }
+
+    @ViewBuilder private func explanationContent(detailsChanged: @escaping (Bool) -> Void) -> some View {
+        if let vocabulary, let capture = session.favoriteCapture {
+            LearningCapturedExplanationView(session: session.explanation, store: vocabulary,
+                capture: capture, configure: configureExplanation, presentation: .contextual,
+                context: session.contextExample, detailsChanged: detailsChanged)
+        } else {
+            LearningExplanationView(session: session.explanation, configure: configureExplanation,
+                presentation: .contextual, context: session.contextExample, detailsChanged: detailsChanged)
+        }
     }
 
     private func selectPage(_ contextual: Bool) {

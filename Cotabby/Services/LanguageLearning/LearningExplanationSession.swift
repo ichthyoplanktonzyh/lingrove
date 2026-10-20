@@ -28,7 +28,10 @@ final class LearningExplanationSession: ObservableObject {
 
     func setTarget(_ input: LearningExplanationInput?, saved: LearningExplanationRecord? = nil) {
         let input = input.flatMap { LearningExplanationPolicy.isValid($0) ? $0 : nil }
-        let saved = saved ?? input.flatMap { service?.savedRecord(for: $0) }
+        let candidate = saved ?? input.flatMap { service?.savedRecord(for: $0) }
+        let saved = candidate.flatMap { record in
+            service == nil || record.language == service?.language ? record : nil
+        }
         guard self.input != input else {
             if record == nil, !isGenerating, saved?.input == input { record = saved }
             if record == nil, !isGenerating, lookupWork == nil { restoreSaved() }

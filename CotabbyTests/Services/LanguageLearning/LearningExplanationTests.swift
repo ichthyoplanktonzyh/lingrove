@@ -66,6 +66,21 @@ struct LearningExplanationSessionTests {
         active.setTarget(input("A different sentence."))
         #expect(!active.isGenerating && active.record == nil && active.error == nil)
     }
+
+    @Test func restoringASavedResultRequiresTheSelectedExplanationLanguage() {
+        let service = DelayedExplanation()
+        let active = LearningExplanationSession(service: service), target = input("Sentence.")
+        func record(_ language: LearningLanguage) -> LearningExplanationRecord {
+            .init(id: UUID(), input: target, language: language,
+                result: .init(meaning: "Meaning", explanation: "Explanation"), model: "fixture", createdAt: Date())
+        }
+        active.setTarget(target, saved: record(.english))
+        #expect(active.record == nil)
+        let chinese = record(.chinese)
+        active.setTarget(target, saved: chinese)
+        #expect(active.record == chinese)
+        active.clear()
+    }
     private func wait(_ predicate: () -> Bool) async {
         for _ in 0..<500 { if predicate() { return }; try? await Task.sleep(for: .milliseconds(2)) }
         #expect(predicate())

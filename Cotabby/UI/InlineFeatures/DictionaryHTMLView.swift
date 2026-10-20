@@ -20,7 +20,7 @@ struct DictionaryHTMLView: NSViewRepresentable {
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.setURLSchemeHandler(context.coordinator, forURLScheme: "lingrove-dictionary")
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view = DictionaryArticleWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = context.coordinator
         view.underPageBackgroundColor = .clear
         view.loadHTMLString(DictionaryHTMLPolicy.document(article.html), baseURL: context.coordinator.baseURL)
@@ -100,6 +100,37 @@ struct DictionaryHTMLView: NSViewRepresentable {
             } else {
                 decisionHandler(url.absoluteString == "about:blank" || url == baseURL ? .allow : .cancel)
             }
+        }
+    }
+}
+
+/// HTML paints at document height inside the card's existing scroll view. WebKit's internal
+/// scroll surface must not consume wheels or add another pair of scrollers. Hit testing only
+/// redirects wheel events; text selection and dictionary links keep their normal WebKit path.
+private final class DictionaryArticleWebView: WKWebView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if NSApp.currentEvent?.type == .scrollWheel, let scroll = enclosingScrollView { return scroll }
+        return super.hitTest(point)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        enclosingScrollView?.scrollWheel(with: event)
+    }
+
+    override func layout() {
+        super.layout()
+        suppressScrollers(in: self)
+    }
+
+    private func suppressScrollers(in view: NSView) {
+        for child in view.subviews {
+            if let scroll = child as? NSScrollView {
+                if scroll.hasVerticalScroller { scroll.hasVerticalScroller = false }
+                if scroll.hasHorizontalScroller { scroll.hasHorizontalScroller = false }
+                scroll.verticalScrollElasticity = .none
+                scroll.horizontalScrollElasticity = .none
+            }
+            suppressScrollers(in: child)
         }
     }
 }

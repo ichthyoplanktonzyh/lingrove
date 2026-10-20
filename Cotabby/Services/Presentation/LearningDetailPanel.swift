@@ -21,6 +21,8 @@ final class LearningDetailPanel {
     private var screen = CGRect.zero
     private var anchorY: CGFloat = 0
     private var anchorOffsetFromTop: CGFloat = 0
+    // This is the lookup's original side/top anchor, not its latest resized frame. If expansion
+    // needs a screen-edge clamp, collapsing must still return to the original reading position.
     private var placementFrame: CGRect?
     private var popupWindows = LearningPopupWindowRegistry()
     private(set) var isVisible = false
@@ -219,7 +221,7 @@ final class LearningDetailPanel {
             isVisible = false
             return
         }
-        placementFrame = frame
+        if placementFrame == nil { placementFrame = frame }
         if panel.frame != frame { panel.setFrame(frame, display: true) }
         isVisible = true
         if !panel.isVisible { panel.orderFrontRegardless() }

@@ -82,6 +82,72 @@ struct LearningContextualLookupViewTests {
         #expect(await provider.calls > 0)
     }
 
+    @Test func expandingAndCollapsingDetailsKeepsTheSentenceAtItsOriginalPosition() async throws {
+        let capture = capture()
+        let example = try #require(capture.example)
+        let unit = LearningUnit(id: 0, surface: String(repeating: "Long dictionary lookup title ", count: 12),
+            query: String(repeating: "a lengthy dictionary form ", count: 7),
+            kind: .pattern, ranges: example.ranges.map(\.nsRange), words: [])
+        let screen = try #require(NSScreen.main?.visibleFrame)
+        let parent = CGRect(x: screen.minX + 40, y: screen.minY + 20, width: 300, height: 120)
+        let panel = LearningDetailPanel(provider: LookupViewDictionary())
+        defer { panel.hide() }
+        panel.show(unit, documentID: UUID(), language: .english, correspondence: nil,
+            placement: .init(parent: parent, caret: .zero, reserved: nil, screen: screen, anchorY: parent.maxY),
+            vocabularyCapture: capture)
+        let session = panel.dictionarySession, input = LearningExplanationPolicy.input(capture)
+        session.selectPage(.contextual)
+        session.explanation.setTarget(input, saved: LookupViewExplainer.record(input,
+            details: String(repeating: "Detailed construction and usage of this expression. ", count: 60)))
+        let window = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
+        let host = try #require(window.contentView as? NSHostingView<LearningDetailCard>)
+        window.appearance = NSAppearance(named: .aqua)
+        try await settle(host, window, resize: false)
+        let first = window.frame
+        let sentence = try textPosition("Please", in: host)
+        let label = String(localized: "Details", table: "Learning")
+        for _ in 0..<2 {
+            try clickDisclosure(label, host: host, window: window)
+            try await settle(host, window, resize: false)
+            #expect(window.frame.height > first.height)
+            #expect(try snapshot(host, name: "details-expanded").contains("Detailed construction"))
+            try clickDisclosure(label, host: host, window: window)
+            try await settle(host, window, resize: false)
+            #expect(window.frame == first, "Collapse must restore the original panel frame")
+            #expect(abs(try textPosition("Please", in: host).y - sentence.y) < 1)
+            #expect(!(try snapshot(host, name: "details-collapsed")).contains("Detailed construction"))
+        }
+    }
+
+    private func textPosition<Content: View>(_ text: String, in host: NSHostingView<Content>) throws -> CGPoint {
+        let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        let request = VNRecognizeTextRequest(); request.recognitionLevel = .accurate
+        request.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+            ? ["zh-Hans", "en-US"] : ["en-US"]
+        try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([request])
+        for observation in request.results ?? [] {
+            guard let value = observation.topCandidates(1).first, let range = value.string.range(of: text),
+                  let box = try value.boundingBox(for: range) else { continue }
+            return CGPoint(x: box.boundingBox.minX * host.bounds.width,
+                y: (host.isFlipped ? 1 - box.boundingBox.midY : box.boundingBox.midY) * host.bounds.height)
+        }
+        throw NSError(domain: "ContextualLookupFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Missing label: " + text])
+    }
+
+    private func clickDisclosure<Content: View>(_ text: String, host: NSHostingView<Content>, window: NSWindow) throws {
+        var position = try textPosition(text, in: host)
+        // macOS's native DisclosureGroup activates at the triangle preceding its label.
+        position.x -= 8
+        let point = host.convert(position, to: nil)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try #require(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 1, clickCount: 1, pressure: 0))
+            window.sendEvent(event)
+        }
+    }
+
     private func capture() -> VocabularyCapture {
         let sentence = "Please keep me posted on the progress."
         var example = VocabularyPolicy.example(text: sentence,
@@ -105,7 +171,8 @@ struct LearningContextualLookupViewTests {
                 to: URL(fileURLWithPath: path).appendingPathComponent(name + ".png"))
         }
         let request = VNRecognizeTextRequest(); request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US", "zh-Hans"]
+        request.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+            ? ["zh-Hans", "en-US"] : ["en-US"]
         try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([request])
         return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
     }
@@ -129,9 +196,10 @@ private actor LookupViewDictionary: LearningDictionaryProviding {
         generations += 1
         return Self.record(input)
     }
-    static func record(_ input: LearningExplanationInput) -> LearningExplanationRecord {
+    static func record(_ input: LearningExplanationInput,
+                       details: String = "Detailed construction and usage of this expression.") -> LearningExplanationRecord {
         .init(id: UUID(), input: input, language: .english,
-            result: .init(meaning: "Keep someone informed", explanation: "Detailed construction and usage of this expression."),
+            result: .init(meaning: "Keep someone informed", explanation: details),
             model: "fixture", createdAt: Date())
     }
     func recordDisplay(requestID: String) {}

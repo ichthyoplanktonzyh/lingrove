@@ -14,7 +14,8 @@ nonisolated enum DictionaryHTMLPolicy {
         font-src lingrove-dictionary:; media-src 'none'">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>:root{color-scheme:light dark}html,body{margin:0;
-        padding:0;background:transparent;color:CanvasText;font:13px -apple-system;overflow-wrap:anywhere}
+        padding:0;background:transparent;color:CanvasText;font:13px -apple-system;overflow-wrap:anywhere;
+        overflow:hidden!important}::-webkit-scrollbar{display:none!important}
         img{max-width:100%;height:auto}pre{white-space:pre-wrap}a{color:LinkText}table{max-width:100%}</style>
         </head><body>\(content)</body></html>
         """

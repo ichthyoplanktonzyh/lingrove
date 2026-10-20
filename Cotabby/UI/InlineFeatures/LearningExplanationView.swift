@@ -13,6 +13,7 @@ struct LearningExplanationView: View {
     var presentation: Presentation = .complete
     var meaning: String?
     var context: VocabularyExample?
+    var detailsChanged: (Bool) -> Void = { _ in }
     @State private var showsDetails = false
 
     var body: some View {
@@ -64,6 +65,7 @@ struct LearningExplanationView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: session.input) { _, _ in showsDetails = false }
+        .onChange(of: showsDetails) { _, expanded in detailsChanged(expanded) }
     }
 
     private func contextualExample(_ example: VocabularyExample) -> AttributedString {
@@ -188,11 +190,12 @@ struct LearningCapturedExplanationView: View {
     var configure: () -> Void = {}
     var presentation: LearningExplanationView.Presentation = .complete
     var context: VocabularyExample?
+    var detailsChanged: (Bool) -> Void = { _ in }
     var body: some View {
         let destination = store.explanationDestination(capture)
         LearningExplanationView(session: session, configure: configure, adopt: destination.map { destination in
             { record in Task { _ = await store.adoptExplanation(record, at: destination) } }
         }, presentation: presentation, meaning: presentation == .contextual ? destination.flatMap(store.userMeaning) : nil,
-            context: context)
+            context: context, detailsChanged: detailsChanged)
     }
 }

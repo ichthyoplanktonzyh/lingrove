@@ -45,12 +45,18 @@ struct DictionaryHTMLViewTests {
         host.layoutSubtreeIfNeeded()
         let web = try #require(findWebView(host))
         let deadline = ContinuousClock.now.advanced(by: .seconds(12))
-        while (web.isLoading || height == 120), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        while web.isLoading || height == 120, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
         #expect(!web.isLoading && height != 120, "The app's isolated height measurement must work with content JavaScript disabled")
         #expect(!web.configuration.websiteDataStore.isPersistent)
         #expect(!web.configuration.defaultWebpagePreferences.allowsContentJavaScript)
         let result: Any = try await withCheckedThrowingContinuation { continuation in
-            web.evaluateJavaScript("({script:document.body.dataset.dictionaryScriptRan || 'absent',color:getComputedStyle(document.getElementById('word')).color,local:document.getElementById('local').naturalWidth,remote:document.getElementById('remote').naturalWidth,file:document.getElementById('file').naturalWidth})", in: nil, in: .defaultClient) { continuation.resume(with: $0) }
+            web.evaluateJavaScript("""
+                ({script:document.body.dataset.dictionaryScriptRan || 'absent',
+                  color:getComputedStyle(document.getElementById('word')).color,
+                  local:document.getElementById('local').naturalWidth,
+                  remote:document.getElementById('remote').naturalWidth,
+                  file:document.getElementById('file').naturalWidth})
+                """, in: nil, in: .defaultClient) { continuation.resume(with: $0) }
         }
         let values = try #require(result as? [String: Any])
         #expect(values["script"] as? String == "absent")
@@ -76,9 +82,71 @@ struct DictionaryHTMLViewTests {
         #expect(foreign.failures == 1)
     }
 
+    @Test func longArticlesUseTheOuterScrollViewAndReachTheLastEntry() async throws {
+        let lines = (0..<100).map { "<p>Dictionary line \($0): a definition with examples.</p>" }.joined()
+        let article = LearningDictionaryArticle(html: lines + "<a id='last' href='entry://word'>Final entry link</a>",
+            text: "Long dictionary fixture", sourceName: "Fixture")
+        let host = NSHostingView(rootView: DictionaryScrollingFixture(article: article))
+        let window = NSWindow(contentRect: .init(x: 120, y: 120, width: 340, height: 300),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Lingrove dictionary scrolling acceptance"
+        window.isReleasedWhenClosed = false; window.contentView = host
+        if ProcessInfo.processInfo.environment["COTABBY_UI_DICTIONARY_REVIEW"] == "1" { window.level = .floating }
+        window.orderFrontRegardless()
+        defer { window.contentView = nil; window.close() }
+        host.layoutSubtreeIfNeeded()
+        let web = try #require(findWebView(host))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(12))
+        while web.isLoading || web.bounds.height < 1_000, ContinuousClock.now < deadline {
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(!web.isLoading && web.bounds.height > 1_000)
+        let outer = try #require(web.enclosingScrollView)
+        let start = outer.contentView.bounds.origin.y
+        let wheel = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1,
+                                        wheel1: -140, wheel2: 0, wheel3: 0))
+        web.scrollWheel(with: try #require(NSEvent(cgEvent: wheel)))
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(outer.contentView.bounds.origin.y != start, "The web view must forward wheels to the visible outer scroller")
+        func internalScrollers(_ view: NSView) -> [NSScrollView] {
+            view.subviews.flatMap { ($0 as? NSScrollView).map { [$0] } ?? [] } + view.subviews.flatMap(internalScrollers)
+        }
+        #expect(internalScrollers(web).allSatisfy { !$0.hasVerticalScroller && !$0.hasHorizontalScroller })
+        if ProcessInfo.processInfo.environment["COTABBY_UI_DICTIONARY_REVIEW"] == "1" {
+            window.makeKeyAndOrderFront(nil)
+            try await Task.sleep(for: .seconds(60))
+        }
+        outer.contentView.scroll(to: NSPoint(x: 0, y: max(0, (outer.documentView?.bounds.height ?? 0) - outer.contentView.bounds.height)))
+        outer.reflectScrolledClipView(outer.contentView)
+        let geometry: Any = try await withCheckedThrowingContinuation { continuation in
+            web.evaluateJavaScript("""
+                ({bottom:document.getElementById('last').getBoundingClientRect().bottom,
+                  height:innerHeight,overflow:getComputedStyle(document.documentElement).overflow})
+                """, in: nil, in: .defaultClient) { continuation.resume(with: $0) }
+        }
+        let values = try #require(geometry as? [String: Any])
+        #expect(values["overflow"] as? String == "hidden")
+        #expect((values["bottom"] as? Double ?? .infinity) <= (values["height"] as? Double ?? 0) + 1)
+    }
+
     private func findWebView(_ view: NSView) -> WKWebView? {
         if let web = view as? WKWebView { return web }
         return view.subviews.lazy.compactMap { findWebView($0) }.first
+    }
+}
+
+/// The stateful parent is the production arrangement: measured HTML paints at document height,
+/// and one bounded SwiftUI scroll view owns navigation through that document.
+@MainActor
+private struct DictionaryScrollingFixture: View {
+    let article: LearningDictionaryArticle
+    @State private var height: CGFloat = 120
+    var body: some View {
+        ScrollView {
+            DictionaryHTMLView(article: article, loadResource: { _ in nil }, reference: { _ in }, height: $height)
+                .frame(height: height)
+        }.frame(width: 340, height: 300)
     }
 }
 
