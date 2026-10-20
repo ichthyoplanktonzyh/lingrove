@@ -50,7 +50,8 @@ struct LearningSentenceCardTests {
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: bitmap)
         let recognition = VNRecognizeTextRequest()
-        recognition.recognitionLanguages = ["de-DE", "en-US", "zh-Hans"]
+        recognition.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+            ? ["zh-Hans", "en-US"] : ["de-DE", "en-US", "zh-Hans"]
         recognition.recognitionLevel = .accurate
         try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([recognition])
         let painted = (recognition.results?.compactMap { $0.topCandidates(1).first?.string } ?? [])
@@ -104,17 +105,17 @@ struct LearningSentenceCardTests {
         defer { window.close() }
         let state = LearningDetailState(), id = UUID()
         func card(_ text: String, complete: Bool) -> LearningSentenceCard {
-            let presentation = LearningSentencePresentation(id: id, source: "我期待见到你。", translation: text, chunks: [],
+            let presentation = LearningSentencePresentation(id: id, source: "我们期待见到你。", translation: text, chunks: [],
                 sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false,
                 isGenerating: !complete, message: "", previousTranslation: nil, shortcutLabel: "⌥T",
                 canReplace: complete, replacementShortcutLabel: "⌃⌥T", isTranslating: !complete)
             return LearningSentenceCard(presentation: presentation, detailState: state,
                 replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
-        let hosting = NSHostingView(rootView: card("I look", complete: false))
+        let hosting = NSHostingView(rootView: card("We look", complete: false))
         window.contentView = hosting
         window.orderFrontRegardless()
-        for (text, complete) in [("I look", false), ("I look forward to seeing you.", true)] {
+        for (text, complete) in [("We look", false), ("We look forward to seeing you.", true)] {
             hosting.rootView = card(text, complete: complete)
             await settle(hosting, in: window)
             #expect(findTranslation(text, in: hosting)?.string == text)
@@ -125,7 +126,8 @@ struct LearningSentenceCardTests {
                     to: URL(fileURLWithPath: output).appendingPathComponent(complete ? "stream-complete.png" : "stream-prefix.png"))
             }
             let recognition = VNRecognizeTextRequest()
-            recognition.recognitionLanguages = ["en-US", "zh-Hans"]
+            recognition.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+                ? ["zh-Hans", "en-US"] : ["en-US", "zh-Hans"]
             recognition.recognitionLevel = .accurate
             try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([recognition])
             let painted = (recognition.results?.compactMap { $0.topCandidates(1).first?.string } ?? []).joined(separator: " ")
@@ -175,7 +177,8 @@ struct LearningSentenceCardTests {
             let sourceColor = try #require(left.attribute(.backgroundColor, at: 1, effectiveRange: nil) as? NSColor)
             let targetColor = try #require(right.attribute(.backgroundColor, at: coloredRange.location, effectiveRange: nil) as? NSColor)
             #expect(sourceColor == targetColor)
-            #expect(right.attribute(.backgroundColor, at: (target as NSString).range(of: "seeing").location, effectiveRange: nil) as? NSColor
+            #expect(right.attribute(.backgroundColor, at: (target as NSString).range(of: "seeing").location,
+                effectiveRange: nil) as? NSColor
                 == right.attribute(.backgroundColor, at: (target as NSString).range(of: "you").location, effectiveRange: nil) as? NSColor)
             #expect(right.attribute(.backgroundColor, at: 0, effectiveRange: nil) == nil)
             #expect(right.attribute(.backgroundColor, at: phraseRange.location, effectiveRange: nil) == nil)
@@ -193,7 +196,8 @@ struct LearningSentenceCardTests {
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let directory = URL(fileURLWithPath: output)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                try bitmap.representation(using: .png, properties: [:])?.write(to: directory.appendingPathComponent("independent-\(stage).png"))
+                try bitmap.representation(using: .png, properties: [:])?.write(
+                    to: directory.appendingPathComponent("independent-\(stage).png"))
             }
         }
     }
@@ -310,7 +314,8 @@ struct LearningSentenceCardTests {
         let longer = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: longer)
         if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
-            try longer.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: output).appendingPathComponent("expanded-long.png"))
+            try longer.representation(using: .png, properties: [:])?.write(
+                to: URL(fileURLWithPath: output).appendingPathComponent("expanded-long.png"))
         }
         let longRecognition = VNRecognizeTextRequest()
         longRecognition.recognitionLanguages = ["en-US"]
@@ -329,15 +334,22 @@ struct LearningSentenceCardTests {
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         defer { window.close() }
         let state = LearningDetailState(), id = UUID()
-        let replacementShortcutLabel = "⌃⌥T"
+        let replacementShortcutLabel = "REPLACE_SHORTCUT_SENTINEL"
+        let suite = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let vocabulary = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let explanation = LearningExplanationSession()
         func card(expanded: Bool) -> LearningSentenceCard {
-            var presentation = Self.presentation(id: id, expanded: expanded)
+            var presentation = Self.presentation(id: id, expanded: expanded, shortcutLabel: "EXPAND_SHORTCUT_SENTINEL")
             presentation.targetIsSelection = true
             presentation.canReplace = true
             presentation.replacementShortcutLabel = replacementShortcutLabel
             return LearningSentenceCard(
-                presentation: presentation, detailState: state,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+                presentation: presentation, detailState: state, explanation: explanation,
+                replace: {}, inspect: { _ in }, expand: {}, dismiss: {},
+                speech: speech, vocabulary: vocabulary, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card(expanded: false))
         window.contentView = hosting
@@ -360,10 +372,11 @@ struct LearningSentenceCardTests {
             func normalized(_ value: String) -> String { value.lowercased().filter { $0.isLetter || $0.isNumber } }
             let visible = normalized(text)
             #expect(!visible.contains(normalized(String(localized: "Target: Selection", table: "Learning"))))
-            let replacementLabel = String(localized: "Replace · \(replacementShortcutLabel)", table: "Learning")
-            let actionLabel = replacementLabel.split(separator: "·", maxSplits: 1).first ?? ""
-            #expect(visible.contains(normalized(String(actionLabel))),
-                "The shared header action must remain visible after removing the target row")
+            #expect(visible.contains(normalized(String(localized: "Replace", table: "Learning"))),
+                "The primary action must fit with speech and vocabulary actions in the compact card")
+            #expect(!visible.contains("shortcutsentinel"), "Keyboard shortcut hints must not occupy either card size")
+            #expect(!visible.contains(normalized(String(localized: "Target expression", table: "Learning"))))
+            #expect(visible.contains(normalized(LearningLanguage.english.label)))
             if expanded {
                 #expect(visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))))
                 #expect(visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))))
@@ -406,9 +419,7 @@ struct LearningSentenceCardTests {
                 .joined().lowercased().filter { $0.isLetter || $0.isNumber }
             let reasonPrefix = String(reason.lowercased().filter { $0.isLetter || $0.isNumber }.prefix(30))
             #expect(visible.contains(reasonPrefix), "The replacement reason remains visible in both card sizes.")
-            let replacementLabel = String(localized: "Replace · \(replacementShortcutLabel)", table: "Learning")
-            let actionLabel = replacementLabel.split(separator: "·", maxSplits: 1).first ?? ""
-            let actionPrefix = String(actionLabel.lowercased().filter { $0.isLetter || $0.isNumber })
+            let actionPrefix = String(localized: "Replace", table: "Learning").lowercased().filter { $0.isLetter || $0.isNumber }
             #expect(visible.contains(actionPrefix), "The Replace label remains visible in both card sizes.")
         }
     }
@@ -421,13 +432,15 @@ struct LearningSentenceCardTests {
         }
     }
 
-    private static func presentation(id: UUID, expanded: Bool, repeats: Int = 1) -> LearningSentencePresentation {
+    private static func presentation(id: UUID, expanded: Bool, repeats: Int = 1,
+                                     shortcutLabel: String = "⌥T") -> LearningSentencePresentation {
         let source = Array(repeating: "Source content must remain visible.", count: repeats).joined(separator: " ")
         let target = Array(repeating: "Target translation must remain visible.", count: repeats).joined(separator: " ")
         return LearningSentencePresentation(id: id, source: source, translation: target,
             chunks: [.init(id: 0, sourceRanges: [.init(location: 0, length: source.utf16.count)],
                 targetRanges: [.init(location: 0, length: target.utf16.count)])],
             sourceLanguage: .chinese, targetLanguage: .english, caret: .zero,
-            isExpanded: expanded, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T", unitStage: .ready)
+            isExpanded: expanded, isGenerating: false, message: "", previousTranslation: nil,
+            shortcutLabel: shortcutLabel, unitStage: .ready)
     }
 }

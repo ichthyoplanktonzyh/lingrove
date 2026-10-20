@@ -126,20 +126,13 @@ struct LearningSentenceCard: View {
                     ? String(
                         localized: "Translation preview unavailable", table: "Learning",
                         comment: "Header for an explicit preview capture error.")
-                    : presentation.isStale && !presentation.translation.isEmpty
-                        ? String(localized: "Previous expression · updates after a pause", table: "Learning",
-                    comment: "Header shown when the card retains the previous translation while the user edits the source sentence.")
                 : presentation.isExpanded
                     ? String(localized: "\(presentation.sourceLanguage.label) → \(presentation.targetLanguage.label)",
                         table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
-                    : String(localized: "Target expression · \(presentation.targetLanguage.label)", table: "Learning",
-                        comment: "Compact card header naming the target language."))
+                    : presentation.targetLanguage.label)
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
-            if let explanation {
-                LearningExplanationButton(session: explanation, prepare: { if !presentation.isExpanded { expand() } })
-            }
             if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
                 VocabularyFavoriteButton(store: vocabulary, capture: capture)
             }
@@ -150,44 +143,46 @@ struct LearningSentenceCard: View {
             }
             if !presentation.isError {
                 replacementAction
-                cardAction(
-                    presentation.isExpanded
-                        ? String(localized: "Collapse", table: "Learning",
-                            comment: "Button that collapses the expanded sentence-learning card.")
-                : String(localized: "Expand · \(presentation.shortcutLabel)", table: "Learning",
-                    comment: """
-                    Button that expands the sentence-learning card; the shortcut label is the user's configured key combination.
-                    """),
-                action: expand)
+                iconAction(presentation.isExpanded
+                    ? String(localized: "Collapse", table: "Learning")
+                    : String(localized: "Expand", table: "Learning"),
+                    symbol: presentation.isExpanded ? "chevron.up" : "chevron.down", action: expand)
             }
-            Button(action: dismiss) { Image(systemName: "xmark") }.buttonStyle(.plain)
-                .help(String(localized: "Dismiss · Esc", table: "Learning", comment: """
-                Tooltip for dismissing the sentence-learning card with Escape.
-                """))
+            iconAction(String(localized: "Dismiss"), symbol: "xmark", action: dismiss)
         }
     }
 
     @ViewBuilder
     private var replacementAction: some View {
         if presentation.canReplace, let replace {
-            cardAction(replacementLabel, action: replace)
+            replacementButton(action: replace)
         } else if presentation.isCommitting {
             ProgressView().controlSize(.small)
         } else if !presentation.translation.isEmpty, !presentation.isTranslating, !presentation.isStale,
                   let reason = presentation.replacementUnavailableReason {
-            cardAction(replacementLabel, action: {}).disabled(true).help(reason)
+            replacementButton(action: {}).disabled(true).help(reason)
         }
     }
 
-    private var replacementLabel: String {
-        String(localized: "Replace · \(presentation.replacementShortcutLabel)", table: "Learning",
-            comment: "Replaces the exact source of this preview; includes its configured shortcut.")
+    /// Writing back is the primary action, so keep its short verb rather than an ambiguous
+    /// symbol. The tooltip names the captured scope; shortcuts remain in their settings pane.
+    private func replacementButton(action: @escaping () -> Void) -> some View {
+        Button(String(localized: "Replace", table: "Learning"), action: action)
+            .buttonStyle(.bordered).controlSize(.small).tint(.accentColor)
+            .font(.caption.weight(.medium)).fixedSize()
+            .help(presentation.targetIsSelection
+                ? String(localized: "Replace selection", table: "Learning")
+                : String(localized: "Replace sentence", table: "Learning"))
     }
 
-    /// Both header actions share the existing expansion control's typography and hit behavior.
-    /// Keeping this helper in the card avoids a second component or a separate action row.
-    private func cardAction(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action).buttonStyle(.plain).font(.caption).fixedSize()
+    /// Disclosure and dismissal use familiar symbols with a full click target. Labels stay
+    /// available to VoiceOver and hover help without competing with the translation for space.
+    private func iconAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).labelStyle(.iconOnly)
+                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                .frame(width: 22, height: 22).contentShape(Rectangle())
+        }.buttonStyle(.plain).help(title)
     }
 
     private var details: some View {
@@ -195,8 +190,7 @@ struct LearningSentenceCard: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text(String(localized: "Source text", table: "Learning",
-                            comment: "Label above the original sentence in the expanded learning card."))
+                        Text(presentation.sourceLanguage.label)
                             .font(.caption).foregroundStyle(.secondary)
                         Spacer()
                         if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation, original: true) {
@@ -210,8 +204,7 @@ struct LearningSentenceCard: View {
                     }
                     sentence(presentation.source, source: true)
                     HStack {
-                        Text(String(localized: "Target expression", table: "Learning",
-                            comment: "Label above the translated sentence in the expanded learning card."))
+                        Text(presentation.targetLanguage.label)
                             .font(.caption).foregroundStyle(.secondary)
                         Spacer()
                         if let speech, let request = translationSpeechRequest {
