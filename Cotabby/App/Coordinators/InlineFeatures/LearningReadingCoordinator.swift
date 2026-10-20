@@ -35,6 +35,8 @@ final class LearningReadingCoordinator {
     private var pendingSelection: LearningReadingSelection?
     private var running = false
     private var lastPointerDown: CGPoint?
+    /// A native lookup drag/click belongs to learning UI through mouse-up, even if released outside.
+    private var pointerDownInsideLearningUI = false
     var isActive: Bool { document != nil || pendingSelection != nil || work != nil || panel.isVisible || affordanceWork != nil }
 
     /// One immutable receipt with its evolving view state. Keeping this value together prevents
@@ -118,7 +120,7 @@ final class LearningReadingCoordinator {
         guard observesSystemEvents else { return }
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.dismiss() } }
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.dismiss(reason: "application-activated") } }
         let monitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .leftMouseUp, .rightMouseDown, .scrollWheel]
         ) { [weak self] event in
@@ -189,8 +191,12 @@ final class LearningReadingCoordinator {
     }
     // swiftlint:enable cyclomatic_complexity
 
-    func dismiss() {
+    func dismiss(reason: String = "explicit-or-invalidation") {
+        if document != nil || panel.isVisible {
+            CotabbyLogger.learning.debug("Reading preview retired", metadata: ["stage": .string(reason)])
+        }
         revision = UUID()
+        pointerDownInsideLearningUI = false
         work?.cancel()
         work = nil
         analysisWork?.cancel()
@@ -427,7 +433,9 @@ final class LearningReadingCoordinator {
                 message: document.message, previousTranslation: nil, shortcutLabel: service.settings.languageLearning.keyLabel,
                 units: document.units, unitStage: document.unitStage, targetIsSelection: true, canReplace: false,
                 isError: document.isError, readingSource: document.capture.source,
-                isTranslating: !document.translationIsComplete && document.generating), expand: { [weak self] in self?.toggleDetails() },
+                isTranslating: !document.translationIsComplete && document.generating,
+                vocabularyContext: document.capture.vocabularyContext,
+                vocabularyAppBundleIdentifier: document.capture.bundleIdentifier), expand: { [weak self] in self?.toggleDetails() },
             dismiss: { [weak self] in self?.dismiss() },
             replace: nil)
         if !document.translation.isEmpty { service.recordDisplay(source: .translation, requestID: document.traceID) }
@@ -448,47 +456,68 @@ final class LearningReadingCoordinator {
     }
 
     private func pointer(_ event: NSEvent) {
+        let clicks = event.type == .leftMouseUp ? event.clickCount : 0
+        handlePointerEvent(type: event.type, at: event.locationInWindow, clickCount: clicks)
+    }
+
+    /// The global monitor supplies an immutable event summary. Tests can exercise this routing
+    /// without generating system input; only the panel performs Window Server hit testing.
+    func handlePointerEvent(type: NSEvent.EventType, at point: CGPoint, clickCount: Int) {
         guard enabled, !reader.isSelectingRegion else { return }
-        if event.type == .leftMouseDown {
-            dismiss()
-            lastPointerDown = NSEvent.mouseLocation
-        } else if event.type == .rightMouseDown || event.type == .scrollWheel {
-            dismiss()
-        } else if event.type == .leftMouseUp {
-            let point = NSEvent.mouseLocation
-            let dragged = lastPointerDown.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        if type == .leftMouseDown {
+            pointerDownInsideLearningUI = panel.containsGlobalInteraction(at: point)
+            if pointerDownInsideLearningUI { lastPointerDown = nil; return }
+            dismiss(reason: "external-pointer-down")
+            lastPointerDown = point
+        } else if type == .rightMouseDown || type == .scrollWheel {
+            guard !panel.containsGlobalInteraction(at: point) else { return }
+            dismiss(reason: "external-pointer-or-scroll")
+        } else if type == .leftMouseUp {
+            handlePointerUp(at: point, clickCount: clickCount)
+        }
+    }
+
+    /// An owned mouse-down keeps ownership until release, including a drag that ends outside.
+    /// Only an external selection gesture may schedule the delayed passive translation icon.
+    private func handlePointerUp(at point: CGPoint, clickCount: Int) {
+        if pointerDownInsideLearningUI {
+            pointerDownInsideLearningUI = false
             lastPointerDown = nil
-            guard sourceAvailability(.selection), service.settings.languageLearning.selectionTranslationEnabled,
-                dragged || event.clickCount >= 2,
-                service.settings.selectionIconAllowed(in: frontmostBundle())
-            else { return }
-            let id = revision
-            let iconID = affordanceRevision
-            let bundle = frontmostBundle()
-            affordanceWork = Task { [weak self] in
-                defer {
-                    if let self, self.revision == id, self.affordanceRevision == iconID { self.affordanceWork = nil }
-                }
-                do {
-                    try await Task.sleep(for: .milliseconds(150))
-                    guard let self, self.revision == id, self.affordanceRevision == iconID,
-                        self.enabled, self.frontmostBundle() == bundle,
-                        self.service.settings.selectionIconAllowed(in: bundle)
-                    else { return }
-                    let capture = try await self.reader.capture()
-                    try Task.checkCancellation()
-                    guard self.revision == id, self.affordanceRevision == iconID, self.reader.isCurrent(capture), self.enabled,
-                        capture.bundleIdentifier == bundle,
-                        self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier)
-                    else { return }
-                    self.pendingSelection = capture
-                    self.affordanceWork = nil
-                    self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
-                        guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
-                        self.begin(pending, fromShortcut: false)
-                    }
-                } catch { /* Unsupported selections have no passive affordance and send no request. */  }
+            return
+        }
+        guard !panel.containsGlobalInteraction(at: point) else { lastPointerDown = nil; return }
+        let dragged = lastPointerDown.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        lastPointerDown = nil
+        guard sourceAvailability(.selection), service.settings.languageLearning.selectionTranslationEnabled,
+            dragged || clickCount >= 2,
+            service.settings.selectionIconAllowed(in: frontmostBundle())
+        else { return }
+        let id = revision
+        let iconID = affordanceRevision
+        let bundle = frontmostBundle()
+        affordanceWork = Task { [weak self] in
+            defer {
+                if let self, self.revision == id, self.affordanceRevision == iconID { self.affordanceWork = nil }
             }
+            do {
+                try await Task.sleep(for: .milliseconds(150))
+                guard let self, self.revision == id, self.affordanceRevision == iconID,
+                    self.enabled, self.frontmostBundle() == bundle,
+                    self.service.settings.selectionIconAllowed(in: bundle)
+                else { return }
+                let capture = try await self.reader.capture()
+                try Task.checkCancellation()
+                guard self.revision == id, self.affordanceRevision == iconID, self.reader.isCurrent(capture), self.enabled,
+                    capture.bundleIdentifier == bundle,
+                    self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier)
+                else { return }
+                self.pendingSelection = capture
+                self.affordanceWork = nil
+                self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
+                    guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
+                    self.begin(pending, fromShortcut: false)
+                }
+            } catch { /* Unsupported selections have no passive affordance and send no request. */  }
         }
     }
 }

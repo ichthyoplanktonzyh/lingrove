@@ -121,6 +121,9 @@ struct LearningSentencePresentation {
     var readingSource: LearningReadingSource?
     /// Distinct from optional alignment generation: a nonempty streamed prefix is still incomplete.
     var isTranslating = false
+    /// Optional acquisition evidence for explicit vocabulary saves, never added to model prompts.
+    var vocabularyContext: VocabularyExample?
+    var vocabularyAppBundleIdentifier: String?
 
     var targetLabel: String {
         switch readingSource {
@@ -141,6 +144,7 @@ protocol LearningSentencePresenting: AnyObject {
     var isVisible: Bool { get }
     func hide()
     func dismissDetail() -> Bool
+    func containsGlobalInteraction(at point: CGPoint) -> Bool
     func show(_ presentation: LearningSentencePresentation, expand: @escaping () -> Void, dismiss: @escaping () -> Void)
     func show(
         _ presentation: LearningSentencePresentation, expand: @escaping () -> Void, dismiss: @escaping () -> Void,
@@ -153,4 +157,5 @@ extension LearningSentencePresenting {
         replace: (() -> Void)?
     ) { show(presentation, expand: expand, dismiss: dismiss) }
     func dismissDetail() -> Bool { false }
+    func containsGlobalInteraction(at point: CGPoint) -> Bool { false }
 }

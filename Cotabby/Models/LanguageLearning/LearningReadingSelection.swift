@@ -25,6 +25,8 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     let anchor: CGRect
     var source: LearningReadingSource = .selection
     var languageHint: LearningLanguage?
+    /// Bounded local context captured with the selected/pointed text; not a translation input.
+    var vocabularyContext: VocabularyExample?
 }
 
 /// The app environment owns one reader. This narrow seam lets lifecycle tests change a selection

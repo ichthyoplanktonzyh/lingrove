@@ -10,6 +10,7 @@ final class LearningDetailPanel {
     let dictionarySession: LearningDictionarySession
     private let dictionary: LearningSystemDictionaryPresenter
     private let speech: LearningSpeechController?
+    private let vocabulary: VocabularyStore?
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningDetailCard>?
     private var layoutRevision = UUID()
@@ -24,14 +25,20 @@ final class LearningDetailPanel {
     private(set) var isVisible = false
 
     init(dictionary: LearningSystemDictionaryPresenter? = nil, provider: (any LearningDictionaryProviding)? = nil,
-         speech: LearningSpeechController? = nil) {
+         speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil) {
         self.dictionary = dictionary ?? LearningSystemDictionaryPresenter()
         self.speech = speech
+        self.vocabulary = vocabulary
         dictionarySession = LearningDictionarySession(provider: provider ?? LearningLexiconService(
             resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")))
     }
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
+    var interactionWindows: [NSWindow?] { [panel] + dictionary.interactionWindows }
+    var favoriteCapture: VocabularyCapture? {
+        guard isVisible else { return nil }
+        return dictionary.vocabularyCapture ?? dictionarySession.favoriteCapture
+    }
     func owns(_ window: NSWindow?) -> Bool {
         // Dictionary popovers can have nested child windows. An ancestor check makes clicking
         // their content an internal interaction without depending on AppKit's private types.
@@ -45,24 +52,31 @@ final class LearningDetailPanel {
 
     func dismissDictionary() -> Bool { dictionary.dismiss() }
 
-    func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement, speechContext: String? = nil) {
+    func recordDictionaryInteraction(kind: String, window: NSWindow?, hitWindowNumber: Int = -1) {
+        dictionary.recordInteraction(kind: kind, window: window, hitWindowNumber: hitWindowNumber)
+    }
+
+    func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement, speechContext: String? = nil,
+              vocabularyCapture: VocabularyCapture? = nil) {
         // Retain the correspondence entry point for existing callers. Product unit clicks pass
         // an independently recognized unit, rather than using alignment grain for dictionary grain.
         let range = NSRange(location: 0, length: chunk.target.utf16.count)
         let unit = LearningUnit(id: 0, surface: chunk.target, query: chunk.target, kind: .expression,
             ranges: [range], words: LearningUnitPolicy.words(in: chunk.target, language: chunk.language))
         show(unit, documentID: chunk.documentID, language: chunk.language, correspondence: chunk,
-            placement: placement, speechContext: speechContext)
+            placement: placement, speechContext: speechContext, vocabularyCapture: vocabularyCapture)
     }
 
     func selectCorrespondence(_ chunk: LearningChunkDetail) { state.chunk = chunk }
 
     func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage,
-              correspondence: LearningChunkDetail?, placement: LearningDetailPlacement, speechContext: String? = nil) {
+              correspondence: LearningChunkDetail?, placement: LearningDetailPlacement, speechContext: String? = nil,
+              vocabularyCapture: VocabularyCapture? = nil) {
         stopCurrentSpeech()
         dictionary.dismiss()
         state.chunk = correspondence
-        dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext)
+        dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext,
+            vocabularyCapture: vocabularyCapture)
         anchorY = placement.anchorY
         anchorOffsetFromTop = placement.parent.maxY - placement.anchorY
         layoutRevision = UUID()
@@ -72,7 +86,10 @@ final class LearningDetailPanel {
                 self?.selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
             },
             close: { [weak self] in self?.hide() }, sizeChanged: { [weak self] in self?.scheduleLayout($0, revision: revision) },
-            session: dictionarySession, speech: speech)
+            session: dictionarySession, speech: speech, vocabulary: vocabulary,
+            lookupWord: { [weak self] word, button in
+                self?.selectDictionaryWord(word, from: button, unit: unit, documentID: documentID)
+            })
         let window = panel ?? LearningDetailWindow(contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         if let hosting { hosting.rootView = card } else {
@@ -119,14 +136,26 @@ final class LearningDetailPanel {
         guard isVisible, dictionarySession.documentID == documentID, dictionarySession.unit == unit,
               button.window === panel,
               unit.words.contains(where: { $0.text == term }) || isWholeSystemEntry else { return }
-        dictionary.show(term, from: button)
+        var capture = dictionarySession.vocabularyCapture
+        let words = unit.words.filter { $0.text == term }
+        if !isWholeSystemEntry, let original = capture {
+            capture = words.count == 1 ? VocabularyCaptureFactory.component(words[0], unit: unit, capture: original) : nil
+        }
+        dictionary.show(term, from: button, vocabulary: vocabulary, capture: capture)
+    }
+
+    func selectDictionaryWord(_ word: LearningDictionaryWord, from button: NSButton, unit: LearningUnit, documentID: UUID) {
+        guard isVisible, dictionarySession.documentID == documentID, dictionarySession.unit == unit,
+              button.window === panel, unit.words.contains(word) else { return }
+        let capture = dictionarySession.vocabularyCapture.flatMap { VocabularyCaptureFactory.component(word, unit: unit, capture: $0) }
+        dictionary.show(word.text, from: button, vocabulary: vocabulary, capture: capture)
     }
 
     /// A word lookup closes the expression window while its meaning selection stays in the
     /// sentence card. Document replacement and full dismissal use the default to clear both.
     func hide(preservingCorrespondence: Bool = false) {
         stopCurrentSpeech()
-        dictionary.dismiss()
+        dictionary.dismiss(reason: "detail-hidden")
         dictionarySession.close()
         layoutRevision = UUID()
         if !preservingCorrespondence { state.chunk = nil }

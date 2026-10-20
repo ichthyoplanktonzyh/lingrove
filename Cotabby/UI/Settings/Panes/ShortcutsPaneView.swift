@@ -143,6 +143,8 @@ struct ShortcutsPaneView: View {
                 .settingsItem(.toggleTabby)
             }
             LearningShortcutRows(settings: suggestionSettings.languageLearning, suggestionSettings: suggestionSettings, recording: recording)
+            VocabularyShortcutRows(settings: suggestionSettings.vocabularyShortcuts,
+                suggestionSettings: suggestionSettings, recording: recording)
             AppShortcutSection(settings: suggestionSettings, recording: recording, selectedApp: selectedApp)
         }
         .onDisappear { recording.stop() }

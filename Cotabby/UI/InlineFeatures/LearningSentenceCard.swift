@@ -14,6 +14,7 @@ struct LearningSentenceCard: View {
     var lookupText: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
     var speech: LearningSpeechController?
+    var vocabulary: VocabularyStore?
     let sizeChanged: (CGSize) -> Void
     // Begin with the sentence pair's short layout; longer content measures itself below.
     // The former instruction-sized fallback leaves a blank block after the guide text is removed.
@@ -135,6 +136,9 @@ struct LearningSentenceCard: View {
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
+            if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
+                VocabularyFavoriteButton(store: vocabulary, capture: capture)
+            }
             if !presentation.isExpanded, let speech, let request = translationSpeechRequest {
                 LearningSpeechButton(speech: speech, request: request,
                     playLabel: String(localized: "Play translation aloud", table: "Learning"),
@@ -191,6 +195,9 @@ struct LearningSentenceCard: View {
                             comment: "Label above the original sentence in the expanded learning card."))
                             .font(.caption).foregroundStyle(.secondary)
                         Spacer()
+                        if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation, original: true) {
+                            VocabularyFavoriteButton(store: vocabulary, capture: capture)
+                        }
                         if let speech, let request = sourceSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play source text aloud", table: "Learning"),

@@ -108,9 +108,10 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
                 else { return nil }
                 return AXHelper.cocoaRect(fromAccessibilityRect: value)
             } ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
+        let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text, app: bundle)
         let receipt = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
-            bundleIdentifier: bundle, anchor: rect)
+            bundleIdentifier: bundle, anchor: rect, vocabularyContext: context)
         evidence = Evidence(
             receipt: receipt, element: element, window: window,
             range: range, focusedElement: AXHelper.focusedElement(forApplicationPID: app.processIdentifier))

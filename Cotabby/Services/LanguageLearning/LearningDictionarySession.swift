@@ -18,6 +18,7 @@ final class LearningDictionarySession: ObservableObject {
     /// Captured from the same translation that supplied the unit. It lives only as long as this
     /// session and helps speech resolve short words without reading the editor or definitions.
     private(set) var speechContext: String?
+    private(set) var vocabularyCapture: VocabularyCapture?
     private let provider: any LearningDictionaryProviding
     private var language: LearningLanguage = .english
     private var revision = UUID()
@@ -33,12 +34,20 @@ final class LearningDictionarySession: ObservableObject {
     /// words' visual reading order without inferring direction from the UI locale or term text.
     var contentLanguage: LearningLanguage { language }
 
-    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil) {
+    var favoriteCapture: VocabularyCapture? {
+        guard content != .loading, var capture = vocabularyCapture else { return nil }
+        capture.definitions = VocabularyCaptureFactory.definitions(content)
+        return capture
+    }
+
+    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil,
+              vocabularyCapture: VocabularyCapture? = nil) {
         close()
         self.unit = unit
         self.documentID = documentID
         self.language = language
         self.speechContext = speechContext
+        self.vocabularyCapture = vocabularyCapture
         request()
     }
 
@@ -59,6 +68,7 @@ final class LearningDictionarySession: ObservableObject {
         work?.cancel(); work = nil
         unit = nil; documentID = nil; selectedWord = nil
         speechContext = nil
+        vocabularyCapture = nil
         content = .loading
         cache.removeAll()
     }

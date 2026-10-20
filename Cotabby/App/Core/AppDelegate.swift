@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let inlineCommandCoordinator: InlineCommandCoordinator
     let welcomeCoordinator: WelcomeCoordinator
     let settingsCoordinator: SettingsCoordinator
+    let vocabularyWindow: VocabularyWindowController
 
     private let activationIndicatorController: ActivationIndicatorController
     private let focusDebugOverlayController: FocusDebugOverlayController?
@@ -61,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         inlineCommandCoordinator = environment.inlineCommandCoordinator
         welcomeCoordinator = environment.welcomeCoordinator
         settingsCoordinator = environment.settingsCoordinator
+        vocabularyWindow = environment.vocabularyWindow
         activationIndicatorController = environment.activationIndicatorController
         focusDebugOverlayController = environment.focusDebugOverlayController
         super.init()

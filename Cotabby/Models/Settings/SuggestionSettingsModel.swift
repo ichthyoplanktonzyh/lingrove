@@ -35,6 +35,7 @@ enum ShortcutAction: CaseIterable {
 @MainActor
 final class SuggestionSettingsModel: ObservableObject {
     let languageLearning: LanguageLearningSettings
+    let vocabularyShortcuts: VocabularyShortcutSettings
     let completionContexts: ModelContextSettings
     /// Pure two-slot memo, shared by direct getters and incoming-value snapshot projections.
     var completionContextIdentities = ModelContextIdentityCache()
@@ -241,6 +242,7 @@ final class SuggestionSettingsModel: ObservableObject {
         endpointCredentialStore: OpenAICompatibleCredentialStoring
     ) {
         languageLearning = LanguageLearningSettings(defaults: userDefaults)
+        vocabularyShortcuts = VocabularyShortcutSettings(defaults: userDefaults)
         completionContexts = ModelContextSettings(role: "completion", defaults: userDefaults)
         languageLearning.translation.migrateLegacyCredential(from: endpointCredentialStore)
         let store = SuggestionSettingsStore(userDefaults: userDefaults)
@@ -339,6 +341,7 @@ final class SuggestionSettingsModel: ObservableObject {
     func resetToDefaults() {
         completionContexts.reset()
         languageLearning.resetToDefaults()
+        vocabularyShortcuts.reset()
         let data = store.resetToDefaults(configuration: configuration)
 
         isGloballyEnabled = data.isGloballyEnabled
@@ -1802,9 +1805,13 @@ final class SuggestionSettingsModel: ObservableObject {
         keyCode: CGKeyCode,
         modifiers: ShortcutModifierMask,
         excluding action: ShortcutAction,
-        includingLearningShortcut: Bool = true
+        includingLearningShortcut: Bool = true,
+        includingVocabularyShortcut: Bool = true
     ) -> String? {
         guard keyCode != Self.disabledKeyCode else { return nil }
+
+        if includingVocabularyShortcut,
+           let command = vocabularyShortcuts.command(key: UInt16(clamping: keyCode), modifiers: modifiers) { return command.title }
 
         for other in ShortcutAction.allCases where other != action {
             let binding = shortcutBinding(for: other)
@@ -1839,9 +1846,13 @@ final class SuggestionSettingsModel: ObservableObject {
         keyCode: CGKeyCode,
         modifiers: ShortcutModifierMask,
         excluding action: ShortcutAction,
-        includingLearningShortcut: Bool = true
+        includingLearningShortcut: Bool = true,
+        includingVocabularyShortcut: Bool = true
     ) -> String? {
         guard keyCode != Self.disabledKeyCode else { return nil }
+
+        if includingVocabularyShortcut,
+           let command = vocabularyShortcuts.command(key: UInt16(clamping: keyCode), modifiers: modifiers) { return command.title }
 
         // Resolve inherited bindings too; an override can collide with the other action's global key.
         if action != .acceptWord {

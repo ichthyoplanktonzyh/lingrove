@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import Testing
@@ -9,6 +10,33 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 @MainActor
 struct LearningReadingCoordinatorTests {
+    @Test
+    func nativeLookupGestureDoesNotDismissOrCreateANewSelectionRequest() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.settings.languageLearning.selectionIconEnabled = true
+        await settle()
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await until { rig.service.calls.count == 1 }
+        rig.service.finish(0, "译文")
+        await until { rig.panel.isVisible }
+        let captures = rig.reader.calls
+        rig.panel.containsInteraction = true
+        for type in [NSEvent.EventType.leftMouseDown, .rightMouseDown, .scrollWheel] {
+            rig.coordinator.handlePointerEvent(type: type, at: CGPoint(x: 200, y: 200), clickCount: 0)
+            #expect(rig.panel.isVisible && rig.coordinator.isActive)
+        }
+        // A dictionary drag released outside still belongs to the lookup, even when AppKit
+        // reports a double click. It must not schedule the passive selection affordance.
+        rig.panel.containsInteraction = false
+        rig.coordinator.handlePointerEvent(type: .leftMouseUp, at: CGPoint(x: 500, y: 500), clickCount: 2)
+        try await Task.sleep(for: .milliseconds(220))
+        #expect(rig.panel.isVisible && rig.reader.calls == captures)
+        rig.coordinator.handlePointerEvent(type: .leftMouseDown, at: CGPoint(x: 500, y: 500), clickCount: 1)
+        #expect(!rig.panel.isVisible && !rig.coordinator.isActive)
+    }
+
     @Test(arguments: LearningReadingSource.allCases)
     func readingStreamsPrefixesButOnlyCompletedTextStartsAnalysis(_ source: LearningReadingSource) async {
         let rig = Rig()
@@ -548,6 +576,8 @@ struct LearningReadingCoordinatorTests {
     }
     private final class Panel: LearningSentencePresenting {
         var isVisible = false
+        var containsInteraction = false
+        func containsGlobalInteraction(at point: CGPoint) -> Bool { containsInteraction }
         var last: LearningSentencePresentation?
         var replacement: (() -> Void)?
         func hide() { isVisible = false }

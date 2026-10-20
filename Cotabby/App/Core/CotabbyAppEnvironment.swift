@@ -17,6 +17,8 @@ final class CotabbyAppEnvironment {
     let learningModels: LearningModelCollection
     /// One shared playback owner serves the settings voice preview and every learning card.
     let speechController: LearningSpeechController
+    let vocabularyStore: VocabularyStore
+    let vocabularyWindow: VocabularyWindowController
     let modelDownloadManager: ModelDownloadManager
     let focusModel: FocusTrackingModel
     let inputMonitor: InputMonitor
@@ -242,6 +244,10 @@ final class CotabbyAppEnvironment {
         // Typing history owns its own encrypted archive. Inside the XCTest host it starts empty and
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
         let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
+            .appendingPathComponent("Vocabulary/notebook.json")
+        let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
+        let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is
         // read per request so a power-source switch to the endpoint stops shortcuts immediately.
@@ -388,18 +394,20 @@ final class CotabbyAppEnvironment {
         // One offline resource/index owner serves both asynchronous unit recognition and lookup.
         // Panels borrow it; none creates a second dictionary or recognition worker in a view.
         let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
+        let writingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
+            dictionaryProvider: learningLexicon, speech: speechController, vocabulary: vocabularyStore)
+        let readingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
+            dictionaryProvider: learningLexicon, speech: speechController, vocabulary: vocabularyStore)
         let sentencePreview = LearningSentencePreviewCoordinator(
             service: learningService, reader: learningReader, focus: focusModel,
-            panel: LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-                                         dictionaryProvider: learningLexicon, speech: speechController),
+            panel: writingPanel,
             unitRecognizer: learningLexicon,
             availability: learningAvailability
         )
         let reading = LearningReadingCoordinator(
             service: learningService, reader: LearningReadingSourceReader(metrics: performanceMetricsStore,
                 trackingEnabled: { suggestionSettings.isPerformanceTrackingEnabled }),
-            panel: LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-                                         dictionaryProvider: learningLexicon, speech: speechController),
+            panel: readingPanel,
             recognizer: learningLexicon,
             availability: {
                 permissionManager.inputMonitoringGranted
@@ -417,6 +425,20 @@ final class CotabbyAppEnvironment {
         // One tap slot arbitrates both origins. A denied reading command returns .notHandled,
         // allowing the host (and the existing autocomplete arbitration) to receive the event.
         inputMonitor.learningKeyDecider = { [weak sentencePreview, weak reading] event in
+            let mask = ShortcutModifierMask(eventFlags: event.flags)
+            if let command = suggestionSettings.vocabularyShortcuts.command(key: event.keyCode, modifiers: mask),
+               suggestionSettings.vocabularyShortcutConflict(command, key: event.keyCode, modifiers: mask,
+                bundle: NSWorkspace.shared.frontmostApplication?.bundleIdentifier) == nil {
+                let capture = readingPanel.favoriteCapture ?? writingPanel.favoriteCapture
+                if command == .open || capture != nil || readingPanel.isVisible || writingPanel.isVisible {
+                    if !event.isAutorepeat {
+                        Task { @MainActor in
+                            if command == .open { vocabularyWindow.show() } else if let capture { await vocabularyStore.save(capture) }
+                        }
+                    }
+                    return .consume
+                }
+            }
             if let decision = reading?.decide(event), decision != .notHandled { return decision }
             return sentencePreview?.decide(event) ?? .notHandled
         }
@@ -434,6 +456,8 @@ final class CotabbyAppEnvironment {
         self.runtimeModel = runtimeModel
         self.learningModels = learningModels
         self.speechController = speechController
+        self.vocabularyStore = vocabularyStore
+        self.vocabularyWindow = vocabularyWindow
         self.modelDownloadManager = modelDownloadManager
         self.focusModel = focusModel
         self.inputMonitor = inputMonitor

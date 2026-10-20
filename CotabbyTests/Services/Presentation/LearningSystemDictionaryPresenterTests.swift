@@ -7,6 +7,48 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct LearningSystemDictionaryPresenterTests {
+    @Test(arguments: [false, true])
+    func vocabularyControlLivesInsideTheNativePopupWithoutTakingFocus(flipped: Bool) async throws {
+        let parent = window()
+        defer { parent.close() }
+        let button = button("posted", in: parent)
+        let definition = NSPanel(contentRect: CGRect(x: 200, y: 250, width: 350, height: 200),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        definition.isReleasedWhenClosed = false
+        definition.contentView = DictionaryContentFixture(flipped: flipped)
+        defer { definition.close() }
+        let presenter = LearningSystemDictionaryPresenter { view, _, _ in
+            view.window?.addChildWindow(definition, ordered: .above)
+            definition.orderFrontRegardless()
+        }
+        defer { presenter.dismiss() }
+        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let capture = VocabularyCapture(expression: "posted", dictionaryForm: "post", language: .english, kind: .word)
+        presenter.show("posted", from: button, vocabulary: store, capture: capture)
+        for _ in 0..<5 { await Task.yield() }
+        let content = try #require(definition.contentView)
+        let accessory = try #require(content.subviews.first { $0.identifier == LearningSystemDictionaryPresenter.favoriteViewIdentifier })
+        #expect(accessory.window === definition, "A separate accessory window is an outside click to the system dictionary")
+        #expect(!accessory.isHiddenOrHasHiddenAncestor && !definition.canBecomeKey)
+        #expect(definition.childWindows?.isEmpty != false)
+        #expect(presenter.owns(accessory.window))
+        #expect(content.bounds.contains(accessory.frame))
+        #expect(presenter.vocabularyCapture == capture)
+        let center = accessory.convert(NSPoint(x: accessory.bounds.midX, y: accessory.bounds.midY), to: content)
+        #expect(content.hitTest(center)?.window === definition)
+        let originalRight = content.bounds.maxX - accessory.frame.maxX
+        let originalTop = flipped ? accessory.frame.minY - content.bounds.minY : content.bounds.maxY - accessory.frame.maxY
+        definition.setContentSize(CGSize(width: 420, height: 260))
+        #expect(content.bounds.maxX - accessory.frame.maxX == originalRight)
+        let resizedTop = flipped ? accessory.frame.minY - content.bounds.minY : content.bounds.maxY - accessory.frame.maxY
+        #expect(resizedTop == originalTop)
+        await store.save(capture)
+        #expect(definition.isVisible && presenter.vocabularyCapture == capture)
+        presenter.dismiss()
+        #expect(accessory.superview == nil)
+        #expect(presenter.vocabularyCapture == nil)
+    }
+
     @Test
     func inlineTextAnchorsUseTheSameNativePopupAndDismissalLifetime() throws {
         let parent = window()
@@ -184,4 +226,16 @@ struct LearningSystemDictionaryPresenterTests {
         popup.isReleasedWhenClosed = false
         return popup
     }
+}
+
+/// Native popover hosts may use either coordinate orientation. The shared corner placement must
+/// stay within the same content view when AppKit resizes it, without inspecting system subviews.
+private final class DictionaryContentFixture: NSView {
+    let flippedCoordinates: Bool
+    init(flipped: Bool) {
+        flippedCoordinates = flipped
+        super.init(frame: CGRect(x: 0, y: 0, width: 350, height: 200))
+    }
+    required init?(coder: NSCoder) { nil }
+    override var isFlipped: Bool { flippedCoordinates }
 }

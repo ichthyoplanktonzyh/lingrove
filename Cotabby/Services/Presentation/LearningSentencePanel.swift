@@ -12,6 +12,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
     private let detailPanel: LearningDetailPanel
     private let sentenceDictionary: LearningSystemDictionaryPresenter
     private let speech: LearningSpeechController?
+    private let vocabulary: VocabularyStore?
+    private let windowAtPoint: (CGPoint) -> Int
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningSentenceCard>?
     private(set) var isVisible = false
@@ -32,12 +34,15 @@ final class LearningSentencePanel: LearningSentencePresenting {
     init(reservedFramePublisher: AnyPublisher<CGRect?, Never>? = nil,
          dictionary: LearningSystemDictionaryPresenter? = nil,
          dictionaryProvider: (any LearningDictionaryProviding)? = nil,
-         speech: LearningSpeechController? = nil) {
+         speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil,
+         windowAtPoint: @escaping (CGPoint) -> Int = { NSWindow.windowNumber(at: $0, belowWindowWithWindowNumber: 0) }) {
         // Default arguments are evaluated by the caller, outside this actor-isolated body.
         // Construct the AppKit collaborator here so its initialization always stays on MainActor.
         sentenceDictionary = dictionary ?? LearningSystemDictionaryPresenter()
         self.speech = speech
-        detailPanel = LearningDetailPanel(provider: dictionaryProvider, speech: speech)
+        self.vocabulary = vocabulary
+        self.windowAtPoint = windowAtPoint
+        detailPanel = LearningDetailPanel(provider: dictionaryProvider, speech: speech, vocabulary: vocabulary)
         reservationSubscription = reservedFramePublisher?.removeDuplicates().sink { [weak self] frame in
             guard let self else { return }
             self.reservedFrame = frame
@@ -47,6 +52,54 @@ final class LearningSentencePanel: LearningSentencePresenting {
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
     var detailState: LearningDetailState { detailPanel.state }
+
+    /// SwiftUI popovers are separate child windows. Treat their whole ancestor chain as part
+    /// of the card: dismissing on mouse-down destroys the popover before its button's mouse-up
+    /// can open the notebook or remove a saved usage.
+    func owns(_ window: NSWindow?) -> Bool {
+        var ancestor = window
+        while let current = ancestor {
+            if current === panel { return true }
+            ancestor = current.parent
+        }
+        return detailPanel.owns(window) || sentenceDictionary.owns(window)
+    }
+
+    /// The event adapter passes only a window identity, so the dismissal boundary can be tested
+    /// without synthesizing global input or changing the frontmost application.
+    func dismissForOutsideClick(in window: NSWindow?) {
+        sentenceDictionary.recordInteraction(kind: "local-mouse-down", window: window)
+        detailPanel.recordDictionaryInteraction(kind: "local-mouse-down", window: window)
+        guard !owns(window) else { return }
+        dismissAction?()
+    }
+
+    func containsGlobalInteraction(at point: CGPoint) -> Bool {
+        guard isVisible else { return false }
+        let hit = windowAtPoint(point)
+        let inside = LearningWindowInteraction.contains(point,
+            roots: [panel] + detailPanel.interactionWindows + sentenceDictionary.interactionWindows,
+            hitWindowNumber: hit)
+        sentenceDictionary.recordInteraction(kind: "global-hit", window: nil, hitWindowNumber: hit)
+        detailPanel.recordDictionaryInteraction(kind: "global-hit", window: nil, hitWindowNumber: hit)
+        return inside
+    }
+
+    func dismissForGlobalClick(at point: CGPoint) {
+        let internalClick = containsGlobalInteraction(at: point)
+        let kind = internalClick ? "global-mouse-down.internal" : "global-mouse-down.external"
+        sentenceDictionary.recordInteraction(kind: kind, window: nil)
+        detailPanel.recordDictionaryInteraction(kind: kind, window: nil)
+        guard !internalClick else { return }
+        dismissAction?()
+    }
+
+    var favoriteCapture: VocabularyCapture? {
+        guard isVisible else { return nil }
+        if let capture = sentenceDictionary.vocabularyCapture { return capture }
+        if detailPanel.isVisible { return detailPanel.favoriteCapture }
+        return currentPresentation.flatMap { VocabularyCaptureFactory.preview($0) }
+    }
 
     /// Esc closes native lookup, then the correspondence detail, then the sentence pair. Generated content
     /// survives the first two steps, and the system receives no synthetic keyboard events.
@@ -62,7 +115,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
     func hide() {
         if let documentID = currentPresentation?.id { speech?.stop(ownerID: documentID) }
         isVisible = false
-        sentenceDictionary.dismiss()
+        sentenceDictionary.dismiss(reason: "preview-hidden")
         detailPanel.hide()
         panel?.orderOut(nil)
         panel?.contentView = nil
@@ -97,7 +150,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
         if currentPresentation?.id != presentation.id || presentation.isStale ||
             currentPresentation?.translation != presentation.translation ||
             currentPresentation?.isExpanded != presentation.isExpanded {
-            sentenceDictionary.dismiss()
+            sentenceDictionary.dismiss(reason: "preview-updated")
         }
         if detailPanel.dictionarySession.documentID != nil,
            detailPanel.dictionarySession.documentID != presentation.id || presentation.isStale ||
@@ -128,6 +181,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
                 self?.inspectUnit(anchor, documentID: presentation.id, view: view)
             },
             speech: speech,
+            vocabulary: vocabulary,
             sizeChanged: { [weak self] size in
                 self?.scheduleLayout(size: size, revision: revision)
             }
@@ -177,7 +231,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
             // Native presentation preserves pronunciation, word classes, senses and examples.
             // A single word never opens our expression card or requests flattened system text.
             detailPanel.hide(preservingCorrespondence: true)
-            sentenceDictionary.show(anchor.unit.query, from: view, textBounds: anchor.bounds, font: anchor.font)
+            sentenceDictionary.show(anchor.unit.query, from: view, textBounds: anchor.bounds, font: anchor.font,
+                vocabulary: vocabulary, capture: VocabularyCaptureFactory.unit(anchor.unit, in: current))
             return
         }
         sentenceDictionary.dismiss()
@@ -189,7 +244,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
             correspondence: detailPanel.state.chunk,
             placement: .init(parent: parent, caret: current.caret, reserved: reservedFrame,
                 screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchorFrame.maxY + 12),
-            speechContext: current.translation)
+            speechContext: current.translation, vocabularyCapture: VocabularyCaptureFactory.unit(anchor.unit, in: current))
     }
 
     private func detail(_ chunk: LearningMeaningChunk, presentation: LearningSentencePresentation) -> LearningChunkDetail {
@@ -205,7 +260,9 @@ final class LearningSentencePanel: LearningSentencePresenting {
         guard let current = currentPresentation, current.id == documentID, current.isExpanded, !current.isStale,
               button.window === panel,
               LearningChunkDisplay.words(in: current.translation, language: current.targetLanguage).contains(word) else { return }
-        sentenceDictionary.show(word, from: button)
+        let words = LearningUnitPolicy.words(in: current.translation, language: current.targetLanguage).filter { $0.text == word }
+        let capture = words.count == 1 ? VocabularyCaptureFactory.unit(.word(words[0]), in: current) : nil
+        sentenceDictionary.show(word, from: button, vocabulary: vocabulary, capture: capture)
     }
 
     private func inspectInlineWord(_ anchor: LearningDictionaryTextAnchor, documentID: UUID, view: NSTextView) {
@@ -213,7 +270,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
               !current.isExpanded, view.window === panel, view.string == current.translation,
               LearningDictionaryWordPolicy.word(atUTF16Location: anchor.word.range.location, in: current.translation,
                   language: current.targetLanguage.naturalLanguage) == anchor.word else { return }
-        sentenceDictionary.show(anchor.word.text, from: view, textBounds: anchor.bounds, font: anchor.font)
+        sentenceDictionary.show(anchor.word.text, from: view, textBounds: anchor.bounds, font: anchor.font,
+            vocabulary: vocabulary, capture: VocabularyCaptureFactory.unit(.word(anchor.word), in: current))
     }
 
     /// The click carries only a validated meaning ID; the current document supplies its quotes
@@ -229,9 +287,14 @@ final class LearningSentencePanel: LearningSentencePresenting {
             words: LearningChunkDisplay.words(in: target, language: presentation.targetLanguage))
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
-        detailPanel.show(detail, placement: LearningDetailPlacement(parent: parent, caret: presentation.caret, reserved: reservedFrame,
+        let unit = LearningUnit(id: identifier, surface: target, query: target, kind: .expression,
+            ranges: chunk.targetRanges, words: LearningUnitPolicy.words(in: presentation.translation, language: presentation.targetLanguage)
+                .filter { word in chunk.targetRanges.contains { NSIntersectionRange($0, word.range).length == word.range.length } })
+        detailPanel.show(unit, documentID: presentation.id, language: presentation.targetLanguage, correspondence: detail,
+            placement: LearningDetailPlacement(parent: parent, caret: presentation.caret, reserved: reservedFrame,
             screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
-            anchorY: parent.contains(mouse) ? mouse.y + 18 : parent.maxY), speechContext: presentation.translation)
+            anchorY: parent.contains(mouse) ? mouse.y + 18 : parent.maxY), speechContext: presentation.translation,
+            vocabularyCapture: VocabularyCaptureFactory.unit(unit, in: presentation))
     }
 
     /// Preferences arrive during SwiftUI layout/commit. Changing an AppKit window there can start
@@ -298,14 +361,14 @@ final class LearningSentencePanel: LearningSentencePresenting {
     private func installClickMonitors() {
         guard !clickMonitorsInstalled else { return }
         clickMonitorsInstalled = true
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated { self?.dismissAction?() }
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            MainActor.assumeIsolated {
+                self?.dismissForGlobalClick(at: event.locationInWindow)
+            }
         }
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             MainActor.assumeIsolated {
-                guard let self, event.window !== self.panel, !self.detailPanel.owns(event.window),
-                      !self.sentenceDictionary.owns(event.window) else { return }
-                self.dismissAction?()
+                self?.dismissForOutsideClick(in: event.window)
             }
             return event
         }

@@ -77,6 +77,7 @@ final class LearningSentencePreviewCoordinator {
         /// An explicit shortcut may keep a preview in a search field; a passive preview cannot.
         var explicitlyRequested = false
         var replacementBlocked = false
+        var vocabularyContext: VocabularyExample?
     }
 
     /// A previous result carries its source evidence, so editing earlier text cannot relabel an
@@ -242,7 +243,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func changed(_ context: FocusedInputSnapshot?) {
-        guard !isReadingActive() else { clear(); return }
+        guard !isReadingActive() else { clear(reason: "reading-session-active"); return }
         let old = previousContext
         previousContext = context
         // Our confirmed transaction may select the saved sentence before replacing it. Its AX
@@ -255,10 +256,10 @@ final class LearningSentencePreviewCoordinator {
             explicitlyRequested: document?.explicitlyRequested == true) else {
             // Capability can change on a reused AX node without changing its text or identity.
             // Retire passive work before the content-only early returns below can preserve it.
-            clear()
+            clear(reason: "focus-capability-changed")
             return
         }
-        guard old?.sessionIdentity == context?.sessionIdentity else { clear(); return }
+        guard old?.sessionIdentity == context?.sessionIdentity else { clear(reason: "focus-session-changed"); return }
         guard let old, let context else { return }
         let changed = old.contentSignature != context.contentSignature || old.documentSelection != context.documentSelection ||
             old.hasHostMarkedText != context.hasHostMarkedText
@@ -359,7 +360,9 @@ final class LearningSentencePreviewCoordinator {
         // unfinished sentence replaces its preview, even when a pause previously showed a result.
         let prior = precedingSentence(from: old, capture: capture)
         document = Document(id: identifier, traceID: RequestID.generate(), capture: capture, sourceLanguage: language,
-            targetLanguage: settings.targetLanguage, previousSentence: prior)
+            targetLanguage: settings.targetLanguage, previousSentence: prior,
+            vocabularyContext: VocabularyPolicy.context(value: capture.value, range: capture.range, language: language,
+                app: capture.context.bundleIdentifier))
         document?.explicitlyRequested = expanded
         self.expanded = expanded
         let input = LearningTranslationInput.captured(
@@ -584,7 +587,9 @@ final class LearningSentencePreviewCoordinator {
                     (document.capture.replacementUnavailableReason ?? LearningInputMethodPolicy.unavailableMarkedRangeReason),
                 replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id,
                 isError: document.translation.isEmpty && !document.message.isEmpty,
-                isTranslating: !document.translationIsComplete && document.generating),
+                isTranslating: !document.translationIsComplete && document.generating,
+                vocabularyContext: document.vocabularyContext,
+                vocabularyAppBundleIdentifier: document.capture.context.bundleIdentifier),
             expand: { [weak self] in self?.expandOrRequest() }, dismiss: { [weak self] in self?.dismiss() },
             replace: { [weak self] in self?.replacePreview(document.id, confirmedBy: "button") })
         if panel.isVisible, !document.isStale, !document.translation.isEmpty {
@@ -673,5 +678,11 @@ final class LearningSentencePreviewCoordinator {
         analysisID = UUID(); analysisWork?.cancel(); analysisWork = nil
         unitID = UUID(); unitWork?.cancel(); unitWork = nil
     }
-    private func clear() { cancelWork(); document = nil; expanded = false; dismissedSource = nil; cache.removeAll(); analysisCache.removeAll(); unitCache.removeAll(); panel.hide() }
+    private func clear(reason: String = "configuration-or-owner") {
+        if document != nil || panel.isVisible {
+            CotabbyLogger.learning.debug("Writing preview retired", metadata: ["stage": .string(reason)])
+        }
+        cancelWork(); document = nil; expanded = false; dismissedSource = nil
+        cache.removeAll(); analysisCache.removeAll(); unitCache.removeAll(); panel.hide()
+    }
 }

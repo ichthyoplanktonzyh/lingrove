@@ -10,6 +10,8 @@ struct LearningDictionaryCard: View {
     let sizeChanged: (CGSize) -> Void
     let lookup: (String, NSButton) -> Void
     var speech: LearningSpeechController?
+    var vocabulary: VocabularyStore?
+    var lookupWord: ((LearningDictionaryWord, NSButton) -> Void)?
     @State private var definitionHeight: CGFloat = 60
 
     var body: some View {
@@ -21,6 +23,9 @@ struct LearningDictionaryCard: View {
                         comment: "Header for the dictionary page for a complete expression."))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
+                if let vocabulary, let capture = session.favoriteCapture, session.selectedWord == nil {
+                    VocabularyFavoriteButton(store: vocabulary, capture: capture)
+                }
                 if let speech, let request = speechRequest {
                     LearningSpeechButton(speech: speech, request: request,
                         playLabel: speechLabels.play, stopLabel: speechLabels.stop)
@@ -65,7 +70,9 @@ struct LearningDictionaryCard: View {
                     .font(.caption).foregroundStyle(.secondary)
                 LearningTextFlowLayout(spacing: 5, rowSpacing: 5, rightToLeft: session.contentLanguage == .arabic) {
                     ForEach(Array(unit.words.enumerated()), id: \.offset) { _, word in
-                        LearningDictionaryButton(word: word.text, lookup: lookup)
+                        LearningDictionaryButton(word: word.text) { term, button in
+                            if let lookupWord { lookupWord(word, button) } else { lookup(term, button) }
+                        }
                     }
                 }
                 // Dictionary terms keep their stored order; only their positions follow the

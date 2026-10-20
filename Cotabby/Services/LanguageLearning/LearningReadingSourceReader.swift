@@ -26,6 +26,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         let text: String
         let anchor: CGRect
         let hint: LearningLanguage?
+        let context: VocabularyExample?
+    }
+    private struct RecognizedText {
+        let text: String
+        let hint: LearningLanguage?
+        let context: VocabularyExample?
     }
     private var pointerEvidence: PointerEvidence?
     var isSelectingRegion: Bool { picker.isSelecting }
@@ -59,10 +65,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         var anchor = CGRect(origin: point, size: CGSize(width: 1, height: 18))
         let text: String
         var languageHint: LearningLanguage?
+        var vocabularyContext: VocabularyExample?
         if source == .pointer, AXIsProcessTrusted(), let hit = try pointedText(at: point, pid: app.processIdentifier) {
             text = hit.text
             anchor = hit.anchor
             languageHint = hit.hint
+            vocabularyContext = hit.context
         } else {
             guard CGPreflightScreenCaptureAccess() else {
                 throw LearningFailure.message(
@@ -89,6 +97,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 region: region, pointer: source == .pointer ? point : nil, trace: trace)
             text = recognized.text
             languageHint = recognized.hint
+            vocabularyContext = recognized.context
             anchor = source == .screenshot ? region : anchor
         }
         try Task.checkCancellation()
@@ -98,7 +107,8 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         }
         let result = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
-            bundleIdentifier: bundle, anchor: anchor, source: source, languageHint: languageHint)
+            bundleIdentifier: bundle, anchor: anchor, source: source, languageHint: languageHint,
+            vocabularyContext: vocabularyContext)
         receipt = result
         window = originWindow
         return result
@@ -190,7 +200,11 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                                     anchorFrame: CGRect(x: point.x - 2, y: point.y - 2, width: 4, height: 4))
                                 if anchor.insetBy(dx: -2, dy: -2).contains(point) {
                                     pointerEvidence = PointerEvidence(element: element, range: target, text: word.text)
-                                    return PointedText(text: word.text, anchor: anchor, hint: LearningLanguage.detect(in: text))
+                                    let language = LearningLanguage.detect(in: text)
+                                    let context = VocabularyPolicy.example(text: text, ranges: [word.range], language: language ?? .english,
+                                        startsAtBoundary: start == 0, endsAtBoundary: start + range.length == count,
+                                        app: NSRunningApplication(processIdentifier: pid)?.bundleIdentifier)
+                                    return PointedText(text: word.text, anchor: anchor, hint: language, context: context)
                                 }
                             }
                         }
@@ -203,9 +217,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     }
     // swiftlint:enable cyclomatic_complexity
 
-    private func recognize(region: CGRect, pointer: CGPoint?, trace: String) async throws -> (
-        text: String, hint: LearningLanguage?
-    ) {
+    private func recognize(region: CGRect, pointer: CGPoint?, trace: String) async throws -> RecognizedText {
         let started = ProcessInfo.processInfo.systemUptime
         var captureMs = 0
         var outcome = ModelRequestOutcome.failed
@@ -241,6 +253,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             let extraction = try await extractor.extractText(from: image)
             try Task.checkCancellation()
             let text: String
+            var context: VocabularyExample?
             if let pointer {
                 let unit = CGPoint(
                     x: (pointer.x - region.minX) / region.width, y: (pointer.y - region.minY) / region.height)
@@ -251,6 +264,13 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                         String(localized: "No word was found under the pointer.", table: "Learning"))
                 }
                 text = word.text
+                if let line = extraction.lines.first(where: { $0.boundingBox?.contains(unit) == true }),
+                   let range = line.text.range(of: word.text),
+                   line.text.range(of: word.text, range: range.upperBound..<line.text.endIndex) == nil {
+                    context = VocabularyPolicy.example(text: line.text, ranges: [NSRange(range, in: line.text)],
+                        language: LearningLanguage.detect(in: line.text) ?? .english,
+                        startsAtBoundary: false, endsAtBoundary: false)
+                }
             } else {
                 text = try LearningReadingTextPolicy.text(from: extraction.lines)
             }
@@ -262,7 +282,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                     LearningLanguage.detect(in: $0.text)
                 }
             }
-            return (text, hint)
+            return RecognizedText(text: text, hint: hint, context: context)
         } catch {
             if Task.isCancelled || error is CancellationError {
                 outcome = .cancelled
