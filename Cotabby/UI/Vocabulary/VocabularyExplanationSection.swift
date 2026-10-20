@@ -27,7 +27,8 @@ struct VocabularyExplanationSection: View {
             HStack {
                 Text(String(localized: "AI explanation", table: "Learning")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
-                LearningExplanationButton(session: session)
+                LearningExplanationButton(session: session,
+                    configure: { (session.service as? LearningExplanationService)?.configure?() })
             }
             if entry.examples.count + (entry.isSavedWithoutContext ? 1 : 0) > 1 {
                 Picker(String(localized: "Example sentence", table: "Vocabulary"), selection: Binding(

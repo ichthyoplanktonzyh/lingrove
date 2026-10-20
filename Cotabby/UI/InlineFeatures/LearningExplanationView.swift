@@ -63,27 +63,61 @@ struct LearningExplanationView: View {
     }
 }
 
-/// A compact trigger observes only explanation state, so streamed generation status cannot
-/// invalidate the sentence's TextKit layout or its caret geometry.
+/// A card lends this control its existing session. Deriving feedback from that session keeps
+/// restored results, cancellation and target changes in sync without another UI state machine.
+/// Every phase uses the same hit area; the progress ring remains a button that can stop work.
 struct LearningExplanationButton: View {
     @ObservedObject var session: LearningExplanationSession
     var prepare: () -> Void = {}
     var configure: () -> Void = {}
     var body: some View {
         Button {
+            // Stopping must not invoke `prepare`: in a compact card it would expand the details
+            // even though the user only asked to cancel the request at its original location.
+            if session.isGenerating { session.cancel(); return }
             prepare()
             if session.isConfigured {
                 session.explain(refresh: session.record != nil || session.error != nil)
             } else { configure() }
         } label: {
-            Image(systemName: "sparkles")
-                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                .frame(width: 22, height: 22).contentShape(Rectangle())
+            Group {
+                if session.isGenerating {
+                    ProgressView().controlSize(.mini).tint(.blue)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                } else {
+                    Image(systemName: "sparkles").font(.caption.weight(.semibold))
+                }
+            }
+            .foregroundStyle(tint)
+            .frame(width: 22, height: 22).contentShape(Rectangle())
         }
             .buttonStyle(.plain)
-            .disabled(session.input == nil || session.isGenerating)
-            .help(String(localized: "AI explanation", table: "Learning"))
-            .accessibilityLabel(String(localized: "AI explanation", table: "Learning"))
+            .disabled(session.input == nil)
+            .help(tooltip)
+            .accessibilityLabel(actionLabel)
+            .accessibilityHint(session.error ?? "")
+    }
+
+    private var tint: Color {
+        if session.isGenerating { return .blue }
+        if !session.isConfigured { return .secondary }
+        if session.error != nil { return .orange }
+        return session.record == nil ? .secondary : .blue
+    }
+
+    private var actionLabel: String {
+        if session.isGenerating { return String(localized: "Stop generating explanation", table: "Learning") }
+        if !session.isConfigured { return String(localized: "Configure AI explanation model", table: "Learning") }
+        if session.error != nil { return String(localized: "Try again", table: "Learning") }
+        return session.record == nil ? String(localized: "AI explanation", table: "Learning")
+            : String(localized: "Regenerate explanation", table: "Learning")
+    }
+
+    private var tooltip: String {
+        if let error = session.error, session.isConfigured, !session.isGenerating {
+            return actionLabel + "\n" + error
+        }
+        return actionLabel
     }
 }
 

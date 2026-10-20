@@ -9,38 +9,79 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningExplanationCardTests {
-    @Test func generationIconCanRegenerateAndOpenConfiguration() async throws {
+    @Test(arguments: [false, true])
+    func generationIconCanStopRetryRegenerateAndOpenConfiguration(_ dark: Bool) async throws {
         let input = LearningExplanationInput(target: "know", dictionaryForm: "know", language: .english, kind: .word,
             context: "Let me know.", ranges: [.init(NSRange(location: 7, length: 4))])
         let service = CardExplainer()
         let active = LearningExplanationSession(service: service)
         active.setTarget(input)
-        var configurations = 0
-        let host = NSHostingView(rootView: LearningExplanationButton(session: active, configure: { configurations += 1 }).padding(10))
+        var configurations = 0, preparations = 0
+        let host = NSHostingView(rootView: LearningExplanationButton(session: active,
+            prepare: { preparations += 1 }, configure: { configurations += 1 }).padding(10))
+        let nativeReview = ProcessInfo.processInfo.environment["COTABBY_UI_STATUS_REVIEW"] == "1"
         let window = NSPanel(contentRect: .init(x: 100, y: 100, width: 42, height: 42),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            styleMask: nativeReview ? [.titled] : [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host
-        defer { window.close(); active.cancel() }
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        defer { active.cancel(); service.finishPending(); window.close() }
         window.orderFrontRegardless()
-        for _ in 0..<8 { host.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
-        for count in [1, 2] {
-            try clickCenter(host, in: window)
-            for _ in 0..<100 {
-                if service.refreshes.count == count, !active.isGenerating { break }
-                try await Task.sleep(for: .milliseconds(5))
-            }
-            #expect(active.record != nil && service.refreshes.count == count)
+        func settle() async throws {
             for _ in 0..<8 { host.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
         }
-        #expect(service.refreshes == [false, true])
-        service.isConfigured = false
+        try await settle()
+        let size = host.fittingSize
+        func capture(_ state: String) async throws {
+            try await settle()
+            #expect(host.fittingSize == size, "Status feedback must not move the neighboring toolbar actions")
+            if let path = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
+                let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let name = "explanation-\(state)-\(dark ? "dark" : "light").png"
+                try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path).appendingPathComponent(name))
+            }
+        }
+        try await capture("idle")
         try clickCenter(host, in: window)
-        for _ in 0..<8 { try await Task.sleep(for: .milliseconds(10)) }
-        #expect(configurations == 1 && service.refreshes.count == 2)
+        try await settle()
+        let saved = try #require(active.record)
+        try await capture("ready")
+        service.delays = true
+        try clickCenter(host, in: window)
+        try await capture("generating")
+        #expect(active.isGenerating && service.pending != nil && active.record == saved)
+        if nativeReview, !dark {
+            window.title = "Lingrove AI status acceptance"
+            try await Task.sleep(for: .seconds(45))
+        }
+        try clickCenter(host, in: window, offset: 10)
+        #expect(!active.isGenerating && active.record == saved && preparations == 2,
+            "The progress ring must stop work without expanding the card")
+        service.finishPending()
+        try await settle()
+        #expect(active.record == saved, "A cancelled reply must not replace the previous explanation")
+        try clickCenter(host, in: window)
+        try await settle()
+        service.finishPending(error: NSError(domain: "fixture", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Explanation failed."]))
+        try await capture("failed")
+        #expect(active.error == "Explanation failed." && active.record == saved && !active.isGenerating)
+        try clickCenter(host, in: window)
+        try await settle()
+        #expect(active.isGenerating && active.error == nil && active.record == saved)
+        service.finishPending()
+        try await settle()
+        #expect(active.record != nil && active.record != saved && active.error == nil && !active.isGenerating)
+        #expect(service.refreshes == [false, true, true, true])
+        service.isConfigured = false
+        try await capture("unconfigured")
+        try clickCenter(host, in: window)
+        try await settle()
+        #expect(configurations == 1 && service.refreshes.count == 4)
     }
 
-    private func clickCenter(_ host: NSView, in window: NSWindow) throws {
-        let point = host.convert(CGPoint(x: host.bounds.midX, y: host.bounds.midY), to: nil)
+    private func clickCenter(_ host: NSView, in window: NSWindow, offset: CGFloat = 0) throws {
+        let point = host.convert(CGPoint(x: host.bounds.midX + offset, y: host.bounds.midY), to: nil)
         let timestamp = ProcessInfo.processInfo.systemUptime
         let down = try #require(NSEvent.mouseEvent(with: .leftMouseDown, location: point, modifierFlags: [],
             timestamp: timestamp, windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
@@ -89,13 +130,25 @@ struct LearningExplanationCardTests {
         }
     }
     private final class CardExplainer: LearningExplanationGenerating {
-        var changes: AnyPublisher<Void, Never> { Empty().eraseToAnyPublisher() }
+        let changed = PassthroughSubject<Void, Never>()
+        var changes: AnyPublisher<Void, Never> { changed.eraseToAnyPublisher() }
         var language: LearningLanguage { .english }
-        var isConfigured = true
+        var isConfigured = true { didSet { changed.send() } }
         var refreshes: [Bool] = []
+        var delays = false
+        var pending: (LearningExplanationInput, CheckedContinuation<LearningExplanationRecord, any Error>)?
         func generate(_ input: LearningExplanationInput, requestID: String, refresh: Bool) async throws -> LearningExplanationRecord {
             refreshes.append(refresh)
-            return .init(id: UUID(), input: input, language: language,
+            if delays { return try await withCheckedThrowingContinuation { pending = (input, $0) } }
+            return record(for: input)
+        }
+        func finishPending(error: (any Error)? = nil) {
+            guard let (input, continuation) = pending else { return }
+            pending = nil
+            if let error { continuation.resume(throwing: error) } else { continuation.resume(returning: record(for: input)) }
+        }
+        private func record(for input: LearningExplanationInput) -> LearningExplanationRecord {
+            .init(id: UUID(), input: input, language: language,
                 result: .init(meaning: "Be informed", explanation: "A contextual explanation."), model: "fixture", createdAt: Date())
         }
         func recordDisplay(requestID: String) {}

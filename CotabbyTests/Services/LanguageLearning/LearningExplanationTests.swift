@@ -42,6 +42,30 @@ struct LearningExplanationSessionTests {
         await Task.yield()
         #expect(active.record == nil && !active.isGenerating)
     }
+
+    @Test func regenerationKeepsThePreviousResultThroughStopAndFailureButResetsForANewTarget() async {
+        let fake = DelayedExplanation(), active = LearningExplanationSession(service: fake)
+        let target = input("Sentence.")
+        let saved = LearningExplanationRecord(id: UUID(), input: target, language: .chinese,
+            result: .init(meaning: "已有意思", explanation: "已有说明"), model: "fixture", createdAt: Date())
+        active.setTarget(target, saved: saved)
+        active.explain(refresh: true)
+        await wait { fake.pending.count == 1 }
+        #expect(active.isGenerating && active.record == saved)
+        active.cancel()
+        #expect(!active.isGenerating && active.record == saved && active.error == nil)
+        fake.complete(0)
+        await Task.yield()
+        #expect(active.record == saved)
+        active.explain(refresh: true)
+        await wait { fake.pending.count == 2 }
+        fake.pending[1].1.resume(throwing: NSError(domain: "fixture", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Explanation failed."]))
+        await wait { active.error != nil }
+        #expect(!active.isGenerating && active.record == saved && active.error == "Explanation failed.")
+        active.setTarget(input("A different sentence."))
+        #expect(!active.isGenerating && active.record == nil && active.error == nil)
+    }
     private func wait(_ predicate: () -> Bool) async {
         for _ in 0..<500 { if predicate() { return }; try? await Task.sleep(for: .milliseconds(2)) }
         #expect(predicate())
@@ -116,9 +140,11 @@ struct LearningExplanationServiceTests {
         func claim(_ operation: UUID) {}
         func invalidate() -> UUID { UUID() }
         func prepare(modelURL: URL, operationID: UUID, trace: LearningRequestContext?) throws {}
+        // The fixture must implement the native executor's full generation signature.
+        // swiftlint:disable:next function_parameter_count
         func generate(modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,
-            operationID: UUID, trace: LearningRequestContext?, onLoad: (@Sendable (Int) -> Void)?,
-            onDelta: @Sendable (String) -> Void) throws -> String {
+                      operationID: UUID, trace: LearningRequestContext?, onLoad: (@Sendable (Int) -> Void)?,
+                      onDelta: @Sendable (String) -> Void) throws -> String {
             lock.withLock { calls += 1; budget = maxTokens }
             let text = "{\"meaning\":\"告知\",\"explanation\":\"let someone know 表示让某人知道。\"}"
             onLoad?(0); onDelta(text); return text
