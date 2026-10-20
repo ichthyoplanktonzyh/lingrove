@@ -154,35 +154,30 @@ struct LearningSentenceCard: View {
 
     @ViewBuilder
     private var replacementAction: some View {
-        if presentation.canReplace, let replace {
-            replacementButton(action: replace)
-        } else if presentation.isCommitting {
-            ProgressView().controlSize(.small)
-        } else if !presentation.translation.isEmpty, !presentation.isTranslating, !presentation.isStale,
-                  let reason = presentation.replacementUnavailableReason {
-            replacementButton(action: {}).disabled(true).help(reason)
+        if presentation.isCommitting {
+            ProgressView().controlSize(.small).frame(width: 22, height: 22)
+        } else {
+            iconAction(String(localized: "Replace", table: "Learning"), symbol: "arrow.left.arrow.right",
+                color: isReplacementEnabled ? .blue : .secondary, action: { if isReplacementEnabled { replace?() } })
+                .disabled(!isReplacementEnabled)
         }
     }
 
-    /// Writing back is the primary action, so keep its short verb rather than an ambiguous
-    /// symbol. The tooltip names the captured scope; shortcuts remain in their settings pane.
-    private func replacementButton(action: @escaping () -> Void) -> some View {
-        Button(String(localized: "Replace", table: "Learning"), action: action)
-            .buttonStyle(.bordered).controlSize(.small).tint(.accentColor)
-            .font(.caption.weight(.medium)).fixedSize()
-            .help(presentation.targetIsSelection
-                ? String(localized: "Replace selection", table: "Learning")
-                : String(localized: "Replace sentence", table: "Learning"))
+    /// A stable disabled icon keeps the action row still while text streams. Availability also
+    /// guards stale/incomplete results here, before the coordinator's exact-range write checks.
+    private var isReplacementEnabled: Bool {
+        presentation.canReplace && replace != nil && !presentation.isTranslating && !presentation.isStale
     }
 
     /// Disclosure and dismissal use familiar symbols with a full click target. Labels stay
     /// available to VoiceOver and hover help without competing with the translation for space.
-    private func iconAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+    private func iconAction(_ title: String, symbol: String, color: Color = .secondary,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: symbol).labelStyle(.iconOnly)
-                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                .font(.caption.weight(.semibold)).foregroundStyle(color)
                 .frame(width: 22, height: 22).contentShape(Rectangle())
-        }.buttonStyle(.plain).help(title)
+        }.buttonStyle(.plain).help(title).accessibilityLabel(title)
     }
 
     private var details: some View {

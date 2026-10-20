@@ -97,20 +97,21 @@ struct LearningSentenceCardTests {
     }
 
     @Test
-    func streamingCardPaintsItsPrefixWithoutOfferingReplacementOrLoadingCopy() async throws {
+    func streamingCardPaintsItsPrefixAndDisablesReplacementUntilComplete() async throws {
         let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 320, height: 100),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .aqua)
         defer { window.close() }
         let state = LearningDetailState(), id = UUID()
+        var replacements = 0
         func card(_ text: String, complete: Bool) -> LearningSentenceCard {
             let presentation = LearningSentencePresentation(id: id, source: "我们期待见到你。", translation: text, chunks: [],
                 sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false,
                 isGenerating: !complete, message: "", previousTranslation: nil, shortcutLabel: "⌥T",
                 canReplace: complete, replacementShortcutLabel: "⌃⌥T", isTranslating: !complete)
             return LearningSentenceCard(presentation: presentation, detailState: state,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+                replace: { replacements += 1 }, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card("We look", complete: false))
         window.contentView = hosting
@@ -119,6 +120,10 @@ struct LearningSentenceCardTests {
             hosting.rootView = card(text, complete: complete)
             await settle(hosting, in: window)
             #expect(findTranslation(text, in: hosting)?.string == text)
+            let count = replacements
+            try clickHeaderAction(2, in: hosting, window: window)
+            await settle(hosting, in: window)
+            #expect(replacements == count + (complete ? 1 : 0))
             let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
             hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
             if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
@@ -133,7 +138,7 @@ struct LearningSentenceCardTests {
             let painted = (recognition.results?.compactMap { $0.topCandidates(1).first?.string } ?? []).joined(separator: " ")
             #expect(painted.contains(text))
             #expect(!painted.contains("Generating") && !painted.contains("正在生成"))
-            #expect((painted.contains("Replace") || painted.contains("替换")) == complete)
+            #expect(!painted.contains("Replace") && !painted.contains("替换"))
         }
     }
 
@@ -327,9 +332,10 @@ struct LearningSentenceCardTests {
 
     @Test(arguments: [false, true])
     func scopedReplacementAndBothRecoveryActionsStayVisible(_ dark: Bool) async throws {
+        let nativeReview = ProcessInfo.processInfo.environment["COTABBY_UI_NATIVE_REVIEW"] == "1"
         let window = NSPanel(
             contentRect: CGRect(x: 0, y: 0, width: 480, height: 300),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            styleMask: nativeReview ? [.titled] : [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         defer { window.close() }
@@ -341,6 +347,7 @@ struct LearningSentenceCardTests {
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let vocabulary = VocabularyStore(archive: VocabularyArchive(url: nil))
         let explanation = LearningExplanationSession()
+        var replacements = 0, expansions = 0
         func card(expanded: Bool) -> LearningSentenceCard {
             var presentation = Self.presentation(id: id, expanded: expanded, shortcutLabel: "EXPAND_SHORTCUT_SENTINEL")
             presentation.targetIsSelection = true
@@ -348,7 +355,7 @@ struct LearningSentenceCardTests {
             presentation.replacementShortcutLabel = replacementShortcutLabel
             return LearningSentenceCard(
                 presentation: presentation, detailState: state, explanation: explanation,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {},
+                replace: { replacements += 1 }, inspect: { _ in }, expand: { expansions += 1 }, dismiss: {},
                 speech: speech, vocabulary: vocabulary, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card(expanded: false))
@@ -372,14 +379,29 @@ struct LearningSentenceCardTests {
             func normalized(_ value: String) -> String { value.lowercased().filter { $0.isLetter || $0.isNumber } }
             let visible = normalized(text)
             #expect(!visible.contains(normalized(String(localized: "Target: Selection", table: "Learning"))))
-            #expect(visible.contains(normalized(String(localized: "Replace", table: "Learning"))),
-                "The primary action must fit with speech and vocabulary actions in the compact card")
+            #expect(!visible.contains(normalized(String(localized: "Replace", table: "Learning"))),
+                "The replacement action must use only its icon")
+            // Both controls must accept the same center and edge clicks within their 22pt hit
+            // boxes, not just a click on the painted SF Symbol. These are real SwiftUI gestures.
+            for offset in [-10.0, 0, 10] {
+                let previous = (replacements, expansions)
+                try clickHeaderAction(2, offset: offset, in: hosting, window: window)
+                try clickHeaderAction(1, offset: offset, in: hosting, window: window)
+                await settle(hosting, in: window)
+                #expect(replacements == previous.0 + 1 && expansions == previous.1 + 1)
+            }
             #expect(!visible.contains("shortcutsentinel"), "Keyboard shortcut hints must not occupy either card size")
             #expect(!visible.contains(normalized(String(localized: "Target expression", table: "Learning"))))
             #expect(visible.contains(normalized(LearningLanguage.english.label)))
             if expanded {
                 #expect(visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))))
                 #expect(visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))))
+            }
+            if nativeReview, !dark, !expanded {
+                // Opt-in local acceptance exposes a normal window to an external AX client.
+                // NSHostingView's in-process children omit SwiftUI's virtual accessibility tree.
+                window.title = "Lingrove preview card acceptance"
+                try await Task.sleep(for: .seconds(45))
             }
         }
     }
@@ -394,13 +416,14 @@ struct LearningSentenceCardTests {
         let state = LearningDetailState(), id = UUID()
         let reason = LearningInputMethodPolicy.unavailableMarkedRangeReason
         let replacementShortcutLabel = "⌃⌥T"
+        var replacements = 0
         func card(expanded: Bool) -> LearningSentenceCard {
             var presentation = Self.presentation(id: id, expanded: expanded)
             presentation.canReplace = false
             presentation.replacementShortcutLabel = replacementShortcutLabel
             presentation.replacementUnavailableReason = reason
             return LearningSentenceCard(presentation: presentation, detailState: state,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+                replace: { replacements += 1 }, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card(expanded: false))
         window.contentView = hosting
@@ -419,9 +442,25 @@ struct LearningSentenceCardTests {
                 .joined().lowercased().filter { $0.isLetter || $0.isNumber }
             let reasonPrefix = String(reason.lowercased().filter { $0.isLetter || $0.isNumber }.prefix(30))
             #expect(visible.contains(reasonPrefix), "The replacement reason remains visible in both card sizes.")
-            let actionPrefix = String(localized: "Replace", table: "Learning").lowercased().filter { $0.isLetter || $0.isNumber }
-            #expect(visible.contains(actionPrefix), "The Replace label remains visible in both card sizes.")
+            try clickHeaderAction(2, in: hosting, window: window)
+            await settle(hosting, in: window)
+            #expect(replacements == 0)
         }
+    }
+
+    /// Header icons share 22pt targets, an 8pt gap and 10pt outer padding. Send mouse-down and
+    /// mouse-up synchronously in gesture order, as the existing popover interaction tests do.
+    private func clickHeaderAction(_ trailingIndex: Int, offset: CGFloat = 0,
+                                   in host: NSView, window: NSWindow) throws {
+        let point = CGPoint(x: host.bounds.width - 21 - CGFloat(trailingIndex) * 30 + offset,
+            y: host.isFlipped ? 21 : host.bounds.height - 21)
+        let location = host.convert(point, to: nil), timestamp = ProcessInfo.processInfo.systemUptime
+        let down = try #require(NSEvent.mouseEvent(with: .leftMouseDown, location: location, modifierFlags: [],
+            timestamp: timestamp, windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+        let up = try #require(NSEvent.mouseEvent(with: .leftMouseUp, location: location, modifierFlags: [],
+            timestamp: timestamp + 0.01, windowNumber: window.windowNumber, context: nil,
+            eventNumber: 2, clickCount: 1, pressure: 0))
+        window.sendEvent(down); window.sendEvent(up)
     }
 
     private func settle(_ hosting: NSHostingView<LearningSentenceCard>, in window: NSWindow) async {
