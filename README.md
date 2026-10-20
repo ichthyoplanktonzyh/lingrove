@@ -133,11 +133,11 @@ confirm replacement of its saved sentence or selection. A dedicated translation 
 expression first. When optional analysis is enabled, its independently configured model prepares
 meaning chunks for that exact expression. Option+T or the expand
 button reveals the source and target as matching colored meaning units, with small gaps between target
-units. Clicking a chunk outlines both sides and opens a separate, nonactivating correspondence window.
-Word buttons open the native macOS dictionary popover beside the clicked word, preserving the
-dictionary's own formatting without a model request. Available contents depend on the Mac's enabled
-dictionaries. Compact translation also supports double-click word lookup. Esc closes lookup first,
-then correspondence details; continuing to type closes both. Alignment generates quoted pairs only;
+units. Clicking a chunk outlines the corresponding excerpts on both sides.
+Word lookup opens Lingrove's own dictionary card, with shared read-aloud and fish-tail collection
+actions. Available system definitions depend on the Mac's enabled dictionaries. Compact translation
+also supports double-click word lookup. Esc returns a component word to its expression, then closes
+the dictionary; continuing to type closes the learning windows. Alignment generates quoted pairs only;
 explanations are deferred to a future independent feature.
 Tab and Return retain their ordinary behavior; Escape dismisses the learning card.
 
@@ -148,10 +148,6 @@ usage. **Vocabulary** in the menu bar opens the searchable notebook, where meani
 and examples can be edited and the collection exported as JSON. Notebook data stays on this Mac;
 it has no automatic synchronization or Anki connection. Its two optional shortcuts are configured
 only in **Settings → Shortcuts** and are initially unset.
-
-**Verification pending:** native macOS dictionary collection is awaiting final real-click acceptance
-for this development checkpoint. Collection from Lingrove's own preview/expression cards has passed;
-use those entries if the native lookup closes while operating its fish tail.
 
 The small speaker on a preview or expression-detail card reads its text aloud without taking
 typing focus. Click it again to stop; choosing another speaker replaces the current playback.
@@ -215,9 +211,13 @@ configured target languages, with uneven coverage and English definitions. Recog
 headwords, recorded forms and conservative one-word slots in explicitly recorded expression
 patterns; it is not a comprehensive grammatical phrase detector. The data has separate
 [CC BY-SA attribution and provenance](Cotabby/Resources/learning-expressions.NOTICE.md).
-Expression lookup uses the offline resource; word fallback uses the public Dictionary Services
-API and the system's enabled dictionaries. No extra model request or app-managed hosted dictionary
-lookup is added.
+**Settings → Language Learning → Dictionary** enables and orders the built-in expression source
+and system Dictionary source. A new lookup displays the first hit in that order; choosing a source
+inside a card queries just that source for the current word or expression. System text comes from
+the public Dictionary Services API, without the native popup or undocumented rich-content APIs.
+When available, the encountered sentence and its existing translation appear as the current example
+and remain attached when a component word is collected. No extra model request or app-managed hosted
+dictionary lookup is added.
 
 A sentence preview sends only the selected text or current sentence, up to 6 KB; larger scopes are
 rejected without truncation. Analysis additionally receives the exact displayed translation. Learning requests do not include screen contents, clipboard data or typing

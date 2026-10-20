@@ -17,17 +17,18 @@ enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
     init(role: LearningModelRole) { self = role == .translation ? .translation : .analysis }
 }
 
-/// The three behavior areas in Language Learning are window navigation, not feature toggles.
+/// The behavior areas in Language Learning are window navigation, not feature toggles.
 /// The settings window retains the selected area while model links visit Engine & Model;
 /// search selects the area before mounting its Form so row reveal always has a visible target.
 enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
-    case translation, alignment, readAloud
+    case translation, alignment, readAloud, dictionary
     var id: String { rawValue }
     var label: String {
         switch self {
         case .translation: String(localized: "Translation", table: "Learning")
         case .alignment: String(localized: "Chunk alignment", table: "Learning")
         case .readAloud: String(localized: "Read Aloud", table: "Learning")
+        case .dictionary: String(localized: "Dictionary", table: "Learning")
         }
     }
 }
@@ -152,6 +153,7 @@ final class SettingsNavigationModel: ObservableObject {
             switch item {
             case .chunkAlignment: learningTask = .alignment
             case .readAloudSpeed: learningTask = .readAloud
+            case .dictionarySources: learningTask = .dictionary
             default: learningTask = .translation
             }
         }

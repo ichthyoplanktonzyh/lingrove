@@ -44,12 +44,12 @@ nonisolated struct LearningLexiconResource: Codable, Sendable {
     let entries: [LearningLexiconEntry]
 }
 
-/// Bundled entries are already structured. A system hit carries only availability: AppKit owns
-/// its original dictionary UI, and raw Dictionary Services text never reaches the learning card.
-/// A genuine miss stays distinct from an unavailable resource or a constituent-word definition.
+/// Sources return content rather than presenting windows. Bundled entries retain their senses
+/// and attribution; the public Dictionary Services API supplies plain text without invented
+/// phonetics or sense structure. A miss stays distinct from an unavailable source.
 nonisolated enum LearningDictionaryResult: Equatable, Sendable {
     case entries([LearningLexiconEntry])
-    case systemEntry
+    case systemText(String)
     case notFound
 }
 
@@ -58,5 +58,6 @@ nonisolated protocol LearningUnitRecognizing: Sendable {
 }
 
 nonisolated protocol LearningDictionaryProviding: Sendable {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+                source: LearningDictionarySource) async throws -> LearningDictionaryResult
 }

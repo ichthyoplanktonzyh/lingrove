@@ -1,9 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// The expression stays visible as the home page. Its component buttons supply live AppKit
-/// anchors for native word lookup; closing the system popup returns to this structured entry.
-/// System hits are links to native presentation, never flattened dictionary text rendered here.
+/// Presents every dictionary source inside the app-owned detail window. The session owns source
+/// selection and captured examples; shared speech/favorite controls keep their existing owners.
+/// Only the content body scrolls, leaving the source selector and primary actions reachable.
 struct LearningDictionaryCard: View {
     @ObservedObject var session: LearningDictionarySession
     let close: () -> Void
@@ -13,18 +13,16 @@ struct LearningDictionaryCard: View {
     var vocabulary: VocabularyStore?
     var lookupWord: ((LearningDictionaryWord, NSButton) -> Void)?
     @State private var definitionHeight: CGFloat = 60
+    @State private var showsSources = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(session.unit?.kind == .word
-                    ? String(localized: "Word", table: "Learning", comment: "Header for an individual word's dictionary entry.")
-                    : String(localized: "Expression dictionary", table: "Learning",
-                        comment: "Header for the dictionary page for a complete expression."))
-                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                sourceSelector
                 Spacer()
-                if let vocabulary, let capture = session.favoriteCapture, session.selectedWord == nil {
+                if let vocabulary, let capture = session.favoriteCapture {
                     VocabularyFavoriteButton(store: vocabulary, capture: capture)
+                        .id(session.query + ":" + String(session.selectedWord?.range.location ?? -1))
                 }
                 if let speech, let request = speechRequest {
                     LearningSpeechButton(speech: speech, request: request,
@@ -46,7 +44,14 @@ struct LearningDictionaryCard: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             ScrollView {
-                definition.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 14) {
+                    definition
+                    if let unit = session.unit, unit.kind != .word, session.selectedWord == nil {
+                        componentWords(unit)
+                    }
+                    if let example = session.contextExample { contextExample(example) }
+                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
                         // Read content directly so a ScrollView cannot swallow the measurement
@@ -54,7 +59,7 @@ struct LearningDictionaryCard: View {
                         if height.isFinite, height > 0 { definitionHeight = height }
                     }
             }
-            .frame(height: min(max(definitionHeight, 24), 210))
+            .frame(height: min(max(definitionHeight, 24), 300))
             .id(session.query)
             if case .result(.entries) = session.content,
                let url = URL(string: "https://creativecommons.org/licenses/by-sa/4.0/") {
@@ -64,24 +69,6 @@ struct LearningDictionaryCard: View {
                     destination: url)
                     .font(.caption2).fixedSize(horizontal: false, vertical: true)
             }
-            if let unit = session.unit, unit.kind != .word {
-                Text(String(localized: "Words in this expression", table: "Learning",
-                    comment: "Label above component words that can be opened from an expression dictionary entry."))
-                    .font(.caption).foregroundStyle(.secondary)
-                LearningTextFlowLayout(spacing: 5, rowSpacing: 5, rightToLeft: session.contentLanguage == .arabic) {
-                    ForEach(Array(unit.words.enumerated()), id: \.offset) { _, word in
-                        LearningDictionaryButton(word: word.text) { term, button in
-                            if let lookupWord { lookupWord(word, button) } else { lookup(term, button) }
-                        }
-                    }
-                }
-                // Dictionary terms keep their stored order; only their positions follow the
-                // captured lookup language, independent of the interface's own direction.
-                .environment(\.layoutDirection, .leftToRight)
-            }
-            Text(String(localized: "Closes as you type", table: "Learning",
-                comment: "Hint that typing in the host editor dismisses the dictionary panel."))
-                .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(12).frame(width: 340, alignment: .topLeading).fixedSize(horizontal: false, vertical: true)
         .background(GeometryReader { geometry in
@@ -90,9 +77,75 @@ struct LearningDictionaryCard: View {
         .onPreferenceChange(LearningCardSizePreference.self, perform: sizeChanged)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
         .onChange(of: session.query) { oldQuery, newQuery in
+            showsSources = false
             guard oldQuery != newQuery, let documentID = session.documentID else { return }
             speech?.stop(target: SpeechTarget(ownerID: documentID, itemID: "detail.\(oldQuery)"))
         }
+    }
+
+    private var sourceSelector: some View {
+        Button { showsSources.toggle() } label: {
+            HStack(spacing: 4) {
+                Text(session.selectedSource.label)
+                if session.availableSources.count > 1 { Image(systemName: "chevron.down").font(.caption2) }
+            }.font(.caption).foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(session.availableSources.count < 2)
+        .accessibilityLabel(String(localized: "Dictionary sources", table: "Learning"))
+        .accessibilityValue(session.selectedSource.label)
+        // Match the favorite action's existing SwiftUI popover boundary. Its child window is
+        // recognized by the panel's outside-click policy, so mouse-down cannot retire the card.
+        .popover(isPresented: $showsSources) {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(session.availableSources) { source in
+                    Button {
+                        showsSources = false
+                        session.selectSource(source)
+                    } label: {
+                        HStack {
+                            Text(source.label)
+                            Spacer()
+                            if source == session.selectedSource { Image(systemName: "checkmark") }
+                        }
+                    }
+                }
+            }.buttonStyle(.plain).padding(14).frame(minWidth: 180)
+        }
+    }
+
+    private func componentWords(_ unit: LearningUnit) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(String(localized: "Words in this expression", table: "Learning"))
+                .font(.caption).foregroundStyle(.secondary)
+            LearningTextFlowLayout(spacing: 5, rowSpacing: 5, rightToLeft: session.contentLanguage == .arabic) {
+                ForEach(Array(unit.words.enumerated()), id: \.offset) { _, word in
+                    LearningDictionaryButton(word: word.text) { term, button in
+                        if let lookupWord { lookupWord(word, button) } else { lookup(term, button) }
+                    }
+                }
+            }.environment(\.layoutDirection, .leftToRight)
+        }
+    }
+
+    private func contextExample(_ example: VocabularyExample) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Divider()
+            Text(String(localized: "This example", table: "Learning")).font(.caption).foregroundStyle(.secondary)
+            Text(highlighted(example)).font(.callout)
+            if !example.translation.isEmpty { Text(example.translation).font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+
+    private func highlighted(_ example: VocabularyExample) -> AttributedString {
+        var result = AttributedString(example.text)
+        for value in example.ranges {
+            guard VocabularyPolicy.valid(value.nsRange, in: example.text), let range = Range(value.nsRange, in: example.text),
+                  let converted = Range(range, in: result) else { continue }
+            result[converted].foregroundColor = .accentColor
+            result[converted].backgroundColor = Color.accentColor.opacity(0.12)
+        }
+        return result
     }
 
     private var speechRequest: SpeechRequest? {
@@ -135,13 +188,8 @@ struct LearningDictionaryCard: View {
                 : String(localized: "No definition for this word was found in the available dictionaries.",
                     table: "Learning", comment: "Empty state when the configured dictionaries have no entry for a word."))
                 .font(.callout).foregroundStyle(.secondary)
-        case .result(.systemEntry):
-            VStack(alignment: .leading, spacing: 10) {
-                Text(String(localized: "System Dictionary · enabled sources", table: "Learning",
-                    comment: "Label indicating that the definition below came from the user's enabled macOS dictionaries."))
-                    .font(.caption).foregroundStyle(.secondary)
-                LearningDictionaryButton(word: session.query, lookup: lookup)
-            }
+        case .result(.systemText(let text)):
+            Text(text).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .result(.entries(let entries)):
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(entries, id: \.id) { entry in

@@ -8,6 +8,7 @@ final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
     let analysis: LearningModelSettings
+    let dictionary: LearningDictionarySettings
     /// Reading has its own direction; changing it never reverses the writing preview.
     @Published var selectionTranslationEnabled: Bool {
         didSet { defaults.set(selectionTranslationEnabled, forKey: "learningSelectionEnabled") }
@@ -182,6 +183,7 @@ final class LanguageLearningSettings: ObservableObject {
 
     /// App-wide reset keeps the shortcut contract while disabling both explicit language features.
     func resetToDefaults() {
+        dictionary.reset()
         pointerTranslationEnabled = false
         screenshotTranslationEnabled = false
         setReadingBinding(.pointer, key: 17, modifiers: [.control, .shift], label: "⌃⇧T")
@@ -215,6 +217,7 @@ final class LanguageLearningSettings: ObservableObject {
         analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil
     ) {
         self.defaults = defaults
+        dictionary = LearningDictionarySettings(defaults: defaults)
         pointerTranslationEnabled = defaults.bool(forKey: "learningPointerEnabled")
         screenshotTranslationEnabled = defaults.bool(forKey: "learningScreenshotEnabled")
         pointerKeyCode = UInt16(clamping: defaults.object(forKey: "learningPointerKey") as? Int ?? 17)

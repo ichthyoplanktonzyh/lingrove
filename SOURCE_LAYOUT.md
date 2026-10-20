@@ -304,9 +304,13 @@ that owns too many responsibilities and should be split by behavior rather than 
   viewport and the cancellable search reveal. Its real-AppKit scrolling tests are under
   `CotabbyTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
   initial search arrivals and subsequent searches in both scroll directions.
-- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud
+- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud/dictionary
   tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
   task-scoped resource sheets, advanced expansion and search destinations without changing models.
+- `Models/LanguageLearning/LearningDictionarySettings.swift` persists the enabled local sources
+  and lookup order as one configuration. `LearningDictionarySession` observes only this store;
+  dictionary changes do not invalidate translation or autocomplete. `DictionarySettingsSection`
+  reuses the language-learning Form and its searchable settings-row anchor.
 - `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.

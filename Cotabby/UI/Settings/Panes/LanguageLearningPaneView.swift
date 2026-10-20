@@ -33,6 +33,8 @@ struct LanguageLearningPaneView: View {
                 case .alignment:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .analysis,
                         configureModel: configureModel, openShortcuts: openShortcuts)
+                case .dictionary:
+                    DictionarySettingsSection(settings: suggestionSettings.languageLearning.dictionary)
                 case .readAloud:
                     if let speech {
                         ReadAloudSettingsSection(speech: speech, openSpeechSettings: openSpeechSettings)

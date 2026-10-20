@@ -395,9 +395,11 @@ final class CotabbyAppEnvironment {
         // Panels borrow it; none creates a second dictionary or recognition worker in a view.
         let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
         let writingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-            dictionaryProvider: learningLexicon, speech: speechController, vocabulary: vocabularyStore)
+            dictionaryProvider: learningLexicon, dictionarySettings: suggestionSettings.languageLearning.dictionary,
+            speech: speechController, vocabulary: vocabularyStore)
         let readingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
-            dictionaryProvider: learningLexicon, speech: speechController, vocabulary: vocabularyStore)
+            dictionaryProvider: learningLexicon, dictionarySettings: suggestionSettings.languageLearning.dictionary,
+            speech: speechController, vocabulary: vocabularyStore)
         let sentencePreview = LearningSentencePreviewCoordinator(
             service: learningService, reader: learningReader, focus: focusModel,
             panel: writingPanel,

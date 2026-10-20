@@ -8,7 +8,7 @@ import Vision
 @MainActor
 struct LearningDictionaryCardTests {
     @Test(arguments: [LayoutDirection.leftToRight, .rightToLeft])
-    func expressionAndMissKeepNativeWordAnchorsWithoutDisplayingRawDefinitions(_ interfaceDirection: LayoutDirection) async throws {
+    func expressionAndSystemTextShareOneCardWithoutLosingWordNavigation(_ interfaceDirection: LayoutDirection) async throws {
         let session = LearningDictionarySession(provider: CardDictionaryProbe())
         let text = "look forward to"
         let unit = LearningUnit(id: 0, surface: text, query: text, kind: .expression,
@@ -40,16 +40,22 @@ struct LearningDictionaryCardTests {
         #expect(lookups == ["forward"])
         #expect(session.selectedWord == nil && session.title == "look forward to")
         let afterClick = try await paint(hosting, window: window, name: "dictionary-expression-after-word").text
-        #expect(afterClick.contains("anticipate"), "Native word lookup leaves the full expression intact")
+        #expect(afterClick.contains("anticipate"), "Navigation callbacks do not discard the captured expression")
         #expect(window.windowNumber == number)
         let system = LearningUnit(id: 0, surface: "system phrase", query: "system phrase", kind: .expression,
             ranges: [.init(location: 0, length: 13)], words: [])
-        session.open(system, documentID: UUID(), language: .english)
-        await waitUntil { session.content == .result(.systemEntry) }
-        let systemText = try await paint(hosting, window: window, name: "dictionary-system-link").text
-        #expect(systemText.contains("System Dictionary") && !systemText.contains("anticipate"))
-        try #require(findButton("system phrase", in: hosting)).performClick(nil)
-        #expect(lookups.last == "system phrase")
+        let sentence = "This is a system phrase in context."
+        var example = VocabularyPolicy.example(text: sentence, ranges: [(sentence as NSString).range(of: "system phrase")],
+                                               language: .english)
+        example?.translation = "这是语境中的一个表达。"
+        session.open(system, documentID: UUID(), language: .english,
+            vocabularyCapture: .init(expression: system.surface, dictionaryForm: system.query,
+                                     language: .english, kind: .expression, example: example))
+        await waitUntil { session.content == .result(.systemText("Fixture definition.")) }
+        let systemText = try await paint(hosting, window: window, name: "dictionary-system-text").text
+        #expect(systemText.contains("Fixture definition") && !systemText.contains("anticipate"))
+        #expect(systemText.contains("This example") && systemText.contains("in context"))
+        #expect(findButton("system phrase", in: hosting) == nil, "The card renders text rather than a native popup launch button")
         let miss = LearningUnit(id: 0, surface: "unknown expression", query: "unknown expression", kind: .expression,
             ranges: [.init(location: 0, length: 18)], words: unit.words)
         session.open(miss, documentID: UUID(), language: .english)
@@ -112,8 +118,8 @@ struct LearningDictionaryCardTests {
 }
 
 private actor CardDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult {
-        if !expression || query == "system phrase" { return .systemEntry }
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
+        if !expression || query == "system phrase" { return .systemText("Fixture definition.") }
         if query != "look forward to" { return .notFound }
         return .entries([.init(id: "fixture", language: "en", headword: query, forms: [],
             senses: [.init(partOfSpeech: "verb", definitions: ["To anticipate an event."], labels: [])],

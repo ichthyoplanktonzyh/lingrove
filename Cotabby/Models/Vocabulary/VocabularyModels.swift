@@ -53,7 +53,7 @@ nonisolated struct VocabularyTextRange: Codable, Equatable, Sendable {
 }
 
 /// Dictionary quotations retain their attribution separately from the user's contextual meaning.
-/// A system Dictionary hit is only availability and supplies no reusable definition text.
+/// The system source supplies plain text; bundled quotations keep their source and license URLs.
 nonisolated struct VocabularyDefinition: Codable, Equatable, Sendable {
     let text: String
     let source: String

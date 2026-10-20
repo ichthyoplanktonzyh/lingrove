@@ -457,7 +457,7 @@ final class LearningReadingCoordinator {
 
     private func pointer(_ event: NSEvent) {
         let clicks = event.type == .leftMouseUp ? event.clickCount : 0
-        handlePointerEvent(type: event.type, at: event.locationInWindow, clickCount: clicks)
+        handlePointerEvent(type: event.type, at: LearningWindowInteraction.screenPoint(for: event), clickCount: clicks)
     }
 
     /// The global monitor supplies an immutable event summary. Tests can exercise this routing

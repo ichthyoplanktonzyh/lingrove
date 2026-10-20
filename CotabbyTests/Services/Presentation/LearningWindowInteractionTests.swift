@@ -8,6 +8,18 @@ import Testing
 @MainActor
 struct LearningWindowInteractionTests {
     @Test
+    func mouseEventsUseAppKitGlobalCoordinatesRatherThanForeignWindowCoordinates() throws {
+        let cgEvent = try #require(CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
+                                          mouseCursorPosition: CGPoint(x: 180, y: 260), mouseButton: .left))
+        let event = try #require(NSEvent(cgEvent: cgEvent))
+        let primaryScreen = try #require(NSScreen.screens.first)
+        let point = LearningWindowInteraction.screenPoint(for: event)
+        #expect(point.x == 180)
+        #expect(abs(point.y - (primaryScreen.frame.maxY - 260)) <= 1,
+                "Quartz's top-origin mouse position must become an AppKit bottom-origin screen point")
+    }
+
+    @Test
     func appKitIdentityResolvesToThisProcessInWindowServer() async throws {
         let screen = try #require(NSScreen.main?.visibleFrame)
         let window = makePanel(CGRect(x: screen.minX + 40, y: screen.minY + 40, width: 180, height: 80))

@@ -20,21 +20,18 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
         return units
     }
 
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+                source: LearningDictionarySource = .bundled) async throws -> LearningDictionaryResult {
         try Task.checkCancellation()
         guard !query.isEmpty, query.utf8.count <= 256, InsertionSafetyGate.isSafeToInsert(query) else {
             throw LearningFailure.message(String(localized: "This lookup text is unavailable.",
                 table: "Learning", comment: "Error shown when dictionary lookup receives empty, oversized, or unsafe text."))
         }
-        do {
+        if source == .bundled {
             let entries = try index(for: language).lookup(query).filter {
                 expression || LearningUnitPolicy.key($0.headword) == LearningUnitPolicy.key(query)
             }
-            if !entries.isEmpty { return .entries(entries) }
-        } catch {
-            // A broken expression resource is an unavailable state, not a dictionary miss.
-            // Ordinary word lookup can still use the user's installed system dictionaries.
-            if expression { throw error }
+            return entries.isEmpty ? .notFound : .entries(entries)
         }
         let value = query as CFString
         let detected = DCSGetTermRangeInString(nil, value, 0)
@@ -43,12 +40,10 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
         // Copy follows the Core Foundation ownership rule; transfer its retained string once.
         // The full-range check prevents a constituent word definition posing as a phrase result.
         guard let copied = DCSCopyTextDefinition(nil, value, whole) else { return .notFound }
-        let text = copied.takeRetainedValue()
+        let text = (copied.takeRetainedValue() as String).trimmingCharacters(in: .whitespacesAndNewlines)
         try Task.checkCancellation()
-        guard CFStringGetLength(text) > 0 else { return .notFound }
-        // This call confirms a whole-expression hit only. Preserve the system's own formatted
-        // presentation via showDefinition rather than exporting its flattened text into SwiftUI.
-        return .systemEntry
+        guard !text.isEmpty else { return .notFound }
+        return .systemText(text)
     }
 
     private func index(for language: LearningLanguage) throws -> LearningUnitRecognizer {

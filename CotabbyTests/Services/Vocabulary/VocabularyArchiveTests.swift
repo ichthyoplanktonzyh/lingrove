@@ -3,6 +3,20 @@ import Testing
 @testable import Cotabby
 
 nonisolated struct VocabularyArchiveTests {
+    @Test @MainActor func systemDictionaryTextAndSourceSurviveCollectionAndReopen() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("notebook.json")
+        var capture = VocabularyCapture(expression: "posted", dictionaryForm: "posted", language: .english, kind: .word)
+        capture.definitions = VocabularyCaptureFactory.definitions(.result(.systemText("Keep someone informed.")))
+        _ = try await VocabularyArchive(url: url).save(capture)
+        let reopened = try await VocabularyArchive(url: url).load()
+        let definition = try #require(reopened.document.entries.first?.definitions.first)
+        #expect(definition.text == "Keep someone informed.")
+        #expect(definition.source == "macOS Dictionary")
+        #expect(definition.sourceURL.isEmpty && definition.licenseURL.isEmpty)
+    }
+
     @Test func repeatedWordComponentsKeepDistinctUsageIDsAcrossReopen() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

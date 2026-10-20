@@ -35,11 +35,18 @@ and the first vocabulary notebook. The notebook stores examples, notes, tags and
 attribution locally, reuses speech, and exports versioned JSON. This checkpoint does not change
 the published `v0.5.1-test.1` artifacts or enable automatic updates.
 
-Native dictionary collection is undergoing final acceptance: a real-click lifecycle trace showed
-Lingrove's global mouse monitor dismissing an attached, visible lookup while the pointer was inside
-it. The development fix classifies Window Server hits against the owned window family in both
-writing and reading flows. Archive/hosting tests do not establish real native-dictionary acceptance;
-the fish-tail action and an external-host click must both pass before removing the limitation.
+Dictionary lookup now uses Lingrove's own nonactivating card for words and expressions. System
+definitions come from the public text API; the native-popup presenter and its injected favorite
+accessory have been removed. Language Learning has a Dictionary tab for local-source enablement
+and priority, while card source selection affects only the current query. Current examples,
+collection, speech and source attribution remain in the existing learning/notebook flow.
+The replacement card's real-click collection/source/outside-dismiss acceptance is in progress.
+
+Dictionary validation passed 186 scoped tests (214 parameterized executions), with no failures
+or skips, plus 158 Python tests, strict SwiftLint and 1,362 active localization keys in 15 languages.
+The scoped run covers source settings and search, fallback/cancellation, captured examples,
+definition persistence, real SwiftUI detail popovers and writing/reading integration. It is not
+a replacement for the historical full-suite result recorded below.
 
 Closeout checks on Apple Silicon include successful Release app/test builds, strict SwiftLint,
 158 Python tests, and localization validation of 1,353 source keys across three tables and 15

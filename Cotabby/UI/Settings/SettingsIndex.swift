@@ -77,6 +77,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case speechSampling
     case translationReferenceMode
     case chunkAlignment
+    case dictionarySources
     case translationModel
     case alignmentModel
     // Context
@@ -180,6 +181,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .speechSampling: return String(localized: "Speech generation parameters", table: "Learning")
         case .translationReferenceMode: return String(localized: "Translation reference", table: "Learning")
         case .chunkAlignment: return String(localized: "Enable chunk alignment", table: "Learning")
+        case .dictionarySources: return String(localized: "Dictionary sources", table: "Learning")
         case .translationModel: return String(localized: "Translation model", table: "Learning")
         case .alignmentModel: return String(localized: "Chunk alignment model", table: "Learning")
         case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
@@ -294,6 +296,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationSampling, .speechSampling: return "slider.horizontal.3"
         case .translationReferenceMode: return "doc.text"
         case .chunkAlignment: return "text.alignleft"
+        case .dictionarySources: return "books.vertical"
         case .translationModel, .alignmentModel: return "shippingbox"
         case .completionEnabled: return "text.cursor"
         case .enableGlobally: return "power"
@@ -397,7 +400,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
             .translationSourceLanguages,
-             .translationReferenceMode, .translationStyle, .chunkAlignment: return .languageLearning
+             .translationReferenceMode, .translationStyle, .chunkAlignment, .dictionarySources: return .languageLearning
         case .translationModel, .alignmentModel, .translationSampling, .speechSampling: return .engineAndModel
         #if DEBUG
         case .developmentDebugOverlays: return .general
@@ -445,6 +448,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .dictionarySources: return String(localized: "Enable and order dictionary sources.", table: "Learning")
         case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
         case .screenshotTranslationShortcut: return LearningReadingSource.screenshot.title
         case .selectionTranslationShortcut: return String(localized: "Translate selected text", table: "Learning")
@@ -583,6 +587,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .dictionarySources: return ["dictionary", "lexicon", "lookup", "source", "词典", "查词", "词库"]
         case .translationStyle: return ["style", "formal", "conversational", "translation", "翻译风格", "书面", "口语"]
         case .translationSampling: return ["translation", "temperature", "top-p", "top-k", "seed", "翻译参数", "采样"]
         case .speechSampling: return ["speech", "tts", "temperature", "seed", "朗读参数", "语音参数", "采样"]

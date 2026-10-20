@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 @testable import Cotabby
 
@@ -7,6 +8,33 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct LearningDetailPanelTests {
+    @Test
+    func realDetailPopoverRemainsInternalAndIsRetiredWhenTheCardHides() async throws {
+        let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
+        defer { panel.hide() }
+        panel.show(Self.chunk(), placement: try placement())
+        let parent = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
+        var popup: NSWindow?
+        let host = NSHostingView(rootView: FavoritePopoverWindowFixture { popup = $0 })
+        host.frame = CGRect(x: 0, y: 0, width: 20, height: 20)
+        parent.contentView?.addSubview(host)
+        defer { popup?.close() }
+        await waitUntil { popup?.isVisible == true }
+        let window = try #require(popup)
+        #expect(panel.owns(window), "The real SwiftUI popover belongs to the detail window")
+        #expect(LearningWindowInteraction.contains(CGPoint(x: window.frame.midX, y: window.frame.midY),
+            roots: panel.interactionWindows, hitWindowNumber: window.windowNumber))
+        panel.show(Self.chunk(identifier: 1), placement: try placement())
+        await waitUntil { !window.isVisible }
+        #expect(!window.isVisible, "Replacing the capture must retire the previous host's popover")
+        #expect(panel.dictionarySession.selectedWord == nil)
+        panel.hide()
+        await waitUntil { !window.isVisible }
+        #expect(!window.isVisible && parent.contentView == nil)
+        panel.show(Self.chunk(identifier: 2), placement: try placement())
+        #expect(!window.isVisible && panel.dictionarySession.selectedWord == nil)
+    }
+
     @Test
     func movingTheParentKeepsTheChildAttached() throws {
         let panel = LearningDetailPanel()
@@ -51,18 +79,8 @@ struct LearningDetailPanelTests {
     }
 
     @Test
-    func lookupRejectsStaleChunksAndClosesBeforeTheExplanation() throws {
-        var calls = 0
-        let definition = NSPanel(contentRect: CGRect(x: 100, y: 220, width: 220, height: 140),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        definition.isReleasedWhenClosed = false
-        defer { definition.close() }
-        let dictionary = LearningSystemDictionaryPresenter { view, _, _ in
-            calls += 1
-            view.window?.addChildWindow(definition, ordered: .above)
-            definition.orderFrontRegardless()
-        }
-        let panel = LearningDetailPanel(dictionary: dictionary)
+    func lookupRejectsStaleChunksAndReturnsBeforeClosingTheExpression() throws {
+        let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
         defer { panel.hide() }
         let original = Self.chunk()
         panel.show(original, placement: try placement())
@@ -71,7 +89,7 @@ struct LearningDetailPanelTests {
         button.frame = CGRect(x: 20, y: 20, width: 80, height: 24)
         source.contentView?.addSubview(button)
         panel.selectWord("can", from: button, chunk: original)
-        #expect(calls == 1)
+        #expect(panel.dictionarySession.selectedWord?.text == "can")
         #expect(panel.dismissDictionary())
         #expect(panel.isVisible)
         #expect(panel.state.chunk == original)
@@ -82,26 +100,16 @@ struct LearningDetailPanelTests {
         panel.selectWord("can", from: button, chunk: original)
         button.title = "unlisted"
         panel.selectWord("unlisted", from: button, chunk: next)
-        #expect(calls == 1)
+        #expect(panel.dictionarySession.selectedWord == nil)
         panel.hide()
         button.title = "can"
         panel.selectWord("can", from: button, chunk: next)
-        #expect(calls == 1)
+        #expect(panel.dictionarySession.unit == nil)
     }
 
     @Test
     func expressionComponentLookupKeepsItsEntryAndRejectsReplacedDocumentControls() async throws {
-        var displayed: [String] = []
-        let popup = NSPanel(contentRect: CGRect(x: 100, y: 220, width: 220, height: 140),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        popup.isReleasedWhenClosed = false
-        defer { popup.close() }
-        let dictionary = LearningSystemDictionaryPresenter { view, text, _ in
-            displayed.append(text.string)
-            view.window?.addChildWindow(popup, ordered: .above)
-            popup.orderFrontRegardless()
-        }
-        let panel = LearningDetailPanel(dictionary: dictionary, provider: ExpressionDictionaryProbe())
+        let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
         defer { panel.hide() }
         let text = "look forward to"
         let unit = LearningUnit(id: 0, surface: text, query: text, kind: .expression,
@@ -116,27 +124,25 @@ struct LearningDetailPanelTests {
         button.frame = CGRect(x: 20, y: 20, width: 100, height: 24)
         source.contentView?.addSubview(button)
         panel.selectDictionaryTerm("forward", from: button, unit: unit, documentID: id)
-        #expect(displayed == ["forward"] && popup.isVisible && panel.owns(popup))
-        #expect(panel.dictionarySession.unit == unit && panel.dictionarySession.selectedWord == nil)
-        #expect(panel.dictionarySession.content == .result(.notFound))
+        #expect(panel.dictionarySession.unit == unit && panel.dictionarySession.selectedWord?.text == "forward")
+        #expect(panel.isVisible && panel.owns(source))
         #expect(panel.dismissDictionary())
-        #expect(panel.isVisible && !popup.isVisible)
-        // A full phrase miss must not open native lookup that might substitute one constituent.
+        #expect(panel.isVisible && panel.dictionarySession.selectedWord == nil)
+        // The phrase itself is not a component word, even when a legacy button supplies it.
         button.title = text
         panel.selectDictionaryTerm(text, from: button, unit: unit, documentID: id)
-        #expect(displayed == ["forward"])
+        #expect(panel.dictionarySession.selectedWord == nil)
         let nextID = UUID()
         panel.show(unit, documentID: nextID, language: .english, correspondence: nil, placement: placement)
         source.contentView?.addSubview(button)
         button.title = "forward"
         panel.selectDictionaryTerm("forward", from: button, unit: unit, documentID: id)
-        #expect(displayed == ["forward"], "The same text in a newer document must reject an old control")
+        #expect(panel.dictionarySession.selectedWord == nil, "The same text in a newer document must reject an old control")
         panel.selectDictionaryTerm("forward", from: button, unit: unit, documentID: nextID)
-        #expect(displayed == ["forward", "forward"])
+        #expect(panel.dictionarySession.selectedWord?.text == "forward")
         panel.hide()
-        #expect(!popup.isVisible)
         panel.selectDictionaryTerm("forward", from: button, unit: unit, documentID: nextID)
-        #expect(displayed.count == 2)
+        #expect(panel.dictionarySession.unit == nil)
     }
 
     @Test(arguments: [false, true])
@@ -172,7 +178,7 @@ struct LearningDetailPanelTests {
 }
 
 private actor ExpressionDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
         .notFound
     }
 }

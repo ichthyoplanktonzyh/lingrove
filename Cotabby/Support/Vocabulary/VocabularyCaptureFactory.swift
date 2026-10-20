@@ -67,11 +67,16 @@ nonisolated enum VocabularyCaptureFactory {
     }
 
     @MainActor static func definitions(_ result: LearningDictionarySession.Content) -> [VocabularyDefinition] {
-        guard case .result(.entries(let entries)) = result else { return [] }
-        return entries.map { entry in
+        guard case .result(let result) = result else { return [] }
+        switch result {
+        case .systemText(let text):
+            return [VocabularyDefinition(text: text, source: "macOS Dictionary", sourceURL: "", licenseURL: "")]
+        case .notFound: return []
+        case .entries(let entries): return entries.map { entry in
             VocabularyDefinition(text: entry.senses.flatMap(\.definitions).joined(separator: "\n"),
                 source: "Wiktionary contributors / Kaikki", sourceURL: entry.sourceURL,
                 licenseURL: "https://creativecommons.org/licenses/by-sa/4.0/")
+        }
         }
     }
 

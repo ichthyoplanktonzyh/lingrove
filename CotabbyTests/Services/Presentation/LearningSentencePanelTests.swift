@@ -7,17 +7,13 @@ import Testing
 @MainActor
 struct LearningSentencePanelTests {
     @Test
-    func globalNativeLookupClickSurvivesButAnOverlappingForeignWindowDismisses() async throws {
+    func globalOwnedCardClickSurvivesButAnOverlappingForeignWindowDismisses() async throws {
         let popup = NSPanel(contentRect: CGRect(x: 100, y: 100, width: 220, height: 120),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         popup.isReleasedWhenClosed = false
         defer { popup.close() }
-        let dictionary = LearningSystemDictionaryPresenter { view, _, _ in
-            view.window?.addChildWindow(popup, ordered: .above)
-            popup.orderFrontRegardless()
-        }
         var hit = 0
-        let panel = LearningSentencePanel(dictionary: dictionary, dictionaryProvider: PanelDictionaryProbe(),
+        let panel = LearningSentencePanel(dictionaryProvider: PanelDictionaryProbe(),
                                           windowAtPoint: { _ in hit })
         defer { panel.hide() }
         var dismissed = false
@@ -30,22 +26,17 @@ struct LearningSentencePanelTests {
             return view.frame.width > 0 && view.frame.height > 0 && view.visibleRect.contains(view.bounds)
         }
         let view = try #require(textView(in: panel))
-        let manager = try #require(view.layoutManager), container = try #require(view.textContainer)
-        manager.ensureLayout(for: container)
-        let glyphs = manager.glyphRange(forCharacterRange: (view.string as NSString).range(of: "like"), actualCharacterRange: nil)
-        let bounds = manager.boundingRect(forGlyphRange: glyphs, in: container)
-            .offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
-        dictionary.show("like", from: view, textBounds: bounds,
-                        font: .systemFont(ofSize: 14))
+        view.window?.addChildWindow(popup, ordered: .above)
+        popup.orderFrontRegardless()
         #expect(popup.isVisible)
         let point = CGPoint(x: popup.frame.midX, y: popup.frame.midY)
         hit = popup.windowNumber
         panel.dismissForGlobalClick(at: point)
         #expect(!dismissed && panel.isVisible && popup.isVisible,
-                "A native lookup event delivered globally must survive until its button action")
+                "An owned popover must survive until its button action")
         hit = popup.windowNumber + 100_000
         panel.dismissForGlobalClick(at: point)
-        #expect(dismissed && !panel.isVisible && !popup.isVisible)
+        #expect(dismissed && !panel.isVisible)
     }
 
     @Test
@@ -201,21 +192,9 @@ struct LearningSentencePanelTests {
     }
 
     @Test(arguments: [false, true])
-    func nativeWordLookupSurvivesAnalysisUpdatesAndClosesWithInputPreview(_ expanded: Bool) async throws {
+    func ownedWordLookupSurvivesAnalysisUpdatesAndClosesWithInputPreview(_ expanded: Bool) async throws {
         let provider = PanelDictionaryProbe()
-        var displayed = ""
-        var anchor: NSWindow?
-        let popup = NSPanel(contentRect: CGRect(x: 100, y: 100, width: 220, height: 120),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        popup.isReleasedWhenClosed = false
-        defer { popup.close() }
-        let dictionary = LearningSystemDictionaryPresenter { view, text, _ in
-            displayed = text.string
-            anchor = view.window
-            view.window?.addChildWindow(popup, ordered: .above)
-            popup.orderFrontRegardless()
-        }
-        let panel = LearningSentencePanel(dictionary: dictionary, dictionaryProvider: provider)
+        let panel = LearningSentencePanel(dictionaryProvider: provider)
         defer { panel.hide() }
         let id = UUID()
         func presentation(chunks: [LearningMeaningChunk]) -> LearningSentencePresentation {
@@ -243,9 +222,10 @@ struct LearningSentencePanelTests {
         view.handleClick(at: NSPoint(x: bounds.midX + view.textContainerOrigin.x,
             y: bounds.midY + view.textContainerOrigin.y), count: 2)
         #expect(clickedUnit == .word(.init(text: "like", range: range)))
-        #expect(displayed == "like", "A word click must dispatch to native dictionary presentation")
-        #expect(await provider.calls == 0, "Word lookup must bypass the flattened Dictionary Services provider")
-        let source = try #require(anchor)
+        await waitUntil { panel.dictionarySession.content == .result(.systemText("Fixture definition.")) }
+        #expect(panel.dictionarySession.title == "like")
+        #expect(await provider.calls == 1, "Word lookup must use the shared dictionary provider")
+        let source = try #require(NSApp.windows.first { panel.owns($0) && $0.title == "Expression Dictionary" })
         #expect(source.isVisible)
         panel.show(presentation(chunks: [.init(id: 0, sourceRanges: [.init(location: 1, length: 2)],
             targetRanges: [.init(location: 2, length: 4)])]), expand: {}, dismiss: {})
@@ -262,7 +242,6 @@ struct LearningSentencePanelTests {
         }
         panel.hide()
         #expect(!source.isVisible)
-        #expect(!popup.isVisible)
         #expect(panel.detailState.chunk == nil)
     }
 
@@ -284,16 +263,16 @@ struct LearningSentencePanelTests {
 private actor PanelDictionaryProbe: LearningDictionaryProviding {
     private(set) var calls = 0
     private(set) var queries: [String] = []
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource) async throws -> LearningDictionaryResult {
         calls += 1
         queries.append(query)
-        return .systemEntry
+        return .systemText("Fixture definition.")
     }
 }
 
 /// A real SwiftUI popover exercises the platform bridge separately from an explicitly attached
 /// child NSPanel. The probe observes its actual window rather than assuming an AppKit hierarchy.
-private struct FavoritePopoverWindowFixture: View {
+struct FavoritePopoverWindowFixture: View {
     let windowReady: (NSWindow) -> Void
     @State private var presented = false
 

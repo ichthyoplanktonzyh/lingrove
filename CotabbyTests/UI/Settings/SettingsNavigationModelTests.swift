@@ -7,6 +7,13 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func testDictionarySearchOpensItsOwnLearningTab() {
+        let model = SettingsNavigationModel()
+        model.reveal(.dictionarySources)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .dictionary)
+        XCTAssertTrue(SettingsItem.results(for: "词典").contains(.dictionarySources))
+    }
     /// Models live as long as the test case instance rather than dying at the end of each test body:
     /// freeing a `@MainActor` model inside the body crashes the CI test host (macOS 15 runtime) with
     /// "pointer being freed was not allocated", the same reason other suites hold their subjects in

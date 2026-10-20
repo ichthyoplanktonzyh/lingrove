@@ -2,13 +2,12 @@ import AppKit
 import SwiftUI
 
 /// Owned once by the sentence panel. This nonactivating sibling owns one expression/word dictionary
-/// session and shares correspondence selection with the sentence card. The native presenter
-/// owns system lookup for its component words; closing/replacing the document closes both layers.
+/// session and shares correspondence selection with the sentence card. Every source and component
+/// word is rendered in this same window, so favorite menus never straddle a system-owned popup.
 @MainActor
 final class LearningDetailPanel {
     let state = LearningDetailState()
     let dictionarySession: LearningDictionarySession
-    private let dictionary: LearningSystemDictionaryPresenter
     private let speech: LearningSpeechController?
     private let vocabulary: VocabularyStore?
     private var panel: NSPanel?
@@ -24,20 +23,19 @@ final class LearningDetailPanel {
     private var anchorOffsetFromTop: CGFloat = 0
     private(set) var isVisible = false
 
-    init(dictionary: LearningSystemDictionaryPresenter? = nil, provider: (any LearningDictionaryProviding)? = nil,
+    init(provider: (any LearningDictionaryProviding)? = nil, dictionarySettings: LearningDictionarySettings? = nil,
          speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil) {
-        self.dictionary = dictionary ?? LearningSystemDictionaryPresenter()
         self.speech = speech
         self.vocabulary = vocabulary
         dictionarySession = LearningDictionarySession(provider: provider ?? LearningLexiconService(
-            resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")))
+            resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")), settings: dictionarySettings)
     }
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
-    var interactionWindows: [NSWindow?] { [panel] + dictionary.interactionWindows }
+    var interactionWindows: [NSWindow?] { [panel] }
     var favoriteCapture: VocabularyCapture? {
         guard isVisible else { return nil }
-        return dictionary.vocabularyCapture ?? dictionarySession.favoriteCapture
+        return dictionarySession.favoriteCapture
     }
     func owns(_ window: NSWindow?) -> Bool {
         // Dictionary popovers can have nested child windows. An ancestor check makes clicking
@@ -50,10 +48,11 @@ final class LearningDetailPanel {
         return false
     }
 
-    func dismissDictionary() -> Bool { dictionary.dismiss() }
-
-    func recordDictionaryInteraction(kind: String, window: NSWindow?, hitWindowNumber: Int = -1) {
-        dictionary.recordInteraction(kind: kind, window: window, hitWindowNumber: hitWindowNumber)
+    func dismissDictionary() -> Bool {
+        guard dictionarySession.selectedWord != nil else { return false }
+        stopCurrentSpeech()
+        dictionarySession.returnToExpression()
+        return true
     }
 
     func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement, speechContext: String? = nil,
@@ -73,7 +72,6 @@ final class LearningDetailPanel {
               correspondence: LearningChunkDetail?, placement: LearningDetailPlacement, speechContext: String? = nil,
               vocabularyCapture: VocabularyCapture? = nil) {
         stopCurrentSpeech()
-        dictionary.dismiss()
         state.chunk = correspondence
         dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext,
             vocabularyCapture: vocabularyCapture)
@@ -92,11 +90,11 @@ final class LearningDetailPanel {
             })
         let window = panel ?? LearningDetailWindow(contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        if let hosting { hosting.rootView = card } else {
-            let view = NSHostingView(rootView: card)
-            hosting = view
-            window.contentView = view
-        }
+        // Reuse the NSPanel, but not a previous lookup's SwiftUI state. An open favorite/source
+        // popover must be torn down before this window starts showing a different capture.
+        let view = NSHostingView(rootView: card)
+        hosting = view
+        window.contentView = view
         panel = window
         window.title = String(localized: "Expression Dictionary", table: "Learning",
             comment: "Window title for the learning dictionary panel.")
@@ -125,37 +123,32 @@ final class LearningDetailPanel {
 
     func selectWord(_ word: String, from button: NSButton, chunk: LearningChunkDetail) {
         guard isVisible, state.chunk == chunk, chunk.words.contains(word), button.window === panel else { return }
-        dictionary.show(word, from: button)
+        guard let unit = dictionarySession.unit, let documentID = dictionarySession.documentID else { return }
+        selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
     }
 
-    /// A component lookup leaves the expression session intact. Immutable unit/document values
-    /// captured by the card reject reused controls from an older sentence; the real button gives
-    /// the native popup its baseline without reading or activating the user's editor.
+    /// Immutable document/unit identities reject controls from an older rendered sentence. A
+    /// string-only legacy control may navigate only an unambiguous occurrence; new controls
+    /// carry the exact word range so repeated words retain their distinct example highlights.
     func selectDictionaryTerm(_ term: String, from button: NSButton, unit: LearningUnit, documentID: UUID) {
-        let isWholeSystemEntry = term == dictionarySession.query && dictionarySession.content == .result(.systemEntry)
         guard isVisible, dictionarySession.documentID == documentID, dictionarySession.unit == unit,
-              button.window === panel,
-              unit.words.contains(where: { $0.text == term }) || isWholeSystemEntry else { return }
-        var capture = dictionarySession.vocabularyCapture
+              button.window === panel else { return }
         let words = unit.words.filter { $0.text == term }
-        if !isWholeSystemEntry, let original = capture {
-            capture = words.count == 1 ? VocabularyCaptureFactory.component(words[0], unit: unit, capture: original) : nil
-        }
-        dictionary.show(term, from: button, vocabulary: vocabulary, capture: capture)
+        guard words.count == 1 else { return }
+        stopCurrentSpeech()
+        dictionarySession.select(words[0])
     }
 
     func selectDictionaryWord(_ word: LearningDictionaryWord, from button: NSButton, unit: LearningUnit, documentID: UUID) {
         guard isVisible, dictionarySession.documentID == documentID, dictionarySession.unit == unit,
               button.window === panel, unit.words.contains(word) else { return }
-        let capture = dictionarySession.vocabularyCapture.flatMap { VocabularyCaptureFactory.component(word, unit: unit, capture: $0) }
-        dictionary.show(word.text, from: button, vocabulary: vocabulary, capture: capture)
+        stopCurrentSpeech()
+        dictionarySession.select(word)
     }
 
-    /// A word lookup closes the expression window while its meaning selection stays in the
-    /// sentence card. Document replacement and full dismissal use the default to clear both.
+    /// Document replacement and full dismissal retire the session and any pending lookup.
     func hide(preservingCorrespondence: Bool = false) {
         stopCurrentSpeech()
-        dictionary.dismiss(reason: "detail-hidden")
         dictionarySession.close()
         layoutRevision = UUID()
         if !preservingCorrespondence { state.chunk = nil }
@@ -163,6 +156,8 @@ final class LearningDetailPanel {
         contentSize = nil
         isVisible = false
         panel?.orderOut(nil)
+        panel?.contentView = nil
+        hosting = nil
     }
 
     /// Closing one dictionary target stops only its utterance. A sentence's source or translation
@@ -192,7 +187,7 @@ final class LearningDetailPanel {
               let frame = LearningDetailPanelLayout.frame(parent: parentFrame, anchorY: anchorY,
                 size: CGSize(width: ceil(size.width), height: ceil(size.height)), screen: screen,
                 obstacles: [caretRect] + (reservedFrame.map { [$0] } ?? [])) else {
-            dictionary.dismiss()
+            stopCurrentSpeech()
             panel?.orderOut(nil)
             isVisible = false
             return
