@@ -22,7 +22,9 @@ struct VocabularyNotebookView: View {
         self.speech = speech
         self.explanation = explanation
         _selection = State(initialValue: selectedID)
-        _requestedID = State(initialValue: selectedID)
+        // A loaded archive already supplies the initial selection. Only a cold load needs
+        // to retain the request; otherwise saving an annotation can replay it over browsing.
+        _requestedID = State(initialValue: store.isLoaded ? nil : selectedID)
     }
 
     private var visibleEntries: [VocabularyEntry] {

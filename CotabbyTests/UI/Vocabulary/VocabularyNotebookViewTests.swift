@@ -7,6 +7,46 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyNotebookViewTests {
+    @Test func savingAnExplanationKeepsTheBrowsedEntrySelected() async throws {
+        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        for word in ["first", "second"] {
+            await store.save(VocabularyCapture(expression: word, dictionaryForm: word, language: .english,
+                kind: .word, meaning: ""))
+        }
+        let initial = try #require(store.entries.first { $0.expression == "first" })
+        let session = LearningExplanationSession()
+        let suite = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+            selectedID: initial.id, explanation: session))
+        let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 940, height: 640),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host
+        defer { window.close() }
+        window.orderFrontRegardless()
+        for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
+        let table = try #require(tableView(in: host))
+        #expect(table.numberOfRows == 2)
+        #expect(session.input?.target == "first")
+        // Select the other row through the real SwiftUI List's AppKit backing, then publish
+        // an archive revision exactly as a completed model request does.
+        table.selectRowIndexes(IndexSet(integer: table.selectedRow == 0 ? 1 : 0), byExtendingSelection: false)
+        for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
+        let input = try #require(session.input)
+        #expect(input.target == "second")
+        await store.saveExplanation(.init(id: UUID(), input: input, language: .english,
+            result: .init(meaning: "Next after first", explanation: "An ordinal."), model: "fixture", createdAt: Date()))
+        for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
+        #expect(session.input == input)
+    }
+
+    private func tableView(in view: NSView) -> NSTableView? {
+        if let table = view as? NSTableView { return table }
+        return view.subviews.lazy.compactMap { tableView(in: $0) }.first
+    }
+
     @Test func libraryAndEditorRenderWithoutReadingRealUserData() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         let text = "Please keep me posted on the progress."
