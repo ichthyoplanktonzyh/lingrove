@@ -7,6 +7,54 @@ import Testing
 /// an append at the caret must still count as a mutation.
 @Suite
 struct LearningCommittedTextChangePolicyTests {
+    @Test(arguments: [
+        ("你好，很高兴见到你，", "你好，很高兴"),
+        ("Please keep me posted on the progress.", "Please keep me posted"),
+        ("我喜欢这道菜🍜", "我喜欢"),
+        ("你好", "")
+    ])
+    func deletingTheEndIsAMutationEvenWhenTheRemainingPrefixIsIdentical(_ pair: (String, String)) {
+        let old = snapshot(document: pair.0, caret: pair.0.utf16.count)
+        let shortened = snapshot(document: pair.1, caret: pair.1.utf16.count)
+        #expect(LearningCommittedTextChangePolicy.hasMutation(from: old, to: shortened))
+    }
+
+    @Test
+    func deletionInALongRepeatedDocumentUsesFullLengthInsteadOfWindowText() {
+        let document = String(repeating: "a", count: 8_000)
+        let shortened = String(document.dropLast(4))
+        let old = snapshot(document: document, caret: document.utf16.count)
+        let new = snapshot(document: shortened, caret: shortened.utf16.count)
+        #expect(old.precedingText == new.precedingText && old.selection == new.selection)
+        #expect(LearningCommittedTextChangePolicy.hasMutation(from: old, to: new))
+    }
+
+    @Test
+    func knownLengthProvesDeletionWhenTheHostCannotReadTrailingText() {
+        let old = snapshot(document: "aaaaaa", caret: 3, trailingTextAvailable: false)
+        let deleted = snapshot(document: "aaaaa", caret: 2, trailingTextAvailable: false)
+        #expect(LearningCommittedTextChangePolicy.hasMutation(from: old, to: deleted))
+    }
+
+    @Test
+    func shrinkingPreeditWithUnchangedSharedTextStillNeedsCommitEvidence() {
+        let composing = snapshot(document: "我喜欢", caret: 3, hostMarkedTextRange: NSRange(location: 1, length: 2))
+        let ended = snapshot(document: "我喜", caret: 2)
+        #expect(ended.documentSelection.location > 1)
+        #expect(!LearningCommittedTextChangePolicy.hasMutation(from: composing, to: ended),
+            "A shorter preedit value cannot by itself prove a committed deletion")
+    }
+
+    @Test
+    func deletingSelectedTextIsAnEditButCollapsingSelectionWithoutAnEditIsNot() {
+        let document = "Hello world"
+        let selected = snapshot(document: document, caret: 5, selectionLength: 6)
+        let collapsed = snapshot(document: document, caret: 5)
+        let deleted = snapshot(document: "Hello", caret: 5)
+        #expect(!LearningCommittedTextChangePolicy.hasMutation(from: selected, to: collapsed))
+        #expect(LearningCommittedTextChangePolicy.hasMutation(from: selected, to: deleted))
+    }
+
     @Test
     func movingCaretAcrossBoundedWindowsInTheSameDocumentIsNotAMutation() {
         let document = String(repeating: "a", count: 5_000) + "中心段落" + String(repeating: "b", count: 5_000)

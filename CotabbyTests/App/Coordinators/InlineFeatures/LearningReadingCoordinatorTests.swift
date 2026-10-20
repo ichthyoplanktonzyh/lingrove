@@ -10,6 +10,48 @@ import Testing
 @MainActor
 struct LearningReadingCoordinatorTests {
     @Test(arguments: LearningReadingSource.allCases)
+    func readingStreamsPrefixesButOnlyCompletedTextStartsAnalysis(_ source: LearningReadingSource) async {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(source)
+        rig.settings.languageLearning.analysisEnabled = true
+        await settle()
+        #expect(rig.coordinator.decide(rig.shortcut(for: source)) == .consume)
+        await until { rig.service.calls.count == 1 }
+        #expect(!rig.panel.isVisible)
+        rig.service.partials[0]("部分")
+        #expect(rig.panel.isVisible && rig.panel.last?.translation == "部分")
+        #expect(rig.panel.last?.isTranslating == true && rig.panel.last?.canReplace == false)
+        #expect(rig.service.analysisPending == nil)
+        let checks = rig.reader.currentChecks
+        rig.service.partials[0]("部分译文")
+        #expect(rig.reader.currentChecks == checks, "Intermediate display must not repeatedly traverse AX")
+        rig.service.finish(0, "完整译文")
+        await until { rig.service.analysisPending != nil }
+        #expect(rig.panel.last?.isTranslating == false && rig.panel.last?.translation == "完整译文")
+        #expect(rig.reader.currentChecks > checks, "Completion still revalidates the original receipt")
+        rig.coordinator.dismiss()
+        rig.service.partials[0]("旧结果")
+        #expect(!rig.panel.isVisible)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases)
+    func failedReadingStreamClearsThePrefixAndRejectsLateUpdates(_ source: LearningReadingSource) async {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(source)
+        await settle()
+        #expect(rig.coordinator.decide(rig.shortcut(for: source)) == .consume)
+        await until { rig.service.calls.count == 1 }
+        rig.service.partials[0]("部分")
+        rig.service.pending.removeValue(forKey: 0)?.resume(throwing: LearningFailure.message("stream failed"))
+        await until { rig.panel.last?.isError == true }
+        #expect(rig.panel.last?.translation == "" && rig.panel.last?.isTranslating == false)
+        rig.service.partials[0]("迟到的部分")
+        #expect(rig.panel.last?.translation == "" && rig.panel.last?.isError == true)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases)
     func sourceIdentityReachesTranslationAndAnalysisWhenOtherEntrypointsAreOff(_ source: LearningReadingSource) async {
         let rig = Rig()
         defer { rig.cleanup() }
@@ -45,7 +87,7 @@ struct LearningReadingCoordinatorTests {
         await until { rig.service.calls.count == 1 }
         for other in LearningReadingSource.allCases where other != source { rig.setSource(other, enabled: true) }
         await settle()
-        #expect(rig.panel.isVisible && rig.coordinator.isActive)
+        #expect(!rig.panel.isVisible && rig.coordinator.isActive)
         rig.service.finish(0, "仍然有效")
         await until { rig.panel.last?.translation == "仍然有效" }
         for other in LearningReadingSource.allCases where other != source { rig.setSource(other, enabled: false) }
@@ -424,6 +466,7 @@ struct LearningReadingCoordinatorTests {
     private final class Reader: LearningReadingSelecting {
         var calls = 0, current = true
         var forgets = 0
+        var currentChecks = 0
         var lastSource = LearningReadingSource.selection
         var blockCapture = false
         var isSelectingRegion: Bool { pendingCapture != nil }
@@ -444,7 +487,7 @@ struct LearningReadingCoordinatorTests {
                 id: UUID(), text: "Please keep me posted on the progress.", processIdentifier: 123,
                 bundleIdentifier: "test.allowed", anchor: .init(x: 200, y: 200, width: 200, height: 20))
         }
-        func isCurrent(_ capture: LearningReadingSelection) -> Bool { current }
+        func isCurrent(_ capture: LearningReadingSelection) -> Bool { currentChecks += 1; return current }
         func forget() {
             forgets += 1
             let continuation = pendingCapture
@@ -460,10 +503,17 @@ struct LearningReadingCoordinatorTests {
         }
         let settings: SuggestionSettingsModel
         var calls: [Call] = []
+        var partials: [(String) -> Void] = []
         var pending: [Int: CheckedContinuation<String, any Error>] = [:]
         var analysisPending: CheckedContinuation<LearningSentenceResult, any Error>?
         var analysisSource: LearningReadingSource?
         init(settings: SuggestionSettingsModel) { self.settings = settings }
+        func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                       readingSource: LearningReadingSource, onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+            partials.append(onPartial)
+            return try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage, readingSource: readingSource)
+        }
         func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                        readingSource: LearningReadingSource) async throws
             -> String

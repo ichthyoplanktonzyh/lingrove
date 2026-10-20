@@ -6,7 +6,7 @@ import Foundation
 nonisolated enum LearningCommittedTextChangePolicy {
     static func hasMutation(from old: FocusedInputSnapshot, to new: FocusedInputSnapshot) -> Bool {
         guard old.sessionIdentity == new.sessionIdentity,
-              old.documentSelection.length == 0, new.documentSelection.length == 0 else { return false }
+              new.documentSelection.length == 0 else { return false }
         if let marked = old.hostMarkedTextRange, marked.length > 0,
            marked.location < old.documentSelection.location, !new.hasHostMarkedText {
             // Cancellation can remove the entire preedit. A committed nonempty span must remain
@@ -16,8 +16,14 @@ nonisolated enum LearningCommittedTextChangePolicy {
             if old.documentSelection == new.documentSelection,
                old.precedingText == new.precedingText, old.trailingText == new.trailingText { return true }
         }
-        if old.documentLength == old.documentSelection.location, new.documentLength == new.documentSelection.location,
-           new.documentSelection.location > old.documentSelection.location { return true }
+        // Real AX document lengths distinguish deletion from caret motion even when every
+        // remaining character is the same prefix (or both bounded windows contain repeated text).
+        // Only committed snapshots use this shortcut. Composition ending still needs the original
+        // text/caret evidence above and below, since removing preedit can also shorten the value.
+        // A collapsed selection after deleting selected text is also an edit when length proves it.
+        if !old.hasHostMarkedText, let oldLength = old.documentLength,
+           let newLength = new.documentLength, oldLength != newLength { return true }
+        guard old.documentSelection.length == 0 else { return false }
         let oldText = (old.precedingText + old.trailingText) as NSString
         let newText = (new.precedingText + new.trailingText) as NSString
         let oldStart = old.documentSelection.location - old.precedingText.utf16.count

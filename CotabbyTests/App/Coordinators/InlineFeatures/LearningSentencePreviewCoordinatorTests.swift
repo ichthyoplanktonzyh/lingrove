@@ -11,6 +11,168 @@ import Testing
 @MainActor
 struct LearningSentencePreviewCoordinatorTests {
     @Test
+    func translationContinuesWhileCompletionIsDisabledAndDoesNotChangeItsGate() async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.settings.setCompletionEnabled(false)
+        rig.settings.languageLearning.analysisEnabled = false
+        rig.coordinator.start()
+        try rig.edit("你好，很高兴认识你。")
+        await waitUntil { rig.service.requests.count == 1 }
+        rig.service.emit(.translation("Hello, nice to meet you."))
+        await waitUntil { rig.panel.last?.translation == "Hello, nice to meet you." }
+        #expect(rig.panel.isVisible)
+        #expect(!rig.settings.isCompletionEnabled)
+        #expect(rig.settings.languageLearning.translationEnabled)
+    }
+
+    @Test
+    func deletingTheSentenceTailRetranslatesAfterTheSamePauseAndCanRestoreACachedPrefix() async throws {
+        let pause = PauseGate(), rig = try Rig(pause: pause)
+        defer { rig.cleanup() }
+        rig.settings.languageLearning.analysisEnabled = false
+        rig.coordinator.start()
+        try rig.edit("你好")
+        await waitUntil { pause.pending.count == 1 }
+        pause.release(0)
+        await waitUntil { rig.service.requests.count == 1 }
+        rig.service.emit(.translation("Hello."))
+        await waitUntil { rig.panel.last?.translation == "Hello." }
+        try rig.edit("你好，很高兴见到你")
+        await waitUntil { pause.pending.count == 2 }
+        pause.release(1)
+        await waitUntil { rig.service.requests.count == 2 }
+        rig.service.emit(.translation("Hello, nice to meet you."))
+        await waitUntil { rig.panel.last?.translation == "Hello, nice to meet you." }
+
+        #expect(!rig.coordinator.observe(.init(kind: .textMutation, keyCode: 51, characters: "", flags: [])))
+        #expect(!rig.panel.isVisible)
+        try rig.edit("你好，很高兴见到")
+        await waitUntil { pause.pending.count == 3 }
+        try rig.edit("你好，很高兴")
+        await waitUntil { pause.pending.count == 4 }
+        pause.release(2)
+        for _ in 0..<10 { await Task.yield() }
+        #expect(rig.service.requests.count == 2 && !rig.panel.isVisible)
+        pause.release(3)
+        await waitUntil { rig.service.requests.count == 3 }
+        #expect(rig.service.requests.last?.source == "你好，很高兴")
+        rig.service.translationCallbacks[2]("Hello")
+        #expect(rig.panel.isVisible && rig.panel.last?.isTranslating == true && rig.panel.last?.canReplace == false)
+        rig.service.emit(.translation("Hello, I'm happy."))
+        await waitUntil { rig.panel.last?.canReplace == true }
+
+        try rig.edit("你好")
+        await waitUntil { pause.pending.count == 5 }
+        #expect(!rig.panel.isVisible)
+        pause.release(4)
+        await waitUntil { rig.panel.isVisible && rig.panel.last?.translation == "Hello." }
+        #expect(rig.service.requests.count == 3, "A deletion back to a validated cached source still reopens its translation")
+        try rig.edit("")
+        await waitUntil { pause.pending.count == 6 }
+        pause.release(5)
+        for _ in 0..<10 { await Task.yield() }
+        #expect(!rig.panel.isVisible && rig.service.requests.count == 3, "Deleting the whole sentence leaves no translatable target")
+        #expect(pause.durations.allSatisfy { $0 == .milliseconds(600) })
+    }
+
+    @Test
+    func anUnfinishedStreamCannotBecomeThePreviousSentenceTranslation() async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.settings.languageLearning.analysisEnabled = false
+        rig.coordinator.start()
+        try rig.edit("我能做到。")
+        await waitUntil { rig.service.requests.count == 1 }
+        rig.service.translationCallbacks[0]("I can")
+        try rig.edit("我能做到。明天开始。")
+        await waitUntil { rig.service.requests.count == 2 }
+        rig.service.emit(.translation("I will start tomorrow."))
+        await waitUntil { rig.panel.isVisible && rig.panel.last?.translation == "I will start tomorrow." }
+        #expect(rig.panel.last?.previousTranslation == nil)
+    }
+
+    @Test
+    func partialTranslationAppearsImmediatelyButCannotBeReplacedOrAnalyzed() async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.coordinator.start()
+        try rig.edit("我能做到")
+        await waitUntil { rig.service.requests.count == 1 }
+        #expect(!rig.panel.isVisible)
+        let partial = try #require(rig.service.translationCallbacks.first)
+        partial("I can")
+        #expect(rig.panel.isVisible && rig.panel.last?.translation == "I can")
+        #expect(rig.panel.last?.isTranslating == true && rig.panel.last?.canReplace == false)
+        #expect(rig.service.analysisCalls == 0)
+        #expect(rig.coordinator.decide(.init(keyCode: 17, flags: [.maskControl, .maskAlternate])) == .notHandled)
+        rig.panel.replace?()
+        await Task.yield()
+        #expect(rig.reader.replaceCount == 0)
+        rig.settings.languageLearning.analysisEnabled = false
+        rig.settings.languageLearning.analysisEnabled = true
+        for _ in 0..<10 { await Task.yield() }
+        #expect(rig.service.analysisCalls == 0, "An analysis settings change cannot analyze an incomplete prefix")
+        partial("I can do it.")
+        #expect(rig.panel.last?.canReplace == false, "The final-looking prefix is still unvalidated")
+        rig.service.emit(.translation("I can do it."))
+        await waitUntil { rig.panel.last?.canReplace == true && rig.service.analysisCalls == 1 }
+        #expect(rig.panel.last?.isTranslating == false)
+    }
+
+    @Test
+    func failedStreamWithdrawsPartialTextAndLatePrefixesCannotReopenIt() async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.coordinator.start()
+        try rig.edit("我能做到")
+        await waitUntil { rig.service.requests.count == 1 }
+        let old = try #require(rig.service.translationCallbacks.first)
+        old("I can")
+        rig.service.failTranslation()
+        await waitUntil { rig.panel.last?.isError == true }
+        #expect(rig.panel.last?.translation == "" && rig.panel.last?.canReplace == false)
+        old("Late fragment")
+        #expect(rig.panel.last?.isError == true && rig.panel.last?.translation == "")
+        try rig.edit("我可以做更多")
+        await waitUntil { rig.service.requests.count == 2 }
+        old("I can do it.")
+        #expect(!rig.panel.isVisible)
+        let current = try #require(rig.service.translationCallbacks.last)
+        current("I can do more")
+        #expect(rig.panel.last?.translation == "I can do more")
+        _ = rig.coordinator.observe(.init(kind: .textMutation, keyCode: 0, characters: "a", flags: []))
+        current("I can do more things.")
+        #expect(!rig.panel.isVisible, "Typing invalidates even already scheduled partial callbacks")
+    }
+
+    @Test(arguments: [false, true])
+    func movingTheEditorReanchorsTheExistingTranslationWithoutGeneratingAgain(_ publishesBeforeStorage: Bool) async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.settings.languageLearning.analysisEnabled = false
+        rig.coordinator.start()
+        try rig.edit("很高兴认识你")
+        await waitUntil { rig.service.requests.count == 1 }
+        rig.service.emit(.translation("Nice to meet you."))
+        await waitUntil { rig.panel.last?.translation == "Nice to meet you." }
+        let identifier = try #require(rig.panel.last?.id)
+        let movedCaret = CGRect(x: 350, y: 700, width: 2, height: 18)
+        try rig.edit("很高兴认识你", caret: movedCaret, publishesBeforeStorage: publishesBeforeStorage)
+        #expect(rig.panel.last?.caret == movedCaret,
+            "Scrolling or moving a window must move the card even when the source text has not changed")
+        #expect(rig.panel.last?.id == identifier && rig.panel.last?.translation == "Nice to meet you.")
+        #expect(rig.service.requests.count == 1)
+        #expect(rig.reader.replaceCount == 0)
+        let shown = rig.panel.showCount
+        try rig.edit("很高兴认识你", caret: movedCaret)
+        #expect(rig.panel.showCount == shown, "An unchanged focus poll must not rebuild the card")
+        _ = rig.coordinator.observe(.init(kind: .textMutation, keyCode: 1, characters: "s", flags: []))
+        try rig.edit("很高兴认识你", caret: movedCaret.offsetBy(dx: 0, dy: -100))
+        #expect(!rig.panel.isVisible, "Geometry updates must not reopen a preview hidden by typing")
+    }
+
+    @Test
     func searchFieldRequiresAnExplicitLearningShortcut() async throws {
         let rig = try Rig()
         defer { rig.cleanup() }
@@ -62,7 +224,7 @@ struct LearningSentencePreviewCoordinatorTests {
         #expect(rig.coordinator.decide(.init(keyCode: 17, flags: .maskAlternate)) == .consume)
         await waitUntil { rig.service.requests.count == 2 }
         rig.service.emit(.translation("I can do it."))
-        await waitUntil { rig.panel.last?.translation.isEmpty == false }
+        await waitUntil { rig.panel.isVisible && rig.panel.last?.translation == "I can do it." }
         rig.focus.snapshotSubject.send(rig.focus.snapshot)
         #expect(rig.panel.isVisible, "An explicitly requested preview survives an unchanged search snapshot.")
     }
@@ -112,6 +274,7 @@ struct LearningSentencePreviewCoordinatorTests {
         #expect(rig.panel.last?.translation == text && rig.panel.isVisible)
         #expect(rig.panel.last?.unitStage == .pending)
         #expect(rig.service.analysisCalls == 0)
+        #expect(rig.panel.last?.message.isEmpty == true, "Disabled optional alignment must not add an explanatory row")
         let unit = LearningUnit(id: 2, surface: "look forward to", query: "look forward to", kind: .expression,
             ranges: [.init(location: 2, length: 15)], words: [])
         await gate.finish(text, units: [unit])
@@ -161,6 +324,7 @@ struct LearningSentencePreviewCoordinatorTests {
         #expect(!rig.panel.isVisible && rig.service.requests.isEmpty)
         pause.release(0)
         await waitUntil { rig.service.requests.count == 1 }
+        #expect(!rig.panel.isVisible, "Finishing the input pause starts translation without showing a loading card")
         rig.service.emit(.translation("I can do it."))
         await waitUntil { rig.service.analysisCalls == 1 }
         let oldCallback = try #require(rig.service.analysisCallbacks.first)
@@ -180,6 +344,9 @@ struct LearningSentencePreviewCoordinatorTests {
         #expect(!rig.panel.isVisible && rig.service.requests.count == 1)
         pause.release(2)
         await waitUntil { rig.service.requests.count == 2 }
+        #expect(!rig.panel.isVisible)
+        rig.service.emit(.translation("I can do more things."))
+        await waitUntil { rig.panel.last?.translation == "I can do more things." }
         #expect(rig.panel.isVisible)
         #expect(rig.panel.last?.source == "我能做到更多事情")
         #expect(pause.durations.allSatisfy { $0 == .milliseconds(600) })
@@ -399,6 +566,9 @@ struct LearningSentencePreviewCoordinatorTests {
         try rig.edit("我喜欢你。我想多了解你")
         await waitUntil { rig.service.requests.count == 2 }
         #expect(rig.service.requests[1].source == "我想多了解你")
+        #expect(!rig.panel.isVisible)
+        rig.service.emit(.translation("I want to know you better."))
+        await waitUntil { rig.panel.last?.translation == "I want to know you better." }
         #expect(rig.panel.last?.previousTranslation == "I like you.")
     }
 
@@ -460,6 +630,9 @@ struct LearningSentencePreviewCoordinatorTests {
         await waitUntil { rig.panel.last?.isGenerating == false }
         try rig.edit("我喜欢你做的饭")
         await waitUntil { rig.service.requests.count == 3 }
+        #expect(!rig.panel.isVisible)
+        rig.service.emit(.translation("I like the food you cooked."))
+        await waitUntil { rig.panel.last?.translation == "I like the food you cooked." }
         #expect(rig.panel.last?.previousTranslation == nil)
     }
 
@@ -489,8 +662,23 @@ struct LearningSentencePreviewCoordinatorTests {
         rig.service.emit(.chunk(Self.chunk))
         rig.service.finish()
         await Task.yield()
-        #expect(rig.panel.last?.translation.isEmpty == true)
-        #expect(rig.panel.last?.chunks.isEmpty == true)
+        #expect(!rig.panel.isVisible)
+        #expect(rig.panel.showCount == 0, "Neither pending work nor a late translation may open the card in another app")
+    }
+
+    @Test
+    func failedTranslationShowsItsErrorWithoutAnEarlierLoadingCard() async throws {
+        let rig = try Rig()
+        defer { rig.cleanup() }
+        rig.coordinator.start()
+        try rig.edit("我能做到")
+        await waitUntil { rig.service.requests.count == 1 }
+        #expect(!rig.panel.isVisible && rig.panel.showCount == 0)
+        rig.service.failTranslation()
+        await waitUntil { rig.panel.last?.isError == true }
+        #expect(rig.panel.isVisible)
+        #expect(rig.panel.last?.message == "translation unavailable")
+        #expect(rig.panel.last?.isGenerating == false)
     }
 
     @Test
@@ -776,14 +964,17 @@ struct LearningSentencePreviewCoordinatorTests {
         }
 
         func edit(_ text: String, element: String = "field", marked: NSRange? = nil,
-                  capability: FocusCapability = .supported) throws {
+                  capability: FocusCapability = .supported,
+                  caret: CGRect = CGRect(x: 10, y: 20, width: 2, height: 18), publishesBeforeStorage: Bool = false) throws {
             let old = focus.snapshot.context
             let sequence = (old?.focusChangeSequence ?? 1) + (old?.elementIdentifier == element ? 0 : 1)
-            let context = CotabbyTestFixtures.focusedInputSnapshot(elementIdentifier: element, precedingText: text,
+            let context = CotabbyTestFixtures.focusedInputSnapshot(elementIdentifier: element, caretRect: caret, precedingText: text,
                 focusChangeSequence: sequence, hostMarkedTextRange: marked, documentLength: text.utf16.count)
-            focus.snapshot = FocusSnapshot(applicationName: context.applicationName, bundleIdentifier: context.bundleIdentifier,
+            let snapshot = FocusSnapshot(applicationName: context.applicationName, bundleIdentifier: context.bundleIdentifier,
                 capability: capability, context: context)
-            focus.snapshotSubject.send(focus.snapshot)
+            if publishesBeforeStorage { focus.snapshotSubject.send(snapshot) }
+            focus.snapshot = snapshot
+            if !publishesBeforeStorage { focus.snapshotSubject.send(snapshot) }
         }
 
         func cleanup() {
@@ -807,6 +998,7 @@ struct LearningSentencePreviewCoordinatorTests {
         var cancelledTranslation = 0
         var cancelledAnalysis = 0
         var analysisCallbacks: [(LearningSentenceUpdate) -> Void] = []
+        var translationCallbacks: [(String) -> Void] = []
         init(settings: SuggestionSettingsModel) { self.settings = settings }
         func generateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                               onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
@@ -827,6 +1019,13 @@ struct LearningSentencePreviewCoordinatorTests {
                     continuation.resume(throwing: CancellationError())
                 }
             }
+        }
+        func translateSentence(
+            input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+            targetLanguage: LearningLanguage, onPartial: @escaping @MainActor (String) -> Void
+        ) async throws -> String {
+            translationCallbacks.append(onPartial)
+            return try await translateSentence(input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
         }
         func translateSentence(
             input: LearningTranslationInput, sourceLanguage: LearningLanguage,
@@ -870,6 +1069,11 @@ struct LearningSentencePreviewCoordinatorTests {
         func fail() {
             if let id = analysisIDs[requests.count - 1] {
                 pending.removeValue(forKey: id)?.resume(throwing: LearningFailure.message("analysis unavailable"))
+            }
+        }
+        func failTranslation() {
+            if let id = translationIDs[requests.count - 1] {
+                pending.removeValue(forKey: id)?.resume(throwing: LearningFailure.message("translation unavailable"))
             }
         }
         func cleanup() { for continuation in pending.values { continuation.resume(throwing: CancellationError()) }; pending.removeAll() }

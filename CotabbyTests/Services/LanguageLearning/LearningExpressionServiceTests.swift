@@ -8,6 +8,35 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct LearningExpressionServiceTests {
+    @Test
+    func translationStreamsSafePrefixesAndReturnsOnlyTheValidatedFinalText() async throws {
+        let body = """
+        data: {"choices":[{"delta":{"content":"  "},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{"content":" world."},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+
+        data: [DONE]
+
+
+        """
+        let harness = try makeHarness(translationEnabled: true,
+            reply: .init(statusCode: 200, body: Data(body.utf8)))
+        defer { harness.cleanUp() }
+        var prefixes: [String] = []
+        let final = try await harness.service.translateSentence(input: .init(source: "你好，世界。"),
+            sourceLanguage: .chinese, targetLanguage: .english, onPartial: { prefixes.append($0) })
+        #expect(prefixes.first == "Hello", "Leading blank tokens must not open an empty card")
+        #expect(final == "Hello world.")
+        let request = await harness.exchange.waitForRequest()
+        let requestBody = try #require(request.body)
+        let json = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+        #expect(json["stream"] as? Bool == true)
+    }
+
     @Test(arguments: LearningReadingSource.allCases)
     func eachReadingSourceTranslatesAndAlignsWithOtherEntrypointsDisabled(_ source: LearningReadingSource) async throws {
         let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,

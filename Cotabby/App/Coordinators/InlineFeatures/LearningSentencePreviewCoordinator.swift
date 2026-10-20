@@ -70,8 +70,8 @@ final class LearningSentencePreviewCoordinator {
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
         var generating = true
-        var message = String(localized: "Generating expression…", table: "Learning",
-            comment: "Status shown in the sentence card while a translation is being generated.")
+        var translationIsComplete = false
+        var message = ""
         var previousSentence: PreviousSentence?
         var isStale = false
         /// An explicit shortcut may keep a preview in a search field; a passive preview cannot.
@@ -207,7 +207,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func replacementDocument() -> Document? {
-        guard !replacementConflicts, panel.isVisible, let document, !document.isStale,
+        guard !replacementConflicts, panel.isVisible, let document, document.translationIsComplete, !document.isStale,
             !document.translation.isEmpty else { return nil }
         return document
     }
@@ -262,7 +262,14 @@ final class LearningSentencePreviewCoordinator {
         guard let old, let context else { return }
         let changed = old.contentSignature != context.contentSignature || old.documentSelection != context.documentSelection ||
             old.hasHostMarkedText != context.hasHostMarkedText
-        guard changed else { return }
+        guard changed else {
+            // Scrolling, window moves and settled AX geometry can move the same document caret
+            // without an edit. Reanchor the existing result; restarting generation would waste
+            // inference and discard the user's current details/selection. @Published emits before
+            // storing its value, so pass this event's rectangle instead of rereading the old one.
+            if old.caretRect != context.caretRect { render(caret: context.caretRect) }
+            return
+        }
         suspendPreview()
         guard enabled, service.settings.languageLearning.sentencePreviewEnabled,
             availability() == nil, LearningCapturePolicy.permitsAutomaticCapture(focus.snapshot.capability),
@@ -365,6 +372,7 @@ final class LearningSentencePreviewCoordinator {
             CotabbyLogger.learning.info("Learning translation cache hit", metadata: [
                 "request_id": .string(document?.traceID ?? ""), "source": .string("translation"), "phase": .string("cache_hit")])
             document?.translation = cached.translation
+            document?.translationIsComplete = true
             document?.chunks = []
             document?.generating = false
             document?.message = ""
@@ -381,10 +389,17 @@ final class LearningSentencePreviewCoordinator {
                 do {
                     let translation = try await self.service.translateSentence(
                         input: input,
-                        sourceLanguage: language, targetLanguage: settings.targetLanguage)
+                        sourceLanguage: language, targetLanguage: settings.targetLanguage,
+                        onPartial: { [weak self] text in
+                            guard let self, self.isCurrent(identifier, capture: capture), !self.isReadingActive(),
+                                  self.document?.generating == true, self.document?.translationIsComplete == false else { return }
+                            self.document?.translation = text
+                            self.render()
+                        })
                     guard self.isCurrent(identifier, capture: capture, verifyCapture: true) else { return }
                     self.work = nil
                     self.document?.translation = translation
+                    self.document?.translationIsComplete = true
                     self.document?.generating = false
                     self.document?.message = ""
                     if self.cache.count >= 64 { self.cache.removeAll() }
@@ -395,6 +410,8 @@ final class LearningSentencePreviewCoordinator {
                 } catch {
                     guard self.isCurrent(identifier, capture: capture), !(error is CancellationError) else { return }
                     self.work = nil
+                    // A failed stream is never promoted into a usable partial translation.
+                    self.document?.translation = ""
                     self.document?.generating = false
                     self.document?.message = error.localizedDescription
                     self.render()
@@ -408,7 +425,7 @@ final class LearningSentencePreviewCoordinator {
     private func startUnits() {
         unitID = UUID()
         unitWork?.cancel(); unitWork = nil
-        guard let current = document, !current.translation.isEmpty, !current.isStale else { return }
+        guard let current = document, current.translationIsComplete, !current.translation.isEmpty, !current.isStale else { return }
         guard let unitRecognizer else { document?.unitStage = .ready; return }
         let key = current.targetLanguage.rawValue + ":" + current.translation
         if let units = unitCache[key] {
@@ -441,13 +458,12 @@ final class LearningSentencePreviewCoordinator {
         analysisID = UUID()
         analysisWork?.cancel()
         analysisWork = nil
-        guard let current = document, !current.translation.isEmpty, !current.isStale,
+        guard let current = document, current.translationIsComplete, !current.translation.isEmpty, !current.isStale,
               isCurrent(current.id, capture: current.capture) else { return }
         document?.chunks = []
         guard service.settings.languageLearning.analysisEnabled else {
             document?.generating = false
-            document?.message = String(localized: "Chunk alignment is off; dictionary lookup is still available.",
-                table: "Learning", comment: "Status shown when chunk alignment is disabled while the translation remains available.")
+            document?.message = ""
             render()
             return
         }
@@ -531,8 +547,8 @@ final class LearningSentencePreviewCoordinator {
 
     private func precedingSentence(from previous: Document?, capture: LearningSelectionCapture) -> PreviousSentence? {
         guard let previous else { return nil }
-        let candidates = [PreviousSentence(source: previous.capture.source,
-            range: previous.capture.range, translation: previous.translation), previous.previousSentence].compactMap { $0 }
+        let candidates = [previous.translationIsComplete ? PreviousSentence(source: previous.capture.source,
+            range: previous.capture.range, translation: previous.translation) : nil, previous.previousSentence].compactMap { $0 }
         let value = capture.value as NSString
         return candidates.first { candidate in
             let end = NSMaxRange(candidate.range)
@@ -545,23 +561,30 @@ final class LearningSentencePreviewCoordinator {
         }
     }
 
-    private func render() {
+    private func render(caret: CGRect? = nil) {
         guard !isReadingActive() else { return }
         // Keep prior source/translation evidence for cache and sentence-history reconciliation,
         // but never let a settings callback or late render make it visible during renewed input.
         guard let document, !document.isStale, enabled else { return }
+        // First safe text opens the card; subsequent prefixes reuse its host. Never show an
+        // empty loading card or confuse an unfinished prefix with a replaceable translation.
+        guard !document.translation.isEmpty || !document.generating else {
+            panel.hide(); return
+        }
         panel.show(.init(id: document.id, source: document.capture.source, translation: document.translation,
             chunks: document.chunks, sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
-            caret: focus.snapshot.context?.caretRect ?? document.capture.context.caretRect,
+            caret: caret ?? focus.snapshot.context?.caretRect ?? document.capture.context.caretRect,
             isExpanded: expanded, isGenerating: document.generating, message: document.message,
             previousTranslation: document.previousSentence?.translation, shortcutLabel: service.settings.languageLearning.keyLabel,
                 isStale: document.isStale, units: document.units, unitStage: document.unitStage,
                 targetIsSelection: document.capture.originalSelection.length > 0,
-                canReplace: !committing && !document.replacementBlocked && !document.translation.isEmpty
+                canReplace: document.translationIsComplete && !committing && !document.replacementBlocked && !document.translation.isEmpty
                     && document.capture.supportsReplacement,
                 replacementUnavailableReason: document.capture.supportsReplacement ? nil :
                     (document.capture.replacementUnavailableReason ?? LearningInputMethodPolicy.unavailableMarkedRangeReason),
-                replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id),
+                replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id,
+                isError: document.translation.isEmpty && !document.message.isEmpty,
+                isTranslating: !document.translationIsComplete && document.generating),
             expand: { [weak self] in self?.expandOrRequest() }, dismiss: { [weak self] in self?.dismiss() },
             replace: { [weak self] in self?.replacePreview(document.id, confirmedBy: "button") })
         if panel.isVisible, !document.isStale, !document.translation.isEmpty {
@@ -585,7 +608,7 @@ final class LearningSentencePreviewCoordinator {
             return
         }
         logReplacement(.info, traceID: current.traceID, status: "confirmation_received", details: ["source": source])
-        guard !current.isStale, !current.replacementBlocked, current.capture.supportsReplacement,
+        guard current.translationIsComplete, !current.isStale, !current.replacementBlocked, current.capture.supportsReplacement,
               !current.translation.isEmpty else {
             logReplacement(.warning, traceID: current.traceID, status: "preflight_rejected", details: ["reason": "preview_not_replaceable"])
             return

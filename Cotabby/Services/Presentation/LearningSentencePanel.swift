@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Logging
 import SwiftUI
 
 /// Owns one nonactivating learning window and its correspondence panel. Updating its hosting
@@ -268,7 +269,20 @@ final class LearningSentencePanel: LearningSentencePresenting {
             updateDetailParent(nil, presentation: presentation, screen: screen)
             return
         }
+        let previousFrame = panel.frame
         panel.setFrame(frame, display: true)
+        if panel.frame != previousFrame || !isVisible {
+            // Compare requested and actual AppKit geometry without recording editor text. These
+            // events distinguish a stale anchor from a hosting-view resize or obstacle fallback.
+            CotabbyLogger.learning.debug("Translation preview positioned", metadata: [
+                "stage": "preview-layout",
+                "caret_rect": .string(NSStringFromRect(caret)),
+                "requested_frame": .string(NSStringFromRect(frame)),
+                "panel_frame": .string(NSStringFromRect(panel.frame)),
+                "reserved_frame": .string(reservedFrame.map(NSStringFromRect) ?? "none"),
+                "screen_frame": .string(NSStringFromRect(screen?.visibleFrame ?? .zero))
+            ])
+        }
         isVisible = true
         if !panel.isVisible { panel.orderFrontRegardless() }
         updateDetailParent(panel.frame, presentation: presentation, screen: screen)

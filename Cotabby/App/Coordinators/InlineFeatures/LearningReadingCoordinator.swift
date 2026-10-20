@@ -49,6 +49,7 @@ final class LearningReadingCoordinator {
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
         var generating = true
+        var translationIsComplete = false
         var expanded = false
         var message = ""
         var isError = false
@@ -288,7 +289,14 @@ final class LearningReadingCoordinator {
             await LearningRequestTrace.$requestID.withValue(trace) {
                 do {
                     let translation = try await self.service.translateReadingSelection(
-                        source: capture.text, sourceLanguage: source, targetLanguage: target, readingSource: capture.source)
+                        source: capture.text, sourceLanguage: source, targetLanguage: target, readingSource: capture.source,
+                        onPartial: { [weak self] text in
+                            guard let self, !Task.isCancelled,
+                                  self.valid(id, capture, verifyCapture: self.document?.translation.isEmpty != false),
+                                  self.document?.generating == true, self.document?.translationIsComplete == false else { return }
+                            self.document?.translation = text
+                            self.render()
+                        })
                     try Task.checkCancellation()
                     guard self.valid(id, capture) else {
                         self.retireIfCurrent(id)
@@ -296,6 +304,7 @@ final class LearningReadingCoordinator {
                     }
                     self.work = nil
                     self.document?.translation = translation
+                    self.document?.translationIsComplete = true
                     self.document?.generating = false
                     self.render()
                     self.startUnits()
@@ -306,6 +315,7 @@ final class LearningReadingCoordinator {
                         return
                     }
                     self.work = nil
+                    self.document?.translation = ""
                     self.document?.generating = false
                     self.document?.isError = true
                     self.document?.message = error.localizedDescription
@@ -315,9 +325,13 @@ final class LearningReadingCoordinator {
         }
     }
 
-    private func valid(_ id: UUID, _ capture: LearningReadingSelection) -> Bool {
-        revision == id && enabled && sourceAvailability(capture.source) && service.settings.languageLearning.readingEnabled(capture.source)
-            && shortcutPermissionValid && reader.isCurrent(capture)
+    private func valid(_ id: UUID, _ capture: LearningReadingSelection, verifyCapture: Bool = true) -> Bool {
+        guard revision == id, enabled, sourceAvailability(capture.source),
+              service.settings.languageLearning.readingEnabled(capture.source), shortcutPermissionValid else { return false }
+        // AX is cross-process work. Verify the first visible prefix and final result in full;
+        // intermediate display-only updates use session/policy/app identity. Existing AX
+        // observers and key/mouse/workspace events retire a changed selection between those gates.
+        return verifyCapture ? reader.isCurrent(capture) : frontmostBundle() == capture.bundleIdentifier
     }
 
     private var shortcutPermissionValid: Bool {
@@ -351,7 +365,7 @@ final class LearningReadingCoordinator {
 
     private func startUnits() {
         unitWork?.cancel()
-        guard let document, !document.translation.isEmpty, let recognizer else { return }
+        guard let document, document.translationIsComplete, !document.translation.isEmpty, let recognizer else { return }
         let id = revision
         unitWork = Task { [weak self] in
             do {
@@ -374,7 +388,8 @@ final class LearningReadingCoordinator {
         analysisRevision = UUID()
         document?.chunks = []
         if document?.translation.isEmpty == false { document?.message = "" }
-        guard let document, !document.translation.isEmpty, service.settings.languageLearning.analysisEnabled else {
+        guard let document, document.translationIsComplete, !document.translation.isEmpty,
+              service.settings.languageLearning.analysisEnabled else {
             render()
             return
         }
@@ -403,6 +418,7 @@ final class LearningReadingCoordinator {
 
     private func render() {
         guard let document, enabled else { return }
+        guard !document.translation.isEmpty || !document.generating else { return }
         panel.show(
             .init(
                 id: document.capture.id, source: document.capture.text, translation: document.translation,
@@ -410,7 +426,8 @@ final class LearningReadingCoordinator {
                 caret: document.capture.anchor, isExpanded: document.expanded, isGenerating: document.generating,
                 message: document.message, previousTranslation: nil, shortcutLabel: service.settings.languageLearning.keyLabel,
                 units: document.units, unitStage: document.unitStage, targetIsSelection: true, canReplace: false,
-                isError: document.isError, readingSource: document.capture.source), expand: { [weak self] in self?.toggleDetails() },
+                isError: document.isError, readingSource: document.capture.source,
+                isTranslating: !document.translationIsComplete && document.generating), expand: { [weak self] in self?.toggleDetails() },
             dismiss: { [weak self] in self?.dismiss() },
             replace: nil)
         if !document.translation.isEmpty { service.recordDisplay(source: .translation, requestID: document.traceID) }

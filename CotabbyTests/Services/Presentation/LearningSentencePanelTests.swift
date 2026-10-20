@@ -6,6 +6,36 @@ import Testing
 @MainActor
 struct LearningSentencePanelTests {
     @Test
+    func resizedPreviewKeepsItsPaintedContentAboveTheCaret() async throws {
+        let screen = try #require(NSScreen.main?.visibleFrame)
+        let caret = CGRect(x: screen.midX - 160, y: screen.midY, width: 2, height: 18)
+        let panel = LearningSentencePanel(dictionaryProvider: PanelDictionaryProbe())
+        defer { panel.hide() }
+        let id = UUID()
+        for text in ["Nice to meet you.", String(repeating: "It is nice to meet you. ", count: 12), "Hello."] {
+            panel.show(.init(id: id, source: "很高兴认识你。", translation: text, chunks: [],
+                sourceLanguage: .chinese, targetLanguage: .english, caret: caret,
+                isExpanded: false, isGenerating: false, message: "", previousTranslation: nil,
+                shortcutLabel: "⌥T", canReplace: true, replacementShortcutLabel: "⌃⌥T"),
+                expand: {}, dismiss: {}, replace: {})
+            await waitUntil {
+                guard let view = self.textView(in: panel, matching: text) else { return false }
+                return view.frame.height > 0 && view.visibleRect.height > 0
+            }
+            // Hosting views can also resize their NSWindow after the controller sets its frame.
+            // Verify the painted text after those transactions, not just the pure layout result.
+            try await Task.sleep(for: .milliseconds(80))
+            let frame = try #require(panel.visibleFrame)
+            let view = try #require(textView(in: panel, matching: text))
+            let window = try #require(view.window)
+            let painted = window.convertToScreen(view.convert(view.visibleRect, to: nil))
+            #expect(frame.minY >= caret.maxY + LearningSentencePanelLayout.gap)
+            #expect(painted.minY >= caret.maxY + LearningSentencePanelLayout.gap)
+            #expect(screen.contains(frame))
+        }
+    }
+
+    @Test
     func partialAlignmentSelectionAndWholeExpressionLookupUseDifferentRanges() async throws {
         let provider = PanelDictionaryProbe(), panel = LearningSentencePanel(dictionaryProvider: provider)
         defer { panel.hide() }

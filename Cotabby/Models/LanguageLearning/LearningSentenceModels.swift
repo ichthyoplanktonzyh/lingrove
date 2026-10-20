@@ -32,6 +32,9 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
     var settings: SuggestionSettingsModel { get }
     func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource) async throws -> String
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource,
+                                   onPartial: @escaping @MainActor (String) -> Void) async throws -> String
     func analyzeReadingSelection(
         source: String, translation: String, sourceLanguage: LearningLanguage,
         targetLanguage: LearningLanguage, readingSource: LearningReadingSource
@@ -39,6 +42,10 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
     func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String
+    /// Prefixes are display-only snapshots. Only the returned, validated value may be cached,
+    /// analyzed, spoken or used to replace the saved source range.
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                           onPartial: @escaping @MainActor (String) -> Void) async throws -> String
     func analyzeSentence(source: String, translation: String, sourceLanguage: LearningLanguage,
                          targetLanguage: LearningLanguage,
                          onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult
@@ -49,6 +56,16 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
 }
 
 extension LearningSentenceGenerating {
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource,
+                                   onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+        try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage, readingSource: readingSource)
+    }
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                           onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+        try await translateSentence(input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+    }
     func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource = .selection) async throws -> String {
         try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
@@ -102,6 +119,8 @@ struct LearningSentencePresentation {
     var isCommitting = false
     var isError = false
     var readingSource: LearningReadingSource?
+    /// Distinct from optional alignment generation: a nonempty streamed prefix is still incomplete.
+    var isTranslating = false
 
     var targetLabel: String {
         switch readingSource {
