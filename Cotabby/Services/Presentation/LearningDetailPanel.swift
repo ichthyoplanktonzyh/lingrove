@@ -2,16 +2,15 @@ import AppKit
 import SwiftUI
 
 /// Owned once by the sentence panel. This nonactivating sibling owns one expression/word dictionary
-/// session and shares correspondence selection with the sentence card. Every source and component
+/// session. Every source and component
 /// word is rendered in this same window, so favorite menus never straddle a system-owned popup.
 @MainActor
 final class LearningDetailPanel {
-    let state = LearningDetailState()
     let dictionarySession: LearningDictionarySession
     private let speech: LearningSpeechController?
     private let vocabulary: VocabularyStore?
     private var panel: NSPanel?
-    private var hosting: NSHostingView<LearningDetailCard>?
+    private var hosting: NSHostingView<LearningDictionaryCard>?
     private var layoutRevision = UUID()
     private var measurementSequence: UInt64 = 0
     private var contentSize: CGSize?
@@ -62,24 +61,10 @@ final class LearningDetailPanel {
         return true
     }
 
-    func show(_ chunk: LearningChunkDetail, placement: LearningDetailPlacement, speechContext: String? = nil,
-              vocabularyCapture: VocabularyCapture? = nil) {
-        // Retain the correspondence entry point for existing callers. Product unit clicks pass
-        // an independently recognized unit, rather than using alignment grain for dictionary grain.
-        let range = NSRange(location: 0, length: chunk.target.utf16.count)
-        let unit = LearningUnit(id: 0, surface: chunk.target, query: chunk.target, kind: .expression,
-            ranges: [range], words: LearningUnitPolicy.words(in: chunk.target, language: chunk.language))
-        show(unit, documentID: chunk.documentID, language: chunk.language, correspondence: chunk,
-            placement: placement, speechContext: speechContext, vocabularyCapture: vocabularyCapture)
-    }
-
-    func selectCorrespondence(_ chunk: LearningChunkDetail) { state.chunk = chunk }
-
     func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage,
-              correspondence: LearningChunkDetail?, placement: LearningDetailPlacement, speechContext: String? = nil,
+              placement: LearningDetailPlacement, speechContext: String? = nil,
               vocabularyCapture: VocabularyCapture? = nil) {
         stopCurrentSpeech()
-        state.chunk = correspondence
         dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext,
             vocabularyCapture: vocabularyCapture)
         anchorY = placement.anchorY
@@ -89,12 +74,12 @@ final class LearningDetailPanel {
         popupWindows.reset()
         popupWindows = LearningPopupWindowRegistry()
         let revision = layoutRevision
-        let card = LearningDetailCard(state: state,
-            selectWord: { [weak self] word, button in
+        let card = LearningDictionaryCard(session: dictionarySession, close: { [weak self] in self?.hide() },
+            sizeChanged: { [weak self] in self?.scheduleLayout($0, revision: revision) },
+            lookup: { [weak self] word, button in
                 self?.selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
             },
-            close: { [weak self] in self?.hide() }, sizeChanged: { [weak self] in self?.scheduleLayout($0, revision: revision) },
-            session: dictionarySession, speech: speech, vocabulary: vocabulary,
+            speech: speech, vocabulary: vocabulary,
             lookupWord: { [weak self] word, button in
                 self?.selectDictionaryWord(word, from: button, unit: unit, documentID: documentID)
             }, popupWindows: popupWindows)
@@ -135,12 +120,6 @@ final class LearningDetailPanel {
         layout()
     }
 
-    func selectWord(_ word: String, from button: NSButton, chunk: LearningChunkDetail) {
-        guard isVisible, state.chunk == chunk, chunk.words.contains(word), button.window === panel else { return }
-        guard let unit = dictionarySession.unit, let documentID = dictionarySession.documentID else { return }
-        selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
-    }
-
     /// Immutable document/unit identities reject controls from an older rendered sentence. A
     /// string-only legacy control may navigate only an unambiguous occurrence; new controls
     /// carry the exact word range so repeated words retain their distinct example highlights.
@@ -161,12 +140,11 @@ final class LearningDetailPanel {
     }
 
     /// Document replacement and full dismissal retire the session and any pending lookup.
-    func hide(preservingCorrespondence: Bool = false) {
+    func hide() {
         popupWindows.reset()
         stopCurrentSpeech()
         dictionarySession.close()
         layoutRevision = UUID()
-        if !preservingCorrespondence { state.chunk = nil }
         parentFrame = nil
         contentSize = nil
         placementFrame = nil

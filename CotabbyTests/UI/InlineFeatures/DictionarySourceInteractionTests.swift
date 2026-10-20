@@ -14,7 +14,7 @@ struct DictionarySourceInteractionTests {
             observesMouseEvents: false, windowAtPoint: { _ in hit })
         defer { panel.hide() }
         func show(_ id: UUID) {
-            panel.show(.init(id: id, source: "我喜欢你", translation: "I like you.", chunks: [],
+            panel.show(.init(id: id, source: "我喜欢你", translation: "I like you.",
                 sourceLanguage: .chinese, targetLanguage: .english, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
                 isExpanded: false, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: ""),
                 expand: {}, dismiss: { dismissals += 1; panel.hide() })

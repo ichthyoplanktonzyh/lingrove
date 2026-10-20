@@ -43241,94 +43241,6 @@
         }
       }
     },
-    "This file is used by autocomplete, translation, chunk alignment, or a power profile.": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يُستخدم هذا الملف للإكمال التلقائي أو الترجمة أو محاذاة المقاطع أو لملف تعريف طاقة."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese Datei wird für die automatische Vervollständigung, Übersetzung, Textabschnittszuordnung oder ein Energieprofil verwendet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este archivo se usa para el autocompletado, la traducción, la alineación de fragmentos o un perfil de alimentación."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce fichier est utilisé pour l’autocomplétion, la traduction, l’alignement des segments ou un profil d’alimentation."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "यह फ़ाइल ऑटोकम्प्लीट, अनुवाद, अंशों के मिलान या पावर प्रोफ़ाइल में इस्तेमाल होती है।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "File ini digunakan oleh pelengkapan otomatis, terjemahan, penyelarasan bagian teks, atau profil daya."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Questo file è usato per il completamento automatico, la traduzione, l’allineamento dei segmenti o un profilo di alimentazione."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このファイルは自動補完、翻訳、チャンク照合、または電源プロファイルで使用されています。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 파일은 자동 완성, 번역, 청크 정렬 또는 전원 프로필에서 사용됩니다."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este arquivo está sendo usado pelo preenchimento automático, pela tradução, pelo alinhamento de trechos ou por um perfil de energia."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Этот файл используется автодополнением, переводом, сопоставлением фрагментов или профилем питания."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu dosya otomatik tamamlama, çeviri, metin parçalarını eşleştirme veya güç profili tarafından kullanılıyor."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动补全、翻译、分段对齐或电源配置正在使用此文件。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此檔案正供自動完成、翻譯、語塊對齊或電源設定檔使用。"
-          }
-        }
-      }
-    },
     "This is not a supported GGUF file.": {
       "comment": "Error shown when a selected file is not a GGUF model supported by this app.",
       "localizations": {
@@ -52188,101 +52100,6 @@
         }
       }
     },
-    "Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized text and style instructions. Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized text and style instructions. Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻译会向所选引擎发送原文、可选的草稿参考和风格指令。阅读翻译仅发送所选、鼠标指向或 OCR 识别的文字及风格指令。语块对齐接收原文与译文，不包含原始截图、无关剪贴板内容或历史记录。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻訳では、対象テキスト、任意の下書き抜粋、文体の指示を選択したエンジンに送信します。読解時は、選択した文字、ポインタ位置の文字、または OCR で認識した文字と文体の指示のみを送信します。対応付けには対象テキストと訳文を使用します。元のスクリーンショット、無関係なクリップボード内容、履歴は含めません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "번역은 대상 텍스트, 선택적 초안 발췌문과 문체 지시를 선택한 엔진으로 보냅니다. 읽기 번역은 선택한 텍스트, 포인터 위치의 텍스트 또는 OCR로 인식한 텍스트와 문체 지시만 보냅니다. 정렬에는 대상 텍스트와 번역문을 전달합니다. 원본 스크린샷, 관련 없는 클립보드 내용과 기록은 제외합니다."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La traduction transmet le texte cible, les éventuels extraits du brouillon et les consignes de style au moteur choisi. La lecture transmet uniquement le texte sélectionné, pointé ou reconnu par OCR et les consignes de style. L’alignement reçoit le texte cible et sa traduction. Les captures d’écran brutes, le contenu du presse-papiers sans rapport et l’historique sont exclus."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Übersetzung sendet den Zieltext, optionale Entwurfsauszüge und Stilvorgaben an die gewählte Engine. Beim Lesen werden nur ausgewählter, anvisierter oder per OCR erkannter Text und Stilvorgaben gesendet. Die Zuordnung erhält Zieltext und Übersetzung. Rohe Bildschirmfotos, unbeteiligte Zwischenablageinhalte und Verlauf sind ausgeschlossen."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La traducción envía el texto de destino, los extractos opcionales del borrador y las instrucciones de estilo al motor elegido. La lectura solo envía el texto seleccionado, señalado o reconocido por OCR y las instrucciones de estilo. La alineación recibe el texto de destino y la traducción. Se excluyen las capturas sin procesar, el contenido del portapapeles no relacionado y el historial."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A tradução envia o texto-alvo, trechos opcionais do rascunho e instruções de estilo ao mecanismo escolhido. A leitura envia apenas o texto selecionado, apontado ou reconhecido por OCR e instruções de estilo. O alinhamento recebe o texto-alvo e a tradução. Capturas de tela brutas, conteúdo não relacionado da área de transferência e histórico são excluídos."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La traduzione invia il testo di destinazione, gli estratti facoltativi della bozza e le istruzioni di stile al motore scelto. La lettura invia solo il testo selezionato, indicato o riconosciuto tramite OCR e le istruzioni di stile. L’allineamento riceve il testo di destinazione e la traduzione. Sono esclusi schermate originali, contenuti degli appunti non pertinenti e cronologia."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевод отправляет целевой текст, необязательные фрагменты черновика и указания по стилю выбранной системе. При чтении отправляются только выделенный, указанный или распознанный OCR текст и указания по стилю. Сопоставление получает целевой текст и перевод. Исходные снимки экрана, постороннее содержимое буфера обмена и история не передаются."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ترسل الترجمة النص المستهدف ومقتطفات المسودة الاختيارية وتعليمات الأسلوب إلى المحرك المختار. وترسل القراءة فقط النص المحدد أو المشار إليه أو المستخرج ضوئيًا وتعليمات الأسلوب. وتتلقى المحاذاة النص المستهدف والترجمة. وتُستبعد لقطات الشاشة الأصلية ومحتويات الحافظة غير ذات الصلة والسجل."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "अनुवाद चुने गए इंजन को लक्ष्य पाठ, वैकल्पिक मसौदा अंश और शैली निर्देश भेजता है। पढ़ते समय केवल चुना हुआ, पॉइंटर द्वारा इंगित या OCR से पहचाना गया पाठ और शैली निर्देश भेजे जाते हैं। संरेखण को लक्ष्य पाठ और अनुवाद मिलता है। मूल स्क्रीनशॉट, असंबंधित क्लिपबोर्ड सामग्री और इतिहास शामिल नहीं होते।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terjemahan mengirim teks sasaran, kutipan draf opsional, dan instruksi gaya ke mesin yang dipilih. Saat membaca, hanya teks yang dipilih, ditunjuk, atau dikenali OCR beserta instruksi gaya yang dikirim. Penyelarasan menerima teks sasaran dan terjemahan. Tangkapan layar mentah, isi papan klip yang tidak terkait, dan riwayat tidak disertakan."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çeviri; hedef metni, isteğe bağlı taslak alıntılarını ve üslup talimatlarını seçilen motora gönderir. Okuma çevirisi yalnızca seçilen, işaret edilen veya OCR ile tanınan metni ve üslup talimatlarını gönderir. Hizalama hedef metni ve çeviriyi alır. Ham ekran görüntüleri, ilgisiz pano içeriği ve geçmiş dahil edilmez."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻譯會將目標文字、選用的草稿片段與風格指示傳送至所選引擎。閱讀翻譯僅傳送選取、指向或 OCR 辨識的文字與風格指示。語塊對齊接收目標文字及譯文，不包含原始截圖、無關的剪貼簿內容或歷史紀錄。"
-          }
-        }
-      }
-    },
     "Lingrove needs Accessibility and Input Monitoring for autocomplete. Screen Recording enables screen context and OCR translation.": {
       "extractionState": "manual",
       "localizations": {
@@ -59230,6 +59047,284 @@
           "stringUnit": {
             "state": "translated",
             "value": "取代此處含義"
+          }
+        }
+      }
+    },
+    "Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized text and style instructions. Raw screenshots, unrelated clipboard content and history are excluded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translation sends the target, optional draft excerpts and style instructions to the chosen engine. Reading sends only selected, pointed or OCR-recognized text and style instructions. Raw screenshots, unrelated clipboard content and history are excluded."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译会向所选引擎发送原文、可选的草稿参考和风格指令。阅读翻译仅发送所选、鼠标指向或 OCR 识别的文字及风格指令。不包含原始截图、无关剪贴板内容或历史记录。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳では、対象テキスト、任意の下書き抜粋、文体の指示を選択したエンジンに送信します。読解時は、選択した文字、ポインタ位置の文字、または OCR で認識した文字と文体の指示のみを送信します。元のスクリーンショット、無関係なクリップボード内容、履歴は含めません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역은 대상 텍스트, 선택적 초안 발췌문과 문체 지시를 선택한 엔진으로 보냅니다. 읽기 번역은 선택한 텍스트, 포인터 위치의 텍스트 또는 OCR로 인식한 텍스트와 문체 지시만 보냅니다. 원본 스크린샷, 관련 없는 클립보드 내용과 기록은 제외합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduction transmet le texte cible, les éventuels extraits du brouillon et les consignes de style au moteur choisi. La lecture transmet uniquement le texte sélectionné, pointé ou reconnu par OCR et les consignes de style. Les captures d’écran brutes, le contenu du presse-papiers sans rapport et l’historique sont exclus."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Übersetzung sendet den Zieltext, optionale Entwurfsauszüge und Stilvorgaben an die gewählte Engine. Beim Lesen werden nur ausgewählter, anvisierter oder per OCR erkannter Text und Stilvorgaben gesendet. Rohe Bildschirmfotos, unbeteiligte Zwischenablageinhalte und Verlauf sind ausgeschlossen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción envía el texto de destino, los extractos opcionales del borrador y las instrucciones de estilo al motor elegido. La lectura solo envía el texto seleccionado, señalado o reconocido por OCR y las instrucciones de estilo. Se excluyen las capturas sin procesar, el contenido del portapapeles no relacionado y el historial."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tradução envia o texto-alvo, trechos opcionais do rascunho e instruções de estilo ao mecanismo escolhido. A leitura envia apenas o texto selecionado, apontado ou reconhecido por OCR e instruções de estilo. Capturas de tela brutas, conteúdo não relacionado da área de transferência e histórico são excluídos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduzione invia il testo di destinazione, gli estratti facoltativi della bozza e le istruzioni di stile al motore scelto. La lettura invia solo il testo selezionato, indicato o riconosciuto tramite OCR e le istruzioni di stile. Sono esclusi schermate originali, contenuti degli appunti non pertinenti e cronologia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод отправляет целевой текст, необязательные фрагменты черновика и указания по стилю выбранной системе. При чтении отправляются только выделенный, указанный или распознанный OCR текст и указания по стилю. Исходные снимки экрана, постороннее содержимое буфера обмена и история не передаются."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترسل الترجمة النص المستهدف ومقتطفات المسودة الاختيارية وتعليمات الأسلوب إلى المحرك المختار. وترسل القراءة فقط النص المحدد أو المشار إليه أو المستخرج ضوئيًا وتعليمات الأسلوب. وتُستبعد لقطات الشاشة الأصلية ومحتويات الحافظة غير ذات الصلة والسجل."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुवाद चुने गए इंजन को लक्ष्य पाठ, वैकल्पिक मसौदा अंश और शैली निर्देश भेजता है। पढ़ते समय केवल चुना हुआ, पॉइंटर द्वारा इंगित या OCR से पहचाना गया पाठ और शैली निर्देश भेजे जाते हैं। मूल स्क्रीनशॉट, असंबंधित क्लिपबोर्ड सामग्री और इतिहास शामिल नहीं होते।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan mengirim teks sasaran, kutipan draf opsional, dan instruksi gaya ke mesin yang dipilih. Saat membaca, hanya teks yang dipilih, ditunjuk, atau dikenali OCR beserta instruksi gaya yang dikirim. Tangkapan layar mentah, isi papan klip yang tidak terkait, dan riwayat tidak disertakan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çeviri; hedef metni, isteğe bağlı taslak alıntılarını ve üslup talimatlarını seçilen motora gönderir. Okuma çevirisi yalnızca seçilen, işaret edilen veya OCR ile tanınan metni ve üslup talimatlarını gönderir. Ham ekran görüntüleri, ilgisiz pano içeriği ve geçmiş dahil edilmez."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯會將目標文字、選用的草稿片段與風格指示傳送至所選引擎。閱讀翻譯僅傳送選取、指向或 OCR 辨識的文字與風格指示。不包含原始截圖、無關的剪貼簿內容或歷史紀錄。"
+          }
+        }
+      }
+    },
+    "This file is used by autocomplete, translation, AI explanation, or a power profile.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم هذا الملف للإكمال التلقائي أو الترجمة أو الشرح بالذكاء الاصطناعي أو لملف تعريف طاقة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Datei wird für die automatische Vervollständigung, Übersetzung, KI-Erklärungen oder ein Energieprofil verwendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo se usa para el autocompletado, la traducción, la explicación con IA o un perfil de alimentación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier est utilisé pour l’autocomplétion, la traduction, l’explication par IA ou un profil d’alimentation."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह फ़ाइल ऑटोकम्प्लीट, अनुवाद, AI व्याख्या या पावर प्रोफ़ाइल में इस्तेमाल होती है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File ini digunakan oleh pelengkapan otomatis, terjemahan, penjelasan AI, atau profil daya."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo file è usato per il completamento automatico, la traduzione, la spiegazione IA o un profilo di alimentazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルは自動補完、翻訳、AI解説、または電源プロファイルで使用されています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일은 자동 완성, 번역, AI 설명 또는 전원 프로필에서 사용됩니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este arquivo está sendo usado pelo preenchimento automático, pela tradução, pela explicação com IA ou por um perfil de energia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот файл используется автодополнением, переводом, объяснением ИИ или профилем питания."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu dosya otomatik tamamlama, çeviri, yapay zekâ açıklaması veya güç profili tarafından kullanılıyor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动补全、翻译、AI 解释或电源配置正在使用此文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此檔案正供自動完成、翻譯、AI 解釋或電源設定檔使用。"
+          }
+        }
+      }
+    },
+    "Double-click a word to look it up": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click a word to look it up"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双击单词查词"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按兩下單字查詞"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語をダブルクリックして調べる"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어를 두 번 클릭하여 검색"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wort zum Nachschlagen doppelklicken"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-cliquez sur un mot pour le consulter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz doble clic en una palabra para consultarla"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clique duas vezes em uma palavra para consultar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fai doppio clic su una parola per cercarla"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дважды нажмите на слово для поиска"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انقر مرتين على كلمة للبحث عنها"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शब्द खोजने के लिए दो बार क्लिक करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klik dua kali kata untuk mencarinya"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sözcüğü aramak için çift tıklayın"
           }
         }
       }

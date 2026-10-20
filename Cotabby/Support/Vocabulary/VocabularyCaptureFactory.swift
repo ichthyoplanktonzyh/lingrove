@@ -65,13 +65,11 @@ nonisolated enum VocabularyCaptureFactory {
             example?.translation = other
             example?.translationLanguage = otherLanguage
         }
-        // A larger alignment group is not a contextual definition of one word within it.
-        // Only exact span correspondence can supply this meaning without another model call.
-        let chunk = presentation.chunks.first { (original ? $0.sourceRanges : $0.targetRanges) == unit.ranges }
         let wholeReadingTarget = original && presentation.readingSource != nil &&
             unit.ranges == [NSRange(location: 0, length: text.utf16.count)]
-        let meaning = chunk.map { LearningChunkDisplay.quote(other, ranges: original ? $0.targetRanges : $0.sourceRanges) }
-            ?? (wholeReadingTarget ? other : "")
+        // A sentence translation is not a definition of a word inside it. Only a whole
+        // reading target carries its own translation; subexpressions receive contextual AI meaning.
+        let meaning = wholeReadingTarget ? other : ""
         example?.meaning = meaning
         example?.meaningLanguage = otherLanguage
         let kind: VocabularyEntry.Kind = switch unit.kind {

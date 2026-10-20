@@ -3,7 +3,7 @@ import CotabbyInference
 
 /// Keeps one learning role's instruction template, fresh sequence and lossless output policy.
 /// Its NativeLlamaSession owns the move-only C++ engine and shared load/cancel/release safeguards;
-/// translation and analysis each construct their own adapter/session and never use completion KV.
+/// translation and explanation each construct their own adapter/session and never use completion KV.
 /// The controller dispatches this synchronous boundary onto its detached worker.
 nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked Sendable {
     private let native = NativeLlamaSession()
@@ -123,7 +123,7 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
                         table: "Learning", comment: "Error shown when the local model returns an unusable token."))
                 }
                 // Native token bytes can split a Unicode scalar. Emit only a complete UTF-8 prefix,
-                // preserving exact quotations for the analysis parser rather than replacing bytes.
+                // preserving exact quotations for structured result validation rather than replacing bytes.
                 let pointer = UnsafeRawPointer(piece).assumingMemoryBound(to: UInt8.self)
                 bytes.append(contentsOf: UnsafeBufferPointer(start: pointer, count: Int(token.piece_length)))
                 guard bytes.count <= 48_000 else {
@@ -176,7 +176,7 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
         }
     }
 
-    /// Analysis and unmatched requests retain the original literal/special-token separation.
+    /// Explanation and unmatched requests retain the original literal/special-token separation.
     private func tokenize(_ prompt: String, template: LearningChatTemplate) throws -> [Int32] {
         let (prefix, suffix) = try LearningLocalPrompt.delimiters(template)
         return Array(prefix.withCString { native.engine.tokenizeInstruction($0, Int32(prefix.utf8.count)) })

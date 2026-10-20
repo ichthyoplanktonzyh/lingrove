@@ -38,11 +38,10 @@ struct LearningReadingCoordinatorTests {
     }
 
     @Test(arguments: LearningReadingSource.allCases)
-    func readingStreamsPrefixesButOnlyCompletedTextStartsAnalysis(_ source: LearningReadingSource) async {
+    func readingStreamsPrefixesAndRevalidatesOnlyCompletedText(_ source: LearningReadingSource) async {
         let rig = Rig()
         defer { rig.cleanup() }
         rig.enableOnly(source)
-        rig.settings.languageLearning.analysisEnabled = true
         await settle()
         #expect(rig.coordinator.decide(rig.shortcut(for: source)) == .consume)
         await until { rig.service.calls.count == 1 }
@@ -50,12 +49,11 @@ struct LearningReadingCoordinatorTests {
         rig.service.partials[0]("部分")
         #expect(rig.panel.isVisible && rig.panel.last?.translation == "部分")
         #expect(rig.panel.last?.isTranslating == true && rig.panel.last?.canReplace == false)
-        #expect(rig.service.analysisPending == nil)
         let checks = rig.reader.currentChecks
         rig.service.partials[0]("部分译文")
         #expect(rig.reader.currentChecks == checks, "Intermediate display must not repeatedly traverse AX")
         rig.service.finish(0, "完整译文")
-        await until { rig.service.analysisPending != nil }
+        await until { rig.panel.last?.isTranslating == false }
         #expect(rig.panel.last?.isTranslating == false && rig.panel.last?.translation == "完整译文")
         #expect(rig.reader.currentChecks > checks, "Completion still revalidates the original receipt")
         rig.coordinator.dismiss()
@@ -74,34 +72,28 @@ struct LearningReadingCoordinatorTests {
         rig.service.partials[0]("部分")
         rig.service.pending.removeValue(forKey: 0)?.resume(throwing: LearningFailure.message("stream failed"))
         await until { rig.panel.last?.isError == true }
-        #expect(rig.panel.last?.translation == "" && rig.panel.last?.isTranslating == false)
+        #expect(rig.panel.last?.translation.isEmpty == true && rig.panel.last?.isTranslating == false)
         rig.service.partials[0]("迟到的部分")
-        #expect(rig.panel.last?.translation == "" && rig.panel.last?.isError == true)
+        #expect(rig.panel.last?.translation.isEmpty == true && rig.panel.last?.isError == true)
     }
 
     @Test(arguments: LearningReadingSource.allCases)
-    func sourceIdentityReachesTranslationAndAnalysisWhenOtherEntrypointsAreOff(_ source: LearningReadingSource) async {
+    func sourceIdentityReachesTranslationWhenOtherEntrypointsAreOff(_ source: LearningReadingSource) async {
         let rig = Rig()
         defer { rig.cleanup() }
         rig.enableOnly(source)
-        rig.settings.languageLearning.analysisEnabled = true
         await settle()
         #expect(rig.coordinator.decide(rig.shortcut(for: source)) == .consume)
         await until { rig.service.calls.count == 1 }
         #expect(rig.service.calls.first?.readingSource == source)
         rig.service.finish(0, "译文")
-        await until { rig.service.analysisPending != nil }
-        #expect(rig.service.analysisSource == source)
+        await until { rig.panel.last?.isTranslating == false }
         #expect(rig.panel.last?.translation == "译文")
         for other in LearningReadingSource.allCases where other != source {
             rig.setSource(other, enabled: true)
             rig.setSource(other, enabled: false)
         }
         await settle()
-        let chunks = [LearningMeaningChunk(id: 0, sourceRanges: [], targetRanges: [])]
-        rig.service.analysisPending?.resume(returning: .init(translation: "译文", chunks: chunks))
-        rig.service.analysisPending = nil
-        await until { rig.panel.last?.chunks == chunks }
         #expect(rig.panel.isVisible && rig.panel.last?.translation == "译文")
     }
 
@@ -346,23 +338,6 @@ struct LearningReadingCoordinatorTests {
         #expect(rig.coordinator.decide(rig.shortcut) == .notHandled)
     }
 
-    @Test func disablingAnalysisKeepsTranslationWithoutACancellationError() async {
-        let rig = Rig()
-        defer { rig.cleanup() }
-        rig.allow("test.allowed")
-        rig.settings.languageLearning.analysisEnabled = true
-        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
-        await until { rig.service.calls.count == 1 }
-        rig.service.finish(0, "已翻译")
-        await until { rig.service.analysisPending != nil }
-        rig.settings.languageLearning.analysisEnabled = false
-        rig.service.analysisPending?.resume(throwing: CancellationError())
-        rig.service.analysisPending = nil
-        await settle()
-        #expect(rig.panel.isVisible && rig.panel.last?.translation == "已翻译")
-        #expect(rig.panel.last?.message.isEmpty == true && rig.panel.last?.chunks.isEmpty == true)
-    }
-
     @Test func iconAndUnrelatedAppEditsDoNotCancelTranslation() async {
         let rig = Rig()
         defer { rig.cleanup() }
@@ -524,6 +499,8 @@ struct LearningReadingCoordinatorTests {
         }
     }
     private final class Service: LearningSentenceGenerating {
+        // A transport-owned row keeps the direction and acquisition source of one request.
+        // swiftlint:disable:next nesting
         struct Call {
             let source: LearningLanguage
             let target: LearningLanguage
@@ -533,42 +510,28 @@ struct LearningReadingCoordinatorTests {
         var calls: [Call] = []
         var partials: [(String) -> Void] = []
         var pending: [Int: CheckedContinuation<String, any Error>] = [:]
-        var analysisPending: CheckedContinuation<LearningSentenceResult, any Error>?
-        var analysisSource: LearningReadingSource?
         init(settings: SuggestionSettingsModel) { self.settings = settings }
         func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
-                                       readingSource: LearningReadingSource, onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+                                       readingSource: LearningReadingSource,
+                                       onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
             partials.append(onPartial)
             return try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
                 targetLanguage: targetLanguage, readingSource: readingSource)
         }
         func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                        readingSource: LearningReadingSource) async throws
-            -> String
-        {
+            -> String {
             let index = calls.count
             calls.append(.init(source: sourceLanguage, target: targetLanguage, readingSource: readingSource))
             return try await withCheckedThrowingContinuation { pending[index] = $0 }
         }
-        func generateSentence(
-            source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
-            onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void
-        ) async throws -> LearningSentenceResult {
+        func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String {
             Issue.record("Reading must use the reading service contract")
-            return .init(translation: "", chunks: [])
-        }
-        func analyzeReadingSelection(
-            source: String, translation: String, sourceLanguage: LearningLanguage,
-            targetLanguage: LearningLanguage, readingSource: LearningReadingSource
-        ) async throws -> LearningSentenceResult {
-            analysisSource = readingSource
-            return try await withCheckedThrowingContinuation { analysisPending = $0 }
+            throw CancellationError()
         }
         func recordDisplay(source: ModelRequestSource, requestID: String) {}
         func finish(_ index: Int, _ text: String) { pending.removeValue(forKey: index)?.resume(returning: text) }
         func cancelAll() {
-            analysisPending?.resume(throwing: CancellationError())
-            analysisPending = nil
             let values = pending.values
             pending.removeAll()
             values.forEach { $0.resume(throwing: CancellationError()) }

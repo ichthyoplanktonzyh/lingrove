@@ -17,7 +17,7 @@ struct LearningSentencePanelTests {
                                           windowAtPoint: { _ in hit })
         defer { panel.hide() }
         var dismissed = false
-        panel.show(.init(id: UUID(), source: "我喜欢你", translation: "I like you.", chunks: [],
+        panel.show(.init(id: UUID(), source: "我喜欢你", translation: "I like you.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
             isExpanded: false, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T"),
             expand: {}, dismiss: { dismissed = true; panel.hide() })
@@ -44,7 +44,7 @@ struct LearningSentencePanelTests {
         let panel = LearningSentencePanel(dictionaryProvider: PanelDictionaryProbe())
         defer { panel.hide() }
         var dismissed = false
-        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.", chunks: [],
+        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
             isExpanded: false, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T"),
             expand: {}, dismiss: { dismissed = true; panel.hide() })
@@ -70,7 +70,7 @@ struct LearningSentencePanelTests {
         let panel = LearningSentencePanel(dictionaryProvider: PanelDictionaryProbe())
         defer { panel.hide() }
         var dismissed = false
-        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.", chunks: [],
+        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
             isExpanded: false, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T"),
             expand: {}, dismiss: { dismissed = true; panel.hide() })
@@ -93,7 +93,7 @@ struct LearningSentencePanelTests {
         let panel = LearningSentencePanel(dictionaryProvider: PanelDictionaryProbe())
         defer { panel.hide() }
         var dismissals = 0
-        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.", chunks: [],
+        panel.show(.init(id: UUID(), source: "很高兴认识你。", translation: "Nice to meet you.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
             isExpanded: false, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T"),
             expand: {}, dismiss: { dismissals += 1; panel.hide() })
@@ -125,7 +125,7 @@ struct LearningSentencePanelTests {
         defer { panel.hide() }
         let id = UUID()
         for text in ["Nice to meet you.", String(repeating: "It is nice to meet you. ", count: 12), "Hello."] {
-            panel.show(.init(id: id, source: "很高兴认识你。", translation: text, chunks: [],
+            panel.show(.init(id: id, source: "很高兴认识你。", translation: text,
                 sourceLanguage: .chinese, targetLanguage: .english, caret: caret,
                 isExpanded: false, isGenerating: false, message: "", previousTranslation: nil,
                 shortcutLabel: "⌥T", canReplace: true, replacementShortcutLabel: "⌃⌥T"),
@@ -148,20 +148,15 @@ struct LearningSentencePanelTests {
     }
 
     @Test
-    func partialAlignmentSelectionAndWholeExpressionLookupUseDifferentRanges() async throws {
+    func wholeExpressionLookupUsesLexicalRangesAndRejectsOldControls() async throws {
         let provider = PanelDictionaryProbe(), panel = LearningSentencePanel(dictionaryProvider: provider)
         defer { panel.hide() }
         let id = UUID(), text = "I look forward to seeing you."
         let phrase = (text as NSString).range(of: "look forward to")
         let unit = LearningUnit(id: phrase.location, surface: "look forward to", query: "look forward to",
             kind: .expression, ranges: [phrase], words: LearningUnitPolicy.words(in: "look forward to", language: .english))
-        // Artificial source fragments isolate selection/range behavior from model quality.
-        let chunks = [LearningMeaningChunk(id: 0, sourceRanges: [.init(location: 0, length: 1)],
-                                          targetRanges: [(text as NSString).range(of: "forward")]),
-                      LearningMeaningChunk(id: 1, sourceRanges: [.init(location: 1, length: 1)],
-                                          targetRanges: [(text as NSString).range(of: "to")])]
         func presentation(_ documentID: UUID) -> LearningSentencePresentation {
-            .init(id: documentID, source: "甲乙", translation: text, chunks: chunks,
+            .init(id: documentID, source: "甲乙", translation: text,
                 sourceLanguage: .chinese, targetLanguage: .english,
                 caret: CGRect(x: 180, y: 220, width: 1, height: 18), isExpanded: true, isGenerating: false,
                 message: "", previousTranslation: nil, shortcutLabel: "⌥T", units: [unit], unitStage: .ready)
@@ -171,39 +166,38 @@ struct LearningSentencePanelTests {
         let view = try #require(textView(in: panel, matching: text))
         let manager = try #require(view.layoutManager), container = try #require(view.textContainer)
         manager.ensureLayout(for: container)
-        let glyphs = manager.glyphRange(forCharacterRange: chunks[1].targetRanges[0], actualCharacterRange: nil)
+        let glyphs = manager.glyphRange(forCharacterRange: (text as NSString).range(of: "to"), actualCharacterRange: nil)
         let bounds = manager.boundingRect(forGlyphRange: glyphs, in: container)
         let point = NSPoint(x: bounds.midX + view.textContainerOrigin.x, y: bounds.midY + view.textContainerOrigin.y)
         view.handleClick(at: point, count: 1)
-        #expect(panel.detailState.chunk?.chunkID == 1 && panel.detailState.chunk?.target == "to")
-        let oldInspect = view.inspect, oldLookup = try #require(view.lookupUnit)
+        #expect(panel.dictionarySession.unit == nil, "A single click must not open another lookup")
+        let oldLookup = try #require(view.lookupUnit)
         view.handleClick(at: point, count: 2)
         for _ in 0..<200 {
             if await provider.queries == ["look forward to"] { break }
             await Task.yield()
         }
         #expect(await provider.queries == ["look forward to"])
-        #expect(panel.detailState.chunk?.chunkID == 1, "Whole-expression lookup must preserve the clicked color, not choose the first overlap")
+        #expect(panel.dictionarySession.unit == unit)
         panel.show(presentation(UUID()), expand: {}, dismiss: {})
-        oldInspect(1)
         oldLookup(.init(unit: unit, bounds: bounds, font: .systemFont(ofSize: 18)), view)
-        #expect(panel.detailState.chunk == nil, "An old document's color callback must not select a new document")
+        #expect(panel.dictionarySession.unit == nil)
         #expect(await provider.queries == ["look forward to"], "An old dictionary callback must not issue another query")
     }
 
     @Test(arguments: [false, true])
-    func ownedWordLookupSurvivesAnalysisUpdatesAndClosesWithInputPreview(_ expanded: Bool) async throws {
+    func ownedWordLookupSurvivesLexicalUpdatesAndClosesWithInputPreview(_ expanded: Bool) async throws {
         let provider = PanelDictionaryProbe()
         let panel = LearningSentencePanel(dictionaryProvider: provider)
         defer { panel.hide() }
         let id = UUID()
-        func presentation(chunks: [LearningMeaningChunk]) -> LearningSentencePresentation {
-            .init(id: id, source: "我喜欢你", translation: "I like you.", chunks: chunks,
+        func presentation(units: [LearningUnit]) -> LearningSentencePresentation {
+            .init(id: id, source: "我喜欢你", translation: "I like you.",
                 sourceLanguage: .chinese, targetLanguage: .english,
-                caret: CGRect(x: 180, y: 220, width: 1, height: 18), isExpanded: expanded, isGenerating: true,
-                message: "正在准备语块对应…", previousTranslation: nil, shortcutLabel: "⌥T")
+                caret: CGRect(x: 180, y: 220, width: 1, height: 18), isExpanded: expanded, isGenerating: false,
+                message: "", previousTranslation: nil, shortcutLabel: "⌥T", units: units)
         }
-        panel.show(presentation(chunks: []), expand: {}, dismiss: {})
+        panel.show(presentation(units: []), expand: {}, dismiss: {})
         // SwiftUI assigns width before the fitted height/window transaction finishes. A real
         // click can only target painted content; wait for that same geometry in this fixture.
         await waitUntil {
@@ -227,29 +221,19 @@ struct LearningSentencePanelTests {
         #expect(await provider.calls == 1, "Word lookup must use the shared dictionary provider")
         let source = try #require(NSApp.windows.first { panel.owns($0) && $0.title == "Expression Dictionary" })
         #expect(source.isVisible)
-        panel.show(presentation(chunks: [.init(id: 0, sourceRanges: [.init(location: 1, length: 2)],
-            targetRanges: [.init(location: 2, length: 4)])]), expand: {}, dismiss: {})
-        #expect(source.isVisible, "Background analysis must not close the fixed translation's word lookup")
-        if expanded {
-            await waitUntil { self.textView(in: panel)?.chunks.count == 1 }
-            let updated = try #require(textView(in: panel))
-            updated.handleClick(at: NSPoint(x: bounds.midX + updated.textContainerOrigin.x,
-                y: bounds.midY + updated.textContainerOrigin.y), count: 1)
-            #expect(panel.detailState.chunk?.chunkID == 0)
-            updated.handleClick(at: NSPoint(x: bounds.midX + updated.textContainerOrigin.x,
-                y: bounds.midY + updated.textContainerOrigin.y), count: 2)
-            #expect(panel.detailState.chunk?.chunkID == 0, "Native word lookup must keep the selected meaning relation")
-        }
+        let wordUnit = LearningUnit.word(.init(text: "like", range: range))
+        panel.show(presentation(units: [wordUnit]), expand: {}, dismiss: {})
+        #expect(source.isVisible, "Lexical updates must not close the fixed translation's word lookup")
         panel.hide()
         #expect(!source.isVisible)
-        #expect(panel.detailState.chunk == nil)
+        #expect(panel.dictionarySession.unit == nil)
     }
 
     @Test func originalSentenceLookupKeepsItsLanguageAndExample() async throws {
         let provider = PanelDictionaryProbe(), panel = LearningSentencePanel(dictionaryProvider: provider)
         defer { panel.hide() }
         let source = "Please keep me posted.", translation = "请随时告诉我进展。"
-        panel.show(.init(id: UUID(), source: source, translation: translation, chunks: [],
+        panel.show(.init(id: UUID(), source: source, translation: translation,
             sourceLanguage: .english, targetLanguage: .chinese, caret: CGRect(x: 180, y: 220, width: 1, height: 18),
             isExpanded: true, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: ""),
             expand: {}, dismiss: {})
@@ -289,7 +273,8 @@ struct LearningSentencePanelTests {
 private actor PanelDictionaryProbe: LearningDictionaryProviding {
     private(set) var calls = 0
     private(set) var queries: [String] = []
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls += 1
         queries.append(query)
         return .systemText("Fixture definition.")

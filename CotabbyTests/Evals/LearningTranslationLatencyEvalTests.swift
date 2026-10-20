@@ -53,7 +53,6 @@ struct LearningTranslationLatencyEvalTests {
         let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
         settings.setGloballyEnabled(true)
         settings.languageLearning.translationEnabled = true
-        settings.languageLearning.analysisEnabled = false
         settings.languageLearning.sourceLanguages = [.chinese, .english]
         let profile = settings.languageLearning.translation
         profile.backend = .local
@@ -79,7 +78,7 @@ struct LearningTranslationLatencyEvalTests {
             var prefixPublications = 0
             var firstPrefix = ""
             func show(_ text: String, complete: Bool) {
-                panel.show(.init(id: documentID, source: fixture.source, translation: text, chunks: [],
+                panel.show(.init(id: documentID, source: fixture.source, translation: text,
                     sourceLanguage: fixture.language, targetLanguage: fixture.target, caret: caret,
                     isExpanded: false, isGenerating: !complete, message: "", previousTranslation: nil,
                     shortcutLabel: "⌥T", canReplace: complete, replacementShortcutLabel: "⌃⌥T", isTranslating: !complete),
@@ -127,7 +126,8 @@ struct LearningTranslationLatencyEvalTests {
         Fixture(id: "en-short", source: "Please keep me posted on the progress.", language: .english, target: .chinese),
         Fixture(id: "en-medium", source: "I have finished reviewing the changes and will publish the update tomorrow.",
             language: .english, target: .chinese),
-        Fixture(id: "en-long", source: "The preview should appear next to the cursor only when the translated sentence is ready, without covering the text being edited.",
+        Fixture(id: "en-long", source: "The preview should appear next to the cursor only when the translated sentence is ready, " +
+            "without covering the text being edited.",
             language: .english, target: .chinese)
     ]
 
@@ -159,7 +159,8 @@ struct LearningTranslationLatencyEvalTests {
 
     private struct Report: Encodable {
         let optimization = "Release"
-        let timingBoundary = "Translation service start to first nonblank streamed prefix submitted to the nonactivating AppKit panel; excludes input pause, AX capture and compositor. wallMs measures final panel submission."
+        let timingBoundary = "Translation service start to first nonblank streamed prefix submitted to the nonactivating AppKit panel; " +
+            "excludes input pause, AX capture and compositor. wallMs measures final panel submission."
         let displayMode = "streaming; immediate first safe prefix, later prefixes coalesced to 30 Hz, replacement only after completion"
         let chip = ProcessInfo.processInfo.environment["COTABBY_TRANSLATION_LATENCY_CHIP"] ?? "unrecorded"
         let inputPauseMs = 600

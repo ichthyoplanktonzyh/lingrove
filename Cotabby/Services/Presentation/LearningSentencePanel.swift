@@ -3,7 +3,7 @@ import Combine
 import Logging
 import SwiftUI
 
-/// Owns one nonactivating learning window and its correspondence panel. Updating its hosting
+/// Owns one nonactivating learning window and its dictionary panel. Updating its hosting
 /// root preserves SwiftUI selection within a document; a new request ID resets that selection.
 /// The window never becomes key, so showing, expanding or clicking learning content leaves typing
 /// focus in the host editor. Its position follows the existing caret/selection geometry policy.
@@ -56,7 +56,6 @@ final class LearningSentencePanel: LearningSentencePresenting {
     }
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
-    var detailState: LearningDetailState { detailPanel.state }
     var dictionarySession: LearningDictionarySession { detailPanel.dictionarySession }
 
     /// SwiftUI popovers are separate child windows. Treat their whole ancestor chain as part
@@ -164,25 +163,14 @@ final class LearningSentencePanel: LearningSentencePresenting {
             currentPresentation?.translation != presentation.translation || currentPresentation?.isExpanded != presentation.isExpanded {
             detailPanel.hide()
         }
-        if let selection = detailPanel.state.chunk,
-           selection.documentID != presentation.id || !presentation.isExpanded || presentation.isStale ||
-            !presentation.chunks.contains(where: { chunk in
-                chunk.id == selection.chunkID &&
-                LearningChunkDisplay.quote(presentation.source, ranges: chunk.sourceRanges) == selection.source &&
-                LearningChunkDisplay.quote(presentation.translation, ranges: chunk.targetRanges) == selection.target
-            }) {
-            // Background alignment updates do not discard an open dictionary for the same text.
-            detailPanel.state.chunk = nil
-        }
         currentPresentation = presentation
         explanation.setTarget(LearningExplanationPolicy.input(presentation))
         let revision = UUID()
         layoutRevision = revision
         let card = LearningSentenceCard(
-            presentation: presentation, detailState: detailPanel.state, explanation: explanationService == nil ? nil : explanation,
+            presentation: presentation, explanation: explanationService == nil ? nil : explanation,
             replace: replace,
-            inspect: { [weak self] in self?.selectCorrespondence($0, documentID: presentation.id) }, expand: expand, dismiss: dismiss,
-            lookup: { [weak self] word, button in self?.inspectWord(word, documentID: presentation.id, button: button) },
+            expand: expand, dismiss: dismiss,
             lookupText: { [weak self] anchor, view in
                 self?.inspectInlineWord(anchor, documentID: presentation.id, view: view)
             },
@@ -221,14 +209,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
         installClickMonitors()
     }
 
-    private func selectCorrespondence(_ identifier: Int, documentID: UUID) {
-        guard let current = currentPresentation, current.id == documentID, !current.isStale,
-              let chunk = current.chunks.first(where: { $0.id == identifier }) else { return }
-        detailPanel.selectCorrespondence(detail(chunk, presentation: current))
-    }
-
     /// Unit identity, source geometry and the fixed sentence are validated together. A fallback
-    /// word click remains useful while recognition is pending; later alignment cannot change it.
+    /// word click remains useful while recognition is pending; later recognition cannot change it.
     private func inspectUnit(_ anchor: LearningUnitTextAnchor, documentID: UUID, view: NSTextView) {
         guard let current = currentPresentation, current.id == documentID, !current.isStale,
               let textView = view as? LearningDictionaryTextView, view.window === panel,
@@ -243,29 +225,10 @@ final class LearningSentencePanel: LearningSentencePresenting {
         let anchorFrame = view.window!.convertToScreen(view.convert(anchor.bounds, to: nil))
         let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
         detailPanel.show(anchor.unit, documentID: current.id, language: language,
-            correspondence: detailPanel.state.chunk,
             placement: .init(parent: parent, caret: current.caret, reserved: reservedFrame,
                 screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchorFrame.maxY + 12),
             speechContext: text,
             vocabularyCapture: VocabularyCaptureFactory.unit(anchor.unit, in: current, original: original))
-    }
-
-    private func detail(_ chunk: LearningMeaningChunk, presentation: LearningSentencePresentation) -> LearningChunkDetail {
-        let target = LearningChunkDisplay.quote(presentation.translation, ranges: chunk.targetRanges)
-        return .init(documentID: presentation.id, chunkID: chunk.id,
-            source: LearningChunkDisplay.quote(presentation.source, ranges: chunk.sourceRanges), target: target,
-            language: presentation.targetLanguage, words: LearningChunkDisplay.words(in: target, language: presentation.targetLanguage))
-    }
-
-    /// Lookup needs only the fixed target sentence. It works while analysis is disabled, pending
-    /// or failed; button/window/document checks reject a callback from an old rendered sentence.
-    private func inspectWord(_ word: String, documentID: UUID, button: NSButton) {
-        guard let current = currentPresentation, current.id == documentID, current.isExpanded, !current.isStale,
-              button.window === panel,
-              LearningChunkDisplay.words(in: current.translation, language: current.targetLanguage).contains(word) else { return }
-        let words = LearningUnitPolicy.words(in: current.translation, language: current.targetLanguage).filter { $0.text == word }
-        guard words.count == 1, let window = button.window else { return }
-        showWord(words[0], in: current, anchor: window.convertToScreen(button.convert(button.bounds, to: nil)))
     }
 
     private func inspectInlineWord(_ anchor: LearningDictionaryTextAnchor, documentID: UUID, view: NSTextView) {
@@ -282,33 +245,9 @@ final class LearningSentencePanel: LearningSentencePresenting {
         let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
         let unit = LearningUnit.word(word)
         detailPanel.show(unit, documentID: current.id, language: current.targetLanguage,
-            correspondence: detailPanel.state.chunk,
             placement: .init(parent: parent, caret: current.caret, reserved: reservedFrame,
                 screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600), anchorY: anchor.maxY + 12),
             speechContext: current.translation, vocabularyCapture: VocabularyCaptureFactory.unit(unit, in: current))
-    }
-
-    /// The click carries only a validated meaning ID; the current document supplies its quotes
-    /// so a stale view cannot query a term from a replaced sentence.
-    func inspectChunk(_ identifier: Int, documentID: UUID) {
-        guard let presentation = currentPresentation, presentation.isExpanded, !presentation.isStale,
-              presentation.id == documentID,
-              let chunk = presentation.chunks.first(where: { $0.id == identifier }), let parent = visibleFrame else { return }
-        let target = LearningChunkDisplay.quote(presentation.translation, ranges: chunk.targetRanges)
-        let detail = LearningChunkDetail(documentID: presentation.id, chunkID: identifier,
-            source: LearningChunkDisplay.quote(presentation.source, ranges: chunk.sourceRanges), target: target,
-            language: presentation.targetLanguage,
-            words: LearningChunkDisplay.words(in: target, language: presentation.targetLanguage))
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.intersects(parent) } ?? NSScreen.main
-        let unit = LearningUnit(id: identifier, surface: target, query: target, kind: .expression,
-            ranges: chunk.targetRanges, words: LearningUnitPolicy.words(in: presentation.translation, language: presentation.targetLanguage)
-                .filter { word in chunk.targetRanges.contains { NSIntersectionRange($0, word.range).length == word.range.length } })
-        detailPanel.show(unit, documentID: presentation.id, language: presentation.targetLanguage, correspondence: detail,
-            placement: LearningDetailPlacement(parent: parent, caret: presentation.caret, reserved: reservedFrame,
-            screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
-            anchorY: parent.contains(mouse) ? mouse.y + 18 : parent.maxY), speechContext: presentation.translation,
-            vocabularyCapture: VocabularyCaptureFactory.unit(unit, in: presentation))
     }
 
     /// Preferences arrive during SwiftUI layout/commit. Changing an AppKit window there can start

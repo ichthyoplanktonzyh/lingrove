@@ -289,7 +289,6 @@ final class CotabbyAppEnvironment {
             return ModelUsagePolicy.protectedFilenames(completion: runtimeModel?.selectedModelFilename,
                 completionPower: [suggestionSettings.batteryProfile, suggestionSettings.pluggedInProfile],
                 learning: [suggestionSettings.languageLearning.translation.referencedLocalModels,
-                           suggestionSettings.languageLearning.analysis.referencedLocalModels,
                            suggestionSettings.languageLearning.explanation.referencedLocalModels])
         }
         let learningService = LearningExpressionService(

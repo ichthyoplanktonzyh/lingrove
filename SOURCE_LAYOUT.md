@@ -304,7 +304,7 @@ that owns too many responsibilities and should be split by behavior rather than 
   viewport and the cancellable search reveal. Its real-AppKit scrolling tests are under
   `CotabbyTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
   initial search arrivals and subsequent searches in both scroll directions.
-- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud/dictionary
+- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/explanation/read-aloud/dictionary
   tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
   task-scoped resource sheets, advanced expansion and search destinations without changing models.
 - `Models/LanguageLearning/LearningDictionarySettings.swift` persists the enabled dictionary sources
@@ -442,3 +442,14 @@ replacement. The archive retains explanations separately from meanings and notes
 or after generation produces the same usage, without persisting dictionary snapshots. Editing or
 removing a usage prunes its obsolete explanation context. Tests mirror these boundaries under
 Support/LanguageLearning, Services/LanguageLearning and Services/Vocabulary.
+
+## Deferred chunk alignment
+
+The complete chunk-alignment implementation, settings, exact-quote parser, colored correspondence
+UI and model evaluation harnesses are preserved at `codex/chunk-alignment-experiment-20261020`
+(commit `7a999e14`). The current product has no alignment controller, request stage or settings route.
+Offline lexical recognition, contextual explanation and live dictionary lookup remain independent.
+`UI/InlineFeatures/LearningTextLayout.swift` owns the dictionary component-word flow layout and
+shared card measurement preference formerly colocated with the removed alignment chips.
+Historical performance records still decode their `analysis` source, which is excluded from the
+selectable task list. Existing alignment preferences and downloaded files are not deleted or read.

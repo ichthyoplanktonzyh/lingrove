@@ -92,7 +92,7 @@ struct LearningContextualLookupViewTests {
         let parent = CGRect(x: screen.minX + 40, y: screen.minY + 20, width: 300, height: 120)
         let panel = LearningDetailPanel(provider: LookupViewDictionary())
         defer { panel.hide() }
-        panel.show(unit, documentID: UUID(), language: .english, correspondence: nil,
+        panel.show(unit, documentID: UUID(), language: .english,
             placement: .init(parent: parent, caret: .zero, reserved: nil, screen: screen, anchorY: parent.maxY),
             vocabularyCapture: capture)
         let session = panel.dictionarySession, input = LearningExplanationPolicy.input(capture)
@@ -100,7 +100,7 @@ struct LearningContextualLookupViewTests {
         session.explanation.setTarget(input, saved: LookupViewExplainer.record(input,
             details: String(repeating: "Detailed construction and usage of this expression. ", count: 60)))
         let window = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
-        let host = try #require(window.contentView as? NSHostingView<LearningDetailCard>)
+        let host = try #require(window.contentView as? NSHostingView<LearningDictionaryCard>)
         window.appearance = NSAppearance(named: .aqua)
         try await settle(host, window, resize: false)
         let first = window.frame

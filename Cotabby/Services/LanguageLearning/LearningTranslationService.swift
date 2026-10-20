@@ -1,7 +1,7 @@
 import Foundation
 
 /// Translation owns only the quick expression task. The facade retains it for the app lifetime;
-/// analysis toggles/credentials never participate in its snapshot or cancel its result.
+/// explanation settings/credentials never participate in its snapshot or cancel its result.
 @MainActor
 final class LearningTranslationService {
     let settings: SuggestionSettingsModel

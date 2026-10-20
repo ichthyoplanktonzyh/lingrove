@@ -9,13 +9,10 @@ struct LearningSentenceDictionaryText: NSViewRepresentable {
     let language: LearningLanguage
     let lookup: (LearningDictionaryTextAnchor, NSTextView) -> Void
     var units: [LearningUnit] = []
-    var chunks: [LearningMeaningChunk] = []
-    var selectedChunk: Int?
     var source = false
     var maximumLines = 0
     var fontSize: CGFloat = 16
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
-    var inspect: (Int) -> Void = { _ in }
 
     func makeNSView(context: Context) -> LearningDictionaryTextView {
         let view = LearningDictionaryTextView(frame: .zero, textContainer: nil)
@@ -38,21 +35,18 @@ struct LearningSentenceDictionaryText: NSViewRepresentable {
     func updateNSView(_ view: LearningDictionaryTextView, context: Context) {
         view.language = language
         view.units = units
-        view.chunks = chunks
         view.source = source
         view.lookupUnit = lookupUnit
-        view.inspect = inspect
         view.textContainer?.maximumNumberOfLines = maximumLines
         view.textContainer?.lineBreakMode = maximumLines == 0 ? .byWordWrapping : .byTruncatingTail
         view.font = .systemFont(ofSize: fontSize)
-        view.present(text, selectedChunk: selectedChunk)
+        view.present(text)
         view.baseWritingDirection = language == .arabic ? .rightToLeft : .natural
         view.lookup = lookup
         view.toolTip = source
-            ? String(localized: "Click to inspect alignment · double-click a word to look it up", table: "Learning",
-                comment: "Tooltip for the source sentence text; clicking a highlighted range inspects its target-language match.")
+            ? String(localized: "Double-click a word to look it up", table: "Learning")
             : String(localized: "Double-click an expression to look it up · browse its words in Dictionary", table: "Learning",
-                comment: "Tooltip for translated sentence text; complete expressions and their words can be looked up.")
+            comment: "Tooltip for sentence text; expressions and their words can be looked up.")
         view.invalidateIntrinsicContentSize()
     }
 
@@ -73,14 +67,12 @@ final class LearningDictionaryTextView: NSTextView {
     var language: LearningLanguage = .english
     var lookup: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
-    var inspect: (Int) -> Void = { _ in }
     var units: [LearningUnit] = []
-    var chunks: [LearningMeaningChunk] = []
     var source = false
 
     /// Attributes annotate the original string; they never introduce separators or replacement
-    /// characters. Neutral expression underlines and source-correspondence colors are separate.
-    func present(_ text: String, selectedChunk: Int?) {
+    /// characters. Lexical underlines do not alter the saved sentence or occurrence ranges.
+    func present(_ text: String) {
         let value = NSMutableAttributedString(string: text, attributes: [
             .font: font ?? .systemFont(ofSize: 16), .foregroundColor: NSColor.labelColor])
         func valid(_ range: NSRange) -> Bool {
@@ -93,13 +85,6 @@ final class LearningDictionaryTextView: NSTextView {
                     value.addAttributes([.underlineStyle: NSUnderlineStyle.single.rawValue,
                         .underlineColor: NSColor.secondaryLabelColor.withAlphaComponent(0.45)], range: range)
                 }
-            }
-        }
-        for chunk in chunks {
-            for range in source ? chunk.sourceRanges : chunk.targetRanges where valid(range) {
-                value.addAttribute(.backgroundColor,
-                    value: NSColor(LearningChunkPalette.color(chunk.id)).withAlphaComponent(selectedChunk == chunk.id ? 0.3 : 0.13),
-                    range: range)
             }
         }
         textStorage?.setAttributedString(value)
@@ -140,7 +125,7 @@ final class LearningDictionaryTextView: NSTextView {
     /// Extracted from event delivery so hidden-window tests can exercise exact glyph clicks without
     /// posting global mouse events. Ignore blank areas and any explicitly truncated glyphs.
     func handleClick(at point: NSPoint, count: Int) {
-        guard count == 1 || count == 2, let textContainer, let layoutManager, let font else { return }
+        guard count == 2, let textContainer, let layoutManager, let font else { return }
         layoutManager.ensureLayout(for: textContainer)
         let local = NSPoint(x: point.x - textContainerOrigin.x, y: point.y - textContainerOrigin.y)
         let glyph = layoutManager.glyphIndex(for: local, in: textContainer)
@@ -149,12 +134,6 @@ final class LearningDictionaryTextView: NSTextView {
               !NSLocationInRange(glyph, layoutManager.truncatedGlyphRange(inLineFragmentForGlyphAt: glyph)),
               layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer).contains(local) else { return }
         let location = layoutManager.characterIndexForGlyph(at: glyph)
-        if count == 1 {
-            if let chunk = chunks.first(where: { (source ? $0.sourceRanges : $0.targetRanges).contains { NSLocationInRange(location, $0) } }) {
-                inspect(chunk.id)
-            }
-            return
-        }
         guard let word = LearningDictionaryWordPolicy.word(atUTF16Location: location,
             in: string, language: language.naturalLanguage) else { return }
         let unit = LearningUnitPolicy.unit(at: location, units: units) ?? .word(word)

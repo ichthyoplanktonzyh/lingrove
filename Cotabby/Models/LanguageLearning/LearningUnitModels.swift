@@ -1,8 +1,8 @@
 import Foundation
 
-/// A click target in one fixed translation. It is independent of meaning correspondence: a
+/// A click target in one fixed translation. It describes lexical boundaries: a
 /// correspondence may include several units, and a pattern may have separated fixed parts.
-/// Recognition owns exact ranges; presentation supplies neutral marks until alignment arrives.
+/// Recognition owns exact ranges; presentation supplies neutral expression underlines.
 nonisolated struct LearningUnit: Equatable, Sendable, Identifiable {
     enum Kind: String, Codable, Sendable { case word, expression, pattern }
     let id: Int

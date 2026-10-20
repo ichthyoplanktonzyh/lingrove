@@ -14,7 +14,7 @@ struct VocabularyCaptureFactoryTests {
     @Test func originalReadingWordRetainsExactContextOccurrenceAndItsTranslation() throws {
         let text = "🙂 Please keep me posted; previously posted notes remain."
         let occurrence = (text as NSString).range(of: "posted", options: .backwards)
-        var preview = LearningSentencePresentation(id: UUID(), source: "posted", translation: "发布过的", chunks: [],
+        var preview = LearningSentencePresentation(id: UUID(), source: "posted", translation: "发布过的",
             sourceLanguage: .english, targetLanguage: .chinese, caret: .zero, isExpanded: true, isGenerating: false,
             message: "", previousTranslation: nil, shortcutLabel: "", readingSource: .pointer)
         preview.vocabularyContext = VocabularyPolicy.example(text: text, ranges: [occurrence], language: .english)
@@ -47,7 +47,7 @@ struct VocabularyCaptureFactoryTests {
 
     @Test func readingWordTranslationIsNotMistakenForSentenceTranslation() throws {
         var preview = presentation()
-        preview = LearningSentencePresentation(id: preview.id, source: "posted", translation: "告知", chunks: [],
+        preview = LearningSentencePresentation(id: preview.id, source: "posted", translation: "告知",
             sourceLanguage: .english, targetLanguage: .chinese, caret: .zero, isExpanded: false, isGenerating: false,
             message: "", previousTranslation: nil, shortcutLabel: "", readingSource: .pointer)
         preview.vocabularyContext = VocabularyPolicy.example(text: "Please keep me posted.",
@@ -61,7 +61,7 @@ struct VocabularyCaptureFactoryTests {
     @Test func snapshotRemainsIndependentOfLaterPresentation() throws {
         var preview = presentation()
         let capture = try #require(VocabularyCaptureFactory.preview(preview))
-        preview = LearningSentencePresentation(id: UUID(), source: "Different", translation: "Other", chunks: [],
+        preview = LearningSentencePresentation(id: UUID(), source: "Different", translation: "Other",
             sourceLanguage: .english, targetLanguage: .chinese, caret: .zero, isExpanded: false, isGenerating: false,
             message: "", previousTranslation: nil, shortcutLabel: "")
         #expect(capture.expression == "Please keep me posted.")
@@ -93,7 +93,7 @@ struct VocabularyCaptureFactoryTests {
     }
 
     private func presentation() -> LearningSentencePresentation {
-        LearningSentencePresentation(id: UUID(), source: "请随时告诉我最新进展。", translation: "Please keep me posted.", chunks: [],
+        LearningSentencePresentation(id: UUID(), source: "请随时告诉我最新进展。", translation: "Please keep me posted.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false, isGenerating: false,
             message: "", previousTranslation: nil, shortcutLabel: "")
     }

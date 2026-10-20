@@ -1,9 +1,9 @@
 import Combine
 import Foundation
 
-/// One role owns its selection and credentials for the app lifetime. Translation and analysis
+/// One role owns its selection and credentials for the app lifetime. Translation and explanation
 /// share download/storage infrastructure, but never inherit each other's server or API key.
-nonisolated enum LearningModelRole: String, Sendable { case translation, analysis, explanation }
+nonisolated enum LearningModelRole: String, Sendable { case translation, explanation }
 nonisolated enum LearningModelBackend: String, CaseIterable, Identifiable, Codable, Sendable {
     case local, endpoint
     var id: String { rawValue }
@@ -21,12 +21,11 @@ nonisolated enum LearningModelBackend: String, CaseIterable, Identifiable, Codab
 nonisolated enum LearningChatTemplate: String, CaseIterable, Identifiable, Codable, Sendable {
     case automatic, hyMT, hyMT7, chatML, qwen3, gemma4, gemma4Large, gemma3, translateGemma, llama3
     var id: String { rawValue }
-    /// Translation specialists have no alignment instruction contract. Keep their manual
+    /// Translation specialists have no explanation instruction contract. Keep their manual
     /// template on the translation page; this does not rewrite previously saved selections.
     static func available(for role: LearningModelRole) -> [Self] {
         allCases.filter {
-            role == .explanation ? ![Self.hyMT, .hyMT7, .translateGemma].contains($0)
-                : role == .translation || $0 != .translateGemma
+            role == .translation || ![Self.hyMT, .hyMT7, .translateGemma].contains($0)
         }
     }
     var label: String {

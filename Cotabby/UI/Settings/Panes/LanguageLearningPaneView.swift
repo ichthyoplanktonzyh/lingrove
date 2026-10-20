@@ -30,9 +30,6 @@ struct LanguageLearningPaneView: View {
                 case .translation:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .translation,
                         configureModel: configureModel, openShortcuts: openShortcuts, openApps: openApps)
-                case .alignment:
-                    LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .analysis,
-                        configureModel: configureModel, openShortcuts: openShortcuts)
                 case .explanation:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .explanation,
                         configureModel: configureModel)

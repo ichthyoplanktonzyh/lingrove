@@ -7,7 +7,6 @@ import Foundation
 final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
-    let analysis: LearningModelSettings
     let explanation: LearningModelSettings
     @Published var explanationLanguage: LearningLanguage? {
         didSet { defaults.set(explanationLanguage?.rawValue, forKey: "learningExplanationLanguage") }
@@ -98,10 +97,6 @@ final class LanguageLearningSettings: ObservableObject {
             translation.changes
         ]).eraseToAnyPublisher()
     }
-    @Published var analysisEnabled: Bool {
-        didSet { defaults.set(analysisEnabled, forKey: "learningAnalysisEnabled") }
-    }
-
     @Published var translationEnabled: Bool {
         didSet { defaults.set(translationEnabled, forKey: "learningTranslationEnabled") }
     }
@@ -176,10 +171,6 @@ final class LanguageLearningSettings: ObservableObject {
         ).eraseToAnyPublisher()
     }
 
-    var analysisChanges: AnyPublisher<Void, Never> {
-        Publishers.Merge($analysisEnabled.dropFirst().map { _ in () }, analysis.changes).eraseToAnyPublisher()
-    }
-
     var snapshot: LearningSettingsSnapshot {
         .init(
             translationEnabled: translationEnabled,
@@ -214,8 +205,6 @@ final class LanguageLearningSettings: ObservableObject {
         targetLanguage = .english
         model = ""
         translation.reset()
-        analysisEnabled = false
-        analysis.reset()
         explanation.reset()
         explanationLanguage = nil
         keyCode = 17
@@ -226,7 +215,6 @@ final class LanguageLearningSettings: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         translationCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
-        analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
         explanationCredentials: (any OpenAICompatibleCredentialStoring)? = nil
     ) {
         self.defaults = defaults
@@ -251,8 +239,6 @@ final class LanguageLearningSettings: ObservableObject {
             rawValue: UInt32(clamping: defaults.object(forKey: "learningSelectionModifiers") as? Int ?? 6))
         selectionKeyLabel = defaults.string(forKey: "learningSelectionLabel") ?? "⌥⇧T"
         translation = LearningModelSettings(role: .translation, defaults: defaults, credentials: translationCredentials)
-        analysis = LearningModelSettings(role: .analysis, defaults: defaults, credentials: analysisCredentials)
-        analysisEnabled = defaults.bool(forKey: "learningAnalysisEnabled")
         translationEnabled = defaults.bool(forKey: "learningTranslationEnabled")
         sourceLanguages =
             defaults.stringArray(forKey: "learningSourceLanguages")?

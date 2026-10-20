@@ -4,7 +4,7 @@ import Testing
 import WebKit
 @testable import Cotabby
 
-/// These fixtures exercise correspondence geometry and the public window-family relationship;
+/// These fixtures exercise dictionary geometry and the public window-family relationship;
 /// no real dictionary, editor, or generation service participates.
 @Suite(.serialized)
 @MainActor
@@ -15,7 +15,7 @@ struct LearningDetailPanelTests {
         let provider = LayoutDictionaryProbe(delayedBundled: false, html: html)
         let panel = LearningDetailPanel(provider: provider)
         defer { panel.hide() }
-        panel.show(Self.chunk(), placement: try placement())
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: try placement())
         // Select before the initial task can publish a bundled result. HTML must establish
         // its own viewport through the real WebKit binding and geometry transactions.
         panel.dictionarySession.selectSource(.system)
@@ -37,7 +37,7 @@ struct LearningDetailPanelTests {
         let provider = LayoutDictionaryProbe(delayedBundled: false)
         let panel = LearningDetailPanel(provider: provider)
         defer { panel.hide() }
-        panel.show(Self.chunk(), placement: try placement())
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: try placement())
         await waitUntil { panel.dictionarySession.content != .loading }
         try await Task.sleep(for: .milliseconds(150))
         let first = try #require(panel.visibleFrame)
@@ -52,7 +52,7 @@ struct LearningDetailPanelTests {
         let panel = LearningDetailPanel()
         defer { panel.hide() }
         let original = try placement()
-        panel.show(Self.chunk(), placement: original)
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: original)
         panel.updateParent(nil, caret: original.caret, reserved: nil, screen: original.screen)
         #expect(!panel.isVisible)
         let moved = original.parent.offsetBy(dx: original.screen.width - original.parent.width - 100, dy: -100)
@@ -71,7 +71,7 @@ struct LearningDetailPanelTests {
         let panel = LearningDetailPanel(provider: provider)
         defer { panel.hide() }
         let placement = try placement()
-        panel.show(Self.chunk(), placement: placement)
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: placement)
         panel.dictionarySession.selectSource(.system)
         await waitUntil { panel.dictionarySession.content == .result(.systemText(LayoutDictionaryProbe.longText)) }
         try await Task.sleep(for: .milliseconds(150))
@@ -99,7 +99,7 @@ struct LearningDetailPanelTests {
     func realDetailPopoverRemainsInternalAndIsRetiredWhenTheCardHides() async throws {
         let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
         defer { panel.hide() }
-        panel.show(Self.chunk(), placement: try placement())
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: try placement())
         let parent = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
         var popup: NSWindow?
         let host = NSHostingView(rootView: FavoritePopoverWindowFixture { popup = $0 })
@@ -111,14 +111,14 @@ struct LearningDetailPanelTests {
         #expect(panel.owns(window), "The real SwiftUI popover belongs to the detail window")
         #expect(LearningWindowInteraction.contains(CGPoint(x: window.frame.midX, y: window.frame.midY),
             roots: panel.interactionWindows, hitWindowNumber: window.windowNumber))
-        panel.show(Self.chunk(identifier: 1), placement: try placement())
+        panel.show(Self.unit(identifier: 1), documentID: UUID(), language: .english, placement: try placement())
         await waitUntil { !window.isVisible }
         #expect(!window.isVisible, "Replacing the capture must retire the previous host's popover")
         #expect(panel.dictionarySession.selectedWord == nil)
         panel.hide()
         await waitUntil { !window.isVisible }
         #expect(!window.isVisible && parent.contentView == nil)
-        panel.show(Self.chunk(identifier: 2), placement: try placement())
+        panel.show(Self.unit(identifier: 2), documentID: UUID(), language: .english, placement: try placement())
         #expect(!window.isVisible && panel.dictionarySession.selectedWord == nil)
     }
 
@@ -127,7 +127,7 @@ struct LearningDetailPanelTests {
         let panel = LearningDetailPanel()
         defer { panel.hide() }
         let original = try placement()
-        panel.show(Self.chunk(), placement: original)
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: original)
         let first = try #require(panel.visibleFrame)
         panel.updateParent(original.parent.offsetBy(dx: 0, dy: -80),
             caret: original.caret.offsetBy(dx: 0, dy: -80), reserved: nil, screen: original.screen)
@@ -139,7 +139,7 @@ struct LearningDetailPanelTests {
     func nativeLookupDescendantsArePartOfTheExplanationWindowFamily() throws {
         let panel = LearningDetailPanel()
         defer { panel.hide() }
-        panel.show(Self.chunk(), placement: try placement())
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: try placement())
         let source = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
         let anchor = NSPanel(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: true)
         let popup = NSPanel(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: true)
@@ -155,43 +155,16 @@ struct LearningDetailPanelTests {
     }
 
     @Test
-    func replacingOrClosingTheExplanationClearsItsSelection() throws {
+    func replacingOrClosingTheLookupClearsItsSession() throws {
         let panel = LearningDetailPanel()
-        panel.show(Self.chunk(), placement: try placement())
-        panel.show(Self.chunk(identifier: 1), placement: try placement())
-        #expect(panel.state.chunk?.chunkID == 1)
-        panel.hide()
-        #expect(panel.state.chunk == nil)
-        #expect(!panel.isVisible)
-    }
-
-    @Test
-    func lookupRejectsStaleChunksAndReturnsBeforeClosingTheExpression() throws {
-        let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
         defer { panel.hide() }
-        let original = Self.chunk()
-        panel.show(original, placement: try placement())
-        let source = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
-        let button = NSButton(title: "can", target: nil, action: nil)
-        button.frame = CGRect(x: 20, y: 20, width: 80, height: 24)
-        source.contentView?.addSubview(button)
-        panel.selectWord("can", from: button, chunk: original)
-        #expect(panel.dictionarySession.selectedWord?.text == "can")
-        #expect(panel.dismissDictionary())
-        #expect(panel.isVisible)
-        #expect(panel.state.chunk == original)
-        #expect(!panel.dismissDictionary())
-        let next = Self.chunk(identifier: 1)
-        panel.show(next, placement: try placement())
-        source.contentView?.addSubview(button)
-        panel.selectWord("can", from: button, chunk: original)
-        button.title = "unlisted"
-        panel.selectWord("unlisted", from: button, chunk: next)
-        #expect(panel.dictionarySession.selectedWord == nil)
+        let first = UUID(), next = UUID()
+        panel.show(Self.unit(), documentID: first, language: .english, placement: try placement())
+        panel.show(Self.unit(identifier: 1), documentID: next, language: .english, placement: try placement())
+        #expect(panel.dictionarySession.documentID == next)
         panel.hide()
-        button.title = "can"
-        panel.selectWord("can", from: button, chunk: next)
-        #expect(panel.dictionarySession.unit == nil)
+        #expect(panel.dictionarySession.unit == nil && panel.dictionarySession.documentID == nil)
+        #expect(!panel.isVisible)
     }
 
     @Test
@@ -204,7 +177,7 @@ struct LearningDetailPanelTests {
             words: LearningUnitPolicy.words(in: text, language: .english))
         let id = UUID()
         let placement = try placement()
-        panel.show(unit, documentID: id, language: .english, correspondence: nil, placement: placement)
+        panel.show(unit, documentID: id, language: .english, placement: placement)
         await waitUntil { panel.dictionarySession.content == .result(.notFound) && panel.isVisible }
         let source = try #require(NSApp.windows.first { panel.owns($0) && $0.parent == nil })
         let button = NSButton(title: "forward", target: nil, action: nil)
@@ -220,7 +193,7 @@ struct LearningDetailPanelTests {
         panel.selectDictionaryTerm(text, from: button, unit: unit, documentID: id)
         #expect(panel.dictionarySession.selectedWord == nil)
         let nextID = UUID()
-        panel.show(unit, documentID: nextID, language: .english, correspondence: nil, placement: placement)
+        panel.show(unit, documentID: nextID, language: .english, placement: placement)
         source.contentView?.addSubview(button)
         button.title = "forward"
         panel.selectDictionaryTerm("forward", from: button, unit: unit, documentID: id)
@@ -232,28 +205,21 @@ struct LearningDetailPanelTests {
         #expect(panel.dictionarySession.unit == nil)
     }
 
-    @Test(arguments: [false, true])
-    func unitAndMeaningChunkEntriesCarryTheSameSentenceContext(meaningChunk: Bool) throws {
+    @Test
+    func expressionEntryCarriesTheSameSentenceContext() throws {
         let panel = LearningDetailPanel(provider: ExpressionDictionaryProbe())
         defer { panel.hide() }
-        let chunk = Self.chunk()
         let context = "I can do it if you give me enough time."
-        if meaningChunk {
-            panel.show(chunk, placement: try placement(), speechContext: context)
-        } else {
-            let unit = LearningUnit(id: 0, surface: chunk.target, query: chunk.target, kind: .expression,
-                ranges: [], words: LearningUnitPolicy.words(in: chunk.target, language: .english))
-            panel.show(unit, documentID: chunk.documentID, language: .english,
-                correspondence: nil, placement: try placement(), speechContext: context)
-        }
+        panel.show(Self.unit(), documentID: UUID(), language: .english, placement: try placement(), speechContext: context)
         #expect(panel.dictionarySession.speechContext == context)
         panel.hide()
         #expect(panel.dictionarySession.speechContext == nil)
     }
 
-    private static func chunk(identifier: Int = 0) -> LearningChunkDetail {
-        .init(documentID: UUID(), chunkID: identifier, source: "能做到", target: "can do it",
-            language: .english, words: ["can", "do", "it"])
+    private static func unit(identifier: Int = 0) -> LearningUnit {
+        let text = "can do it"
+        return .init(id: identifier, surface: text, query: text, kind: .expression,
+            ranges: [.init(location: 0, length: text.utf16.count)], words: LearningUnitPolicy.words(in: text, language: .english))
     }
 
     private func placement() throws -> LearningDetailPlacement {
@@ -312,7 +278,8 @@ private actor LayoutDictionaryProbe: LearningDictionaryProviding {
 }
 
 private actor ExpressionDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }
 }

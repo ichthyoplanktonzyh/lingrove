@@ -124,13 +124,12 @@ final class SettingsIndexTests: XCTestCase {
 
     func test_translationBehaviorAndModelsHaveSearchableSeparateHomes() {
         let behavior: [SettingsItem] = [.translationEnabled, .sentencePreview, .translationTargetLanguage,
-            .translationSourceLanguages, .translationReferenceMode, .chunkAlignment]
+            .translationSourceLanguages, .translationReferenceMode]
         for item in behavior { XCTAssertEqual(item.category, .languageLearning) }
         XCTAssertEqual(SettingsItem.translationModel.category, .engineAndModel)
-        XCTAssertEqual(SettingsItem.alignmentModel.category, .engineAndModel)
         for (query, item) in [("translation reference", SettingsItem.translationReferenceMode),
                               ("source languages", .translationSourceLanguages),
-                              ("translation model", .translationModel), ("alignment model", .alignmentModel)] {
+                              ("translation model", .translationModel)] {
             XCTAssertTrue(SettingsItem.results(for: query).contains(item), query)
         }
         XCTAssertEqual(SettingsItem.languages.category, .writing,

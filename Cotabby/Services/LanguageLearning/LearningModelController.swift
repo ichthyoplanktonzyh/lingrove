@@ -33,7 +33,7 @@ final class LearningModelController: ObservableObject {
     private var idleRelease: Task<Void, Never>?
     private var generationAllowed = true
     private(set) var residency: LocalRuntimeResidency = .onDemand
-    /// Analysis answers are cached by the coordinator; its native weights can be released between
+    /// Explanation answers are cached by the service; its native weights can be released between
     /// sessions. Tests inject a short deadline without touching the user's settings or model files.
     var idleReleaseDelay: Duration = .seconds(60)
 
@@ -366,7 +366,7 @@ final class LearningModelController: ObservableObject {
         status = String(localized: "Loading", table: "Learning",
             comment: "Model status while preparing the local learning model.")
         let trace = LearningRequestContext(requestID: RequestID.generate(), operationID: RequestID.generate(),
-            source: profile.role == .translation ? .translation : profile.role == .explanation ? .explanation : .analysis,
+            source: profile.role == .translation ? .translation : .explanation,
             modelName: snapshot.localModel, engine: "llama")
         lastNativeTrace = trace
         LearningRequestLog.emit(trace, phase: "warmup_started")

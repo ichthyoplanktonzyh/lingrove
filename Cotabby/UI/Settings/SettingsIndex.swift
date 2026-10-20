@@ -76,10 +76,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case translationSampling
     case speechSampling
     case translationReferenceMode
-    case chunkAlignment
     case dictionarySources
     case translationModel
-    case alignmentModel
     case explanationModel, explanationLanguage, explanationParameters
     // Context
     case extendedContext
@@ -185,10 +183,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationSampling: return String(localized: "Translation generation parameters", table: "Learning")
         case .speechSampling: return String(localized: "Speech generation parameters", table: "Learning")
         case .translationReferenceMode: return String(localized: "Translation reference", table: "Learning")
-        case .chunkAlignment: return String(localized: "Enable chunk alignment", table: "Learning")
         case .dictionarySources: return String(localized: "Dictionary sources", table: "Learning")
         case .translationModel: return String(localized: "Translation model", table: "Learning")
-        case .alignmentModel: return String(localized: "Chunk alignment model", table: "Learning")
         case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Enable Globally")
         case .useScreenContext: return String(localized: "Use screen context")
@@ -303,9 +299,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationStyle: return "textformat"
         case .translationSampling, .speechSampling: return "slider.horizontal.3"
         case .translationReferenceMode: return "doc.text"
-        case .chunkAlignment: return "text.alignleft"
         case .dictionarySources: return "books.vertical"
-        case .translationModel, .alignmentModel: return "shippingbox"
+        case .translationModel: return "shippingbox"
         case .completionEnabled: return "text.cursor"
         case .enableGlobally: return "power"
         case .useScreenContext: return "text.viewfinder"
@@ -410,8 +405,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
             .translationSourceLanguages,
-             .translationReferenceMode, .translationStyle, .chunkAlignment, .dictionarySources: return .languageLearning
-        case .translationModel, .alignmentModel, .translationSampling, .speechSampling: return .engineAndModel
+             .translationReferenceMode, .translationStyle, .dictionarySources: return .languageLearning
+        case .translationModel, .translationSampling, .speechSampling: return .engineAndModel
         #if DEBUG
         case .developmentDebugOverlays: return .general
         #endif
@@ -469,9 +464,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
             .translationSourceLanguages,
-             .translationReferenceMode, .chunkAlignment:
+             .translationReferenceMode:
             return String(localized: "Translation direction, previews, and reference text.", table: "Learning")
-        case .translationModel, .alignmentModel:
+        case .translationModel:
             return String(localized: "Choose the local model or endpoint used for this task.", table: "Learning")
         case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Turn Lingrove on or off everywhere without quitting.", table: "Learning")
@@ -618,12 +613,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return ["translation language", "source language", "target language", "翻译语言", "源语言", "目标语言"]
         case .translationReferenceMode:
             return ["translation reference", "draft context", "sentence", "翻译上下文", "草稿", "参考"]
-        case .chunkAlignment:
-            return ["chunk alignment", "meaning", "语块", "意义对应"]
         case .translationModel:
             return ["translation model", "translator", "翻译模型"]
-        case .alignmentModel:
-            return ["alignment model", "analysis model", "对齐模型", "语块模型"]
         #if DEBUG
         case .developmentDebugOverlays:
             return ["development", "developer", "debug", "overlays", "caret", "outline", "focus", "ocr", "diagnostics"]

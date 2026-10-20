@@ -120,11 +120,6 @@ struct LearningModelConfigurationView: View {
             Choose a local GGUF or a separate endpoint for sentence translation. A translation-focused model is recommended.
             """,
                 table: "Learning", comment: "Description of the translation task's engine setting.")
-        case .analysis: String(localized: """
-            Choose a local instruction-tuned GGUF or a separate endpoint for chunk alignment. Only confirmed source and translation \
-            text is aligned.
-            """,
-                table: "Learning", comment: "Description of the chunk-alignment task's engine setting.")
         }
     }
 
@@ -132,7 +127,6 @@ struct LearningModelConfigurationView: View {
     private var modelItem: SettingsItem {
         switch profile.role {
         case .translation: .translationModel
-        case .analysis: .alignmentModel
         case .explanation: .explanationModel
         }
     }
@@ -217,7 +211,7 @@ struct LearningModelConfigurationView: View {
             Section(String(localized: "Get models", table: "Learning")) {
                 DownloadableModelCatalogView(modelDownloadManager: downloads, onRefreshModels: refreshModels,
                     catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels :
-                        profile.role == .explanation ? LearningRuntimeCatalog.explanationModels : LearningRuntimeCatalog.analysisModels)
+                        LearningRuntimeCatalog.explanationModels)
                 if let searchService {
                     HuggingFaceModelBrowserView(searchService: searchService,
                         modelDownloadManager: downloads, onRefreshModels: refreshModels)
@@ -275,15 +269,10 @@ struct LearningModelConfigurationView: View {
                 With this endpoint, the service receives the chosen text, its captured context and the explanation language.
                 """,
                     table: "Learning")
-                : profile.role == .translation
-                ? String(localized: """
+                : String(localized: """
                     With this endpoint, the service receives the target, language direction, optional draft excerpts and style instructions.
                     """,
-                    table: "Learning", comment: "Disclosure of what the configured endpoint receives for translation requests.")
-                : String(localized: """
-                With this endpoint, the service receives the current source text, displayed translation, and language direction.
-                """,
-                    table: "Learning", comment: "Disclosure of what the configured endpoint receives for chunk-alignment requests."),
+                    table: "Learning", comment: "Disclosure of what the configured endpoint receives for translation requests."),
             connect: {
                 let draft = apiKey
                 Task { await controller.connect(using: draft); credentialError = nil }

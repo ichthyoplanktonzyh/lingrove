@@ -4,6 +4,8 @@ import Foundation
 /// making their durations or quality counters comparable. Performance defaults to completion.
 nonisolated enum ModelRequestSource: String, Codable, CaseIterable, Identifiable, Sendable {
     case completion, translation, analysis, explanation, speech, ocr
+    /// Historical alignment records retain their identity without making the retired task selectable.
+    static let allCases: [Self] = [.completion, .translation, .explanation, .speech, .ocr]
     var id: String { rawValue }
     var label: String {
         switch self {

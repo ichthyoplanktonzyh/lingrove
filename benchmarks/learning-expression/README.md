@@ -1,5 +1,10 @@
 # Cross-language expression evaluation
 
+> Historical experiments: their implementations and reproducible harnesses are preserved on
+> `codex/chunk-alignment-experiment-20261020` at `21353fcd`. The commands below apply to that
+> branch; chunk alignment is no longer part of the current product. Reports and frozen corpora
+> remain here as evidence, not as a statement of current behavior.
+
 This is a local, headless evaluation of the independent learning feature. It does not start the
 app, read editor text or settings, change the selected model, or use the autocomplete runtime.
 `cases-v1.json` contains synthetic examples with reviewer expectations. The model receives only

@@ -31,7 +31,7 @@ struct InstalledRuntimeModelRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .help(String(
-                            localized: "This file is used by autocomplete, translation, chunk alignment, or a power profile.",
+                            localized: "This file is used by autocomplete, translation, AI explanation, or a power profile.",
                             table: "Learning"
                         ))
                 } else if downloads.canDeleteModel(filename: model.filename) {

@@ -8,28 +8,30 @@ import Testing
 @MainActor
 struct LearningModelResidencyTests {
     @Test
-    func independentTasksReleaseOnGlobalPauseAndAnalysisDisable() async throws {
+    func independentTasksReleaseOnGlobalPauseAndTranslationDisable() async throws {
         let name = "cotabby.test.learningResidency.\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let app = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
         app.setGloballyEnabled(true)
         app.languageLearning.translationEnabled = true
-        app.languageLearning.analysisEnabled = true
         let models = LearningModelCollection(settings: app.languageLearning,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)), appSettings: app)
         #expect(models.translation.residency == .warm)
-        #expect(models.analysis.residency == .onDemand)
-        app.languageLearning.analysisEnabled = false
+        #expect(models.explanation.residency == .onDemand)
+        app.languageLearning.translationEnabled = false
         models.reconcileResources()
-        #expect(models.translation.residency == .warm)
-        #expect(models.analysis.residency == .released)
+        #expect(models.translation.residency == .released)
+        #expect(models.explanation.residency == .onDemand)
         app.setGloballyEnabled(false)
         models.reconcileResources()
         #expect(models.translation.residency == .released)
-        do { _ = try await models.translation.generate(prompt: "fixture", maxTokens: 1); Issue.record("Disabled work must cancel") }
-        catch { #expect(error is CancellationError) }
+        do {
+            _ = try await models.translation.generate(prompt: "fixture", maxTokens: 1)
+            Issue.record("Disabled work must cancel")
+        } catch { #expect(error is CancellationError) }
         app.setGloballyEnabled(true)
+        app.languageLearning.translationEnabled = true
         models.reconcileResources()
         #expect(models.translation.residency == .warm)
         models.shutdownSync()
@@ -44,24 +46,23 @@ struct LearningModelResidencyTests {
         app.setGloballyEnabled(true)
         app.setLowPowerModeAutoDisableEnabled(true)
         app.languageLearning.translationEnabled = true
-        app.languageLearning.analysisEnabled = true
         let monitor = FakePower()
         let models = LearningModelCollection(settings: app.languageLearning,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)), appSettings: app, lowPower: monitor)
-        #expect(models.translation.residency == .warm && models.analysis.residency == .onDemand)
+        #expect(models.translation.residency == .warm && models.explanation.residency == .onDemand)
         monitor.update(true)
-        await waitUntil { models.translation.residency == .released && models.analysis.residency == .released }
+        await waitUntil { models.translation.residency == .released && models.explanation.residency == .released }
         monitor.update(false)
-        await waitUntil { models.translation.residency == .warm && models.analysis.residency == .onDemand }
+        await waitUntil { models.translation.residency == .warm && models.explanation.residency == .onDemand }
         models.shutdownSync()
     }
 
     @Test
-    func analysisIdleReleasesNativeContextAndItsNextRequestCanReload() async throws {
+    func explanationIdleReleasesNativeContextAndItsNextRequestCanReload() async throws {
         let name = "cotabby.test.learningIdle.\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
-        let profile = LearningModelSettings(role: .analysis, defaults: defaults)
+        let profile = LearningModelSettings(role: .explanation, defaults: defaults)
         let core = FakeNative()
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
@@ -71,13 +72,13 @@ struct LearningModelResidencyTests {
         controller.applyResidency(.onDemand, generationAllowed: true)
         let observer = LearningRequestTelemetry()
         let output = try await LearningRequestTrace.$requestID.withValue("req_native_fixture") {
-            try await observer.perform(source: .analysis, profile: profile.snapshot) {
+            try await observer.perform(source: .explanation, profile: profile.snapshot) {
                 try await controller.generate(prompt: "fixture", maxTokens: 1)
             }
         }
         #expect(output == "Hello")
         #expect(core.recordedTrace?.requestID == "req_native_fixture")
-        #expect(core.recordedTrace?.source == .analysis)
+        #expect(core.recordedTrace?.source == .explanation)
         #expect(controller.status == String(localized: "Ready", table: "Learning"))
         await waitUntil { core.unloadCount == 1 }
         #expect(controller.status == String(localized: "Not loaded", table: "Learning"))
@@ -93,7 +94,7 @@ struct LearningModelResidencyTests {
         let name = "cotabby.test.cancelledResident.\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
-        let profile = LearningModelSettings(role: .analysis, defaults: defaults)
+        let profile = LearningModelSettings(role: .explanation, defaults: defaults)
         let core = FakeNative(failAfterLoad: true)
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
@@ -101,8 +102,10 @@ struct LearningModelResidencyTests {
         profile.localModel = "fixture.gguf"
         controller.idleReleaseDelay = .milliseconds(20)
         controller.applyResidency(.onDemand, generationAllowed: true)
-        do { _ = try await controller.generate(prompt: "fixture", maxTokens: 1); Issue.record("Expected cancellation") }
-        catch { #expect(error is CancellationError) }
+        do {
+            _ = try await controller.generate(prompt: "fixture", maxTokens: 1)
+            Issue.record("Expected cancellation")
+        } catch { #expect(error is CancellationError) }
         #expect(core.loadCount == 1)
         await waitUntil { core.unloadCount == 1 }
         controller.shutdownSync()
@@ -160,7 +163,9 @@ struct LearningModelResidencyTests {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".gguf")
         defer { try? FileManager.default.removeItem(at: url) }
         var data = Data("GGUF".utf8)
-        func integer(_ n: UInt64, _ bytes: Int) { for shift in 0..<bytes { data.append(UInt8(truncatingIfNeeded: n >> (shift * 8))) } }
+        func integer(_ value: UInt64, _ bytes: Int) {
+            for shift in 0..<bytes { data.append(UInt8(truncatingIfNeeded: value >> (shift * 8))) }
+        }
         func string(_ value: String) { integer(UInt64(value.utf8.count), 8); data.append(Data(value.utf8)) }
         integer(3, 4); integer(0, 8); integer(2, 8)
         string("general.architecture"); integer(8, 4); string(template == .hyMT ? "hunyuan-dense" : "gemma3")
@@ -218,9 +223,13 @@ struct LearningModelResidencyTests {
                 if !resident { resident = true; loads += 1 }
             }
         }
-        func generate(modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,
+        // The fake implements the same native boundary so cancellation exercises real controller policy.
+        // swiftlint:disable:next function_parameter_count
+        func generate(
+            modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,
             operationID: UUID, trace: LearningRequestContext?, onLoad: (@Sendable (Int) -> Void)?,
-            onDelta: @Sendable (String) -> Void) throws -> String {
+            onDelta: @Sendable (String) -> Void
+        ) throws -> String {
             try prepare(modelURL: modelURL, operationID: operationID, trace: trace)
             if failAfterLoad { throw CancellationError() }
             onLoad?(0); onDelta("Hello"); return "Hello"

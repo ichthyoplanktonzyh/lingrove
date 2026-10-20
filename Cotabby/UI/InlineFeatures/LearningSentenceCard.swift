@@ -1,17 +1,14 @@
 import AppKit
 import SwiftUI
 
-/// Shows the sentence pair without dictionary text or duplicate mapping rows. The shared detail
-/// state supplies selection borders; the app-owned panel receives clicks and owns lookup I/O.
+/// Shows one sentence pair with lexical underlines and existing learning actions. The app-owned
+/// panel validates clicked occurrences and owns dictionary and explanation lifetimes.
 struct LearningSentenceCard: View {
     let presentation: LearningSentencePresentation
-    @ObservedObject var detailState: LearningDetailState
     var explanation: LearningExplanationSession?
     var replace: (() -> Void)?
-    let inspect: (Int) -> Void
     let expand: () -> Void
     let dismiss: () -> Void
-    var lookup: (String, NSButton) -> Void = { _, _ in }
     var lookupText: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
     var speech: LearningSpeechController?
@@ -205,19 +202,6 @@ struct LearningSentenceCard: View {
                                 stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
                         }
                     }
-                    if !presentation.translation.isEmpty, presentation.chunks.isEmpty,
-                       !presentation.isTranslating, presentation.isGenerating || !presentation.message.isEmpty {
-                        Text(presentation.isGenerating
-                            ? String(localized: "The translation appears first; chunk alignments are loading…", table: "Learning",
-                                comment: "Status shown while the translation is available but phrase-alignment analysis is still running.")
-                            : presentation.message)
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if let selected = detailState.chunk, selected.documentID == presentation.id,
-                       presentation.chunks.contains(where: { $0.id == selected.chunkID }) {
-                        Text(verbatim: "\(selected.source) → \(selected.target)")
-                            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
                     if !presentation.translation.isEmpty, presentation.unitStage == .failed {
                         Text(String(localized: "Expression highlights are unavailable; you can still double-click words to look them up.",
                             table: "Learning", comment: """
@@ -231,7 +215,7 @@ struct LearningSentenceCard: View {
                             """))
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    if !presentation.message.isEmpty, !presentation.isGenerating, !presentation.chunks.isEmpty {
+                    if !presentation.message.isEmpty, !presentation.isGenerating {
                         Text(presentation.message).font(.caption).foregroundStyle(.secondary)
                     }
                     if let explanation {
@@ -291,14 +275,10 @@ struct LearningSentenceCard: View {
     }
 
     private func sentence(_ text: String, source: Bool) -> some View {
-        // Recognition owns underlines and click boundaries; the analysis service owns validated
-        // meaning ranges. Paint each result as it arrives, without making either grain a gate
-        // for the other. TextKit overlays these attributes on the same untouched sentence.
         LearningSentenceDictionaryText(text: text, language: source ? presentation.sourceLanguage : presentation.targetLanguage,
-            lookup: lookupText, units: source ? [] : presentation.units, chunks: presentation.chunks,
-            selectedChunk: detailState.chunk?.documentID == presentation.id ? detailState.chunk?.chunkID : nil,
+            lookup: lookupText, units: source ? [] : presentation.units,
             source: source, maximumLines: 0, fontSize: source ? 16 : 18,
-            lookupUnit: lookupUnit, inspect: inspect)
+            lookupUnit: lookupUnit)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -310,8 +290,8 @@ struct LearningSentenceCard: View {
     }
 
     private var translationSpeechRequest: SpeechRequest? {
-        // `isGenerating` also covers alignment work after a full translation is already visible.
-        // A nonempty, nonstale value is the completed snapshot and is safe to read independently.
+        // A streamed prefix is visible but is not a complete utterance. Read only the
+        // validated final translation, independently of pending lexical highlights.
         guard !presentation.translation.isEmpty, !presentation.isTranslating,
               !presentation.isStale, !presentation.isError else { return nil }
         return SpeechRequest(

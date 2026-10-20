@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import Logging
 
-/// App-lifetime reading session. It borrows the existing translation/alignment/lexicon services
+/// App-lifetime reading session. It borrows the existing translation/lexicon services
 /// and card presenter, while owning cancellation and the optional selection affordance. A reading
 /// receipt has no replacement capability, so no path from this type can write into another app.
 @MainActor
@@ -22,8 +22,6 @@ final class LearningReadingCoordinator {
     private var monitors: [Any] = []
     private var workspaceObserver: NSObjectProtocol?
     private var work: Task<Void, Never>?
-    private var analysisWork: Task<Void, Never>?
-    private var analysisRevision = UUID()
     private var unitWork: Task<Void, Never>?
     private var affordanceWork: Task<Void, Never>?
     private var revision = UUID()
@@ -40,14 +38,13 @@ final class LearningReadingCoordinator {
     var isActive: Bool { document != nil || pendingSelection != nil || work != nil || panel.isVisible || affordanceWork != nil }
 
     /// One immutable receipt with its evolving view state. Keeping this value together prevents
-    /// a late translation/alignment task from mixing languages or results from different selections.
+    /// a late translation task from mixing languages or results from different selections.
     private struct Document {
         let capture: LearningReadingSelection
         let sourceLanguage: LearningLanguage
         let targetLanguage: LearningLanguage
         let traceID: String
         var translation = ""
-        var chunks: [LearningMeaningChunk] = []
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
         var generating = true
@@ -108,11 +105,6 @@ final class LearningReadingCoordinator {
             // @Published precedes storage. Reconcile the current app's effective policy on
             // the next turn; unrelated App edits and icon changes do not cancel a translation.
             Task { @MainActor [weak self] in self?.policiesChanged() }
-        }.store(in: &subscriptions)
-        settings.languageLearning.analysisChanges.sink { [weak self] in
-            self?.analysisWork?.cancel()
-            self?.analysisRevision = UUID()
-            Task { @MainActor [weak self] in self?.startAnalysis() }
         }.store(in: &subscriptions)
         settings.languageLearning.shortcutChanges.sink { [weak self] in
             Task { @MainActor [weak self] in self?.render() }
@@ -199,8 +191,6 @@ final class LearningReadingCoordinator {
         pointerDownInsideLearningUI = false
         work?.cancel()
         work = nil
-        analysisWork?.cancel()
-        analysisWork = nil
         unitWork?.cancel()
         unitWork = nil
         affordanceWork?.cancel()
@@ -314,7 +304,6 @@ final class LearningReadingCoordinator {
                     self.document?.generating = false
                     self.render()
                     self.startUnits()
-                    self.startAnalysis()
                 } catch is CancellationError { self.retireIfCurrent(id) } catch {
                     guard self.valid(id, capture) else {
                         self.retireIfCurrent(id)
@@ -389,46 +378,13 @@ final class LearningReadingCoordinator {
         }
     }
 
-    private func startAnalysis() {
-        analysisWork?.cancel()
-        analysisRevision = UUID()
-        document?.chunks = []
-        if document?.translation.isEmpty == false { document?.message = "" }
-        guard let document, document.translationIsComplete, !document.translation.isEmpty,
-              service.settings.languageLearning.analysisEnabled else {
-            render()
-            return
-        }
-        let id = revision
-        let analysisID = analysisRevision
-        analysisWork = Task { [weak self] in
-            guard let self else { return }
-            await LearningRequestTrace.$requestID.withValue(document.traceID) {
-                do {
-                    let result = try await self.service.analyzeReadingSelection(
-                        source: document.capture.text,
-                        translation: document.translation, sourceLanguage: document.sourceLanguage,
-                        targetLanguage: document.targetLanguage, readingSource: document.capture.source)
-                    try Task.checkCancellation()
-                    guard self.analysisRevision == analysisID, self.valid(id, document.capture) else { return }
-                    self.document?.chunks = result.chunks
-                    self.render()
-                } catch is CancellationError {} catch {
-                    guard !Task.isCancelled, self.analysisRevision == analysisID, self.valid(id, document.capture) else { return }
-                    self.document?.message = error.localizedDescription
-                    self.render()
-                }
-            }
-        }
-    }
-
     private func render() {
         guard let document, enabled else { return }
         guard !document.translation.isEmpty || !document.generating else { return }
         panel.show(
             .init(
                 id: document.capture.id, source: document.capture.text, translation: document.translation,
-                chunks: document.chunks, sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
+                sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
                 caret: document.capture.anchor, isExpanded: document.expanded, isGenerating: document.generating,
                 message: document.message, previousTranslation: nil, shortcutLabel: service.settings.languageLearning.keyLabel,
                 units: document.units, unitStage: document.unitStage, targetIsSelection: true, canReplace: false,
@@ -439,7 +395,6 @@ final class LearningReadingCoordinator {
             dismiss: { [weak self] in self?.dismiss() },
             replace: nil)
         if !document.translation.isEmpty { service.recordDisplay(source: .translation, requestID: document.traceID) }
-        if document.expanded, !document.chunks.isEmpty { service.recordDisplay(source: .analysis, requestID: document.traceID) }
     }
 
     private func showCaptureError(_ error: Error) {
@@ -447,7 +402,7 @@ final class LearningReadingCoordinator {
         work = nil
         panel.show(
             .init(
-                id: UUID(), source: "", translation: "", chunks: [], sourceLanguage: .english,
+                id: UUID(), source: "", translation: "", sourceLanguage: .english,
                 targetLanguage: service.settings.languageLearning.readingTargetLanguage,
                 caret: CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18)),
                 isExpanded: false, isGenerating: false, message: error.localizedDescription, previousTranslation: nil,
