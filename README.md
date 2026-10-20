@@ -41,6 +41,8 @@ language learning are its two core capabilities, developed together.
   lexicon and the dictionaries enabled on your Mac.
 - **Independent learning models:** configure translation, learning-unit recognition, and chunk
   alignment separately, using local models or endpoints you explicitly choose.
+- **Vocabulary notebook:** save expressions with their example sentences from the fish-tail button,
+  then search, edit, listen to, or export the collection from the menu bar's Vocabulary window.
 
 ### Additional writing tools
 
@@ -118,7 +120,7 @@ and learning source/target languages. The stable English bundle names keep stora
 <summary>Translation, correspondence, dictionaries, models, and request metrics</summary>
 
 
-Language learning can be enabled independently of inline autocomplete. In **Settings → Writing**,
+Language learning can be enabled independently of inline autocomplete. In **Settings → Language Learning → Translation**,
 choose one or more source languages and a target language. Configure the detail shortcut (default
 **Option+T**) and replacement shortcut (default **Control+Option+T**) in **Settings → Shortcuts → Translation**.
 Model summaries link to their configuration
@@ -138,6 +140,18 @@ dictionaries. Compact translation also supports double-click word lookup. Esc cl
 then correspondence details; continuing to type closes both. Alignment generates quoted pairs only;
 explanations are deferred to a future independent feature.
 Tab and Return retain their ordinary behavior; Escape dismisses the learning card.
+
+Click an empty fish tail on a Lingrove preview or expression card to save its displayed content.
+For words and expressions, available sentence context is retained as an example; saving does not
+start another model request. A blue fish tail opens actions to view the entry or remove that saved
+usage. **Vocabulary** in the menu bar opens the searchable notebook, where meanings, notes, tags,
+and examples can be edited and the collection exported as JSON. Notebook data stays on this Mac;
+it has no automatic synchronization or Anki connection. Its two optional shortcuts are configured
+only in **Settings → Shortcuts** and are initially unset.
+
+**Verification pending:** native macOS dictionary collection is awaiting final real-click acceptance
+for this development checkpoint. Collection from Lingrove's own preview/expression cards has passed;
+use those entries if the native lookup closes while operating its fish tail.
 
 The small speaker on a preview or expression-detail card reads its text aloud without taking
 typing focus. Click it again to stop; choosing another speaker replaces the current playback.

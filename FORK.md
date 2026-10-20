@@ -571,3 +571,29 @@ Validation on Xcode 26.5 / Apple Silicon:
 - Repo-scoped `build/DerivedData` was removed and its absence verified. Results, native prompt
   comparison, source/lint comparisons and signed installation receipts remain under gitignored
   `build/context-computation-cleanup/`.
+
+## Current-version closeout — 2026-10-20
+
+The development checkpoint groups independent autocomplete/runtime control, incremental
+translation previews with committed-input handling, and the first vocabulary notebook. These
+changes are reviewed and committed by responsibility. Vocabulary capture keeps immutable text,
+bounded sentence context and UTF-16 spans; one app-owned store and archive actor perform lazy,
+atomic local persistence. The reusable library window supplies search, editing, speech and JSON
+export. Configurable save/open bindings live only in Shortcuts and start unset.
+
+User acceptance passed preview-card save, remove and open-library actions. A later real native
+dictionary click traced the remaining closure to Lingrove's unconditional global mouse dismissal,
+while the lookup was still attached and visible and the pointer was inside. The closeout fix uses
+public Window Server hit testing against visible owned windows and their children, including native
+lookup and action popovers. Writing and reading monitors share this boundary; reading preserves an
+internal gesture through mouse-up. Native fish-tail and external-host clicks still await acceptance.
+
+Repeated component captures may share a source example UUID while pointing at different word
+occurrences. The save policy gives only a newly appended, colliding usage a fresh UUID, retaining
+its text, languages, ranges and timestamps. Existing usage IDs remain stable for editor merges.
+A real component-capture round trip covers repeated save, archive reopen and selective removal.
+
+Automated archive and AppKit hosting checks verify their narrower contracts and do not establish
+real native-dictionary interaction acceptance. The published `v0.5.1-test.1` package is unchanged;
+the final unlocked checks remain pending as recorded in `RELEASING.md`. Anki, contextual pointer
+disambiguation and formal distribution remain later work.

@@ -27,6 +27,32 @@ jobs paused until its certificates and notarization credentials are available. T
 test package also does not require a paid membership; its test status and Gatekeeper steps
 are documented below.
 
+## Current development checkpoint (not published)
+
+The local development version additionally contains independently switchable autocomplete with
+cancellable warmup/runtime admission, incremental translation previews and committed-input fixes,
+and the first vocabulary notebook. The notebook stores examples, notes, tags and dictionary
+attribution locally, reuses speech, and exports versioned JSON. This checkpoint does not change
+the published `v0.5.1-test.1` artifacts or enable automatic updates.
+
+Native dictionary collection is undergoing final acceptance: a real-click lifecycle trace showed
+Lingrove's global mouse monitor dismissing an attached, visible lookup while the pointer was inside
+it. The development fix classifies Window Server hits against the owned window family in both
+writing and reading flows. Archive/hosting tests do not establish real native-dictionary acceptance;
+the fish-tail action and an external-host click must both pass before removing the limitation.
+
+Closeout checks on Apple Silicon include successful Release app/test builds, strict SwiftLint,
+158 Python tests, and localization validation of 1,353 source keys across three tables and 15
+languages. The latest complete test execution, during a locked desktop session, recorded 3,397
+passes, 47 skips and one failure in the Window Server registration check. An unlocked rerun is
+required; a successful build-for-testing does not establish test execution success. The isolated
+Release settings benchmark recorded zero Writing/container body updates for all four unrelated
+background-update sources.
+
+Before the next test package, use the validated, committed checkpoint as its source and retain
+any remaining limitation in the release notes. Intel/fresh-install verification, Developer ID signing,
+notarization, and automatic-update validation remain separate distribution work.
+
 ## v0.5.1 test package (public prerelease)
 
 The current test artifact is `build/distributions/v0.5.1-test.1/Lingrove-0.5.1-test-universal.dmg`, accompanied by

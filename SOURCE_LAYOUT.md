@@ -65,7 +65,7 @@ Cotabby/
 │   ├── Permission/
 │   │   └── Guidance/                 permission overlay and System Settings guidance
 │   ├── Power/                        power-source observation
-│   ├── Presentation/                 process-level AppKit panels and indicators
+│   ├── Presentation/                 process-level AppKit panels, indicators and owned-window hit testing
 │   ├── Speech/                       playback state, isolated audio graph, content-free telemetry, system voices, endpoint audio, and local helper lifecycle
 │   ├── Runtime/
 │   │   ├── AppleIntelligence/        Foundation Models availability and engine
@@ -89,6 +89,7 @@ Cotabby/
 │   │   └── Capability/               supported-field capability resolution
 │   ├── History/                      history retrieval, phrase prediction, scrubbing, import
 │   ├── Input/                        composition, key-label, and selection helpers
+│   ├── Vocabulary/                   capture identity, local example extraction, merge and search rules
 │   ├── LanguageLearning/             exact unit recognition, correspondence projection, pair parsing, prompts and preview/write rules
 │   ├── Logging/                      debug options, request IDs, and JSONL handlers
 │   ├── Macros/
@@ -366,3 +367,17 @@ The autocomplete inference package and its revision remain separate.
   and the same trace ID as translation; persisted records contain timings and status, not text/images.
 - SelectedTextKit was evaluated, not integrated: its AX-only path duplicates the existing reader,
   while automatic fallback may copy text. Lingrove retains its bounded AX receipt/currentness checks.
+
+## Vocabulary notebook
+
+`Models/Vocabulary` owns durable entries, examples with UTF-16 spans, dictionary attribution,
+and the versioned export schema. `Support/Vocabulary` turns immutable card snapshots into
+captures and owns deduplication, bounded context extraction and search rules.
+`Services/Vocabulary` owns the lazy UI store and serialized atomic local archive; no notebook
+operation starts model inference. `UI/Vocabulary` owns browsing and explicit editing drafts.
+`VocabularyWindowController` provides one normal library window; floating cards retain their
+existing nonactivating lifetime. The shared fish-tail button lives in `UI/Components`.
+
+The environment constructs one store for both writing and reading cards, isolates the XCTest
+host from real user data, and keeps Dev/production archives in separate support directories.
+Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
