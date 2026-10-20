@@ -4,29 +4,37 @@ import SwiftUI
 /// The fixed Engine & Model tabs select which task's settings are visible. This is window
 /// navigation state, independent of the engine/model values that control actual generation.
 enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
-    case completion, translation, analysis, speech
+    case completion, translation, analysis, explanation, speech
     var id: String { rawValue }
     var label: String {
         switch self {
         case .completion: String(localized: "Autocomplete")
         case .translation: String(localized: "Translation", table: "Learning")
         case .analysis: String(localized: "Chunk alignment", table: "Learning")
+        case .explanation: String(localized: "AI explanation", table: "Learning")
         case .speech: String(localized: "TTS", table: "Learning")
         }
     }
-    init(role: LearningModelRole) { self = role == .translation ? .translation : .analysis }
+    init(role: LearningModelRole) {
+        switch role {
+        case .translation: self = .translation
+        case .analysis: self = .analysis
+        case .explanation: self = .explanation
+        }
+    }
 }
 
 /// The behavior areas in Language Learning are window navigation, not feature toggles.
 /// The settings window retains the selected area while model links visit Engine & Model;
 /// search selects the area before mounting its Form so row reveal always has a visible target.
 enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
-    case translation, alignment, readAloud, dictionary
+    case translation, alignment, explanation, readAloud, dictionary
     var id: String { rawValue }
     var label: String {
         switch self {
         case .translation: String(localized: "Translation", table: "Learning")
         case .alignment: String(localized: "Chunk alignment", table: "Learning")
+        case .explanation: String(localized: "AI explanation", table: "Learning")
         case .readAloud: String(localized: "Read Aloud", table: "Learning")
         case .dictionary: String(localized: "Dictionary", table: "Learning")
         }
@@ -142,6 +150,7 @@ final class SettingsNavigationModel: ObservableObject {
             switch item {
             case .translationModel, .translationSampling: engineTask = .translation
             case .alignmentModel: engineTask = .analysis
+            case .explanationModel, .explanationParameters: engineTask = .explanation
             case .speechSampling, .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint,
                 .speechEndpointModel, .speechEndpointVoice:
                 engineTask = .speech
@@ -154,6 +163,7 @@ final class SettingsNavigationModel: ObservableObject {
             case .chunkAlignment: learningTask = .alignment
             case .readAloudSpeed: learningTask = .readAloud
             case .dictionarySources: learningTask = .dictionary
+            case .explanationLanguage: learningTask = .explanation
             default: learningTask = .translation
             }
         }

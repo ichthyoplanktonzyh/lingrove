@@ -51,6 +51,16 @@ nonisolated enum LearningRuntimeCatalog {
             table: "Learning", comment: "Recommendation and provenance for the TranslateGemma GGUF model."))]
     /// The pinned text-model layer from Ollama's official registry is a standalone GGUF, not
     /// an Ollama service dependency. Candidate status makes no promise about teaching accuracy.
+    /// Explanation borrows these existing general models, with task-neutral display names.
+    /// This changes neither their downloads nor completion's task-specific catalog exclusion.
+    static var explanationModels: [DownloadableRuntimeModel] {
+        analysisModels.map { model in
+            DownloadableRuntimeModel(filename: model.filename,
+                displayName: model.filename.replacingOccurrences(of: ".gguf", with: ""), downloadURL: model.downloadURL,
+                approximateSizeInGigabytes: model.approximateSizeInGigabytes, expectedSizeBytes: model.expectedSizeBytes,
+                sha256: model.sha256, alternateFilenames: model.alternateFilenames)
+        }
+    }
     static let analysisModels = [DownloadableRuntimeModel(
         filename: "Gemma-4-E4B-Q4_K_M.gguf",
         displayName: String(localized: "Gemma 4 E4B · Chunk alignment", table: "Learning",

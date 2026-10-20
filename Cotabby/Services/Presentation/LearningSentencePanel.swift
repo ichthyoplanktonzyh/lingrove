@@ -14,6 +14,8 @@ final class LearningSentencePanel: LearningSentencePresenting {
     private let vocabulary: VocabularyStore?
     private let windowAtPoint: (CGPoint) -> Int
     private let observesMouseEvents: Bool
+    let explanation: LearningExplanationSession
+    private let explanationService: LearningExplanationService?
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningSentenceCard>?
     private(set) var isVisible = false
@@ -35,14 +37,17 @@ final class LearningSentencePanel: LearningSentencePresenting {
          dictionaryProvider: (any LearningDictionaryProviding)? = nil,
          dictionarySettings: LearningDictionarySettings? = nil,
          speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil,
+         explanationService: LearningExplanationService? = nil,
          observesMouseEvents: Bool = true,
          windowAtPoint: @escaping (CGPoint) -> Int = { NSWindow.windowNumber(at: $0, belowWindowWithWindowNumber: 0) }) {
         self.speech = speech
         self.vocabulary = vocabulary
         self.windowAtPoint = windowAtPoint
         self.observesMouseEvents = observesMouseEvents
+        self.explanationService = explanationService
+        explanation = LearningExplanationSession(service: explanationService)
         detailPanel = LearningDetailPanel(provider: dictionaryProvider, dictionarySettings: dictionarySettings,
-                                         speech: speech, vocabulary: vocabulary)
+                                         speech: speech, vocabulary: vocabulary, explanationService: explanationService)
         reservationSubscription = reservedFramePublisher?.removeDuplicates().sink { [weak self] frame in
             guard let self else { return }
             self.reservedFrame = frame
@@ -122,6 +127,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
     }
 
     func hide() {
+        explanation.clear()
         if let documentID = currentPresentation?.id { speech?.stop(ownerID: documentID) }
         isVisible = false
         detailPanel.hide()
@@ -169,10 +175,12 @@ final class LearningSentencePanel: LearningSentencePresenting {
             detailPanel.state.chunk = nil
         }
         currentPresentation = presentation
+        explanation.setTarget(LearningExplanationPolicy.input(presentation))
         let revision = UUID()
         layoutRevision = revision
         let card = LearningSentenceCard(
-            presentation: presentation, detailState: detailPanel.state, replace: replace,
+            presentation: presentation, detailState: detailPanel.state, explanation: explanationService == nil ? nil : explanation,
+            replace: replace,
             inspect: { [weak self] in self?.selectCorrespondence($0, documentID: presentation.id) }, expand: expand, dismiss: dismiss,
             lookup: { [weak self] word, button in self?.inspectWord(word, documentID: presentation.id, button: button) },
             lookupText: { [weak self] anchor, view in

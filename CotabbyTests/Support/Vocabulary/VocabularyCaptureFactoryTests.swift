@@ -4,6 +4,13 @@ import Testing
 
 @MainActor
 struct VocabularyCaptureFactoryTests {
+    @Test func explanationDefaultsToWritingTranslationAndReadingOriginal() throws {
+        var preview = presentation()
+        #expect(LearningExplanationPolicy.input(preview)?.target == preview.translation)
+        preview.readingSource = .selection
+        #expect(LearningExplanationPolicy.input(preview)?.target == preview.source)
+    }
+
     @Test func originalReadingWordRetainsExactContextOccurrenceAndItsTranslation() throws {
         let text = "🙂 Please keep me posted; previously posted notes remain."
         let occurrence = (text as NSString).range(of: "posted", options: .backwards)

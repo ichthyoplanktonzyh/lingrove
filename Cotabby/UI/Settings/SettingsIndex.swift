@@ -80,6 +80,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case dictionarySources
     case translationModel
     case alignmentModel
+    case explanationModel, explanationLanguage, explanationParameters
     // Context
     case extendedContext
     case typingHistory
@@ -152,6 +153,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var opensEngineAdvanced: Bool {
         switch self {
+        case .explanationParameters: true
         case .lowPowerModeAutoDisable, .powerBasedModelSwitching, .batteryModel, .pluggedInModel,
              .appleIntelligenceAvailability, .appleLanguageFallback, .keepFallbackModelLoaded,
              .appleLanguageFallbackModel, .endpointAPIMode, .speechDecoder, .translationSampling, .speechSampling: true
@@ -163,6 +165,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .explanationModel: return String(localized: "AI explanation model", table: "Learning")
+        case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
+        case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")
         case .pointerTranslation: return String(localized: "Enable pointer translation", table: "Learning")
         case .screenshotTranslation: return String(localized: "Enable screen region translation", table: "Learning")
         case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
@@ -287,6 +292,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .explanationModel: return "sparkles"
+        case .explanationLanguage: return "globe"
+        case .explanationParameters: return "slider.horizontal.3"
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return "command"
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
@@ -396,6 +404,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .explanationModel, .explanationParameters: return .engineAndModel
+        case .explanationLanguage: return .languageLearning
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return .shortcuts
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
@@ -448,6 +458,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .explanationModel, .explanationParameters: return String(localized: "AI explanation", table: "Learning")
+        case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .dictionarySources: return String(localized: "Enable and order dictionary sources.", table: "Learning")
         case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
         case .screenshotTranslationShortcut: return LearningReadingSource.screenshot.title
@@ -587,6 +599,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .explanationModel, .explanationParameters, .explanationLanguage:
+            return ["explain", "explanation", "contextual meaning", "AI解释", "语境", "消歧", "讲解"]
         case .dictionarySources:
             return ["dictionary", "lexicon", "lookup", "source", "mdict", "mdx", "mdd", "website", "online", "import",
                     "词典", "查词", "词库", "导入", "网址", "在线", "排版", "释义语言", "词条语言", "推荐网站", "Cambridge", "Oxford"]

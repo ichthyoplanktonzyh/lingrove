@@ -4,6 +4,21 @@ import Testing
 
 @MainActor
 struct LearningDictionarySessionTests {
+    @Test func dictionarySourcesPreserveExplanationButAnotherWordInvalidatesIt() async throws {
+        let session = LearningDictionarySession(provider: SourceDictionaryProbe())
+        defer { session.close() }
+        session.open(unit(), documentID: UUID(), language: .english)
+        await settle { session.content != .loading }
+        let input = try #require(session.explanation.input)
+        let record = LearningExplanationRecord(id: UUID(), input: input, language: .chinese,
+            result: .init(meaning: "期待", explanation: "表达对未来事件的期待。"), model: "fixture", createdAt: Date())
+        session.explanation.setTarget(input, saved: record)
+        session.selectSource(.system)
+        #expect(session.explanation.record == record)
+        session.select(try #require(session.unit?.words.first))
+        #expect(session.explanation.record == nil && session.explanation.input != input)
+    }
+
     @Test func unknownBookIsNotQueriedAutomaticallyEvenWhenItIsTheOnlyEnabledSource() async throws {
         let name = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))

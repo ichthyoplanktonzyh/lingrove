@@ -43,7 +43,9 @@ struct SettingsContainerView: View {
     @AppStorage("cotabbySettingsSelectedCategoryV2")
     private var storedCategoryRawValue: String = SettingsCategory.home.rawValue
 
-    @StateObject private var navigation = SettingsNavigationModel()
+    /// The window coordinator supplies this instance for external configuration links. Fixture
+    /// callers retain the default; no runtime service is created by this navigation object.
+    @ObservedObject var navigation = SettingsNavigationModel()
     // Settings should behave like a traditional two-column preferences window: the sidebar is
     // always visible, but SwiftUI can still manage the native navigation/split-view chrome.
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -97,7 +99,7 @@ struct SettingsContainerView: View {
             // Migration: the previous sidebar had two engine sub-rows (`appleIntelligence`,
             // `openSource`). Users whose persisted selection still points to either should land on
             // the unified Engine & Model pane rather than fall back to General.
-            navigation.selection = Self.restoreSelection(from: storedCategoryRawValue)
+            if navigation.selection == .home { navigation.selection = Self.restoreSelection(from: storedCategoryRawValue) }
             permissionManager.refresh()
         }
         .onChange(of: navigation.selection) { _, newValue in

@@ -7,6 +7,18 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func testExplanationSearchSeparatesModelParametersFromLearningLanguage() {
+        let model = makeModel()
+        model.reveal(.explanationModel)
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.engineTask, .explanation)
+        model.reveal(.explanationParameters)
+        XCTAssertTrue(model.advancedBinding(for: .explanation).wrappedValue)
+        model.reveal(.explanationLanguage)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .explanation)
+        XCTAssertTrue(SettingsItem.results(for: "AI解释").contains(.explanationModel))
+    }
     func testDictionarySearchOpensItsOwnLearningTab() {
         let model = SettingsNavigationModel()
         model.reveal(.dictionarySources)
@@ -71,7 +83,7 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_writingLinksOpenEachRoleAndCancelAnOldSearchHighlight() {
         let model = makeModel()
-        for role in [LearningModelRole.translation, .analysis] {
+        for role in [LearningModelRole.translation, .analysis, .explanation] {
             model.reveal(.batteryModel)
             model.openLearningModel(role)
             XCTAssertEqual(model.selection, .engineAndModel)

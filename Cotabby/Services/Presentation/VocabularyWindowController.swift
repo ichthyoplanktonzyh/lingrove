@@ -7,10 +7,12 @@ import SwiftUI
 final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let store: VocabularyStore
     private let speech: LearningSpeechController
+    private let explanation: LearningExplanationSession
 
-    init(store: VocabularyStore, speech: LearningSpeechController) {
+    init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil) {
         self.store = store
         self.speech = speech
+        explanation = LearningExplanationSession(service: explanationService)
         super.init(window: nil)
         store.openEntry = { [weak self] in self?.show(selectedID: $0) }
     }
@@ -31,7 +33,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         // Preserve browsing state on ordinary reopen; an explicit "show this entry" replaces
         // the root with its requested selection, resetting filters that might otherwise hide it.
         if window?.contentView == nil || (selectedID != nil && window?.attachedSheet == nil) {
-            window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID))
+            window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID,
+                explanation: explanation.service == nil ? nil : explanation))
         }
         store.loadIfNeeded()
         NSApplication.shared.activate(ignoringOtherApps: true)
@@ -40,6 +43,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        explanation.cancel()
         guard let target = speech.activeTarget, target.itemID.hasPrefix("vocabulary.") else { return }
         speech.stop(target: target)
     }

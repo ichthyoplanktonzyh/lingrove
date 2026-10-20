@@ -35,6 +35,12 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let applicationRelauncher = ApplicationRelauncher()
 
     private var settingsWindowController: NSWindowController?
+    private let navigation = SettingsNavigationModel()
+
+    func showLearningModel(_ role: LearningModelRole) {
+        navigation.openLearningModel(role)
+        showSettings()
+    }
 
     init(
         learningModels: LearningModelCollection? = nil,
@@ -118,7 +124,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                     onRestart: { [applicationRelauncher] in try applicationRelauncher.restart() },
                     clearEmojiHistory: clearEmojiHistory,
                     typingHistoryStore: typingHistoryStore,
-                    onQuit: { NSApplication.shared.terminate(nil) }
+                    onQuit: { NSApplication.shared.terminate(nil) }, navigation: navigation
                 )
             )
         )

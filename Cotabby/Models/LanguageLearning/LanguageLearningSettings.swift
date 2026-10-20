@@ -8,6 +8,16 @@ final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
     let analysis: LearningModelSettings
+    let explanation: LearningModelSettings
+    @Published var explanationLanguage: LearningLanguage? {
+        didSet { defaults.set(explanationLanguage?.rawValue, forKey: "learningExplanationLanguage") }
+    }
+    var resolvedExplanationLanguage: LearningLanguage {
+        explanationLanguage ?? LearningLanguage(rawValue: Bundle.main.preferredLocalizations.first ?? "") ?? .english
+    }
+    var explanationChanges: AnyPublisher<Void, Never> {
+        Publishers.Merge($explanationLanguage.dropFirst().map { _ in () }, explanation.changes).eraseToAnyPublisher()
+    }
     let dictionary: LearningDictionarySettings
     /// Reading has its own direction; changing it never reverses the writing preview.
     @Published var selectionTranslationEnabled: Bool {
@@ -206,6 +216,8 @@ final class LanguageLearningSettings: ObservableObject {
         translation.reset()
         analysisEnabled = false
         analysis.reset()
+        explanation.reset()
+        explanationLanguage = nil
         keyCode = 17
         modifiers = [.option]
         keyLabel = "⌥T"
@@ -214,9 +226,12 @@ final class LanguageLearningSettings: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         translationCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
-        analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil
+        analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
+        explanationCredentials: (any OpenAICompatibleCredentialStoring)? = nil
     ) {
         self.defaults = defaults
+        explanation = LearningModelSettings(role: .explanation, defaults: defaults, credentials: explanationCredentials)
+        explanationLanguage = defaults.string(forKey: "learningExplanationLanguage").flatMap(LearningLanguage.init(rawValue:))
         dictionary = LearningDictionarySettings(defaults: defaults)
         pointerTranslationEnabled = defaults.bool(forKey: "learningPointerEnabled")
         screenshotTranslationEnabled = defaults.bool(forKey: "learningScreenshotEnabled")

@@ -47,4 +47,5 @@ nonisolated struct LearningTranslationStyle: Codable, Equatable, Hashable, Senda
 nonisolated struct LearningGenerationProfile: Codable, Equatable, Hashable, Sendable {
     var style = LearningTranslationStyle()
     var sampling = ModelSamplingOverrides()
+    var maximumOutputTokens: Int?
 }

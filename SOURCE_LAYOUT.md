@@ -411,3 +411,21 @@ existing nonactivating lifetime. The shared fish-tail button lives in `UI/Compon
 The environment constructs one store for both writing and reading cards, isolates the XCTest
 host from real user data, and keeps Dev/production archives in separate support directories.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
+
+## Contextual AI explanation
+
+`Models/LanguageLearning/LearningExplanationModels.swift` freezes the chosen text and exact
+occurrence spans; it also defines the validated two-part explanation and durable record.
+`Support/LanguageLearning/LearningExplanationPolicy.swift` builds target-preserving prompts,
+bounds only surrounding reference context, excludes translation specialists and validates results.
+`Services/LanguageLearning/LearningExplanationService.swift` borrows the independent explanation
+controller from `LearningModelCollection`, shares request telemetry and bounds its completed cache.
+Each card/window owns a lightweight `LearningExplanationSession` for cancellation and stale replies;
+all generation is explicit, with no typing observer or background explanation queue.
+
+`UI/InlineFeatures/LearningExplanationView.swift` presents the same result/actions in dictionary,
+sentence and notebook surfaces. `UI/Vocabulary/VocabularyExplanationSection.swift` chooses an
+existing captured usage. The archive retains annotations separately from user meanings and notes;
+only explicit adoption writes a meaning to a precise entry/example and language slot. Editing or
+removing a usage prunes its obsolete explanation context. Tests mirror these boundaries under
+Support/LanguageLearning, Services/LanguageLearning and Services/Vocabulary.

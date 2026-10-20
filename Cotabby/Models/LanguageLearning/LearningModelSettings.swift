@@ -3,7 +3,7 @@ import Foundation
 
 /// One role owns its selection and credentials for the app lifetime. Translation and analysis
 /// share download/storage infrastructure, but never inherit each other's server or API key.
-nonisolated enum LearningModelRole: String, Sendable { case translation, analysis }
+nonisolated enum LearningModelRole: String, Sendable { case translation, analysis, explanation }
 nonisolated enum LearningModelBackend: String, CaseIterable, Identifiable, Codable, Sendable {
     case local, endpoint
     var id: String { rawValue }
@@ -24,7 +24,10 @@ nonisolated enum LearningChatTemplate: String, CaseIterable, Identifiable, Codab
     /// Translation specialists have no alignment instruction contract. Keep their manual
     /// template on the translation page; this does not rewrite previously saved selections.
     static func available(for role: LearningModelRole) -> [Self] {
-        allCases.filter { role == .translation || $0 != .translateGemma }
+        allCases.filter {
+            role == .explanation ? ![Self.hyMT, .hyMT7, .translateGemma].contains($0)
+                : role == .translation || $0 != .translateGemma
+        }
     }
     var label: String {
         switch self {
@@ -64,6 +67,7 @@ nonisolated struct LearningModelSnapshot: Equatable, Hashable, Sendable {
     var contextWindowTokens: Int = 8_192
     var translationStyle = LearningTranslationStyle()
     var samplingOverrides = ModelSamplingOverrides()
+    var maximumOutputTokens: Int?
 
     /// Parameters affect one request; only this projection identifies native allocation/warmup.
     /// Keeping it separate lets a style edit cancel stale work without evicting resident weights.
@@ -71,6 +75,7 @@ nonisolated struct LearningModelSnapshot: Equatable, Hashable, Sendable {
         var lhs = self, rhs = other
         lhs.translationStyle = .init(); rhs.translationStyle = .init()
         lhs.samplingOverrides = .init(); rhs.samplingOverrides = .init()
+        lhs.maximumOutputTokens = nil; rhs.maximumOutputTokens = nil
         return lhs == rhs
     }
 }
@@ -178,14 +183,16 @@ final class LearningModelSettings: ObservableObject {
                 contextWindowTokens,
                 selection.backend == .local ? ModelContextBudget.maximumLocalTokens : ModelContextBudget.maximumEndpointTokens),
             translationStyle: role == .translation ? generation.style.effective : .init(),
-            samplingOverrides: selection.backend == .local ? generation.sampling.normalized : generation.sampling.endpointOnly)
+            samplingOverrides: selection.backend == .local ? generation.sampling.normalized : generation.sampling.endpointOnly,
+            maximumOutputTokens: role == .explanation ? generation.maximumOutputTokens : nil)
     }
 
     var generationProfile: LearningGenerationProfile { parameters.profile(for: contextIdentity) ?? .init() }
 
     func setGenerationProfile(_ value: LearningGenerationProfile, expectedIdentity: String? = nil) {
         if let expectedIdentity, expectedIdentity != contextIdentity { return }
-        guard parameters.set(.init(style: value.style.normalized, sampling: value.sampling.normalized),
+        guard parameters.set(.init(style: value.style.normalized, sampling: value.sampling.normalized,
+            maximumOutputTokens: value.maximumOutputTokens.map { min(4_096, max(256, $0)) }),
             for: contextIdentity) else { return }
         objectWillChange.send()
         publishEffectiveChange()
@@ -208,6 +215,16 @@ final class LearningModelSettings: ObservableObject {
         return template.map { .init(template: $0) }
     }
     var translationStyleAvailable: Bool? { promptFamily.map(\.supportsStyleInstructions) }
+    var generalInstructionsAvailable: Bool? {
+        let selection = activeSelection
+        let name = selection.backend == .local ? selection.localModel : selection.endpointModel
+        guard LearningExplanationPolicy.supportsGeneralInstructions(model: name, template: selection.template) else { return false }
+        if selection.backend == .endpoint { return true }
+        // Metadata is authoritative even if a specialist was renamed or a manual template chosen.
+        return resolvedTemplates[contextIdentity].map {
+            LearningExplanationPolicy.supportsGeneralInstructions(model: name, template: $0)
+        }
+    }
     var recommendedSampling: ModelSamplingValues? {
         switch promptFamily {
         case .hyMT: return LearningInstructionSampling.hyMT.values

@@ -27,6 +27,10 @@ actor VocabularyArchive {
             guard Set(loaded.entries.map(VocabularyPolicy.entryKey)).count == loaded.entries.count,
                   loaded.entries.allSatisfy({ entry in
                     !VocabularyPolicy.normalized(entry.expression).isEmpty &&
+                        (entry.explanations?.count ?? 0) <= 24 && (entry.explanations ?? []).allSatisfy {
+                            LearningExplanationPolicy.isValid($0.input) && VocabularyPolicy.accepts($0, entry: entry) &&
+                                LearningExplanationPolicy.isValid($0.result)
+                        } &&
                         Set(entry.examples.map(\.id)).count == entry.examples.count && entry.examples.allSatisfy { example in
                             !example.text.isEmpty && example.ranges.allSatisfy { VocabularyPolicy.valid($0.nsRange, in: example.text) }
                         }
@@ -61,10 +65,16 @@ actor VocabularyArchive {
         // editors changed the same field, report the conflict instead of silently choosing one.
         merged.expression = try merge(baseline.expression, original.expression, entry.expression)
         merged.dictionaryForm = try merge(baseline.dictionaryForm, original.dictionaryForm, entry.dictionaryForm)
-        merged.meaning = try merge(baseline.meaning, original.meaning, entry.meaning)
-        if entry.meaning != baseline.meaning,
-           let index = merged.standaloneMeanings.firstIndex(where: { $0.language == baseline.meaningLanguage }) {
-            merged.standaloneMeanings[index].text = merged.meaning
+        let meaning = try merge(VocabularyMeaning(text: baseline.meaning, language: baseline.meaningLanguage),
+            VocabularyMeaning(text: original.meaning, language: original.meaningLanguage),
+            VocabularyMeaning(text: entry.meaning, language: entry.meaningLanguage))
+        merged.meaning = meaning.text
+        merged.meaningLanguage = meaning.language
+        if entry.meaning != baseline.meaning || entry.meaningLanguage != baseline.meaningLanguage,
+           merged.isSavedWithoutContext {
+            if let index = merged.standaloneMeanings.firstIndex(where: { $0.language == meaning.language }) {
+                merged.standaloneMeanings[index] = meaning
+            } else { merged.standaloneMeanings.append(meaning) }
         }
         merged.note = try merge(baseline.note, original.note, entry.note)
         merged.tags = try merge(baseline.tags, original.tags, entry.tags)
@@ -137,7 +147,22 @@ actor VocabularyArchive {
         try data.write(to: destination, options: .atomic)
     }
 
-    private func commit(_ next: VocabularyDocument) throws -> VocabularySnapshot {
+    func saveExplanation(_ record: LearningExplanationRecord) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.accepts(record, entry: $0) }) else {
+            return .init(revision: revision, document: next)
+        }
+        VocabularyPolicy.storeExplanation(record, in: &next.entries[index])
+        return try commit(next)
+    }
+
+    private func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
+        var next = document
+        // Removing/editing a usage also removes its retained explanation context from exports.
+        for index in next.entries.indices {
+            let entry = next.entries[index]
+            next.entries[index].explanations = entry.explanations?.filter { VocabularyPolicy.accepts($0, entry: entry) }
+        }
         let data = try Self.encoded(next)
         guard data.count <= Self.maximumBytes else { throw VocabularyError.oversizedArchive }
         if let url {
@@ -145,7 +170,7 @@ actor VocabularyArchive {
                 attributes: [.posixPermissions: 0o700])
             try writeAtomically(data, to: url)
         }
-        document = next
+        self.document = next
         revision &+= 1
         return .init(revision: revision, document: next)
     }

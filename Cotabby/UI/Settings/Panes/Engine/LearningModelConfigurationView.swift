@@ -10,6 +10,8 @@ struct LearningModelConfigurationView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     var downloads: ModelDownloadManager?
     var searchService: HuggingFaceSearchService?
+    var explanationPreview: LearningExplanationSession?
+    @State private var explanationSample = "Please let me know when the project is ready."
     @State private var apiKey = ""
     @State private var credentialError: String?
     @State private var pendingDeletion: RuntimeModelOption?
@@ -39,9 +41,10 @@ struct LearningModelConfigurationView: View {
                 endpointModelSection
                 endpointConnectionSection
             }
+            if let explanationPreview { explanationTestSection(explanationPreview) }
             SettingsAdvancedSections(isExpanded: navigation.advancedBinding(for: task)) {
                 powerSection
-                if profile.role == .translation {
+                if profile.role == .translation || profile.role == .explanation {
                     ModelContextSection(
                         tokens: Binding(get: { profile.snapshot.contextWindowTokens },
                             set: { profile.setContextWindowTokens($0, expectedIdentity: contextIdentity) }),
@@ -51,13 +54,24 @@ struct LearningModelConfigurationView: View {
                         reset: { profile.setContextWindowTokens(nil, expectedIdentity: contextIdentity) })
                         .id(contextIdentity)
                 }
-                if profile.role == .translation {
+                if profile.role == .translation || profile.role == .explanation {
                     ModelSamplingSection(overrides: Binding(get: { profile.generationProfile.sampling }, set: {
                         var value = profile.generationProfile; value.sampling = $0
                         profile.setGenerationProfile(value, expectedIdentity: contextIdentity)
                     }), recommended: profile.recommendedSampling ?? LearningInstructionSampling.standard.values,
-                        local: profile.snapshot.backend == .local, item: .translationSampling)
+                        local: profile.snapshot.backend == .local,
+                        item: profile.role == .explanation ? .explanationParameters : .translationSampling)
                     .id(contextIdentity + ".sampling").disabled(profile.recommendedSampling == nil)
+                }
+                if profile.role == .explanation {
+                    Section(String(localized: "Output length", table: "Learning")) {
+                        Stepper(value: Binding(get: { profile.generationProfile.maximumOutputTokens ?? 1_024 }, set: {
+                            var value = profile.generationProfile; value.maximumOutputTokens = $0
+                            profile.setGenerationProfile(value, expectedIdentity: contextIdentity)
+                        }), in: 256...4_096, step: 256) {
+                            Text(verbatim: String(profile.generationProfile.maximumOutputTokens ?? 1_024) + " tokens")
+                        }
+                    }
                 }
                 if profile.snapshot.backend == .local { instructionTemplateSection }
             }
@@ -69,6 +83,8 @@ struct LearningModelConfigurationView: View {
                 Task { await controller.discoverEndpoint() }
             }
         }
+        .onDisappear { explanationPreview?.cancel() }
+        .onChange(of: explanationSample) { _, _ in explanationPreview?.clear() }
         .onChange(of: profile.snapshot.backend) { _, backend in
             if backend == .endpoint, controller.endpointConnection.state == .idle {
                 Task { await controller.discoverEndpoint() }
@@ -98,20 +114,44 @@ struct LearningModelConfigurationView: View {
     }
 
     private var taskDescription: String {
-        profile.role == .translation
-            ? String(localized: """
+        switch profile.role {
+        case .explanation: String(localized: "Choose a general instruction model for AI explanation.", table: "Learning")
+        case .translation: String(localized: """
             Choose a local GGUF or a separate endpoint for sentence translation. A translation-focused model is recommended.
             """,
                 table: "Learning", comment: "Description of the translation task's engine setting.")
-            : String(localized: """
+        case .analysis: String(localized: """
             Choose a local instruction-tuned GGUF or a separate endpoint for chunk alignment. Only confirmed source and translation \
             text is aligned.
             """,
                 table: "Learning", comment: "Description of the chunk-alignment task's engine setting.")
+        }
     }
 
     private var task: SettingsEngineTask { SettingsEngineTask(role: profile.role) }
-    private var modelItem: SettingsItem { profile.role == .translation ? .translationModel : .alignmentModel }
+    private var modelItem: SettingsItem {
+        switch profile.role {
+        case .translation: .translationModel
+        case .analysis: .alignmentModel
+        case .explanation: .explanationModel
+        }
+    }
+
+    private func explanationTestSection(_ session: LearningExplanationSession) -> some View {
+        Section(String(localized: "Test explanation", table: "Learning")) {
+            TextEditor(text: $explanationSample).font(.body).frame(minHeight: 64, maxHeight: 100)
+                .accessibilityLabel(String(localized: "Text to explain", table: "Learning"))
+                .onChange(of: explanationSample) { _, _ in session.clear() }
+            Button(String(localized: "AI explanation", table: "Learning")) {
+                session.setTarget(.init(target: explanationSample, dictionaryForm: explanationSample,
+                    language: LearningLanguage.detect(in: explanationSample) ?? .english, kind: .sentence,
+                    context: explanationSample,
+                    ranges: [VocabularyTextRange(NSRange(location: 0, length: explanationSample.utf16.count))]))
+                session.explain(refresh: true)
+            }.disabled(explanationSample.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.isGenerating)
+            if session.input != nil { LearningExplanationView(session: session) }
+        }
+    }
 
     /// A saved choice does not mean the task has loaded native weights. Loading is intentionally
     /// deferred until a real request; the status makes that lifecycle visible without starting it.
@@ -132,7 +172,11 @@ struct LearningModelConfigurationView: View {
                     Text(String(localized: "\(profile.snapshot.localModel) (file unavailable)", table: "Learning"))
                         .tag(profile.snapshot.localModel)
                 }
-                ForEach(controller.availableModels) { Text($0.displayName).tag($0.filename) }
+                ForEach(controller.availableModels) {
+                    Text($0.displayName).tag($0.filename)
+                        .selectionDisabled(profile.role == .explanation && !LearningExplanationPolicy.supportsGeneralInstructions(
+                            model: $0.filename, template: .automatic))
+                }
             } label: {
                 SettingsRowLabel(title: String(localized: "Selected model", table: "Learning"),
                     description: String(localized: "Choose from downloaded or imported GGUF files.", table: "Learning"),
@@ -172,7 +216,8 @@ struct LearningModelConfigurationView: View {
             }
             Section(String(localized: "Get models", table: "Learning")) {
                 DownloadableModelCatalogView(modelDownloadManager: downloads, onRefreshModels: refreshModels,
-                    catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels : LearningRuntimeCatalog.analysisModels)
+                    catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels :
+                        profile.role == .explanation ? LearningRuntimeCatalog.explanationModels : LearningRuntimeCatalog.analysisModels)
                 if let searchService {
                     HuggingFaceModelBrowserView(searchService: searchService,
                         modelDownloadManager: downloads, onRefreshModels: refreshModels)
@@ -225,7 +270,12 @@ struct LearningModelConfigurationView: View {
         ModelEndpointConnectionSection(baseURL: $profile.baseURL, keyDraft: $apiKey,
             connection: controller.endpointConnection, credentialError: credentialError,
             privacyWarning: privacyWarning,
-            transmissionNote: profile.role == .translation
+            transmissionNote: profile.role == .explanation
+                ? String(localized: """
+                With this endpoint, the service receives the chosen text, its captured context and the explanation language.
+                """,
+                    table: "Learning")
+                : profile.role == .translation
                 ? String(localized: """
                     With this endpoint, the service receives the target, language direction, optional draft excerpts and style instructions.
                     """,

@@ -26,11 +26,13 @@ final class LearningDetailPanel {
     private(set) var isVisible = false
 
     init(provider: (any LearningDictionaryProviding)? = nil, dictionarySettings: LearningDictionarySettings? = nil,
-         speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil) {
+         speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil,
+         explanationService: LearningExplanationService? = nil) {
         self.speech = speech
         self.vocabulary = vocabulary
         dictionarySession = LearningDictionarySession(provider: provider ?? LearningLexiconService(
-            resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")), settings: dictionarySettings)
+            resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json")),
+            settings: dictionarySettings, explanationService: explanationService)
     }
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }

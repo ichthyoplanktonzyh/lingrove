@@ -247,7 +247,6 @@ final class CotabbyAppEnvironment {
         let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
             .appendingPathComponent("Vocabulary/notebook.json")
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
-        let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is
         // read per request so a power-source switch to the endpoint stops shortcuts immediately.
@@ -257,20 +256,40 @@ final class CotabbyAppEnvironment {
             engineKind: { [weak suggestionSettings] in suggestionSettings?.selectedEngine ?? .openAICompatible }
         )
         let learningClient = OpenAICompatibleAPIClient(session: LearningEndpointSession.makeSession())
+        let learningTelemetry = LearningRequestTelemetry(metrics: performanceMetricsStore,
+            trackingEnabled: { [weak suggestionSettings] in suggestionSettings?.isPerformanceTrackingEnabled == true })
         let learningModels = LearningModelCollection(settings: suggestionSettings.languageLearning, client: learningClient,
-            powerSource: powerSourceMonitor, appSettings: suggestionSettings, lowPower: lowPowerModeMonitor)
+            powerSource: powerSourceMonitor, appSettings: suggestionSettings, lowPower: lowPowerModeMonitor, telemetry: learningTelemetry)
+        let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
+            explanationService: learningModels.explainer)
+        vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
+            var capture = capture
+            let input = LearningExplanationPolicy.input(capture)
+            capture.explanation = explainer?.cached(input) ?? explainer?.savedRecord(for: input)
+            return capture
+        }
+        learningModels.explainer.loadPersisted = { [weak vocabularyStore] input, language in
+            await vocabularyStore?.load()
+            return vocabularyStore?.explanation(for: input, language: language)
+        }
+        learningModels.explainer.lookupSaved = { [weak vocabularyStore] input, language in
+            vocabularyStore?.explanation(for: input, language: language)
+        }
+        learningModels.explainer.didExplain = { [weak vocabularyStore] record in
+            Task { await vocabularyStore?.saveExplanation(record) }
+        }
         modelDownloadManager.protectedModelFilenames = { [weak runtimeModel, weak suggestionSettings] in
             guard let suggestionSettings else { return [] }
             return ModelUsagePolicy.protectedFilenames(completion: runtimeModel?.selectedModelFilename,
                 completionPower: [suggestionSettings.batteryProfile, suggestionSettings.pluggedInProfile],
                 learning: [suggestionSettings.languageLearning.translation.referencedLocalModels,
-                           suggestionSettings.languageLearning.analysis.referencedLocalModels])
+                           suggestionSettings.languageLearning.analysis.referencedLocalModels,
+                           suggestionSettings.languageLearning.explanation.referencedLocalModels])
         }
         let learningService = LearningExpressionService(
             settings: suggestionSettings,
             client: learningClient, models: learningModels,
-            telemetry: LearningRequestTelemetry(metrics: performanceMetricsStore,
-                trackingEnabled: { [weak suggestionSettings] in suggestionSettings?.isPerformanceTrackingEnabled == true })
+            telemetry: learningTelemetry
         )
         let suggestionEngine: any SuggestionGenerating = DebugForcedSuggestionEngine.isConfigured()
             ? DebugForcedSuggestionEngine(wrapping: historyAwareEngine)
@@ -391,16 +410,17 @@ final class CotabbyAppEnvironment {
         let learningReader = LearningSelectionReplacement(
             focus: focusModel, inputSource: keyboardInputSourceMonitor, inserter: suggestionInserter
         )
+        learningModels.explainer.configure = { [weak settingsCoordinator] in settingsCoordinator?.showLearningModel(.explanation) }
         // One offline resource/index owner serves both asynchronous unit recognition and lookup.
         // Panels borrow it; none creates a second dictionary or recognition worker in a view.
         let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let writingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
             dictionaryProvider: learningDictionary, dictionarySettings: suggestionSettings.languageLearning.dictionary,
-            speech: speechController, vocabulary: vocabularyStore)
+            speech: speechController, vocabulary: vocabularyStore, explanationService: learningModels.explainer)
         let readingPanel = LearningSentencePanel(reservedFramePublisher: overlayController.$visiblePanelFrame.eraseToAnyPublisher(),
             dictionaryProvider: learningDictionary, dictionarySettings: suggestionSettings.languageLearning.dictionary,
-            speech: speechController, vocabulary: vocabularyStore)
+            speech: speechController, vocabulary: vocabularyStore, explanationService: learningModels.explainer)
         let sentencePreview = LearningSentencePreviewCoordinator(
             service: learningService, reader: learningReader, focus: focusModel,
             panel: writingPanel,

@@ -6,6 +6,7 @@ import SwiftUI
 struct LearningSentenceCard: View {
     let presentation: LearningSentencePresentation
     @ObservedObject var detailState: LearningDetailState
+    var explanation: LearningExplanationSession?
     var replace: (() -> Void)?
     let inspect: (Int) -> Void
     let expand: () -> Void
@@ -136,6 +137,9 @@ struct LearningSentenceCard: View {
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
+            if let explanation {
+                LearningExplanationButton(session: explanation, prepare: { if !presentation.isExpanded { expand() } })
+            }
             if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
                 VocabularyFavoriteButton(store: vocabulary, capture: capture)
             }
@@ -245,6 +249,17 @@ struct LearningSentenceCard: View {
                     }
                     if !presentation.message.isEmpty, !presentation.isGenerating, !presentation.chunks.isEmpty {
                         Text(presentation.message).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let explanation {
+                        Divider()
+                        Text(String(localized: "AI explanation", table: "Learning")).font(.caption.weight(.semibold))
+                        if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
+                            LearningCapturedExplanationView(session: explanation, store: vocabulary, capture: capture,
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+                        } else {
+                            LearningExplanationView(session: explanation,
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -19,9 +19,15 @@ nonisolated enum VocabularyPolicy {
 
     static func exampleKey(_ example: VocabularyExample?) -> String {
         guard let example else { return "no-context" }
+        // Freeze collection language when adopting an explanation: a mutable meaning must not
+        // turn the blue fish back into an unsaved occurrence or duplicate that example on recapture.
+        let meaningLanguage: LearningLanguage?
+        if let identity = example.captureIdentity { meaningLanguage = identity.meaningLanguage } else {
+            meaningLanguage = example.meaningLanguage
+        }
         // Keep the exact text: normalized whitespace would change the interpretation of spans.
         return key([example.text, example.ranges.map { "\($0.location):\($0.length)" }.joined(separator: ","),
-            example.translationLanguage?.rawValue ?? "", example.meaningLanguage?.rawValue ?? ""])
+            example.translationLanguage?.rawValue ?? "", meaningLanguage?.rawValue ?? ""])
     }
 
     static func captureKey(_ capture: VocabularyCapture) -> String {
@@ -106,6 +112,7 @@ nonisolated enum VocabularyPolicy {
             for definition in capture.definitions where !document.entries[index].definitions.contains(definition) {
                 document.entries[index].definitions.append(definition)
             }
+            if let record = capture.explanation { storeExplanation(record, in: &document.entries[index]) }
             // User-edited meanings/notes are never overwritten by a later model or dictionary.
             document.entries[index].updatedAt = now
             return document.entries[index].id
@@ -115,6 +122,7 @@ nonisolated enum VocabularyPolicy {
             note: "", tags: [],
             definitions: capture.definitions, examples: capture.example.map { [$0] } ?? [], createdAt: now, updatedAt: now)
         entry.isSavedWithoutContext = capture.example == nil
+        if let record = capture.explanation { storeExplanation(record, in: &entry) }
         if capture.example == nil {
             entry.standaloneMeanings = [VocabularyMeaning(text: capture.meaning, language: capture.meaningLanguage)]
         }
@@ -131,7 +139,7 @@ nonisolated enum VocabularyPolicy {
         return VocabularyExample(id: UUID(), text: example.text, translation: example.translation,
             translationLanguage: example.translationLanguage, ranges: example.ranges, completeness: example.completeness,
             meaning: example.meaning, meaningLanguage: example.meaningLanguage,
-            appBundleIdentifier: example.appBundleIdentifier, createdAt: example.createdAt)
+            appBundleIdentifier: example.appBundleIdentifier, createdAt: example.createdAt, captureIdentity: example.captureIdentity)
     }
 
     static func matches(_ entry: VocabularyEntry, query: String) -> Bool {
@@ -141,6 +149,24 @@ nonisolated enum VocabularyPolicy {
             entry.standaloneMeanings.map(\.text) +
             entry.examples.flatMap { [$0.text, $0.translation, $0.meaning] } + entry.definitions.map(\.text)
         return terms.allSatisfy { term in fields.contains { $0.localizedStandardContains(term) } }
+    }
+
+    /// Only an unchanged saved usage may receive a generated annotation. Notes and meanings are
+    /// separate fields, and a late response cannot recreate a deleted word or edited example.
+    static func accepts(_ record: LearningExplanationRecord, entry: VocabularyEntry) -> Bool {
+        if entry.isSavedWithoutContext,
+           LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: nil)) == record.input { return true }
+        return entry.examples.contains {
+            LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, example: $0)) == record.input
+        }
+    }
+    static func storeExplanation(_ record: LearningExplanationRecord, in entry: inout VocabularyEntry) {
+        guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result),
+              accepts(record, entry: entry) else { return }
+        var records = entry.explanations ?? []
+        records.removeAll { $0.input == record.input && $0.language == record.language }
+        records.append(record)
+        entry.explanations = Array(records.suffix(24))
     }
 
     private static func key(_ parts: [String]) -> String {

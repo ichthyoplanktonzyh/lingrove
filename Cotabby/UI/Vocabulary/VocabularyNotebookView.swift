@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct VocabularyNotebookView: View {
     @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
+    var explanation: LearningExplanationSession?
     @State private var selection: UUID?
     @State private var query = ""
     @State private var language: LearningLanguage?
@@ -15,9 +16,11 @@ struct VocabularyNotebookView: View {
     @State private var deleting: VocabularyEntry?
     @State private var requestedID: UUID?
 
-    init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil) {
+    init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil,
+         explanation: LearningExplanationSession? = nil) {
         self.store = store
         self.speech = speech
+        self.explanation = explanation
         _selection = State(initialValue: selectedID)
         _requestedID = State(initialValue: selectedID)
     }
@@ -50,7 +53,7 @@ struct VocabularyNotebookView: View {
             .navigationSplitViewColumnWidth(min: 230, ideal: 290, max: 420)
         } detail: {
             if let entry = store.entries.first(where: { $0.id == selection }) {
-                VocabularyEntryDetail(entry: entry, speech: speech,
+                VocabularyEntryDetail(entry: entry, speech: speech, store: store, explanation: explanation,
                     edit: { editing = entry }, delete: { deleting = entry })
                     .id(entry.id)
             } else {
@@ -117,6 +120,8 @@ struct VocabularyNotebookView: View {
 private struct VocabularyEntryDetail: View {
     let entry: VocabularyEntry
     let speech: LearningSpeechController
+    @ObservedObject var store: VocabularyStore
+    var explanation: LearningExplanationSession?
     let edit: () -> Void
     let delete: () -> Void
 
@@ -134,6 +139,7 @@ private struct VocabularyEntryDetail: View {
                     Text(entry.dictionaryForm).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 if !entry.meaning.isEmpty { Text(entry.meaning).textSelection(.enabled) }
+                if let explanation { VocabularyExplanationSection(entry: entry, store: store, session: explanation) }
                 ForEach(entry.standaloneMeanings.filter { !$0.text.isEmpty && $0.language != entry.meaningLanguage }) { meaning in
                     VStack(alignment: .leading, spacing: 5) {
                         if let language = meaning.language { Text(language.label).font(.caption).foregroundStyle(.secondary) }
@@ -169,18 +175,22 @@ private struct VocabularyEntryDetail: View {
                         }
                     }
                 }
-                ForEach(Array(entry.definitions.enumerated()), id: \.offset) { _, definition in
-                    section(String(localized: "Dictionary", table: "Vocabulary")) {
-                        Text(definition.text).textSelection(.enabled)
-                        if let url = DictionaryLinkPolicy.externalURL(definition.sourceURL) {
-                            Link(definition.source, destination: url).font(.caption)
-                        } else {
-                            Text(definition.source).font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let license = DictionaryLinkPolicy.externalURL(definition.licenseURL) {
-                            Link(definition.licenseName ?? "CC BY-SA 4.0", destination: license).font(.caption2)
-                        } else if let name = definition.licenseName, !name.isEmpty {
-                            Text(name).font(.caption2).foregroundStyle(.secondary)
+                if !entry.definitions.isEmpty {
+                    DisclosureGroup(String(localized: "Dictionary", table: "Vocabulary")) {
+                        ForEach(Array(entry.definitions.enumerated()), id: \.offset) { _, definition in
+                            section(definition.source) {
+                                Text(definition.text).textSelection(.enabled)
+                                if let url = DictionaryLinkPolicy.externalURL(definition.sourceURL) {
+                                    Link(definition.source, destination: url).font(.caption)
+                                } else {
+                                    Text(definition.source).font(.caption).foregroundStyle(.secondary)
+                                }
+                                if let license = DictionaryLinkPolicy.externalURL(definition.licenseURL) {
+                                    Link(definition.licenseName ?? "CC BY-SA 4.0", destination: license).font(.caption2)
+                                } else if let name = definition.licenseName, !name.isEmpty {
+                                    Text(name).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }

@@ -22,6 +22,19 @@ struct LanguageLearningSection: View {
             LearningTranslationStyleSection(profile: settings.translation)
         case .analysis:
             alignmentSection
+        case .explanation:
+            explanationSection
+        }
+    }
+
+    private var explanationSection: some View {
+        Section(String(localized: "AI explanation", table: "Learning")) {
+            Picker(String(localized: "Explanation language", table: "Learning"), selection: $settings.explanationLanguage) {
+                Text(String(localized: "Interface language", table: "Learning")).tag(nil as LearningLanguage?)
+                ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
+            }.settingsItem(.explanationLanguage)
+            LearningModelSummaryRow(title: String(localized: "AI explanation model", table: "Learning"),
+                profile: settings.explanation) { configureModel(.explanation) }
         }
     }
 

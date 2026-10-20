@@ -40,6 +40,8 @@ struct EngineAndModelPaneView: View {
                 learningPage(role: .translation)
             case .analysis:
                 learningPage(role: .analysis)
+            case .explanation:
+                learningPage(role: .explanation)
             case .speech:
                 speechPage
             }
@@ -194,9 +196,10 @@ struct EngineAndModelPaneView: View {
     private func learningPage(role: LearningModelRole) -> some View {
         Group {
             if let learningModels {
-                let controller = role == .translation ? learningModels.translation : learningModels.analysis
+                let controller = learningModels.controller(for: role)
                 LearningModelConfigurationView(controller: controller, profile: controller.profile, navigation: navigation,
-                    suggestionSettings: suggestionSettings, downloads: modelDownloadManager, searchService: huggingFaceSearchService)
+                    suggestionSettings: suggestionSettings, downloads: modelDownloadManager, searchService: huggingFaceSearchService,
+                    explanationPreview: role == .explanation ? learningModels.explanationPreview : nil)
             } else {
                 SettingsPaneScaffold {
                     Section("Runtime") { Text(String(localized: """

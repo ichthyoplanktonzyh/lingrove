@@ -17,6 +17,7 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     var examples: [VocabularyExample]
     var isSavedWithoutContext = false
     var standaloneMeanings: [VocabularyMeaning] = []
+    var explanations: [LearningExplanationRecord]?
     let createdAt: Date
     var updatedAt: Date
 }
@@ -43,9 +44,13 @@ nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable
     var meaningLanguage: LearningLanguage?
     var appBundleIdentifier: String?
     let createdAt: Date
+    /// Adopting another language changes annotation content, not the identity of the saved usage.
+    /// The wrapper distinguishes an originally unknown language from a missing legacy identity.
+    struct CaptureIdentity: Codable, Equatable, Sendable { let meaningLanguage: LearningLanguage? }
+    var captureIdentity: CaptureIdentity?
 }
 
-nonisolated struct VocabularyTextRange: Codable, Equatable, Sendable {
+nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
     let location: Int
     let length: Int
     init(_ range: NSRange) { location = range.location; length = range.length }
@@ -73,6 +78,7 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var meaningLanguage: LearningLanguage?
     var example: VocabularyExample?
     var definitions: [VocabularyDefinition] = []
+    var explanation: LearningExplanationRecord?
 }
 
 /// Versioned JSON is also the lossless backup format. Unknown versions fail closed instead of
@@ -90,7 +96,7 @@ nonisolated struct VocabularySnapshot: Sendable {
 extension VocabularyEntry {
     nonisolated private enum CodingKeys: String, CodingKey {
         case id, expression, dictionaryForm, language, kind, meaning, meaningLanguage
-        case note, tags, definitions, examples, isSavedWithoutContext, standaloneMeanings, createdAt, updatedAt
+        case note, tags, definitions, examples, isSavedWithoutContext, standaloneMeanings, explanations, createdAt, updatedAt
     }
 
     /// Earlier schema-v1 exports did not distinguish a contextless save from saved examples.
@@ -111,7 +117,15 @@ extension VocabularyEntry {
         isSavedWithoutContext = try values.decodeIfPresent(Bool.self, forKey: .isSavedWithoutContext) ?? examples.isEmpty
         standaloneMeanings = try values.decodeIfPresent([VocabularyMeaning].self, forKey: .standaloneMeanings) ??
             (isSavedWithoutContext ? [VocabularyMeaning(text: meaning, language: meaningLanguage)] : [])
+        explanations = try values.decodeIfPresent([LearningExplanationRecord].self, forKey: .explanations)
         createdAt = try values.decode(Date.self, forKey: .createdAt)
         updatedAt = try values.decode(Date.self, forKey: .updatedAt)
     }
+}
+
+/// Storage destination is separate from semantic input: two saved translations can share one
+/// explanation while still owning independently editable meanings.
+nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
+    let entryID: UUID
+    let exampleID: UUID?
 }

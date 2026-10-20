@@ -7,6 +7,7 @@ import Logging
 /// retire old requests after word/source/settings changes without changing the captured example.
 @MainActor
 final class LearningDictionarySession: ObservableObject {
+    let explanation: LearningExplanationSession
     enum Content: Equatable {
         case loading
         case result(LearningDictionaryResult)
@@ -31,9 +32,13 @@ final class LearningDictionarySession: ObservableObject {
     private var cacheOrder: [String] = []
     private var sourceOverride: LearningDictionarySource?
     private var settingsSubscription: AnyCancellable?
+    private var explanationSubscription: AnyCancellable?
 
-    init(provider: any LearningDictionaryProviding, settings: LearningDictionarySettings? = nil) {
+    init(provider: any LearningDictionaryProviding, settings: LearningDictionarySettings? = nil,
+         explanationService: (any LearningExplanationGenerating)? = nil) {
         self.provider = provider
+        explanation = LearningExplanationSession(service: explanationService)
+        explanationSubscription = explanation.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }
         if let settings {
             configuration = settings.configuration
             settingsSubscription = settings.$configuration.dropFirst().sink { [weak self] configuration in
@@ -92,7 +97,13 @@ final class LearningDictionarySession: ObservableObject {
             return .init(expression: referenceQuery, dictionaryForm: referenceQuery, language: language,
                          kind: LearningUnitPolicy.words(in: referenceQuery, language: language).count == 1 ? .word : .expression)
         }
-        guard let capture = vocabularyCapture else { return nil }
+        let fallback = unit.map { unit in
+            VocabularyCapture(expression: unit.kind == .pattern ? unit.query : unit.surface,
+                dictionaryForm: unit.query, language: language,
+                kind: unit.kind == .word ? .word : unit.kind == .pattern ? .pattern : .expression,
+                example: speechContext.flatMap { VocabularyPolicy.example(text: $0, ranges: unit.ranges, language: language) })
+        }
+        guard let capture = vocabularyCapture ?? fallback else { return nil }
         guard let selectedWord, let unit else { return capture }
         return VocabularyCaptureFactory.component(selectedWord, unit: unit, capture: capture)
     }
@@ -147,6 +158,7 @@ final class LearningDictionarySession: ObservableObject {
     }
 
     func close() {
+        explanation.clear()
         revision = UUID()
         work?.cancel(); work = nil
         unit = nil; documentID = nil; selectedWord = nil
@@ -186,6 +198,7 @@ final class LearningDictionarySession: ObservableObject {
     }
 
     private func request() {
+        explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input))
         revision = UUID()
         work?.cancel(); work = nil
         guard let unit else { return }

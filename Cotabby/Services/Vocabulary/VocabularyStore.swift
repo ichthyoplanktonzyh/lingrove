@@ -12,6 +12,8 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var isLoaded = false
     @Published var errorMessage: String?
     var openEntry: ((UUID?) -> Void)?
+    /// Composition supplies cached annotations only; saving a favorite never starts a model.
+    var enrichCapture: ((VocabularyCapture) -> VocabularyCapture)?
     private let archive: VocabularyArchive
     private var loadWork: Task<Void, Never>?
     private var revision: UInt64 = 0
@@ -32,6 +34,9 @@ final class VocabularyStore: ObservableObject {
         }
     }
 
+    /// Reuse the single in-flight load when a card requests a saved explanation before browsing.
+    func load() async { loadIfNeeded(); await loadWork?.value }
+
     func contains(_ capture: VocabularyCapture) -> Bool {
         if capture.example == nil { return standaloneKeys.contains(VocabularyPolicy.captureKey(capture)) }
         return savedKeys.contains(VocabularyPolicy.captureKey(capture))
@@ -39,7 +44,50 @@ final class VocabularyStore: ObservableObject {
     func isPending(_ capture: VocabularyCapture) -> Bool { pending.contains(VocabularyPolicy.captureKey(capture)) }
 
     func save(_ capture: VocabularyCapture) async {
-        await change(capture) { try await self.archive.save(capture) }
+        let enriched = enrichCapture?(capture) ?? capture
+        await change(capture) { try await self.archive.save(enriched) }
+    }
+
+    func saveExplanation(_ record: LearningExplanationRecord) async {
+        do { apply(try await archive.saveExplanation(record)) } catch { report(error) }
+    }
+
+    func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
+        entries.lazy.flatMap { $0.explanations ?? [] }.last { $0.input == input && $0.language == language }
+    }
+
+    /// A record can be reused across identical contexts, but its write destination is explicit.
+    /// In particular, two usages with different translation languages must not alias on adoption.
+    func explanationDestination(_ capture: VocabularyCapture) -> VocabularyExplanationDestination? {
+        guard let entry = entries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }) else { return nil }
+        if let example = capture.example {
+            guard let saved = entry.examples.first(where: { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example) })
+            else { return nil }
+            return .init(entryID: entry.id, exampleID: saved.id)
+        }
+        return entry.isSavedWithoutContext ? .init(entryID: entry.id, exampleID: nil) : nil
+    }
+
+    func adoptExplanation(_ record: LearningExplanationRecord, at destination: VocabularyExplanationDestination) async -> Bool {
+        guard let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
+        var edited = original
+        if let exampleID = destination.exampleID {
+            guard let index = original.examples.firstIndex(where: { $0.id == exampleID }),
+                  LearningExplanationPolicy.input(
+                    LearningExplanationPolicy.capture(original, example: original.examples[index])) == record.input
+            else { return false }
+            edited.examples[index].captureIdentity = original.examples[index].captureIdentity ??
+                .init(meaningLanguage: original.examples[index].meaningLanguage)
+            edited.examples[index].meaning = record.result.meaning
+            edited.examples[index].meaningLanguage = record.language
+        } else {
+            guard original.isSavedWithoutContext,
+                  LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, example: nil)) == record.input
+            else { return false }
+            edited.meaning = record.result.meaning
+            edited.meaningLanguage = record.language
+        }
+        return await update(edited, basedOn: original)
     }
 
     func remove(_ capture: VocabularyCapture) async {

@@ -18,6 +18,7 @@ struct LearningDictionaryCard: View {
     @State private var showsSources = false
     @State private var measuredHTMLRequest: UUID?
     @State private var sourceHovering = false
+    @State private var showsExplanation = false
     private var canSelectSource: Bool {
         session.availableSources.count > 1 ||
             (!session.availableSources.isEmpty && !session.availableSources.contains(session.selectedSource))
@@ -34,7 +35,10 @@ struct LearningDictionaryCard: View {
         let resolved = viewportCanLock
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                sourceSelector
+                if showsExplanation {
+                    Text(String(localized: "AI explanation", table: "Learning")).font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else { sourceSelector }
                 if let vocabulary, let capture = session.favoriteCapture {
                     VocabularyFavoriteButton(store: vocabulary, capture: capture)
                         .id(session.query + ":" + String(session.selectedWord?.range.location ?? -1))
@@ -53,16 +57,31 @@ struct LearningDictionaryCard: View {
                     action: session.returnToExpression).buttonStyle(.plain).font(.caption)
             }
             Text(session.title).font(.title3.weight(.semibold)).lineLimit(3).fixedSize(horizontal: false, vertical: true)
-            Text(session.definitionLanguageLabel ?? " ").font(.caption2).foregroundStyle(.secondary)
-                .lineLimit(1).accessibilityHidden(session.definitionLanguageLabel == nil)
+            Text(showsExplanation ? (session.explanation.service?.language.label ?? " ") : (session.definitionLanguageLabel ?? " "))
+                .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                .accessibilityHidden(!showsExplanation && session.definitionLanguageLabel == nil)
             if session.query != session.title {
                 Text(String(localized: "Dictionary form: \(session.query)", table: "Learning",
                     comment: "Shows the normalized dictionary lookup form; the term is supplied by the learning content."))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            if session.explanation.service != nil {
+                Picker(String(localized: "Dictionary", table: "Vocabulary"), selection: $showsExplanation) {
+                    Text(String(localized: "Dictionary", table: "Vocabulary")).tag(false)
+                    Text(String(localized: "AI explanation", table: "Learning")).tag(true)
+                }.pickerStyle(.segmented).labelsHidden()
+                    .onChange(of: showsExplanation) { _, shown in
+                        if shown, session.explanation.isConfigured { session.explanation.explain() }
+                    }
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    definition
+                    if showsExplanation {
+                        if let vocabulary, let capture = session.favoriteCapture {
+                            LearningCapturedExplanationView(session: session.explanation, store: vocabulary,
+                                capture: capture, configure: configureExplanation)
+                        } else { LearningExplanationView(session: session.explanation, configure: configureExplanation) }
+                    } else { definition }
                     if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry {
                         componentWords(unit)
                     }
@@ -80,7 +99,10 @@ struct LearningDictionaryCard: View {
             .frame(height: viewport.height(for: query))
             .id(session.query)
             Group {
-                if showsBundledAttribution, let url = URL(string: "https://creativecommons.org/licenses/by-sa/4.0/") {
+                if showsExplanation {
+                    Text(session.explanation.record?.model ?? String(localized: "AI explanation", table: "Learning"))
+                        .foregroundStyle(.secondary)
+                } else if showsBundledAttribution, let url = URL(string: "https://creativecommons.org/licenses/by-sa/4.0/") {
                     // Attribution stays outside the scroll viewport, including for long entries.
                     Link(String(localized: "Wiktionary contributors / Kaikki · CC BY-SA 4.0", table: "Learning",
                         comment: "Attribution and license for the bundled Wiktionary-derived expression dictionary entries."),
@@ -100,11 +122,16 @@ struct LearningDictionaryCard: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
         .onChange(of: session.query) { oldQuery, newQuery in
             showsSources = false
+            showsExplanation = false
             htmlHeight = 120
             measuredHTMLRequest = nil
             guard oldQuery != newQuery, let documentID = session.documentID else { return }
             speech?.stop(target: SpeechTarget(ownerID: documentID, itemID: "detail.\(oldQuery)"))
         }
+    }
+
+    private func configureExplanation() {
+        (session.explanation.service as? LearningExplanationService)?.configure?()
     }
 
     private var viewportCanLock: Bool {

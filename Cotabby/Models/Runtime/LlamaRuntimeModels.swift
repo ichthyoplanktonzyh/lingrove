@@ -102,6 +102,14 @@ struct DownloadableRuntimeModel: Equatable, Hashable, Sendable, Identifiable {
 /// Maps installed model filenames to presentation names. Rebranding these labels never changes
 /// download URLs, model files, or the filenames persisted by the settings model.
 enum RuntimeModelCatalog {
+    /// The completion catalog intentionally contains pretrained continuation checkpoints.
+    /// Their names are stable file identities, not evidence of instruction-following support.
+    nonisolated static func isKnownBaseModel(_ filename: String) -> Bool {
+        switch filename.lowercased() {
+        case "gemma-4-e2b.i1-q6_k.gguf", "gemma-4-e4b.i1-q4_k_m.gguf": true
+        default: filename.lowercased().split { !$0.isLetter && !$0.isNumber }.contains("base")
+        }
+    }
     static func displayName(for filename: String) -> String {
         switch filename {
         case "Qwen3.5-0.8B-Base.i1-Q6_K.gguf":
