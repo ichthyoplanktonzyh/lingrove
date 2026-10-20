@@ -12,6 +12,7 @@ struct LearningDetailCard: View {
     var speech: LearningSpeechController?
     var vocabulary: VocabularyStore?
     var lookupWord: ((LearningDictionaryWord, NSButton) -> Void)?
+    var popupWindows: LearningPopupWindowRegistry?
     // Start close to the short quote/word layout; measured content can grow up to the scroll cap.
     // Keeping the former explanation-sized fallback would leave a large blank area on first paint.
     @State private var contentHeight: CGFloat = 140
@@ -19,7 +20,7 @@ struct LearningDetailCard: View {
     var body: some View {
         if let session {
             LearningDictionaryCard(session: session, close: close, sizeChanged: sizeChanged,
-                lookup: selectWord, speech: speech, vocabulary: vocabulary, lookupWord: lookupWord)
+                lookup: selectWord, speech: speech, vocabulary: vocabulary, lookupWord: lookupWord, popupWindows: popupWindows)
         } else {
             legacyCorrespondence
         }

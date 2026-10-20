@@ -22,6 +22,7 @@ final class LearningDetailPanel {
     private var anchorY: CGFloat = 0
     private var anchorOffsetFromTop: CGFloat = 0
     private var placementFrame: CGRect?
+    private var popupWindows = LearningPopupWindowRegistry()
     private(set) var isVisible = false
 
     init(provider: (any LearningDictionaryProviding)? = nil, dictionarySettings: LearningDictionarySettings? = nil,
@@ -33,12 +34,13 @@ final class LearningDetailPanel {
     }
 
     var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
-    var interactionWindows: [NSWindow?] { [panel] }
+    var interactionWindows: [NSWindow?] { [panel] + popupWindows.windows.map(Optional.some) }
     var favoriteCapture: VocabularyCapture? {
         guard isVisible else { return nil }
         return dictionarySession.favoriteCapture
     }
     func owns(_ window: NSWindow?) -> Bool {
+        if popupWindows.owns(window) { return true }
         // Dictionary popovers can have nested child windows. An ancestor check makes clicking
         // their content an internal interaction without depending on AppKit's private types.
         var ancestor = window
@@ -80,6 +82,8 @@ final class LearningDetailPanel {
         anchorOffsetFromTop = placement.parent.maxY - placement.anchorY
         layoutRevision = UUID()
         placementFrame = nil
+        popupWindows.reset()
+        popupWindows = LearningPopupWindowRegistry()
         let revision = layoutRevision
         let card = LearningDetailCard(state: state,
             selectWord: { [weak self] word, button in
@@ -89,7 +93,7 @@ final class LearningDetailPanel {
             session: dictionarySession, speech: speech, vocabulary: vocabulary,
             lookupWord: { [weak self] word, button in
                 self?.selectDictionaryWord(word, from: button, unit: unit, documentID: documentID)
-            })
+            }, popupWindows: popupWindows)
         let window = panel ?? LearningDetailWindow(contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         // Reuse the NSPanel, but not a previous lookup's SwiftUI state. An open favorite/source
@@ -154,6 +158,7 @@ final class LearningDetailPanel {
 
     /// Document replacement and full dismissal retire the session and any pending lookup.
     func hide(preservingCorrespondence: Bool = false) {
+        popupWindows.reset()
         stopCurrentSpeech()
         dictionarySession.close()
         layoutRevision = UUID()

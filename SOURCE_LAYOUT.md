@@ -331,6 +331,12 @@ that owns too many responsibilities and should be split by behavior rather than 
   content viewport on first placement. `LearningDictionaryViewport` fixes the first measured definition's 120–300pt viewport through
   loading/source changes and reserves its attribution row, preventing transient collapse and jumps.
   Native language-candidate regression fixtures live in `native/dictionary/tests/`.
+- `LearningPopupWindowRegistry` belongs to one detail-card host. The source popover reports its
+  actual window through `UI/Components/LearningPopoverWindowReader`; local and global click routing
+  share this weak membership when SwiftUI temporarily omits a parent link. Replacing the host
+  replaces its registry. Global clicks still require the exact visible Window Server hit.
+  `UI/InlineFeatures/DictionarySourceRow` owns the full-row hit target and size-neutral hover/press
+  feedback; changing a source does not rebuild or reposition the dictionary panel.
 - `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.

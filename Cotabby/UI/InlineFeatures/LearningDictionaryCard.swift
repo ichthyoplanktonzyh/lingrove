@@ -12,10 +12,12 @@ struct LearningDictionaryCard: View {
     var speech: LearningSpeechController?
     var vocabulary: VocabularyStore?
     var lookupWord: ((LearningDictionaryWord, NSButton) -> Void)?
+    var popupWindows: LearningPopupWindowRegistry?
     @State private var viewport = LearningDictionaryViewport()
     @State private var htmlHeight: CGFloat = 120
     @State private var showsSources = false
     @State private var measuredHTMLRequest: UUID?
+    @State private var sourceHovering = false
     private var canSelectSource: Bool {
         session.availableSources.count > 1 ||
             (!session.availableSources.isEmpty && !session.availableSources.contains(session.selectedSource))
@@ -33,7 +35,6 @@ struct LearningDictionaryCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 sourceSelector
-                Spacer()
                 if let vocabulary, let capture = session.favoriteCapture {
                     VocabularyFavoriteButton(store: vocabulary, capture: capture)
                         .id(session.query + ":" + String(session.selectedWord?.range.location ?? -1))
@@ -128,35 +129,32 @@ struct LearningDictionaryCard: View {
                 Text(session.sourceName).lineLimit(1)
                 if canSelectSource { Image(systemName: "chevron.down").font(.caption2) }
             }.font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+                .frame(maxWidth: .infinity, minHeight: 20, alignment: .leading)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DictionarySourceButtonStyle(hovering: sourceHovering))
+        .onHover { sourceHovering = $0 }
         .disabled(!canSelectSource)
         .accessibilityLabel(String(localized: "Dictionary sources", table: "Learning"))
         .accessibilityValue(session.sourceName)
-        // Match the favorite action's existing SwiftUI popover boundary. Its child window is
-        // recognized by the panel's outside-click policy, so mouse-down cannot retire the card.
+        .accessibilityIdentifier("learning.dictionary.sources")
+        // Register the content's actual window, including the period when SwiftUI has not
+        // attached it as an AppKit child. Parent-chain discovery remains a fallback.
         .popover(isPresented: $showsSources) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(session.availableSources) { source in
-                        Button {
+                        DictionarySourceRow(title: session.name(for: source), subtitle: session.languageLabel(for: source),
+                                            selected: source == session.selectedSource) {
                             showsSources = false
                             session.selectSource(source)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(session.name(for: source)).lineLimit(2)
-                                    if let pair = session.languageLabel(for: source) {
-                                        Text(pair).font(.caption2).foregroundStyle(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                if source == session.selectedSource { Image(systemName: "checkmark") }
-                            }
                         }
+                        .accessibilityIdentifier("learning.dictionary.source.\(source.id)")
                     }
-                }.buttonStyle(.plain).padding(14)
+                }.padding(14)
             }.frame(width: 260, height: min(360, CGFloat(session.availableSources.count) * 54 + 28))
+                .background(LearningPopoverWindowReader(registry: popupWindows).frame(width: 0, height: 0))
         }
     }
 

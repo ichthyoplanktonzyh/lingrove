@@ -13,6 +13,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
     private let speech: LearningSpeechController?
     private let vocabulary: VocabularyStore?
     private let windowAtPoint: (CGPoint) -> Int
+    private let observesMouseEvents: Bool
     private var panel: NSPanel?
     private var hosting: NSHostingView<LearningSentenceCard>?
     private(set) var isVisible = false
@@ -34,10 +35,12 @@ final class LearningSentencePanel: LearningSentencePresenting {
          dictionaryProvider: (any LearningDictionaryProviding)? = nil,
          dictionarySettings: LearningDictionarySettings? = nil,
          speech: LearningSpeechController? = nil, vocabulary: VocabularyStore? = nil,
+         observesMouseEvents: Bool = true,
          windowAtPoint: @escaping (CGPoint) -> Int = { NSWindow.windowNumber(at: $0, belowWindowWithWindowNumber: 0) }) {
         self.speech = speech
         self.vocabulary = vocabulary
         self.windowAtPoint = windowAtPoint
+        self.observesMouseEvents = observesMouseEvents
         detailPanel = LearningDetailPanel(provider: dictionaryProvider, dictionarySettings: dictionarySettings,
                                          speech: speech, vocabulary: vocabulary)
         reservationSubscription = reservedFramePublisher?.removeDuplicates().sink { [weak self] frame in
@@ -66,7 +69,9 @@ final class LearningSentencePanel: LearningSentencePresenting {
     /// The event adapter passes only a window identity, so the dismissal boundary can be tested
     /// without synthesizing global input or changing the frontmost application.
     func dismissForOutsideClick(in window: NSWindow?) {
-        guard !owns(window) else { return }
+        let inside = owns(window)
+        logClick(route: "local", windowNumber: window?.windowNumber ?? 0, inside: inside)
+        guard !inside else { return }
         dismissAction?()
     }
 
@@ -80,8 +85,25 @@ final class LearningSentencePanel: LearningSentencePresenting {
     }
 
     func dismissForGlobalClick(at point: CGPoint) {
-        guard !containsGlobalInteraction(at: point) else { return }
+        let hit = windowAtPoint(point)
+        let inside = isVisible && LearningWindowInteraction.contains(point,
+            roots: [panel] + detailPanel.interactionWindows, hitWindowNumber: hit)
+        logClick(route: "global", windowNumber: hit, inside: inside)
+        guard !inside else { return }
         dismissAction?()
+    }
+
+    /// Window IDs and the presentation ID explain a dismissal without recording the word,
+    /// definition or host-window title. Only discrete clicks produce these debug events.
+    private func logClick(route: String, windowNumber: Int, inside: Bool) {
+        guard let currentPresentation else { return }
+        CotabbyLogger.learning.debug("Learning card click classified", metadata: [
+            "stage": "card-click", "route": .string(route),
+            "document_id": .string(currentPresentation.id.uuidString),
+            "window_number": .stringConvertible(windowNumber), "inside": .stringConvertible(inside),
+            "detail_windows": .string(detailPanel.interactionWindows.compactMap { $0 }
+                .map { "\($0.windowNumber):\($0.isVisible):\($0.ignoresMouseEvents)" }.joined(separator: ","))
+        ])
     }
 
     var favoriteCapture: VocabularyCapture? {
@@ -343,7 +365,9 @@ final class LearningSentencePanel: LearningSentencePresenting {
     /// Some chat hosts reuse the same AX field and metadata after navigation. An outside click
     /// invalidates the display even before the next AX observation can identify the new context.
     private func installClickMonitors() {
-        guard !clickMonitorsInstalled else { return }
+        // Window fixtures drive the same dismissal methods directly. Live desktop input must
+        // not close a fixture while the user continues working in another application.
+        guard observesMouseEvents, !clickMonitorsInstalled else { return }
         clickMonitorsInstalled = true
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             MainActor.assumeIsolated {
