@@ -83,7 +83,7 @@ struct VocabularyExplanationTests {
     @Test func floatingSessionLoadsSavedAnnotationBeforeModelConfiguration() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json"), capture = capture(), result = record(capture)
+        let url = folder.appendingPathComponent("notebook.sqlite"), capture = capture(), result = record(capture)
         let archive = VocabularyArchive(url: url)
         _ = try await archive.save(capture); _ = try await archive.saveExplanation(result)
         let coldStore = VocabularyStore(archive: VocabularyArchive(url: url))
@@ -111,7 +111,7 @@ struct VocabularyExplanationTests {
     @Test func oldArchiveAndNewAnnotationsBothReopenLosslessly() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let capture = capture(), result = record(capture)
         _ = try await archive.save(capture)

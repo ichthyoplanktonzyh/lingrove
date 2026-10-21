@@ -15,7 +15,7 @@ nonisolated struct VocabularyContentTests {
     @Test func importBoundsImageAndDoesNotWriteCancelledDrafts() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let archive = VocabularyArchive(url: folder.appendingPathComponent("notebook.json"))
+        let archive = VocabularyArchive(url: folder.appendingPathComponent("notebook.sqlite"))
         let image = try await archive.prepareImage(VocabularyImageTestFixture.png(width: 2_000, height: 1_000))
         #expect(image.reference.width == 1_600 && image.reference.height == 800)
         #expect(image.data.count == image.reference.byteCount)
@@ -26,7 +26,7 @@ nonisolated struct VocabularyContentTests {
     @Test func imageAndTextSurviveReopenAndPortableBackupRestore() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("source/notebook.json")
+        let url = folder.appendingPathComponent("source/notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let original = try await archive.save(capture()).document.entries[0]
         let image = try await archive.prepareImage(VocabularyImageTestFixture.png())
@@ -45,7 +45,7 @@ nonisolated struct VocabularyContentTests {
         let backup = folder.appendingPathComponent("backup.lingrove")
         try await reopened.backup(to: backup)
         try FileManager.default.removeItem(at: url.deletingLastPathComponent())
-        let restored = VocabularyArchive(url: folder.appendingPathComponent("restored/notebook.json"))
+        let restored = VocabularyArchive(url: folder.appendingPathComponent("restored/notebook.sqlite"))
         let result = try await restored.restore(from: backup)
         #expect(result.document.entries[0].senses[0].id == original.senses[0].id)
         #expect(result.document.entries[0].senses[0].content == edited.senses[0].content)
@@ -71,10 +71,10 @@ nonisolated struct VocabularyContentTests {
         #expect(try await archive.update(noteOnly, basedOn: original).document.entries[0].senses[0].content == first.senses[0].content)
     }
 
-    @Test func failedJsonCommitRollsBackNewMediaAndRetainsOldState() async throws {
+    @Test func replacedDatabaseRejectsCommitAndRollsBackNewMedia() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let original = try await archive.save(capture()).document.entries[0]
         try FileManager.default.removeItem(at: url)
@@ -85,8 +85,8 @@ nonisolated struct VocabularyContentTests {
         await #expect(throws: (any Error).self) {
             try await archive.update(edited, basedOn: original, importedImages: [image.reference.filename: image.data])
         }
-        #expect(try await archive.load().document.entries[0] == original)
-        let mediaURL = folder.appendingPathComponent("notebook.json.media").appendingPathComponent(image.reference.filename)
+        await #expect(throws: VocabularyError.self) { _ = try await archive.load() }
+        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(image.reference.filename)
         #expect(!FileManager.default.fileExists(atPath: mediaURL.path))
     }
 
@@ -160,7 +160,7 @@ nonisolated struct VocabularyContentTests {
     @Test func validBackupRepairsCorruptedMediaAndHasPrivatePermissions() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let original = try await archive.save(capture()).document.entries[0]
         let image = try await archive.prepareImage(VocabularyImageTestFixture.png())
@@ -171,7 +171,7 @@ nonisolated struct VocabularyContentTests {
         try await archive.backup(to: backup)
         let attributes = try FileManager.default.attributesOfItem(atPath: backup.path)
         #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
-        let mediaURL = folder.appendingPathComponent("notebook.json.media").appendingPathComponent(image.reference.filename)
+        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(image.reference.filename)
         try Data("damaged".utf8).write(to: mediaURL)
         await #expect(throws: (any Error).self) { try await archive.image(image.reference) }
         _ = try await archive.restore(from: backup)

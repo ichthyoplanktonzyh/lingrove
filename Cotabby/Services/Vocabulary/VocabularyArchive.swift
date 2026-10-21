@@ -1,34 +1,42 @@
 import Darwin
 import Foundation
 
-/// One actor owns one local archive. Its synchronous transactions serialize read/modify/atomic
-/// write away from MainActor; cached state advances only after the replacement succeeds. This is
+/// One actor owns one local SQLite notebook. Synchronous transactions serialize read/modify/commit
+/// away from MainActor; cached state advances only after the SQL commit succeeds. This is
 /// user-triggered work, with no observer, model runtime, or per-keystroke disk activity.
 actor VocabularyArchive {
     let url: URL?
     var images: VocabularyImageStorage
     private var document: VocabularyDocument?
     private var revision: UInt64 = 0
-    static let maximumBytes = 64 * 1_024 * 1_024
+    private var database: VocabularySQLiteDatabase?
 
     /// nil is an isolated in-memory notebook for tests; it never probes the user's real archive.
     init(url: URL?) { self.url = url; images = VocabularyImageStorage(notebook: url) }
 
     func load() throws -> VocabularySnapshot {
+        let database = try persistence()
+        if let document, try database.revision() == revision { return .init(revision: revision, document: document) }
+        let snapshot = try database.read()
+        try validate(snapshot.document)
+        document = snapshot.document; revision = snapshot.revision
+        return snapshot
+    }
+
+    private func persistence() throws -> VocabularySQLiteDatabase {
+        if let database { return database }
+        let value = try VocabularySQLiteDatabase(url: url); database = value; return value
+    }
+
+    /// A mutation has already built its candidate from this cached revision. Refreshing here
+    /// would disguise an intervening writer as the candidate's baseline and lose its changes.
+    func transactionBaseline() throws -> VocabularySnapshot {
         if let document { return .init(revision: revision, document: document) }
-        let loaded: VocabularyDocument
-        if let url, FileManager.default.fileExists(atPath: url.path) {
-            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard size <= Self.maximumBytes else { throw VocabularyError.oversizedArchive }
-            do {
-                loaded = try JSONDecoder().decode(VocabularyDocument.self,
-                    from: VocabularyImageStorage.boundedRead(url, maximum: Self.maximumBytes))
-            } catch { throw VocabularyError.invalidArchive }
-            guard loaded.schemaVersion == 3 else { throw VocabularyError.unsupportedVersion }
-            try validate(loaded)
-        } else { loaded = VocabularyDocument() }
-        document = loaded
-        return .init(revision: revision, document: loaded)
+        return try load()
+    }
+
+    func storageAccess<T>(write: Bool, _ operation: () throws -> T) throws -> T {
+        try persistence().access(write: write, operation)
     }
 
     func save(_ capture: VocabularyCapture) throws -> VocabularySnapshot {
@@ -242,6 +250,13 @@ actor VocabularyArchive {
     }
 
     func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
+        try storageAccess(write: true) { try commitUnlocked(document) }
+    }
+
+    private func commitUnlocked(_ document: VocabularyDocument) throws -> VocabularySnapshot {
+        // Fixtures/restores may commit before browsing has loaded the notebook. Establish the
+        // same baseline and durable revision that ordinary card/editor operations use.
+        let baseline = try transactionBaseline()
         var next = document
         // Explanation snapshots remain attached to their exact current input. A moved usage
         // retains them intact; editing its text cannot relabel an old answer as a current one.
@@ -263,17 +278,11 @@ actor VocabularyArchive {
             }
         }
         try validate(next)
-        let data = try Self.encoded(next)
-        guard data.count <= Self.maximumBytes else { throw VocabularyError.oversizedArchive }
-        if let url {
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700])
-            try writeAtomically(data, to: url)
-        }
+        let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision)
         let previousImages = Self.imageReferences(self.document ?? VocabularyDocument())
         let retained = Set(Self.imageReferences(next).map(\.filename))
         self.document = next
-        revision &+= 1
+        revision = nextRevision
         for image in previousImages where !retained.contains(image.filename) { images.remove(image) }
         return .init(revision: revision, document: next)
     }

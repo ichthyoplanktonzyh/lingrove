@@ -116,8 +116,8 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var senseID: UUID?
 }
 
-/// Versioned JSON holds metadata and media references. VocabularyBackup adds the referenced
-/// bytes for portable recovery. Unknown versions fail closed instead of replacing a notebook.
+/// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
+/// stores its entities separately; this version describes the portable representation only.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var schemaVersion = 3
     var entries: [VocabularyEntry] = []

@@ -2,7 +2,7 @@ import Foundation
 
 /// User-authored explanation belongs to a stable sense, independently of AI records for a
 /// particular usage. Blocks retain identity when reordered; files are referenced, never embedded
-/// in the notebook JSON. Optional sense storage keeps existing notebooks and Anki identities.
+/// in the metadata. Optional sense storage preserves absent versus explicitly empty content.
 nonisolated struct VocabularyContentBlock: Codable, Equatable, Identifiable, Sendable {
     var id = UUID()
     var content: Content

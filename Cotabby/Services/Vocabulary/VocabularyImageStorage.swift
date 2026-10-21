@@ -101,7 +101,7 @@ nonisolated struct VocabularyImageStorage {
                 guard values.isRegularFile == true, values.isSymbolicLink != true else { throw VocabularyError.invalidContent }
             }
             // A verified backup may repair a damaged file with the same immutable identity.
-            // This also repairs the old notebook if its later JSON replacement fails. Never
+            // This also repairs the current notebook if its later metadata commit fails. Never
             // roll back that repair by deleting a resource that was already present.
             try data.write(to: target, options: .atomic)
             do { try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: target.path) } catch {

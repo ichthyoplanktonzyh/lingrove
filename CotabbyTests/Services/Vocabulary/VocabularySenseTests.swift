@@ -71,7 +71,7 @@ struct VocabularySenseTests {
     @Test func mergePreservesAliasesAnnotationsAndUsageIDsAcrossReopen() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook-v3.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let first = capture("I went to the bank."), second = capture("The bank opened early.")
         _ = try await archive.save(first); _ = try await archive.save(second)
@@ -132,7 +132,7 @@ struct VocabularySenseTests {
     @Test func invalidOwnershipCannotReplaceTheLastGoodArchive() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook-v3.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let snapshot = try await archive.save(capture("I went to the bank."))
         let baseline = try #require(snapshot.document.entries.first)
@@ -146,9 +146,9 @@ struct VocabularySenseTests {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let old = folder.appendingPathComponent("notebook.json"), bytes = Data("retired schema two data".utf8)
+        let old = folder.appendingPathComponent("notebook-v3.json"), bytes = Data("retired JSON data".utf8)
         try bytes.write(to: old)
-        let archive = VocabularyArchive(url: folder.appendingPathComponent("notebook-v3.json"))
+        let archive = VocabularyArchive(url: folder.appendingPathComponent("notebook.sqlite"))
         #expect(try await archive.load().document.entries.isEmpty)
         _ = try await archive.save(capture("I went to the bank."))
         #expect(try Data(contentsOf: old) == bytes)
