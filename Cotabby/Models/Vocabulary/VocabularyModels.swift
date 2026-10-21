@@ -40,6 +40,8 @@ nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     var explanations: [LearningExplanationRecord] = []
     var alternateMeanings: [VocabularyMeaning] = []
     var mergedFrom: [UUID] = []
+    /// Optional so existing v3 notebooks decode without a migration or a library reset.
+    var review: VocabularyReview?
     let createdAt: Date
     var updatedAt: Date
 }

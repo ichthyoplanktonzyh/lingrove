@@ -8,11 +8,14 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let store: VocabularyStore
     private let speech: LearningSpeechController
     private let learning: VocabularyNotebookSession
+    private let review: AnkiReviewController?
 
     init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil,
-         dictionaryProvider: any LearningDictionaryProviding, dictionarySettings: LearningDictionarySettings) {
+         dictionaryProvider: any LearningDictionaryProviding, dictionarySettings: LearningDictionarySettings,
+         review: AnkiReviewController? = nil) {
         self.store = store
         self.speech = speech
+        self.review = review
         learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider, settings: dictionarySettings)
         super.init(window: nil)
         store.openSelection = { [weak self] in self?.show(selectedID: $0?.entryID, senseID: $0?.senseID) }
@@ -36,7 +39,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         if window?.contentView == nil || (selectedID != nil && window?.attachedSheet == nil) {
             window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
                 selectedID: selectedID, selectedSenseID: senseID,
-                learning: learning))
+                learning: learning, review: review))
         }
         learning.resume()
         store.loadIfNeeded()

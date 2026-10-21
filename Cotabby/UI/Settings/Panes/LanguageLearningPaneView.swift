@@ -7,6 +7,7 @@ struct LanguageLearningPaneView: View {
     @ObservedObject var navigation: SettingsNavigationModel
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     let speech: LearningSpeechController?
+    var review: AnkiReviewController?
     let configureModel: (LearningModelRole) -> Void
     let openSpeechSettings: () -> Void
     let openShortcuts: () -> Void
@@ -27,6 +28,8 @@ struct LanguageLearningPaneView: View {
 
             SettingsPaneScaffold {
                 switch navigation.learningTask {
+                case .review:
+                    if let review { LearningReviewSettingsSection(controller: review) }
                 case .translation:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .translation,
                         configureModel: configureModel, openShortcuts: openShortcuts, openApps: openApps)

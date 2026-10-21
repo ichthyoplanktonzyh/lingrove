@@ -153,7 +153,7 @@ actor VocabularyArchive {
         // captured identity can disappear; annotated identities require an explicit delete.
         let value = next.entries[index].senses[sense]
         if value.examples.isEmpty, !value.isSavedWithoutContext, value.note.isEmpty, value.tags.isEmpty,
-           value.meaningOrigin != .user, value.mergedFrom.isEmpty {
+           value.meaningOrigin != .user, value.mergedFrom.isEmpty, value.review == nil {
             next.entries[index].senses.remove(at: sense)
         }
         if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
@@ -189,6 +189,34 @@ actor VocabularyArchive {
               let sense = next.entries[index].senses.firstIndex(where: { $0.id == senseID }) else { throw VocabularyError.invalidContent }
         next.entries[index].senses.remove(at: sense)
         if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
+        return try commit(next)
+    }
+
+    /// Review drafts use compare-and-swap rather than whole-entry replacement. A sheet cannot
+    /// overwrite a newly merged binding or another window's review edits while HTTP is pending.
+    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview,
+                    expected: VocabularyReview?) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
+              let sense = next.entries[entry].senses.firstIndex(where: { $0.id == senseID }),
+              next.entries[entry].senses[sense].review == expected else { throw VocabularyError.editConflict }
+        next.entries[entry].senses[sense].review = value
+        return try commit(next)
+    }
+
+    /// A merge may finish during a network write. Resolve the retired sense ID, keep the latest
+    /// draft intact, and append the verified receipt. Deleted senses are never resurrected.
+    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding) throws -> VocabularySnapshot {
+        var next = try load().document
+        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
+              let sense = VocabularySensePolicy.index(senseID, in: next.entries[entry]),
+              var review = next.entries[entry].senses[sense].review else { throw VocabularyError.editConflict }
+        if let index = review.bindings.firstIndex(where: { $0.id == binding.id }) { review.bindings[index] = binding } else {
+            review.bindings.append(binding)
+            if review.bindings.count > 1 { review.activeBindingID = nil }
+        }
+        if review.bindings.count == 1 { review.activeBindingID = binding.id }
+        next.entries[entry].senses[sense].review = review
         return try commit(next)
     }
 
@@ -256,6 +284,7 @@ actor VocabularyArchive {
             guard Set(entry.examples.map { VocabularyPolicy.exampleKey($0) }).count == entry.examples.count,
                   entry.senses.filter(\.isSavedWithoutContext).count <= 1 else { throw VocabularyError.invalidArchive }
             for sense in entry.senses {
+                if let review = sense.review { try validateReview(review) }
                 let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: nil))
                 guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
                       sense.explanations.count <= 128,
@@ -274,6 +303,28 @@ actor VocabularyArchive {
                                   $0.input == usageInput
                           }) else { throw VocabularyError.invalidArchive }
                 }
+            }
+        }
+    }
+
+    private func validateReview(_ review: VocabularyReview) throws {
+        guard review.bindings.count <= 64, review.preservedPlans.count <= 64,
+              Set(review.bindings.map(\.id)).count == review.bindings.count,
+              review.activeBindingID == nil || review.bindings.contains(where: { $0.id == review.activeBindingID }) else {
+            throw VocabularyError.invalidArchive
+        }
+        for plan in [review.plan] + review.preservedPlans {
+            guard (plan.answer?.utf8.count ?? 0) <= 262_144, plan.fieldOverrides.count <= 32,
+                  plan.fieldOverrides.allSatisfy({ $0.key.utf8.count <= 200 && $0.value.utf8.count <= 1_000_000 }) else {
+                throw VocabularyError.invalidArchive
+            }
+        }
+        for binding in review.bindings {
+            guard binding.noteID.map({ $0 > 0 }) ?? true, !binding.profile.isEmpty, !binding.model.isEmpty,
+                  AnkiReviewPolicy.endpoint(binding.endpoint) != nil, binding.mapping[.identity] == binding.identityField,
+                  binding.fields[binding.identityField] == binding.originSenseID.uuidString.lowercased(),
+                  binding.fields.count <= 32, binding.fields.allSatisfy({ $0.value.utf8.count <= 1_000_000 }) else {
+                throw VocabularyError.invalidArchive
             }
         }
     }

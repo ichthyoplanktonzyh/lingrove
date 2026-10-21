@@ -8,6 +8,7 @@ struct VocabularyNotebookView: View {
     @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
     var learning: VocabularyNotebookSession?
+    var review: AnkiReviewController?
     @State private var selection: UUID?
     @State private var query = ""
     @State private var language: LearningLanguage?
@@ -19,10 +20,11 @@ struct VocabularyNotebookView: View {
     @State private var expandedEntries: Set<UUID> = []
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
-         learning: VocabularyNotebookSession? = nil) {
+         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil) {
         self.store = store
         self.speech = speech
         self.learning = learning
+        self.review = review
         let entry = store.entries.first { $0.id == selectedID }
         _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
         _expandedEntries = State(initialValue: Set(entry.map { [$0.id] } ?? []))
@@ -68,7 +70,7 @@ struct VocabularyNotebookView: View {
             .navigationSplitViewColumnWidth(min: 230, ideal: 290, max: 420)
         } detail: {
             if let entry = selectedEntry, let sense = selectedSense {
-                VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning,
+                VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
                     edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
                     newSense: {
                         Task { if let id = await store.createSense(entryID: entry.id) { selection = id } }
@@ -163,6 +165,7 @@ private struct VocabularyEntryDetail: View {
     let speech: LearningSpeechController
     @ObservedObject var store: VocabularyStore
     var learning: VocabularyNotebookSession?
+    var review: AnkiReviewController?
     let edit: () -> Void
     let delete: () -> Void
     let newSense: () -> Void
@@ -178,6 +181,7 @@ private struct VocabularyEntryDetail: View {
                     VocabularyFavoriteIcon(isSaved: true).frame(width: 20, height: 20)
                 }
                 Text(entry.language.label + " · " + entry.kind.label).font(.caption).foregroundStyle(.secondary)
+                if let review { VocabularyReviewSection(entry: entry, sense: sense, controller: review) }
                 if entry.dictionaryForm != entry.expression {
                     Text(entry.dictionaryForm).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }

@@ -14,6 +14,7 @@ import SwiftUI
 struct SettingsContainerView: View {
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
+    var review: AnkiReviewController?
     var renderDiagnostics: SettingsRenderDiagnostics? = .process
     @ObservedObject var attentionModel: SettingsAttentionModel
     let appUpdateManager: AppUpdateManager
@@ -161,7 +162,7 @@ struct SettingsContainerView: View {
             WritingPaneView(
                 suggestionSettings: suggestionSettings, renderDiagnostics: renderDiagnostics)
         case .languageLearning:
-            LanguageLearningPaneView(navigation: navigation, suggestionSettings: suggestionSettings, speech: speech,
+            LanguageLearningPaneView(navigation: navigation, suggestionSettings: suggestionSettings, speech: speech, review: review,
                 configureModel: navigation.openLearningModel,
                 openSpeechSettings: { navigation.openEngineTask(.speech) },
                 openShortcuts: { navigation.openShortcuts() }, openApps: { navigation.open(.apps) })

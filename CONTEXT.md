@@ -41,3 +41,11 @@ _Avoid_: “chunk alignment” when only identifying a phrase in one sentence.
 **Chunk alignment / 语块对齐**:
 Correspondence between exact excerpts in an original sentence and its translation.
 _Avoid_: equating a bilingual correspondence with a word’s contextual definition.
+
+**Review plan / 制卡方案**:
+The chosen example, review answer and exercise forms for learning one sense. Review edits belong
+to this material independently of the expression’s core meaning or contextual explanations.
+
+**Anki association / Anki 关联**:
+The relationship between a saved sense and an identified note in an Anki profile. Synchronization
+describes agreement of their exported content, independently of learning progress.

@@ -453,3 +453,25 @@ Offline lexical recognition, contextual explanation and live dictionary lookup r
 shared card measurement preference formerly colocated with the removed alignment chips.
 Historical performance records still decode their `analysis` source, which is excluded from the
 selectable task list. Existing alignment preferences and downloaded files are not deleted or read.
+
+## Anki review
+
+`Models/Review` owns review-only plans, durable pending/confirmed Anki bindings, connection
+snapshots and typed wire values. A sense's optional `review` property extends schema v3 without
+resetting existing libraries. The vocabulary archive remains the single atomic writer.
+`Support/Review` prepares cards from exact usage spans, escapes text for HTML, maps logical fields,
+compares last-synced/local/remote values and defines the versioned preset note template.
+
+`Services/Review/AnkiConnectClient.swift` is the loopback-only, bounded, no-redirect HTTP boundary.
+`AnkiReviewController` is constructed once by the environment and shared by Settings and Vocabulary;
+it owns operation exclusion and connection metadata, without startup probes or background sync.
+Each `AnkiReviewSession` belongs to one preparation sheet. It persists creation identity before a
+write, recovers uncertain acknowledgements by that identity, revalidates the active profile/source,
+and records successful synchronization only after rereading the remote fields. Anki card IDs and
+scheduling remain under Anki's ownership. Removing existing card types is managed in Anki.
+
+`UI/Vocabulary/VocabularyReviewSection.swift` is the compact sense action/status row;
+`VocabularyReviewSheet.swift` edits review-only content and displays previews/conflict choices.
+`UI/Settings/Panes/LearningReviewSettingsSection.swift` reuses the grouped settings form under
+Language Learning → Review, including searchable advanced field mapping. Existing notebooks,
+dictionary lookups, explanation generation and favorites never trigger an Anki write themselves.

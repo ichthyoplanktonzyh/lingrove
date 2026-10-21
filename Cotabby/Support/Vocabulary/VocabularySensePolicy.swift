@@ -99,6 +99,7 @@ nonisolated enum VocabularySensePolicy {
         merged.isSavedWithoutContext = merged.isSavedWithoutContext || original.isSavedWithoutContext
         merged.explanations += original.explanations.filter { record in !merged.explanations.contains { $0.id == record.id } }
         merged.mergedFrom += [original.id] + original.mergedFrom
+        merged.review = AnkiReviewPolicy.merged(merged.review, original.review)
         merged.updatedAt = now
         entry.senses[to] = merged
         entry.senses.remove(at: from)

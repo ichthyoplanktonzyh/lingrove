@@ -18,6 +18,7 @@ final class CotabbyAppEnvironment {
     /// One shared playback owner serves the settings voice preview and every learning card.
     let speechController: LearningSpeechController
     let vocabularyStore: VocabularyStore
+    let reviewController: AnkiReviewController
     let vocabularyWindow: VocabularyWindowController
     let modelDownloadManager: ModelDownloadManager
     let focusModel: FocusTrackingModel
@@ -248,6 +249,8 @@ final class CotabbyAppEnvironment {
             .appendingPathComponent("Vocabulary/notebook-v3.json")
         // Schema v3 starts a separate library; the retired two-level archive remains untouched.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
+        let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
+            credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is
         // read per request so a power-source switch to the endpoint stops shortcuts immediately.
@@ -267,7 +270,7 @@ final class CotabbyAppEnvironment {
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
-            dictionarySettings: suggestionSettings.languageLearning.dictionary)
+            dictionarySettings: suggestionSettings.languageLearning.dictionary, review: reviewController)
         vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
             var capture = capture
             let input = LearningExplanationPolicy.input(capture)
@@ -307,6 +310,7 @@ final class CotabbyAppEnvironment {
         let settingsCoordinator = SettingsCoordinator(
             learningModels: learningModels,
             speech: speechController,
+            review: reviewController,
             appUpdateManager: appUpdateManager,
             permissionManager: permissionManager,
             permissionGuidanceController: permissionGuidanceController,
@@ -326,6 +330,7 @@ final class CotabbyAppEnvironment {
             clearEmojiHistory: { emojiUsageStore.clear() },
             typingHistoryStore: typingHistoryStore
         )
+        reviewController.configure = { [weak settingsCoordinator] in settingsCoordinator?.showReviewSettings() }
 
         let interactionState = SuggestionInteractionState()
         let workController = SuggestionWorkController()
@@ -481,6 +486,7 @@ final class CotabbyAppEnvironment {
         self.learningModels = learningModels
         self.speechController = speechController
         self.vocabularyStore = vocabularyStore
+        self.reviewController = reviewController
         self.vocabularyWindow = vocabularyWindow
         self.modelDownloadManager = modelDownloadManager
         self.focusModel = focusModel

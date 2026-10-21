@@ -122,6 +122,14 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.removeSense(entryID: entryID, senseID: senseID)); return true } catch { report(error); return false }
     }
 
+    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?) async throws {
+        apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected))
+    }
+
+    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding) async throws {
+        apply(try await archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding))
+    }
+
     func remove(_ capture: VocabularyCapture) async {
         CotabbyLogger.learning.debug("Vocabulary remove requested")
         await change(capture) { try await self.archive.remove(capture) }

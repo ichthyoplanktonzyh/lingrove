@@ -77,6 +77,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case speechSampling
     case translationReferenceMode
     case dictionarySources
+    case ankiReview, ankiReviewFields
     case translationModel
     case explanationModel, explanationLanguage, explanationParameters
     // Context
@@ -163,6 +164,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .ankiReview: return String(localized: "Anki review", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
         case .explanationModel: return String(localized: "AI explanation model", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")
@@ -288,6 +291,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .ankiReview: return "rectangle.stack"
+        case .ankiReviewFields: return "slider.horizontal.3"
         case .explanationModel: return "sparkles"
         case .explanationLanguage: return "globe"
         case .explanationParameters: return "slider.horizontal.3"
@@ -399,6 +404,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .ankiReview, .ankiReviewFields: return .languageLearning
         case .explanationModel, .explanationParameters: return .engineAndModel
         case .explanationLanguage: return .languageLearning
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return .shortcuts
@@ -453,6 +459,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .ankiReview: return String(localized: "Anki connection and card defaults", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
         case .explanationModel, .explanationParameters: return String(localized: "AI explanation", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .dictionarySources: return String(localized: "Enable and order dictionary sources.", table: "Learning")
@@ -594,6 +602,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .ankiReview: return ["Anki", "AnkiConnect", "review", "flashcard", "deck", "复习", "制卡", "牌组"]
+        case .ankiReviewFields: return ["Anki", "mapping", "fields", "template", "字段映射", "模板", "制卡字段"]
         case .explanationModel, .explanationParameters, .explanationLanguage:
             return ["explain", "explanation", "contextual meaning", "AI解释", "语境", "消歧", "讲解"]
         case .dictionarySources:

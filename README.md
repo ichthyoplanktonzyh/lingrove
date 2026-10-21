@@ -45,6 +45,10 @@ language learning are its two core capabilities, developed together.
   then search, edit, listen to, or export the collection from the menu bar's Vocabulary window.
   Expressions group stable senses, and each sense owns its usages and notes. Merge senses or move
   a usage explicitly; regenerating an explanation never changes its identity.
+- **Anki review:** prepare a sense with a representative example, preview recognition and gap
+  cards, and explicitly send or update its Anki note. Configure the local AnkiConnect connection,
+  deck and optional custom field mappings in Language Learning → Review. Anki Desktop and the
+  [AnkiConnect add-on](https://ankiweb.net/shared/info/2055492159) must be running on the Mac.
 
 ### Additional writing tools
 
@@ -146,7 +150,7 @@ For words and expressions, available sentence context is retained as an example;
 start another model request. A blue fish tail opens actions to view the entry or remove that saved
 usage. **Vocabulary** in the menu bar opens the searchable notebook, where meanings, notes, tags,
 and examples can be edited and the collection exported as JSON. Notebook data stays on this Mac;
-it has no automatic synchronization or Anki connection. Its two optional shortcuts are configured
+Anki writes occur only when you explicitly send or update a review note. Its two optional shortcuts are configured
 only in **Settings → Shortcuts** and are initially unset.
 
 The small speaker on a preview or expression-detail card reads its text aloud without taking
