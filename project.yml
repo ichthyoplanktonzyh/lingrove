@@ -10,6 +10,8 @@ options:
   groupSortPosition: top
   xcodeVersion: "2600"
 packages:
+  LingroveGraphLayout:
+    path: Packages/LingroveGraphLayout
   MDictReader:
     path: Packages/MDictReader
   Sparkle:
@@ -120,6 +122,8 @@ targetTemplates:
       - path: Cotabby/Resources/DictionaryNotices/MDict-NOTICE.md
         buildPhase: resources
     dependencies:
+      - package: LingroveGraphLayout
+        product: LingroveGraphLayout
       - target: LingroveCLI
         embed: false
       - package: MDictReader

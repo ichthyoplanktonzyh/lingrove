@@ -143,3 +143,19 @@ nonisolated enum VocabularySensePolicy {
         if example.translation.isEmpty { example.translation = text; example.translationLanguage = language }
     }
 }
+
+/// A label is a projection, never an identity or a semantic matching key. A contextual draft
+/// can label an unnamed sense while its canonical summary remains explicitly editable.
+extension VocabularySense {
+    var displayTitle: String {
+        if !meaning.isEmpty { return meaning }
+        for block in content ?? [] {
+            if case let .text(value) = block.content, !value.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return value.text
+            }
+        }
+        if let text = examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
+        if !VocabularyContentPolicy.images(content ?? []).isEmpty { return String(localized: "Image explanation", table: "Vocabulary") }
+        return String(localized: "Meaning pending", table: "Vocabulary")
+    }
+}

@@ -91,7 +91,7 @@ Cotabby/
 │   │   └── Capability/               supported-field capability resolution
 │   ├── History/                      history retrieval, phrase prediction, scrubbing, import
 │   ├── Input/                        composition, key-label, and selection helpers
-│   ├── Vocabulary/                   capture identity, local example extraction, merge and search rules
+│   ├── Vocabulary/                   capture identity, graph projection, local example extraction, merge and search rules
 │   ├── LanguageLearning/             exact unit recognition, correspondence projection, pair parsing, prompts and preview/write rules
 │   ├── Logging/                      debug options, request IDs, and JSONL handlers
 │   ├── Macros/
@@ -587,3 +587,13 @@ segmented selection. Templates copy layout roles and custom prompts; applying on
 slots to the destination sense and never rewrites existing cards. The generic Anki model has one
 card per note and three fields: LingroveID, Front, Back. Sends verify its live templates, destination,
 source and media, while the shared session retains conflict handling and lost-ack recovery.
+
+## Vocabulary Graph
+
+- `Models/Vocabulary/VocabularyGraphModels.swift`: immutable headword/sense graph, validated appearance/force settings and camera math.
+- `Support/Vocabulary/VocabularyGraphProjection.swift`: filtered notebook to explicit ownership edges; no inferred semantic links.
+- `Services/Vocabulary/VocabularyGraphLayoutWorker.swift`: window-owned actor confining the Grape simulation and rejecting stale epochs.
+- `UI/Vocabulary/VocabularyGraphPresentation.swift`: window browsing/preferences lifetime, independent of SQLite content.
+- `UI/Vocabulary/VocabularyGraphView.swift`: native controls/settings and the canvas adapter.
+- `UI/Vocabulary/VocabularyGraphCanvasView.swift`: AppKit drawing, input, accessibility and a bounded animation task that ends when cool.
+- `Packages/LingroveGraphLayout`: unchanged MIT-licensed Grape 1.1.0 ForceSimulation sources and a small package-local buffer adapter.

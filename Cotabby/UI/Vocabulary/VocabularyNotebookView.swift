@@ -5,6 +5,9 @@ import UniformTypeIdentifiers
 /// A normal document-like window, not another settings pane. The environment injects the same
 /// store used by cards and the existing speech controller; this view owns only browsing state.
 struct VocabularyNotebookView: View {
+    @AppStorage private var browserMode: String
+    @StateObject private var graph: VocabularyGraphPresentation
+    @State private var selectedTag = ""
     @State private var restoreURL: URL?
     @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
@@ -26,7 +29,10 @@ struct VocabularyNotebookView: View {
     @State private var reviewError: String?
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
-         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil) {
+         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
+         preferences: UserDefaults = .standard) {
+        _browserMode = AppStorage(wrappedValue: "list", "vocabularyBrowserMode", store: preferences)
+        _graph = StateObject(wrappedValue: VocabularyGraphPresentation(defaults: preferences))
         self.store = store
         self.speech = speech
         self.learning = learning
@@ -41,11 +47,183 @@ struct VocabularyNotebookView: View {
     }
 
     private var visibleEntries: [VocabularyEntry] {
-        store.entries.filter { (language == nil || $0.language == language) && VocabularyPolicy.matches($0, query: query) }
-            .sorted { newestFirst ? $0.updatedAt > $1.updatedAt : $0.updatedAt < $1.updatedAt }
+        store.entries.compactMap { entry -> VocabularyEntry? in
+            guard language == nil || entry.language == language else { return nil }
+            var value = entry
+            if !selectedTag.isEmpty { value.senses.removeAll { !$0.tags.contains(selectedTag) } }
+            return !value.senses.isEmpty && VocabularyPolicy.matches(value, query: query) ? value : nil
+        }.sorted { newestFirst ? $0.updatedAt > $1.updatedAt : $0.updatedAt < $1.updatedAt }
+    }
+
+    private var graphSelection: VocabularySelection? {
+        guard let entry = selectedEntry, let sense = selectedSense else { return nil }
+        return .init(entryID: entry.id, senseID: sense.id)
     }
 
     var body: some View {
+        Group {
+            if browserMode == "graph" {
+                HSplitView {
+                    VocabularyGraphView(entries: visibleEntries, query: query, selection: graphSelection,
+                        presentation: graph, select: { selection = $0?.senseID })
+                        .frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
+                    if selectedSense != nil {
+                        VStack(spacing: 0) {
+                            HStack {
+                                Spacer()
+                                Button { selection = nil; graph.clearFocus() } label: { Image(systemName: "xmark") }
+                                    .buttonStyle(.borderless).help(String(localized: "Close details", table: "Vocabulary"))
+                                    .accessibilityLabel(String(localized: "Close details", table: "Vocabulary"))
+                            }.padding(12)
+                            entryDetail
+                        }.frame(minWidth: 300, idealWidth: 360, maxWidth: 480)
+                    }
+                }
+            } else { listBrowser }
+        }
+        .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
+        .toolbar {
+            ToolbarItem {
+                Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: $browserMode) {
+                    Text(String(localized: "List", table: "Vocabulary")).tag("list")
+                    Text(String(localized: "Graph", table: "Vocabulary")).tag("graph")
+                }.pickerStyle(.segmented).frame(width: 150)
+            }
+            ToolbarItem {
+                Button { selectingSenses.toggle(); if selectingSenses { browserMode = "list" } } label: { Image(systemName: "checklist") }
+                    .help(String(localized: "Select senses", table: "Vocabulary"))
+            }
+            if selectingSenses {
+                ToolbarItem {
+                    Button(String(localized: "Select visible", table: "Vocabulary")) {
+                        batchSelection.formUnion(selections(in: visibleEntries))
+                    }
+                }
+                ToolbarItem {
+                    Button(String(localized: "Export selected…", table: "Vocabulary")) { beginExport(scope: .selected) }
+                        .disabled(batchSelection.isEmpty)
+                }
+                if review != nil {
+                    ToolbarItem {
+                        Button(String(localized: "Prepare selected", table: "Vocabulary")) { showingBatch = true }
+                            .disabled(batchSelection.isEmpty)
+                    }
+                }
+            }
+            if let review {
+                ToolbarItem {
+                    Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
+                        .help(String(localized: "Review in Anki", table: "Vocabulary"))
+                }
+            }
+            ToolbarItem {
+                let tags = Array(Set(store.entries.flatMap { $0.senses.flatMap(\.tags) })).sorted()
+                if !tags.isEmpty {
+                    Picker(String(localized: "Tags", table: "Vocabulary"), selection: $selectedTag) {
+                        Text(String(localized: "All tags", table: "Vocabulary")).tag("")
+                        ForEach(tags, id: \.self) { Text($0).tag($0) }
+                    }.frame(maxWidth: 120)
+                }
+            }
+            ToolbarItem {
+                Picker(String(localized: "Language", table: "Vocabulary"), selection: $language) {
+                    Text(String(localized: "All languages", table: "Vocabulary")).tag(nil as LearningLanguage?)
+                    ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
+                }.frame(maxWidth: 150)
+            }
+            if browserMode != "graph" {
+              ToolbarItem {
+                Button {
+                    newestFirst.toggle()
+                } label: { Image(systemName: "arrow.up.arrow.down") }
+                .help(newestFirst ? String(localized: "Newest first", table: "Vocabulary")
+                    : String(localized: "Oldest first", table: "Vocabulary"))
+              }
+            }
+            ToolbarItem {
+                Menu {
+                    Button(String(localized: "Export…", table: "Vocabulary")) { beginExport() }
+                        .disabled(store.entries.isEmpty)
+                    Button(String(localized: "Full notebook backup…", table: "Vocabulary"), action: backup)
+                    Divider()
+                    Button(String(localized: "Restore notebook…", table: "Vocabulary"), action: chooseBackup)
+                } label: { Image(systemName: "square.and.arrow.up") }
+                    .help(String(localized: "Export and backup", table: "Vocabulary"))
+                    .disabled(!store.isLoaded)
+            }
+        }
+        .frame(minWidth: 760, minHeight: 460)
+        .onAppear { store.loadIfNeeded(); if browserMode == "graph" { graph.reveal(graphSelection) } }
+        .onChange(of: selectedEntry, initial: true) { _, entry in learning?.select(entry, senseID: selection) }
+        .onChange(of: selection) { _, _ in
+            learning?.select(selectedEntry, senseID: selection)
+            if browserMode == "graph" { graph.reveal(graphSelection) }
+        }
+        .onChange(of: browserMode) { _, value in if value == "graph" { graph.reveal(graphSelection) } }
+        .onChange(of: store.entries) { _, entries in
+            if !selectedTag.isEmpty, !entries.contains(where: { $0.senses.contains { $0.tags.contains(selectedTag) } }) {
+                selectedTag = ""
+            }
+            if let requestedID, let entry = entries.first(where: { $0.id == requestedID }) {
+                selection = requestedSenseID ?? entry.senses.first?.id
+                expandedEntries.insert(entry.id)
+                self.requestedID = nil; requestedSenseID = nil
+            } else if let selection, let entry = entries.first(where: { VocabularySensePolicy.index(selection, in: $0) != nil }),
+                      let index = VocabularySensePolicy.index(selection, in: entry) {
+                self.selection = entry.senses[index].id
+            } else if selection != nil { selection = nil }
+        }
+        .onChange(of: query) { _, value in
+            if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
+            reconcileGraphSelection()
+        }
+        .onChange(of: selectedTag) { _, _ in reconcileGraphSelection() }
+        .onChange(of: language) { _, _ in reconcileGraphSelection() }
+        .sheet(item: $exporting) { request in VocabularyExportSheet(store: store, request: request) }
+        .sheet(isPresented: $showingBatch) {
+            if let review {
+                VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
+                    $0.senseID.uuidString < $1.senseID.uuidString
+                })
+            }
+        }
+        .alert(String(localized: "Anki connection", table: "Vocabulary"), isPresented: Binding(
+            get: { reviewError != nil }, set: { if !$0 { reviewError = nil } })) {
+                Button(String(localized: "OK"), role: .cancel) { reviewError = nil }
+            } message: { Text(reviewError ?? "") }
+        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
+        .alert(String(localized: "Replace notebook?", table: "Vocabulary"), isPresented: Binding(
+            get: { restoreURL != nil }, set: { if !$0 { restoreURL = nil } })) {
+                Button(String(localized: "Cancel"), role: .cancel) { restoreURL = nil }
+                Button(String(localized: "Restore", table: "Vocabulary"), role: .destructive) {
+                    if let url = restoreURL { Task { await store.restore(from: url) } }
+                    restoreURL = nil
+                }
+            } message: { Text(String(localized: "Replace this notebook with the selected backup, including images and Anki associations.",
+                table: "Vocabulary")) }
+        .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
+            get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+                Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
+                Button(String(localized: "Delete"), role: .destructive) {
+                    if let target = deleting { Task { _ = await store.removeSense(entryID: target.entryID, senseID: target.senseID) } }
+                    deleting = nil
+                }
+            }
+        .alert(String(localized: "Vocabulary operation failed", table: "Vocabulary"), isPresented: Binding(
+            get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+                Button(String(localized: "OK"), role: .cancel) { store.errorMessage = nil }
+            } message: { Text(store.errorMessage ?? "") }
+    }
+
+    private func reconcileGraphSelection() {
+        guard browserMode == "graph", let selection else { return }
+        if !visibleEntries.contains(where: { VocabularySensePolicy.index(selection, in: $0) != nil }) {
+            self.selection = nil
+            graph.clearFocus()
+        }
+    }
+
+    private var listBrowser: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 ForEach(visibleEntries) { entry in
@@ -90,6 +268,11 @@ struct VocabularyNotebookView: View {
             }
             .navigationSplitViewColumnWidth(min: 230, ideal: 290, max: 420)
         } detail: {
+            entryDetail
+        }
+    }
+
+    @ViewBuilder private var entryDetail: some View {
             if let entry = selectedEntry, let sense = selectedSense {
                 VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
                     edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
@@ -104,112 +287,6 @@ struct VocabularyNotebookView: View {
             } else {
                 ContentUnavailableView(String(localized: "Vocabulary", table: "Vocabulary"), systemImage: "books.vertical")
             }
-        }
-        .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
-        .toolbar {
-            ToolbarItem {
-                Button { selectingSenses.toggle() } label: { Image(systemName: "checklist") }
-                    .help(String(localized: "Select senses", table: "Vocabulary"))
-            }
-            if selectingSenses {
-                ToolbarItem {
-                    Button(String(localized: "Select visible", table: "Vocabulary")) {
-                        batchSelection.formUnion(selections(in: visibleEntries))
-                    }
-                }
-                ToolbarItem {
-                    Button(String(localized: "Export selected…", table: "Vocabulary")) { beginExport(scope: .selected) }
-                        .disabled(batchSelection.isEmpty)
-                }
-                if review != nil {
-                    ToolbarItem {
-                        Button(String(localized: "Prepare selected", table: "Vocabulary")) { showingBatch = true }
-                            .disabled(batchSelection.isEmpty)
-                    }
-                }
-            }
-            if let review {
-                ToolbarItem {
-                    Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
-                        .help(String(localized: "Review in Anki", table: "Vocabulary"))
-                }
-            }
-            ToolbarItem {
-                Picker(String(localized: "Language", table: "Vocabulary"), selection: $language) {
-                    Text(String(localized: "All languages", table: "Vocabulary")).tag(nil as LearningLanguage?)
-                    ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
-                }.frame(maxWidth: 150)
-            }
-            ToolbarItem {
-                Button {
-                    newestFirst.toggle()
-                } label: { Image(systemName: "arrow.up.arrow.down") }
-                .help(newestFirst ? String(localized: "Newest first", table: "Vocabulary")
-                    : String(localized: "Oldest first", table: "Vocabulary"))
-            }
-            ToolbarItem {
-                Menu {
-                    Button(String(localized: "Export…", table: "Vocabulary")) { beginExport() }
-                        .disabled(store.entries.isEmpty)
-                    Button(String(localized: "Full notebook backup…", table: "Vocabulary"), action: backup)
-                    Divider()
-                    Button(String(localized: "Restore notebook…", table: "Vocabulary"), action: chooseBackup)
-                } label: { Image(systemName: "square.and.arrow.up") }
-                    .help(String(localized: "Export and backup", table: "Vocabulary"))
-                    .disabled(!store.isLoaded)
-            }
-        }
-        .frame(minWidth: 760, minHeight: 460)
-        .onAppear { store.loadIfNeeded() }
-        .onChange(of: selectedEntry, initial: true) { _, entry in learning?.select(entry, senseID: selection) }
-        .onChange(of: selection) { _, _ in learning?.select(selectedEntry, senseID: selection) }
-        .onChange(of: store.entries) { _, entries in
-            if let requestedID, let entry = entries.first(where: { $0.id == requestedID }) {
-                selection = requestedSenseID ?? entry.senses.first?.id
-                expandedEntries.insert(entry.id)
-                self.requestedID = nil; requestedSenseID = nil
-            } else if let selection, let entry = entries.first(where: { VocabularySensePolicy.index(selection, in: $0) != nil }),
-                      let index = VocabularySensePolicy.index(selection, in: entry) {
-                self.selection = entry.senses[index].id
-            } else if selection != nil { selection = nil }
-        }
-        .onChange(of: query) { _, value in
-            if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
-        }
-        .sheet(item: $exporting) { request in VocabularyExportSheet(store: store, request: request) }
-        .sheet(isPresented: $showingBatch) {
-            if let review {
-                VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
-                    $0.senseID.uuidString < $1.senseID.uuidString
-                })
-            }
-        }
-        .alert(String(localized: "Anki connection", table: "Vocabulary"), isPresented: Binding(
-            get: { reviewError != nil }, set: { if !$0 { reviewError = nil } })) {
-                Button(String(localized: "OK"), role: .cancel) { reviewError = nil }
-            } message: { Text(reviewError ?? "") }
-        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
-        .alert(String(localized: "Replace notebook?", table: "Vocabulary"), isPresented: Binding(
-            get: { restoreURL != nil }, set: { if !$0 { restoreURL = nil } })) {
-                Button(String(localized: "Cancel"), role: .cancel) { restoreURL = nil }
-                Button(String(localized: "Restore", table: "Vocabulary"), role: .destructive) {
-                    if let url = restoreURL { Task { await store.restore(from: url) } }
-                    restoreURL = nil
-                }
-            } message: { Text(String(localized: "Replace this notebook with the selected backup, including images and Anki associations.",
-                table: "Vocabulary")) }
-        .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
-            get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-                Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
-                Button(String(localized: "Delete"), role: .destructive) {
-                    if let target = deleting { Task { _ = await store.removeSense(entryID: target.entryID, senseID: target.senseID) } }
-                    deleting = nil
-                }
-            }
-        .alert(String(localized: "Vocabulary operation failed", table: "Vocabulary"), isPresented: Binding(
-            get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
-                Button(String(localized: "OK"), role: .cancel) { store.errorMessage = nil }
-            } message: { Text(store.errorMessage ?? "") }
     }
 
     private var selectedEntry: VocabularyEntry? {
@@ -229,7 +306,7 @@ struct VocabularyNotebookView: View {
         let all = selections(in: store.entries.sorted { newestFirst ? $0.updatedAt > $1.updatedAt : $0.updatedAt < $1.updatedAt })
         let selected = single.map { [$0] } ?? all.filter { batchSelection.contains($0) }
         let initial = single != nil ? VocabularyExportScope.selected : scope ?? (!selected.isEmpty ? .selected :
-            query.isEmpty && language == nil ? .all : .filtered)
+            query.isEmpty && language == nil && selectedTag.isEmpty ? .all : .filtered)
         exporting = .init(all: all, filtered: selections(in: visibleEntries), selected: selected, initialScope: initial)
     }
 
@@ -416,21 +493,5 @@ extension VocabularyEntry.Kind {
         case .pattern: String(localized: "Pattern", table: "Vocabulary")
         case .sentence: String(localized: "Sentence", table: "Vocabulary")
         }
-    }
-}
-
-/// A label is a projection, never an identity or a semantic matching key. A contextual draft
-/// can label an unnamed sense while its canonical summary remains explicitly editable.
-extension VocabularySense {
-    var displayTitle: String {
-        if !meaning.isEmpty { return meaning }
-        for block in content ?? [] {
-            if case let .text(value) = block.content, !value.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return value.text
-            }
-        }
-        if let text = examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
-        if !VocabularyContentPolicy.images(content ?? []).isEmpty { return String(localized: "Image explanation", table: "Vocabulary") }
-        return String(localized: "Meaning pending", table: "Vocabulary")
     }
 }

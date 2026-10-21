@@ -56,6 +56,11 @@ struct CotabbyApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
+            CommandGroup(after: .appSettings) {
+                Button(String(localized: "Vocabulary", table: "Vocabulary")) {
+                    appDelegate.vocabularyWindow.show()
+                }
+            }
         }
     }
 
