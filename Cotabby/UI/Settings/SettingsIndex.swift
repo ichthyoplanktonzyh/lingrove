@@ -165,7 +165,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .ankiReview: return String(localized: "Anki review", table: "Vocabulary")
-        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
         case .explanationModel: return String(localized: "AI explanation model", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")
@@ -460,7 +460,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var summary: String {
         switch self {
         case .ankiReview: return String(localized: "Anki connection and card defaults", table: "Vocabulary")
-        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
         case .explanationModel, .explanationParameters: return String(localized: "AI explanation", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .dictionarySources: return String(localized: "Enable and order dictionary sources.", table: "Learning")
@@ -603,7 +603,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var keywords: [String] {
         switch self {
         case .ankiReview: return ["Anki", "AnkiConnect", "review", "flashcard", "deck", "复习", "制卡", "牌组"]
-        case .ankiReviewFields: return ["Anki", "mapping", "fields", "template", "字段映射", "模板", "制卡字段"]
+        case .ankiReviewFields: return ["Anki", "cards", "front", "back", "template", "卡片", "正面", "背面", "模板", "字段映射"]
         case .explanationModel, .explanationParameters, .explanationLanguage:
             return ["explain", "explanation", "contextual meaning", "AI解释", "语境", "消歧", "讲解"]
         case .dictionarySources:

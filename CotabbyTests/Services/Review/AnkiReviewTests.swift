@@ -11,6 +11,7 @@ actor ReviewFakeAnki: AnkiConnecting {
     var decks = ["Default", "Other"]
     func setDecks(_ value: [String]) { decks = value }
     var notes: [Int64: [String: String]] = [:]
+    var noteModels: [Int64: String] = [:]
     var noteDecks: [Int64: String] = [:]
     var nextID: Int64 = 1_000
     var addCount = 0
@@ -19,6 +20,8 @@ actor ReviewFakeAnki: AnkiConnecting {
     var holdAdd: CheckedContinuation<Void, Never>?
     var pauseAdd = false
     var customFields: [String: [String]] = [:]
+    var flexibleTemplates = ReviewLayoutPolicy.templates
+    func unsafeFlexibleTemplate() { flexibleTemplates["Card"] = .object(["Front": .string("{{Back}}"), "Back": .string("{{Back}}")]) }
     var templates = AnkiNoteTemplate.templates
     var css = AnkiNoteTemplate.css
     var media: [String: Data] = [:]
@@ -72,7 +75,7 @@ actor ReviewFakeAnki: AnkiConnecting {
         case "notesInfo":
             return .array((params["notes"]?.array ?? []).map { value in
                 guard let id = value.integer, let fields = notes[id] else { return .object([:]) }
-                return .object(["noteId": .number(Double(id)), "modelName": .string(AnkiReviewPolicy.presetName),
+                return .object(["noteId": .number(Double(id)), "modelName": .string(noteModels[id] ?? AnkiReviewPolicy.presetName),
                     "fields": .object(fields.mapValues { .object(["value": .string($0)]) })])
             })
         case "addNote":
@@ -80,6 +83,7 @@ actor ReviewFakeAnki: AnkiConnecting {
             let note = params["note"]?.object ?? [:]
             nextID += 1; let id = nextID
             notes[id] = note["fields"]?.object?.compactMapValues(\.string) ?? [:]; addCount += 1
+            noteModels[id] = note["modelName"]?.string
             noteDecks[id] = note["deckName"]?.string
             if pauseAdd { await withCheckedContinuation { holdAdd = $0 } }
             if loseAddReply { loseAddReply = false; throw URLError(.networkConnectionLost) }
@@ -91,7 +95,7 @@ actor ReviewFakeAnki: AnkiConnecting {
         case "modelTemplates":
             templateReadCount += 1
             if templateReadCount == profileAtTemplateRead { profileName = "Changed profile" }
-            return .object(templates)
+            return .object(params["modelName"]?.string == ReviewLayoutPolicy.model ? flexibleTemplates : templates)
         case "modelStyling": return .object(["css": .string(css)])
         case "modelFieldAdd":
             let model = params["modelName"]?.string ?? ""
@@ -109,7 +113,10 @@ actor ReviewFakeAnki: AnkiConnecting {
         case "findCards": return .array([.number(10)])
         case "cardsInfo": return .array([.object(["deckName": .string("Other")])])
         case "guiDeckOverview": navigationDeck = params["name"]?.string; return .bool(true)
-        case "guiBrowse", "createModel": return .null
+        case "createModel":
+            customFields[params["modelName"]?.string ?? ""] = params["inOrderFields"]?.array?.compactMap(\.string) ?? []
+            return .null
+        case "guiBrowse": return .null
         default: throw AnkiReviewError.message("Unexpected fixture action: " + action)
         }
     }

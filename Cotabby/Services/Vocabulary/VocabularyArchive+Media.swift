@@ -11,7 +11,12 @@ extension VocabularyArchive {
     static let maximumMediaBytes = 128 * 1_024 * 1_024
 
     static func imageReferences(_ document: VocabularyDocument) -> [VocabularyImageReference] {
-        document.entries.flatMap { $0.senses.flatMap { VocabularyContentPolicy.images($0.content ?? []) } }
+        let senseImages = document.entries.flatMap { $0.senses.flatMap { sense in
+            VocabularyContentPolicy.images(sense.content ?? []) + sense.reviewLayouts.flatMap {
+                VocabularyContentPolicy.images($0.customContent)
+            }
+        } }
+        return senseImages + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
     }
 
     func prepareImage(_ data: Data) throws -> VocabularyPreparedImage { try VocabularyImageStorage.prepare(data) }
@@ -30,26 +35,38 @@ extension VocabularyArchive {
         // An edited sentence still carries its old explanation until commit normalizes it.
         // Validate media before staging, then let commit prune stale AI records and validate
         // the complete graph. Premature whole-document validation rejects legitimate edits.
-        for entry in next.entries {
-            for sense in entry.senses { try VocabularyContentPolicy.validate(sense.content ?? []) }
-        }
+        try validateMediaContent(next)
         let references = Self.imageReferences(next)
-        guard references.reduce(0, { $0 + $1.byteCount }) <= Self.maximumMediaBytes else { throw VocabularyError.oversizedArchive }
+        guard Set(references).reduce(0, { $0 + $1.byteCount }) <= Self.maximumMediaBytes else { throw VocabularyError.oversizedArchive }
         let existing = Set(Self.imageReferences(try load().document))
         var written: [VocabularyImageReference] = []
         do {
             for image in Set(references) {
+                try Task.checkCancellation()
                 if let data = supplied[image.filename] {
                     if try images.write(data, image: image) { written.append(image) }
                 } else if !existing.contains(image) {
                     _ = try images.read(image)
                 }
             }
+            // Cancellation is honored until the atomic metadata commit begins. Staged new
+            // files are rolled back below; an acknowledged JSON rename is never undone.
+            try Task.checkCancellation()
             return try commit(next)
         } catch {
             for image in written { images.remove(image) }
             throw error
         }
+    }
+
+    private func validateMediaContent(_ next: VocabularyDocument) throws {
+        for entry in next.entries {
+            for sense in entry.senses {
+                try VocabularyContentPolicy.validate(sense.content ?? [])
+                for layout in sense.reviewLayouts { try ReviewLayoutPolicy.validate(layout) }
+            }
+        }
+        try validateTemplates(next.reviewTemplates ?? [])
     }
 
     func backup(to destination: URL) throws {

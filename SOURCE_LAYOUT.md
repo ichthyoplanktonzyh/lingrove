@@ -476,8 +476,8 @@ selectable task list. Existing alignment preferences and downloaded files are no
 ## Anki review
 
 `Models/Review` owns review-only plans, durable pending/confirmed Anki bindings, connection
-snapshots and typed wire values. A sense's optional `review` property extends schema v3 without
-resetting existing libraries. The vocabulary archive remains the single atomic writer.
+snapshots and typed wire values. A sense owns independent `reviewCards`; the optional legacy `review` records remain readable
+without migration. The vocabulary archive remains the single atomic writer.
 `Support/Review` prepares cards from exact usage spans, escapes text for HTML, maps logical fields,
 compares last-synced/local/remote values and defines the versioned preset note template.
 
@@ -489,10 +489,10 @@ write, recovers uncertain acknowledgements by that identity, revalidates the act
 and records successful synchronization only after rereading the remote fields. Anki card IDs and
 scheduling remain under Anki's ownership. Removing existing card types is managed in Anki.
 
-`UI/Vocabulary/VocabularyReviewSection.swift` is the compact sense action/status row;
+`UI/Vocabulary/VocabularyReviewSection.swift` lists the sense's independent cards and status;
 `VocabularyReviewSheet.swift` edits review-only content and displays previews/conflict choices.
 `UI/Settings/Panes/LearningReviewSettingsSection.swift` reuses the grouped settings form under
-Language Learning → Review, including searchable advanced field mapping. Existing notebooks,
+Language Learning → Review, including searchable reusable card templates. Existing notebooks,
 dictionary lookups, explanation generation and favorites never trigger an Anki write themselves.
 
 ### Review audio, template and queue boundaries
@@ -520,3 +520,19 @@ per action and all generation is opt-in; collection, browsing and typing start n
 meaning hint nor answer audio. The two template names and ordinals remain stable during an explicit
 upgrade; customized templates are never overwritten and customized CSS is retained. Navigation
 opens Anki's deck overview, using a linked note's current deck, and leaves scheduling to Anki.
+
+### Flexible review cards
+
+`ReviewLayout` models independent cards under `VocabularySense.reviewCards` and reusable layouts
+under `VocabularyDocument.reviewTemplates`. Each card uses its plan UUID for remote identity;
+legacy review records are not migrated into cards. `ReviewLayoutPolicy` resolves ordered typed
+sources into the same safe HTML for preview and Anki. References follow stable usage/block IDs;
+card-only rich content belongs to the card. Missing sources block sending without discarding drafts.
+
+`VocabularyArchive+ReviewCards` keeps per-card CAS and template transactions inside the notebook
+actor. All accepted layouts, including retained plans, participate in backup and media garbage
+collection. `VocabularyReviewLayoutEditor` reuses the native rich-content editor and Front/Back
+segmented selection. Templates copy layout roles and custom prompts; applying one binds source
+slots to the destination sense and never rewrites existing cards. The generic Anki model has one
+card per note and three fields: LingroveID, Front, Back. Sends verify its live templates, destination,
+source and media, while the shared session retains conflict handling and lost-ack recovery.

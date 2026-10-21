@@ -18,6 +18,8 @@ nonisolated struct VocabularyReview: Codable, Equatable, Sendable {
 /// the source notebook. The sheet copies this value and commits it only on Save or Send.
 nonisolated struct ReviewPlan: Codable, Equatable, Sendable, Identifiable {
     var id = UUID()
+    var name: String?
+    var layout: ReviewLayout?
     var exampleID: UUID?
     var deck: String?
     var answer: String?
@@ -64,6 +66,8 @@ nonisolated struct ReviewCardContent: Equatable, Sendable {
     let recognition: Bool
     let gap: Bool
     var senseContent: [VocabularyContentBlock] = []
+    var front: [ReviewResolvedPart]?
+    var back: [ReviewResolvedPart]?
 }
 
 /// Logical fields remain independent of the user's Anki model. The preset owns a complete

@@ -11,46 +11,77 @@ struct VocabularyReviewSheet: View {
     @State private var operation: Task<Void, Never>?
     @State private var previewHeight: CGFloat = 180
 
-    init(controller: AnkiReviewController, entry: VocabularyEntry, sense: VocabularySense) {
-        _session = StateObject(wrappedValue: AnkiReviewSession(controller: controller, entry: entry, sense: sense))
+    init(controller: AnkiReviewController, entry: VocabularyEntry, sense: VocabularySense, cardID: UUID? = nil) {
+        _session = StateObject(wrappedValue: AnkiReviewSession(controller: controller, entry: entry, sense: sense, cardID: cardID))
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Form {
+                if session.cardID != nil {
+                    VocabularyReviewLayoutEditor(session: session, store: session.controller.store, operation: $operation)
+                    destination
+                } else {
                 preparation
                 VocabularyReviewAudioSection(session: session, operation: $operation)
                 if session.currentPresetTemplate || session.legacyPresetTemplate { presetPreview } else { mappedPreview }
+                }
                 if !session.conflicts.isEmpty { conflictSection }
                 if let validation = session.validationMessage {
                     Section { Text(validation).font(.caption).foregroundStyle(.secondary) }
                 }
                 if let message = session.message { Section { Text(message).foregroundStyle(.red).textSelection(.enabled) } }
-            }.formStyle(.grouped).disabled(operation != nil || session.busy || session.audio.generating != nil)
+            }.formStyle(.grouped).disabled(operation != nil || session.busy || session.audio.generating != nil || session.importingImage)
             HStack {
                 Button(String(localized: "Review settings", table: "Vocabulary")) {
                     perform {
                         if await session.save() { dismiss(); session.controller.configure?() }
                     }
-                }.buttonStyle(.link).disabled(operation != nil || session.busy || session.audio.generating != nil)
+                }.buttonStyle(.link).disabled(operation != nil || session.busy || session.audio.generating != nil || session.importingImage)
                 Spacer()
                 Button(String(localized: "Cancel"), role: .cancel) { operation?.cancel(); dismiss() }.keyboardShortcut(.cancelAction)
                 Button(String(localized: "Save", table: "Vocabulary")) { perform { if await session.save() { dismiss() } } }
-                    .disabled(operation != nil || session.busy || session.audio.generating != nil)
-                if session.busy || session.loading || session.audio.generating != nil { ProgressView().controlSize(.small) }
+                    .disabled(operation != nil || session.busy || session.audio.generating != nil || session.importingImage)
+                if session.busy || session.loading || session.audio.generating != nil
+                    || session.importingImage { ProgressView().controlSize(.small) }
                 Button(session.missingNote ? String(localized: "Re-add to Anki", table: "Vocabulary")
                     : session.binding?.noteID == nil ? String(localized: "Add to Anki", table: "Vocabulary")
                     : String(localized: "Update Anki", table: "Vocabulary")) {
                     perform { if await session.send(recreateMissing: session.missingNote) { dismiss() } }
                 }.keyboardShortcut(.defaultAction)
-                    .disabled(session.busy || operation != nil || session.audio.generating != nil || session.loading ||
+                    .disabled(session.busy || operation != nil || session.audio.generating != nil || session.importingImage
+                        || session.loading ||
                         session.validationMessage != nil ||
                         session.conflicts.contains { session.keepRemote[$0.id] == nil })
             }.padding()
         }
-        .frame(width: 680, height: 690).interactiveDismissDisabled(session.busy)
+        .frame(width: 680, height: 690).interactiveDismissDisabled(session.busy || session.importingImage)
         .task(id: session.bindingID) { await session.load() }
         .onDisappear { operation?.cancel(); session.audio.discard() }
+        .onChange(of: session.plan.layout) { _, layout in
+            let referenced = Set(VocabularyContentPolicy.images(layout?.customContent ?? []).map(\.filename))
+            session.importedImages = session.importedImages.filter { referenced.contains($0.key) }
+        }
+    }
+
+    private var destination: some View {
+        Section(String(localized: "Anki connection", table: "Vocabulary")) {
+            if let review = session.savedReview, review.bindings.count > 1 {
+                Picker(String(localized: "Anki association", table: "Vocabulary"), selection: Binding(
+                    get: { session.bindingID }, set: { session.selectBinding($0) })) {
+                    Text(String(localized: "Choose…", table: "Vocabulary")).tag(nil as UUID?)
+                    ForEach(review.bindings) { binding in
+                        Text(binding.profile + " · " + (binding.noteID.map(String.init) ?? "—")).tag(Optional(binding.id))
+                    }
+                }
+            }
+            if let catalog = session.catalog {
+                Picker(String(localized: "Deck", table: "Vocabulary"), selection: $session.deck) {
+                    ForEach(Array(Set(catalog.decks + [session.deck])).sorted(), id: \.self) { Text($0).tag($0) }
+                }.disabled(session.binding?.noteID != nil)
+                LabeledContent(String(localized: "Anki profile", table: "Vocabulary"), value: catalog.profile)
+            } else { TextField(String(localized: "Deck", table: "Vocabulary"), text: $session.deck) }
+        }
     }
 
     /// Claim the UI operation synchronously, before the Task can suspend. This closes the small

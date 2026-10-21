@@ -7,6 +7,20 @@ extension AnkiReviewSession {
     /// Older official templates exposed Meaning on the gap front. Check the live template at
     /// send time, not only cached sheet metadata, before placing image answers in that field.
     func validateImageTemplate(_ content: ReviewCardContent, connection: AnkiConnection) async throws {
+        if model == ReviewLayoutPolicy.model {
+            let models = try controller.strings(await controller.call("modelNames", [:], connection))
+            try validateCurrent(content, connection: connection)
+            if models.contains(model) {
+                let templates = try await controller.call("modelTemplates", ["modelName": .string(model)], connection)
+                try validateCurrent(content, connection: connection)
+                guard templates == .object(ReviewLayoutPolicy.templates) else {
+                    throw AnkiReviewError.message(String(
+                        localized: "The Anki card template changed. Restore Front and Back before sending.",
+                        table: "Vocabulary"))
+                }
+            }
+            return
+        }
         guard model == AnkiReviewPolicy.presetName, plan.gap, !content.senseContent.isEmpty else { return }
         let models = try controller.strings(await controller.call("modelNames", [:], connection))
         try validateCurrent(content, connection: connection)

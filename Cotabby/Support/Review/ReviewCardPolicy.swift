@@ -8,6 +8,7 @@ nonisolated enum ReviewCardPolicy {
     }
 
     static func content(entry: VocabularyEntry, sense: VocabularySense, plan: ReviewPlan) throws -> ReviewCardContent {
+        if plan.layout != nil { return try ReviewLayoutPolicy.content(entry: entry, sense: sense, plan: plan) }
         let example = sense.examples.first { $0.id == plan.exampleID }
         guard plan.exampleID == nil || example != nil else {
             throw AnkiReviewError.message(String(localized: "Choose a review example again.", table: "Vocabulary"))
