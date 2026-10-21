@@ -94,6 +94,9 @@ nonisolated enum VocabularySensePolicy {
             merged.note = [merged.note, original.note].filter { !$0.isEmpty }.joined(separator: "\n\n")
         }
         merged.tags = Array(Set(merged.tags + original.tags)).sorted()
+        merged.content = (merged.content ?? []) + (original.content ?? []).filter { block in
+            !(merged.content ?? []).contains { $0.id == block.id }
+        }
         merged.examples += original.examples
         merged.standaloneMeanings += original.standaloneMeanings.filter { !merged.standaloneMeanings.contains($0) }
         merged.isSavedWithoutContext = merged.isSavedWithoutContext || original.isSavedWithoutContext

@@ -20,7 +20,7 @@ struct VocabularyReviewSheet: View {
             Form {
                 preparation
                 VocabularyReviewAudioSection(session: session, operation: $operation)
-                if session.currentPresetTemplate { presetPreview } else { mappedPreview }
+                if session.currentPresetTemplate || session.legacyPresetTemplate { presetPreview } else { mappedPreview }
                 if !session.conflicts.isEmpty { conflictSection }
                 if let validation = session.validationMessage {
                     Section { Text(validation).font(.caption).foregroundStyle(.secondary) }
@@ -137,6 +137,8 @@ struct VocabularyReviewSheet: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Toggle(String(localized: "Include notes", table: "Vocabulary"), isOn: $session.plan.includeNotes)
+            Toggle(String(localized: "Include sense explanation", table: "Vocabulary"), isOn: Binding(
+                get: { session.plan.includeSenseContent == true }, set: { session.plan.includeSenseContent = $0 }))
             Toggle(String(localized: "Include AI explanation", table: "Vocabulary"), isOn: $session.plan.includeExplanation)
             if !session.plan.fieldOverrides.isEmpty {
                 Button(String(localized: "Use notebook fields again", table: "Vocabulary")) { session.plan.fieldOverrides = [:] }
@@ -162,9 +164,14 @@ struct VocabularyReviewSheet: View {
                 let enabled = gapPreview ? !(fields[ReviewField.gapPrompt.rawValue] ?? "").isEmpty
                     : !(fields[ReviewField.recognition.rawValue] ?? "").isEmpty
                 if enabled {
-                    let html = AnkiNoteTemplate.preview(fields: fields, gap: gapPreview, back: back, css: session.presetCSS)
+                    let html = AnkiNoteTemplate.preview(fields: fields, gap: gapPreview, back: back, css: session.presetCSS,
+                        legacy: session.legacyPresetTemplate)
                     DictionaryHTMLView(article: .init(html: html, text: "", sourceName: "Lingrove"),
-                        loadResource: { _ in nil }, reference: { _ in }, height: $previewHeight)
+                        loadResource: { path in
+                            guard let image = VocabularyContentPolicy.images(content.senseContent).first(where: { $0.filename == path }),
+                                  let data = await session.controller.store.image(image) else { return nil }
+                            return .init(data: data, mimeType: "image/png")
+                        }, reference: { _ in }, height: $previewHeight)
                         .frame(height: previewHeight).id(html)
                 } else { Text(String(localized: "This card is not enabled.", table: "Vocabulary")) }
             }

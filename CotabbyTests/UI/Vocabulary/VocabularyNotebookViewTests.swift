@@ -90,6 +90,12 @@ struct VocabularyNotebookViewTests {
             kind: .expression, meaning: "随时告诉我最新进展", example: VocabularyPolicy.example(text: text,
                 ranges: [(text as NSString).range(of: "keep me posted")], language: .english))
         await store.save(capture)
+        let before = try #require(store.entries.first)
+        var annotated = before
+        let image = try await store.prepareImage(VocabularyImageTestFixture.png())
+        annotated.senses[0].content = [.init(content: .text(.init(text: "Keep someone informed", bold: true))),
+            .init(content: .image(image.reference, caption: "An explanation image"))]
+        #expect(await store.update(annotated, basedOn: before, importedImages: [image.reference.filename: image.data]))
         let entry = try #require(store.entries.first)
         let suite = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -118,6 +124,10 @@ struct VocabularyNotebookViewTests {
         }
         window.contentView = NSHostingView(rootView: VocabularyEntryEditor(entry: entry, store: store))
         window.contentView?.layoutSubtreeIfNeeded()
-        #expect(window.contentView?.fittingSize.width == 580)
+        #expect(window.contentView?.fittingSize.width == 680)
+        if let editor = window.contentView, let bitmap = editor.bitmapImageRepForCachingDisplay(in: editor.bounds) {
+            editor.cacheDisplay(in: editor.bounds, to: bitmap)
+            try bitmap.representation(using: .png, properties: [:])?.write(to: output.appendingPathComponent("content-editor.png"))
+        }
     }
 }

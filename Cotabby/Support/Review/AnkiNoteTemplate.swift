@@ -63,10 +63,12 @@ nonisolated enum AnkiNoteTemplate {
 
     /// Only our own static templates are interpreted. Field values are inserted after conditional
     /// processing in a single pass, so user text containing braces never becomes template code.
-    static func preview(fields: [String: String], gap: Bool, back: Bool, css: String = Self.css) -> String {
-        let front = render(gap ? gapFront : recognitionFront, fields: fields)
+    static func preview(fields: [String: String], gap: Bool, back: Bool, css: String = Self.css, legacy: Bool = false) -> String {
+        let frontTemplate = gap ? (legacy ? legacyGapFront : gapFront) : (legacy ? legacyRecognitionFront : recognitionFront)
+        let backTemplate = gap ? (legacy ? legacyGapBack : gapBack) : (legacy ? legacyRecognitionBack : recognitionBack)
+        let front = render(frontTemplate, fields: fields)
         let sides = fields.merging(["FrontSide": front]) { _, value in value }
-        let body = back ? render(gap ? gapBack : recognitionBack, fields: sides) : front
+        let body = back ? render(backTemplate, fields: sides) : front
         let silent = body.replacingOccurrences(of: "\\[sound:[^\\]]+\\]", with: "", options: .regularExpression)
         return "<style>" + css + "</style><div class='card'>" + silent + "</div>"
     }

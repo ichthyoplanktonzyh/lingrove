@@ -4,7 +4,7 @@ import Foundation
 /// starts no model, reads no dictionary, and escapes all text before it can become Anki HTML.
 nonisolated enum ReviewCardPolicy {
     static func initialPlan(_ sense: VocabularySense) -> ReviewPlan {
-        sense.review?.plan ?? ReviewPlan(exampleID: sense.examples.first?.id)
+        sense.review?.plan ?? ReviewPlan(exampleID: sense.examples.first?.id, includeSenseContent: true)
     }
 
     static func content(entry: VocabularyEntry, sense: VocabularySense, plan: ReviewPlan) throws -> ReviewCardContent {
@@ -19,7 +19,9 @@ nonisolated enum ReviewCardPolicy {
         let sentence = example?.text ?? ""
         let ranges = example?.ranges ?? []
         let gap = gap(in: sentence, ranges: ranges, kind: entry.kind)
-        guard !answer.isEmpty else {
+        let blocks = plan.includeSenseContent == true ? sense.content ?? [] : []
+        try VocabularyContentPolicy.validate(blocks)
+        guard !answer.isEmpty || VocabularyContentPolicy.meaningful(blocks) else {
             throw AnkiReviewError.message(String(localized: "Add a review answer before sending.", table: "Vocabulary"))
         }
         guard plan.recognition || plan.gap, !plan.gap || gap != nil else {
@@ -29,7 +31,7 @@ nonisolated enum ReviewCardPolicy {
         let explanation = plan.includeExplanation ? records.last?.result.explanation ?? "" : ""
         return .init(expression: entry.expression, answer: answer, sentence: sentence, ranges: ranges,
             translation: example?.translation ?? "", explanation: explanation, notes: plan.includeNotes ? sense.note : "",
-            gapPrompt: gap?.prompt ?? "", gapAnswer: gap?.answer ?? "", recognition: plan.recognition, gap: plan.gap)
+            gapPrompt: gap?.prompt ?? "", gapAnswer: gap?.answer ?? "", recognition: plan.recognition, gap: plan.gap, senseContent: blocks)
     }
 
     /// Multiple spans preserve discontinuous expressions. Validate grapheme boundaries and
@@ -68,7 +70,8 @@ nonisolated enum ReviewCardPolicy {
     }
 
     static func values(_ content: ReviewCardContent, identity: UUID) -> [ReviewField: String] {
-        [.identity: identity.uuidString.lowercased(), .expression: html(content.expression), .meaning: html(content.answer),
+        [.identity: identity.uuidString.lowercased(), .expression: html(content.expression),
+         .meaning: html(content.answer) + VocabularyContentPolicy.html(content.senseContent),
          .sentence: sentenceHTML(content), .translation: html(content.translation), .explanation: html(content.explanation),
          .notes: html(content.notes), .recognition: content.recognition ? "1" : "",
          .gapPrompt: content.gap ? html(content.gapPrompt) : "", .gapAnswer: content.gap ? html(content.gapAnswer) : ""]

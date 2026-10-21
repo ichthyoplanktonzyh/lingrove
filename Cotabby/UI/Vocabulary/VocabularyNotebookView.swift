@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// A normal document-like window, not another settings pane. The environment injects the same
 /// store used by cards and the existing speech controller; this view owns only browsing state.
 struct VocabularyNotebookView: View {
+    @State private var restoreURL: URL?
     @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
     var learning: VocabularyNotebookSession?
@@ -137,9 +138,15 @@ struct VocabularyNotebookView: View {
                     : String(localized: "Oldest first", table: "Vocabulary"))
             }
             ToolbarItem {
-                Button(action: export) { Image(systemName: "square.and.arrow.up") }
-                    .help(String(localized: "Export notebook…", table: "Vocabulary"))
-                    .disabled(!store.isLoaded || store.entries.isEmpty)
+                Menu {
+                    Button(String(localized: "Back up notebook…", table: "Vocabulary"), action: backup)
+                    Button(String(localized: "Export data (JSON)…", table: "Vocabulary"), action: export)
+                        .disabled(store.entries.isEmpty)
+                    Divider()
+                    Button(String(localized: "Restore notebook…", table: "Vocabulary"), action: chooseBackup)
+                } label: { Image(systemName: "square.and.arrow.up") }
+                    .help(String(localized: "Notebook backup", table: "Vocabulary"))
+                    .disabled(!store.isLoaded)
             }
         }
         .frame(minWidth: 760, minHeight: 460)
@@ -171,6 +178,15 @@ struct VocabularyNotebookView: View {
                 Button(String(localized: "OK"), role: .cancel) { reviewError = nil }
             } message: { Text(reviewError ?? "") }
         .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
+        .alert(String(localized: "Replace notebook?", table: "Vocabulary"), isPresented: Binding(
+            get: { restoreURL != nil }, set: { if !$0 { restoreURL = nil } })) {
+                Button(String(localized: "Cancel"), role: .cancel) { restoreURL = nil }
+                Button(String(localized: "Restore", table: "Vocabulary"), role: .destructive) {
+                    if let url = restoreURL { Task { await store.restore(from: url) } }
+                    restoreURL = nil
+                }
+            } message: { Text(String(localized: "Replace this notebook with the selected backup, including images and Anki associations.",
+                table: "Vocabulary")) }
         .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
@@ -202,6 +218,23 @@ struct VocabularyNotebookView: View {
             guard response == .OK, let url = panel.url else { return }
             Task { await store.export(to: url) }
         }
+    }
+
+    private func backup() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "lingrove") ?? .data]
+        panel.nameFieldStringValue = "Lingrove-vocabulary.lingrove"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { await store.backup(to: url) }
+        }
+    }
+
+    private func chooseBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "lingrove") ?? .data]
+        panel.allowsMultipleSelection = false
+        panel.begin { response in if response == .OK { restoreURL = panel.url } }
     }
 }
 
@@ -240,6 +273,14 @@ private struct VocabularyEntryDetail: View {
                 }
                 if !sense.isSavedWithoutContext, !sense.meaning.isEmpty {
                     section(String(localized: "Core meaning", table: "Vocabulary")) { Text(sense.meaning).textSelection(.enabled) }
+                }
+                section(String(localized: "Sense explanation", table: "Vocabulary")) {
+                    if let blocks = sense.content, !blocks.isEmpty {
+                        VocabularyContentView(blocks: blocks, store: store)
+                        Button(String(localized: "Edit", table: "Vocabulary"), action: edit).buttonStyle(.link)
+                    } else {
+                        Button(String(localized: "Add explanation", table: "Vocabulary"), action: edit).buttonStyle(.link)
+                    }
                 }
                 ForEach(Array(sense.standaloneMeanings.filter {
                     !$0.text.isEmpty && $0.language != sense.meaningLanguage
@@ -370,7 +411,13 @@ extension VocabularyEntry.Kind {
 extension VocabularySense {
     var displayTitle: String {
         if !meaning.isEmpty { return meaning }
+        for block in content ?? [] {
+            if case let .text(value) = block.content, !value.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return value.text
+            }
+        }
         if let text = examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
+        if !VocabularyContentPolicy.images(content ?? []).isEmpty { return String(localized: "Image explanation", table: "Vocabulary") }
         return String(localized: "Meaning pending", table: "Vocabulary")
     }
 }

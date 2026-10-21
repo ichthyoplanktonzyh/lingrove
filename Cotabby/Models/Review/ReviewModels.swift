@@ -25,6 +25,7 @@ nonisolated struct ReviewPlan: Codable, Equatable, Sendable, Identifiable {
     var gap = false
     var includeNotes = false
     var includeExplanation = false
+    var includeSenseContent: Bool?
     var fieldOverrides: [String: String] = [:]
     /// Optional additions preserve old v3 archives. Audio is generated only by an explicit
     /// preparation/send action; the notebook stores receipts, never audio bytes or credentials.
@@ -62,6 +63,7 @@ nonisolated struct ReviewCardContent: Equatable, Sendable {
     let gapAnswer: String
     let recognition: Bool
     let gap: Bool
+    var senseContent: [VocabularyContentBlock] = []
 }
 
 /// Logical fields remain independent of the user's Anki model. The preset owns a complete

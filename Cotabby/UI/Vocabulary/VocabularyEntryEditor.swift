@@ -9,6 +9,8 @@ struct VocabularyEntryEditor: View {
     @State private var draft: VocabularyEntry
     @State private var tags: String
     @State private var saving = false
+    @State private var importedImages: [String: Data] = [:]
+    @State private var importingImage = false
     @State private var failure: String?
     @Environment(\.dismiss) private var dismiss
 
@@ -32,6 +34,9 @@ struct VocabularyEntryEditor: View {
                         TextField(String(localized: "Notes", table: "Vocabulary"), text: $draft.senses[sense].note, axis: .vertical)
                         TextField(String(localized: "Tags", table: "Vocabulary"), text: $tags)
                     }
+                    VocabularyContentEditor(blocks: Binding(
+                        get: { draft.senses[sense].content ?? [] }, set: { draft.senses[sense].content = $0 }),
+                        importedImages: $importedImages, store: store, importing: $importingImage)
                     ForEach($draft.senses[sense].examples) { $example in
                         Section(String(localized: "Example sentence", table: "Vocabulary")) {
                             TextField(String(localized: "Original text", table: "Vocabulary"), text: $example.text, axis: .vertical)
@@ -68,11 +73,11 @@ struct VocabularyEntryEditor: View {
                         } label: { Label(String(localized: "Add example", table: "Vocabulary"), systemImage: "plus") }
                     }
                 }
-            }.formStyle(.grouped)
+            }.formStyle(.grouped).disabled(saving)
             if let failure { Text(failure).font(.caption).foregroundStyle(.red).padding(.horizontal) }
             HStack {
                 Spacer()
-                Button(String(localized: "Cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(String(localized: "Cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction).disabled(saving)
                 Button(String(localized: "Save", table: "Vocabulary")) {
                     saving = true
                     var value = draft
@@ -80,15 +85,17 @@ struct VocabularyEntryEditor: View {
                     value.senses[sense].tags = Array(Set(tags.split(whereSeparator: { $0 == "," || $0 == "，" })
                         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })).sorted()
                     Task {
-                        if await store.update(value, basedOn: baseline) { dismiss() } else { failure = store.errorMessage }
+                        if await store.update(value, basedOn: baseline, importedImages: importedImages) {
+                            dismiss()
+                        } else { failure = store.errorMessage }
                         saving = false
                     }
                 }.keyboardShortcut(.defaultAction)
-                    .disabled(saving || draft.expression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(saving || importingImage || draft.expression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .disabled(draft.senses.first { $0.id == senseID }?.examples.contains {
                         $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     } ?? true)
             }.padding()
-        }.frame(width: 580, height: 570).interactiveDismissDisabled(saving)
+        }.frame(width: 680, height: 650).interactiveDismissDisabled(saving)
     }
 }
