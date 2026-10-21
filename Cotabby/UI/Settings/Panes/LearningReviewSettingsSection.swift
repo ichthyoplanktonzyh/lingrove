@@ -4,18 +4,15 @@ import SwiftUI
 /// reads the optional Keychain value; only Test Connection or a model selection performs HTTP.
 struct LearningReviewSettingsSection: View {
     @ObservedObject var controller: AnkiReviewController
+    @ObservedObject private var store: VocabularyStore
     @ObservedObject private var settings: AnkiReviewSettings
     @State private var key = ""
     @State private var savedKey = ""
     @State private var keyError: String?
     @FocusState private var keyFocused: Bool
-    @State private var advanced = false
-    @State private var updatingTemplate = false
-    @State private var templateMessage: String?
-    @Environment(\.settingsHighlightedItem) private var highlightedItem
 
     init(controller: AnkiReviewController) {
-        self.controller = controller; settings = controller.settings
+        self.controller = controller; settings = controller.settings; store = controller.store
     }
 
     var body: some View {
@@ -27,7 +24,7 @@ struct LearningReviewSettingsSection: View {
             HStack {
                 Button(String(localized: "Test connection", table: "Vocabulary")) {
                     saveKey()
-                    if keyError == nil { Task { await controller.testConnection() } }
+                    if keyError == nil { Task { await controller.testConnection(model: ReviewLayoutPolicy.model) } }
                 }.disabled(controller.testing || controller.sendingSenseID != nil)
                 if controller.testing { ProgressView().controlSize(.small) }
                 if let message = keyError ?? controller.connectionMessage {
@@ -46,50 +43,26 @@ struct LearningReviewSettingsSection: View {
             } else {
                 TextField(String(localized: "Deck", table: "Vocabulary"), text: $settings.deck)
             }
-            LabeledContent(String(localized: "Note type", table: "Vocabulary"), value: settings.model)
-            if settings.model == AnkiReviewPolicy.presetName {
-                Toggle(String(localized: "Recognition card", table: "Vocabulary"), isOn: $settings.defaultRecognition)
-                Toggle(String(localized: "Gap card", table: "Vocabulary"), isOn: $settings.defaultGap)
-                Button(String(localized: "Update Lingrove template", table: "Vocabulary")) {
-                    updatingTemplate = true
-                    Task {
-                        defer { updatingTemplate = false }
-                        do {
-                            try await controller.updatePresetTemplate()
-                            templateMessage = String(localized: "Updated", table: "Vocabulary")
-                        } catch { templateMessage = error.localizedDescription }
-                    }
-                }.disabled(updatingTemplate || controller.sendingSenseID != nil)
-                if let templateMessage { Text(templateMessage).font(.caption).foregroundStyle(.secondary) }
+            LabeledContent(String(localized: "Note type", table: "Vocabulary"), value: ReviewLayoutPolicy.model)
+        }
+        Section(String(localized: "Card templates", table: "Vocabulary")) {
+            ForEach(store.reviewTemplates) { template in
+                HStack {
+                    Text(template.name)
+                    Spacer()
+                    Button(role: .destructive) { Task { try? await store.removeTemplate(template.id) } } label: {
+                        Image(systemName: "trash")
+                    }.buttonStyle(.borderless).help(String(localized: "Delete", table: "Vocabulary"))
+                }
             }
-        }
-        Section {
-            DisclosureGroup(String(localized: "Advanced settings", table: "Learning"), isExpanded: $advanced) {
-                Picker(String(localized: "Note type", table: "Vocabulary"), selection: $settings.model) {
-                    ForEach(Array(Set((controller.catalog?.models ?? [])
-                        + [settings.model, AnkiReviewPolicy.presetName])).sorted(),
-                            id: \.self) { Text($0).tag($0) }
-                }
-                if settings.model != AnkiReviewPolicy.presetName {
-                    ForEach(ReviewField.allCases) { field in
-                        Picker(field.label, selection: Binding(
-                            get: { settings.mapping[field] ?? "" }, set: { settings.mapping[field] = $0 })) {
-                            Text(String(localized: "Not mapped", table: "Vocabulary")).tag("")
-                            ForEach(Array(Set(controller.modelFields + [settings.mapping[field] ?? ""])).filter { !$0.isEmpty }.sorted(),
-                                    id: \.self) { Text($0).tag($0) }
-                        }
-                    }
-                }
-            }.settingsItem(.ankiReviewFields)
-        }
+        }.settingsItem(.ankiReviewFields)
         .onAppear {
+            store.loadIfNeeded()
             do { key = try settings.readKey(); savedKey = key } catch { keyError = error.localizedDescription }
         }
         .onDisappear(perform: saveKey)
         .onChange(of: keyFocused) { _, focused in if !focused { saveKey() } }
-        .onChange(of: settings.model) { _, _ in Task { await controller.refreshFields() } }
         .onChange(of: settings.address) { _, _ in controller.invalidateConnection() }
-        .onChange(of: highlightedItem, initial: true) { _, item in if item == .ankiReviewFields { advanced = true } }
     }
 
     private func saveKey() {

@@ -7,30 +7,43 @@ import Foundation
 @MainActor
 final class AnkiReviewBatchSession: ObservableObject {
     let controller: AnkiReviewController
+    let emptySenseCount: Int
     @Published private(set) var items: [ReviewBatchItem]
     @Published private(set) var busy = false
     @Published private(set) var message: String?
     var work: Task<Void, Never>?
     private var preparationBaselines: [UUID: (sense: VocabularySense, expression: String)] = [:]
 
-    init(controller: AnkiReviewController, selections: [VocabularySelection]) {
+    init(controller: AnkiReviewController, selections: [VocabularySelection], flexible: Bool = false) {
         self.controller = controller
+        emptySenseCount = flexible ? Set(selections).filter { selection in
+            guard let entry = controller.store.entries.first(where: { $0.id == selection.entryID }),
+                  let index = VocabularySensePolicy.index(selection.senseID, in: entry) else { return true }
+            return entry.senses[index].reviewCards?.isEmpty != false
+        }.count : 0
         var seen: Set<VocabularySelection> = []
-        items = selections.filter { seen.insert($0).inserted }.map { selection in
+        items = selections.filter { seen.insert($0).inserted }.flatMap { selection -> [ReviewBatchItem] in
             let entry = controller.store.entries.first { $0.id == selection.entryID }
             let sense = entry.flatMap { entry in VocabularySensePolicy.index(selection.senseID, in: entry).map { entry.senses[$0] } }
-            var item = ReviewBatchItem(selection: selection, expression: entry?.expression ?? "", meaning: sense?.displayTitle ?? "")
-            if let entry, let sense, controller.isSynchronized(entry, sense) {
-                item.status = sense.review?.plan.audioKinds?.isEmpty == false ? .verifyAudio : .synced
+            let cardIDs: [UUID?] = flexible ? (sense?.reviewCards ?? []).map { Optional($0.plan.id) } : [nil]
+            return cardIDs.map { cardID in
+                let review = sense?.reviewValue(cardID)
+                var item = ReviewBatchItem(selection: selection, cardID: cardID, expression: entry?.expression ?? "",
+                    meaning: review?.plan.name ?? sense?.displayTitle ?? "")
+                if let entry, let sense, controller.isSynchronized(entry, sense, cardID: cardID) {
+                    item.status = review?.plan.audioKinds?.isEmpty == false ? .verifyAudio : .synced
+                }
+                return item
             }
-            return item
         }
     }
     var completeCount: Int { items.filter { $0.status == .synced }.count }
     func resolve(_ item: ReviewBatchItem) -> (VocabularyEntry, VocabularySense)? {
         guard let entry = controller.store.entries.first(where: { $0.id == item.selection.entryID }),
               let index = VocabularySensePolicy.index(item.selection.senseID, in: entry) else { return nil }
-        return (entry, entry.senses[index])
+        let sense = entry.senses[index]
+        guard item.cardID == nil || sense.reviewValue(item.cardID) != nil else { return nil }
+        return (entry, sense)
     }
     func beginPreparation(_ id: UUID) {
         guard let item = items.first(where: { $0.id == id }), let (entry, sense) = resolve(item) else { return }
@@ -40,9 +53,11 @@ final class AnkiReviewBatchSession: ObservableObject {
         guard let index = items.firstIndex(where: { $0.id == id }), let (entry, sense) = resolve(items[index]) else { return }
         if let before = preparationBaselines.removeValue(forKey: id), before.sense == sense,
            before.expression == entry.expression { return }
-        items[index].expression = entry.expression; items[index].meaning = sense.displayTitle
+        items[index].expression = entry.expression
+        items[index].meaning = sense.reviewValue(items[index].cardID)?.plan.name ?? sense.displayTitle
         // Preparation changes a previously sent row deliberately; ordinary retry never does.
-        items[index].status = controller.isSynchronized(entry, sense) ? .synced : .ready; items[index].message = nil
+        items[index].status = controller.isSynchronized(entry, sense,
+            cardID: items[index].cardID) ? .synced : .ready; items[index].message = nil
     }
     func start(only id: UUID? = nil) {
         guard !busy else { return }
@@ -64,7 +79,7 @@ final class AnkiReviewBatchSession: ObservableObject {
                 continue
             }
             guard let (entry, sense) = resolve(items[index]) else { items[index].status = .unavailable; continue }
-            let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense)
+            let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense, cardID: items[index].cardID)
             await session.load()
             if Task.isCancelled { items[index].status = .cancelled; continue }
             applyOptions(session, deck: deck, cards: cards, audio: audio)
@@ -76,6 +91,7 @@ final class AnkiReviewBatchSession: ObservableObject {
 
     private func applyOptions(_ session: AnkiReviewSession, deck: String, cards: Int, audio: Int) {
             if !deck.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, session.binding?.noteID == nil { session.deck = deck }
+            if session.cardID != nil { return }
             if cards > 0 { session.plan.recognition = cards != 2; session.plan.gap = cards != 1 }
             if audio > 0 {
                 let kinds: Set<ReviewAudioKind> = switch audio {
@@ -98,21 +114,23 @@ final class AnkiReviewBatchSession: ObservableObject {
                 ? decks.first ?? scope.defaultDeck : scope.defaultDeck
             try await controller.verify(scope)
             var seen = Set(items.filter { $0.status == .synced }.compactMap { item in
-                resolve(item).map { VocabularySelection(entryID: $0.0.id, senseID: $0.1.id) }
+                resolve(item).map { item.cardID ?? $0.1.id }
             })
             for index in items.indices {
                 if let id, items[index].id != id { continue }
                 if items[index].status == .synced || items[index].status == .skipped { continue }
                 try Task.checkCancellation()
                 guard let (entry, sense) = resolve(items[index]) else { items[index].status = .unavailable; continue }
-                let canonical = VocabularySelection(entryID: entry.id, senseID: sense.id)
+                let canonical = items[index].cardID ?? sense.id
                 if !seen.insert(canonical).inserted { items[index].status = .skipped; continue }
                 try await controller.verify(scope)
                 items[index].status = .sending; items[index].message = nil
-                let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense, defaults: scope)
+                let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense, defaults: scope,
+                    cardID: items[index].cardID)
                 // Existing preparations/bindings retain their deck. Unprepared rows share the
                 // batch's captured default even if another window edits preferences mid-run.
-                if sense.review?.activeBinding == nil, sense.review?.plan.deck == nil { session.deck = defaultDeck }
+                if sense.reviewValue(items[index].cardID)?.activeBinding == nil,
+                    sense.reviewValue(items[index].cardID)?.plan.deck == nil { session.deck = defaultDeck }
                 await session.load()
                 if let issue = session.validationMessage {
                     items[index].status = .attention; items[index].message = issue; continue

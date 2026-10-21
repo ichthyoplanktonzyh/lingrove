@@ -31,7 +31,11 @@ nonisolated enum AnkiReviewPolicy {
             throw AnkiReviewError.message(String(localized: "Map unique fields for the sense ID, expression and answer.",
                 table: "Vocabulary"))
         }
-        let values = ReviewCardPolicy.values(content, identity: identity).merging(audio) { _, value in value }
+        var values = ReviewCardPolicy.values(content, identity: identity).merging(audio) { _, value in value }
+        if let front = content.front, let back = content.back {
+            values[.expression] = ReviewLayoutPolicy.html(front, audio: audio)
+            values[.meaning] = ReviewLayoutPolicy.html(back, audio: audio)
+        }
         var result = Dictionary(uniqueKeysWithValues: selected.map { ($0.value, values[$0.key] ?? "") })
         for (field, value) in overrides where result[field] != nil && field != selected[.identity] { result[field] = value }
         guard result.values.reduce(0, { $0 + $1.utf8.count }) <= 1_000_000 else {

@@ -7,34 +7,23 @@ struct VocabularyReviewBatchSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var preparing: ReviewBatchItem?
     @State private var deck = ""
-    @State private var cards = 0
-    @State private var audio = 0
     init(controller: AnkiReviewController, selections: [VocabularySelection]) {
-        _batch = StateObject(wrappedValue: AnkiReviewBatchSession(controller: controller, selections: selections))
+        _batch = StateObject(wrappedValue: AnkiReviewBatchSession(controller: controller, selections: selections, flexible: true))
     }
     var body: some View {
         VStack(spacing: 0) {
             Form {
                 Section(String(localized: "Batch defaults", table: "Vocabulary")) {
                     TextField(String(localized: "Deck (leave empty to keep each plan)", table: "Vocabulary"), text: $deck)
-                    Picker(String(localized: "Card type", table: "Vocabulary"), selection: $cards) {
-                        Text(String(localized: "Keep saved choices", table: "Vocabulary")).tag(0)
-                        Text(String(localized: "Recognition card", table: "Vocabulary")).tag(1)
-                        Text(String(localized: "Gap card", table: "Vocabulary")).tag(2)
-                        Text(String(localized: "Both", table: "Vocabulary")).tag(3)
-                    }
-                    Picker(String(localized: "Audio", table: "Vocabulary"), selection: $audio) {
-                        Text(String(localized: "Keep saved choices", table: "Vocabulary")).tag(0)
-                        Text(String(localized: "No audio", table: "Vocabulary")).tag(1)
-                        Text(ReviewAudioKind.expression.label).tag(2)
-                        Text(ReviewAudioKind.sentence.label).tag(3)
-                        Text(String(localized: "Both", table: "Vocabulary")).tag(4)
-                    }
                     Button(String(localized: "Apply to selected", table: "Vocabulary")) {
-                        batch.startApply(deck: deck, cards: cards, audio: audio)
+                        batch.startApply(deck: deck, cards: 0, audio: 0)
                     }
                 }.disabled(batch.busy)
-                Section(String(localized: "Selected senses", table: "Vocabulary")) {
+                Section(String(localized: "Review cards", table: "Vocabulary")) {
+                    if batch.emptySenseCount > 0 {
+                        Text(String(localized: "Some selected senses have no cards. Add cards in the notebook first.", table: "Vocabulary"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     ForEach(batch.items) { item in
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -71,7 +60,7 @@ struct VocabularyReviewBatchSheet: View {
         .frame(width: 740, height: 720).interactiveDismissDisabled(batch.busy)
         .sheet(item: $preparing) { item in
             if let (entry, sense) = batch.resolve(item) {
-                VocabularyReviewSheet(controller: batch.controller, entry: entry, sense: sense)
+                VocabularyReviewSheet(controller: batch.controller, entry: entry, sense: sense, cardID: item.cardID)
                     .onDisappear { batch.refresh(item.id) }
             }
         }

@@ -7,6 +7,7 @@ import Logging
 /// a slow load response arriving after a newer save. Logs contain counts and IDs, never content.
 @MainActor
 final class VocabularyStore: ObservableObject {
+    @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var pending: Set<String> = []
     @Published private(set) var isLoaded = false
@@ -123,12 +124,26 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.removeSense(entryID: entryID, senseID: senseID)); return true } catch { report(error); return false }
     }
 
-    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?) async throws {
-        apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected))
+    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
+                    importedImages: [String: Data] = [:]) async throws {
+        apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected, cardID: cardID,
+            importedImages: importedImages))
     }
 
-    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding) async throws {
-        apply(try await archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding))
+    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil) async throws {
+        apply(try await archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID))
+    }
+
+    func removeReview(entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview) async throws {
+        apply(try await archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected))
+    }
+
+    func saveTemplate(_ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:]) async throws {
+        apply(try await archive.saveTemplate(template, importedImages: importedImages))
+    }
+
+    func removeTemplate(_ id: UUID) async throws {
+        apply(try await archive.removeTemplate(id))
     }
 
     func remove(_ capture: VocabularyCapture) async {
@@ -188,6 +203,7 @@ final class VocabularyStore: ObservableObject {
         savedKeys = Set(entries.flatMap { entry in
             entry.examples.map { VocabularyPolicy.entryKey(entry) + ":" + VocabularyPolicy.exampleKey($0) }
         })
+        reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
         isLoaded = true
         errorMessage = nil

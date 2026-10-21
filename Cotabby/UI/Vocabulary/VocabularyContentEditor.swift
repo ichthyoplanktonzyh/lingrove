@@ -10,11 +10,13 @@ struct VocabularyContentEditor: View {
     @Binding var importedImages: [String: Data]
     let store: VocabularyStore
     @Binding var importing: Bool
+    var pruneImports = true
+    var title: String?
     @State private var failure: String?
     @State private var operation: Task<Void, Never>?
 
     var body: some View {
-        Section(String(localized: "Sense explanation", table: "Vocabulary")) {
+        Section(title ?? String(localized: "Sense explanation", table: "Vocabulary")) {
             ForEach($blocks) { $block in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -64,6 +66,7 @@ struct VocabularyContentEditor: View {
         .onPasteCommand(of: [.png, .tiff, .jpeg]) { providers in _ = importProviders(providers) }
         .onDisappear { operation?.cancel() }
         .onChange(of: blocks) { _, value in
+            guard pruneImports else { return }
             let retained = Set(VocabularyContentPolicy.images(value).map(\.filename))
             importedImages = importedImages.filter { retained.contains($0.key) }
         }

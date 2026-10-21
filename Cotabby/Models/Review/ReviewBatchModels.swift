@@ -5,6 +5,7 @@ import Foundation
 nonisolated struct ReviewBatchItem: Identifiable {
     let id = UUID()
     let selection: VocabularySelection
+    var cardID: UUID?
     var expression: String
     var meaning: String
     var status: Status = .ready

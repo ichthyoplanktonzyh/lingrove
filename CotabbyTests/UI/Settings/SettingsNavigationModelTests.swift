@@ -7,14 +7,16 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
-    func testAnkiSearchOpensReviewAndFieldMapping() {
+    func testAnkiSearchOpensReviewAndCardTemplates() {
         let model = makeModel()
         model.reveal(.ankiReview)
         XCTAssertEqual(model.selection, .languageLearning)
         XCTAssertEqual(model.learningTask, .review)
         model.reveal(.ankiReviewFields)
         XCTAssertEqual(model.learningTask, .review)
+        XCTAssertTrue(SettingsItem.results(for: "template").contains(.ankiReviewFields))
         XCTAssertTrue(SettingsItem.results(for: "字段映射").contains(.ankiReviewFields))
+        XCTAssertEqual(SettingsItem.ankiReviewFields.title, String(localized: "Card templates", table: "Vocabulary"))
     }
     func testExplanationSearchSeparatesModelParametersFromLearningLanguage() {
         let model = makeModel()

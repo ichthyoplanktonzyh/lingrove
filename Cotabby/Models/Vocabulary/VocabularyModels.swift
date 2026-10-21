@@ -42,6 +42,8 @@ nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     var mergedFrom: [UUID] = []
     /// Optional so existing v3 notebooks decode without a migration or a library reset.
     var review: VocabularyReview?
+    /// Flexible cards have independent review identities. Legacy review records are not migrated.
+    var reviewCards: [VocabularyReview]?
     var content: [VocabularyContentBlock]?
     let createdAt: Date
     var updatedAt: Date
@@ -119,6 +121,7 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var schemaVersion = 3
     var entries: [VocabularyEntry] = []
+    var reviewTemplates: [ReviewLayoutTemplate]?
 }
 
 nonisolated struct VocabularySnapshot: Sendable {
