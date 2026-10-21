@@ -10,6 +10,8 @@ struct LearningReviewSettingsSection: View {
     @State private var keyError: String?
     @FocusState private var keyFocused: Bool
     @State private var advanced = false
+    @State private var updatingTemplate = false
+    @State private var templateMessage: String?
     @Environment(\.settingsHighlightedItem) private var highlightedItem
 
     init(controller: AnkiReviewController) {
@@ -48,6 +50,17 @@ struct LearningReviewSettingsSection: View {
             if settings.model == AnkiReviewPolicy.presetName {
                 Toggle(String(localized: "Recognition card", table: "Vocabulary"), isOn: $settings.defaultRecognition)
                 Toggle(String(localized: "Gap card", table: "Vocabulary"), isOn: $settings.defaultGap)
+                Button(String(localized: "Update Lingrove template", table: "Vocabulary")) {
+                    updatingTemplate = true
+                    Task {
+                        defer { updatingTemplate = false }
+                        do {
+                            try await controller.updatePresetTemplate()
+                            templateMessage = String(localized: "Updated", table: "Vocabulary")
+                        } catch { templateMessage = error.localizedDescription }
+                    }
+                }.disabled(updatingTemplate || controller.sendingSenseID != nil)
+                if let templateMessage { Text(templateMessage).font(.caption).foregroundStyle(.secondary) }
             }
         }
         Section {

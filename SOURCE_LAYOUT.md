@@ -475,3 +475,29 @@ scheduling remain under Anki's ownership. Removing existing card types is manage
 `UI/Settings/Panes/LearningReviewSettingsSection.swift` reuses the grouped settings form under
 Language Learning → Review, including searchable advanced field mapping. Existing notebooks,
 dictionary lookups, explanation generation and favorites never trigger an Anki write themselves.
+
+### Review audio, template and queue boundaries
+
+`ReviewOperationScope` freezes the Anki connection, profile and selected configuration for one
+explicit operation, including defaults used by unprepared rows. Saving a successful choice only
+updates preferences that have not changed in another window. Batch rows carry `VocabularySelection` IDs and resolve merged aliases before
+work. `AnkiReviewBatchSession` owns one serial cancellable queue; single-sense preparation continues
+through `AnkiReviewSession`, so receipt recovery and field conflicts have one implementation.
+`VocabularyReviewBatchSheet` owns selection/preparation navigation and per-item results; cancelling
+preparation preserves a synchronized row, and reopening a queue recognizes already-saved receipts.
+
+`ReviewAudioPreparation` borrows `SpeechExporting` from the app-owned `LearningSpeechController`.
+The controller reuses its existing generator for local/endpoint audio and lazily owns a silent
+`SystemSpeechAudioExporter` for Apple voices. `SpeechExportBuffer` owns bounded request bytes;
+`SpeechExportPolicy` validates WAV/MP3 and packages native/system audio as 16-bit PCM WAV. Export
+uses normal recording speed; the existing playback-rate preference continues to affect playback,
+not the stored recording. No temporary WAV files or audio bytes enter the notebook. A sheet owns
+its prepared audio only until close; Anki owns uploaded media. Receipts contain scoped fingerprints
+and opaque hash filenames, and reuse checks that Anki still has the file. Voice/language is frozen
+per action and all generation is opt-in; collection, browsing and typing start no export work.
+
+`AnkiNoteTemplate` supplies both exported templates and the HTML preview. The preview borrows
+`DictionaryHTMLView`'s existing no-script, no-network renderer. Gap questions expose neither a
+meaning hint nor answer audio. The two template names and ordinals remain stable during an explicit
+upgrade; customized templates are never overwritten and customized CSS is retained. Navigation
+opens Anki's deck overview, using a linked note's current deck, and leaves scheduling to Anki.

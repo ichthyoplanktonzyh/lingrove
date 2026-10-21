@@ -23,7 +23,7 @@ nonisolated enum AnkiReviewPolicy {
     }
 
     static func fields(content: ReviewCardContent, identity: UUID, mapping: [ReviewField: String],
-                       overrides: [String: String]) throws -> [String: String] {
+                       overrides: [String: String], audio: [ReviewField: String] = [:]) throws -> [String: String] {
         let selected = mapping.filter { !$0.value.isEmpty }
         guard selected[.identity] != nil, selected[.expression] != nil, selected[.meaning] != nil,
               Set(selected.values).count == selected.count,
@@ -31,7 +31,7 @@ nonisolated enum AnkiReviewPolicy {
             throw AnkiReviewError.message(String(localized: "Map unique fields for the sense ID, expression and answer.",
                 table: "Vocabulary"))
         }
-        let values = ReviewCardPolicy.values(content, identity: identity)
+        let values = ReviewCardPolicy.values(content, identity: identity).merging(audio) { _, value in value }
         var result = Dictionary(uniqueKeysWithValues: selected.map { ($0.value, values[$0.key] ?? "") })
         for (field, value) in overrides where result[field] != nil && field != selected[.identity] { result[field] = value }
         guard result.values.reduce(0, { $0 + $1.utf8.count }) <= 1_000_000 else {
@@ -45,9 +45,25 @@ nonisolated enum AnkiReviewPolicy {
     static func conflicts(base: [String: String], local: [String: String], remote: [String: String]) -> [AnkiFieldConflict] {
         local.keys.sorted().compactMap { key in
             let theirs = remote[key] ?? "", ours = local[key] ?? ""
-            guard theirs != base[key], theirs != ours else { return nil }
+            // Anki fills newly appended model fields with empty strings. An older receipt has
+            // no key for them; both represent the same untouched value, not a remote edit.
+            guard theirs != (base[key] ?? ""), theirs != ours else { return nil }
             return .init(id: key, local: ours, remote: theirs)
         }
+    }
+
+    static func currentAudio(_ plan: ReviewPlan, content: ReviewCardContent) -> Bool {
+        (plan.audioKinds ?? []).allSatisfy { kind in
+            let text = kind == .expression ? content.expression : content.sentence
+            return plan.audioReceipts?[kind]?.textHash ==
+                SpeechExportPolicy.digest(Data((SpeechTextPolicy.sanitizedText(text) ?? "").utf8))
+        }
+    }
+
+    static func audioFields(_ plan: ReviewPlan) -> [ReviewField: String] {
+        Dictionary(uniqueKeysWithValues: (plan.audioKinds ?? []).compactMap { kind in
+            plan.audioReceipts?[kind].map { (kind.field, "[sound:" + $0.filename + "]") }
+        })
     }
 
     static func merged(_ target: VocabularyReview?, _ source: VocabularyReview?) -> VocabularyReview? {

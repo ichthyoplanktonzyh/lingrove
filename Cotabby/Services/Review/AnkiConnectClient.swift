@@ -16,7 +16,7 @@ actor AnkiConnectClient: AnkiConnecting {
         var request = URLRequest(url: connection.endpoint, timeoutInterval: 10)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
+        request.httpBody = try encodedBody(body)
         do {
             let (bytes, response) = try await session.bytes(for: request)
             guard let response = response as? HTTPURLResponse, response.statusCode == 200 else { throw invalidResponse() }
@@ -35,10 +35,19 @@ actor AnkiConnectClient: AnkiConnecting {
                     table: "Vocabulary"))
             }
             return result
-        } catch let error as AnkiReviewError { throw error } catch is CancellationError { throw CancellationError() } catch {
-            throw AnkiReviewError.message(String(localized: "Could not connect to Anki. Open Anki with AnkiConnect enabled.",
-                table: "Vocabulary"))
-        }
+        } catch let error as AnkiReviewError { throw error } catch { throw transportError(error) }
+    }
+
+    private func transportError(_ error: Error) -> any Error {
+        if error is CancellationError || Task.isCancelled { return CancellationError() }
+        return AnkiReviewError.message(String(localized: "Could not connect to Anki. Open Anki with AnkiConnect enabled.",
+            table: "Vocabulary"))
+    }
+
+    private func encodedBody(_ body: [String: AnkiValue]) throws -> Data {
+        let encoded = try JSONEncoder().encode(body)
+        guard encoded.count <= 18 * 1_024 * 1_024 else { throw SpeechError.responseTooLarge }
+        return encoded
     }
 
     private func invalidResponse() -> AnkiReviewError {

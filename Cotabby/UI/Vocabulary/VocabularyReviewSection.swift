@@ -21,6 +21,9 @@ struct VocabularyReviewSection: View {
                     Task { openError = await controller.open(binding) }
                 }
                     .buttonStyle(.link)
+                Button(String(localized: "Review in Anki", table: "Vocabulary")) {
+                    Task { openError = await controller.reviewDeck(binding) }
+                }.buttonStyle(.link)
             }
         }
         .disabled(controller.sendingSenseID != nil)

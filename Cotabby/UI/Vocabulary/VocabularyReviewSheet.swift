@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// A draft sheet shares the notebook's native grouped form conventions. Preview uses plain
-/// SwiftUI text, never executes Anki templates/remote HTML. The preset has predictable front/back
-/// previews; custom note types show the exact mapped fields and keep rendering under Anki's control.
+/// A draft sheet shares the notebook's native grouped form conventions. The known preset uses
+/// the same HTML as exported cards, inside the existing no-script/no-network dictionary renderer.
+/// Custom note types show mapped fields and keep template execution under Anki's control.
 struct VocabularyReviewSheet: View {
     @StateObject private var session: AnkiReviewSession
     @Environment(\.dismiss) private var dismiss
     @State private var back = false
     @State private var gapPreview = false
+    @State private var operation: Task<Void, Never>?
+    @State private var previewHeight: CGFloat = 180
 
     init(controller: AnkiReviewController, entry: VocabularyEntry, sense: VocabularySense) {
         _session = StateObject(wrappedValue: AnkiReviewSession(controller: controller, entry: entry, sense: sense))
@@ -17,34 +19,45 @@ struct VocabularyReviewSheet: View {
         VStack(spacing: 0) {
             Form {
                 preparation
-                if session.model == AnkiReviewPolicy.presetName { presetPreview } else { mappedPreview }
+                VocabularyReviewAudioSection(session: session, operation: $operation)
+                if session.currentPresetTemplate { presetPreview } else { mappedPreview }
                 if !session.conflicts.isEmpty { conflictSection }
                 if let validation = session.validationMessage {
                     Section { Text(validation).font(.caption).foregroundStyle(.secondary) }
                 }
                 if let message = session.message { Section { Text(message).foregroundStyle(.red).textSelection(.enabled) } }
-            }.formStyle(.grouped).disabled(session.busy)
+            }.formStyle(.grouped).disabled(operation != nil || session.busy || session.audio.generating != nil)
             HStack {
                 Button(String(localized: "Review settings", table: "Vocabulary")) {
-                    Task {
+                    perform {
                         if await session.save() { dismiss(); session.controller.configure?() }
                     }
-                }.buttonStyle(.link)
+                }.buttonStyle(.link).disabled(operation != nil || session.busy || session.audio.generating != nil)
                 Spacer()
-                Button(String(localized: "Cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(String(localized: "Save", table: "Vocabulary")) { Task { if await session.save() { dismiss() } } }
-                if session.busy || session.loading { ProgressView().controlSize(.small) }
+                Button(String(localized: "Cancel"), role: .cancel) { operation?.cancel(); dismiss() }.keyboardShortcut(.cancelAction)
+                Button(String(localized: "Save", table: "Vocabulary")) { perform { if await session.save() { dismiss() } } }
+                    .disabled(operation != nil || session.busy || session.audio.generating != nil)
+                if session.busy || session.loading || session.audio.generating != nil { ProgressView().controlSize(.small) }
                 Button(session.missingNote ? String(localized: "Re-add to Anki", table: "Vocabulary")
                     : session.binding?.noteID == nil ? String(localized: "Add to Anki", table: "Vocabulary")
                     : String(localized: "Update Anki", table: "Vocabulary")) {
-                    Task { if await session.send(recreateMissing: session.missingNote) { dismiss() } }
+                    perform { if await session.send(recreateMissing: session.missingNote) { dismiss() } }
                 }.keyboardShortcut(.defaultAction)
-                    .disabled(session.loading || session.validationMessage != nil ||
+                    .disabled(session.busy || operation != nil || session.audio.generating != nil || session.loading ||
+                        session.validationMessage != nil ||
                         session.conflicts.contains { session.keepRemote[$0.id] == nil })
-            }.padding().disabled(session.busy)
+            }.padding()
         }
         .frame(width: 680, height: 690).interactiveDismissDisabled(session.busy)
         .task(id: session.bindingID) { await session.load() }
+        .onDisappear { operation?.cancel(); session.audio.discard() }
+    }
+
+    /// Claim the UI operation synchronously, before the Task can suspend. This closes the small
+    /// double-click window where a second task could replace the first task's cancellation handle.
+    private func perform(_ action: @escaping @MainActor () async -> Void) {
+        guard operation == nil else { return }
+        operation = Task { defer { operation = nil }; await action() }
     }
 
     @ViewBuilder private var preparation: some View {
@@ -69,11 +82,17 @@ struct VocabularyReviewSheet: View {
                     .disabled(session.binding?.noteID != nil)
             }
             LabeledContent(String(localized: "Note type", table: "Vocabulary"), value: session.model)
+            if session.model == AnkiReviewPolicy.presetName, !session.currentPresetTemplate, !session.loading {
+                Button(String(localized: "Update Lingrove template", table: "Vocabulary")) {
+                    perform { await session.updateTemplate() }
+                }
+            }
             if let current = session.current {
                 Picker(String(localized: "Review example", table: "Vocabulary"), selection: Binding(
                     get: { session.plan.exampleID }, set: { id in
                         session.plan.exampleID = id
                         if !session.canGap { session.plan.gap = false }
+                        if id == nil { session.plan.audioKinds?.remove(.sentence) }
                         session.plan.fieldOverrides = [:]
                     })) {
                     Text(String(localized: "No context", table: "Vocabulary")).tag(nil as UUID?)
@@ -139,27 +158,15 @@ struct VocabularyReviewSheet: View {
             }
             if let content = session.content, let fields = try? AnkiReviewPolicy.fields(content: content,
                 identity: session.binding?.originSenseID ?? session.senseID, mapping: AnkiReviewPolicy.presetMapping,
-                overrides: session.plan.fieldOverrides) {
-                let plain: (ReviewField) -> String = {
-                    DictionaryContentPolicy.plainText(fields[$0.rawValue] ?? "").replacingOccurrences(of: "&#39;", with: "'")
-                }
+                overrides: session.plan.fieldOverrides, audio: session.audioFieldsForPreview) {
                 let enabled = gapPreview ? !(fields[ReviewField.gapPrompt.rawValue] ?? "").isEmpty
                     : !(fields[ReviewField.recognition.rawValue] ?? "").isEmpty
-                VStack(alignment: .leading, spacing: 10) {
-                    if !enabled { Text(String(localized: "This card is not enabled.", table: "Vocabulary")) } else {
-                        Text(gapPreview ? plain(.gapPrompt) : plain(.sentence).isEmpty ? plain(.expression) : plain(.sentence))
-                        if gapPreview { Text(plain(.meaning)).font(.caption).foregroundStyle(.secondary) }
-                    }
-                    if back && enabled {
-                        Divider()
-                        if gapPreview { Text(plain(.gapAnswer)); Text(plain(.sentence)) }
-                        Text(plain(.meaning)).fontWeight(.semibold)
-                        Text(plain(.expression))
-                        Text(plain(.translation)).foregroundStyle(.secondary)
-                        if !plain(.notes).isEmpty { Text(plain(.notes)).font(.callout) }
-                        if !plain(.explanation).isEmpty { Text(plain(.explanation)).font(.callout) }
-                    }
-                }.textSelection(.enabled).padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading)
+                if enabled {
+                    let html = AnkiNoteTemplate.preview(fields: fields, gap: gapPreview, back: back, css: session.presetCSS)
+                    DictionaryHTMLView(article: .init(html: html, text: "", sourceName: "Lingrove"),
+                        loadResource: { _ in nil }, reference: { _ in }, height: $previewHeight)
+                        .frame(height: previewHeight).id(html)
+                } else { Text(String(localized: "This card is not enabled.", table: "Vocabulary")) }
             }
         }
     }
@@ -168,7 +175,7 @@ struct VocabularyReviewSheet: View {
         Section(String(localized: "Mapped fields", table: "Vocabulary")) {
             if let content = session.content, let fields = try? AnkiReviewPolicy.fields(content: content,
                 identity: session.binding?.originSenseID ?? session.senseID, mapping: session.mapping,
-                overrides: session.plan.fieldOverrides) {
+                overrides: session.plan.fieldOverrides, audio: session.audioFieldsForPreview) {
                 ForEach(fields.keys.sorted(), id: \.self) { field in
                     LabeledContent(field) { Text(fields[field] ?? "").textSelection(.enabled) }
                 }

@@ -18,6 +18,10 @@ struct VocabularyNotebookView: View {
     @State private var requestedID: UUID?
     @State private var requestedSenseID: UUID?
     @State private var expandedEntries: Set<UUID> = []
+    @State private var selectingForReview = false
+    @State private var batchSelection: Set<VocabularySelection> = []
+    @State private var showingBatch = false
+    @State private var reviewError: String?
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
          learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil) {
@@ -47,14 +51,24 @@ struct VocabularyNotebookView: View {
                         if expanded { expandedEntries.insert(entry.id) } else { expandedEntries.remove(entry.id) }
                     })) {
                         ForEach(entry.senses) { sense in
-                            VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .top) {
+                              if selectingForReview {
+                                Toggle("", isOn: Binding(get: {
+                                    batchSelection.contains(.init(entryID: entry.id, senseID: sense.id))
+                                }, set: { selected in
+                                    let value = VocabularySelection(entryID: entry.id, senseID: sense.id)
+                                    if selected { batchSelection.insert(value) } else { batchSelection.remove(value) }
+                                })).labelsHidden().toggleStyle(.checkbox)
+                                    .accessibilityLabel(entry.expression + " · " + sense.displayTitle)
+                              }
+                              VStack(alignment: .leading, spacing: 4) {
                                 Text(sense.displayTitle).font(.callout).lineLimit(2)
                                 Text(String(localized: "\(sense.examples.count) usages", table: "Vocabulary"))
                                     .font(.caption).foregroundStyle(.secondary)
                                 if let example = sense.examples.first {
                                     Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                 }
-                            }.padding(.vertical, 4).tag(sense.id)
+                            }}.padding(.vertical, 4).tag(sense.id)
                         }
                     } label: { Text(entry.expression).font(.headline).lineLimit(2) }
 
@@ -86,6 +100,29 @@ struct VocabularyNotebookView: View {
         }
         .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
         .toolbar {
+            if let review {
+                ToolbarItem {
+                    Button { selectingForReview.toggle() } label: { Image(systemName: "checklist") }
+                        .help(String(localized: "Select senses for Anki", table: "Vocabulary"))
+                }
+                if selectingForReview {
+                    ToolbarItem {
+                        Button(String(localized: "Select visible", table: "Vocabulary")) {
+                            batchSelection.formUnion(visibleEntries.flatMap { entry in
+                                entry.senses.map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
+                            })
+                        }
+                    }
+                    ToolbarItem {
+                        Button(String(localized: "Prepare selected", table: "Vocabulary")) { showingBatch = true }
+                            .disabled(batchSelection.isEmpty)
+                    }
+                }
+                ToolbarItem {
+                    Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
+                        .help(String(localized: "Review in Anki", table: "Vocabulary"))
+                }
+            }
             ToolbarItem {
                 Picker(String(localized: "Language", table: "Vocabulary"), selection: $language) {
                     Text(String(localized: "All languages", table: "Vocabulary")).tag(nil as LearningLanguage?)
@@ -122,6 +159,17 @@ struct VocabularyNotebookView: View {
         .onChange(of: query) { _, value in
             if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
         }
+        .sheet(isPresented: $showingBatch) {
+            if let review {
+                VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
+                    $0.senseID.uuidString < $1.senseID.uuidString
+                })
+            }
+        }
+        .alert(String(localized: "Anki connection", table: "Vocabulary"), isPresented: Binding(
+            get: { reviewError != nil }, set: { if !$0 { reviewError = nil } })) {
+                Button(String(localized: "OK"), role: .cancel) { reviewError = nil }
+            } message: { Text(reviewError ?? "") }
         .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
         .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {

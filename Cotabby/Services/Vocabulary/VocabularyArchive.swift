@@ -319,6 +319,13 @@ actor VocabularyArchive {
                 throw VocabularyError.invalidArchive
             }
         }
+        for plan in [review.plan] + review.preservedPlans {
+            guard (plan.audioReceipts?.count ?? 0) <= 2,
+                  plan.audioReceipts?.values.allSatisfy({
+                      $0.fingerprint.count == 64 && $0.textHash.count == 64 && SpeechExportPolicy.validFilename($0.filename) &&
+                      AnkiReviewPolicy.endpoint($0.endpoint) != nil && !$0.profile.isEmpty
+                  }) ?? true else { throw VocabularyError.invalidArchive }
+        }
         for binding in review.bindings {
             guard binding.noteID.map({ $0 > 0 }) ?? true, !binding.profile.isEmpty, !binding.model.isEmpty,
                   AnkiReviewPolicy.endpoint(binding.endpoint) != nil, binding.mapping[.identity] == binding.identityField,

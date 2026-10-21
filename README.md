@@ -49,6 +49,12 @@ language learning are its two core capabilities, developed together.
   cards, and explicitly send or update its Anki note. Configure the local AnkiConnect connection,
   deck and optional custom field mappings in Language Learning → Review. Anki Desktop and the
   [AnkiConnect add-on](https://ankiweb.net/shared/info/2055492159) must be running on the Mac.
+  Optional expression/example recordings reuse the configured TTS provider, with explicit audition
+  and regeneration. Audio is stored in Anki only when sent. Use the notebook's checklist to prepare
+  multiple senses and send a serial batch, stop it, or retry individual unsuccessful items.
+  “Review in Anki” opens the linked note’s current deck. Existing Lingrove templates can be upgraded
+  explicitly without replacing card IDs or review history; customized templates stay under Anki’s
+  control.
 
 ### Additional writing tools
 

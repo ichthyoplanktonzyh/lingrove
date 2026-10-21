@@ -41,4 +41,37 @@ struct ReviewCardPolicyTests {
         #expect(decoded.schemaVersion == 3)
         #expect(decoded.entries[0].senses[0].review == nil)
     }
+    @Test func gapFrontCannotRevealMeaningOrAudioAndPreviewMatchesTemplate() {
+        let fields = ["Recognition": "1", "Expression": "bank", "Sentence": "The <b>bank</b> opened.",
+            "Meaning": "secret answer", "GapPrompt": "The ___ opened.", "GapAnswer": "bank",
+            "ExpressionAudio": "[sound:answer.wav]", "SentenceAudio": "[sound:sentence.wav]"]
+        let front = AnkiNoteTemplate.preview(fields: fields, gap: true, back: false)
+        #expect(!front.contains("secret answer"))
+        #expect(!front.contains("sound:"))
+        #expect(front.contains("The ___ opened."))
+        let back = AnkiNoteTemplate.preview(fields: fields, gap: true, back: true)
+        #expect(back.contains("secret answer"))
+        #expect(back.contains("<b>bank</b>"))
+        #expect(!back.contains("{{"))
+        let literal = AnkiNoteTemplate.preview(fields: fields.merging(["Meaning": "{{Expression}}", "Sentence": ""]) { _, value in value },
+            gap: false, back: true)
+        #expect(literal.contains("{{Expression}}"))
+    }
+
+    @Test func pcmExportHasARealWaveHeaderAndOpaqueFilename() throws {
+        let bytes = Data(repeating: 0, count: 2400 * 4)
+        let audio = try SpeechExportPolicy.wav(bytes, sampleRate: 24_000)
+        #expect(audio.data.prefix(4) == Data("RIFF".utf8))
+        #expect(audio.data.count == bytes.count / 2 + 44)
+        #expect(SpeechExportPolicy.validFilename(SpeechExportPolicy.filename(audio)))
+        #expect(throws: (any Error).self) { try SpeechExportPolicy.encoded(Data("not audio".utf8)) }
+        #expect(!SpeechExportPolicy.validFilename("../word.wav"))
+    }
+
+    @Test func appendedEmptyFieldsDoNotCreateFalseConflictsButRemoteContentDoes() {
+        let local = ["ExpressionAudio": "[sound:example.wav]"]
+        #expect(AnkiReviewPolicy.conflicts(base: [:], local: local, remote: ["ExpressionAudio": ""]).isEmpty)
+        #expect(AnkiReviewPolicy.conflicts(base: [:], local: local,
+            remote: ["ExpressionAudio": "[sound:my-recording.wav]"]).map(\.id) == ["ExpressionAudio"])
+    }
 }

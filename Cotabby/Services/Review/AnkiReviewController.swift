@@ -11,6 +11,8 @@ final class AnkiReviewController: ObservableObject {
     let settings: AnkiReviewSettings
     let store: VocabularyStore
     let client: any AnkiConnecting
+    let speech: (any SpeechExporting)?
+    let activateAnki: () -> Void
     @Published private(set) var catalog: AnkiReviewCatalog?
     @Published private(set) var connectionMessage: String?
     @Published private(set) var testing = false
@@ -18,10 +20,16 @@ final class AnkiReviewController: ObservableObject {
     @Published private(set) var modelFields: [String] = []
     @Published private(set) var failures: [UUID: String] = [:]
     @Published private(set) var missing: Set<UUID> = []
+    @Published private(set) var unresolved: Set<UUID> = []
+    var updatingTemplate = false
     var configure: (() -> Void)?
 
-    init(settings: AnkiReviewSettings, store: VocabularyStore, client: any AnkiConnecting = AnkiConnectClient()) {
+    init(settings: AnkiReviewSettings, store: VocabularyStore, client: any AnkiConnecting = AnkiConnectClient(),
+         speech: (any SpeechExporting)? = nil, activateAnki: @escaping () -> Void = {
+             NSRunningApplication.runningApplications(withBundleIdentifier: "net.ankiweb.dtop").first?.activate(options: [])
+         }) {
         self.settings = settings; self.store = store; self.client = client
+        self.speech = speech; self.activateAnki = activateAnki
     }
 
     func testConnection() async {
@@ -53,6 +61,28 @@ final class AnkiReviewController: ObservableObject {
         } catch { modelFields = []; connectionMessage = error.localizedDescription }
     }
 
+    func operationScope() async throws -> ReviewOperationScope {
+        let connection = try settings.connection(), model = settings.model, mapping = settings.effectiveMapping
+        let speechID = speech?.exportConfigurationID
+        let deck = settings.deck, hadSavedDeck = settings.hasSavedDeck
+        let recognition = settings.defaultRecognition, gap = settings.defaultGap
+        let profile = try await profile(connection)
+        let value = ReviewOperationScope(connection: connection, profile: profile, model: model, mapping: mapping,
+            speechID: speechID, defaultDeck: deck, hadSavedDeck: hadSavedDeck,
+            defaultRecognition: recognition, defaultGap: gap)
+        guard matches(value) else { throw VocabularyError.editConflict }
+        return value
+    }
+    func matches(_ scope: ReviewOperationScope) -> Bool {
+        (try? settings.connection()) == scope.connection && settings.model == scope.model &&
+            settings.effectiveMapping == scope.mapping && speech?.exportConfigurationID == scope.speechID
+    }
+    func verify(_ scope: ReviewOperationScope) async throws {
+        guard matches(scope), try await profile(scope.connection) == scope.profile, matches(scope) else {
+            throw VocabularyError.editConflict
+        }
+    }
+
     func invalidateConnection() { catalog = nil; modelFields = []; connectionMessage = nil }
 
     func current(entryID: UUID, senseID: UUID) throws -> (entry: VocabularyEntry, sense: VocabularySense) {
@@ -64,6 +94,7 @@ final class AnkiReviewController: ObservableObject {
     func status(_ entry: VocabularyEntry, _ sense: VocabularySense) -> String {
         if sendingSenseID == sense.id { return String(localized: "Sending…", table: "Vocabulary") }
         if failures[sense.id] != nil { return String(localized: "Send failed", table: "Vocabulary") }
+        if unresolved.contains(sense.id) { return String(localized: "Anki fields changed", table: "Vocabulary") }
         if missing.contains(sense.id) { return String(localized: "Anki note missing", table: "Vocabulary") }
         guard let review = sense.review else { return String(localized: "Not added", table: "Vocabulary") }
         if review.needsBindingChoice { return String(localized: "Choose an Anki association", table: "Vocabulary") }
@@ -71,11 +102,25 @@ final class AnkiReviewController: ObservableObject {
         if binding.noteID == nil { return String(localized: "Ready to send", table: "Vocabulary") }
         guard let content = try? ReviewCardPolicy.content(entry: entry, sense: sense, plan: review.plan),
               let fields = try? AnkiReviewPolicy.fields(content: content, identity: binding.originSenseID,
-                mapping: binding.mapping, overrides: review.plan.fieldOverrides) else {
+                mapping: binding.mapping, overrides: review.plan.fieldOverrides, audio: AnkiReviewPolicy.audioFields(review.plan)) else {
             return String(localized: "Review content needs attention", table: "Vocabulary")
+        }
+        guard AnkiReviewPolicy.currentAudio(review.plan, content: content) else {
+            return String(localized: "Update available", table: "Vocabulary")
         }
         return fields == binding.fields ? String(localized: "Synced", table: "Vocabulary")
             : String(localized: "Update available", table: "Vocabulary")
+    }
+
+    func isSynchronized(_ entry: VocabularyEntry, _ sense: VocabularySense) -> Bool {
+        guard !unresolved.contains(sense.id), !missing.contains(sense.id), failures[sense.id] == nil, let review = sense.review,
+              let binding = review.activeBinding, binding.noteID != nil,
+              let content = try? ReviewCardPolicy.content(entry: entry, sense: sense, plan: review.plan),
+              AnkiReviewPolicy.currentAudio(review.plan, content: content),
+              let fields = try? AnkiReviewPolicy.fields(content: content, identity: binding.originSenseID,
+                mapping: binding.mapping, overrides: review.plan.fieldOverrides, audio: AnkiReviewPolicy.audioFields(review.plan))
+        else { return false }
+        return fields == binding.fields
     }
 
     func open(_ binding: AnkiNoteBinding) async -> String? {
@@ -113,13 +158,18 @@ final class AnkiReviewController: ObservableObject {
         }
     }
 
-    func fields(for model: String, connection: AnkiConnection, create: Bool) async throws -> [String] {
+    func fields(for model: String, connection: AnkiConnection, create: Bool, expectedProfile: String? = nil) async throws -> [String] {
         if model == AnkiReviewPolicy.presetName {
             let names = try strings(await call("modelNames", [:], connection))
             if !names.contains(model) {
                 guard create else { return ReviewField.allCases.map(\.rawValue) }
                 let template: (String, String, String) -> AnkiValue = { name, front, back in
                     .object(["Name": .string(name), "Front": .string(front), "Back": .string(back)])
+                }
+                if let expectedProfile {
+                    guard try settings.connection() == connection, try await profile(connection) == expectedProfile else {
+                        throw VocabularyError.editConflict
+                    }
                 }
                 _ = try await call("createModel", ["modelName": .string(model),
                     "inOrderFields": .list(ReviewField.allCases.map(\.rawValue)), "css": .string(AnkiNoteTemplate.css),
@@ -158,15 +208,18 @@ final class AnkiReviewController: ObservableObject {
     /// Session-owned orchestration borrows this short operation lease. It is acquired before
     /// the first await, and release cannot clear another operation's state.
     func begin(_ id: UUID) throws {
-        guard sendingSenseID == nil else {
+        guard sendingSenseID == nil, !updatingTemplate else {
             throw AnkiReviewError.message(String(localized: "Wait for the current Anki operation to finish.", table: "Vocabulary"))
         }
         sendingSenseID = id; failures[id] = nil
     }
-    func finish(_ id: UUID, error: Error? = nil, missingNote: Bool = false) {
+    func finish(_ id: UUID, error: Error? = nil, missingNote: Bool = false, wrote: Bool = true) {
         if sendingSenseID == id { sendingSenseID = nil }
-        failures[id] = error?.localizedDescription
+        let cancelled = error is CancellationError
+        failures[id] = cancelled ? nil : error?.localizedDescription
+        if error == nil && !wrote { unresolved.insert(id) } else if error == nil { unresolved.remove(id) }
         if missingNote { missing.insert(id) } else if error == nil { missing.remove(id) }
-        CotabbyLogger.learning.info("Anki operation finished", metadata: ["success": .stringConvertible(error == nil)])
+        CotabbyLogger.learning.info("Anki operation finished", metadata: ["success": .stringConvertible(error == nil && wrote),
+            "cancelled": .stringConvertible(cancelled)])
     }
 }

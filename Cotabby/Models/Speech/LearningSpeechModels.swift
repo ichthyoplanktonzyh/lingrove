@@ -53,7 +53,7 @@ nonisolated enum SpeechPlaybackPhase: Equatable, Sendable {
 /// text, server response bodies, credentials, or native diagnostics in the learning card.
 nonisolated enum SpeechError: LocalizedError {
     case incompleteConfiguration, missingLocalAssets, mismatchedLocalAssets, unsupportedLanguage
-    case unrecognizedLanguage, runtimeUnavailable
+    case unrecognizedLanguage, runtimeUnavailable, operationInProgress
     case generationFailed, invalidAudio, invalidReferenceAudio, responseTooLarge, textTooLong, endpointStatus(Int)
 
     var errorDescription: String? {
@@ -70,6 +70,8 @@ nonisolated enum SpeechError: LocalizedError {
             String(localized: "Speech is not available for the detected language.", table: "Learning")
         case .runtimeUnavailable:
             String(localized: "The local speech runtime is unavailable. Reinstall Lingrove and try again.", table: "Learning")
+        case .operationInProgress:
+            String(localized: "Stop the current speech operation first.", table: "Vocabulary")
         case .generationFailed:
             String(localized: "Speech generation failed. Check the model or connection and try again.", table: "Learning")
         case .invalidAudio:

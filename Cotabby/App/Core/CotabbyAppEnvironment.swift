@@ -250,7 +250,7 @@ final class CotabbyAppEnvironment {
         // Schema v3 starts a separate library; the retired two-level archive remains untouched.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
         let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
-            credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore)
+            credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore, speech: speechController)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is
         // read per request so a power-source switch to the endpoint stops shortcuts immediately.

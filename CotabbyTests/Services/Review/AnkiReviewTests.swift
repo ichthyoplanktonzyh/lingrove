@@ -8,7 +8,10 @@ import Testing
 /// It simulates a committed write with a lost acknowledgement, which a stateless mock misses.
 actor ReviewFakeAnki: AnkiConnecting {
     var profileName = "Acceptance"
+    var decks = ["Default", "Other"]
+    func setDecks(_ value: [String]) { decks = value }
     var notes: [Int64: [String: String]] = [:]
+    var noteDecks: [Int64: String] = [:]
     var nextID: Int64 = 1_000
     var addCount = 0
     var updateCount = 0
@@ -16,6 +19,27 @@ actor ReviewFakeAnki: AnkiConnecting {
     var holdAdd: CheckedContinuation<Void, Never>?
     var pauseAdd = false
     var customFields: [String: [String]] = [:]
+    var templates = AnkiNoteTemplate.templates
+    var css = AnkiNoteTemplate.css
+    var media: [String: Data] = [:]
+    var failNextAdd = false
+    var navigationDeck: String?
+    var profileAfterMetadata: String?
+    var metadataHook: (@MainActor @Sendable () -> Void)?
+    func afterNextMetadata(_ hook: @escaping @MainActor @Sendable () -> Void) { metadataHook = hook }
+    func sentDecks() -> [String] { Array(noteDecks.values) }
+    func switchProfileAfterNextMetadata(_ value: String) { profileAfterMetadata = value }
+    func failOneAdd() { failNextAdd = true }
+    func mediaCount() -> Int { media.count }
+    func removeMedia() { media = [:] }
+    func templateSnapshot() -> [String: AnkiValue] { templates }
+    func setLegacyTemplate() {
+        templates = AnkiNoteTemplate.legacyTemplates; css = AnkiNoteTemplate.legacyCSS
+        customFields[AnkiReviewPolicy.presetName] = ReviewField.allCases.filter {
+            ![.expressionAudio, .sentenceAudio].contains($0)
+        }.map(\.rawValue)
+    }
+    func customizeTemplate() { templates["Recognition"] = .object(["Front": .string("custom"), "Back": .string("custom")]) }
 
     func setFields(_ fields: [String], for model: String) { customFields[model] = fields }
     func loseNextAddReply() { loseAddReply = true }
@@ -29,9 +53,11 @@ actor ReviewFakeAnki: AnkiConnecting {
     func perform(_ action: String, params: [String: AnkiValue], connection: AnkiConnection) async throws -> AnkiValue {
         switch action {
         case "getActiveProfile": return .string(profileName)
-        case "deckNames": return .list(["Default", "Other"])
+        case "deckNames": return .list(decks)
         case "modelNames": return .list([AnkiReviewPolicy.presetName] + customFields.keys.sorted())
         case "modelFieldNames":
+            if let value = profileAfterMetadata { profileName = value; profileAfterMetadata = nil }
+            if let hook = metadataHook { metadataHook = nil; await hook() }
             return .list(customFields[params["modelName"]?.string ?? ""] ?? ReviewField.allCases.map(\.rawValue))
         case "findNotes":
             let query = params["query"]?.string ?? ""
@@ -45,9 +71,11 @@ actor ReviewFakeAnki: AnkiConnecting {
                     "fields": .object(fields.mapValues { .object(["value": .string($0)]) })])
             })
         case "addNote":
+            if failNextAdd { failNextAdd = false; throw URLError(.cannotConnectToHost) }
             let note = params["note"]?.object ?? [:]
             nextID += 1; let id = nextID
             notes[id] = note["fields"]?.object?.compactMapValues(\.string) ?? [:]; addCount += 1
+            noteDecks[id] = note["deckName"]?.string
             if pauseAdd { await withCheckedContinuation { holdAdd = $0 } }
             if loseAddReply { loseAddReply = false; throw URLError(.networkConnectionLost) }
             return .number(Double(id))
@@ -55,6 +83,23 @@ actor ReviewFakeAnki: AnkiConnecting {
             guard let note = params["note"]?.object, let id = note["id"]?.integer else { return .null }
             for (key, value) in note["fields"]?.object ?? [:] { notes[id]?[key] = value.string }
             updateCount += 1; return .null
+        case "modelTemplates": return .object(templates)
+        case "modelStyling": return .object(["css": .string(css)])
+        case "modelFieldAdd":
+            let model = params["modelName"]?.string ?? ""
+            customFields[model, default: []].append(params["fieldName"]?.string ?? "")
+            return .null
+        case "updateModelTemplates":
+            templates = params["model"]?.object?["templates"]?.object ?? [:]; return .null
+        case "updateModelStyling": css = params["model"]?.object?["css"]?.string ?? ""; return .null
+        case "storeMediaFile":
+            let filename = params["filename"]?.string ?? ""
+            media[filename] = Data(base64Encoded: params["data"]?.string ?? "")
+            return .string(filename)
+        case "getMediaFilesNames": return .list(media.keys.filter { $0 == params["pattern"]?.string })
+        case "findCards": return .array([.number(10)])
+        case "cardsInfo": return .array([.object(["deckName": .string("Other")])])
+        case "guiDeckOverview": navigationDeck = params["name"]?.string; return .bool(true)
         case "guiBrowse", "createModel": return .null
         default: throw AnkiReviewError.message("Unexpected fixture action: " + action)
         }
@@ -66,7 +111,7 @@ actor ReviewFakeAnki: AnkiConnecting {
 struct AnkiReviewTests {
     // Four shared fixture dependencies keep each transaction test focused on observable effects.
     // swiftlint:disable:next large_tuple
-    private func fixture(url: URL? = nil) async throws -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) {
+    private func fixture(url: URL? = nil, speech: (any SpeechExporting)? = nil) async throws -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) {
         let name = "test.anki-review." + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
         let store = VocabularyStore(archive: VocabularyArchive(url: url))
@@ -78,7 +123,7 @@ struct AnkiReviewTests {
         }
         let fake = ReviewFakeAnki()
         let settings = AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil))
-        return (AnkiReviewController(settings: settings, store: store, client: fake), fake, defaults, name)
+        return (AnkiReviewController(settings: settings, store: store, client: fake, speech: speech, activateAnki: {}), fake, defaults, name)
     }
     private func session(_ controller: AnkiReviewController, index: Int = 0) throws -> AnkiReviewSession {
         let entry = try #require(controller.store.entries.first)
@@ -224,13 +269,214 @@ struct AnkiReviewTests {
         #expect(draft.plan.id != saved.id)
     }
 
+    @Test func audioIsOptInAndReusesVerifiedMediaOnLaterUpdates() async throws {
+        let speech = ReviewFakeSpeechExporter()
+        let (controller, fake, defaults, name) = try await fixture(speech: speech)
+        defer { defaults.removePersistentDomain(forName: name) }
+        let initial = try session(controller)
+        #expect(speech.exports == 0)
+        initial.plan.audioKinds = [.expression, .sentence]
+        #expect(await initial.send())
+        #expect(speech.exports == 2)
+        #expect(await fake.mediaCount() == 2)
+        let binding = try #require(controller.store.entries[0].senses[0].review?.activeBinding)
+        let id = try #require(binding.noteID)
+        #expect(binding.fields["ExpressionAudio"]?.hasPrefix("[sound:lingrove-") == true)
+        #expect(try await session(controller).send())
+        #expect(speech.exports == 2)
+        #expect(controller.store.entries[0].senses[0].review?.activeBinding?.noteID == id)
+        let regenerate = try session(controller)
+        await regenerate.prepareAudio(.expression, audition: false, force: true)
+        #expect(await regenerate.send())
+        #expect(speech.exports == 3)
+        #expect(await fake.mediaCount() == 3)
+        #expect(controller.store.entries[0].senses[0].review?.activeBinding?.fields["ExpressionAudio"] != binding.fields["ExpressionAudio"])
+    }
+
+    @Test func batchContinuesAfterFailureAndOnlyRetriesUnsuccessfulSenses() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        await fake.failOneAdd()
+        batch.start(); await batch.work?.value
+        #expect(batch.items.map(\.status) == [.failed, .synced])
+        #expect(await fake.counts().add == 1)
+        batch.start(); await batch.work?.value
+        #expect(batch.items.allSatisfy { $0.status == .synced })
+        #expect(await fake.counts().add == 2)
+    }
+
+    @Test func batchResolvesMergedAliasesWithoutDuplicatingNotes() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        #expect(await controller.store.mergeSenses(entryID: entry.id, source: entry.senses[0].id, target: entry.senses[1].id))
+        batch.start(); await batch.work?.value
+        #expect(batch.items.map(\.status) == [.synced, .skipped])
+        #expect(await fake.counts().add == 1)
+    }
+
+    @Test func templateUpgradeKeepsNoteIdentityAndRefusesCustomTemplates() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        await fake.setLegacyTemplate()
+        let legacy = try session(controller); await legacy.load()
+        #expect(!legacy.currentPresetTemplate)
+        #expect(await legacy.send())
+        let id = try #require(controller.store.entries[0].senses[0].review?.activeBinding?.noteID)
+        try await controller.updatePresetTemplate()
+        #expect(await fake.templateSnapshot() == AnkiNoteTemplate.templates)
+        #expect(controller.store.entries[0].senses[0].review?.activeBinding?.noteID == id)
+        let updated = try session(controller); await updated.load()
+        #expect(updated.currentPresetTemplate)
+        #expect(await updated.send())
+        #expect(await fake.counts().add == 1)
+        await fake.customizeTemplate()
+        await #expect(throws: (any Error).self) { try await controller.updatePresetTemplate() }
+    }
+
+    @Test func reviewNavigationUsesAnkisCurrentDeckAndRejectsAnotherProfile() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        #expect(try await session(controller).send())
+        let binding = try #require(controller.store.entries[0].senses[0].review?.activeBinding)
+        #expect(await controller.reviewDeck(binding) == nil)
+        #expect(await fake.navigationDeck == "Other")
+        await fake.setProfile("Another profile")
+        #expect(await controller.reviewDeck(binding) != nil)
+    }
+
+    @Test func missingAnkiMediaIsRestoredInsteadOfTrustingAnOldReceipt() async throws {
+        let speech = ReviewFakeSpeechExporter()
+        let (controller, fake, defaults, name) = try await fixture(speech: speech)
+        defer { defaults.removePersistentDomain(forName: name) }
+        let first = try session(controller); first.plan.audioKinds = [.expression]
+        #expect(await first.send())
+        await fake.removeMedia()
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: [.init(entryID: entry.id, senseID: entry.senses[0].id)])
+        #expect(batch.items[0].status == .verifyAudio)
+        batch.start(); await batch.work?.value
+        #expect(batch.items[0].status == .synced)
+        #expect(speech.exports == 2)
+        #expect(await fake.mediaCount() == 1)
+        #expect(await fake.counts().add == 1)
+    }
+
+    @Test func cancellingPreparationKeepsASynchronizedBatchRowOutOfRetry() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: [
+            .init(entryID: entry.id, senseID: entry.senses[0].id)])
+        batch.start(); await batch.work?.value
+        let id = batch.items[0].id
+        batch.beginPreparation(id); batch.refresh(id)
+        #expect(batch.items[0].status == .synced)
+        batch.start(); await batch.work?.value
+        #expect(await fake.counts().add == 1)
+        #expect(await fake.counts().update == 0)
+    }
+
+    @Test func batchPreparationRespectsALocalizedInitialAnkiDeck() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        await fake.setDecks(["系统默认"])
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        batch.startApply(deck: "", cards: 1, audio: 1); await batch.work?.value
+        #expect(controller.store.entries[0].senses.allSatisfy { $0.review?.plan.deck == "系统默认" })
+    }
+
+    @Test func noContextSentenceAudioFailsPreflight() async throws {
+        let (controller, _, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let draft = try session(controller)
+        draft.plan.exampleID = nil; draft.plan.audioKinds = [.sentence]
+        #expect(draft.validationMessage != nil)
+    }
+
+    @Test func batchFreezesDefaultsWithoutOverwritingNewSettingsChoices() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        await fake.afterNextMetadata {
+            controller.settings.deck = "Other"
+            controller.settings.defaultRecognition = false; controller.settings.defaultGap = true
+        }
+        batch.start(); await batch.work?.value
+        #expect(batch.items.allSatisfy { $0.status == .synced })
+        #expect(await fake.sentDecks() == ["Default", "Default"])
+        #expect(controller.store.entries[0].senses.allSatisfy { $0.review?.plan.recognition == true && $0.review?.plan.gap == false })
+        #expect(controller.settings.deck == "Other")
+        #expect(!controller.settings.defaultRecognition && controller.settings.defaultGap)
+    }
+
+    @Test func anOpenPreparationDoesNotReplaceDefaultsChangedBeforeSend() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let draft = try session(controller)
+        controller.settings.deck = "Other"
+        controller.settings.defaultRecognition = false; controller.settings.defaultGap = true
+        #expect(await draft.send())
+        #expect(await fake.sentDecks() == ["Default"])
+        #expect(controller.settings.deck == "Other")
+        #expect(!controller.settings.defaultRecognition && controller.settings.defaultGap)
+    }
+
+    @Test func batchCannotFollowAProfileChangeDuringItemLoading() async throws {
+        let (controller, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        await fake.switchProfileAfterNextMetadata("Different")
+        batch.start(); await batch.work?.value
+        #expect(await fake.counts().add == 0)
+        #expect(controller.store.entries[0].senses.allSatisfy { $0.review == nil })
+        #expect(batch.items.allSatisfy { $0.status == .failed })
+    }
+
+    @Test func cancellingBatchAudioDoesNotCreateNotesOrSendFollowingItems() async throws {
+        let speech = ReviewFakeSpeechExporter(); speech.delay = .seconds(5)
+        let (controller, fake, defaults, name) = try await fixture(speech: speech)
+        defer { defaults.removePersistentDomain(forName: name) }
+        let plan = try session(controller); plan.plan.audioKinds = [.expression]
+        #expect(await plan.save())
+        let entry = controller.store.entries[0]
+        let batch = AnkiReviewBatchSession(controller: controller, selections: entry.senses.map {
+            .init(entryID: entry.id, senseID: $0.id)
+        })
+        batch.start()
+        while speech.exports == 0 && batch.busy { await Task.yield() }
+        batch.stop(); await batch.work?.value
+        #expect(await fake.counts().add == 0)
+        #expect(batch.items.allSatisfy { $0.status == .cancelled })
+        #expect(!batch.busy)
+        #expect(controller.failures.isEmpty)
+    }
+
+    @Test func systemSpeechExportsPlayableAudioWithoutTemporaryFiles() async throws {
+        let name = "test.speech-export." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name)); defer { defaults.removePersistentDomain(forName: name) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let request = try speech.exportRequest(text: "Please keep me posted on the progress. This recording is for a language learning card.", language: .english)
+        let audio = try await speech.exportAudio(request)
+        #expect(audio.fileExtension == "wav")
+        #expect(audio.data.count > 44)
+        #expect(speech.activeTarget == nil)
+        #expect(speech.exportToken == nil)
+    }
+
     @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_ANKI_ACCEPTANCE_URL"] != nil))
     func realAnkiCreatesTwoCardsAndUpdatesWithoutReplacingReviewIdentity() async throws {
         let (fixture, _, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
         let endpoint = try #require(ProcessInfo.processInfo.environment["COTABBY_ANKI_ACCEPTANCE_URL"])
         fixture.settings.address = endpoint
         let controller = AnkiReviewController(settings: fixture.settings, store: fixture.store)
-        let initial = try session(controller); initial.plan.gap = true
+        let initial = try session(controller); initial.plan.gap = true; await initial.load()
         #expect(await initial.send())
         let first = try #require(controller.store.entries[0].senses[0].review?.activeBinding)
         let id = try #require(first.noteID)
@@ -246,6 +492,64 @@ struct AnkiReviewTests {
         for (old, new) in zip(try #require(before.array), try #require(after.array)) {
             for key in ["cardId", "due", "interval", "reps", "lapses"] { #expect(old.object?[key] == new.object?[key]) }
         }
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_ANKI_ACCEPTANCE_URL"] != nil))
+    func realAnkiUpgradesLegacyCardsAndStoresPlayableMediaWithoutResettingHistory() async throws {
+        let speech = ReviewFakeSpeechExporter()
+        let (fixture, _, defaults, name) = try await fixture(speech: speech)
+        defer { defaults.removePersistentDomain(forName: name) }
+        fixture.settings.address = try #require(ProcessInfo.processInfo.environment["COTABBY_ANKI_ACCEPTANCE_URL"])
+        let controller = AnkiReviewController(settings: fixture.settings, store: fixture.store, speech: speech, activateAnki: {})
+        let first = try session(controller); first.plan.gap = true; await first.load()
+        #expect(await first.send())
+        let id = try #require(controller.store.entries[0].senses[0].review?.activeBinding?.noteID)
+        let connection = try controller.settings.connection()
+        let old = try await controller.call("notesInfo", ["notes": .array([.number(Double(id))])], connection)
+        let cards = try #require(old.array?.first?.object?["cards"]?.array)
+        #expect(cards.count == 2)
+        let before = try await controller.call("cardsInfo", ["cards": .array(cards)], connection)
+        try await controller.updatePresetTemplate()
+        let second = try session(controller); await second.load()
+        #expect(second.currentPresetTemplate)
+        second.plan.audioKinds = [.expression, .sentence]
+        let sent = await second.send()
+        #expect(sent, "\(second.message ?? "No error") · conflicts: \(second.conflicts.map(\.id))")
+        let review = try #require(controller.store.entries[0].senses[0].review)
+        #expect(review.activeBinding?.noteID == id)
+        for receipt in (review.plan.audioReceipts ?? [:]).values {
+            let stored = try await controller.call("retrieveMediaFile", ["filename": .string(receipt.filename)], connection)
+            let data = try #require(stored.string.flatMap { Data(base64Encoded: $0) })
+            #expect(SpeechExportPolicy.validFilename(receipt.filename))
+            #expect(data[20] == 1 && data[34] == 16)
+        }
+        let after = try await controller.call("cardsInfo", ["cards": .array(cards)], connection)
+        for (old, new) in zip(try #require(before.array), try #require(after.array)) {
+            for key in ["cardId", "due", "interval", "reps", "lapses"] { #expect(old.object?[key] == new.object?[key]) }
+            if let question = new.object?["question"]?.string, question.contains("___") {
+                #expect(!question.contains("银行"))
+                #expect(!question.contains("[sound:"))
+            }
+        }
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_UI_REVIEW_SECOND_ACCEPTANCE"] == "1"))
+    func nativeSecondReviewWorkflow() async throws {
+        let (fixture, fake, defaults, name) = try await fixture(); defer { defaults.removePersistentDomain(forName: name) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let controller = AnkiReviewController(settings: fixture.settings, store: fixture.store, client: fake,
+            speech: speech, activateAnki: {})
+        let entry = try #require(controller.store.entries.first)
+        let host = NSHostingView(rootView: VocabularyNotebookView(store: controller.store, speech: speech,
+            selectedID: entry.id, review: controller))
+        let window = NSWindow(contentRect: .init(x: 40, y: 40, width: 1100, height: 800),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host
+        window.title = "Lingrove batch/audio acceptance"; window.level = .floating; window.center()
+        window.makeKeyAndOrderFront(nil)
+        defer { speech.shutdown(); window.close() }
+        for _ in 0..<4 { try await Task.sleep(for: .seconds(45)) }
+        #expect(await fake.counts().add == 2)
     }
 
     @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_UI_REVIEW_ACCEPTANCE"] == "1"))
@@ -264,4 +568,25 @@ struct AnkiReviewTests {
         for _ in 0..<2 { try await Task.sleep(for: .seconds(45)) }
         #expect(await fake.counts().add == 1)
     }
+}
+
+/// Deterministic in-memory audio makes media identity, opt-in and regeneration observable.
+@MainActor
+final class ReviewFakeSpeechExporter: SpeechExporting {
+    var exports = 0
+    var delay: Duration = .zero
+    var exportConfigurationID: String { "fixture" }
+    func exportRequest(text: String, language: LearningLanguage, context: String?) throws -> SpeechExportRequest {
+        .init(text: text, language: language, fingerprint: SpeechExportPolicy.digest(Data(text.utf8)), source: .system(voiceID: "fixture"))
+    }
+    func exportAudio(_ request: SpeechExportRequest) async throws -> SpeechExportAudio {
+        try Task.checkCancellation(); exports += 1
+        if delay > .zero { try await Task.sleep(for: delay) }
+        var value = Float(exports) / 100
+        let sample = withUnsafeBytes(of: &value) { Data($0) }
+        let data = (0..<2400).reduce(into: Data()) { result, _ in result.append(sample) }
+        return try SpeechExportPolicy.wav(data, sampleRate: 24_000)
+    }
+    func audition(_ audio: SpeechExportAudio, ownerID: UUID, language: LearningLanguage) throws {}
+    func stop(ownerID: UUID) {}
 }

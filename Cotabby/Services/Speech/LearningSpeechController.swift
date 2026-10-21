@@ -52,7 +52,10 @@ final class LearningSpeechController: ObservableObject {
     }()
 
     private let provider: any SpeechProviding
-    private let generator: any SpeechAudioGenerating
+    let generator: any SpeechAudioGenerating
+    var exportToken: SpeechPlaybackToken?
+    var exportRevision: UInt64 = 0
+    lazy var systemExporter = SystemSpeechAudioExporter()
     private let audioPlayer = SpeechAudioPlayer()
     private let pcmPlayer: any SpeechPCMPlaying
     private let modelDirectoryURL: URL
@@ -77,7 +80,10 @@ final class LearningSpeechController: ObservableObject {
 
         telemetry.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
 
-        settings.playbackInvalidations.sink { [weak self] in self?.stop() }.store(in: &subscriptions)
+        settings.playbackInvalidations.sink { [weak self] in
+            self?.exportRevision &+= 1
+            self?.stop()
+        }.store(in: &subscriptions)
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
     }
 
@@ -103,6 +109,11 @@ final class LearningSpeechController: ObservableObject {
     /// A second tap on the same card stops it. Starting another target first retires the previous
     /// operation, then validates language/text and starts one new provider utterance.
     func toggle(_ request: SpeechRequest) {
+        guard canStartPlayback(request.target) else { return }
+        togglePlayback(request)
+    }
+
+    private func togglePlayback(_ request: SpeechRequest) {
         if isPlaying(request.target) {
             stop(target: request.target)
             return
@@ -155,6 +166,26 @@ final class LearningSpeechController: ObservableObject {
             telemetry.finish(token, outcome: .failed, errorType: String(reflecting: type(of: error)))
             clearActivePlayback()
             setError(error.localizedDescription, for: request.target)
+        }
+    }
+
+    /// A prepared Anki recording uses the same playback owner as every card. No synthesis is
+    /// repeated for audition, and normal speaker buttons can stop or replace this playback.
+    private func canStartPlayback(_ target: SpeechTarget) -> Bool {
+        guard exportToken == nil else { setError(SpeechError.operationInProgress.localizedDescription, for: target); return false }
+        return true
+    }
+
+    func audition(_ audio: SpeechExportAudio, ownerID: UUID, language: LearningLanguage) throws {
+        guard exportToken == nil else { throw SpeechError.operationInProgress }
+        stop()
+        let token = SpeechPlaybackToken()
+        let target = SpeechTarget(ownerID: ownerID, itemID: "review.audio")
+        activeToken = token; activeTarget = target
+        activeRequest = SpeechRequest(target: target, text: "", language: language, languageMode: .fixed)
+        telemetry.begin(token, model: "Review audio", engine: "recorded_audio", language: language)
+        do { try audioPlayer.play(audio.data, rate: 1, token: token) } catch {
+            clearActivePlayback(); telemetry.finish(token, outcome: .failed); throw error
         }
     }
 

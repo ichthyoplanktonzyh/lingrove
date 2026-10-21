@@ -26,6 +26,10 @@ nonisolated struct ReviewPlan: Codable, Equatable, Sendable, Identifiable {
     var includeNotes = false
     var includeExplanation = false
     var fieldOverrides: [String: String] = [:]
+    /// Optional additions preserve old v3 archives. Audio is generated only by an explicit
+    /// preparation/send action; the notebook stores receipts, never audio bytes or credentials.
+    var audioKinds: Set<ReviewAudioKind>?
+    var audioReceipts: [ReviewAudioKind: ReviewAudioReceipt]?
 }
 
 /// A remote receipt outlives window navigation. originSenseID stays unchanged after a merge so
@@ -66,6 +70,7 @@ nonisolated enum ReviewField: String, Codable, CaseIterable, Identifiable, Senda
     case identity = "LingroveID", expression = "Expression", meaning = "Meaning", sentence = "Sentence"
     case translation = "Translation", explanation = "Explanation", notes = "Notes"
     case recognition = "Recognition", gapPrompt = "GapPrompt", gapAnswer = "GapAnswer"
+    case expressionAudio = "ExpressionAudio", sentenceAudio = "SentenceAudio"
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -79,6 +84,8 @@ nonisolated enum ReviewField: String, Codable, CaseIterable, Identifiable, Senda
         case .recognition: String(localized: "Recognition card", table: "Vocabulary")
         case .gapPrompt: String(localized: "Gap question", table: "Vocabulary")
         case .gapAnswer: String(localized: "Gap answer", table: "Vocabulary")
+        case .expressionAudio: String(localized: "Expression audio", table: "Vocabulary")
+        case .sentenceAudio: String(localized: "Example audio", table: "Vocabulary")
         }
     }
 }
