@@ -37,7 +37,8 @@ struct CotabbyApp: App {
                     // (Cotabby + macOS + hardware) and the user only has to write the actual report.
                     let url = DeviceInfo.snapshot().appending(to: ProductIdentity.issuesURL)
                     NSWorkspace.shared.open(url)
-                }
+                },
+                onOpenVocabulary: { appDelegate.vocabularyWindow.show() }
             )
         } label: {
             MenuBarStatusLabelView(

@@ -8,26 +8,52 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct LearningExpressionServiceTests {
+    @Test
+    func translationStreamsSafePrefixesAndReturnsOnlyTheValidatedFinalText() async throws {
+        let body = """
+        data: {"choices":[{"delta":{"content":"  "},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{"content":" world."},"finish_reason":null}]}
+
+        data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+
+        data: [DONE]
+
+
+        """
+        let harness = try makeHarness(translationEnabled: true,
+            reply: .init(statusCode: 200, body: Data(body.utf8)))
+        defer { harness.cleanUp() }
+        var prefixes: [String] = []
+        let final = try await harness.service.translateSentence(input: .init(source: "你好，世界。"),
+            sourceLanguage: .chinese, targetLanguage: .english, onPartial: { prefixes.append($0) })
+        #expect(prefixes.first == "Hello", "Leading blank tokens must not open an empty card")
+        #expect(final == "Hello world.")
+        let request = await harness.exchange.waitForRequest()
+        let requestBody = try #require(request.body)
+        let json = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+        #expect(json["stream"] as? Bool == true)
+    }
+
     @Test(arguments: LearningReadingSource.allCases)
-    func eachReadingSourceTranslatesAndAlignsWithOtherEntrypointsDisabled(_ source: LearningReadingSource) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,
-            sourceLanguages: [.english], targetLanguage: .chinese,
-            reply: instructionResponse("I can do it."), analysisReply: sentenceReply(malformed: false))
+    func eachReadingSourceNeedsOnlyOneTranslationRequest(_ source: LearningReadingSource) async throws {
+        let harness = try makeHarness(translationEnabled: true, legacyAlignmentEnabled: true,
+            sourceLanguages: [.english], targetLanguage: .chinese, reply: instructionResponse("I can do it."))
         defer { harness.cleanUp() }
         let learning = harness.settings.languageLearning
         learning.readingTargetLanguage = .english
         setReadingSource(source, enabled: true, in: learning)
         let translation = try await harness.service.translateReadingSelection(source: "我能做到",
             sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
-        let result = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: translation,
-            sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
-        #expect(translation == "I can do it." && result.chunks.count == 3)
-        #expect(harness.exchange.requestCount == 2)
+        #expect(translation == "I can do it.")
+        #expect(harness.exchange.requestCount == 1)
     }
 
     @Test(arguments: LearningReadingSource.allCases)
     func disabledReadingSourceCannotBorrowAnotherSourcesSwitch(_ source: LearningReadingSource) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true)
+        let harness = try makeHarness(translationEnabled: true)
         defer { harness.cleanUp() }
         let learning = harness.settings.languageLearning
         learning.readingTargetLanguage = .english
@@ -37,62 +63,45 @@ struct LearningExpressionServiceTests {
                 targetLanguage: .english, readingSource: source)
             Issue.record("A disabled source must never start translation")
         } catch is LearningFailure {} catch { Issue.record("Expected disabled-direction failure, got \(error)") }
-        do {
-            _ = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
-                sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
-            Issue.record("A disabled source must never start analysis")
-        } catch is CancellationError {} catch { Issue.record("Expected cancellation, got \(error)") }
         #expect(harness.exchange.requestCount == 0)
     }
 
-    @Test(arguments: LearningReadingSource.allCases, [false, true])
-    func closingReadingSourceRejectsLateTranslationAndAnalysis(_ source: LearningReadingSource, analysis: Bool) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true, holdResponse: true)
-        defer { harness.cleanUp() }
-        let learning = harness.settings.languageLearning
-        learning.readingTargetLanguage = .english
-        setReadingSource(source, enabled: true, in: learning)
-        let operation = Task {
-            if analysis {
-                _ = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
-                    sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
-            } else {
-                _ = try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
-                    targetLanguage: .english, readingSource: source)
-            }
-        }
-        _ = await harness.exchange.waitForRequest()
-        setReadingSource(source, enabled: false, in: learning)
-        harness.exchange.release(with: try analysis ? sentenceReply(malformed: false) : instructionResponse("I can do it."))
-        do {
-            try await operation.value
-            Issue.record("A late result must be discarded when its own entry closes")
-        } catch is CancellationError {} catch { Issue.record("Expected cancellation, got \(error)") }
-        #expect(harness.exchange.requestCount == 1)
-    }
-
-    @Test(arguments: LearningReadingSource.allCases, [false, true])
-    func closingOtherSourcesKeepsPendingReadingWork(_ source: LearningReadingSource, analysis: Bool) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true, holdResponse: true)
+    @Test(arguments: LearningReadingSource.allCases)
+    func closingReadingSourceRejectsLateTranslation(_ source: LearningReadingSource) async throws {
+        let harness = try makeHarness(translationEnabled: true, holdResponse: true)
         defer { harness.cleanUp() }
         let learning = harness.settings.languageLearning
         learning.readingTargetLanguage = .english
         for entry in LearningReadingSource.allCases { setReadingSource(entry, enabled: true, in: learning) }
         let operation = Task {
-            if analysis {
-                let result = try await harness.service.analyzeReadingSelection(source: "我能做到", translation: "I can do it.",
-                    sourceLanguage: .chinese, targetLanguage: .english, readingSource: source)
-                #expect(result.chunks.count == 3)
-            } else {
-                let text = try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
-                    targetLanguage: .english, readingSource: source)
-                #expect(text == "I can do it.")
-            }
+            try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
+                targetLanguage: .english, readingSource: source)
+        }
+        _ = await harness.exchange.waitForRequest()
+        setReadingSource(source, enabled: false, in: learning)
+        harness.exchange.release(with: try instructionResponse("I can do it."))
+        do {
+            _ = try await operation.value
+            Issue.record("A late result must be discarded when its own entry closes")
+        } catch is CancellationError {} catch { Issue.record("Expected cancellation, got \(error)") }
+        #expect(harness.exchange.requestCount == 1)
+    }
+
+    @Test(arguments: LearningReadingSource.allCases)
+    func closingOtherSourcesKeepsPendingReadingWork(_ source: LearningReadingSource) async throws {
+        let harness = try makeHarness(translationEnabled: true, holdResponse: true)
+        defer { harness.cleanUp() }
+        let learning = harness.settings.languageLearning
+        learning.readingTargetLanguage = .english
+        for entry in LearningReadingSource.allCases { setReadingSource(entry, enabled: true, in: learning) }
+        let operation = Task {
+            try await harness.service.translateReadingSelection(source: "我能做到", sourceLanguage: .chinese,
+                targetLanguage: .english, readingSource: source)
         }
         _ = await harness.exchange.waitForRequest()
         for entry in LearningReadingSource.allCases where entry != source { setReadingSource(entry, enabled: false, in: learning) }
-        harness.exchange.release(with: try analysis ? sentenceReply(malformed: false) : instructionResponse("I can do it."))
-        try await operation.value
+        harness.exchange.release(with: try instructionResponse("I can do it."))
+        #expect(try await operation.value == "I can do it.")
         #expect(harness.exchange.requestCount == 1)
     }
 
@@ -127,20 +136,18 @@ struct LearningExpressionServiceTests {
     }
 
     @Test
-    func disabledAnalysisUsesOneTranslationRequestAndKeepsTranslationWhenAnalysisSettingsChange() async throws {
-        let harness = try makeHarness(translationEnabled: true, holdResponse: true)
+    func legacyAlignmentConfigurationCannotStartAnotherRequestOrRedirectTranslation() async throws {
+        let harness = try makeHarness(translationEnabled: true, legacyAlignmentEnabled: true, holdResponse: true)
         defer { harness.cleanUp() }
-        let operation = Task { try await harness.service.generateSentence(source: "我能做到",
-            sourceLanguage: .chinese, targetLanguage: .english) { _ in } }
+        let operation = Task { try await harness.service.translateSentence(source: "我能做到",
+            sourceLanguage: .chinese, targetLanguage: .english) }
         _ = await harness.exchange.waitForRequest()
-        harness.settings.languageLearning.analysis.endpointModel = "different-analyst"
-        harness.settings.languageLearning.analysis.saveAPIKey("analysis-key")
+        harness.defaults.set("different-analyst", forKey: "learning.analysis.endpointModel")
         harness.settings.setOpenAICompatibleBaseURL("https://completion.invalid/v1")
         harness.exchange.release(with: try instructionResponse("I can do it."))
-        let result = try await operation.value
-        #expect(result.translation == "I can do it.")
-        #expect(result.chunks.isEmpty)
+        #expect(try await operation.value == "I can do it.")
         #expect(harness.exchange.requestCount == 1)
+        #expect(harness.defaults.bool(forKey: "learningAnalysisEnabled"), "Retiring the feature must not delete its experimental settings")
     }
 
     @Test
@@ -148,7 +155,7 @@ struct LearningExpressionServiceTests {
         let catalog = LearningExpressionServiceReply(statusCode: 200,
             body: Data(#"{"data":[{"id":"test-model"}]}"#.utf8))
         let failure = LearningExpressionServiceReply(statusCode: 500, body: Data())
-        let harness = try makeHarness(reply: catalog, analysisReply: failure)
+        let harness = try makeHarness(reply: catalog, nextReply: failure)
         defer { harness.cleanUp() }
         let controller = harness.service.models.translation
         // Discovery is available even when the task uses a local model.
@@ -174,8 +181,7 @@ struct LearningExpressionServiceTests {
         let controller = harness.service.models.translation
         let discovery = Task { await controller.discoverEndpoint() }
         _ = await harness.exchange.waitForRequest()
-        if change == "url" { controller.profile.baseURL = "https://new.invalid/v1" }
-        else { controller.profile.saveAPIKey("new-key") }
+        if change == "url" { controller.profile.baseURL = "https://new.invalid/v1" } else { controller.profile.saveAPIKey("new-key") }
         #expect(controller.endpointConnection.models.isEmpty)
         #expect(controller.endpointConnection.state == .idle)
         harness.exchange.release(with: .init(statusCode: 200,
@@ -201,27 +207,19 @@ struct LearningExpressionServiceTests {
         #expect(try await operation.value == "I can do it.")
     }
 
-    @Test(arguments: [false, true])
-    func realTransportRecordsValidatedStageOutcomesWithOneSentenceID(_ malformed: Bool) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true, trackingEnabled: true,
-            reply: instructionResponse("I can do it."), analysisReply: sentenceReply(malformed: malformed))
+    @Test
+    func realTransportRecordsOnlyTranslationWithLegacyAlignmentEnabled() async throws {
+        let harness = try makeHarness(translationEnabled: true, legacyAlignmentEnabled: true, trackingEnabled: true,
+            reply: instructionResponse("I can do it."))
         defer { harness.cleanUp() }
-        do {
-            _ = try await harness.service.generateSentence(source: "我能做到", sourceLanguage: .chinese,
-                targetLanguage: .english) { _ in }
-            #expect(!malformed)
-        } catch { #expect(malformed) }
-        let rows = harness.metrics.entries
-        #expect(rows.count == 2)
-        #expect(rows.map(\.source) == [.translation, .analysis])
-        #expect(rows.map(\.outcome) == [.completed, malformed ? .failed : .completed])
-        #expect(rows[0].requestID == rows[1].requestID)
-        #expect(rows[0].requestID?.hasPrefix("req_") == true)
-        #expect(rows.allSatisfy { $0.firstOutputMs != nil })
-        #expect(rows[0].usableResultMs != nil)
-        #expect((rows[1].usableResultMs == nil) == malformed)
+        let text = try await harness.service.translateSentence(source: "我能做到", sourceLanguage: .chinese, targetLanguage: .english)
+        #expect(text == "I can do it.")
+        let row = try #require(harness.metrics.entries.first)
+        #expect(harness.metrics.entries.count == 1 && row.source == .translation && row.outcome == .completed)
+        #expect(row.requestID?.hasPrefix("req_") == true)
+        #expect(row.firstOutputMs != nil && row.usableResultMs != nil)
         let data = try #require(harness.defaults.data(forKey: "cotabbyPerformanceMetricEntries"))
-        #expect(!String(decoding: data, as: UTF8.self).contains("我能做到"))
+        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("我能做到"))
     }
 
     @Test
@@ -247,102 +245,32 @@ struct LearningExpressionServiceTests {
     }
 
     @Test
-    func eachStageUsesItsOwnModelAndCredential() async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,
-            reply: instructionResponse("I can do it."), analysisReply: sentenceReply(malformed: false))
+    func translationKeepsItsOwnModelAndCredential() async throws {
+        let harness = try makeHarness(translationEnabled: true, reply: instructionResponse("I can do it."))
         defer { harness.cleanUp() }
         harness.settings.languageLearning.translation.saveAPIKey("translation-key")
-        harness.settings.languageLearning.analysis.saveAPIKey("analysis-key")
-        let result = try await harness.service.generateSentence(source: "我能做到", sourceLanguage: .chinese,
-            targetLanguage: .english) { _ in }
-        #expect(result.chunks.count == 3)
-        let translationRequest = await harness.exchange.waitForRequest()
-        let analysisRequest = await harness.exchange.waitForRequest(index: 1)
-        #expect(translationRequest.headers["Authorization"] == "Bearer translation-key")
-        #expect(analysisRequest.headers["Authorization"] == "Bearer analysis-key")
-        let translationData = try #require(translationRequest.body)
-        let analysisData = try #require(analysisRequest.body)
-        let translationBody = try #require(JSONSerialization.jsonObject(with: translationData) as? [String: Any])
-        let analysisBody = try #require(JSONSerialization.jsonObject(with: analysisData) as? [String: Any])
-        #expect(translationBody["model"] as? String == "learning-instruction-model")
-        #expect(analysisBody["model"] as? String == "analysis-instruction-model")
-    }
-    @Test(arguments: [false, true])
-    func sentenceStreamPreservesTranslationWhenLaterAnalysisIsMalformed(_ malformed: Bool) async throws {
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,
-            reply: instructionResponse("I can do it."), analysisReply: sentenceReply(malformed: malformed))
-        defer { harness.cleanUp() }
-        var updates: [LearningSentenceUpdate] = []
-        do {
-            let result = try await harness.service.generateSentence(source: "我能做到", sourceLanguage: .chinese,
-                targetLanguage: .english) { updates.append($0) }
-            #expect(!malformed)
-            #expect(result.translation == "I can do it.")
-            #expect(result.chunks.count == 3)
-        } catch {
-            #expect(malformed)
-        }
-        #expect(updates.first == .translation("I can do it."))
-        #expect(updates.count == (malformed ? 1 : 2))
-        if !malformed, case .chunks(let chunks) = updates.last { #expect(chunks.count == 3) }
-        else if !malformed { Issue.record("Alignment must publish one complete batch") }
-        let prompt = try instructionPrompt(from: await harness.exchange.waitForRequest())
-        let expectedPrompt = try LearningExpressionPrompt.translation(source: "我能做到", sourceLanguage: .chinese, targetLanguage: .english)
-        let analysisPrompt = try instructionPrompt(from: await harness.exchange.waitForRequest(index: 1))
-        let expectedAnalysis = try LearningAnalysisPrompt.render(source: "我能做到", translation: "I can do it.",
-            sourceLanguage: .chinese, targetLanguage: .english)
-        #expect(analysisPrompt == expectedAnalysis)
-        #expect(harness.exchange.requestCount == 2)
-        #expect(prompt == expectedPrompt)
-        #expect(!prompt.contains("CLIPBOARD_SECRET"))
-        #expect(!prompt.contains("HISTORY_SECRET"))
+        harness.settings.languageLearning.explanation.saveAPIKey("explanation-key")
+        _ = try await harness.service.translateSentence(source: "我能做到", sourceLanguage: .chinese, targetLanguage: .english)
+        let request = await harness.exchange.waitForRequest()
+        #expect(request.headers["Authorization"] == "Bearer translation-key")
+        let data = try #require(request.body)
+        let body = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(body["model"] as? String == "learning-instruction-model")
     }
 
     @Test
-    func changedLearningModelRejectsEveryBufferedSentenceUpdate() async throws {
+    func changedLearningModelRejectsBufferedTranslation() async throws {
         let harness = try makeHarness(translationEnabled: true, holdResponse: true)
         defer { harness.cleanUp() }
-        var updates: [LearningSentenceUpdate] = []
-        let operation = Task {
-            try await harness.service.generateSentence(source: "我能做到", sourceLanguage: .chinese,
-                targetLanguage: .english) { updates.append($0) }
-        }
+        let operation = Task { try await harness.service.translateSentence(source: "我能做到", sourceLanguage: .chinese,
+            targetLanguage: .english) }
         _ = await harness.exchange.waitForRequest()
         harness.settings.languageLearning.model = "new-learning-model"
-        harness.exchange.release(with: try sentenceReply(malformed: false))
+        harness.exchange.release(with: try instructionResponse("I can do it."))
         do {
             _ = try await operation.value
             Issue.record("A response from the previous model must not reach the display")
         } catch { #expect(error is CancellationError) }
-        #expect(updates.isEmpty)
-    }
-
-    private func sentenceReply(malformed: Bool) throws -> LearningExpressionServiceReply {
-        let chunk = malformed ? #"[["能","can"],{"broken":true}]"# :
-            #"[["我","I"],["能","can"],["做到","do it"]]"# + "\n"
-        let content = try JSONSerialization.data(withJSONObject: ["choices": [["delta": ["content": chunk]]]])
-        let wire = "data: " + String(decoding: content, as: UTF8.self) + "\n\n" +
-            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
-        return .init(statusCode: 200, body: Data(wire.utf8))
-    }
-
-    @Test
-    func oversizedAlignmentDeltaCannotPublishAnyHighlight() async throws {
-        let delta = String(repeating: "x", count: 48_001)
-        let content = try JSONSerialization.data(withJSONObject: ["choices": [["delta": ["content": delta]]]])
-        let wire = "data: " + String(decoding: content, as: UTF8.self) + "\n\n" +
-            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
-        let harness = try makeHarness(translationEnabled: true, analysisEnabled: true,
-            reply: instructionResponse("I can do it."), analysisReply: .init(statusCode: 200, body: Data(wire.utf8)))
-        defer { harness.cleanUp() }
-        var updates: [LearningSentenceUpdate] = []
-        do {
-            _ = try await harness.service.generateSentence(source: "我能做到", sourceLanguage: .chinese,
-                targetLanguage: .english) { updates.append($0) }
-            Issue.record("Oversized alignment must be rejected")
-        } catch {
-            #expect(updates == [.translation("I can do it.")])
-        }
     }
 
     @Test
@@ -504,14 +432,14 @@ struct LearningExpressionServiceTests {
 
     private func makeHarness(
         translationEnabled: Bool = false,
-        analysisEnabled: Bool = false,
+        legacyAlignmentEnabled: Bool = false,
         sourceLanguages: [LearningLanguage] = [.chinese],
         targetLanguage: LearningLanguage = .english,
         legacyVocabularyEnabled: Bool = false,
         holdResponse: Bool = false,
         trackingEnabled: Bool = false,
         reply: LearningExpressionServiceReply = .translation,
-        analysisReply: LearningExpressionServiceReply? = nil
+        nextReply: LearningExpressionServiceReply? = nil
     ) throws -> LearningExpressionServiceHarness {
         let suiteName = "cotabby.test.learningExpressionService.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -521,11 +449,15 @@ struct LearningExpressionServiceTests {
             defaults.set(true, forKey: "learningTranslationVocabularyEnabled")
             defaults.set("apple banana", forKey: "learningVocabulary")
         }
+        if legacyAlignmentEnabled {
+            defaults.set(true, forKey: "learningAnalysisEnabled")
+            defaults.set("endpoint", forKey: "learning.analysis.backend")
+            defaults.set("legacy-alignment", forKey: "learning.analysis.endpointModel")
+        }
         let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
         settings.setGloballyEnabled(true)
         settings.setPerformanceTrackingEnabled(trackingEnabled)
         settings.languageLearning.translationEnabled = translationEnabled
-        settings.languageLearning.analysisEnabled = analysisEnabled
         settings.languageLearning.model = "learning-instruction-model"
         settings.languageLearning.sourceLanguages = sourceLanguages
         settings.languageLearning.targetLanguage = targetLanguage
@@ -534,11 +466,8 @@ struct LearningExpressionServiceTests {
         settings.setOpenAICompatibleBaseURL("https://\(host)/v1")
         settings.languageLearning.translation.baseURL = "https://\(host)/v1"
         settings.setOpenAICompatibleModelName("completion-model")
-        settings.languageLearning.analysis.backend = .endpoint
-        settings.languageLearning.analysis.baseURL = "https://\(host)/v1"
-        settings.languageLearning.analysis.endpointModel = "analysis-instruction-model"
 
-        let exchange = LearningExpressionServiceExchange(automaticReply: holdResponse ? nil : reply, analysisReply: analysisReply)
+        let exchange = LearningExpressionServiceExchange(automaticReply: holdResponse ? nil : reply, nextReply: nextReply)
         LearningExpressionServiceStubRegistry.register(exchange, for: host)
 
         let configuration = URLSessionConfiguration.ephemeral
@@ -631,7 +560,7 @@ private struct LearningExpressionServiceReply {
 nonisolated private final class LearningExpressionServiceExchange: @unchecked Sendable {
     private let lock = NSLock()
     private let automaticReply: LearningExpressionServiceReply?
-    private let analysisReply: LearningExpressionServiceReply?
+    private let nextReply: LearningExpressionServiceReply?
     private var requests: [CapturedLearningHTTPRequest] = []
     private var pendingReply: LearningExpressionServiceReply?
     private var capturedRequest: CapturedLearningHTTPRequest?
@@ -640,9 +569,9 @@ nonisolated private final class LearningExpressionServiceExchange: @unchecked Se
     private var activeProtocol: LearningExpressionServiceURLProtocol?
     private var hasDeliveredReply = false
 
-    init(automaticReply: LearningExpressionServiceReply?, analysisReply: LearningExpressionServiceReply?) {
+    init(automaticReply: LearningExpressionServiceReply?, nextReply: LearningExpressionServiceReply?) {
         self.automaticReply = automaticReply
-        self.analysisReply = analysisReply
+        self.nextReply = nextReply
         pendingReply = automaticReply
     }
 
@@ -677,7 +606,7 @@ nonisolated private final class LearningExpressionServiceExchange: @unchecked Se
         let index = requests.count
         requests.append(request)
         let waiter = requestWaiters.removeValue(forKey: index)
-        let reply = index == 0 ? pendingReply : analysisReply
+        let reply = index == 0 ? pendingReply : nextReply
         let shouldDeliver = reply != nil && (index > 0 || !hasDeliveredReply)
         if shouldDeliver { hasDeliveredReply = true }
         lock.unlock()
@@ -758,11 +687,11 @@ nonisolated private enum LearningExpressionServiceStubRegistry {
 nonisolated private final class LearningExpressionServiceURLProtocol: URLProtocol {
     private var exchange: LearningExpressionServiceExchange?
 
-    override class func canInit(with request: URLRequest) -> Bool {
+    override static func canInit(with request: URLRequest) -> Bool {
         request.url?.host?.hasSuffix(".learning.invalid") == true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
         guard let host = request.url?.host,

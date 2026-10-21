@@ -8,6 +8,20 @@ import XCTest
 /// which makes guard *ordering* part of the contract too: the user should see the most actionable
 /// reason, not an incidental one.
 final class SuggestionAvailabilityEvaluatorTests: XCTestCase {
+    func test_completionOffBlocksPredictionAndVisualCaptureWithoutDisablingSharedLearningEligibility() {
+        let snapshot = makeSnapshot()
+        XCTAssertNotNil(SuggestionAvailabilityEvaluator.disabledReason(
+            completionEnabled: false, inputMonitoringGranted: true, focusSnapshot: snapshot))
+        XCTAssertFalse(SuggestionAvailabilityEvaluator.shouldSchedulePrediction(
+            completionEnabled: false, inputMonitoringGranted: true, focusSnapshot: snapshot))
+        XCTAssertFalse(SuggestionAvailabilityEvaluator.shouldCaptureVisualContext(
+            completionEnabled: false, inputMonitoringGranted: true,
+            screenRecordingGranted: true, focusSnapshot: snapshot))
+        // Learning/history call this shared host policy without opting into the completion gate.
+        XCTAssertNil(SuggestionAvailabilityEvaluator.disabledReason(
+            inputMonitoringGranted: true, focusSnapshot: snapshot, checkCapability: false))
+    }
+
     private static let turnedOff = "Cotabby is turned off."
     private static let paused = "Cotabby is temporarily paused."
     private static let lowPower = "Cotabby is paused because Low Power Mode is on."

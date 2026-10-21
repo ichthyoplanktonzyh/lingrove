@@ -204,6 +204,8 @@ struct SuggestionSettingsSnapshot: Equatable, Sendable {
     /// Destination identity invalidates work even when two models have the same numeric budget.
     var completionModelIdentity: String = ""
     var localModelIdentity: String = ""
+    /// Captured with the request policy so late async results cannot revive disabled completion.
+    var isCompletionEnabled: Bool = true
 
     /// Single chokepoint that picks between the preset's range and the user's custom range.
     /// Every downstream consumer (token-budget math, prompt-instruction text, UI labels in the

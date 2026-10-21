@@ -1,30 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// Drawable correspondence for one immutable sentence pair. Parsing owns exact UTF-16 ranges;
-/// views own color and selection. Explanations are not part of the alignment model's contract.
-nonisolated struct LearningMeaningChunk: Identifiable, Equatable, Sendable {
-    let id: Int
-    let sourceRanges: [NSRange]
-    let targetRanges: [NSRange]
-}
-
-/// Each request produces one translation first, followed by its meaning units. Request identity
-/// belongs to the coordinator so a late event cannot attach analysis to a newer sentence.
-nonisolated enum LearningSentenceUpdate: Equatable, Sendable {
-    case translation(String)
-    /// Complete validated alignment is published as one batch, preserving atomic highlighting.
-    case chunks([LearningMeaningChunk])
-    /// Retained for the historical NDJSON evaluator and controlled coordinator test fixtures.
-    case chunk(LearningMeaningChunk)
-}
-
-nonisolated struct LearningSentenceResult: Equatable, Sendable {
-    let translation: String
-    let chunks: [LearningMeaningChunk]
-    var unresolvedChunkCount: Int = 0
-}
-
 /// Separate from continuation generation: learning has its own model, prompt and output contract.
 /// The app environment owns the implementation; tests can supply a controllable event stream.
 @MainActor
@@ -32,45 +8,36 @@ protocol LearningSentenceGenerating: LearningDisplayReporting {
     var settings: SuggestionSettingsModel { get }
     func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource) async throws -> String
-    func analyzeReadingSelection(
-        source: String, translation: String, sourceLanguage: LearningLanguage,
-        targetLanguage: LearningLanguage, readingSource: LearningReadingSource
-    ) async throws -> LearningSentenceResult
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource,
+                                   onPartial: @escaping @MainActor (String) -> Void) async throws -> String
     func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String
-    func analyzeSentence(source: String, translation: String, sourceLanguage: LearningLanguage,
-                         targetLanguage: LearningLanguage,
-                         onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult
-    func generateSentence(
-        source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
-        onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void
-    ) async throws -> LearningSentenceResult
+    /// Prefixes are display-only snapshots. Only the returned, validated value may be cached,
+    /// spoken or used to replace the saved source range.
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                           onPartial: @escaping @MainActor (String) -> Void) async throws -> String
 }
 
 extension LearningSentenceGenerating {
     func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                                   readingSource: LearningReadingSource,
+                                   onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+        try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage, readingSource: readingSource)
+    }
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+                           onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
+        try await translateSentence(input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
+    }
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource = .selection) async throws -> String {
         try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
-    }
-    func analyzeReadingSelection(
-        source: String, translation: String, sourceLanguage: LearningLanguage,
-        targetLanguage: LearningLanguage, readingSource: LearningReadingSource = .selection
-    ) async throws -> LearningSentenceResult {
-        try await analyzeSentence(source: source, translation: translation, sourceLanguage: sourceLanguage,
-                                  targetLanguage: targetLanguage, onUpdate: { _ in })
     }
     func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
         -> String {
         try await translateSentence(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
-    }
-    func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String {
-        try await generateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage, onUpdate: { _ in }).translation
-    }
-    func analyzeSentence(source: String, translation: String, sourceLanguage: LearningLanguage,
-                         targetLanguage: LearningLanguage,
-                         onUpdate: @escaping @MainActor (LearningSentenceUpdate) -> Void) async throws -> LearningSentenceResult {
-        .init(translation: translation, chunks: [])
     }
 }
 
@@ -81,7 +48,6 @@ struct LearningSentencePresentation {
     let id: UUID
     let source: String
     let translation: String
-    let chunks: [LearningMeaningChunk]
     let sourceLanguage: LearningLanguage
     let targetLanguage: LearningLanguage
     let caret: CGRect
@@ -95,13 +61,18 @@ struct LearningSentencePresentation {
     var unitStage: LearningUnitStage = .pending
     var targetIsSelection = false
     var canReplace = false
-    /// Shown independently of generation and analysis messages so a read-only capture stays
+    /// Shown independently of generation messages so a read-only capture stays
     /// understandable after those messages are cleared or replaced.
     var replacementUnavailableReason: String?
     var replacementShortcutLabel = ""
     var isCommitting = false
     var isError = false
     var readingSource: LearningReadingSource?
+    /// A nonempty streamed prefix is still incomplete and cannot be spoken or written back.
+    var isTranslating = false
+    /// Optional acquisition evidence for explicit vocabulary saves, never added to model prompts.
+    var vocabularyContext: VocabularyExample?
+    var vocabularyAppBundleIdentifier: String?
 
     var targetLabel: String {
         switch readingSource {
@@ -122,6 +93,7 @@ protocol LearningSentencePresenting: AnyObject {
     var isVisible: Bool { get }
     func hide()
     func dismissDetail() -> Bool
+    func containsGlobalInteraction(at point: CGPoint) -> Bool
     func show(_ presentation: LearningSentencePresentation, expand: @escaping () -> Void, dismiss: @escaping () -> Void)
     func show(
         _ presentation: LearningSentencePresentation, expand: @escaping () -> Void, dismiss: @escaping () -> Void,
@@ -134,4 +106,5 @@ extension LearningSentencePresenting {
         replace: (() -> Void)?
     ) { show(presentation, expand: expand, dismiss: dismiss) }
     func dismissDetail() -> Bool { false }
+    func containsGlobalInteraction(at point: CGPoint) -> Bool { false }
 }

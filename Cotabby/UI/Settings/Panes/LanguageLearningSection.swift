@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Presents the cross-language learning controls from the app-owned settings model.
 /// The shared settings object owns persistence; the selected role only chooses visible Form
-/// sections. Translation owns its directions and expression style; alignment owns its toggle/model
-/// link. Both route technical configuration and shortcuts through the window's navigation.
+/// sections. Translation owns directions and style; explanation owns its output language.
+/// Both route technical configuration and shortcuts through the window's navigation.
 struct LanguageLearningSection: View {
     @ObservedObject var settings: LanguageLearningSettings
     let role: LearningModelRole
@@ -20,8 +20,19 @@ struct LanguageLearningSection: View {
             translationSection
             selectionSection
             LearningTranslationStyleSection(profile: settings.translation)
-        case .analysis:
-            alignmentSection
+        case .explanation:
+            explanationSection
+        }
+    }
+
+    private var explanationSection: some View {
+        Section(String(localized: "AI explanation", table: "Learning")) {
+            Picker(String(localized: "Explanation language", table: "Learning"), selection: $settings.explanationLanguage) {
+                Text(String(localized: "Interface language", table: "Learning")).tag(nil as LearningLanguage?)
+                ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
+            }.settingsItem(.explanationLanguage)
+            LearningModelSummaryRow(title: String(localized: "AI explanation model", table: "Learning"),
+                profile: settings.explanation) { configureModel(.explanation) }
         }
     }
 
@@ -39,7 +50,7 @@ struct LanguageLearningSection: View {
             Text(String(localized: """
             Translation sends the target, optional draft excerpts and style instructions to the chosen engine. \
             Reading sends only selected, pointed or OCR-recognized text and style instructions. \
-            Alignment receives the target and translation. Raw screenshots, unrelated clipboard content and history are excluded.
+            Raw screenshots, unrelated clipboard content and history are excluded.
             """,
                 table: "Learning", comment: """
                 Privacy disclosure describing the data sent for learning requests and context that is never included.
@@ -75,29 +86,6 @@ struct LanguageLearningSection: View {
             Button(String(localized: "Manage allowed apps", table: "Learning"), action: openApps)
                 .settingsItem(.selectionTranslationApps)
             Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
-        }
-    }
-
-    private var alignmentSection: some View {
-        Section(String(localized: "Chunk alignment", table: "Learning")) {
-            if !settings.translationEnabled {
-                Text(String(localized: "Enable translation in the Translation tab to use chunk alignment.", table: "Learning"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Toggle(String(localized: "Enable chunk alignment", table: "Learning",
-                comment: "Turns source-to-translation phrase alignment on or off."),
-                isOn: $settings.analysisEnabled)
-                .disabled(!settings.translationEnabled).settingsItem(.chunkAlignment)
-            Text(String(localized: """
-            You can still read the translation, compare it with the source, and look up words when chunk alignment is off. Matching \
-            only identifies corresponding excerpts; it does not translate again or generate explanations.
-            """,
-                table: "Learning", comment: "Explains the independent chunk-alignment setting and what its model does."))
-                .font(.caption).foregroundStyle(.secondary)
-            LearningModelSummaryRow(title: String(localized: "Chunk alignment model", table: "Learning",
-                comment: "Name of the model profile used to align source and target phrases."), profile: settings.analysis) {
-                configureModel(.analysis)
-            }
         }
     }
 

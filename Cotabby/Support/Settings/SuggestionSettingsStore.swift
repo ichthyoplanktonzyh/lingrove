@@ -112,6 +112,7 @@ struct SuggestionSettingsStore {
 
     // MARK: - UserDefaults keys
 
+    private static let isCompletionEnabledDefaultsKey = "cotabbyCompletionEnabled"
     private static let isGloballyEnabledDefaultsKey = "cotabbyGloballyEnabled"
     private static let pauseStateDefaultsKey = "cotabbySuggestionPauseState"
     private static let disabledAppRulesDefaultsKey = "cotabbyDisabledAppRules"
@@ -212,6 +213,7 @@ struct SuggestionSettingsStore {
     /// would otherwise resurrect.
     private static let allPreferenceDefaultsKeys: [String] = [
         isGloballyEnabledDefaultsKey,
+        isCompletionEnabledDefaultsKey,
         pauseStateDefaultsKey,
         disabledAppRulesDefaultsKey,
         perAppShortcutOverridesDefaultsKey,
@@ -619,7 +621,8 @@ struct SuggestionSettingsStore {
                 addSpaceAfterAccept: resolvedAddSpaceAfterAccept,
                 streamSuggestionsWhileGenerating: resolvedStreamSuggestionsWhileGenerating,
                 predictAheadWhileTyping: resolvedPredictAheadWhileTyping,
-                acceptanceGranularity: resolvedAcceptanceGranularity
+                acceptanceGranularity: resolvedAcceptanceGranularity,
+                isCompletionEnabled: userDefaults.object(forKey: Self.isCompletionEnabledDefaultsKey) as? Bool ?? true
             ),
             context: SuggestionContextSettings(
                 isClipboardContextEnabled: resolvedClipboardContextEnabled,
@@ -685,6 +688,7 @@ struct SuggestionSettingsStore {
         // Unconditional write-back so the resolved (possibly migrated or default-capped) values are
         // sticky on the next launch. Mirrors the resolution above field-for-field.
         saveGloballyEnabled(data.isGloballyEnabled)
+        saveCompletionEnabled(data.isCompletionEnabled)
         savePauseState(data.pauseState)
         saveDisabledAppRules(data.disabledAppRules)
         saveSuggestInIntegratedTerminals(data.suggestInIntegratedTerminals)
@@ -788,6 +792,10 @@ struct SuggestionSettingsStore {
     }
 
     // MARK: - Save (one method per field; the facade routes its setters through these)
+
+    func saveCompletionEnabled(_ enabled: Bool) {
+        userDefaults.set(enabled, forKey: Self.isCompletionEnabledDefaultsKey)
+    }
 
     func saveGloballyEnabled(_ enabled: Bool) {
         userDefaults.set(enabled, forKey: Self.isGloballyEnabledDefaultsKey)

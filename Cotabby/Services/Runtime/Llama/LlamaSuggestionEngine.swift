@@ -57,12 +57,19 @@ final class LlamaSuggestionEngine {
     /// sequence, so the first request in every field paid a full prefill. Best-effort by design:
     /// failures are swallowed (a missed warmup costs nothing the cold path would not have paid)
     /// and the tracker only records the prompt after the native decode actually succeeded.
+    func cancelPrewarm() {
+        inflightPrewarmTask?.cancel()
+        inflightPrewarmTask = nil
+    }
+
     func prewarm(for request: SuggestionRequest) async {
+        guard !Task.isCancelled else { return }
         inflightPrewarmTask?.cancel()
         let cachedPrefixBytes = promptCacheHintTracker.cachedPrefixBytes(for: request)
         let options = Self.makeGenerationOptions(for: request)
         let task = Task { [weak self, runtimeManager] in
             do {
+                try Task.checkCancellation()
                 try await runtimeManager.prefill(
                     prompt: request.prompt,
                     cachedPrefixBytes: cachedPrefixBytes,

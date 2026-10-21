@@ -6,6 +6,26 @@ import XCTest
 /// native preload request and records how many actually begin.
 @MainActor
 final class OllamaPreloadWorkControllerTests: XCTestCase {
+    func test_explicitShutdownCancelsSharedPreloadAndAllowsFreshWarmup() async {
+        let controller = OllamaPreloadWorkController()
+        let started = expectation(description: "Preload started")
+        let cancelled = expectation(description: "Preload observed cancellation")
+        let task = Task { @MainActor in
+            await controller.run(modelName: "model-a") {
+                started.fulfill()
+                do { try await Task.sleep(for: .seconds(10)) }
+                catch { cancelled.fulfill() }
+            }
+        }
+        await fulfillment(of: [started], timeout: 1)
+        controller.cancelAll()
+        await fulfillment(of: [cancelled], timeout: 1)
+        await task.value
+        var retried = false
+        await controller.run(modelName: "model-a") { retried = true }
+        XCTAssertTrue(retried)
+    }
+
     func test_sameModelConcurrentWarmupsShareOneOperationAndAllowLaterRetry() async {
         let controller = OllamaPreloadWorkController()
         let started = expectation(description: "First preload started")

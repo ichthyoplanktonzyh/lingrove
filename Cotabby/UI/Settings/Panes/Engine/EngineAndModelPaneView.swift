@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// File overview:
-/// Fixed task tabs navigate among completion, translation, learning analysis, and TTS.
+/// Fixed task tabs navigate among completion, translation, AI explanation, and TTS.
 /// Each page uses the established grouped settings scaffold and app-owned services for its task.
 /// Task pages show current configuration first. Resource management opens in a task-scoped
 /// sheet, while technical options stay in collapsed sibling Form sections. Navigation belongs
@@ -38,8 +38,8 @@ struct EngineAndModelPaneView: View {
                 completionPage
             case .translation:
                 learningPage(role: .translation)
-            case .analysis:
-                learningPage(role: .analysis)
+            case .explanation:
+                learningPage(role: .explanation)
             case .speech:
                 speechPage
             }
@@ -194,9 +194,10 @@ struct EngineAndModelPaneView: View {
     private func learningPage(role: LearningModelRole) -> some View {
         Group {
             if let learningModels {
-                let controller = role == .translation ? learningModels.translation : learningModels.analysis
+                let controller = learningModels.controller(for: role)
                 LearningModelConfigurationView(controller: controller, profile: controller.profile, navigation: navigation,
-                    suggestionSettings: suggestionSettings, downloads: modelDownloadManager, searchService: huggingFaceSearchService)
+                    suggestionSettings: suggestionSettings, downloads: modelDownloadManager, searchService: huggingFaceSearchService,
+                    explanationPreview: role == .explanation ? learningModels.explanationPreview : nil)
             } else {
                 SettingsPaneScaffold {
                     Section("Runtime") { Text(String(localized: """
@@ -206,7 +207,7 @@ struct EngineAndModelPaneView: View {
             }
         }
         // Draft keys belong to a page's UI lifetime. Distinct identity prevents an unsaved
-        // translation key from appearing in the analysis form when switching between tasks.
+        // translation key from appearing in the explanation form when switching between tasks.
         .id(role)
     }
 

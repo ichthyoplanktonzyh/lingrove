@@ -203,7 +203,12 @@ final class FoundationModelSuggestionEngine {
     /// prefix cache. We swallow errors because prewarming is opportunistic — the next
     /// `respond` call will surface real availability or generation failures with the right
     /// vocabulary, and reporting them here would just produce noise.
+    func cancelPrewarm() {
+        cachedSession = nil
+    }
+
     func prewarm(for request: SuggestionRequest) async {
+        guard !Task.isCancelled else { return }
         availabilityService.refresh()
         guard availabilityService.isAvailable else {
             return

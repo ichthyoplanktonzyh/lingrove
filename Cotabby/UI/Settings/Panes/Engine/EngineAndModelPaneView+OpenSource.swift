@@ -44,8 +44,7 @@ extension EngineAndModelPaneView {
                     InstalledRuntimeModelRow(model: model, selected: model.filename == runtimeModel.selectedModelFilename,
                         downloads: modelDownloadManager,
                         select: suggestionSettings.isPowerBasedModelSwitchingEnabled ? nil : {
-                            if suggestionSettings.selectedEngine == .llamaOpenSource
-                                || (suggestionSettings.selectedEngine == .appleIntelligence && suggestionSettings.keepsLocalRuntimeLoaded) {
+                            if suggestionSettings.keepsLocalRuntimeLoaded {
                                 selectedModelBinding.wrappedValue = model.filename
                             } else {
                                 runtimeModel.selectModelWithoutLoading(model.filename)

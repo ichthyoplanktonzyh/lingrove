@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import Cotabby
 
-/// Isolated preferences and credential stores prove that changing an analysis model cannot
+/// Isolated preferences and credential stores prove that changing an explanation model cannot
 /// redirect translation or autocomplete. No real Keychain or application preferences are used.
 @MainActor
 struct LearningModelSettingsTests {
@@ -13,32 +13,30 @@ struct LearningModelSettingsTests {
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let translationKeys = InMemoryOpenAICompatibleCredentialStore()
-        let analysisKeys = InMemoryOpenAICompatibleCredentialStore()
+        let explanationKeys = InMemoryOpenAICompatibleCredentialStore()
         let settings = LanguageLearningSettings(defaults: defaults,
-            translationCredentials: translationKeys, analysisCredentials: analysisKeys)
+            translationCredentials: translationKeys, explanationCredentials: explanationKeys)
         settings.translation.backend = .endpoint
         settings.translation.baseURL = "https://translator.invalid/v1"
         settings.translation.endpointModel = "translator"
         settings.translation.saveAPIKey("translation-secret")
         let translation = settings.snapshot
-        settings.analysisEnabled = true
-        settings.analysis.backend = .local
-        settings.analysis.localModel = "analyst.gguf"
-        settings.analysis.template = .qwen3
-        settings.analysis.saveAPIKey("analysis-secret")
+        settings.explanation.backend = .local
+        settings.explanation.localModel = "explainer.gguf"
+        settings.explanation.template = .qwen3
+        settings.explanation.saveAPIKey("explanation-secret")
         #expect(settings.snapshot == translation)
         #expect(try settings.translation.apiKey() == "translation-secret")
-        #expect(try settings.analysis.apiKey() == "analysis-secret")
+        #expect(try settings.explanation.apiKey() == "explanation-secret")
         #expect(!String(describing: defaults.persistentDomain(forName: name)).contains("secret"))
         let restored = LanguageLearningSettings(defaults: defaults,
-            translationCredentials: translationKeys, analysisCredentials: analysisKeys)
+            translationCredentials: translationKeys, explanationCredentials: explanationKeys)
         #expect(restored.translation.backend == .endpoint)
         #expect(restored.translation.baseURL == settings.translation.baseURL)
         #expect(restored.translation.endpointModel == "translator")
-        #expect(restored.analysis.localModel == "analyst.gguf")
-        #expect(restored.analysis.template == .qwen3)
-        #expect(restored.analysisEnabled)
-        settings.analysis.reset()
+        #expect(restored.explanation.localModel == "explainer.gguf")
+        #expect(restored.explanation.template == .qwen3)
+        settings.explanation.reset()
         #expect(try settings.translation.apiKey() == "translation-secret")
     }
 
@@ -54,20 +52,19 @@ struct LearningModelSettingsTests {
         let composed = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults,
             endpointCredentialStore: oldKeys)
         #expect(try composed.languageLearning.translation.apiKey() == "old-secret")
-        #expect(try composed.languageLearning.analysis.apiKey() == nil)
+        #expect(try composed.languageLearning.explanation.apiKey() == nil)
         // The production composition marks migration once. Reset only this isolated test's
         // marker to also exercise the injected profile stores and an explicitly cleared key.
         defaults.removeObject(forKey: "learning.translation.credentialMigrated")
         let translationKeys = InMemoryOpenAICompatibleCredentialStore()
-        let analysisKeys = InMemoryOpenAICompatibleCredentialStore()
+        let explanationKeys = InMemoryOpenAICompatibleCredentialStore()
         let settings = LanguageLearningSettings(defaults: defaults,
-            translationCredentials: translationKeys, analysisCredentials: analysisKeys)
+            translationCredentials: translationKeys, explanationCredentials: explanationKeys)
         settings.translation.migrateLegacyCredential(from: oldKeys)
         #expect(settings.translation.backend == .endpoint)
         #expect(settings.translation.endpointModel == "old-translator")
         #expect(try settings.translation.apiKey() == "old-secret")
-        #expect(try settings.analysis.apiKey() == nil)
-        #expect(!settings.analysisEnabled)
+        #expect(try settings.explanation.apiKey() == nil)
         defaults.set("https://new.invalid/v1", forKey: "cotabbyOpenAICompatibleBaseURL")
         settings.translation.saveAPIKey(nil)
         settings.translation.migrateLegacyCredential(from: oldKeys)
@@ -85,7 +82,7 @@ struct LearningModelSettingsTests {
         let role = settings.translation
         role.localModel = "manual.gguf"
         role.template = .hyMT
-        let analysis = settings.analysis.snapshot
+        let explanation = settings.explanation.snapshot
         role.setPowerSwitchingEnabled(true)
         #expect(role.batteryProfile.localModel == "manual.gguf")
         #expect(role.pluggedInProfile.template == .hyMT)
@@ -95,7 +92,7 @@ struct LearningModelSettingsTests {
         #expect(role.snapshot.endpointModel == "ac-model")
         role.updatePowerSource(isPluggedIn: false)
         #expect(role.snapshot.localModel == "battery.gguf")
-        #expect(settings.analysis.snapshot == analysis)
+        #expect(settings.explanation.snapshot == explanation)
         let restored = LearningModelSettings(role: .translation, defaults: defaults)
         #expect(restored.powerSwitchingEnabled)
         #expect(restored.snapshot.endpointModel == "ac-model")
@@ -212,10 +209,10 @@ struct LearningModelSettingsTests {
         #expect(translation.snapshot.contextWindowTokens == 8_192,
             "An endpoint keeps the existing fallback even when its model field resembles a GGUF filename")
 
-        let analysis = LearningModelSettings(role: .analysis, defaults: defaults)
-        analysis.localModel = "translategemma-4b-it-Q4_K_M.gguf"
-        #expect(analysis.snapshot.contextWindowTokens == 8_192,
-            "Translation recommendations do not change analysis defaults")
+        let explanation = LearningModelSettings(role: .explanation, defaults: defaults)
+        explanation.localModel = "translategemma-4b-it-Q4_K_M.gguf"
+        #expect(explanation.snapshot.contextWindowTokens == 8_192,
+            "Translation recommendations do not change explanation defaults")
     }
 
     @Test
@@ -261,7 +258,7 @@ struct LearningModelSettingsTests {
     @Test
     func translationOnlyTemplateIsNotOfferedForAlignment() {
         #expect(LearningChatTemplate.available(for: .translation).contains(.translateGemma))
-        #expect(!LearningChatTemplate.available(for: .analysis).contains(.translateGemma))
-        #expect(LearningChatTemplate.available(for: .analysis).contains(.automatic))
+        #expect(!LearningChatTemplate.available(for: .explanation).contains(.translateGemma))
+        #expect(LearningChatTemplate.available(for: .explanation).contains(.automatic))
     }
 }

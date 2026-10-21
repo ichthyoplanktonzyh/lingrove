@@ -12,7 +12,8 @@ import Testing
         settings.template = .hyMT
         let firstID = settings.contextIdentity
         let initial = settings.snapshot
-        let value = LearningGenerationProfile(style: .init(register: .formal), sampling: .init(temperature: 0.2, seedMode: .fixed, fixedSeed: 7))
+        let value = LearningGenerationProfile(style: .init(register: .formal),
+            sampling: .init(temperature: 0.2, seedMode: .fixed, fixedSeed: 7))
         var observed: LearningModelSnapshot?
         let token = settings.changes.sink { observed = settings.snapshot }
         settings.setGenerationProfile(value, expectedIdentity: firstID)
@@ -30,9 +31,9 @@ import Testing
         settings.endpointModel = "one.gguf"
         #expect(settings.generationProfile == .init())
         #expect(!initial.usesSameRuntime(as: settings.snapshot))
-        let analysis = LearningModelSettings(role: .analysis, defaults: defaults)
-        analysis.localModel = "one.gguf"
-        #expect(analysis.generationProfile == .init())
+        let explanation = LearningModelSettings(role: .explanation, defaults: defaults)
+        explanation.localModel = "one.gguf"
+        #expect(explanation.generationProfile == .init())
         token.cancel()
     }
     @Test func automaticRecommendationsWaitForMetadataAndRejectStaleResolution() throws {
@@ -51,7 +52,8 @@ import Testing
         settings.setResolvedTemplate(.translateGemma, expectedIdentity: settings.contextIdentity)
         #expect(settings.translationStyleAvailable == false)
         settings.setGenerationProfile(.init(style: .init(register: .formal)))
-        #expect(settings.snapshot.translationStyle.register == .formal, "Saved intent stays stable while the request adapter gates unsupported style")
+        #expect(settings.snapshot.translationStyle.register == .formal,
+            "Saved intent stays stable while the request adapter gates unsupported style")
     }
 
     @Test func dormantCustomTextDoesNotInvalidateNaturalRequests() throws {

@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import Logging
 
-/// App-lifetime reading session. It borrows the existing translation/alignment/lexicon services
+/// App-lifetime reading session. It borrows the existing translation/lexicon services
 /// and card presenter, while owning cancellation and the optional selection affordance. A reading
 /// receipt has no replacement capability, so no path from this type can write into another app.
 @MainActor
@@ -22,8 +22,6 @@ final class LearningReadingCoordinator {
     private var monitors: [Any] = []
     private var workspaceObserver: NSObjectProtocol?
     private var work: Task<Void, Never>?
-    private var analysisWork: Task<Void, Never>?
-    private var analysisRevision = UUID()
     private var unitWork: Task<Void, Never>?
     private var affordanceWork: Task<Void, Never>?
     private var revision = UUID()
@@ -35,20 +33,22 @@ final class LearningReadingCoordinator {
     private var pendingSelection: LearningReadingSelection?
     private var running = false
     private var lastPointerDown: CGPoint?
+    /// A native lookup drag/click belongs to learning UI through mouse-up, even if released outside.
+    private var pointerDownInsideLearningUI = false
     var isActive: Bool { document != nil || pendingSelection != nil || work != nil || panel.isVisible || affordanceWork != nil }
 
     /// One immutable receipt with its evolving view state. Keeping this value together prevents
-    /// a late translation/alignment task from mixing languages or results from different selections.
+    /// a late translation task from mixing languages or results from different selections.
     private struct Document {
         let capture: LearningReadingSelection
         let sourceLanguage: LearningLanguage
         let targetLanguage: LearningLanguage
         let traceID: String
         var translation = ""
-        var chunks: [LearningMeaningChunk] = []
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
         var generating = true
+        var translationIsComplete = false
         var expanded = false
         var message = ""
         var isError = false
@@ -106,18 +106,13 @@ final class LearningReadingCoordinator {
             // the next turn; unrelated App edits and icon changes do not cancel a translation.
             Task { @MainActor [weak self] in self?.policiesChanged() }
         }.store(in: &subscriptions)
-        settings.languageLearning.analysisChanges.sink { [weak self] in
-            self?.analysisWork?.cancel()
-            self?.analysisRevision = UUID()
-            Task { @MainActor [weak self] in self?.startAnalysis() }
-        }.store(in: &subscriptions)
         settings.languageLearning.shortcutChanges.sink { [weak self] in
             Task { @MainActor [weak self] in self?.render() }
         }.store(in: &subscriptions)
         guard observesSystemEvents else { return }
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.dismiss() } }
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.dismiss(reason: "application-activated") } }
         let monitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .leftMouseUp, .rightMouseDown, .scrollWheel]
         ) { [weak self] event in
@@ -188,12 +183,14 @@ final class LearningReadingCoordinator {
     }
     // swiftlint:enable cyclomatic_complexity
 
-    func dismiss() {
+    func dismiss(reason: String = "explicit-or-invalidation") {
+        if document != nil || panel.isVisible {
+            CotabbyLogger.learning.debug("Reading preview retired", metadata: ["stage": .string(reason)])
+        }
         revision = UUID()
+        pointerDownInsideLearningUI = false
         work?.cancel()
         work = nil
-        analysisWork?.cancel()
-        analysisWork = nil
         unitWork?.cancel()
         unitWork = nil
         affordanceWork?.cancel()
@@ -288,7 +285,14 @@ final class LearningReadingCoordinator {
             await LearningRequestTrace.$requestID.withValue(trace) {
                 do {
                     let translation = try await self.service.translateReadingSelection(
-                        source: capture.text, sourceLanguage: source, targetLanguage: target, readingSource: capture.source)
+                        source: capture.text, sourceLanguage: source, targetLanguage: target, readingSource: capture.source,
+                        onPartial: { [weak self] text in
+                            guard let self, !Task.isCancelled,
+                                  self.valid(id, capture, verifyCapture: self.document?.translation.isEmpty != false),
+                                  self.document?.generating == true, self.document?.translationIsComplete == false else { return }
+                            self.document?.translation = text
+                            self.render()
+                        })
                     try Task.checkCancellation()
                     guard self.valid(id, capture) else {
                         self.retireIfCurrent(id)
@@ -296,16 +300,17 @@ final class LearningReadingCoordinator {
                     }
                     self.work = nil
                     self.document?.translation = translation
+                    self.document?.translationIsComplete = true
                     self.document?.generating = false
                     self.render()
                     self.startUnits()
-                    self.startAnalysis()
                 } catch is CancellationError { self.retireIfCurrent(id) } catch {
                     guard self.valid(id, capture) else {
                         self.retireIfCurrent(id)
                         return
                     }
                     self.work = nil
+                    self.document?.translation = ""
                     self.document?.generating = false
                     self.document?.isError = true
                     self.document?.message = error.localizedDescription
@@ -315,9 +320,13 @@ final class LearningReadingCoordinator {
         }
     }
 
-    private func valid(_ id: UUID, _ capture: LearningReadingSelection) -> Bool {
-        revision == id && enabled && sourceAvailability(capture.source) && service.settings.languageLearning.readingEnabled(capture.source)
-            && shortcutPermissionValid && reader.isCurrent(capture)
+    private func valid(_ id: UUID, _ capture: LearningReadingSelection, verifyCapture: Bool = true) -> Bool {
+        guard revision == id, enabled, sourceAvailability(capture.source),
+              service.settings.languageLearning.readingEnabled(capture.source), shortcutPermissionValid else { return false }
+        // AX is cross-process work. Verify the first visible prefix and final result in full;
+        // intermediate display-only updates use session/policy/app identity. Existing AX
+        // observers and key/mouse/workspace events retire a changed selection between those gates.
+        return verifyCapture ? reader.isCurrent(capture) : frontmostBundle() == capture.bundleIdentifier
     }
 
     private var shortcutPermissionValid: Bool {
@@ -351,7 +360,7 @@ final class LearningReadingCoordinator {
 
     private func startUnits() {
         unitWork?.cancel()
-        guard let document, !document.translation.isEmpty, let recognizer else { return }
+        guard let document, document.translationIsComplete, !document.translation.isEmpty, let recognizer else { return }
         let id = revision
         unitWork = Task { [weak self] in
             do {
@@ -369,52 +378,23 @@ final class LearningReadingCoordinator {
         }
     }
 
-    private func startAnalysis() {
-        analysisWork?.cancel()
-        analysisRevision = UUID()
-        document?.chunks = []
-        if document?.translation.isEmpty == false { document?.message = "" }
-        guard let document, !document.translation.isEmpty, service.settings.languageLearning.analysisEnabled else {
-            render()
-            return
-        }
-        let id = revision
-        let analysisID = analysisRevision
-        analysisWork = Task { [weak self] in
-            guard let self else { return }
-            await LearningRequestTrace.$requestID.withValue(document.traceID) {
-                do {
-                    let result = try await self.service.analyzeReadingSelection(
-                        source: document.capture.text,
-                        translation: document.translation, sourceLanguage: document.sourceLanguage,
-                        targetLanguage: document.targetLanguage, readingSource: document.capture.source)
-                    try Task.checkCancellation()
-                    guard self.analysisRevision == analysisID, self.valid(id, document.capture) else { return }
-                    self.document?.chunks = result.chunks
-                    self.render()
-                } catch is CancellationError {} catch {
-                    guard !Task.isCancelled, self.analysisRevision == analysisID, self.valid(id, document.capture) else { return }
-                    self.document?.message = error.localizedDescription
-                    self.render()
-                }
-            }
-        }
-    }
-
     private func render() {
         guard let document, enabled else { return }
+        guard !document.translation.isEmpty || !document.generating else { return }
         panel.show(
             .init(
                 id: document.capture.id, source: document.capture.text, translation: document.translation,
-                chunks: document.chunks, sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
+                sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
                 caret: document.capture.anchor, isExpanded: document.expanded, isGenerating: document.generating,
                 message: document.message, previousTranslation: nil, shortcutLabel: service.settings.languageLearning.keyLabel,
                 units: document.units, unitStage: document.unitStage, targetIsSelection: true, canReplace: false,
-                isError: document.isError, readingSource: document.capture.source), expand: { [weak self] in self?.toggleDetails() },
+                isError: document.isError, readingSource: document.capture.source,
+                isTranslating: !document.translationIsComplete && document.generating,
+                vocabularyContext: document.capture.vocabularyContext,
+                vocabularyAppBundleIdentifier: document.capture.bundleIdentifier), expand: { [weak self] in self?.toggleDetails() },
             dismiss: { [weak self] in self?.dismiss() },
             replace: nil)
         if !document.translation.isEmpty { service.recordDisplay(source: .translation, requestID: document.traceID) }
-        if document.expanded, !document.chunks.isEmpty { service.recordDisplay(source: .analysis, requestID: document.traceID) }
     }
 
     private func showCaptureError(_ error: Error) {
@@ -422,7 +402,7 @@ final class LearningReadingCoordinator {
         work = nil
         panel.show(
             .init(
-                id: UUID(), source: "", translation: "", chunks: [], sourceLanguage: .english,
+                id: UUID(), source: "", translation: "", sourceLanguage: .english,
                 targetLanguage: service.settings.languageLearning.readingTargetLanguage,
                 caret: CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18)),
                 isExpanded: false, isGenerating: false, message: error.localizedDescription, previousTranslation: nil,
@@ -431,47 +411,68 @@ final class LearningReadingCoordinator {
     }
 
     private func pointer(_ event: NSEvent) {
+        let clicks = event.type == .leftMouseUp ? event.clickCount : 0
+        handlePointerEvent(type: event.type, at: LearningWindowInteraction.screenPoint(for: event), clickCount: clicks)
+    }
+
+    /// The global monitor supplies an immutable event summary. Tests can exercise this routing
+    /// without generating system input; only the panel performs Window Server hit testing.
+    func handlePointerEvent(type: NSEvent.EventType, at point: CGPoint, clickCount: Int) {
         guard enabled, !reader.isSelectingRegion else { return }
-        if event.type == .leftMouseDown {
-            dismiss()
-            lastPointerDown = NSEvent.mouseLocation
-        } else if event.type == .rightMouseDown || event.type == .scrollWheel {
-            dismiss()
-        } else if event.type == .leftMouseUp {
-            let point = NSEvent.mouseLocation
-            let dragged = lastPointerDown.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        if type == .leftMouseDown {
+            pointerDownInsideLearningUI = panel.containsGlobalInteraction(at: point)
+            if pointerDownInsideLearningUI { lastPointerDown = nil; return }
+            dismiss(reason: "external-pointer-down")
+            lastPointerDown = point
+        } else if type == .rightMouseDown || type == .scrollWheel {
+            guard !panel.containsGlobalInteraction(at: point) else { return }
+            dismiss(reason: "external-pointer-or-scroll")
+        } else if type == .leftMouseUp {
+            handlePointerUp(at: point, clickCount: clickCount)
+        }
+    }
+
+    /// An owned mouse-down keeps ownership until release, including a drag that ends outside.
+    /// Only an external selection gesture may schedule the delayed passive translation icon.
+    private func handlePointerUp(at point: CGPoint, clickCount: Int) {
+        if pointerDownInsideLearningUI {
+            pointerDownInsideLearningUI = false
             lastPointerDown = nil
-            guard sourceAvailability(.selection), service.settings.languageLearning.selectionTranslationEnabled,
-                dragged || event.clickCount >= 2,
-                service.settings.selectionIconAllowed(in: frontmostBundle())
-            else { return }
-            let id = revision
-            let iconID = affordanceRevision
-            let bundle = frontmostBundle()
-            affordanceWork = Task { [weak self] in
-                defer {
-                    if let self, self.revision == id, self.affordanceRevision == iconID { self.affordanceWork = nil }
-                }
-                do {
-                    try await Task.sleep(for: .milliseconds(150))
-                    guard let self, self.revision == id, self.affordanceRevision == iconID,
-                        self.enabled, self.frontmostBundle() == bundle,
-                        self.service.settings.selectionIconAllowed(in: bundle)
-                    else { return }
-                    let capture = try await self.reader.capture()
-                    try Task.checkCancellation()
-                    guard self.revision == id, self.affordanceRevision == iconID, self.reader.isCurrent(capture), self.enabled,
-                        capture.bundleIdentifier == bundle,
-                        self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier)
-                    else { return }
-                    self.pendingSelection = capture
-                    self.affordanceWork = nil
-                    self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
-                        guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
-                        self.begin(pending, fromShortcut: false)
-                    }
-                } catch { /* Unsupported selections have no passive affordance and send no request. */  }
+            return
+        }
+        guard !panel.containsGlobalInteraction(at: point) else { lastPointerDown = nil; return }
+        let dragged = lastPointerDown.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        lastPointerDown = nil
+        guard sourceAvailability(.selection), service.settings.languageLearning.selectionTranslationEnabled,
+            dragged || clickCount >= 2,
+            service.settings.selectionIconAllowed(in: frontmostBundle())
+        else { return }
+        let id = revision
+        let iconID = affordanceRevision
+        let bundle = frontmostBundle()
+        affordanceWork = Task { [weak self] in
+            defer {
+                if let self, self.revision == id, self.affordanceRevision == iconID { self.affordanceWork = nil }
             }
+            do {
+                try await Task.sleep(for: .milliseconds(150))
+                guard let self, self.revision == id, self.affordanceRevision == iconID,
+                    self.enabled, self.frontmostBundle() == bundle,
+                    self.service.settings.selectionIconAllowed(in: bundle)
+                else { return }
+                let capture = try await self.reader.capture()
+                try Task.checkCancellation()
+                guard self.revision == id, self.affordanceRevision == iconID, self.reader.isCurrent(capture), self.enabled,
+                    capture.bundleIdentifier == bundle,
+                    self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier)
+                else { return }
+                self.pendingSelection = capture
+                self.affordanceWork = nil
+                self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
+                    guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
+                    self.begin(pending, fromShortcut: false)
+                }
+            } catch { /* Unsupported selections have no passive affordance and send no request. */  }
         }
     }
 }

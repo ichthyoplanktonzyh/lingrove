@@ -65,7 +65,7 @@ Cotabby/
 │   ├── Permission/
 │   │   └── Guidance/                 permission overlay and System Settings guidance
 │   ├── Power/                        power-source observation
-│   ├── Presentation/                 process-level AppKit panels and indicators
+│   ├── Presentation/                 process-level AppKit panels, indicators and owned-window hit testing
 │   ├── Speech/                       playback state, isolated audio graph, content-free telemetry, system voices, endpoint audio, and local helper lifecycle
 │   ├── Runtime/
 │   │   ├── AppleIntelligence/        Foundation Models availability and engine
@@ -89,6 +89,7 @@ Cotabby/
 │   │   └── Capability/               supported-field capability resolution
 │   ├── History/                      history retrieval, phrase prediction, scrubbing, import
 │   ├── Input/                        composition, key-label, and selection helpers
+│   ├── Vocabulary/                   capture identity, local example extraction, merge and search rules
 │   ├── LanguageLearning/             exact unit recognition, correspondence projection, pair parsing, prompts and preview/write rules
 │   ├── Logging/                      debug options, request IDs, and JSONL handlers
 │   ├── Macros/
@@ -303,9 +304,39 @@ that owns too many responsibilities and should be split by behavior rather than 
   viewport and the cancellable search reveal. Its real-AppKit scrolling tests are under
   `CotabbyTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
   initial search arrivals and subsequent searches in both scroll directions.
-- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/alignment/read-aloud
+- `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/explanation/read-aloud/dictionary
   tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
   task-scoped resource sheets, advanced expansion and search destinations without changing models.
+- `Models/LanguageLearning/LearningDictionarySettings.swift` persists the enabled dictionary sources
+  and lookup order as one configuration. `LearningDictionarySession` observes only this store;
+  dictionary changes do not invalidate translation or autocomplete. `DictionarySettingsSection`
+  reuses the language-learning Form and its searchable settings-row anchor.
+- `LearningDictionarySources.swift` models stable source/book/website identities and file bookmarks.
+  `Services/LanguageLearning/LearningDictionaryRouter.swift` dispatches immutable query plans to
+  the lexicon, `MDictLibraryService`, `SystemDictionaryArticleService` and `OnlineDictionaryClient`.
+  `Packages/MDictReader` contains the attributed, bounded MDX/MDD parser and its independent tests.
+  `native/dictionary/system_dictionary.m` is the disposable private DCS helper; preparation and
+  embedding scripts build it for both app architectures. `DictionaryHTMLPolicy`, `DictionaryLinkPolicy`
+  and `DictionaryWebsitePolicy` own deterministic content/navigation rules. `DictionaryHTMLView`
+  owns disposable WebKit rendering and scoped resource requests inside the existing card.
+- `DictionaryLanguagePair.swift` separates headword and gloss capabilities and owns the curated
+  website catalog. Optional metadata is backward-compatible with existing imported books/sites. Unannotated books
+  remain manually selectable and join automatic lookup only after an entry language or multilingual
+  capability has been explicitly recorded.
+  The immutable configuration filters known entry-language mismatches and ranks gloss preferences;
+  websites still require a separate explicit browser click. Original-text lookup uses the same
+  dictionary session and maps exact vocabulary occurrences back into a captured reading sentence.
+- `LearningDetailPanelLayout` accepts the previous frame as a preference, never as permission to
+  overlap an obstacle. The panel translates it with parent movement and anticipates the bounded
+  content viewport on first placement. `LearningDictionaryViewport` fixes the first measured definition's 120–300pt viewport through
+  loading/source changes and reserves its attribution row, preventing transient collapse and jumps.
+  Native language-candidate regression fixtures live in `native/dictionary/tests/`.
+- `LearningPopupWindowRegistry` belongs to one detail-card host. The source popover reports its
+  actual window through `UI/Components/LearningPopoverWindowReader`; local and global click routing
+  share this weak membership when SwiftUI temporarily omits a parent link. Replacing the host
+  replaces its registry. Global clicks still require the exact visible Window Server hit.
+  `UI/InlineFeatures/DictionarySourceRow` owns the full-row hit target and size-neutral hover/press
+  feedback; changing a source does not rebuild or reposition the dictionary panel.
 - `UI/Settings/Components/Structure/SettingsAdvancedSections.swift` keeps collapsible sections as
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.
@@ -366,3 +397,107 @@ The autocomplete inference package and its revision remain separate.
   and the same trace ID as translation; persisted records contain timings and status, not text/images.
 - SelectedTextKit was evaluated, not integrated: its AX-only path duplicates the existing reader,
   while automatic fallback may copy text. Lingrove retains its bounded AX receipt/currentness checks.
+
+## Vocabulary notebook
+
+`Models/Vocabulary` owns durable expressions, stable senses, examples with UTF-16 spans, meaning ownership,
+and the schema-v3 export format. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
+captures and owns deduplication, bounded context extraction and search rules.
+`Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
+`VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
+no generated wording is used as an identity. `VocabularyNotebookSession` belongs to the library window, retains a lightweight explanation
+session per usage of the selected sense, and cancels them on navigation/closure. Browsing only restores records;
+generation remains explicit in the notebook. `UI/Vocabulary` owns browsing and editing drafts.
+`VocabularyDictionarySection` queries only while expanded, sharing the provider/settings,
+`LearningDictionarySourcePicker`, `LearningDictionaryDefinitionView`, and attribution with cards.
+`VocabularyWindowController` provides one normal library window and favorite navigation to an exact sense; floating cards retain their
+existing nonactivating lifetime. The shared fish-tail button lives in `UI/Components`.
+
+The environment constructs one store for both writing and reading cards, isolates the XCTest
+host from real user data, and keeps Dev/production archives in separate support directories.
+The v3 file is `Vocabulary/notebook-v3.json`; the retired `notebook.json` is not loaded or rewritten.
+Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
+
+## Contextual AI explanation
+
+`Models/LanguageLearning/LearningExplanationModels.swift` freezes the chosen text and exact
+occurrence spans; it also defines the validated two-part explanation and durable record.
+`Support/LanguageLearning/LearningExplanationPolicy.swift` builds target-preserving prompts,
+bounds only surrounding reference context, excludes translation specialists and validates results.
+The input marks complete-sentence, fragment or absent context; clipped references downgrade to a
+fragment. Local occurrence receipts separate equal sentences saved with different translations and
+are never sent to the model. The prompt permits uncertainty and general senses without context.
+`Services/LanguageLearning/LearningExplanationService.swift` borrows the independent explanation
+controller from `LearningModelCollection`, shares request telemetry and bounds its completed cache.
+Each card or saved usage owns a lightweight `LearningExplanationSession` for cancellation and stale
+replies. An explicit non-sentence lookup opens the contextual page and starts one explanation;
+the dictionary page is lazy, and tabs/source changes never restart stopped AI work. Whole-sentence
+explanations and notebook generation remain explicit, with no typing observer or background queue.
+
+`UI/InlineFeatures/LearningExplanationView.swift` presents the same result/actions in dictionary,
+sentence and notebook surfaces. The contextual presentation leads with the sense and folds details.
+`UI/Vocabulary/VocabularyExplanationSection.swift` places it beside its saved example. Completed
+results fill/refresh captured or AI draft meanings; user-edited meanings require explicit
+replacement. The archive retains explanations separately from meanings and notes. Collection before
+or after generation produces the same usage, without persisting dictionary snapshots. Editing or
+removing a usage prunes its obsolete explanation context. Tests mirror these boundaries under
+Support/LanguageLearning, Services/LanguageLearning and Services/Vocabulary.
+
+## Deferred chunk alignment
+
+The complete chunk-alignment implementation, settings, exact-quote parser, colored correspondence
+UI and model evaluation harnesses are preserved at `codex/chunk-alignment-experiment-20261020`
+(commit `7a999e14`). The current product has no alignment controller, request stage or settings route.
+Offline lexical recognition, contextual explanation and live dictionary lookup remain independent.
+`UI/InlineFeatures/LearningTextLayout.swift` owns the dictionary component-word flow layout and
+shared card measurement preference formerly colocated with the removed alignment chips.
+Historical performance records still decode their `analysis` source, which is excluded from the
+selectable task list. Existing alignment preferences and downloaded files are not deleted or read.
+
+## Anki review
+
+`Models/Review` owns review-only plans, durable pending/confirmed Anki bindings, connection
+snapshots and typed wire values. A sense's optional `review` property extends schema v3 without
+resetting existing libraries. The vocabulary archive remains the single atomic writer.
+`Support/Review` prepares cards from exact usage spans, escapes text for HTML, maps logical fields,
+compares last-synced/local/remote values and defines the versioned preset note template.
+
+`Services/Review/AnkiConnectClient.swift` is the loopback-only, bounded, no-redirect HTTP boundary.
+`AnkiReviewController` is constructed once by the environment and shared by Settings and Vocabulary;
+it owns operation exclusion and connection metadata, without startup probes or background sync.
+Each `AnkiReviewSession` belongs to one preparation sheet. It persists creation identity before a
+write, recovers uncertain acknowledgements by that identity, revalidates the active profile/source,
+and records successful synchronization only after rereading the remote fields. Anki card IDs and
+scheduling remain under Anki's ownership. Removing existing card types is managed in Anki.
+
+`UI/Vocabulary/VocabularyReviewSection.swift` is the compact sense action/status row;
+`VocabularyReviewSheet.swift` edits review-only content and displays previews/conflict choices.
+`UI/Settings/Panes/LearningReviewSettingsSection.swift` reuses the grouped settings form under
+Language Learning → Review, including searchable advanced field mapping. Existing notebooks,
+dictionary lookups, explanation generation and favorites never trigger an Anki write themselves.
+
+### Review audio, template and queue boundaries
+
+`ReviewOperationScope` freezes the Anki connection, profile and selected configuration for one
+explicit operation, including defaults used by unprepared rows. Saving a successful choice only
+updates preferences that have not changed in another window. Batch rows carry `VocabularySelection` IDs and resolve merged aliases before
+work. `AnkiReviewBatchSession` owns one serial cancellable queue; single-sense preparation continues
+through `AnkiReviewSession`, so receipt recovery and field conflicts have one implementation.
+`VocabularyReviewBatchSheet` owns selection/preparation navigation and per-item results; cancelling
+preparation preserves a synchronized row, and reopening a queue recognizes already-saved receipts.
+
+`ReviewAudioPreparation` borrows `SpeechExporting` from the app-owned `LearningSpeechController`.
+The controller reuses its existing generator for local/endpoint audio and lazily owns a silent
+`SystemSpeechAudioExporter` for Apple voices. `SpeechExportBuffer` owns bounded request bytes;
+`SpeechExportPolicy` validates WAV/MP3 and packages native/system audio as 16-bit PCM WAV. Export
+uses normal recording speed; the existing playback-rate preference continues to affect playback,
+not the stored recording. No temporary WAV files or audio bytes enter the notebook. A sheet owns
+its prepared audio only until close; Anki owns uploaded media. Receipts contain scoped fingerprints
+and opaque hash filenames, and reuse checks that Anki still has the file. Voice/language is frozen
+per action and all generation is opt-in; collection, browsing and typing start no export work.
+
+`AnkiNoteTemplate` supplies both exported templates and the HTML preview. The preview borrows
+`DictionaryHTMLView`'s existing no-script, no-network renderer. Gap questions expose neither a
+meaning hint nor answer audio. The two template names and ordinals remain stable during an explicit
+upgrade; customized templates are never overwritten and customized CSS is retained. Navigation
+opens Anki's deck overview, using a linked note's current deck, and leaves scheduling to Anki.

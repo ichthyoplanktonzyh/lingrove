@@ -6,6 +6,13 @@ import XCTest
 /// cheap invariants loud: every item must carry a non-empty title, symbol, and keyword set, and
 /// the queries users actually type for recently shipped settings must land on them.
 final class SettingsIndexTests: XCTestCase {
+    func test_completionSwitchIsSearchableInWriting() {
+        for query in ["启用补全", "关闭补全", "autocomplete"] {
+            XCTAssertTrue(SettingsItem.results(for: query).contains(.completionEnabled))
+        }
+        XCTAssertEqual(SettingsItem.completionEnabled.category, .writing)
+    }
+
     func test_everyItemHasTitleSymbolKeywordsAndSummary() {
         for item in SettingsItem.allCases {
             XCTAssertFalse(item.title.isEmpty, "\(item) needs a title")
@@ -117,13 +124,12 @@ final class SettingsIndexTests: XCTestCase {
 
     func test_translationBehaviorAndModelsHaveSearchableSeparateHomes() {
         let behavior: [SettingsItem] = [.translationEnabled, .sentencePreview, .translationTargetLanguage,
-            .translationSourceLanguages, .translationReferenceMode, .chunkAlignment]
+            .translationSourceLanguages, .translationReferenceMode]
         for item in behavior { XCTAssertEqual(item.category, .languageLearning) }
         XCTAssertEqual(SettingsItem.translationModel.category, .engineAndModel)
-        XCTAssertEqual(SettingsItem.alignmentModel.category, .engineAndModel)
         for (query, item) in [("translation reference", SettingsItem.translationReferenceMode),
                               ("source languages", .translationSourceLanguages),
-                              ("translation model", .translationModel), ("alignment model", .alignmentModel)] {
+                              ("translation model", .translationModel)] {
             XCTAssertTrue(SettingsItem.results(for: query).contains(item), query)
         }
         XCTAssertEqual(SettingsItem.languages.category, .writing,

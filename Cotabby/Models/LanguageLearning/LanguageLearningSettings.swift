@@ -7,7 +7,17 @@ import Foundation
 final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
-    let analysis: LearningModelSettings
+    let explanation: LearningModelSettings
+    @Published var explanationLanguage: LearningLanguage? {
+        didSet { defaults.set(explanationLanguage?.rawValue, forKey: "learningExplanationLanguage") }
+    }
+    var resolvedExplanationLanguage: LearningLanguage {
+        explanationLanguage ?? LearningLanguage(rawValue: Bundle.main.preferredLocalizations.first ?? "") ?? .english
+    }
+    var explanationChanges: AnyPublisher<Void, Never> {
+        Publishers.Merge($explanationLanguage.dropFirst().map { _ in () }, explanation.changes).eraseToAnyPublisher()
+    }
+    let dictionary: LearningDictionarySettings
     /// Reading has its own direction; changing it never reverses the writing preview.
     @Published var selectionTranslationEnabled: Bool {
         didSet { defaults.set(selectionTranslationEnabled, forKey: "learningSelectionEnabled") }
@@ -87,10 +97,6 @@ final class LanguageLearningSettings: ObservableObject {
             translation.changes
         ]).eraseToAnyPublisher()
     }
-    @Published var analysisEnabled: Bool {
-        didSet { defaults.set(analysisEnabled, forKey: "learningAnalysisEnabled") }
-    }
-
     @Published var translationEnabled: Bool {
         didSet { defaults.set(translationEnabled, forKey: "learningTranslationEnabled") }
     }
@@ -165,10 +171,6 @@ final class LanguageLearningSettings: ObservableObject {
         ).eraseToAnyPublisher()
     }
 
-    var analysisChanges: AnyPublisher<Void, Never> {
-        Publishers.Merge($analysisEnabled.dropFirst().map { _ in () }, analysis.changes).eraseToAnyPublisher()
-    }
-
     var snapshot: LearningSettingsSnapshot {
         .init(
             translationEnabled: translationEnabled,
@@ -182,6 +184,7 @@ final class LanguageLearningSettings: ObservableObject {
 
     /// App-wide reset keeps the shortcut contract while disabling both explicit language features.
     func resetToDefaults() {
+        dictionary.reset()
         pointerTranslationEnabled = false
         screenshotTranslationEnabled = false
         setReadingBinding(.pointer, key: 17, modifiers: [.control, .shift], label: "⌃⇧T")
@@ -202,8 +205,8 @@ final class LanguageLearningSettings: ObservableObject {
         targetLanguage = .english
         model = ""
         translation.reset()
-        analysisEnabled = false
-        analysis.reset()
+        explanation.reset()
+        explanationLanguage = nil
         keyCode = 17
         modifiers = [.option]
         keyLabel = "⌥T"
@@ -212,9 +215,12 @@ final class LanguageLearningSettings: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         translationCredentials: (any OpenAICompatibleCredentialStoring)? = nil,
-        analysisCredentials: (any OpenAICompatibleCredentialStoring)? = nil
+        explanationCredentials: (any OpenAICompatibleCredentialStoring)? = nil
     ) {
         self.defaults = defaults
+        explanation = LearningModelSettings(role: .explanation, defaults: defaults, credentials: explanationCredentials)
+        explanationLanguage = defaults.string(forKey: "learningExplanationLanguage").flatMap(LearningLanguage.init(rawValue:))
+        dictionary = LearningDictionarySettings(defaults: defaults)
         pointerTranslationEnabled = defaults.bool(forKey: "learningPointerEnabled")
         screenshotTranslationEnabled = defaults.bool(forKey: "learningScreenshotEnabled")
         pointerKeyCode = UInt16(clamping: defaults.object(forKey: "learningPointerKey") as? Int ?? 17)
@@ -233,8 +239,6 @@ final class LanguageLearningSettings: ObservableObject {
             rawValue: UInt32(clamping: defaults.object(forKey: "learningSelectionModifiers") as? Int ?? 6))
         selectionKeyLabel = defaults.string(forKey: "learningSelectionLabel") ?? "⌥⇧T"
         translation = LearningModelSettings(role: .translation, defaults: defaults, credentials: translationCredentials)
-        analysis = LearningModelSettings(role: .analysis, defaults: defaults, credentials: analysisCredentials)
-        analysisEnabled = defaults.bool(forKey: "learningAnalysisEnabled")
         translationEnabled = defaults.bool(forKey: "learningTranslationEnabled")
         sourceLanguages =
             defaults.stringArray(forKey: "learningSourceLanguages")?

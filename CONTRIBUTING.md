@@ -208,6 +208,16 @@ Intelligence drift evaluation remains opt-in and excluded from CI. Run Python to
 `python3 -m unittest discover -s scripts/tests` and lint with `swiftlint --strict`. Clean
 `build/DerivedData` after validation; do not run concurrent builds in the same checkout.
 
+The dictionary helper's pure language-metadata regression fixture can also run without changing
+system dictionary settings:
+
+```sh
+mkdir -p build/dictionary-native
+xcrun clang -fobjc-arc -framework Foundation -framework CoreServices \
+  native/dictionary/tests/system_dictionary_tests.m -o build/dictionary-native/policy-tests
+build/dictionary-native/policy-tests
+```
+
 ### Local Autocomplete Evaluations
 
 The ordinary test suite checks deterministic request, cache, token-boundary, and scoring rules

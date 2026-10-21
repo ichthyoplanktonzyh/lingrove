@@ -7,6 +7,25 @@ import Testing
 @Suite
 struct LearningExpressionOutputPolicyTests {
     @Test
+    func streamedPrefixesSkipWhitespaceAndPreserveWordBoundaries() throws {
+        var stream = LearningExpressionOutputPolicy.Stream()
+        #expect(try stream.append(" \n") == nil)
+        #expect(try stream.append("Hello ") == "Hello")
+        #expect(try stream.append("世界") == "Hello 世界")
+        #expect(try stream.append(".\nSecond line.") == "Hello 世界.\nSecond line.")
+    }
+
+    @Test
+    func streamRejectsCorruptionAndBoundsAccumulatedUtf8BeforeDisplay() throws {
+        var unsafe = LearningExpressionOutputPolicy.Stream()
+        #expect(try unsafe.append("Hello") == "Hello")
+        #expect(throws: LearningFailure.self) { try unsafe.append("\u{0000}world") }
+        var bounded = LearningExpressionOutputPolicy.Stream()
+        _ = try bounded.append(String(repeating: "界", count: 4_000))
+        #expect(throws: LearningFailure.self) { try bounded.append("a") }
+    }
+
+    @Test
     func trimsOnlyResponseEdgesAndPreservesInternalLineFeeds() throws {
         #expect(try LearningExpressionOutputPolicy.validatedText(" \nI did not send 2 files today.\n ")
             == "I did not send 2 files today.")

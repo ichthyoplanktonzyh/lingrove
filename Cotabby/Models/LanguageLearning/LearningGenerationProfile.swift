@@ -43,8 +43,9 @@ nonisolated struct LearningTranslationStyle: Codable, Equatable, Hashable, Senda
 }
 
 /// One role's provider/model profile. Keeping expression and sampler preferences together makes
-/// switching models atomic while preserving independent translation/analysis destinations.
+/// switching models atomic while preserving independent translation/explanation destinations.
 nonisolated struct LearningGenerationProfile: Codable, Equatable, Hashable, Sendable {
     var style = LearningTranslationStyle()
     var sampling = ModelSamplingOverrides()
+    var maximumOutputTokens: Int?
 }

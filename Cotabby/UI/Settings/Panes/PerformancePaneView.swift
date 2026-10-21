@@ -31,7 +31,7 @@ struct PerformancePaneView: View {
                         title: String(localized: "Enable Performance Tracking"),
                         description: String(
                             localized: """
-                            Record the timestamp, model, and elapsed time of requests across autocomplete, translation, analysis and TTS. \
+                            Record request timestamps, models and elapsed time. \
                             Only the most recent \(PerformanceMetricsStore.maximumEntries) requests are retained.
                             """,
                             table: "Learning"

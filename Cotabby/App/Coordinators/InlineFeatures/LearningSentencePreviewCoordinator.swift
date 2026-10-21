@@ -24,18 +24,15 @@ final class LearningSentencePreviewCoordinator {
     private let frontmostBundle: @MainActor () -> String?
     private var subscriptions = Set<AnyCancellable>()
     private var work: Task<Void, Never>?
-    private var analysisWork: Task<Void, Never>?
-    private var analysisID = UUID()
     private var unitWork: Task<Void, Never>?
     private var unitID = UUID()
     private var unitCache: [String: [LearningUnit]] = [:]
-    private var analysisCache: [AnalysisKey: LearningSentenceResult] = [:]
     private var requestID = UUID()
     private var previousContext: FocusedInputSnapshot?
     private var document: Document?
     private var expanded = false
     private var dismissedSource: String?
-    private var cache: [TranslationKey: LearningSentenceResult] = [:]
+    private var cache: [TranslationKey: String] = [:]
     private var running = false
     /// A write can outlive a document switch while AX verification settles. Keep a single
     /// transaction gate, but show its spinner only on the document that owns that transaction.
@@ -51,14 +48,6 @@ final class LearningSentencePreviewCoordinator {
         let mode: LearningReferenceMode
     }
 
-    private struct AnalysisKey: Hashable {
-        let source: String
-        let translation: String
-        let sourceLanguage: LearningLanguage
-        let targetLanguage: LearningLanguage
-        let model: LearningModelSnapshot
-    }
-
     private struct Document {
         let id: UUID
         let traceID: String
@@ -66,17 +55,17 @@ final class LearningSentencePreviewCoordinator {
         let sourceLanguage: LearningLanguage
         let targetLanguage: LearningLanguage
         var translation = ""
-        var chunks: [LearningMeaningChunk] = []
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
         var generating = true
-        var message = String(localized: "Generating expression…", table: "Learning",
-            comment: "Status shown in the sentence card while a translation is being generated.")
+        var translationIsComplete = false
+        var message = ""
         var previousSentence: PreviousSentence?
         var isStale = false
         /// An explicit shortcut may keep a preview in a search field; a passive preview cannot.
         var explicitlyRequested = false
         var replacementBlocked = false
+        var vocabularyContext: VocabularyExample?
     }
 
     /// A previous result carries its source evidence, so editing earlier text cannot relabel an
@@ -128,14 +117,6 @@ final class LearningSentencePreviewCoordinator {
         service.settings.languageLearning.shortcutChanges.sink { [weak self] in
             // @Published fires before storage; repaint labels after the new binding is committed.
             Task { @MainActor [weak self] in self?.render() }
-        }.store(in: &subscriptions)
-        service.settings.languageLearning.analysisChanges.sink { [weak self] in
-            // @Published delivers before the edited value is stored. Defer configuration work
-            // one main-actor turn and keep the already displayed translation intact.
-            Task { @MainActor [weak self] in
-                self?.analysisCache.removeAll()
-                self?.startAnalysis()
-            }
         }.store(in: &subscriptions)
     }
 
@@ -207,7 +188,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func replacementDocument() -> Document? {
-        guard !replacementConflicts, panel.isVisible, let document, !document.isStale,
+        guard !replacementConflicts, panel.isVisible, let document, document.translationIsComplete, !document.isStale,
             !document.translation.isEmpty else { return nil }
         return document
     }
@@ -242,7 +223,7 @@ final class LearningSentencePreviewCoordinator {
     }
 
     private func changed(_ context: FocusedInputSnapshot?) {
-        guard !isReadingActive() else { clear(); return }
+        guard !isReadingActive() else { clear(reason: "reading-session-active"); return }
         let old = previousContext
         previousContext = context
         // Our confirmed transaction may select the saved sentence before replacing it. Its AX
@@ -255,14 +236,21 @@ final class LearningSentencePreviewCoordinator {
             explicitlyRequested: document?.explicitlyRequested == true) else {
             // Capability can change on a reused AX node without changing its text or identity.
             // Retire passive work before the content-only early returns below can preserve it.
-            clear()
+            clear(reason: "focus-capability-changed")
             return
         }
-        guard old?.sessionIdentity == context?.sessionIdentity else { clear(); return }
+        guard old?.sessionIdentity == context?.sessionIdentity else { clear(reason: "focus-session-changed"); return }
         guard let old, let context else { return }
         let changed = old.contentSignature != context.contentSignature || old.documentSelection != context.documentSelection ||
             old.hasHostMarkedText != context.hasHostMarkedText
-        guard changed else { return }
+        guard changed else {
+            // Scrolling, window moves and settled AX geometry can move the same document caret
+            // without an edit. Reanchor the existing result; restarting generation would waste
+            // inference and discard the user's current details/selection. @Published emits before
+            // storing its value, so pass this event's rectangle instead of rereading the old one.
+            if old.caretRect != context.caretRect { render(caret: context.caretRect) }
+            return
+        }
         suspendPreview()
         guard enabled, service.settings.languageLearning.sentencePreviewEnabled,
             availability() == nil, LearningCapturePolicy.permitsAutomaticCapture(focus.snapshot.capability),
@@ -299,7 +287,7 @@ final class LearningSentencePreviewCoordinator {
                       self.reader.isCurrent(capture), self.requestID == identifier, !Task.isCancelled else { return }
                 // This debounce is handing ownership to the generation/cache path. Remove its
                 // handle first so begin's cancellation cannot cancel the task currently executing
-                // a cache hit (which would make startAnalysis reject an otherwise current pair).
+                // a cache hit (which would reject otherwise current lexical recognition).
                 self.work = nil
                 self.begin(capture, expanded: false)
             } catch {
@@ -328,7 +316,7 @@ final class LearningSentencePreviewCoordinator {
             let settings = service.settings.languageLearning
             panel.show(
                 .init(
-                    id: requestID, source: "", translation: "", chunks: [],
+                    id: requestID, source: "", translation: "",
                     sourceLanguage: settings.sourceLanguages.first ?? .chinese, targetLanguage: settings.targetLanguage,
                     caret: focus.snapshot.context?.caretRect ?? .zero, isExpanded: false, isGenerating: false,
                     message: error.localizedDescription, previousTranslation: nil, shortcutLabel: settings.keyLabel, isError: true),
@@ -352,7 +340,9 @@ final class LearningSentencePreviewCoordinator {
         // unfinished sentence replaces its preview, even when a pause previously showed a result.
         let prior = precedingSentence(from: old, capture: capture)
         document = Document(id: identifier, traceID: RequestID.generate(), capture: capture, sourceLanguage: language,
-            targetLanguage: settings.targetLanguage, previousSentence: prior)
+            targetLanguage: settings.targetLanguage, previousSentence: prior,
+            vocabularyContext: VocabularyPolicy.context(value: capture.value, range: capture.range, language: language,
+                app: capture.context.bundleIdentifier))
         document?.explicitlyRequested = expanded
         self.expanded = expanded
         let input = LearningTranslationInput.captured(
@@ -364,13 +354,12 @@ final class LearningSentencePreviewCoordinator {
         if let cached = cache[key] {
             CotabbyLogger.learning.info("Learning translation cache hit", metadata: [
                 "request_id": .string(document?.traceID ?? ""), "source": .string("translation"), "phase": .string("cache_hit")])
-            document?.translation = cached.translation
-            document?.chunks = []
+            document?.translation = cached
+            document?.translationIsComplete = true
             document?.generating = false
             document?.message = ""
             render()
             startUnits()
-            startAnalysis()
             return
         }
         render()
@@ -381,20 +370,28 @@ final class LearningSentencePreviewCoordinator {
                 do {
                     let translation = try await self.service.translateSentence(
                         input: input,
-                        sourceLanguage: language, targetLanguage: settings.targetLanguage)
+                        sourceLanguage: language, targetLanguage: settings.targetLanguage,
+                        onPartial: { [weak self] text in
+                            guard let self, self.isCurrent(identifier, capture: capture), !self.isReadingActive(),
+                                  self.document?.generating == true, self.document?.translationIsComplete == false else { return }
+                            self.document?.translation = text
+                            self.render()
+                        })
                     guard self.isCurrent(identifier, capture: capture, verifyCapture: true) else { return }
                     self.work = nil
                     self.document?.translation = translation
+                    self.document?.translationIsComplete = true
                     self.document?.generating = false
                     self.document?.message = ""
                     if self.cache.count >= 64 { self.cache.removeAll() }
-                    self.cache[key] = .init(translation: translation, chunks: [])
+                    self.cache[key] = translation
                     self.render()
                     self.startUnits()
-                    self.startAnalysis()
                 } catch {
                     guard self.isCurrent(identifier, capture: capture), !(error is CancellationError) else { return }
                     self.work = nil
+                    // A failed stream is never promoted into a usable partial translation.
+                    self.document?.translation = ""
                     self.document?.generating = false
                     self.document?.message = error.localizedDescription
                     self.render()
@@ -403,12 +400,12 @@ final class LearningSentencePreviewCoordinator {
         }
     }
 
-    /// Translation is already visible when these independent lexical tasks begin. Model analysis
-    /// settings never participate in unit identity; failing/turning off alignment keeps units.
+    /// Lexical recognition annotates the completed translation without another model request.
+    /// Its independent task identity keeps late highlights away from newer previews.
     private func startUnits() {
         unitID = UUID()
         unitWork?.cancel(); unitWork = nil
-        guard let current = document, !current.translation.isEmpty, !current.isStale else { return }
+        guard let current = document, current.translationIsComplete, !current.translation.isEmpty, !current.isStale else { return }
         guard let unitRecognizer else { document?.unitStage = .ready; return }
         let key = current.targetLanguage.rawValue + ":" + current.translation
         if let units = unitCache[key] {
@@ -435,87 +432,6 @@ final class LearningSentencePreviewCoordinator {
         }
     }
 
-    /// Analysis is a second task, bound to this exact sentence pair. Editing analysis settings
-    /// only invalidates this task/cache; it never discards or re-requests the translation.
-    private func startAnalysis() {
-        analysisID = UUID()
-        analysisWork?.cancel()
-        analysisWork = nil
-        guard let current = document, !current.translation.isEmpty, !current.isStale,
-              isCurrent(current.id, capture: current.capture) else { return }
-        document?.chunks = []
-        guard service.settings.languageLearning.analysisEnabled else {
-            document?.generating = false
-            document?.message = String(localized: "Chunk alignment is off; dictionary lookup is still available.",
-                table: "Learning", comment: "Status shown when chunk alignment is disabled while the translation remains available.")
-            render()
-            return
-        }
-        let key = AnalysisKey(source: current.capture.source, translation: current.translation,
-            sourceLanguage: current.sourceLanguage, targetLanguage: current.targetLanguage,
-            model: service.settings.languageLearning.analysis.snapshot)
-        if let result = analysisCache[key] {
-            CotabbyLogger.learning.info("Learning analysis cache hit", metadata: [
-                "request_id": .string(current.traceID), "source": .string("analysis"), "phase": .string("cache_hit")])
-            document?.chunks = result.chunks
-            document?.generating = false
-            document?.message = result.unresolvedChunkCount > 0
-                ? String(localized: "Some chunk alignments could not be located reliably; confirmed matches are kept.",
-                    table: "Learning", comment: """
-                    Status when uncertain alignments are omitted while verified chunk alignments remain visible.
-                    """)
-                : ""
-            render()
-            return
-        }
-        document?.generating = true
-        document?.message = String(localized: "Preparing chunk alignments…", table: "Learning",
-            comment: "Status while the separate model aligns source and translated phrases.")
-        render()
-        let id = analysisID
-        analysisWork = Task { [weak self] in
-            guard let self else { return }
-            await LearningRequestTrace.$requestID.withValue(current.traceID) {
-                do {
-                    let result = try await self.service.analyzeSentence(source: current.capture.source,
-                        translation: current.translation, sourceLanguage: current.sourceLanguage,
-                        targetLanguage: current.targetLanguage) { [weak self] update in
-                        guard let self, self.analysisID == id, self.service.settings.languageLearning.analysisEnabled,
-                              self.isCurrent(current.id, capture: current.capture),
-                              self.document?.translation == current.translation else { return }
-                        switch update {
-                        case .chunks(let chunks): self.document?.chunks = chunks
-                        case .chunk(let chunk): self.document?.chunks.append(chunk)
-                        case .translation: return
-                        }
-                        self.render()
-                    }
-                    guard self.analysisID == id, self.isCurrent(current.id, capture: current.capture, verifyCapture: true),
-                          result.translation == current.translation else { return }
-                    self.analysisWork = nil
-                    self.document?.chunks = result.chunks
-                    self.document?.generating = false
-                    self.document?.message = result.unresolvedChunkCount > 0
-                        ? String(localized: "Some chunk alignments could not be located reliably; confirmed matches are kept.",
-                            table: "Learning", comment: """
-                            Status when uncertain alignments are omitted while verified chunk alignments remain visible.
-                            """)
-                        : ""
-                    if self.analysisCache.count >= 64 { self.analysisCache.removeAll() }
-                    self.analysisCache[key] = result
-                    self.render()
-                } catch {
-                    guard self.analysisID == id, self.isCurrent(current.id, capture: current.capture),
-                          !(error is CancellationError) else { return }
-                    self.analysisWork = nil
-                    self.document?.generating = false
-                    self.document?.message = error.localizedDescription
-                    self.render()
-                }
-            }
-        }
-    }
-
     private func isCurrent(_ id: UUID, capture: LearningSelectionCapture, verifyCapture: Bool = false) -> Bool {
         guard requestID == id, !Task.isCancelled, enabled, availability() == nil,
               isFrontmost(capture.context.processIdentifier), let current = focus.snapshot.context else { return false }
@@ -531,8 +447,8 @@ final class LearningSentencePreviewCoordinator {
 
     private func precedingSentence(from previous: Document?, capture: LearningSelectionCapture) -> PreviousSentence? {
         guard let previous else { return nil }
-        let candidates = [PreviousSentence(source: previous.capture.source,
-            range: previous.capture.range, translation: previous.translation), previous.previousSentence].compactMap { $0 }
+        let candidates = [previous.translationIsComplete ? PreviousSentence(source: previous.capture.source,
+            range: previous.capture.range, translation: previous.translation) : nil, previous.previousSentence].compactMap { $0 }
         let value = capture.value as NSString
         return candidates.first { candidate in
             let end = NSMaxRange(candidate.range)
@@ -545,30 +461,36 @@ final class LearningSentencePreviewCoordinator {
         }
     }
 
-    private func render() {
+    private func render(caret: CGRect? = nil) {
         guard !isReadingActive() else { return }
         // Keep prior source/translation evidence for cache and sentence-history reconciliation,
         // but never let a settings callback or late render make it visible during renewed input.
         guard let document, !document.isStale, enabled else { return }
+        // First safe text opens the card; subsequent prefixes reuse its host. Never show an
+        // empty loading card or confuse an unfinished prefix with a replaceable translation.
+        guard !document.translation.isEmpty || !document.generating else {
+            panel.hide(); return
+        }
         panel.show(.init(id: document.id, source: document.capture.source, translation: document.translation,
-            chunks: document.chunks, sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
-            caret: focus.snapshot.context?.caretRect ?? document.capture.context.caretRect,
+            sourceLanguage: document.sourceLanguage, targetLanguage: document.targetLanguage,
+            caret: caret ?? focus.snapshot.context?.caretRect ?? document.capture.context.caretRect,
             isExpanded: expanded, isGenerating: document.generating, message: document.message,
             previousTranslation: document.previousSentence?.translation, shortcutLabel: service.settings.languageLearning.keyLabel,
                 isStale: document.isStale, units: document.units, unitStage: document.unitStage,
                 targetIsSelection: document.capture.originalSelection.length > 0,
-                canReplace: !committing && !document.replacementBlocked && !document.translation.isEmpty
+                canReplace: document.translationIsComplete && !committing && !document.replacementBlocked && !document.translation.isEmpty
                     && document.capture.supportsReplacement,
                 replacementUnavailableReason: document.capture.supportsReplacement ? nil :
                     (document.capture.replacementUnavailableReason ?? LearningInputMethodPolicy.unavailableMarkedRangeReason),
-                replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id),
+                replacementShortcutLabel: service.settings.languageLearning.replacementKeyLabel, isCommitting: committingID == document.id,
+                isError: document.translation.isEmpty && !document.message.isEmpty,
+                isTranslating: !document.translationIsComplete && document.generating,
+                vocabularyContext: document.vocabularyContext,
+                vocabularyAppBundleIdentifier: document.capture.context.bundleIdentifier),
             expand: { [weak self] in self?.expandOrRequest() }, dismiss: { [weak self] in self?.dismiss() },
             replace: { [weak self] in self?.replacePreview(document.id, confirmedBy: "button") })
         if panel.isVisible, !document.isStale, !document.translation.isEmpty {
             service.recordDisplay(source: .translation, requestID: document.traceID)
-            if expanded, !document.chunks.isEmpty {
-                service.recordDisplay(source: .analysis, requestID: document.traceID)
-            }
         }
     }
 
@@ -585,7 +507,7 @@ final class LearningSentencePreviewCoordinator {
             return
         }
         logReplacement(.info, traceID: current.traceID, status: "confirmation_received", details: ["source": source])
-        guard !current.isStale, !current.replacementBlocked, current.capture.supportsReplacement,
+        guard current.translationIsComplete, !current.isStale, !current.replacementBlocked, current.capture.supportsReplacement,
               !current.translation.isEmpty else {
             logReplacement(.warning, traceID: current.traceID, status: "preflight_rejected", details: ["reason": "preview_not_replaceable"])
             return
@@ -596,7 +518,7 @@ final class LearningSentencePreviewCoordinator {
         }
         committingID = identifier
         document?.generating = false
-        analysisWork?.cancel(); unitWork?.cancel()
+        unitWork?.cancel()
         render()
         work = Task { [weak self] in
             guard let self else { return }
@@ -647,8 +569,13 @@ final class LearningSentencePreviewCoordinator {
     }
     private func cancelWork() {
         requestID = UUID(); work?.cancel(); work = nil
-        analysisID = UUID(); analysisWork?.cancel(); analysisWork = nil
         unitID = UUID(); unitWork?.cancel(); unitWork = nil
     }
-    private func clear() { cancelWork(); document = nil; expanded = false; dismissedSource = nil; cache.removeAll(); analysisCache.removeAll(); unitCache.removeAll(); panel.hide() }
+    private func clear(reason: String = "configuration-or-owner") {
+        if document != nil || panel.isVisible {
+            CotabbyLogger.learning.debug("Writing preview retired", metadata: ["stage": .string(reason)])
+        }
+        cancelWork(); document = nil; expanded = false; dismissedSource = nil
+        cache.removeAll(); unitCache.removeAll(); panel.hide()
+    }
 }

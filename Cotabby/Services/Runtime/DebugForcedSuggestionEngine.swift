@@ -70,6 +70,10 @@ final class DebugForcedSuggestionEngine: SuggestionGenerating {
         await wrapped.resetCachedGenerationContext()
     }
 
+    func cancelPrewarm() {
+        wrapped.cancelPrewarm()
+    }
+
     func prewarm(for request: SuggestionRequest) async {
         guard forcedText == nil else { return }
         await wrapped.prewarm(for: request)

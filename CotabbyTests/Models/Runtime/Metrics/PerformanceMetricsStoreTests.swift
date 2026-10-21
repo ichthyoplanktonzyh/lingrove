@@ -133,7 +133,9 @@ final class PerformanceMetricsStoreTests: XCTestCase {
 
     func test_literalLegacyBlobKeepsOriginalHistoryAndDefaultsNewFields() throws {
         let defaults = makeUserDefaults()
-        let blob = Data(#"[{"id":"00000000-0000-0000-0000-000000000001","timestamp":771692800,"modelName":"legacy-base","latencyMs":123}]"#.utf8)
+        let blob = Data(#"""
+        [{"id":"00000000-0000-0000-0000-000000000001","timestamp":771692800,"modelName":"legacy-base","latencyMs":123}]
+        """#.utf8)
         defaults.set(blob, forKey: Self.entriesKey)
         runOnMainActor {
             let store = makeStore(userDefaults: defaults)
@@ -176,6 +178,11 @@ final class PerformanceMetricsStoreTests: XCTestCase {
                     from: JSONEncoder().encode(entry)), entry)
             }
         }
+    }
+
+    func test_retiredAnalysisRecordsStillDecodeWithoutASelectableTask() throws {
+        XCTAssertEqual(try JSONDecoder().decode(ModelRequestSource.self, from: Data("\"analysis\"".utf8)), .analysis)
+        XCTAssertFalse(ModelRequestSource.allCases.contains(.analysis))
     }
 
     // MARK: - Clearing

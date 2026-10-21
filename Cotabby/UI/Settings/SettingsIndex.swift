@@ -50,6 +50,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case emojiPeopleStyle
     case emojiHistory
     // Writing
+    case completionEnabled
     case length
     case acceptPunctuation
     case addSpaceAfterAccept
@@ -75,9 +76,10 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case translationSampling
     case speechSampling
     case translationReferenceMode
-    case chunkAlignment
+    case dictionarySources
+    case ankiReview, ankiReviewFields
     case translationModel
-    case alignmentModel
+    case explanationModel, explanationLanguage, explanationParameters
     // Context
     case extendedContext
     case typingHistory
@@ -150,6 +152,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var opensEngineAdvanced: Bool {
         switch self {
+        case .explanationParameters: true
         case .lowPowerModeAutoDisable, .powerBasedModelSwitching, .batteryModel, .pluggedInModel,
              .appleIntelligenceAvailability, .appleLanguageFallback, .keepFallbackModelLoaded,
              .appleLanguageFallbackModel, .endpointAPIMode, .speechDecoder, .translationSampling, .speechSampling: true
@@ -161,6 +164,11 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .ankiReview: return String(localized: "Anki review", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
+        case .explanationModel: return String(localized: "AI explanation model", table: "Learning")
+        case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
+        case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")
         case .pointerTranslation: return String(localized: "Enable pointer translation", table: "Learning")
         case .screenshotTranslation: return String(localized: "Enable screen region translation", table: "Learning")
         case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
@@ -178,9 +186,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationSampling: return String(localized: "Translation generation parameters", table: "Learning")
         case .speechSampling: return String(localized: "Speech generation parameters", table: "Learning")
         case .translationReferenceMode: return String(localized: "Translation reference", table: "Learning")
-        case .chunkAlignment: return String(localized: "Enable chunk alignment", table: "Learning")
+        case .dictionarySources: return String(localized: "Dictionary sources", table: "Learning")
         case .translationModel: return String(localized: "Translation model", table: "Learning")
-        case .alignmentModel: return String(localized: "Chunk alignment model", table: "Learning")
+        case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Enable Globally")
         case .useScreenContext: return String(localized: "Use screen context")
         case .openAtLogin: return String(localized: "Open at Login")
@@ -283,6 +291,11 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .ankiReview: return "rectangle.stack"
+        case .ankiReviewFields: return "slider.horizontal.3"
+        case .explanationModel: return "sparkles"
+        case .explanationLanguage: return "globe"
+        case .explanationParameters: return "slider.horizontal.3"
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return "command"
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
@@ -291,8 +304,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .translationStyle: return "textformat"
         case .translationSampling, .speechSampling: return "slider.horizontal.3"
         case .translationReferenceMode: return "doc.text"
-        case .chunkAlignment: return "text.alignleft"
-        case .translationModel, .alignmentModel: return "shippingbox"
+        case .dictionarySources: return "books.vertical"
+        case .translationModel: return "shippingbox"
+        case .completionEnabled: return "text.cursor"
         case .enableGlobally: return "power"
         case .useScreenContext: return "text.viewfinder"
         case .openAtLogin: return "arrow.right.circle"
@@ -390,12 +404,15 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .ankiReview, .ankiReviewFields: return .languageLearning
+        case .explanationModel, .explanationParameters: return .engineAndModel
+        case .explanationLanguage: return .languageLearning
         case .selectionTranslationShortcut, .pointerTranslationShortcut, .screenshotTranslationShortcut: return .shortcuts
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
             .translationSourceLanguages,
-             .translationReferenceMode, .translationStyle, .chunkAlignment: return .languageLearning
-        case .translationModel, .alignmentModel, .translationSampling, .speechSampling: return .engineAndModel
+             .translationReferenceMode, .translationStyle, .dictionarySources: return .languageLearning
+        case .translationModel, .translationSampling, .speechSampling: return .engineAndModel
         #if DEBUG
         case .developmentDebugOverlays: return .general
         #endif
@@ -409,7 +426,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return .appearance
         case .emojiPicker, .emojiSkinTone, .emojiPeopleStyle, .emojiHistory:
             return .emoji
-        case .length, .acceptPunctuation, .addSpaceAfterAccept, .name, .languages, .customRules,
+        case .completionEnabled, .length, .acceptPunctuation, .addSpaceAfterAccept, .name, .languages, .customRules,
              .hideSuggestionsOnTypo, .offerTypoCorrections, .spellingDictionaries, .automaticallyFixTypos:
             return .writing
         case .extendedContext, .contextLivePreview, .typingHistory:
@@ -442,6 +459,11 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .ankiReview: return String(localized: "Anki connection and card defaults", table: "Vocabulary")
+        case .ankiReviewFields: return String(localized: "Field mapping", table: "Vocabulary")
+        case .explanationModel, .explanationParameters: return String(localized: "AI explanation", table: "Learning")
+        case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
+        case .dictionarySources: return String(localized: "Enable and order dictionary sources.", table: "Learning")
         case .pointerTranslationShortcut: return LearningReadingSource.pointer.title
         case .screenshotTranslationShortcut: return LearningReadingSource.screenshot.title
         case .selectionTranslationShortcut: return String(localized: "Translate selected text", table: "Learning")
@@ -450,10 +472,11 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .pointerTranslation, .screenshotTranslation, .selectionTranslation, .selectionTranslationIcon,
             .readingTargetLanguage, .selectionTranslationApps, .translationEnabled, .sentencePreview, .translationTargetLanguage,
             .translationSourceLanguages,
-             .translationReferenceMode, .chunkAlignment:
+             .translationReferenceMode:
             return String(localized: "Translation direction, previews, and reference text.", table: "Learning")
-        case .translationModel, .alignmentModel:
+        case .translationModel:
             return String(localized: "Choose the local model or endpoint used for this task.", table: "Learning")
+        case .completionEnabled: return String(localized: "Enable autocomplete", table: "Learning")
         case .enableGlobally: return String(localized: "Turn Lingrove on or off everywhere without quitting.", table: "Learning")
         case .useScreenContext: return String(localized: """
         Help suggestions understand surrounding text using screenshots of the focused window.
@@ -579,6 +602,13 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .ankiReview: return ["Anki", "AnkiConnect", "review", "flashcard", "deck", "复习", "制卡", "牌组"]
+        case .ankiReviewFields: return ["Anki", "mapping", "fields", "template", "字段映射", "模板", "制卡字段"]
+        case .explanationModel, .explanationParameters, .explanationLanguage:
+            return ["explain", "explanation", "contextual meaning", "AI解释", "语境", "消歧", "讲解"]
+        case .dictionarySources:
+            return ["dictionary", "lexicon", "lookup", "source", "mdict", "mdx", "mdd", "website", "online", "import",
+                    "词典", "查词", "词库", "导入", "网址", "在线", "排版", "释义语言", "词条语言", "推荐网站", "Cambridge", "Oxford"]
         case .translationStyle: return ["style", "formal", "conversational", "translation", "翻译风格", "书面", "口语"]
         case .translationSampling: return ["translation", "temperature", "top-p", "top-k", "seed", "翻译参数", "采样"]
         case .speechSampling: return ["speech", "tts", "temperature", "seed", "朗读参数", "语音参数", "采样"]
@@ -593,16 +623,14 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return ["translation language", "source language", "target language", "翻译语言", "源语言", "目标语言"]
         case .translationReferenceMode:
             return ["translation reference", "draft context", "sentence", "翻译上下文", "草稿", "参考"]
-        case .chunkAlignment:
-            return ["chunk alignment", "meaning", "语块", "意义对应"]
         case .translationModel:
             return ["translation model", "translator", "翻译模型"]
-        case .alignmentModel:
-            return ["alignment model", "analysis model", "对齐模型", "语块模型"]
         #if DEBUG
         case .developmentDebugOverlays:
             return ["development", "developer", "debug", "overlays", "caret", "outline", "focus", "ocr", "diagnostics"]
         #endif
+        case .completionEnabled:
+            return ["autocomplete", "completion", "enable", "disable", "on", "off", "启用补全", "关闭补全", "自动补全"]
         case .enableGlobally:
             return ["on", "off", "disable", "toggle", "global", "pause", "resume",
                     "active", "status", "stop", "start", "turn off", "turn on"]

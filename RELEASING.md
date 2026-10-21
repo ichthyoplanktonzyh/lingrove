@@ -27,6 +27,50 @@ jobs paused until its certificates and notarization credentials are available. T
 test package also does not require a paid membership; its test status and Gatekeeper steps
 are documented below.
 
+## Current development checkpoint (not published)
+
+The local development version additionally contains independently switchable autocomplete with
+cancellable warmup/runtime admission, incremental translation previews and committed-input fixes,
+and the first vocabulary notebook. The notebook stores examples, notes, tags and dictionary
+attribution locally, reuses speech, and exports versioned JSON. This checkpoint does not change
+the published `v0.5.1-test.1` artifacts or enable automatic updates.
+
+Dictionary lookup uses Lingrove's own nonactivating card for words and expressions; the native
+popup and its injected favorite accessory have been removed. The Dictionary tab now manages
+built-in/system sources, imported MDX/MDD files and optional online English/API or HTTPS website
+sources. Network sources default off. Formatted system content uses an experimental private DCS
+helper with a deadline and public-text fallback; system images are not loaded. Imported static
+HTML/CSS/images use isolated WebKit rendering with scripts, remote assets and file URLs blocked.
+Current examples, collection, speech and source-specific attribution remain in the existing flow.
+
+The dictionary expansion passed 201 scoped tests (239 parameterized executions), zero failures
+or skips, plus seven independent parser tests, 158 Python tests, strict SwiftLint and 1,384 source
+keys in 15 languages. Coverage includes MDX 1/2, MDD PNG, zlib/LZO, truncation and block/work limits,
+import/reopen limits, website encoding and opt-in, API attribution, helper timeout/cancellation/
+oversize child cleanup, and real WebKit rendering with a reachable loopback image canary.
+These scoped results do not replace the historical full-suite run below.
+The user confirmed real-click acceptance in TextEdit: word lookup opens Lingrove's own card,
+collection and removal keep the card open, source switching works, and outside clicks dismiss it.
+This closes the former native-popup fish-tail dismissal issue for the verified flow.
+
+The preceding own-card checkpoint passed 186 scoped tests (214 parameterized executions), with no failures
+or skips, plus 158 Python tests, strict SwiftLint and 1,362 active localization keys in 15 languages.
+The scoped run covers source settings and search, fallback/cancellation, captured examples,
+definition persistence, real SwiftUI detail popovers and writing/reading integration. It is not
+a replacement for the historical full-suite result recorded below.
+
+Closeout checks on Apple Silicon include successful Release app/test builds, strict SwiftLint,
+158 Python tests, and localization validation of 1,353 source keys across three tables and 15
+languages. The latest complete test execution, during a locked desktop session, recorded 3,397
+passes, 47 skips and one failure in the Window Server registration check. An unlocked rerun is
+required; a successful build-for-testing does not establish test execution success. The isolated
+Release settings benchmark recorded zero Writing/container body updates for all four unrelated
+background-update sources.
+
+Before the next test package, use the validated, committed checkpoint as its source and retain
+any remaining limitation in the release notes. Intel/fresh-install verification, Developer ID signing,
+notarization, and automatic-update validation remain separate distribution work.
+
 ## v0.5.1 test package (public prerelease)
 
 The current test artifact is `build/distributions/v0.5.1-test.1/Lingrove-0.5.1-test-universal.dmg`, accompanied by

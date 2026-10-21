@@ -19,9 +19,12 @@ final class RuntimeBootstrapModel: ObservableObject {
     private let userDefaults: UserDefaults
     private var cancellables = Set<AnyCancellable>()
     private var runtimeTask: Task<Void, Never>?
+    private var runtimeEpoch: UInt64 = 0
 
     /// Called immediately before the runtime begins switching models so suggestion state can reset.
     var onWillReloadModel: (() -> Void)?
+    /// Model choices persist while completion is disabled; only eligible choices may allocate weights.
+    var shouldLoadSelectedModel: () -> Bool = { true }
 
     private static let selectedModelDefaultsKey = "cotabbySelectedModelFilename"
 
@@ -76,14 +79,14 @@ final class RuntimeBootstrapModel: ObservableObject {
         }
 
         // A Task lets us call async startup from non-async app lifecycle methods.
+        runtimeEpoch &+= 1
+        let epoch = runtimeEpoch
         runtimeTask = Task { [weak self] in
-            guard let self else {
-                return
-            }
-
+            guard let self else { return }
             defer {
-                self.runtimeTask = nil
+                if self.runtimeEpoch == epoch { self.runtimeTask = nil }
             }
+            guard !Task.isCancelled, self.shouldLoadSelectedModel() else { return }
 
             do {
                 try await self.runtimeManager.prepare()
@@ -100,6 +103,11 @@ final class RuntimeBootstrapModel: ObservableObject {
             return
         }
 
+        guard shouldLoadSelectedModel() else {
+            selectModelWithoutLoading(filename)
+            return
+        }
+
         if selectedModelFilename == filename, case .ready = state {
             return
         }
@@ -110,16 +118,19 @@ final class RuntimeBootstrapModel: ObservableObject {
 
         selectedModelFilename = filename
         persistSelectedModelFilename(filename)
+        // Persist and configure together: disabling before the async load starts must not leave
+        // the manager pointing at the previous model when completion is enabled again.
+        runtimeManager.configureSelectedModel(filename: filename)
         onWillReloadModel?()
 
+        runtimeEpoch &+= 1
+        let epoch = runtimeEpoch
         runtimeTask = Task { [weak self] in
-            guard let self else {
-                return
-            }
-
+            guard let self else { return }
             defer {
-                self.runtimeTask = nil
+                if self.runtimeEpoch == epoch { self.runtimeTask = nil }
             }
+            guard !Task.isCancelled, self.shouldLoadSelectedModel() else { return }
 
             do {
                 try await self.runtimeManager.selectModel(filename: filename)
@@ -154,6 +165,7 @@ final class RuntimeBootstrapModel: ObservableObject {
 
     /// Cancels pending startup work and forwards shutdown to the underlying runtime manager.
     func stop() {
+        runtimeEpoch &+= 1
         runtimeTask?.cancel()
         runtimeTask = nil
         runtimeManager.stop()
@@ -163,6 +175,7 @@ final class RuntimeBootstrapModel: ObservableObject {
     /// Used by `applicationWillTerminate` so llama Metal resources are torn down before `exit()`
     /// runs C++ static destructors. See `LlamaRuntimeManager.shutdownSync` for rationale.
     func shutdownSync(timeoutSeconds: TimeInterval) {
+        runtimeEpoch &+= 1
         runtimeTask?.cancel()
         runtimeTask = nil
         runtimeManager.shutdownSync(timeoutSeconds: timeoutSeconds)

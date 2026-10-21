@@ -7,6 +7,34 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func testAnkiSearchOpensReviewAndFieldMapping() {
+        let model = makeModel()
+        model.reveal(.ankiReview)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .review)
+        model.reveal(.ankiReviewFields)
+        XCTAssertEqual(model.learningTask, .review)
+        XCTAssertTrue(SettingsItem.results(for: "字段映射").contains(.ankiReviewFields))
+    }
+    func testExplanationSearchSeparatesModelParametersFromLearningLanguage() {
+        let model = makeModel()
+        model.reveal(.explanationModel)
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.engineTask, .explanation)
+        model.reveal(.explanationParameters)
+        XCTAssertTrue(model.advancedBinding(for: .explanation).wrappedValue)
+        model.reveal(.explanationLanguage)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .explanation)
+        XCTAssertTrue(SettingsItem.results(for: "AI解释").contains(.explanationModel))
+    }
+    func testDictionarySearchOpensItsOwnLearningTab() {
+        let model = SettingsNavigationModel()
+        model.reveal(.dictionarySources)
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .dictionary)
+        XCTAssertTrue(SettingsItem.results(for: "词典").contains(.dictionarySources))
+    }
     /// Models live as long as the test case instance rather than dying at the end of each test body:
     /// freeing a `@MainActor` model inside the body crashes the CI test host (macOS 15 runtime) with
     /// "pointer being freed was not allocated", the same reason other suites hold their subjects in
@@ -64,7 +92,7 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_writingLinksOpenEachRoleAndCancelAnOldSearchHighlight() {
         let model = makeModel()
-        for role in [LearningModelRole.translation, .analysis] {
+        for role in [LearningModelRole.translation, .explanation] {
             model.reveal(.batteryModel)
             model.openLearningModel(role)
             XCTAssertEqual(model.selection, .engineAndModel)
@@ -75,7 +103,7 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_searchForCompletionReturnsFromALearningTabToItsOwnAnchors() {
         let model = makeModel()
-        model.openLearningModel(.analysis)
+        model.openLearningModel(.explanation)
         model.reveal(.selectedModel)
         XCTAssertEqual(model.selection, .engineAndModel)
         XCTAssertEqual(model.engineTask, .completion)
@@ -84,7 +112,7 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_searchRoutesSpeechControlsToTTSAndKeepsExistingEngineSearchOnCompletion() {
         let model = makeModel()
-        model.openLearningModel(.analysis)
+        model.openLearningModel(.explanation)
 
         for item in [SettingsItem.speechVoice, .speechModel, .speechDecoder, .speechEndpoint, .speechEndpointModel, .speechEndpointVoice] {
             model.reveal(item)
@@ -103,9 +131,9 @@ final class SettingsNavigationModelTests: XCTestCase {
         XCTAssertEqual(model.highlightedItem, .readAloudSpeed)
     }
 
-    func test_homeEngineLinkReturnsToCompletionAfterInspectingAnalysis() {
+    func test_homeEngineLinkReturnsToCompletionAfterInspectingExplanation() {
         let model = makeModel()
-        model.openLearningModel(.analysis)
+        model.openLearningModel(.explanation)
         model.open(.home)
         model.openEngineTask(.completion)
         XCTAssertEqual(model.selection, .engineAndModel)
@@ -173,17 +201,17 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_modelSearchKeepsRoleAndLanguageBehaviorDestinationsDistinct() {
         let model = makeModel()
-        for (item, task) in [(SettingsItem.translationModel, SettingsEngineTask.translation), (.alignmentModel, .analysis)] {
+        for (item, task) in [(SettingsItem.translationModel, SettingsEngineTask.translation), (.explanationModel, .explanation)] {
             model.reveal(item)
             XCTAssertEqual(model.selection, .engineAndModel)
             XCTAssertEqual(model.engineTask, task)
             XCTAssertNil(model.modelManagerTask)
         }
         for item in [SettingsItem.translationEnabled, .sentencePreview, .translationTargetLanguage,
-                     .translationSourceLanguages, .translationReferenceMode, .chunkAlignment] {
+                     .translationSourceLanguages, .translationReferenceMode] {
             model.reveal(item)
             XCTAssertEqual(model.selection, .languageLearning)
-            XCTAssertEqual(model.learningTask, item == .chunkAlignment ? .alignment : .translation)
+            XCTAssertEqual(model.learningTask, .translation)
             XCTAssertEqual(model.highlightedItem, item)
         }
     }
@@ -206,13 +234,13 @@ final class SettingsNavigationModelTests: XCTestCase {
 
     func test_learningTabsKeepTheirSelectionAcrossModelLinksAndSidebarNavigation() {
         let model = makeModel()
-        model.openLearningTask(.alignment)
+        model.openLearningTask(.explanation)
         XCTAssertEqual(model.selection, .languageLearning)
-        model.openLearningModel(.analysis)
+        model.openLearningModel(.explanation)
         XCTAssertEqual(model.selection, .engineAndModel)
-        XCTAssertEqual(model.engineTask, .analysis)
+        XCTAssertEqual(model.engineTask, .explanation)
         model.open(.languageLearning)
-        XCTAssertEqual(model.learningTask, .alignment)
+        XCTAssertEqual(model.learningTask, .explanation)
         model.openLearningTask(.readAloud)
         model.openEngineTask(.speech)
         model.open(.languageLearning)
@@ -228,8 +256,8 @@ final class SettingsNavigationModelTests: XCTestCase {
             XCTAssertEqual(model.learningTask, .translation)
             XCTAssertEqual(model.highlightedItem, item)
         }
-        model.reveal(.chunkAlignment)
-        XCTAssertEqual(model.learningTask, .alignment)
+        model.reveal(.explanationLanguage)
+        XCTAssertEqual(model.learningTask, .explanation)
         model.reveal(.readAloudSpeed)
         XCTAssertEqual(model.learningTask, .readAloud)
         model.openLearningTask(.translation)

@@ -135,10 +135,13 @@ protocol SuggestionGenerating: AnyObject {
     /// this the first suggestion in every field pays the full cold prompt decode). Failures are
     /// intentionally swallowed by implementations because prewarming is opportunistic.
     func prewarm(for request: SuggestionRequest) async
+    /// Feature shutdown cancels shared warmup too; ordinary typing cancellation must not.
+    func cancelPrewarm()
 }
 
 extension SuggestionGenerating {
     func prewarm(for request: SuggestionRequest) async {}
+    func cancelPrewarm() {}
 
     func generateSuggestion(
         for request: SuggestionRequest,

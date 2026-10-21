@@ -40,7 +40,7 @@ struct LearningSentenceDictionaryTextTests {
         let unit = LearningUnit(id: range.location, surface: "look forward to", query: "look forward to",
             kind: .expression, ranges: [range], words: LearningUnitPolicy.words(in: "look forward to", language: .english))
         view.units = [unit]
-        view.present(text, selectedChunk: nil)
+        view.present(text)
         _ = view.measuredSize(width: 350)
         let manager = try #require(view.layoutManager), container = try #require(view.textContainer)
         let target = (text as NSString).range(of: "forward")

@@ -18,6 +18,13 @@ final class LlamaRuntimeManager: ObservableObject {
     private let configuration: LlamaRuntimeConfiguration
     private let runtimeLocator: BundledRuntimeLocator
     private let core: LlamaRuntimeCore
+    private let shutdownOperation: @Sendable () -> Void
+    /// A new load must wait for every earlier unload; native serialization alone cannot preserve
+    /// the manager cache if a late unload runs after a new preparation has published readiness.
+    private var pendingShutdown: (id: UUID, task: Task<Void, Never>)?
+    /// The composition root supplies completion eligibility; learning owns different native sessions.
+    var isEnabledProvider: () -> Bool = { true }
+
     private var startupTask: Task<PreparedLlamaRuntime, Error>?
     private var startupModelFilename: String?
     private var startupContextWindowTokens: Int?
@@ -45,11 +52,14 @@ final class LlamaRuntimeManager: ObservableObject {
 
     init(
         configuration: LlamaRuntimeConfiguration,
-        runtimeLocator: BundledRuntimeLocator
+        runtimeLocator: BundledRuntimeLocator,
+        shutdownOperation: (@Sendable () -> Void)? = nil
     ) {
         self.configuration = configuration
         self.runtimeLocator = runtimeLocator
-        core = LlamaRuntimeCore()
+        let runtimeCore = LlamaRuntimeCore()
+        core = runtimeCore
+        self.shutdownOperation = shutdownOperation ?? { runtimeCore.shutdown() }
         refreshAvailableModels()
     }
 
@@ -220,9 +230,13 @@ final class LlamaRuntimeManager: ObservableObject {
     func stop() {
         CotabbyLogger.runtime.info("Runtime stop requested")
         prepareForStop()
-        Task.detached { [core] in
-            core.shutdown()
+        let previous = pendingShutdown?.task
+        let operation = shutdownOperation
+        let task = Task.detached {
+            await previous?.value
+            operation()
         }
+        pendingShutdown = (UUID(), task)
     }
 
     /// Synchronously releases the llama runtime on the current thread after closing work admission.
@@ -251,6 +265,13 @@ final class LlamaRuntimeManager: ObservableObject {
 
     /// Returns cached runtime metadata when available or performs one full preparation flow otherwise.
     private func preparedRuntime(contextWindowTokens: Int? = nil) async throws -> PreparedLlamaRuntime {
+        try Task.checkCancellation()
+        while let shutdown = pendingShutdown {
+            await shutdown.task.value
+            if pendingShutdown?.id == shutdown.id { pendingShutdown = nil }
+            try Task.checkCancellation()
+        }
+        guard isEnabledProvider() else { throw CancellationError() }
         let requestedWindow = min(
             ModelContextBudget.maximumLocalTokens,
             max(
@@ -291,7 +312,8 @@ final class LlamaRuntimeManager: ObservableObject {
         diagnostics.lastLoadStatus = "Starting"
         diagnostics.modelFilePath = resolvedRuntime.modelFileURL.path
         let startupTask = Task.detached { [core, configuration] in
-            try core.prepare(
+            try Task.checkCancellation()
+            return try core.prepare(
                 resolvedRuntime: resolvedRuntime,
                 configuration: configuration
             )

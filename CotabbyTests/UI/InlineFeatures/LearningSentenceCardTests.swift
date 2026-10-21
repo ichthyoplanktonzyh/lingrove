@@ -11,74 +11,133 @@ import Vision
 @MainActor
 struct LearningSentenceCardTests {
     @Test
-    func alignmentPaintsWhileUnitsArePendingAndKeepsItsRangesWhenRecognitionArrivesOrFails() async throws {
-        let id = UUID(), state = LearningDetailState()
-        let source = "我期待见到你。", target = "I look forward to seeing you."
-        let phraseRange = (target as NSString).range(of: "look forward to")
-        let coloredRange = (target as NSString).range(of: "forward")
-        let complementRange = (target as NSString).range(of: "seeing you")
-        // These literal ranges are layout fixtures, not a claim about model translation quality.
-        // One color crosses several click units; another deliberately covers part of a phrase.
-        let chunks = [LearningMeaningChunk(id: 0, sourceRanges: [.init(location: 1, length: 2)], targetRanges: [coloredRange]),
-                      LearningMeaningChunk(id: 1, sourceRanges: [.init(location: 3, length: 3)], targetRanges: [complementRange])]
-        let unit = LearningUnit(id: phraseRange.location, surface: "look forward to", query: "look forward to",
-            kind: .expression, ranges: [phraseRange], words: LearningUnitPolicy.words(in: "look forward to", language: .english))
-        var inspected: [Int] = [], lookedUp: [LearningUnit] = []
-        func card(_ stage: LearningUnitStage) -> LearningSentenceCard {
-            let units = stage == .ready ? [unit] : []
-            let presentation = LearningSentencePresentation(id: id, source: source, translation: target, chunks: chunks,
-                sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: true,
-                isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T", units: units, unitStage: stage)
-            return LearningSentenceCard(presentation: presentation, detailState: state,
-                inspect: { inspected.append($0) }, expand: {}, dismiss: {},
-                lookupUnit: { anchor, _ in lookedUp.append(anchor.unit) }, sizeChanged: { _ in })
+    func expandedWidthFitsBothTextsAndShrinksWhenTheSameHostShowsAShortSentence() async throws {
+        if let expected = ProcessInfo.processInfo.environment["COTABBY_TEST_LANGUAGE"] {
+            #expect(Bundle.main.preferredLocalizations.first == expected,
+                    "The locale acceptance run must localize the controls, not just change OCR recognition languages")
         }
-        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 480, height: 280),
+        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 480, height: 250),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .aqua)
-        let host = NSHostingView(rootView: card(.pending))
-        window.contentView = host
         defer { window.close() }
+        func card(source: String, target: String, id: UUID = UUID()) -> LearningSentenceCard {
+            let presentation = LearningSentencePresentation(id: id, source: source, translation: target,
+                sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: true,
+                isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T",
+                unitStage: .ready, canReplace: true)
+            return LearningSentenceCard(presentation: presentation, replace: {},
+                expand: {}, dismiss: {}, sizeChanged: { _ in })
+        }
+        let host = NSHostingView(rootView: card(source: "你好。", target: "Hello."))
+        window.contentView = host
         window.orderFrontRegardless()
-        for stage in [LearningUnitStage.pending, .ready, .failed] {
-            host.rootView = card(stage)
-            await settle(host, in: window)
-            let sourceView = try #require(findTranslation(source, in: host))
-            let targetView = try #require(findTranslation(target, in: host))
-            let left = try #require(sourceView.textStorage), right = try #require(targetView.textStorage)
-            let sourceColor = try #require(left.attribute(.backgroundColor, at: 1, effectiveRange: nil) as? NSColor)
-            let targetColor = try #require(right.attribute(.backgroundColor, at: coloredRange.location, effectiveRange: nil) as? NSColor)
-            #expect(sourceColor == targetColor)
-            #expect(right.attribute(.backgroundColor, at: (target as NSString).range(of: "seeing").location, effectiveRange: nil) as? NSColor
-                == right.attribute(.backgroundColor, at: (target as NSString).range(of: "you").location, effectiveRange: nil) as? NSColor)
-            #expect(right.attribute(.backgroundColor, at: 0, effectiveRange: nil) == nil)
-            #expect(right.attribute(.backgroundColor, at: phraseRange.location, effectiveRange: nil) == nil)
-            #expect(targetView.string == target && sourceView.string == source)
-            let underline = right.attribute(.underlineStyle, at: phraseRange.location, effectiveRange: nil)
-            #expect((underline != nil) == (stage == .ready))
-            if stage == .ready {
-                let point = try glyphPoint(coloredRange, in: targetView)
-                targetView.handleClick(at: point, count: 1)
-                targetView.handleClick(at: point, count: 2)
-                #expect(inspected == [0] && lookedUp == [unit], "Color clicks and whole-expression lookup have independent extents")
-            }
-            if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
-                let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                host.cacheDisplay(in: host.bounds, to: bitmap)
-                let directory = URL(fileURLWithPath: output)
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                try bitmap.representation(using: .png, properties: [:])?.write(to: directory.appendingPathComponent("independent-\(stage).png"))
-            }
+        await settle(host, in: window)
+        let shortWidth = host.fittingSize.width
+        #expect(shortWidth >= 320 && shortWidth < 480)
+        host.rootView = card(source: String(repeating: "字", count: 22), target: "Yes.")
+        await settle(host, in: window)
+        #expect(host.fittingSize.width > 320 && host.fittingSize.width < 480,
+                "The longer original must determine width even when its translation is short")
+        host.rootView = card(source: "你好。", target: String(repeating: "A longer complete translation. ", count: 6))
+        await settle(host, in: window)
+        #expect(host.fittingSize.width == 480)
+        host.rootView = card(source: "你好。", target: "Hello.")
+        await settle(host, in: window)
+        #expect(host.fittingSize.width == shortWidth, "A reused host must not retain a previous long card's width")
+        #expect(findTranslation("你好。", in: host) != nil && findTranslation("Hello.", in: host) != nil)
+        let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        let recognition = VNRecognizeTextRequest()
+        recognition.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+            ? ["zh-Hans", "en-US"] : ["de-DE", "en-US", "zh-Hans"]
+        recognition.recognitionLevel = .accurate
+        try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([recognition])
+        let painted = (recognition.results?.compactMap { $0.topCandidates(1).first?.string } ?? [])
+            .joined().lowercased().filter { $0.isLetter }
+        for label in [String(localized: "Copy source text", table: "Learning"),
+                      String(localized: "Copy translation", table: "Learning")] {
+            #expect(painted.contains(label.lowercased().filter { $0.isLetter }),
+                    "The localized native copy buttons must remain fully visible inside the compact width")
+        }
+        if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
+            try bitmap.representation(using: .png, properties: [:])?.write(
+                to: URL(fileURLWithPath: output).appendingPathComponent("expanded-short-adaptive.png"))
         }
     }
 
-    private func glyphPoint(_ range: NSRange, in view: LearningDictionaryTextView) throws -> NSPoint {
-        let manager = try #require(view.layoutManager), container = try #require(view.textContainer)
-        manager.ensureLayout(for: container)
-        let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-        let bounds = manager.boundingRect(forGlyphRange: glyphs, in: container)
-        return .init(x: bounds.midX + view.textContainerOrigin.x, y: bounds.midY + view.textContainerOrigin.y)
+    @Test
+    func expandedStreamingKeepsItsWidthUntilTheTranslationIsComplete() async {
+        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 320, height: 250),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let id = UUID()
+        func card(_ translation: String, complete: Bool) -> LearningSentenceCard {
+            let presentation = LearningSentencePresentation(id: id, source: "原文", translation: translation,
+                sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: true,
+                isGenerating: !complete, message: "", previousTranslation: nil, shortcutLabel: "⌥T",
+                unitStage: .ready, isTranslating: !complete)
+            return LearningSentenceCard(presentation: presentation, expand: {}, dismiss: {}, sizeChanged: { _ in })
+        }
+        let host = NSHostingView(rootView: card("Hello", complete: false))
+        window.contentView = host
+        window.orderFrontRegardless()
+        await settle(host, in: window)
+        let width = host.fittingSize.width
+        let long = String(repeating: "A complete translated sentence. ", count: 5)
+        host.rootView = card(long, complete: false)
+        await settle(host, in: window)
+        #expect(host.fittingSize.width == width, "Partial tokens wrap without remeasuring the window width")
+        host.rootView = card(long, complete: true)
+        await settle(host, in: window)
+        #expect(host.fittingSize.width == 480)
+    }
+
+    @Test
+    func streamingCardPaintsItsPrefixAndDisablesReplacementUntilComplete() async throws {
+        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 320, height: 100),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .aqua)
+        defer { window.close() }
+        let id = UUID()
+        var replacements = 0
+        func card(_ text: String, complete: Bool) -> LearningSentenceCard {
+            let presentation = LearningSentencePresentation(id: id, source: "我们期待见到你。", translation: text,
+                sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false,
+                isGenerating: !complete, message: "", previousTranslation: nil, shortcutLabel: "⌥T",
+                canReplace: complete, replacementShortcutLabel: "⌃⌥T", isTranslating: !complete)
+            return LearningSentenceCard(presentation: presentation, replace: { replacements += 1 },
+                expand: {}, dismiss: {}, sizeChanged: { _ in })
+        }
+        let hosting = NSHostingView(rootView: card("We look", complete: false))
+        window.contentView = hosting
+        window.orderFrontRegardless()
+        for (text, complete) in [("We look", false), ("We look forward to seeing you.", true)] {
+            hosting.rootView = card(text, complete: complete)
+            await settle(hosting, in: window)
+            #expect(findTranslation(text, in: hosting)?.string == text)
+            let count = replacements
+            try clickHeaderAction(2, in: hosting, window: window)
+            await settle(hosting, in: window)
+            #expect(replacements == count + (complete ? 1 : 0))
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
+                try bitmap.representation(using: .png, properties: [:])?.write(
+                    to: URL(fileURLWithPath: output).appendingPathComponent(complete ? "stream-complete.png" : "stream-prefix.png"))
+            }
+            let recognition = VNRecognizeTextRequest()
+            recognition.recognitionLanguages = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+                ? ["zh-Hans", "en-US"] : ["en-US", "zh-Hans"]
+            recognition.recognitionLevel = .accurate
+            try VNImageRequestHandler(cgImage: try #require(bitmap.cgImage)).perform([recognition])
+            let painted = (recognition.results?.compactMap { $0.topCandidates(1).first?.string } ?? []).joined(separator: " ")
+            #expect(painted.contains(text))
+            #expect(!painted.contains("Generating") && !painted.contains("正在生成"))
+            #expect(!painted.contains("Replace") && !painted.contains("替换"))
+        }
     }
 
     @Test
@@ -87,13 +146,11 @@ struct LearningSentenceCardTests {
         let target = "Opening sentence remains visible. "
             + Array(repeating: "The full translation stays readable inside a compact scrolling viewport.", count: 8)
                 .joined(separator: " ") + " Final words remain visible."
-        let state = LearningDetailState()
         func card(_ text: String) -> LearningSentenceCard {
-            let presentation = LearningSentencePresentation(id: id, source: "原文", translation: text, chunks: [],
+            let presentation = LearningSentencePresentation(id: id, source: "原文", translation: text,
                 sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false,
                 isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T", unitStage: .ready)
-            return LearningSentenceCard(presentation: presentation, detailState: state,
-                inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+            return LearningSentenceCard(presentation: presentation, expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
         let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 320, height: 80),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -143,10 +200,9 @@ struct LearningSentenceCardTests {
         window.appearance = NSAppearance(named: .aqua)
         window.backgroundColor = .white
         defer { window.close() }
-        let detailState = LearningDetailState()
         let makeCard: (Bool) -> LearningSentenceCard = { expanded in
-            LearningSentenceCard(presentation: Self.presentation(id: id, expanded: expanded), detailState: detailState,
-                inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+            LearningSentenceCard(presentation: Self.presentation(id: id, expanded: expanded),
+                expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: makeCard(false))
         window.contentView = hosting
@@ -154,13 +210,15 @@ struct LearningSentenceCardTests {
         // Order this nonactivating window without making it key or changing the user's editor.
         window.orderFrontRegardless()
         await settle(hosting, in: window)
-        #expect(hosting.fittingSize.height < 120)
+        let compactHeight = hosting.fittingSize.height
+        #expect(compactHeight < 120)
         // Reuse one host and document, matching the real panel's preservation of SwiftUI state.
         for expanded in [true, false, true] {
             hosting.rootView = makeCard(expanded)
             await settle(hosting, in: window)
         }
-        #expect(hosting.fittingSize.height > 160)
+        #expect(hosting.fittingSize.height > compactHeight,
+                "Expanding must add the original without relying on removed caption rows for height")
         #expect(hosting.fittingSize.height < 400)
         let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
@@ -180,12 +238,13 @@ struct LearningSentenceCardTests {
         // Mapping is now embedded in the sentences. Dictionary and duplicate mapping rows no
         // longer belong to this main card; both source and target must still be visibly painted.
         hosting.rootView = LearningSentenceCard(presentation: Self.presentation(id: id, expanded: true, repeats: 3),
-            detailState: detailState, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+            expand: {}, dismiss: {}, sizeChanged: { _ in })
         await settle(hosting, in: window)
         let longer = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: longer)
         if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
-            try longer.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: output).appendingPathComponent("expanded-long.png"))
+            try longer.representation(using: .png, properties: [:])?.write(
+                to: URL(fileURLWithPath: output).appendingPathComponent("expanded-long.png"))
         }
         let longRecognition = VNRecognizeTextRequest()
         longRecognition.recognitionLanguages = ["en-US"]
@@ -197,21 +256,38 @@ struct LearningSentenceCardTests {
 
     @Test(arguments: [false, true])
     func scopedReplacementAndBothRecoveryActionsStayVisible(_ dark: Bool) async throws {
+        let nativeReview = ProcessInfo.processInfo.environment["COTABBY_UI_NATIVE_REVIEW"] == "1"
         let window = NSPanel(
             contentRect: CGRect(x: 0, y: 0, width: 480, height: 300),
-            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            styleMask: nativeReview ? [.titled] : [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         defer { window.close() }
-        let state = LearningDetailState(), id = UUID()
+        let id = UUID()
+        let replacementShortcutLabel = "REPLACE_SHORTCUT_SENTINEL"
+        let suite = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let vocabulary = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let explanation = LearningExplanationSession()
+        var replacements = 0, expansions = 0
         func card(expanded: Bool) -> LearningSentenceCard {
-            var presentation = Self.presentation(id: id, expanded: expanded)
+            var presentation = Self.presentation(id: id, expanded: expanded, shortcutLabel: "EXPAND_SHORTCUT_SENTINEL")
             presentation.targetIsSelection = true
             presentation.canReplace = true
-            presentation.replacementShortcutLabel = "⌃⌥T"
+            presentation.replacementShortcutLabel = replacementShortcutLabel
+            let input = LearningExplanationPolicy.input(presentation)
+            #expect(input != nil)
+            if let input {
+                explanation.setTarget(input, saved: .init(id: UUID(), input: input, language: .english,
+                    result: .init(meaning: "Contextual meaning.", explanation: "An explanation tied to this sentence."),
+                    model: "fixture", createdAt: Date()))
+            }
             return LearningSentenceCard(
-                presentation: presentation, detailState: state,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+                presentation: presentation, explanation: explanation,
+                replace: { replacements += 1 }, expand: { expansions += 1 }, dismiss: {},
+                speech: speech, vocabulary: vocabulary, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card(expanded: false))
         window.contentView = hosting
@@ -233,10 +309,34 @@ struct LearningSentenceCardTests {
             let text = (request.results?.compactMap { $0.topCandidates(1).first?.string } ?? []).joined()
             func normalized(_ value: String) -> String { value.lowercased().filter { $0.isLetter || $0.isNumber } }
             let visible = normalized(text)
-            #expect(visible.contains(normalized(String(localized: "Target: Selection", table: "Learning"))))
+            #expect(!visible.contains(normalized(String(localized: "Target: Selection", table: "Learning"))))
+            #expect(!visible.contains(normalized(String(localized: "Replace", table: "Learning"))),
+                "The replacement action must use only its icon")
+            // Both controls must accept the same center and edge clicks within their 22pt hit
+            // boxes, not just a click on the painted SF Symbol. These are real SwiftUI gestures.
+            for offset in [-10.0, 0, 10] {
+                let previous = (replacements, expansions)
+                try clickHeaderAction(2, offset: offset, in: hosting, window: window)
+                try clickHeaderAction(1, offset: offset, in: hosting, window: window)
+                await settle(hosting, in: window)
+                #expect(replacements == previous.0 + 1 && expansions == previous.1 + 1)
+            }
+            #expect(!visible.contains("shortcutsentinel"), "Keyboard shortcut hints must not occupy either card size")
+            #expect(!visible.contains(normalized(String(localized: "Target expression", table: "Learning"))))
+            #expect(visible.contains(normalized(LearningLanguage.english.label)))
+            #expect(visible.components(separatedBy: normalized(LearningLanguage.english.compactLabel)).count == 2,
+                "The language belongs in the header once, without a repeated body label")
+            let explanationLabel = String(localized: "AI explanation", table: "Learning")
+            #expect(!visible.contains(normalized(explanationLabel)))
             if expanded {
                 #expect(visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))))
                 #expect(visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))))
+            }
+            if nativeReview, !dark, expanded {
+                // Opt-in local acceptance exposes a normal window to an external AX client.
+                // NSHostingView's in-process children omit SwiftUI's virtual accessibility tree.
+                window.title = "Lingrove card details acceptance"
+                try await Task.sleep(for: .seconds(45))
             }
         }
     }
@@ -248,16 +348,17 @@ struct LearningSentenceCardTests {
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .aqua)
         defer { window.close() }
-        let state = LearningDetailState(), id = UUID()
+        let id = UUID()
         let reason = LearningInputMethodPolicy.unavailableMarkedRangeReason
         let replacementShortcutLabel = "⌃⌥T"
+        var replacements = 0
         func card(expanded: Bool) -> LearningSentenceCard {
             var presentation = Self.presentation(id: id, expanded: expanded)
             presentation.canReplace = false
             presentation.replacementShortcutLabel = replacementShortcutLabel
             presentation.replacementUnavailableReason = reason
-            return LearningSentenceCard(presentation: presentation, detailState: state,
-                replace: {}, inspect: { _ in }, expand: {}, dismiss: {}, sizeChanged: { _ in })
+            return LearningSentenceCard(presentation: presentation, replace: { replacements += 1 },
+                expand: {}, dismiss: {}, sizeChanged: { _ in })
         }
         let hosting = NSHostingView(rootView: card(expanded: false))
         window.contentView = hosting
@@ -276,11 +377,25 @@ struct LearningSentenceCardTests {
                 .joined().lowercased().filter { $0.isLetter || $0.isNumber }
             let reasonPrefix = String(reason.lowercased().filter { $0.isLetter || $0.isNumber }.prefix(30))
             #expect(visible.contains(reasonPrefix), "The replacement reason remains visible in both card sizes.")
-            let replacementLabel = String(localized: "Replace · \(replacementShortcutLabel)", table: "Learning")
-            let actionLabel = replacementLabel.split(separator: "·", maxSplits: 1).first ?? ""
-            let actionPrefix = String(actionLabel.lowercased().filter { $0.isLetter || $0.isNumber })
-            #expect(visible.contains(actionPrefix), "The Replace label remains visible in both card sizes.")
+            try clickHeaderAction(2, in: hosting, window: window)
+            await settle(hosting, in: window)
+            #expect(replacements == 0)
         }
+    }
+
+    /// Header icons share 22pt targets, an 8pt gap and 10pt outer padding. Send mouse-down and
+    /// mouse-up synchronously in gesture order, as the existing popover interaction tests do.
+    private func clickHeaderAction(_ trailingIndex: Int, offset: CGFloat = 0,
+                                   in host: NSView, window: NSWindow) throws {
+        let point = CGPoint(x: host.bounds.width - 21 - CGFloat(trailingIndex) * 30 + offset,
+            y: host.isFlipped ? 21 : host.bounds.height - 21)
+        let location = host.convert(point, to: nil), timestamp = ProcessInfo.processInfo.systemUptime
+        let down = try #require(NSEvent.mouseEvent(with: .leftMouseDown, location: location, modifierFlags: [],
+            timestamp: timestamp, windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+        let up = try #require(NSEvent.mouseEvent(with: .leftMouseUp, location: location, modifierFlags: [],
+            timestamp: timestamp + 0.01, windowNumber: window.windowNumber, context: nil,
+            eventNumber: 2, clickCount: 1, pressure: 0))
+        window.sendEvent(down); window.sendEvent(up)
     }
 
     private func settle(_ hosting: NSHostingView<LearningSentenceCard>, in window: NSWindow) async {
@@ -291,13 +406,13 @@ struct LearningSentenceCardTests {
         }
     }
 
-    private static func presentation(id: UUID, expanded: Bool, repeats: Int = 1) -> LearningSentencePresentation {
+    private static func presentation(id: UUID, expanded: Bool, repeats: Int = 1,
+                                     shortcutLabel: String = "⌥T") -> LearningSentencePresentation {
         let source = Array(repeating: "Source content must remain visible.", count: repeats).joined(separator: " ")
         let target = Array(repeating: "Target translation must remain visible.", count: repeats).joined(separator: " ")
         return LearningSentencePresentation(id: id, source: source, translation: target,
-            chunks: [.init(id: 0, sourceRanges: [.init(location: 0, length: source.utf16.count)],
-                targetRanges: [.init(location: 0, length: target.utf16.count)])],
             sourceLanguage: .chinese, targetLanguage: .english, caret: .zero,
-            isExpanded: expanded, isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "⌥T", unitStage: .ready)
+            isExpanded: expanded, isGenerating: false, message: "", previousTranslation: nil,
+            shortcutLabel: shortcutLabel, unitStage: .ready)
     }
 }

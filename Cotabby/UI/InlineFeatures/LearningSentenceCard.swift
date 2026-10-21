@@ -1,57 +1,48 @@
 import AppKit
 import SwiftUI
 
-/// Shows the sentence pair without dictionary text or duplicate mapping rows. The shared detail
-/// state supplies selection borders; the app-owned panel receives clicks and owns lookup I/O.
+/// Shows one sentence pair with lexical underlines and existing learning actions. The app-owned
+/// panel validates clicked occurrences and owns dictionary and explanation lifetimes.
 struct LearningSentenceCard: View {
     let presentation: LearningSentencePresentation
-    @ObservedObject var detailState: LearningDetailState
+    var explanation: LearningExplanationSession?
     var replace: (() -> Void)?
-    let inspect: (Int) -> Void
     let expand: () -> Void
     let dismiss: () -> Void
-    var lookup: (String, NSButton) -> Void = { _, _ in }
     var lookupText: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
     var speech: LearningSpeechController?
+    var vocabulary: VocabularyStore?
     let sizeChanged: (CGSize) -> Void
     // Begin with the sentence pair's short layout; longer content measures itself below.
     // The former instruction-sized fallback leaves a blank block after the guide text is removed.
     @State private var detailsHeight: CGFloat = 100
     @State private var compactTranslationHeight: CGFloat = 20
+    @State private var expandedWidth: CGFloat = 320
+    @State private var copyActionsWidth: CGFloat = 0
+
+    /// Width follows the sentence pair, not every streamed token or caret movement. This small
+    /// value is the card's measurement identity: a new source/document or completed translation
+    /// asks for one new measurement; partial translations wrap within the current viewport.
+    private struct ExpandedSizingContent: Equatable {
+        let documentID: UUID
+        let source: String
+        let translation: String?
+        let isExpanded: Bool
+    }
+
+    private var expandedSizingContent: ExpandedSizingContent {
+        ExpandedSizingContent(documentID: presentation.id, source: presentation.source,
+            translation: presentation.isTranslating ? nil : presentation.translation,
+            isExpanded: presentation.isExpanded)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             header
-            if !presentation.isError {
-                HStack {
-                    Text(presentation.targetLabel)
-                    .font(.caption).foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    if presentation.canReplace, let replace {
-                        Button(
-                            String(
-                                localized: "Replace · \(presentation.replacementShortcutLabel)", table: "Learning",
-                                comment: "Replaces the exact source of this preview; includes its configured shortcut."), action: replace
-                        )
-                        .font(.caption).buttonStyle(.bordered)
-                    } else if presentation.isCommitting {
-                        ProgressView().controlSize(.small)
-                    } else if !presentation.translation.isEmpty, !presentation.isStale,
-                              let reason = presentation.replacementUnavailableReason {
-                        Button(
-                            String(
-                                localized: "Replace · \(presentation.replacementShortcutLabel)", table: "Learning",
-                                comment: "Replaces the exact source of this preview; includes its configured shortcut."),
-                            action: {}
-                        )
-                        .font(.caption).buttonStyle(.bordered).disabled(true).help(reason)
-                    }
-                }
-                if let reason = presentation.replacementUnavailableReason {
-                    Text(reason).font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            if !presentation.isError, let reason = presentation.replacementUnavailableReason {
+                Text(reason).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if presentation.isError {
                 Text(presentation.message).font(.callout).fixedSize(horizontal: false, vertical: true)
@@ -83,13 +74,30 @@ struct LearningSentenceCard: View {
             }
         }
         .padding(10)
-        .frame(width: presentation.isExpanded ? 480 : 320, alignment: .topLeading)
+        .frame(width: presentation.isExpanded ? min(480, max(expandedWidth, ceil(copyActionsWidth) + 20)) : 320, alignment: .topLeading)
+        .onChange(of: expandedSizingContent, initial: true) { _, content in
+            guard content.isExpanded else { return }
+            expandedWidth = measuredExpandedWidth(content)
+        }
         .fixedSize(horizontal: false, vertical: true)
         .background(GeometryReader { geometry in
             Color.clear.preference(key: LearningCardSizePreference.self, value: geometry.size)
         })
         .onPreferenceChange(LearningCardSizePreference.self, perform: sizeChanged)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Match the fonts used by the two existing TextKit views. The 320pt floor leaves room for
+    /// header/copy actions, while the 480pt ceiling preserves the current wrapping and viewport
+    /// limits. Status messages wrap at this width instead of widening a short sentence pair.
+    private func measuredExpandedWidth(_ content: ExpandedSizingContent) -> CGFloat {
+        let source = (content.source as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 16)]).width
+        let translation = ((content.translation ?? "") as NSString)
+            .size(withAttributes: [.font: NSFont.systemFont(ofSize: 18)]).width
+        // The outer padding is already part of the panel's measured frame. A small glyph margin
+        // keeps the final punctuation inside TextKit's line box despite fractional font advances.
+        let speechWidth: CGFloat = speech == nil ? 0 : 28
+        return min(480, max(320, ceil(max(source, translation)) + 22 + speechWidth))
     }
 
     /// Compact describes the viewport, not a shortened translation. TextKit lays out the entire
@@ -116,96 +124,108 @@ struct LearningSentenceCard: View {
                     ? String(
                         localized: "Translation preview unavailable", table: "Learning",
                         comment: "Header for an explicit preview capture error.")
-                    : presentation.isStale && !presentation.translation.isEmpty
-                        ? String(localized: "Previous expression · updates after a pause", table: "Learning",
-                    comment: "Header shown when the card retains the previous translation while the user edits the source sentence.")
                 : presentation.isExpanded
-                    ? String(localized: "\(presentation.sourceLanguage.label) → \(presentation.targetLanguage.label)",
+                    ? String(localized: "\(presentation.sourceLanguage.compactLabel) → \(presentation.targetLanguage.compactLabel)",
                         table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
-                    : String(localized: "Target expression · \(presentation.targetLanguage.label)", table: "Learning",
-                        comment: "Compact card header naming the target language."))
+                    : presentation.targetLanguage.compactLabel)
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
+            if let explanation {
+                LearningExplanationButton(session: explanation, prepare: { if !presentation.isExpanded { expand() } },
+                    configure: { (explanation.service as? LearningExplanationService)?.configure?() })
+            }
+            if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
+                VocabularyFavoriteButton(store: vocabulary, capture: capture)
+            }
             if !presentation.isExpanded, let speech, let request = translationSpeechRequest {
                 LearningSpeechButton(speech: speech, request: request,
                     playLabel: String(localized: "Play translation aloud", table: "Learning"),
                     stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
             }
             if !presentation.isError {
-                Button(
-                    presentation.isExpanded
-                        ? String(localized: "Collapse", table: "Learning",
-                            comment: "Button that collapses the expanded sentence-learning card.")
-                : String(localized: "Expand · \(presentation.shortcutLabel)", table: "Learning",
-                    comment: """
-                    Button that expands the sentence-learning card; the shortcut label is the user's configured key combination.
-                    """),
-                action: expand)
-                .buttonStyle(.plain).font(.caption).fixedSize()
+                replacementAction
+                iconAction(presentation.isExpanded
+                    ? String(localized: "Collapse", table: "Learning")
+                    : String(localized: "Expand", table: "Learning"),
+                    symbol: presentation.isExpanded ? "chevron.up" : "chevron.down", action: expand)
             }
-            Button(action: dismiss) { Image(systemName: "xmark") }.buttonStyle(.plain)
-                .help(String(localized: "Dismiss · Esc", table: "Learning", comment: """
-                Tooltip for dismissing the sentence-learning card with Escape.
-                """))
+            iconAction(String(localized: "Dismiss"), symbol: "xmark", action: dismiss)
         }
+    }
+
+    @ViewBuilder
+    private var replacementAction: some View {
+        if presentation.isCommitting {
+            ProgressView().controlSize(.small).frame(width: 22, height: 22)
+        } else {
+            iconAction(String(localized: "Replace", table: "Learning"), symbol: "arrow.left.arrow.right",
+                color: isReplacementEnabled ? .blue : .secondary, action: { if isReplacementEnabled { replace?() } })
+                .disabled(!isReplacementEnabled)
+        }
+    }
+
+    /// A stable disabled icon keeps the action row still while text streams. Availability also
+    /// guards stale/incomplete results here, before the coordinator's exact-range write checks.
+    private var isReplacementEnabled: Bool {
+        presentation.canReplace && replace != nil && !presentation.isTranslating && !presentation.isStale
+    }
+
+    /// Disclosure and dismissal use familiar symbols with a full click target. Labels stay
+    /// available to VoiceOver and hover help without competing with the translation for space.
+    private func iconAction(_ title: String, symbol: String, color: Color = .secondary,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).labelStyle(.iconOnly)
+                .font(.caption.weight(.semibold)).foregroundStyle(color)
+                .frame(width: 22, height: 22).contentShape(Rectangle())
+        }.buttonStyle(.plain).help(title).accessibilityLabel(title)
     }
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(String(localized: "Source text", table: "Learning",
-                            comment: "Label above the original sentence in the expanded learning card."))
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
+                    HStack(alignment: .top, spacing: 8) {
+                        sentence(presentation.source, source: true)
                         if let speech, let request = sourceSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play source text aloud", table: "Learning"),
                                 stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
                         }
                     }
-                    sentence(presentation.source, source: true)
-                    HStack {
-                        Text(String(localized: "Target expression", table: "Learning",
-                            comment: "Label above the translated sentence in the expanded learning card."))
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
+                    HStack(alignment: .top, spacing: 8) {
+                        sentence(presentation.translation, source: false)
                         if let speech, let request = translationSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play translation aloud", table: "Learning"),
                                 stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
                         }
                     }
-                    sentence(presentation.translation, source: false)
-                    if presentation.chunks.isEmpty {
-                        Text(presentation.isGenerating
-                            ? String(localized: "The translation appears first; chunk alignments are loading…", table: "Learning",
-                                comment: "Status shown while the translation is available but phrase-alignment analysis is still running.")
-                            : presentation.message)
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if let selected = detailState.chunk, selected.documentID == presentation.id,
-                       presentation.chunks.contains(where: { $0.id == selected.chunkID }) {
-                        Text(verbatim: "\(selected.source) → \(selected.target)")
-                            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                    if presentation.unitStage == .failed {
+                    if !presentation.translation.isEmpty, presentation.unitStage == .failed {
                         Text(String(localized: "Expression highlights are unavailable; you can still double-click words to look them up.",
                             table: "Learning", comment: """
                             Status when expression recognition failed but dictionary lookup remains available.
                             """))
                             .font(.caption).foregroundStyle(.secondary)
-                    } else if presentation.unitStage == .pending {
+                    } else if !presentation.translation.isEmpty, !presentation.isTranslating, presentation.unitStage == .pending {
                         Text(String(localized: "Recognizing expressions… You can still double-click words to look them up.",
                             table: "Learning", comment: """
                             Status while expression recognition runs; dictionary lookup is already available.
                             """))
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    if !presentation.message.isEmpty, !presentation.isGenerating, !presentation.chunks.isEmpty {
+                    if !presentation.message.isEmpty, !presentation.isGenerating {
                         Text(presentation.message).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let explanation {
+                        if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
+                            LearningCapturedExplanationView(session: explanation, store: vocabulary, capture: capture,
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
+                        } else {
+                            LearningExplanationView(session: explanation,
+                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -218,35 +238,47 @@ struct LearningSentenceCard: View {
                 }
             }
             .frame(height: min(max(detailsHeight, 1), 320))
-            HStack {
-                Button(
-                    String(
-                        localized: "Copy source text", table: "Learning", comment: "Copies the verified original text for manual recovery.")
-                ) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(presentation.source, forType: .string)
+            copyActions
+                .background(alignment: .topLeading) {
+                    // Native SwiftUI button padding varies with locale/style. Measure the exact
+                    // reused controls at their ideal width, without letting the measuring copy
+                    // affect layout, accessibility, clipboard actions, or pointer hit testing.
+                    copyActions.fixedSize(horizontal: true, vertical: true)
+                        .hidden().accessibilityHidden(true).allowsHitTesting(false)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                            if width.isFinite, width > 0 { copyActionsWidth = width }
+                        }
                 }
-                if !presentation.translation.isEmpty {
-                    Button(String(localized: "Copy translation", table: "Learning",
-                        comment: "Copies the target-language sentence to the clipboard.")) {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(presentation.translation, forType: .string)
-                    }
-                }
-                Spacer()
+        }
+    }
+
+    /// The visible and sizing copies use one definition, so changing a localized title or native
+    /// control style cannot make the width estimate drift away from the actual footer.
+    private var copyActions: some View {
+        HStack {
+            Button(
+                String(
+                    localized: "Copy source text", table: "Learning", comment: "Copies the verified original text for manual recovery.")
+            ) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(presentation.source, forType: .string)
             }
+            if !presentation.translation.isEmpty, !presentation.isTranslating {
+                Button(String(localized: "Copy translation", table: "Learning",
+                    comment: "Copies the target-language sentence to the clipboard.")) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(presentation.translation, forType: .string)
+                }
+            }
+            Spacer()
         }
     }
 
     private func sentence(_ text: String, source: Bool) -> some View {
-        // Recognition owns underlines and click boundaries; the analysis service owns validated
-        // meaning ranges. Paint each result as it arrives, without making either grain a gate
-        // for the other. TextKit overlays these attributes on the same untouched sentence.
         LearningSentenceDictionaryText(text: text, language: source ? presentation.sourceLanguage : presentation.targetLanguage,
-            lookup: lookupText, units: source ? [] : presentation.units, chunks: presentation.chunks,
-            selectedChunk: detailState.chunk?.documentID == presentation.id ? detailState.chunk?.chunkID : nil,
+            lookup: lookupText, units: source ? [] : presentation.units,
             source: source, maximumLines: 0, fontSize: source ? 16 : 18,
-            lookupUnit: source ? nil : lookupUnit, inspect: inspect)
+            lookupUnit: lookupUnit)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -258,9 +290,10 @@ struct LearningSentenceCard: View {
     }
 
     private var translationSpeechRequest: SpeechRequest? {
-        // `isGenerating` also covers alignment work after a full translation is already visible.
-        // A nonempty, nonstale value is the completed snapshot and is safe to read independently.
-        guard !presentation.translation.isEmpty, !presentation.isStale, !presentation.isError else { return nil }
+        // A streamed prefix is visible but is not a complete utterance. Read only the
+        // validated final translation, independently of pending lexical highlights.
+        guard !presentation.translation.isEmpty, !presentation.isTranslating,
+              !presentation.isStale, !presentation.isError else { return nil }
         return SpeechRequest(
             target: SpeechTarget(ownerID: presentation.id, itemID: "preview.translation"),
             text: presentation.translation, language: presentation.targetLanguage)

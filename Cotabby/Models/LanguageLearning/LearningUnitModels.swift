@@ -1,8 +1,8 @@
 import Foundation
 
-/// A click target in one fixed translation. It is independent of meaning correspondence: a
+/// A click target in one fixed translation. It describes lexical boundaries: a
 /// correspondence may include several units, and a pattern may have separated fixed parts.
-/// Recognition owns exact ranges; presentation supplies neutral marks until alignment arrives.
+/// Recognition owns exact ranges; presentation supplies neutral expression underlines.
 nonisolated struct LearningUnit: Equatable, Sendable, Identifiable {
     enum Kind: String, Codable, Sendable { case word, expression, pattern }
     let id: Int
@@ -35,6 +35,11 @@ nonisolated struct LearningLexiconEntry: Codable, Equatable, Sendable {
     let forms: [String]
     let senses: [Sense]
     let sourceURL: String
+    var phonetics: [String]?
+    var examples: [String]?
+    var sourceName: String?
+    var licenseURL: String?
+    var licenseName: String?
 }
 
 nonisolated struct LearningLexiconResource: Codable, Sendable {
@@ -44,12 +49,14 @@ nonisolated struct LearningLexiconResource: Codable, Sendable {
     let entries: [LearningLexiconEntry]
 }
 
-/// Bundled entries are already structured. A system hit carries only availability: AppKit owns
-/// its original dictionary UI, and raw Dictionary Services text never reaches the learning card.
-/// A genuine miss stays distinct from an unavailable resource or a constituent-word definition.
+/// Sources return content rather than presenting windows. Bundled entries retain their senses
+/// and attribution; the public Dictionary Services API supplies plain text without invented
+/// phonetics or sense structure. A miss stays distinct from an unavailable source.
 nonisolated enum LearningDictionaryResult: Equatable, Sendable {
     case entries([LearningLexiconEntry])
-    case systemEntry
+    case systemText(String)
+    case article(LearningDictionaryArticle)
+    case website(URL)
     case notFound
 }
 
@@ -58,5 +65,12 @@ nonisolated protocol LearningUnitRecognizing: Sendable {
 }
 
 nonisolated protocol LearningDictionaryProviding: Sendable {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool) async throws -> LearningDictionaryResult
+    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+                source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult
+    func resource(_ path: String, libraryID: UUID, configuration: LearningDictionaryConfiguration) async throws -> DictionaryResource?
+}
+
+extension LearningDictionaryProviding {
+    nonisolated func resource(_ path: String, libraryID: UUID,
+                              configuration: LearningDictionaryConfiguration) async throws -> DictionaryResource? { nil }
 }

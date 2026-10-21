@@ -15,6 +15,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     /// Borrow the app-owned speaker so settings previews share playback with the learning cards.
     /// Reopening this window must never create a second synthesizer or a separate voice preference.
     private let speech: LearningSpeechController?
+    private let review: AnkiReviewController?
     private let appUpdateManager: AppUpdateManager
     private let permissionManager: PermissionManager
     private let permissionGuidanceController: PermissionGuidanceController
@@ -35,10 +36,22 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let applicationRelauncher = ApplicationRelauncher()
 
     private var settingsWindowController: NSWindowController?
+    private let navigation = SettingsNavigationModel()
+
+    func showLearningModel(_ role: LearningModelRole) {
+        navigation.openLearningModel(role)
+        showSettings()
+    }
+
+    func showReviewSettings() {
+        navigation.openLearningTask(.review)
+        showSettings()
+    }
 
     init(
         learningModels: LearningModelCollection? = nil,
         speech: LearningSpeechController? = nil,
+        review: AnkiReviewController? = nil,
         appUpdateManager: AppUpdateManager,
         permissionManager: PermissionManager,
         permissionGuidanceController: PermissionGuidanceController,
@@ -58,6 +71,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     ) {
         self.learningModels = learningModels
         self.speech = speech
+        self.review = review
         self.appUpdateManager = appUpdateManager
         self.permissionManager = permissionManager
         self.permissionGuidanceController = permissionGuidanceController
@@ -100,6 +114,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                 SettingsContainerView(
                     learningModels: learningModels,
                     speech: speech,
+                    review: review,
                     attentionModel: attentionModel,
                     appUpdateManager: appUpdateManager,
                     permissionManager: permissionManager,
@@ -118,7 +133,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                     onRestart: { [applicationRelauncher] in try applicationRelauncher.restart() },
                     clearEmojiHistory: clearEmojiHistory,
                     typingHistoryStore: typingHistoryStore,
-                    onQuit: { NSApplication.shared.terminate(nil) }
+                    onQuit: { NSApplication.shared.terminate(nil) }, navigation: navigation
                 )
             )
         )

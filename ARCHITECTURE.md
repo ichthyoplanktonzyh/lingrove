@@ -793,15 +793,37 @@ a correspondence within the expanded pair; they do not open another window or qu
 
 `LearningDetailPanel` owns one `LearningDictionarySession`, whose home page is the clicked unit.
 Internal word selection and return-to-expression change the query within the same nonactivating
-window. Query revisions, cancellation and a per-open-unit cache reject stale results after word
-changes, return or dismissal. `LearningDictionaryCard` separately renders structured offline senses,
-one raw system definition, missing entries and unavailable resources. Entry-level source,
-English-definition and license labels remain visible. Offline phrase lookup preserves multiple
+window. `LanguageLearningSettings` owns one `LearningDictionarySettings` shared by writing and reading
+sessions. Its atomic source order/enabled configuration is independent of translation/model settings.
+New queries filter known headword-language mismatches, prefer the configured gloss language,
+and try enabled sources until the first hit; source order is stable within each gloss tier.
+Explicit card selection pins only that query. Unknown MDict language metadata remains unannotated;
+users can set it without changing the original files. Curated website templates are default-off.
+Query revisions, cancellation and a source-keyed per-open-unit cache reject stale results after word,
+source or preference changes, return or dismissal. `LearningDictionaryCard` renders structured senses,
+rich articles, public system text, explicit website actions, missing entries and unavailable resources. Entry-level source,
+actual definition-language and license labels remain visible. Offline phrase lookup preserves multiple
 exact candidates; the system fallback requires the detected term range to cover the entire query,
 so a constituent definition cannot masquerade as a phrase entry. The public `DCSCopyTextDefinition`
-copy transfers Core Foundation ownership exactly once. No app HTTP dictionary client or additional
-model request exists. The older native dictionary presenter remains for compatibility callers,
-but the sentence-learning path uses the shared session. Background unit/alignment updates preserve
+copy transfers Core Foundation ownership exactly once. `LearningDictionaryRouter` selects built-in,
+system, imported MDict, or explicitly enabled Free Dictionary API sources. The API sends only the
+English lookup term through an ephemeral bounded request; website templates return an explicit
+browser action and are never fetched automatically. No additional model request is made.
+System formatted definitions use dynamically resolved private DCS symbols in a disposable helper,
+with a three-second watchdog and cancellation. The helper reads each enabled dictionary bundle's
+entry/gloss metadata, excludes unknown or mismatching headword languages, and prefers the selected
+gloss language. Rich lookup failure can use public text from the same selected dictionary; unavailable
+metadata/helper APIs mark the source unavailable instead of issuing a NULL-dictionary query. This is an experimental OS
+compatibility boundary, not a supported Apple API contract. `MDictLibraryService` serializes the
+vendored parser, user-selected bookmarks and bounded MDX/MDD resources. `DictionaryHTMLView`
+uses a nonpersistent WebKit store, disabled content JavaScript, restrictive CSP and a per-document
+custom resource origin. It never grants file URLs or remote subresources. Replacing a document
+revokes its resource tasks. Dictionary cross-references clear the original example rather than
+attaching unrelated context. Source-specific attribution and licenses survive vocabulary capture.
+All lookup paths use the app-owned window; the former native-popup presenter
+and injected accessory are removed. The captured vocabulary example stays separate from dictionary
+definitions, and component selection derives its exact range from the same immutable capture.
+Background unit/alignment updates preserve
 an open dictionary for the same fixed translation. Esc dismisses this window before the sentence;
 typing and changed documents close it; unavailable placement hides it until space returns.
 Sentence caches are bounded, memory-only,

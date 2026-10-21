@@ -11,6 +11,22 @@ struct WritingPaneView: View {
     var body: some View {
         _ = renderDiagnostics?.body("writing", category: .writing)
         return SettingsPaneScaffold {
+            Section {
+                Toggle(String(localized: "Enable autocomplete", table: "Learning"), isOn: Binding(
+                    get: { suggestionSettings.isCompletionEnabled },
+                    set: { suggestionSettings.setCompletionEnabled($0) }
+                ))
+                .settingsItem(.completionEnabled)
+            }
+            completionOptions
+                .disabled(!suggestionSettings.isCompletionEnabled)
+        }
+    }
+
+    /// Keep saved completion preferences visible while the feature is off, using the same rows.
+    @ViewBuilder
+    private var completionOptions: some View {
+        Group {
             Section("Length") {
                 Picker(selection: lengthChoiceBinding) {
                     ForEach(SuggestionWordCountPreset.allCases) { preset in

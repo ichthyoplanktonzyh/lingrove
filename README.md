@@ -35,12 +35,26 @@ language learning are its two core capabilities, developed together.
 
 - **Translation beside your text:** translate a completed sentence or a paused draft into your
   chosen language while continuing to write in the same field.
-- **Sentence understanding:** inspect source/target correspondences and identify reusable phrases
-  and grammatical constructions through optional learning-unit recognition and chunk alignment.
+- **Sentence understanding:** identify reusable expressions through offline lexical recognition
+  and request contextual AI explanations for words, expressions, or sentences.
 - **Expression and word lookup:** inspect an expression or word using the bundled expression
   lexicon and the dictionaries enabled on your Mac.
-- **Independent learning models:** configure translation, learning-unit recognition, and chunk
-  alignment separately, using local models or endpoints you explicitly choose.
+- **Independent learning models:** configure translation and AI explanation separately, using
+  local models or endpoints you explicitly choose.
+- **Vocabulary notebook:** save expressions with their example sentences from the fish-tail button,
+  then search, edit, listen to, or export the collection from the menu bar's Vocabulary window.
+  Expressions group stable senses, and each sense owns its usages and notes. Merge senses or move
+  a usage explicitly; regenerating an explanation never changes its identity.
+- **Anki review:** prepare a sense with a representative example, preview recognition and gap
+  cards, and explicitly send or update its Anki note. Configure the local AnkiConnect connection,
+  deck and optional custom field mappings in Language Learning → Review. Anki Desktop and the
+  [AnkiConnect add-on](https://ankiweb.net/shared/info/2055492159) must be running on the Mac.
+  Optional expression/example recordings reuse the configured TTS provider, with explicit audition
+  and regeneration. Audio is stored in Anki only when sent. Use the notebook's checklist to prepare
+  multiple senses and send a serial batch, stop it, or retry individual unsuccessful items.
+  “Review in Anki” opens the linked note’s current deck. Existing Lingrove templates can be upgraded
+  explicitly without replacing card IDs or review history; customized templates stay under Anki’s
+  control.
 
 ### Additional writing tools
 
@@ -53,7 +67,7 @@ behavior in the learning card; Escape dismisses it. Autocomplete's acceptance ke
 
 ## Privacy and local storage
 
-- Apple Intelligence and local GGUF inference run on your Mac. Translation and analysis can also
+- Apple Intelligence and local GGUF inference run on your Mac. Translation and AI explanation can also
   run locally once their models are installed.
 - An explicitly configured endpoint receives the request for its task, which can include typed
   text and enabled context. Autocomplete and learning tasks have their own model/server settings;
@@ -74,7 +88,7 @@ logs. Existing Cotabby data is preserved and is not imported automatically. See 
 
 Requires macOS 14 or later. Apple Silicon is recommended for local inference. Autocomplete can use
 Apple Intelligence on supported Macs with macOS 26 or later, an installed local GGUF model, or an
-OpenAI-compatible endpoint. Translation and analysis use their separately configured learning models.
+OpenAI-compatible endpoint. Translation and AI explanation use their separately configured learning models.
 
 There is no Lingrove Homebrew cask or independent production download established yet. Follow
 [this repository's Releases](https://github.com/ichthyoplanktonzyh/lingrove/releases) for future builds.
@@ -118,7 +132,7 @@ and learning source/target languages. The stable English bundle names keep stora
 <summary>Translation, correspondence, dictionaries, models, and request metrics</summary>
 
 
-Language learning can be enabled independently of inline autocomplete. In **Settings → Writing**,
+Language learning can be enabled independently of inline autocomplete. In **Settings → Language Learning → Translation**,
 choose one or more source languages and a target language. Configure the detail shortcut (default
 **Option+T**) and replacement shortcut (default **Control+Option+T**) in **Settings → Shortcuts → Translation**.
 Model summaries link to their configuration
@@ -128,16 +142,22 @@ The master feature is off by default; enabling it enables automatic sentence pre
 Use your input method as usual: confirm the candidate and pause briefly. A target-language
 preview appears beside the caret without stealing focus. Click Replace or press Control+Option+T to
 confirm replacement of its saved sentence or selection. A dedicated translation model delivers the
-expression first. When optional analysis is enabled, its independently configured model prepares
-meaning chunks for that exact expression. Option+T or the expand
-button reveals the source and target as matching colored meaning units, with small gaps between target
-units. Clicking a chunk outlines both sides and opens a separate, nonactivating correspondence window.
-Word buttons open the native macOS dictionary popover beside the clicked word, preserving the
-dictionary's own formatting without a model request. Available contents depend on the Mac's enabled
-dictionaries. Compact translation also supports double-click word lookup. Esc closes lookup first,
-then correspondence details; continuing to type closes both. Alignment generates quoted pairs only;
-explanations are deferred to a future independent feature.
+expression first. Option+T or the expand button reveals the source and translation; lexical
+recognition underlines reusable expressions without another generation request.
+Word lookup opens Lingrove's own dictionary card, with shared read-aloud and fish-tail collection
+actions. Available system definitions depend on the Mac's enabled dictionaries. Compact translation
+also supports double-click word lookup. Esc returns a component word to its expression, then closes
+the dictionary; continuing to type closes the learning windows. Contextual AI explanations use
+their own model and preserve the chosen text and its sentence context.
 Tab and Return retain their ordinary behavior; Escape dismisses the learning card.
+
+Click an empty fish tail on a Lingrove preview or expression card to save its displayed content.
+For words and expressions, available sentence context is retained as an example; saving does not
+start another model request. A blue fish tail opens actions to view the entry or remove that saved
+usage. **Vocabulary** in the menu bar opens the searchable notebook, where meanings, notes, tags,
+and examples can be edited and the collection exported as JSON. Notebook data stays on this Mac;
+Anki writes occur only when you explicitly send or update a review note. Its two optional shortcuts are configured
+only in **Settings → Shortcuts** and are initially unset.
 
 The small speaker on a preview or expression-detail card reads its text aloud without taking
 typing focus. Click it again to stop; choosing another speaker replaces the current playback.
@@ -170,24 +190,15 @@ Turning off automatic sentence preview restores the explicit selected-text/curre
 including its verified click-to-replace operation. Customized shortcuts are preserved; the old default
 Control+Command+T migrates to Option+T.
 
-In Writing, enable cross-language translation. In Engine & Model, use the fixed **补全 / 翻译 /
-语块对应** tabs to select a task; each page uses the existing grouped settings layout. Writing
-provides direct links to the translation and analysis pages. Switching tabs changes navigation only,
-and the page shows the actual configured model or an explicit unconfigured state. Translation and
-optional meaning-chunk analysis each support **in-process GGUF** or an independent OpenAI-compatible
-**Endpoint**, with separate model/address/API-key settings. Local GGUF execution needs no Ollama
-service. Both pages mirror completion: recommended downloads, Hugging Face import, models folder,
-LM Studio source, installed model management, connection/key controls and power-source settings.
-The translation catalog offers Hy-MT2 1.8B (1.13 GB), Hy-MT2 7B (4.62 GB) and
-TranslateGemma 4B (2.49 GB), all Q4_K_M. Tencent supplies the Hy-MT GGUFs;
-bullerwins supplies TranslateGemma's text-only GGUF. These are download sizes, not runtime memory
-requirements. TranslateGemma 12B is not included. Gemma 4 E4B / Qwen3.5 4B remain alignment candidates.
-Gemma uses the experiment's pinned 5.49 GB Q4_K_M text weights; E4B is not its total parameter count.
-These recommendations do not override existing selections. Both tasks
-also accept imported GGUFs or configured endpoints. Battery/AC selections belong to each task, and
-shared-file deletion protects all tasks’ saved model references. Original autocomplete model settings remain
-independent. Analysis defaults off: expansion still shows the source and translation. Changing or
-failing analysis keeps the displayed translation.
+In Language Learning, enable translation and choose its behavior. Engine & Model provides task
+tabs for Autocomplete, Translation, AI explanation and TTS, each reusing the grouped settings
+layout. Translation and explanation support in-process GGUF or separately configured
+OpenAI-compatible endpoints, with independent model, address, credential and power profiles.
+Local execution needs no Ollama service. The translation catalog offers Hy-MT2 1.8B,
+Hy-MT2 7B and TranslateGemma 4B; explanation uses general instruction models. Existing model
+selections and downloaded files are preserved. Chunk alignment is deferred to
+`codex/chunk-alignment-experiment-20261020`; it is absent from the current product's settings,
+model requests and sentence cards.
 
 The full translation appears first. An offline expression lexicon independently adds learning-unit
 boundaries: fixed expressions use a neutral underline, while ordinary words remain directly
@@ -201,23 +212,31 @@ configured target languages, with uneven coverage and English definitions. Recog
 headwords, recorded forms and conservative one-word slots in explicitly recorded expression
 patterns; it is not a comprehensive grammatical phrase detector. The data has separate
 [CC BY-SA attribution and provenance](Cotabby/Resources/learning-expressions.NOTICE.md).
-Expression lookup uses the offline resource; word fallback uses the public Dictionary Services
-API and the system's enabled dictionaries. No extra model request or app-managed hosted dictionary
-lookup is added.
+**Settings → Language Learning → Dictionary** enables and orders built-in expressions, system
+dictionaries, imported MDX/MDD files and optional online sources. Entry language is captured from
+the original or translated sentence; double-click lookup works on either sentence in details.
+A preferred definition language is independent of the translation direction. Automatic lookup
+excludes known mismatching entry languages, prioritizes the preferred gloss language, and preserves
+source order within each tier. Choosing a source in a card queries only that source for the current term.
+Formatted system content uses experimental private DCS calls isolated in a helper. Its bundle
+metadata selects a matching entry language; public plain-text fallback uses that same book.
+Missing language metadata or an unavailable helper never falls back to an unfiltered system query. External system dictionary images are not loaded. Imported local HTML/CSS/images
+render in the same app-owned card with scripts and remote subresources blocked.
+When available, the encountered sentence and its existing translation appear as the current example
+and remain attached when a component word is collected. Free Dictionary API is English-only and
+default-off; enabling it sends only the lookup term to dictionaryapi.dev. Custom HTTPS templates
+containing `{query}` are also default-off and open only on an explicit browser action. The recommended
+website menu includes Cambridge, Oxford, Wiktionary, 汉典 and DLE presets; imported books and custom
+websites can be annotated with their entry/definition languages. Unannotated imported books remain
+available for manual selection and are excluded from automatic lookup until annotated. Presets contain URLs, not licensed
+commercial dictionary data. The existing offline expression subset retains its English glosses. Source and
+license metadata remain attached to saved definitions. No extra model request is made.
 
 A sentence preview sends only the selected text or current sentence, up to 6 KB; larger scopes are
-rejected without truncation. Analysis additionally receives the exact displayed translation. Learning requests do not include screen contents, clipboard data or typing
-history. The settings disclose transmission to a configured LAN/HTTPS service, and the learning
-session rejects HTTP redirects. Existing learning endpoint selection migrates once into translation;
-analysis never inherits it. Missing configuration and failed requests remain recoverable, and model
-capability determines translation and alignment quality. Alignment preserves the displayed wording,
-uses the restored GE prompt for reusable phrases/grammar constructions and clause-level long-sentence
-splits, with a suggested 3–6 pairs and exceptions for short fixed expressions or longer sentences.
-This is model guidance, not a required UI block count. Colors appear only after complete output
-validation and learning-unit boundary checks.
-One correspondence can combine several units; one fixed expression cannot be split into conflicting
-colors. Single-click a colored range to inspect its source/target correspondence. Failed recognition
-leaves the sentence readable and word lookup available; failed alignment leaves neutral units usable.
+rejected without truncation. Learning requests exclude unrelated clipboard contents and typing
+history. The settings disclose transmission to a configured endpoint, and learning sessions reject
+HTTP redirects. Translation and AI explanation keep separate model selections and credentials.
+Lexical recognition runs locally and word lookup remains available if recognition fails.
 
 `LearningTranslationPrompt` selects the specialist's translation instructions independently of
 chat framing. Hy-MT retains its existing vendor prompt; GGUF template metadata distinguishes the
@@ -234,16 +253,16 @@ the shared OpenAI-compatible transport forwards only temperature and top_p.
 Pinned local translation defaults are 8,192 total tokens for Hy-MT2 1.8B and 4,096 for TranslateGemma
 4B. Each total covers the prompt, source, references and output reserve; TranslateGemma's 2,048-token
 task-input cap remains separate. Saved per-model overrides survive switching and restart, and reset
-returns that model to its recommendation. Endpoints, unknown local models and analysis retain 8,192.
+returns that model to its recommendation. Endpoints, unknown local models and AI explanation retain 8,192.
 
 Performance tracking uses the existing opt-in switch. Its request-type picker separates autocomplete,
-translation and analysis; old history remains autocomplete history. The shared ring retains the most
+translation, AI explanation, TTS and screen OCR. Historical alignment records remain readable but are not selectable. The shared ring retains the most
 recent 100 requests across all tasks. Learning rows show completed/failed/cancelled outcomes and
 observed load, first-output, first-usable and panel-publication durations. No text or credentials are
 stored in these metrics. Full model inputs/outputs use the existing `-cotabby-debug` LLM I/O sink.
 
 Learning follows the existing global pause and Low Power Mode setting: pausing releases its native
-contexts, and resuming keeps the eligible local translator warm. Local analysis loads on demand and
+contexts, and resuming keeps the eligible local translator warm. Local explanation loads on demand and
 releases after 60 seconds idle. Endpoint tasks keep their separate server/key configuration. The
 redundant passive word-hint workflow has been removed; legacy hint preferences are ignored.
 

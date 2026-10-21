@@ -17,6 +17,9 @@ extension SuggestionCoordinator {
     func stop() {
         CotabbyLogger.suggestion.info("Suggestion coordinator stopping")
         suggestionPresentationTiming.clear()
+        doubleTapAcceptanceState.reset()
+        releasePostExhaustionAcceptanceWindow()
+        cancelEnginePrewarm()
         cancelPredictionWork()
         resetCachedGenerationContext()
         suggestionAnchorCache = SuggestionAnchorCache()
@@ -35,6 +38,9 @@ extension SuggestionCoordinator {
     func prepareForRuntimeModelSwitch() {
         CotabbyLogger.suggestion.info("Preparing for runtime model switch, clearing active state")
         suggestionPresentationTiming.clear()
+        doubleTapAcceptanceState.reset()
+        releasePostExhaustionAcceptanceWindow()
+        cancelEnginePrewarm()
         cancelPredictionWork()
         resetCachedGenerationContext()
         suggestionAnchorCache = SuggestionAnchorCache()
@@ -43,6 +49,12 @@ extension SuggestionCoordinator {
         clearSuggestion(clearDiagnostics: true)
         hideOverlay(reason: "Overlay hidden because the runtime model is switching.")
         state = .idle
+    }
+
+    func cancelEnginePrewarm() {
+        prewarmTask?.cancel()
+        prewarmTask = nil
+        suggestionEngine.cancelPrewarm()
     }
 
     // MARK: - Settings
@@ -56,6 +68,9 @@ extension SuggestionCoordinator {
 
         CotabbyLogger.suggestion.info("Settings changed, resetting suggestion state")
         settingsSnapshot = snapshot
+        doubleTapAcceptanceState.reset()
+        releasePostExhaustionAcceptanceWindow()
+        cancelEnginePrewarm()
         cancelPredictionWork()
         resetCachedGenerationContext()
         // Field text can stay identical while its app instructions or backend change. Reusing a
@@ -63,13 +78,24 @@ extension SuggestionCoordinator {
         suggestionAnchorCache = SuggestionAnchorCache()
         clearSuggestion(clearDiagnostics: true)
         hideOverlay(reason: "Overlay hidden because autocomplete settings changed.")
+        interactionState.resetAll()
         state = .idle
+
+        // Keep the shared input callback alive for learning, emoji, macros, and history. Only
+        // autocomplete is disabled, and its acceptance state must be retired immediately.
+        if !snapshot.isCompletionEnabled {
+            visualContextCoordinator.cancel(resetState: true)
+            state = .disabled(currentDisabledReason(focusSnapshot: focusModel.snapshot)
+                ?? String(localized: "Autocomplete is turned off", table: "Learning"))
+            return
+        }
 
         // Cancel any obsolete context, then restart only when the subsystem is not disabled.
         visualContextCoordinator.cancel(resetState: true)
         if let focusedSnapshot = focusModel.snapshot.context,
            SuggestionAvailabilityEvaluator.shouldCaptureVisualContext(
                globallyEnabled: settingsSnapshot.isGloballyEnabled,
+               completionEnabled: settingsSnapshot.isCompletionEnabled,
                temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
                isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
                isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -88,6 +114,7 @@ extension SuggestionCoordinator {
 
         if SuggestionAvailabilityEvaluator.shouldSchedulePrediction(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
+            completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
             isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
             isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,
@@ -111,6 +138,7 @@ extension SuggestionCoordinator {
         guard let context = snapshot.context, !context.isSecure,
               SuggestionAvailabilityEvaluator.shouldCaptureVisualContext(
                 globallyEnabled: settingsSnapshot.isGloballyEnabled,
+                completionEnabled: settingsSnapshot.isCompletionEnabled,
                 temporarilyPaused: settingsSnapshot.isTemporarilyPaused,
                 isLowPowerModeActive: lowPowerModeProvider.isLowPowerModeEnabled,
                 isLowPowerModeAutoDisableEnabled: settingsSnapshot.isLowPowerModeAutoDisableEnabled,

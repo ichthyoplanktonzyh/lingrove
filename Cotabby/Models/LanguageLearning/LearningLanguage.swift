@@ -12,6 +12,12 @@ nonisolated enum LearningLanguage: String, Codable, CaseIterable, Identifiable, 
     var id: String { rawValue }
     var name: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.name ?? rawValue }
     var label: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.nativeLabel ?? rawValue }
+    /// Cards need the native language name without the picker's bilingual explanation.
+    /// Cache Foundation's names once so streamed previews do not repeat locale lookups.
+    var compactLabel: String { Self.compactLabels[self] ?? label }
+    private static let compactLabels = Dictionary(uniqueKeysWithValues: allCases.map { language in
+        (language, Locale(identifier: language.rawValue).localizedString(forIdentifier: language.rawValue) ?? language.label)
+    })
     var naturalLanguage: NLLanguage { self == .chinese ? .simplifiedChinese : NLLanguage(rawValue: rawValue) }
 
     /// Only recent committed text is inspected. An uncertain result leaves the configured source

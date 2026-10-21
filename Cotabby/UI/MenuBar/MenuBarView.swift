@@ -25,6 +25,7 @@ struct MenuBarView: View {
     let appUpdateManager: AppUpdateManager
     let onOpenSettings: () -> Void
     let onReportFeedback: () -> Void
+    var onOpenVocabulary: () -> Void = {}
 
     /// Captures the popover's host window so `Button` actions that open another window can dismiss
     /// the popover behind them. SwiftUI's `\.dismiss` does not work for `MenuBarExtra(.window)`.
@@ -143,6 +144,12 @@ struct MenuBarView: View {
                     .menuStyle(.borderlessButton)
                     .fixedSize(horizontal: false, vertical: true)
                 }
+            }
+
+            if !suggestionSettings.isCompletionEnabled {
+                Text(String(localized: "Autocomplete is turned off", table: "Learning"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Divider()
@@ -310,6 +317,16 @@ struct MenuBarView: View {
     private var footerSection: some View {
         Divider()
             .padding(.bottom, 10)
+
+        Button {
+            popoverDismisser.dismiss()
+            onOpenVocabulary()
+        } label: {
+            HStack(spacing: 7) {
+                VocabularyFavoriteIcon(isSaved: true).frame(width: 18, height: 18)
+                Text(String(localized: "Vocabulary", table: "Vocabulary") + "…")
+            }
+        }.buttonStyle(.borderless).padding(.bottom, 10)
 
         HStack {
             Button("Settings") {

@@ -13,6 +13,8 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
         guard let directory = ProcessInfo.processInfo.environment["COTABBY_TRANSLATION_CATALOG_DIR"] else {
             throw XCTSkip("Set COTABBY_TRANSLATION_CATALOG_DIR to the pinned translation GGUF directory")
         }
+        // Each row keeps a case ID, source and both language roles together.
+        // swiftlint:disable:next large_tuple
         let fixtures: [(String, String, LearningLanguage, LearningLanguage)] = [
             ("greeting", "你好", .chinese, .english),
             ("ability", "我能做到。", .chinese, .english),
@@ -58,6 +60,8 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
         guard let directory = ProcessInfo.processInfo.environment["COTABBY_TRANSLATION_CATALOG_DIR"] else {
             throw XCTSkip("Set COTABBY_TRANSLATION_CATALOG_DIR to the pinned translation GGUF directory")
         }
+        // Each row keeps a case ID, source and both language roles together.
+        // swiftlint:disable:next large_tuple
         let cases: [(String, LearningTranslationInput, LearningLanguage, LearningLanguage)] = [
             ("greeting", .init(source: "你好。", referenceBefore: "我们正在谈论今晚的晚餐。"), .chinese, .english),
             ("ability", .init(source: "我能做到。", referenceBefore: "这次任务是修复编译错误。"), .chinese, .english),
@@ -231,8 +235,7 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
         let began = await Task.detached { firstDelta.wait(timeout: .now() + 30) == .success }.value
         await Task.detached { runtime.shutdownSync() }.value
         XCTAssertTrue(began, "The test must reach live native decoding before teardown")
-        do { _ = try await generation.value; XCTFail("Shutdown must cancel this live generation") }
-        catch is CancellationError { }
+        do { _ = try await generation.value; XCTFail("Shutdown must cancel this live generation") } catch is CancellationError { }
     }
 
     func testHyTranslationAndIndependentContextLifetime() async throws {
@@ -248,64 +251,19 @@ final class LearningLocalRuntimeIntegrationTests: XCTestCase {
             try first.prepare(modelURL: url, operationID: firstID)
             try second.prepare(modelURL: url, operationID: secondID)
             first.unload()
-            let prompt = "Translate the following text into English. Note that you should only output the translated result without any additional explanation:\n你好"
+            let prompt = "Translate the following text into English. " +
+                "Note that you should only output the translated result without any additional explanation:\n你好"
             let output = try second.generate(modelURL: url, template: .automatic, prompt: prompt,
                 maxTokens: 128, operationID: secondID) { _ in }
             // Reclaiming a stopped runtime must never resurrect its context during app teardown.
             first.shutdownSync()
             let obsolete = UUID(); first.claim(obsolete)
             var rejected = false
-            do { try first.prepare(modelURL: url, operationID: obsolete) }
-            catch is CancellationError { rejected = true }
+            do { try first.prepare(modelURL: url, operationID: obsolete) } catch is CancellationError { rejected = true }
             return (output, rejected)
         }.value
         XCTAssertTrue(results.0.lowercased().contains("hello"), results.0)
         XCTAssertTrue(results.1)
-    }
-
-    func testQwenAnalysisCandidateUsesNativeInstructionTemplateAndFixedTranslation() async throws {
-        guard let path = ProcessInfo.processInfo.environment["COTABBY_ANALYSIS_GGUF"] else {
-            throw XCTSkip("Set COTABBY_ANALYSIS_GGUF to the pinned Qwen3.5 4B GGUF")
-        }
-        let prompt = try LearningAnalysisPrompt.render(source: "你好", translation: "Hello.",
-            sourceLanguage: .chinese, targetLanguage: .english)
-        let raw = try await Task.detached {
-            let runtime = LearningLocalRuntime(), id = UUID()
-            defer { runtime.shutdownSync() }
-            runtime.claim(id)
-            return try runtime.generate(modelURL: URL(fileURLWithPath: path), template: .automatic,
-                prompt: prompt, maxTokens: 1_024, operationID: id) { _ in }
-        }.value
-        XCTAssertFalse(raw.contains("<think>"), raw)
-        let result = try LearningAlignmentParser.parse(raw, source: "你好", translation: "Hello.")
-        XCTAssertEqual(result.translation, "Hello.")
-        XCTAssertFalse(result.chunks.isEmpty)
-    }
-
-    func testGemmaAlignmentUsesProductTemplateAndFixedMultilingualEvidence() async throws {
-        guard let path = ProcessInfo.processInfo.environment["COTABBY_ALIGNMENT_GGUF"] else {
-            throw XCTSkip("Set COTABBY_ALIGNMENT_GGUF to the pinned Gemma 4 E4B GGUF")
-        }
-        let fixtures: [(String, String, LearningLanguage, LearningLanguage)] = [
-            ("你好", "Hello.", .chinese, .english),
-            ("我能做到", "I can do it.", .chinese, .english),
-            ("如果明天不下雨，我们就去散步。", "明日雨が降らなければ、私たちは散歩に行きます。", .chinese, .japanese)
-        ]
-        for (source, translation, sourceLanguage, targetLanguage) in fixtures {
-            let prompt = try LearningAnalysisPrompt.render(source: source, translation: translation,
-                sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
-            let raw = try await Task.detached {
-                let runtime = LearningLocalRuntime(), id = UUID()
-                defer { runtime.shutdownSync() }
-                runtime.claim(id)
-                return try runtime.generate(modelURL: URL(fileURLWithPath: path), template: .automatic,
-                    prompt: prompt, maxTokens: 1_024, operationID: id) { _ in }
-            }.value
-            let result = try LearningAlignmentParser.parse(raw, source: source, translation: translation)
-            XCTAssertEqual(result.translation, translation)
-            XCTAssertFalse(result.chunks.isEmpty)
-            XCTAssertFalse(raw.contains("<think>"), raw)
-        }
     }
 
     func testLiteralTokenizerPreservesSourceControlTokenSpellings() async throws {

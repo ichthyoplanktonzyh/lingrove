@@ -33,3 +33,4 @@ python3 scripts/create-inference-workspace.py "$native_dir" --output "$workspace
 mkdir -p "$workspace/xcshareddata/swiftpm"
 cp Config/Package.resolved "$workspace/xcshareddata/swiftpm/Package.resolved"
 "$PWD/scripts/prepare_tts_runtime.sh"
+"$PWD/scripts/prepare_dictionary_helper.sh"

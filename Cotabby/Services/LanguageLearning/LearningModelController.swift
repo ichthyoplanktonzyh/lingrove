@@ -33,7 +33,7 @@ final class LearningModelController: ObservableObject {
     private var idleRelease: Task<Void, Never>?
     private var generationAllowed = true
     private(set) var residency: LocalRuntimeResidency = .onDemand
-    /// Analysis answers are cached by the coordinator; its native weights can be released between
+    /// Explanation answers are cached by the service; its native weights can be released between
     /// sessions. Tests inject a short deadline without touching the user's settings or model files.
     var idleReleaseDelay: Duration = .seconds(60)
 
@@ -92,6 +92,21 @@ final class LearningModelController: ObservableObject {
         await discoverEndpoint()
     }
     func resetEndpointBaseURL() { profile.baseURL = OpenAICompatibleEndpointConfiguration.defaultBaseURLString }
+
+    /// Automatic GGUF metadata is resolved off MainActor before explanation can use it. Filename
+    /// filtering alone cannot stop a renamed translation specialist from receiving tutor prompts.
+    func validateGeneralInstructionModel() async throws {
+        let initial = profile.snapshot
+        if initial.backend == .local {
+            if templateWork == nil { resolveModelTemplate() }
+            await templateWork?.value
+        }
+        try Task.checkCancellation()
+        guard profile.snapshot == initial else { throw CancellationError() }
+        guard profile.generalInstructionsAvailable == true else {
+            throw LearningFailure.message(String(localized: "Choose a general instruction model for AI explanation.", table: "Learning"))
+        }
+    }
 
     /// Freeze a complete translation request before transport. Native planning borrows this role's
     /// serialized vocabulary off MainActor; endpoints use the disclosed estimate. A profile edit
@@ -296,7 +311,7 @@ final class LearningModelController: ObservableObject {
     private func resolveModelTemplate() {
         templateWork?.cancel()
         let snapshot = profile.snapshot, identity = profile.contextIdentity
-        guard snapshot.backend == .local, snapshot.template == .automatic,
+        guard snapshot.backend == .local, snapshot.template == .automatic || profile.role == .explanation,
               !snapshot.localModel.isEmpty, let url = try? localModelURL(snapshot.localModel) else { return }
         templateWork = Task { [weak self] in
             let work = Task.detached(priority: .utility) { try LearningLocalPrompt.resolve(.automatic, modelURL: url) }
@@ -351,7 +366,7 @@ final class LearningModelController: ObservableObject {
         status = String(localized: "Loading", table: "Learning",
             comment: "Model status while preparing the local learning model.")
         let trace = LearningRequestContext(requestID: RequestID.generate(), operationID: RequestID.generate(),
-            source: profile.role == .translation ? .translation : .analysis,
+            source: profile.role == .translation ? .translation : .explanation,
             modelName: snapshot.localModel, engine: "llama")
         lastNativeTrace = trace
         LearningRequestLog.emit(trace, phase: "warmup_started")

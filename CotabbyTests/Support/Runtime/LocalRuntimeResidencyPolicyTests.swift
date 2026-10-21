@@ -6,6 +6,14 @@ import XCTest
 /// model may load it, so a wrong row here costs either several GB of memory or a slow first
 /// fallback suggestion.
 final class LocalRuntimeResidencyPolicyTests: XCTestCase {
+    func test_disabledCompletionNeverKeepsAnyCompletionModelResident() {
+        for engine in SuggestionEngineKind.allCases {
+            XCTAssertFalse(LocalRuntimeResidencyPolicy.keepsModelLoaded(
+                engine: engine, isAppleLanguageFallbackEnabled: true,
+                keepsFallbackModelLoaded: true, isCompletionEnabled: false))
+        }
+    }
+
     func test_openSourceAlwaysKeepsTheModelLoaded() {
         for fallback in [false, true] {
             for keepLoaded in [false, true] {
