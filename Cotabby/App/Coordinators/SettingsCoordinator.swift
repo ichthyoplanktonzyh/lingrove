@@ -11,6 +11,7 @@ import SwiftUI
 /// Settings again from the menu.
 @MainActor
 final class SettingsCoordinator: NSObject, NSWindowDelegate {
+    private let cli: CLIInstallationModel?
     private let learningModels: LearningModelCollection?
     /// Borrow the app-owned speaker so settings previews share playback with the learning cards.
     /// Reopening this window must never create a second synthesizer or a separate voice preference.
@@ -49,6 +50,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     }
 
     init(
+        cli: CLIInstallationModel? = nil,
         learningModels: LearningModelCollection? = nil,
         speech: LearningSpeechController? = nil,
         review: AnkiReviewController? = nil,
@@ -69,6 +71,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         clearEmojiHistory: @escaping () -> Void,
         typingHistoryStore: TypingHistoryStore
     ) {
+        self.cli = cli
         self.learningModels = learningModels
         self.speech = speech
         self.review = review
@@ -112,6 +115,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         let hostingController = NSHostingController(
             rootView: AnyView(
                 SettingsContainerView(
+                    cli: cli,
                     learningModels: learningModels,
                     speech: speech,
                     review: review,

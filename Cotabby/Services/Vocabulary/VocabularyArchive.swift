@@ -23,7 +23,7 @@ actor VocabularyArchive {
         return snapshot
     }
 
-    private func persistence() throws -> VocabularySQLiteDatabase {
+    func persistence() throws -> VocabularySQLiteDatabase {
         if let database { return database }
         let value = try VocabularySQLiteDatabase(url: url); database = value; return value
     }
@@ -249,11 +249,11 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
-        try storageAccess(write: true) { try commitUnlocked(document) }
+    func commit(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt? = nil) throws -> VocabularySnapshot {
+        try storageAccess(write: true) { try commitUnlocked(document, receipt: receipt) }
     }
 
-    private func commitUnlocked(_ document: VocabularyDocument) throws -> VocabularySnapshot {
+    private func commitUnlocked(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt?) throws -> VocabularySnapshot {
         // Fixtures/restores may commit before browsing has loaded the notebook. Establish the
         // same baseline and durable revision that ordinary card/editor operations use.
         let baseline = try transactionBaseline()
@@ -278,7 +278,7 @@ actor VocabularyArchive {
             }
         }
         try validate(next)
-        let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision)
+        let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision, receipt: receipt)
         let previousImages = Self.imageReferences(self.document ?? VocabularyDocument())
         let retained = Set(Self.imageReferences(next).map(\.filename))
         self.document = next

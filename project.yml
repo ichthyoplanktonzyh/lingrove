@@ -120,6 +120,8 @@ targetTemplates:
       - path: Cotabby/Resources/DictionaryNotices/MDict-NOTICE.md
         buildPhase: resources
     dependencies:
+      - target: LingroveCLI
+        embed: false
       - package: MDictReader
         product: MDictReader
       - package: Sparkle
@@ -133,6 +135,13 @@ targetTemplates:
       - package: LaunchAtLogin
         product: LaunchAtLogin
     postBuildScripts:
+      - name: Embed command-line client
+        script: '"${SRCROOT}/scripts/embed_cli.sh"'
+        inputFiles:
+          - $(SRCROOT)/scripts/embed_cli.sh
+          - $(BUILT_PRODUCTS_DIR)/lingrove
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/lingrove
       - name: Embed system dictionary helper
         script: '"${SRCROOT}/scripts/embed_dictionary_helper.sh"'
         inputFiles:
@@ -182,6 +191,24 @@ targetTemplates:
         SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
         SWIFT_VERSION: "5.0"
 targets:
+  LingroveCLI:
+    type: tool
+    platform: macOS
+    sources:
+      - path: LingroveCLI
+      # Reuse the app's source root so XcodeGen shares the same folder hierarchy.
+      # Adding a leaf folder as another root gives one PBXGroup two parents.
+      - path: Cotabby
+        includes:
+          - Models/CLI/**
+          - Support/CLI/**
+    settings:
+      base:
+        PRODUCT_NAME: lingrove
+        PRODUCT_BUNDLE_IDENTIFIER: io.ichthyoplanktonzyh.lingrove.cli
+        SWIFT_VERSION: "5.0"
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Automatic
   Cotabby:
     templates:
       - CotabbyApp

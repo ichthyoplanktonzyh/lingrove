@@ -25,6 +25,20 @@ final class VocabularyStore: ObservableObject {
 
     init(archive: VocabularyArchive) { self.archive = archive }
 
+    /// The mailbox borrows this process-wide store. Applying the archive's acknowledged snapshot
+    /// refreshes an already-open notebook immediately; CLI failures stay in their JSON response.
+    func executeCLI(_ request: CLIRequest) async -> CLIReply {
+        do {
+            let (result, snapshot) = try await archive.executeCLI(request)
+            apply(snapshot)
+            return .init(requestID: request.id, ok: true, result: result)
+        } catch let error as CLIError { return .failure(request.id, error) }
+        catch VocabularyError.editConflict { return .failure(request.id, .init(code: .conflict, message: "Notebook changed. Read it again before writing.")) }
+        catch VocabularyError.storageBusy { return .failure(request.id, .init(code: .busy, message: "Notebook is busy; retry the same idempotency key.")) }
+        catch VocabularyError.invalidContent { return .failure(request.id, .invalid("Content violates notebook limits or invariants.")) }
+        catch { return .failure(request.id, .init(code: .io, message: "Notebook operation failed. Check the app's storage status.")) }
+    }
+
     func loadIfNeeded() {
         guard !isLoaded, loadWork == nil else { return }
         loadWork = Task { [weak self, archive] in

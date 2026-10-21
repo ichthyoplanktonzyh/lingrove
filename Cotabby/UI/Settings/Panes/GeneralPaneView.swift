@@ -7,6 +7,7 @@ import SwiftUI
 /// Emoji pane, which keeps this pane short and scannable. Each row carries a leading SF Symbol via
 /// `SettingsRowLabel` so the list reads at a glance.
 struct GeneralPaneView: View {
+    var cli: CLIInstallationModel?
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     @ObservedObject var permissionManager: PermissionManager
     @ObservedObject var interfaceLanguageSettings: InterfaceLanguageSettingsModel
@@ -23,6 +24,8 @@ struct GeneralPaneView: View {
                 languageSettings: interfaceLanguageSettings,
                 onRestart: onRestart
             )
+
+            if let cli { CLISettingsSection(model: cli) }
 
             Section("Status") {
                 Toggle(isOn: globallyEnabledBinding) {

@@ -8,7 +8,7 @@ nonisolated final class VocabularySQLiteDatabase {
     typealias Row = VocabularyDatabaseRecord
     typealias Value = VocabularySQLiteConnection.Value
     static let applicationID: Int64 = 0x4C47564E // LGVN, independent of the portable JSON schema.
-    static let schemaVersion: Int64 = 1
+    static let schemaVersion: Int64 = 2
     let connection: VocabularySQLiteConnection
     private var fileLock: VocabularySQLiteFileLock?
     private(set) var lastWrittenRows = 0
@@ -26,9 +26,18 @@ nonisolated final class VocabularySQLiteDatabase {
         fileLock = try VocabularySQLiteFileLock(database: url)
         try access(write: true) {
             guard try scalar("PRAGMA application_id") == Self.applicationID else { throw VocabularyError.invalidArchive }
-            guard try scalar("PRAGMA user_version") == Self.schemaVersion else { throw VocabularyError.unsupportedVersion }
+            let version = try scalar("PRAGMA user_version")
+            guard version == 1 || version == Self.schemaVersion else { throw VocabularyError.unsupportedVersion }
             guard try connection.rows("PRAGMA quick_check") == [[.text("ok")]],
                   try connection.rows("PRAGMA foreign_key_check").isEmpty else { throw VocabularyError.invalidArchive }
+            if version == 1 {
+                // This upgrades the already accepted SQLite store, preserving its contents.
+                // Retired JSON libraries are still never read or migrated.
+                try connection.transaction(write: true) {
+                    try Self.createReceiptTable(connection)
+                    try connection.execute("PRAGMA user_version=" + String(Self.schemaVersion))
+                }
+            }
             // WAL lets snapshot readers coexist with the app's writer. FULL retains durable
             // acknowledgement; opening/reconfiguring a second instance uses the same lock.
             _ = try connection.rows("PRAGMA journal_mode=WAL")
@@ -77,11 +86,21 @@ nonisolated final class VocabularySQLiteDatabase {
         }
     }
 
-    func write(_ next: VocabularyDocument, previous: VocabularyDocument, expectedRevision: UInt64) throws -> UInt64 {
-        try access(write: true) { try writeUnlocked(next, previous: previous, expectedRevision: expectedRevision) }
+    func receipt(key: String) throws -> VocabularyCLIReceipt? {
+        try access(write: false) {
+            guard let row = try connection.rows("SELECT fingerprint,result FROM cli_receipts WHERE key=?", [.text(key)]).first else { return nil }
+            guard let fingerprint = row[0].string, let data = row[1].data else { throw VocabularyError.invalidArchive }
+            return .init(key: key, fingerprint: fingerprint, result: data)
+        }
     }
 
-    private func writeUnlocked(_ next: VocabularyDocument, previous: VocabularyDocument, expectedRevision: UInt64) throws -> UInt64 {
+    func write(_ next: VocabularyDocument, previous: VocabularyDocument, expectedRevision: UInt64,
+               receipt: VocabularyCLIReceipt? = nil) throws -> UInt64 {
+        try access(write: true) { try writeUnlocked(next, previous: previous, expectedRevision: expectedRevision, receipt: receipt) }
+    }
+
+    private func writeUnlocked(_ next: VocabularyDocument, previous: VocabularyDocument, expectedRevision: UInt64,
+                               receipt: VocabularyCLIReceipt?) throws -> UInt64 {
         let oldRows = try VocabularyDatabaseProjection.rows(previous), newRows = try VocabularyDatabaseProjection.rows(next)
         let changed = newRows.values.filter { oldRows[$0.key] != $0 }
         let removed = oldRows.values.filter { newRows[$0.key] == nil }
@@ -103,6 +122,10 @@ nonisolated final class VocabularySQLiteDatabase {
                 }
             }
             let nextRevision = expectedRevision + 1
+            if let receipt {
+                try connection.execute("INSERT INTO cli_receipts (key,fingerprint,result) VALUES (?,?,?)",
+                    [.text(receipt.key), .text(receipt.fingerprint), .blob(receipt.result)])
+            }
             try connection.execute("UPDATE state SET revision=?,has_templates=? WHERE singleton=1",
                 [.integer(Int64(nextRevision)), .integer(next.reviewTemplates == nil ? 0 : 1)])
             return nextRevision
@@ -160,8 +183,13 @@ nonisolated final class VocabularySQLiteDatabase {
                 try connection.execute("CREATE INDEX " + table.rawValue + "_owner ON " + table.rawValue + "(parent_id,position)")
             }
             try connection.execute("CREATE INDEX entries_language ON entries(language,expression)")
+            try createReceiptTable(connection)
             try connection.execute("PRAGMA application_id=" + String(applicationID))
             try connection.execute("PRAGMA user_version=" + String(schemaVersion))
         }
+    }
+
+    private static func createReceiptTable(_ connection: VocabularySQLiteConnection) throws {
+        try connection.execute("CREATE TABLE cli_receipts (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, result BLOB NOT NULL)")
     }
 }

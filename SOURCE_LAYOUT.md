@@ -33,6 +33,7 @@ Cotabby/
 │       ├── SettingsCoordinator.swift
 │       └── WelcomeCoordinator.swift
 ├── Models/
+│   ├── CLI/                          app/client wire requests, batch input, replies and stable errors
 │   ├── ProductIdentity.swift         localized brand names and independent project destinations
 │   ├── Context/                      bounded context and visual-context values
 │   ├── Emoji/                        picker and usage values
@@ -53,6 +54,7 @@ Cotabby/
 │       ├── Result/                   engine result and client error values
 │       └── Session/                  active, paused, and presented session values
 ├── Services/
+│   ├── CLI/                          passive mailbox consumption and user-level executable installation
 │   ├── Context/                      live clipboard acquisition
 │   ├── Focus/
 │   │   ├── Caching/                  field-scoped focus caches
@@ -460,6 +462,31 @@ writes that prepared package. The window-owned `VocabularyExportSession` discard
 and owns cancellation; `VocabularyExportSheet` reuses a native grouped form and save panel.
 Export opens from the notebook toolbar, batch selection or a sense's context menu. It never
 queries a model, dictionary, TTS or Anki; full `.lingrove` backup/restore remains a separate path.
+
+## Local vocabulary CLI
+
+`LingroveCLI/` is a separate executable target, embedded by `scripts/embed_cli.sh` in both app
+bundles. `Models/CLI` and `Support/CLI` compile into both targets: the versioned wire contract,
+strict batch shape/count validation, deterministic argument parsing and bounded atomic file IO.
+The CLI reads explicitly supplied image paths, transports bytes, and lets its containing bundle
+choose Dev/production identity. It never opens SQLite or calls an AI/Anki provider.
+
+`CotabbyAppEnvironment` owns one `CLIMailboxServer` actor and one `CLIInstallationModel`.
+The server holds an exclusive lifetime lease on a private app-specific mailbox; a passive
+directory source wakes its serial drain. `VocabularyStore.executeCLI` forwards to the existing
+archive actor and applies acknowledged snapshots so open windows refresh. `VocabularyCLIPlan`
+owns pure additive/update planning with stable IDs, explicit ownership and revision conflicts;
+`VocabularyCLIReadBudget` bounds whole-entry response construction before JSON encoding.
+
+`VocabularyArchive+CLI` owns query projection, image preparation, dry runs and replay lookup.
+SQLite schema 2 adds `cli_receipts`; upgrading schema 1 preserves the accepted SQLite content,
+while retired JSON files are still ignored. A content commit, revision and receipt are one SQL
+transaction, with the existing media staging/rollback lock. CLI receipts are operational state,
+excluded from notebook backups/exports. `CLISettingsSection` reuses General's settings rows and
+the searchable `commandLineTools` entry, installing user-level `lingrove`/`lingrove-dev` symlinks
+without overwriting unrelated commands or editing shell configuration. `CLI.md` is the agent-facing
+usage contract; tests under `Services/CLI` launch the actual bundled executable against an isolated
+mailbox/store/SQLite notebook and never send requests to a real user library.
 
 ## Contextual AI explanation
 
