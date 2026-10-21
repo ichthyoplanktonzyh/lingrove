@@ -359,7 +359,9 @@ actor VocabularyArchive {
     /// Stage with owner-only permissions, synchronize and atomically rename within the same
     /// directory. No fallible operation follows the commit, so UI and disk cannot disagree after
     /// a successful rename. The actor is the sole in-process writer for this file.
-    func writeAtomically(_ data: Data, to url: URL) throws {
+    /// Export may cancel before commit; notebook edits retain their existing transaction semantics
+    /// even if their originating view disappears while the write is finishing.
+    func writeAtomically(_ data: Data, to url: URL, cancellable: Bool = false) throws {
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".notebook-" + UUID().uuidString)
         let descriptor = Darwin.open(temporary.path, O_WRONLY | O_CREAT | O_EXCL, mode_t(0o600))
         guard descriptor >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
@@ -368,9 +370,11 @@ actor VocabularyArchive {
             try? handle.close()
             try? FileManager.default.removeItem(at: temporary)
         }
+        if cancellable { try Task.checkCancellation() }
         try handle.write(contentsOf: data)
         try handle.synchronize()
         try handle.close()
+        if cancellable { try Task.checkCancellation() }
         guard Darwin.rename(temporary.path, url.path) == 0 else {
             throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
         }
