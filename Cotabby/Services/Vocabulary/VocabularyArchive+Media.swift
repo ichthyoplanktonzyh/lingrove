@@ -33,11 +33,11 @@ extension VocabularyArchive {
         try storageAccess(write: false) { try images.read(reference) }
     }
 
-    func commitWithImages(_ next: VocabularyDocument, supplied: [String: Data]) throws -> VocabularySnapshot {
-        try storageAccess(write: true) { try stageImagesAndCommit(next, supplied: supplied) }
+    func commitWithImages(_ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil) throws -> VocabularySnapshot {
+        try storageAccess(write: true) { try stageImagesAndCommit(next, supplied: supplied, receipt: receipt) }
     }
 
-    private func stageImagesAndCommit(_ next: VocabularyDocument, supplied: [String: Data]) throws -> VocabularySnapshot {
+    private func stageImagesAndCommit(_ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?) throws -> VocabularySnapshot {
         // An edited sentence still carries its old explanation until commit normalizes it.
         // Validate media before staging, then let commit prune stale AI records and validate
         // the complete graph. Premature whole-document validation rejects legitimate edits.
@@ -58,7 +58,7 @@ extension VocabularyArchive {
             // Cancellation is honored until the atomic metadata commit begins. Staged new
             // files are rolled back below; an acknowledged SQL commit is never undone.
             try Task.checkCancellation()
-            return try commit(next)
+            return try commit(next, receipt: receipt)
         } catch {
             for image in written { images.remove(image) }
             throw error

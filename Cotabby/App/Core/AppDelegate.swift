@@ -160,6 +160,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        Task {
+            do { try await environment.vocabularyCLI?.start() }
+            catch { CotabbyLogger.learning.error("Vocabulary CLI server unavailable") }
+        }
+        let isCLILaunch = ProcessInfo.processInfo.arguments.contains("-lingrove-cli")
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         CotabbyLogger.app.info(
             "Cotabby \(version) (build \(build)) launching on macOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
@@ -171,8 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appUpdateManager.start()
         suggestionCoordinator.start()
         inlineCommandCoordinator.start()
-        welcomeCoordinator.presentIfNeeded()
-        welcomeCoordinator.presentPermissionReminderIfNeeded()
+        if !isCLILaunch {
+            welcomeCoordinator.presentIfNeeded()
+            welcomeCoordinator.presentPermissionReminderIfNeeded()
+        }
         didStartServices = true
         CotabbyLogger.app.info("All services started")
 
@@ -186,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             wasLaunchedAtLogin: wasLaunchedAtLogin,
             wasSettingsExplicitlyRequested: wasSettingsExplicitlyRequested
         )
-        if shouldShowSettings {
+        if shouldShowSettings && !isCLILaunch {
             if wasSettingsExplicitlyRequested {
                 CotabbyLogger.app.info("Opening Settings because the launch explicitly requested it")
             } else if !wasLaunchedAtLogin {

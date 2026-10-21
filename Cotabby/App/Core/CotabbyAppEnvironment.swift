@@ -18,6 +18,8 @@ final class CotabbyAppEnvironment {
     /// One shared playback owner serves the settings voice preview and every learning card.
     let speechController: LearningSpeechController
     let vocabularyStore: VocabularyStore
+    let vocabularyCLI: CLIMailboxServer?
+    let cliInstallation: CLIInstallationModel?
     let reviewController: AnkiReviewController
     let vocabularyWindow: VocabularyWindowController
     let modelDownloadManager: ModelDownloadManager
@@ -250,6 +252,11 @@ final class CotabbyAppEnvironment {
         // SQLite starts a fresh library as requested. Retired JSON files/media remain untouched;
         // Dev and production still use distinct support roots, and tests use in-memory SQLite.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
+        let cliInstallation = isTestHost ? nil : CLIInstallationModel()
+        let vocabularyCLI: CLIMailboxServer? = isTestHost ? nil : CLIMailboxServer(
+            root: vocabularyURL.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Automation")) {
+                await vocabularyStore.executeCLI($0)
+            }
         let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
             credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore, speech: speechController)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
@@ -309,6 +316,7 @@ final class CotabbyAppEnvironment {
         let emojiUsageStore = EmojiUsageStore()
 
         let settingsCoordinator = SettingsCoordinator(
+            cli: cliInstallation,
             learningModels: learningModels,
             speech: speechController,
             review: reviewController,
@@ -487,6 +495,8 @@ final class CotabbyAppEnvironment {
         self.learningModels = learningModels
         self.speechController = speechController
         self.vocabularyStore = vocabularyStore
+        self.vocabularyCLI = vocabularyCLI
+        self.cliInstallation = cliInstallation
         self.reviewController = reviewController
         self.vocabularyWindow = vocabularyWindow
         self.modelDownloadManager = modelDownloadManager

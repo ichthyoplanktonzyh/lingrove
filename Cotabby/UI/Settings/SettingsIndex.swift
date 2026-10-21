@@ -16,6 +16,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case enableGlobally
     case useScreenContext
     case openAtLogin
+    case commandLineTools
     case includeClipboardContext
     case includeAppContext
     case allowMultiLine
@@ -192,6 +193,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .enableGlobally: return String(localized: "Enable Globally")
         case .useScreenContext: return String(localized: "Use screen context")
         case .openAtLogin: return String(localized: "Open at Login")
+        case .commandLineTools: return String(localized: "Command-line tools", table: "Vocabulary")
         case .includeClipboardContext: return String(localized: "Include Clipboard Context")
         case .includeAppContext: return String(localized: "Include App Context")
         case .allowMultiLine: return String(localized: "Allow Multi-line Suggestions")
@@ -310,6 +312,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .enableGlobally: return "power"
         case .useScreenContext: return "text.viewfinder"
         case .openAtLogin: return "arrow.right.circle"
+        case .commandLineTools: return "terminal"
         case .includeClipboardContext: return "doc.on.clipboard"
         case .includeAppContext: return "macwindow"
         case .allowMultiLine: return "text.alignleft"
@@ -416,7 +419,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         #if DEBUG
         case .developmentDebugOverlays: return .general
         #endif
-        case .enableGlobally, .useScreenContext, .openAtLogin, .includeClipboardContext, .includeAppContext,
+        case .enableGlobally, .useScreenContext, .openAtLogin, .commandLineTools, .includeClipboardContext, .includeAppContext,
              .allowMultiLine, .suggestWithinWords, .predictAheadWhileTyping, .showFollowingWords,
              .inlineMacros, .onboarding, .interfaceLanguage, .resetAllSettings:
             return .general
@@ -482,6 +485,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         Help suggestions understand surrounding text using screenshots of the focused window.
         """)
         case .openAtLogin: return String(localized: "Start Lingrove automatically when you log in.", table: "Learning")
+        case .commandLineTools: return String(localized: "Install CLI", table: "Vocabulary")
         case .includeClipboardContext: return String(localized: "Let suggestions reference what you last copied.")
         case .includeAppContext: return String(localized: "Tell the model which app and window you are typing in.")
         case .allowMultiLine: return String(localized: "Allow continuations that span more than one line.")
@@ -640,6 +644,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .openAtLogin:
             return ["startup", "launch", "boot", "login", "start", "autostart",
                     "auto-start", "launch at login", "login items", "open at startup"]
+        case .commandLineTools:
+            return ["cli", "agent", "automation", "terminal", "command", "codex", "命令行", "智能体", "自动化", "终端"]
         case .includeClipboardContext:
             return ["clipboard", "paste", "copy", "pasteboard", "context"]
         case .includeAppContext:
