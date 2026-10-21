@@ -97,7 +97,7 @@ extension AnkiReviewTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let notebook = directory.appendingPathComponent("notebook.json")
+        let notebook = directory.appendingPathComponent("notebook.sqlite")
         let (controller, _, defaults, name) = try await fixture(url: notebook)
         defer { defaults.removePersistentDomain(forName: name) }
         let entry = try #require(controller.store.entries.first), sense = try #require(entry.senses.first)
@@ -268,7 +268,7 @@ extension AnkiReviewTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let (controller, _, defaults, name) = try await fixture(url: directory.appendingPathComponent("notebook.json"))
+        let (controller, _, defaults, name) = try await fixture(url: directory.appendingPathComponent("notebook.sqlite"))
         defer { defaults.removePersistentDomain(forName: name) }
         let entry = try #require(controller.store.entries.first), sense = try #require(entry.senses.first)
         let first = try await controller.store.prepareImage(VocabularyImageTestFixture.png(width: 40, height: 20))

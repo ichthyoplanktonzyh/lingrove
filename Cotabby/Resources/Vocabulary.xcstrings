@@ -23354,6 +23354,101 @@
           }
         }
       }
+    },
+    "The notebook is busy. Try again shortly.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دفتر المفردات مشغول. حاول مجددًا بعد قليل."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Notizbuch ist beschäftigt. Versuche es gleich erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The notebook is busy. Try again shortly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El cuaderno está ocupado. Inténtalo de nuevo en breve."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le carnet est occupé. Réessayez dans un instant."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शब्दावली व्यस्त है। थोड़ी देर में फिर कोशिश करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buku kosakata sedang sibuk. Coba lagi sebentar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il quaderno è occupato. Riprova tra poco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語帳を処理中です。少し待ってから再試行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어장을 처리 중입니다. 잠시 후 다시 시도하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O caderno está ocupado. Tente novamente em instantes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Словарь занят. Повторите попытку чуть позже."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Defter meşgul. Kısa bir süre sonra tekrar deneyin."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生词本正在处理另一项操作，请稍后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生詞本正在處理另一項操作，請稍後重試。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

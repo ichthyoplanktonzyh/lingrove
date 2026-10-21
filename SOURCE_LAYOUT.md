@@ -401,7 +401,7 @@ The autocomplete inference package and its revision remain separate.
 ## Vocabulary notebook
 
 `Models/Vocabulary` owns durable expressions, stable senses, examples with UTF-16 spans, meaning ownership,
-and schema-v3 notebook persistence. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
+and schema-v3 portable snapshots. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
 `Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
 `VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
@@ -415,15 +415,29 @@ existing nonactivating lifetime. The shared fish-tail button lives in `UI/Compon
 
 The environment constructs one store for both writing and reading cards, isolates the XCTest
 host from real user data, and keeps Dev/production archives in separate support directories.
-The v3 file is `Vocabulary/notebook-v3.json`; the retired `notebook.json` is not loaded or rewritten.
+The live file is `Vocabulary/notebook.sqlite`, initialized as a fresh library. Retired JSON
+archives are neither read nor migrated nor deleted. SQLite's `application_id` and `user_version`
+identify its independent schema; portable backups/exports retain their existing JSON formats.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
+
+`VocabularyDatabaseRecord` and `VocabularyDatabaseProjection` split expressions, senses, usages,
+AI records, content blocks, review cards/bindings and templates into owned rows. JSON payloads
+contain a single entity's scalar/leaf values, with children stripped; foreign keys and order live
+in SQL columns. `VocabularySQLiteConnection` confines C pointers, copied bindings and private
+regular-file identity checks. The archive-owned `VocabularySQLiteDatabase` initializes a schema
+before exclusive publication, uses WAL/FULL transactions, rejects unsupported or damaged files,
+and encodes/upserts changed rows only. `VocabularySQLiteFileLock` extends writer serialization
+across image staging/GC and keeps backup/export media reads consistent between app instances.
+A durable revision rejects stale commits. Domain graph
+validation and the existing UI snapshot model remain in place; search still filters those values
+in memory and is not claimed to have become an indexed/paged database search in this change.
 
 `VocabularyContentModels` adds optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
 the archive actor, normalizes imports to bounded PNGs, and keeps hash-named files in
-`notebook-v3.json.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
-before the atomic JSON commit, rolls back new files on failure, and retires unreferenced images
+`notebook.sqlite.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
+before the SQL commit, rolls back new files on failure, and retires unreferenced images
 only after commit. `VocabularyContentEditor` and `VocabularyContentView` share the native editor
 and read-only presentation; no inference or new provider is involved.
 

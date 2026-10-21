@@ -10,7 +10,7 @@ extension VocabularyExportTests {
     func nativeExportSavesTextCSVAndImageZIP() async throws {
         let output = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["COTABBY_UI_EXPORT_OUTPUT"]))
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        let archive = VocabularyArchive(url: nil), (entries, image) = try fixture()
+        let archive = VocabularyArchive(url: output.appendingPathComponent("notebook.sqlite")), (entries, image) = try fixture()
         _ = try await archive.commitWithImages(.init(entries: entries), supplied: [image.reference.filename: image.data])
         let store = VocabularyStore(archive: archive); await store.load()
         let suite = UUID().uuidString, defaults = try #require(UserDefaults(suiteName: suite))

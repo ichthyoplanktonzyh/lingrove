@@ -17,7 +17,7 @@ nonisolated struct VocabularyArchiveTests {
     @Test func repeatedWordComponentsKeepDistinctUsageIDsAcrossReopen() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let words = [LearningDictionaryWord(text: "as", range: NSRange(location: 5, length: 2)),
                      LearningDictionaryWord(text: "as", range: NSRange(location: 13, length: 2))]
         let unit = LearningUnit(id: 5, surface: "as soon as", query: "as soon as", kind: .expression,
@@ -45,7 +45,7 @@ nonisolated struct VocabularyArchiveTests {
     @Test @MainActor func notebookWorkflowPersistsEditsExportAndSelectiveRemoval() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let store = VocabularyStore(archive: VocabularyArchive(url: url))
         let first = capture()
         var second = first
@@ -80,7 +80,7 @@ nonisolated struct VocabularyArchiveTests {
     @Test func savedItemSurvivesReopenWithStableIDsAndEditableContent() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let snapshot = try await archive.save(capture())
         let baseline = try #require(snapshot.document.entries.first)
@@ -120,7 +120,7 @@ nonisolated struct VocabularyArchiveTests {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let bytes = Data("broken data".utf8)
         try bytes.write(to: url)
         let archive = VocabularyArchive(url: url)
@@ -132,17 +132,17 @@ nonisolated struct VocabularyArchiveTests {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
-        let bytes = Data("{\"schemaVersion\":999,\"entries\":[]}".utf8)
-        try bytes.write(to: url)
-        await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).load() }
-        #expect(try Data(contentsOf: url) == bytes)
+        let url = folder.appendingPathComponent("notebook.sqlite")
+        let database = try VocabularySQLiteDatabase(url: url)
+        try database.connection.execute("PRAGMA user_version=999")
+        await #expect(throws: VocabularyError.unsupportedVersion) { try await VocabularyArchive(url: url).load() }
+        #expect(try database.connection.rows("PRAGMA user_version") == [[.integer(999)]])
     }
 
     @Test func exportRoundTripsAllExamplesAndDoesNotOverwriteLiveArchive() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url)
         let snapshot = try await archive.save(capture())
         let exported = folder.appendingPathComponent("export.json")
@@ -156,7 +156,7 @@ nonisolated struct VocabularyArchiveTests {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try Data().write(to: folder)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let store = VocabularyStore(archive: VocabularyArchive(url: folder.appendingPathComponent("notebook.json")))
+        let store = VocabularyStore(archive: VocabularyArchive(url: folder.appendingPathComponent("notebook.sqlite")))
         let value = capture()
         await store.save(value)
         #expect(!store.contains(value))
@@ -206,25 +206,26 @@ nonisolated struct VocabularyArchiveTests {
     @Test func invalidArchiveRangesFailWithoutChangingTheFile() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let url = folder.appendingPathComponent("notebook.json")
+        let url = folder.appendingPathComponent("notebook.sqlite")
         let snapshot = try await VocabularyArchive(url: url).save(capture())
-        var invalid = snapshot.document
-        invalid.entries[0].senses[0].examples[0].ranges = [VocabularyTextRange(NSRange(location: 9_999, length: 5))]
-        let bytes = try JSONEncoder().encode(invalid)
-        try bytes.write(to: url)
+        var invalid = snapshot.document.entries[0].examples[0]
+        invalid.ranges = [VocabularyTextRange(NSRange(location: 9_999, length: 5))]
+        let bytes = try VocabularyDatabaseRecord.Payload.usage(invalid).encoded()
+        let connection = try VocabularySQLiteConnection(url: url)
+        try connection.execute("UPDATE usages SET payload=? WHERE id=?", [.blob(bytes), .text(invalid.id.uuidString)])
         await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).save(capture()) }
-        #expect(try Data(contentsOf: url) == bytes)
+        #expect(try connection.rows("SELECT payload FROM usages WHERE id=?", [.text(invalid.id.uuidString)]) == [[.blob(bytes)]])
     }
 
     @Test func oldSchemaIsRejectedWithoutRewritingIt() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appendingPathComponent("notebook.json")
-        let bytes = Data("{\"schemaVersion\":1,\"entries\":[]}".utf8)
-        try bytes.write(to: url)
+        let url = folder.appendingPathComponent("notebook.sqlite")
+        let database = try VocabularySQLiteDatabase(url: url)
+        try database.connection.execute("PRAGMA user_version=0")
         await #expect(throws: VocabularyError.unsupportedVersion) { try await VocabularyArchive(url: url).load() }
-        #expect(try Data(contentsOf: url) == bytes)
+        #expect(try database.connection.rows("PRAGMA user_version") == [[.integer(0)]])
     }
 
     @Test func contextlessTranslationsInDifferentLanguagesAreBothRetained() async throws {

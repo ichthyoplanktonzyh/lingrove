@@ -167,7 +167,7 @@ struct VocabularyExportTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let archive = VocabularyArchive(url: directory.appendingPathComponent("notebook.json"))
+        let archive = VocabularyArchive(url: directory.appendingPathComponent("notebook.sqlite"))
         let (entries, image) = try fixture()
         _ = try await archive.commitWithImages(.init(entries: entries), supplied: [image.reference.filename: image.data])
         var options = VocabularyExportConfiguration(); options.images = true
@@ -190,7 +190,7 @@ struct VocabularyExportTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("notebook.json"), archive = VocabularyArchive(url: url)
+        let url = directory.appendingPathComponent("notebook.sqlite"), archive = VocabularyArchive(url: url)
         let (entries, image) = try fixture()
         _ = try await archive.commitWithImages(.init(entries: entries), supplied: [image.reference.filename: image.data])
         let original = try Data(contentsOf: url)

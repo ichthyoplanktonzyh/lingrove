@@ -178,7 +178,7 @@ nonisolated enum VocabularyPolicy {
 }
 
 nonisolated enum VocabularyError: LocalizedError {
-    case invalidContent, unsupportedVersion, oversizedArchive, invalidArchive, editConflict
+    case invalidContent, unsupportedVersion, oversizedArchive, invalidArchive, editConflict, storageBusy
     var errorDescription: String? {
         switch self {
         case .invalidContent: String(localized: "This vocabulary item could not be verified.", table: "Vocabulary")
@@ -187,6 +187,7 @@ nonisolated enum VocabularyError: LocalizedError {
         case .invalidArchive:
             String(localized: "The notebook could not be read. The original file has been preserved.", table: "Vocabulary")
         case .editConflict: String(localized: "This item changed while you were editing. Reopen it to continue.", table: "Vocabulary")
+        case .storageBusy: String(localized: "The notebook is busy. Try again shortly.", table: "Vocabulary")
         }
     }
 }

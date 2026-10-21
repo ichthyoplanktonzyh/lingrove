@@ -246,8 +246,9 @@ final class CotabbyAppEnvironment {
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
         let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
-            .appendingPathComponent("Vocabulary/notebook-v3.json")
-        // Schema v3 starts a separate library; the retired two-level archive remains untouched.
+            .appendingPathComponent("Vocabulary/notebook.sqlite")
+        // SQLite starts a fresh library as requested. Retired JSON files/media remain untouched;
+        // Dev and production still use distinct support roots, and tests use in-memory SQLite.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
         let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
             credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore, speech: speechController)

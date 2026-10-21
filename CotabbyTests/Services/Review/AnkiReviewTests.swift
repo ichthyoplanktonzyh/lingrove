@@ -166,7 +166,7 @@ struct AnkiReviewTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("notebook.json")
+        let url = directory.appendingPathComponent("notebook.sqlite")
         let (controller, fake, defaults, name) = try await fixture(url: url)
         defer { defaults.removePersistentDomain(forName: name) }
         await fake.loseNextAddReply()
