@@ -23,8 +23,27 @@ BUILT_APP="$DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 # provider can reattach FinderInfo after verification and invalidate nested code.
 # Scope by checkout so worktrees do not overwrite one another's runnable product.
 CHECKOUT_ID=$(printf '%s' "$ROOT_DIR" | shasum -a 256 | cut -c1-12)
+# A checkout normally owns its own installed app. An explicit, local-only ID lets a renamed
+# or replacement checkout keep the existing path and signing requirement instead of creating
+# another Dev copy. Worktree config is read only after Git's per-worktree extension is enabled;
+# plain --local config is shared by linked worktrees and must never opt those in accidentally.
+# Git also copies config.worktree on worktree creation, so the key includes this checkout's
+# path hash: a copied preference cannot silently select the main checkout's installation.
+dev_installation_id() {
+  local value="${LINGROVE_DEV_INSTALLATION_ID:-}"
+  if [[ -z "$value" && "$(git -C "$ROOT_DIR" config --local --bool extensions.worktreeConfig || true)" == "true" ]]; then
+    value=$(git -C "$ROOT_DIR" config --worktree --get "lingrove.devInstallation.checkout$CHECKOUT_ID" || true)
+  fi
+  value="${value:-$CHECKOUT_ID}"
+  if [[ ! "$value" =~ ^[0-9a-f]{12}$ ]]; then
+    echo 'Dev installation ID must contain exactly 12 lowercase hexadecimal characters.' >&2
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+INSTALLATION_ID=$(dev_installation_id)
 # Stage under the dev app's own support folder, never the production app's "Lingrove" folder.
-RUN_DIR="$HOME/Library/Application Support/$APP_NAME/Development/$CHECKOUT_ID/$CONFIGURATION"
+RUN_DIR="$HOME/Library/Application Support/$APP_NAME/Development/$INSTALLATION_ID/$CONFIGURATION"
 APP_BUNDLE="$RUN_DIR/$APP_NAME.app"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 

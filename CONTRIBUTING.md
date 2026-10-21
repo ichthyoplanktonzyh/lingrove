@@ -88,6 +88,23 @@ app named **Lingrove Dev** (`io.ichthyoplanktonzyh.lingrove.dev`, its own icon, 
 grant your dev build never collide with a released copy of Cotabby you have installed, and your
 Accessibility grant survives rebuilds. The production scheme builds **Lingrove.app** under
 `io.ichthyoplanktonzyh.lingrove`. Scheme and Swift module names remain `Cotabby` during this migration.
+
+The command-line launcher normally installs Dev under a checkout-specific directory. When moving
+to a replacement checkout, retain the existing installation by saving its 12-character directory ID
+in that worktree's config:
+
+```sh
+git config --local extensions.worktreeConfig true
+checkout_id=$(printf '%s' "$(git rev-parse --show-toplevel)" | shasum -a 256 | cut -c1-12)
+git config --worktree "lingrove.devInstallation.checkout$checkout_id" <existing-id>
+```
+
+This preference is not committed. Its key includes the checkout path hash, so even when Git copies
+worktree config during `worktree add`, that copied entry cannot select another checkout's install.
+Plain `--local` values for the installation ID are ignored because Git shares those across linked worktrees.
+`LINGROVE_DEV_INSTALLATION_ID` can override it for one launch. The launcher continues to verify the
+installed signing identity before replacement; other worktrees keep their own installation
+directories unless explicitly configured to share one.
 Data uses the separate `Lingrove` and `Lingrove Dev` folders; existing Cotabby data is not imported
 automatically. See [Run](#run).
 
