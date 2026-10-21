@@ -170,6 +170,18 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.remove(id: id)); return true } catch { report(error); return false }
     }
 
+    func prepareExport(
+        selections: [VocabularySelection], configuration: VocabularyExportConfiguration
+    ) async throws -> VocabularyExportPackage {
+        try await archive.prepareExport(selections: selections, configuration: configuration)
+    }
+
+    func writeExport(_ package: VocabularyExportPackage, to url: URL) async throws {
+        try await archive.writeExport(package, to: url)
+        CotabbyLogger.learning.info("Vocabulary exported", metadata: ["format": .string(package.configuration.format.rawValue),
+            "senses": .stringConvertible(package.senseCount), "with_images": .stringConvertible(package.configuration.includesImages)])
+    }
+
     func export(to url: URL) async {
         do { try await archive.export(to: url) } catch { report(error) }
     }

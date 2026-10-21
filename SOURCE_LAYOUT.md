@@ -401,7 +401,7 @@ The autocomplete inference package and its revision remain separate.
 ## Vocabulary notebook
 
 `Models/Vocabulary` owns durable expressions, stable senses, examples with UTF-16 spans, meaning ownership,
-and the schema-v3 export format. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
+and schema-v3 notebook persistence. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
 `Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
 `VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
@@ -436,6 +436,16 @@ image markup travels in the mapped Meaning/answer field, only after `AnkiReviewS
 uploads media to the verified Anki profile. The preview uses that same markup and local resources.
 Legacy preset gap fronts require an explicit template upgrade before including sense content.
 Arbitrary HTML and animated blocks are deferred.
+
+`VocabularyExportModels` defines the sheet's scope/options and a versioned portable projection.
+`VocabularyExportPolicy` selects exact sense IDs and separates primary values from language
+variants; `VocabularyExportFormatter` renders TXT learning notes/expression lists, CSV usage rows,
+and structured JSON. `VocabularyExportZIP` wraps optional hash-named PNGs in a bounded stored ZIP.
+`VocabularyArchive+Export` freezes metadata and media bytes on the archive actor, then atomically
+writes that prepared package. The window-owned `VocabularyExportSession` discards stale previews
+and owns cancellation; `VocabularyExportSheet` reuses a native grouped form and save panel.
+Export opens from the notebook toolbar, batch selection or a sense's context menu. It never
+queries a model, dictionary, TTS or Anki; full `.lingrove` backup/restore remains a separate path.
 
 ## Contextual AI explanation
 

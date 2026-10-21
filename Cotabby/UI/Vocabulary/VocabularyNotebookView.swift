@@ -19,9 +19,10 @@ struct VocabularyNotebookView: View {
     @State private var requestedID: UUID?
     @State private var requestedSenseID: UUID?
     @State private var expandedEntries: Set<UUID> = []
-    @State private var selectingForReview = false
+    @State private var selectingSenses = false
     @State private var batchSelection: Set<VocabularySelection> = []
     @State private var showingBatch = false
+    @State private var exporting: VocabularyExportRequest?
     @State private var reviewError: String?
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
@@ -53,7 +54,7 @@ struct VocabularyNotebookView: View {
                     })) {
                         ForEach(entry.senses) { sense in
                             HStack(alignment: .top) {
-                              if selectingForReview {
+                              if selectingSenses {
                                 Toggle("", isOn: Binding(get: {
                                     batchSelection.contains(.init(entryID: entry.id, senseID: sense.id))
                                 }, set: { selected in
@@ -70,6 +71,11 @@ struct VocabularyNotebookView: View {
                                     Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                 }
                             }}.padding(.vertical, 4).tag(sense.id)
+                            .contextMenu {
+                                Button(String(localized: "Export this sense…", table: "Vocabulary")) {
+                                    beginExport(single: .init(entryID: entry.id, senseID: sense.id))
+                                }
+                            }
                         }
                     } label: { Text(entry.expression).font(.headline).lineLimit(2) }
 
@@ -101,24 +107,28 @@ struct VocabularyNotebookView: View {
         }
         .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
         .toolbar {
-            if let review {
+            ToolbarItem {
+                Button { selectingSenses.toggle() } label: { Image(systemName: "checklist") }
+                    .help(String(localized: "Select senses", table: "Vocabulary"))
+            }
+            if selectingSenses {
                 ToolbarItem {
-                    Button { selectingForReview.toggle() } label: { Image(systemName: "checklist") }
-                        .help(String(localized: "Select senses for Anki", table: "Vocabulary"))
-                }
-                if selectingForReview {
-                    ToolbarItem {
-                        Button(String(localized: "Select visible", table: "Vocabulary")) {
-                            batchSelection.formUnion(visibleEntries.flatMap { entry in
-                                entry.senses.map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
-                            })
-                        }
+                    Button(String(localized: "Select visible", table: "Vocabulary")) {
+                        batchSelection.formUnion(selections(in: visibleEntries))
                     }
+                }
+                ToolbarItem {
+                    Button(String(localized: "Export selected…", table: "Vocabulary")) { beginExport(scope: .selected) }
+                        .disabled(batchSelection.isEmpty)
+                }
+                if review != nil {
                     ToolbarItem {
                         Button(String(localized: "Prepare selected", table: "Vocabulary")) { showingBatch = true }
                             .disabled(batchSelection.isEmpty)
                     }
                 }
+            }
+            if let review {
                 ToolbarItem {
                     Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
                         .help(String(localized: "Review in Anki", table: "Vocabulary"))
@@ -139,13 +149,13 @@ struct VocabularyNotebookView: View {
             }
             ToolbarItem {
                 Menu {
-                    Button(String(localized: "Back up notebook…", table: "Vocabulary"), action: backup)
-                    Button(String(localized: "Export data (JSON)…", table: "Vocabulary"), action: export)
+                    Button(String(localized: "Export…", table: "Vocabulary")) { beginExport() }
                         .disabled(store.entries.isEmpty)
+                    Button(String(localized: "Full notebook backup…", table: "Vocabulary"), action: backup)
                     Divider()
                     Button(String(localized: "Restore notebook…", table: "Vocabulary"), action: chooseBackup)
                 } label: { Image(systemName: "square.and.arrow.up") }
-                    .help(String(localized: "Notebook backup", table: "Vocabulary"))
+                    .help(String(localized: "Export and backup", table: "Vocabulary"))
                     .disabled(!store.isLoaded)
             }
         }
@@ -166,6 +176,7 @@ struct VocabularyNotebookView: View {
         .onChange(of: query) { _, value in
             if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
         }
+        .sheet(item: $exporting) { request in VocabularyExportSheet(store: store, request: request) }
         .sheet(isPresented: $showingBatch) {
             if let review {
                 VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
@@ -210,14 +221,16 @@ struct VocabularyNotebookView: View {
         return entry.senses[index]
     }
 
-    private func export() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Lingrove-vocabulary.json"
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            Task { await store.export(to: url) }
-        }
+    private func selections(in entries: [VocabularyEntry]) -> [VocabularySelection] {
+        entries.flatMap { entry in entry.senses.map { .init(entryID: entry.id, senseID: $0.id) } }
+    }
+
+    private func beginExport(scope: VocabularyExportScope? = nil, single: VocabularySelection? = nil) {
+        let all = selections(in: store.entries.sorted { newestFirst ? $0.updatedAt > $1.updatedAt : $0.updatedAt < $1.updatedAt })
+        let selected = single.map { [$0] } ?? all.filter { batchSelection.contains($0) }
+        let initial = single != nil ? VocabularyExportScope.selected : scope ?? (!selected.isEmpty ? .selected :
+            query.isEmpty && language == nil ? .all : .filtered)
+        exporting = .init(all: all, filtered: selections(in: visibleEntries), selected: selected, initialScope: initial)
     }
 
     private func backup() {
