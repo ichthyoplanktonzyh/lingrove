@@ -196,8 +196,12 @@ targets:
     platform: macOS
     sources:
       - path: LingroveCLI
-      - path: Cotabby/Models/CLI
-      - path: Cotabby/Support/CLI
+      # Reuse the app's source root so XcodeGen shares the same folder hierarchy.
+      # Adding a leaf folder as another root gives one PBXGroup two parents.
+      - path: Cotabby
+        includes:
+          - Models/CLI/**
+          - Support/CLI/**
     settings:
       base:
         PRODUCT_NAME: lingrove

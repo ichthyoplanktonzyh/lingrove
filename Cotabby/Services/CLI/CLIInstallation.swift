@@ -43,11 +43,10 @@ actor CLIInstallation {
 
     init(bundle: Bundle = .main) {
         #if COTABBY_DEV
-        let dev = true
+        command = "lingrove-dev"
         #else
-        let dev = (bundle.bundleIdentifier ?? "").hasSuffix(".dev")
+        command = (bundle.bundleIdentifier ?? "").hasSuffix(".dev") ? "lingrove-dev" : "lingrove"
         #endif
-        command = dev ? "lingrove-dev" : "lingrove"
         let destination = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/" + command)
         path = "~/.local/bin/" + command
         worker = CLIInstallation(executable: bundle.bundleURL.appendingPathComponent("Contents/Helpers/lingrove"), destination: destination)
