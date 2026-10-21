@@ -12,6 +12,8 @@ final class AnkiReviewSession: ObservableObject {
     let audio: ReviewAudioPreparation
     private var audioSubscription: AnyCancellable?
     @Published private(set) var currentPresetTemplate = false
+    @Published private(set) var safeGapFront = false
+    @Published private(set) var legacyPresetTemplate = false
     @Published private(set) var presetCSS = AnkiNoteTemplate.css
     @Published var plan: ReviewPlan
     @Published private(set) var bindingID: UUID? {
@@ -84,6 +86,10 @@ final class AnkiReviewSession: ObservableObject {
                 return String(localized: "Choose a deck and an Anki association.", table: "Vocabulary")
             }
             let content = try ReviewCardPolicy.content(entry: current.entry, sense: current.sense, plan: plan)
+            if model == AnkiReviewPolicy.presetName, plan.gap, !content.senseContent.isEmpty, !safeGapFront, !loading {
+                return String(localized: "Update the Lingrove template before adding explanation content to gap cards.",
+                    table: "Vocabulary")
+            }
             try validateAudioMapping()
             let fields = try AnkiReviewPolicy.fields(content: content, identity: binding?.originSenseID ?? senseID,
                 mapping: mapping, overrides: plan.fieldOverrides)
@@ -136,8 +142,14 @@ final class AnkiReviewSession: ObservableObject {
                 guard metadataID == request, bindingID == selectedID, try controller.settings.connection() == connection else { return }
                 currentPresetTemplate = value == .object(AnkiNoteTemplate.templates) &&
                     ReviewField.allCases.allSatisfy { fields.contains($0.rawValue) }
+                safeGapFront = value.object?["Gap"]?.object?["Front"]?.string == AnkiNoteTemplate.gapFront
+                legacyPresetTemplate = value == .object(AnkiNoteTemplate.legacyTemplates)
                 presetCSS = style.object?["css"]?.string ?? AnkiNoteTemplate.css
-            } else { currentPresetTemplate = selectedModel == AnkiReviewPolicy.presetName }
+            } else {
+                currentPresetTemplate = selectedModel == AnkiReviewPolicy.presetName
+                safeGapFront = currentPresetTemplate
+                legacyPresetTemplate = false
+            }
             // A translated Anki installation may call its initial deck something other than
             // "Default". Only an untouched default can follow that first available deck.
             if binding == nil, plan.deck == nil, !controller.settings.hasSavedDeck, !catalog.decks.contains(deck),
@@ -201,8 +213,10 @@ final class AnkiReviewSession: ObservableObject {
         let identity = existing?.originSenseID ?? senseID
         let model = self.model, mapping = self.mapping
         let available = try await controller.fields(for: model, connection: connection, create: false)
+        try await validateImageTemplate(content, connection: connection)
         try validateAudioMapping()
         let audioFields = try await uploadAudio(content, connection: connection, profile: profile)
+        try await uploadImages(content, connection: connection, profile: profile)
         var desired = try AnkiReviewPolicy.fields(content: content, identity: identity,
             mapping: mapping, overrides: plan.fieldOverrides, audio: audioFields)
         guard desired.keys.allSatisfy({ available.contains($0) }), let identityField = mapping[.identity] else {
@@ -345,6 +359,9 @@ final class AnkiReviewSession: ObservableObject {
         if let remote {
             noteID = remote.id
             if !desired.allSatisfy({ remote.fields[$0.key] == $0.value }) {
+                try await validateImageTemplate(context.content, connection: connection)
+                guard try await controller.profile(connection) == context.profile else { throw VocabularyError.editConflict }
+                try validateCurrent(context.content, connection: connection)
                 _ = try await controller.call("updateNoteFields", ["note": .object([
                     "id": .number(Double(noteID)), "fields": .strings(desired)])], connection)
             }
@@ -352,6 +369,9 @@ final class AnkiReviewSession: ObservableObject {
             _ = try await controller.fields(for: model, connection: connection, create: true, expectedProfile: context.profile)
             try validateCurrent(context.content, connection: connection)
             guard try await controller.profile(connection) == context.profile else { throw VocabularyError.editConflict }
+            try await validateImageTemplate(context.content, connection: connection)
+            guard try await controller.profile(connection) == context.profile else { throw VocabularyError.editConflict }
+            try validateCurrent(context.content, connection: connection)
             let value = try await controller.call("addNote", ["note": .object([
                 "deckName": .string(deck), "modelName": .string(model), "fields": .strings(desired),
                 "options": .object(["allowDuplicate": .bool(model != AnkiReviewPolicy.presetName)]),
@@ -380,7 +400,7 @@ final class AnkiReviewSession: ObservableObject {
         return result
     }
 
-    private func validateCurrent(_ content: ReviewCardContent, connection: AnkiConnection) throws {
+    func validateCurrent(_ content: ReviewCardContent, connection: AnkiConnection) throws {
         let current = try controller.current(entryID: entryID, senseID: senseID)
         guard current.sense.review == baseline, sendScope.map(controller.matches) ?? false,
               try controller.settings.connection() == connection,

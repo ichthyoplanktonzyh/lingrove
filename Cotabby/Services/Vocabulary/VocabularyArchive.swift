@@ -5,13 +5,14 @@ import Foundation
 /// write away from MainActor; cached state advances only after the replacement succeeds. This is
 /// user-triggered work, with no observer, model runtime, or per-keystroke disk activity.
 actor VocabularyArchive {
-    private let url: URL?
+    let url: URL?
+    var images: VocabularyImageStorage
     private var document: VocabularyDocument?
     private var revision: UInt64 = 0
     static let maximumBytes = 64 * 1_024 * 1_024
 
     /// nil is an isolated in-memory notebook for tests; it never probes the user's real archive.
-    init(url: URL?) { self.url = url }
+    init(url: URL?) { self.url = url; images = VocabularyImageStorage(notebook: url) }
 
     func load() throws -> VocabularySnapshot {
         if let document { return .init(revision: revision, document: document) }
@@ -20,7 +21,8 @@ actor VocabularyArchive {
             let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             guard size <= Self.maximumBytes else { throw VocabularyError.oversizedArchive }
             do {
-                loaded = try JSONDecoder().decode(VocabularyDocument.self, from: Data(contentsOf: url))
+                loaded = try JSONDecoder().decode(VocabularyDocument.self,
+                    from: VocabularyImageStorage.boundedRead(url, maximum: Self.maximumBytes))
             } catch { throw VocabularyError.invalidArchive }
             guard loaded.schemaVersion == 3 else { throw VocabularyError.unsupportedVersion }
             try validate(loaded)
@@ -35,7 +37,8 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry) throws -> VocabularySnapshot {
+    func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
+                importedImages: [String: Data] = [:]) throws -> VocabularySnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entry.id }) else { throw VocabularyError.invalidContent }
         let original = next.entries[index]
@@ -52,7 +55,7 @@ actor VocabularyArchive {
         merged.senses = try mergeSenses(baseline: baseline.senses, current: original.senses, edited: entry.senses)
         merged.updatedAt = Date()
         next.entries[index] = merged
-        return try commit(next)
+        return try commitWithImages(next, supplied: importedImages)
     }
 
     /// A sheet edits one sense while cards may append another. Merge by stable IDs and fields;
@@ -81,6 +84,7 @@ actor VocabularyArchive {
                 value.meaningOrigin == .user && before.meaningOrigin != .user { merged.meaningOrigin = .user }
             merged.note = try merge(before.note, live.note, value.note)
             merged.tags = try merge(before.tags, live.tags, value.tags)
+            merged.content = try merge(before.content, live.content, value.content)
             merged.examples = try mergeExamples(baseline: before.examples, current: live.examples, edited: value.examples)
             merged.updatedAt = Date()
             result[index] = merged
@@ -153,7 +157,7 @@ actor VocabularyArchive {
         // captured identity can disappear; annotated identities require an explicit delete.
         let value = next.entries[index].senses[sense]
         if value.examples.isEmpty, !value.isSavedWithoutContext, value.note.isEmpty, value.tags.isEmpty,
-           value.meaningOrigin != .user, value.mergedFrom.isEmpty, value.review == nil {
+           value.meaningOrigin != .user, value.mergedFrom.isEmpty, value.review == nil, (value.content ?? []).isEmpty {
             next.entries[index].senses.remove(at: sense)
         }
         if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
@@ -221,9 +225,9 @@ actor VocabularyArchive {
     }
 
     func export(to destination: URL) throws {
-        guard destination.standardizedFileURL != url?.standardizedFileURL else { throw VocabularyError.invalidContent }
+        try validateBackupDestination(destination)
         let data = try Self.encoded(load().document)
-        try data.write(to: destination, options: .atomic)
+        try writeAtomically(data, to: destination)
     }
 
     func saveExplanation(_ record: LearningExplanationRecord) throws -> VocabularySnapshot {
@@ -235,7 +239,7 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    private func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
+    func commit(_ document: VocabularyDocument) throws -> VocabularySnapshot {
         var next = document
         // Explanation snapshots remain attached to their exact current input. A moved usage
         // retains them intact; editing its text cannot relabel an old answer as a current one.
@@ -264,14 +268,17 @@ actor VocabularyArchive {
                 attributes: [.posixPermissions: 0o700])
             try writeAtomically(data, to: url)
         }
+        let previousImages = Self.imageReferences(self.document ?? VocabularyDocument())
+        let retained = Set(Self.imageReferences(next).map(\.filename))
         self.document = next
         revision &+= 1
+        for image in previousImages where !retained.contains(image.filename) { images.remove(image) }
         return .init(revision: revision, document: next)
     }
 
     /// Validate the whole ownership graph on load and every write. UUID uniqueness includes
     /// retired aliases, preventing a later merge or edit from giving one identity two owners.
-    private func validate(_ document: VocabularyDocument) throws {
+    func validate(_ document: VocabularyDocument) throws {
         guard document.schemaVersion == 3,
               Set(document.entries.map(VocabularyPolicy.entryKey)).count == document.entries.count else {
             throw VocabularyError.invalidArchive
@@ -284,6 +291,8 @@ actor VocabularyArchive {
             guard Set(entry.examples.map { VocabularyPolicy.exampleKey($0) }).count == entry.examples.count,
                   entry.senses.filter(\.isSavedWithoutContext).count <= 1 else { throw VocabularyError.invalidArchive }
             for sense in entry.senses {
+                try VocabularyContentPolicy.validate(sense.content ?? [])
+                try validateBlockIdentities(sense.content ?? [], ids: &ids)
                 if let review = sense.review { try validateReview(review) }
                 let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: nil))
                 guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
@@ -345,7 +354,7 @@ actor VocabularyArchive {
     /// Stage with owner-only permissions, synchronize and atomically rename within the same
     /// directory. No fallible operation follows the commit, so UI and disk cannot disagree after
     /// a successful rename. The actor is the sole in-process writer for this file.
-    private func writeAtomically(_ data: Data, to url: URL) throws {
+    func writeAtomically(_ data: Data, to url: URL) throws {
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".notebook-" + UUID().uuidString)
         let descriptor = Darwin.open(temporary.path, O_WRONLY | O_CREAT | O_EXCL, mode_t(0o600))
         guard descriptor >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }

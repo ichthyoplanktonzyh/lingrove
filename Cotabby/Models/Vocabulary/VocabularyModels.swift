@@ -42,6 +42,7 @@ nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     var mergedFrom: [UUID] = []
     /// Optional so existing v3 notebooks decode without a migration or a library reset.
     var review: VocabularyReview?
+    var content: [VocabularyContentBlock]?
     let createdAt: Date
     var updatedAt: Date
 }
@@ -113,8 +114,8 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var senseID: UUID?
 }
 
-/// Versioned JSON is also the lossless backup format. Unknown versions fail closed instead of
-/// silently replacing a newer notebook with an empty archive.
+/// Versioned JSON holds metadata and media references. VocabularyBackup adds the referenced
+/// bytes for portable recovery. Unknown versions fail closed instead of replacing a notebook.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var schemaVersion = 3
     var entries: [VocabularyEntry] = []

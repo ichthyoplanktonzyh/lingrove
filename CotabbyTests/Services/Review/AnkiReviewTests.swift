@@ -22,6 +22,11 @@ actor ReviewFakeAnki: AnkiConnecting {
     var templates = AnkiNoteTemplate.templates
     var css = AnkiNoteTemplate.css
     var media: [String: Data] = [:]
+    var profileAfterMedia: String?
+    var templateReadCount = 0
+    var profileAtTemplateRead: Int?
+    func switchProfileOnSecondTemplateRead() { templateReadCount = 0; profileAtTemplateRead = 2 }
+    func switchProfileAfterNextMedia(_ name: String) { profileAfterMedia = name }
     var failNextAdd = false
     var navigationDeck: String?
     var profileAfterMetadata: String?
@@ -83,7 +88,10 @@ actor ReviewFakeAnki: AnkiConnecting {
             guard let note = params["note"]?.object, let id = note["id"]?.integer else { return .null }
             for (key, value) in note["fields"]?.object ?? [:] { notes[id]?[key] = value.string }
             updateCount += 1; return .null
-        case "modelTemplates": return .object(templates)
+        case "modelTemplates":
+            templateReadCount += 1
+            if templateReadCount == profileAtTemplateRead { profileName = "Changed profile" }
+            return .object(templates)
         case "modelStyling": return .object(["css": .string(css)])
         case "modelFieldAdd":
             let model = params["modelName"]?.string ?? ""
@@ -95,6 +103,7 @@ actor ReviewFakeAnki: AnkiConnecting {
         case "storeMediaFile":
             let filename = params["filename"]?.string ?? ""
             media[filename] = Data(base64Encoded: params["data"]?.string ?? "")
+            if let profileAfterMedia { profileName = profileAfterMedia; self.profileAfterMedia = nil }
             return .string(filename)
         case "getMediaFilesNames": return .list(media.keys.filter { $0 == params["pattern"]?.string })
         case "findCards": return .array([.number(10)])
@@ -111,7 +120,7 @@ actor ReviewFakeAnki: AnkiConnecting {
 struct AnkiReviewTests {
     // Four shared fixture dependencies keep each transaction test focused on observable effects.
     // swiftlint:disable:next large_tuple
-    private func fixture(url: URL? = nil, speech: (any SpeechExporting)? = nil) async throws -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) {
+    func fixture(url: URL? = nil, speech: (any SpeechExporting)? = nil) async throws -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) {
         let name = "test.anki-review." + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
         let store = VocabularyStore(archive: VocabularyArchive(url: url))
@@ -125,7 +134,7 @@ struct AnkiReviewTests {
         let settings = AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil))
         return (AnkiReviewController(settings: settings, store: store, client: fake, speech: speech, activateAnki: {}), fake, defaults, name)
     }
-    private func session(_ controller: AnkiReviewController, index: Int = 0) throws -> AnkiReviewSession {
+    func session(_ controller: AnkiReviewController, index: Int = 0) throws -> AnkiReviewSession {
         let entry = try #require(controller.store.entries.first)
         return AnkiReviewSession(controller: controller, entry: entry, sense: entry.senses[index])
     }

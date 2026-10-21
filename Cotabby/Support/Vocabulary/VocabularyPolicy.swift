@@ -110,6 +110,12 @@ nonisolated enum VocabularyPolicy {
         var fields = [entry.expression, entry.dictionaryForm]
         for sense in entry.senses {
             fields += [sense.meaning, sense.note] + sense.tags + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
+            fields += (sense.content ?? []).map { block in
+                switch block.content {
+                case let .text(value): value.text
+                case let .image(_, caption): caption
+                }
+            }
             for example in sense.examples {
                 fields += [example.text, example.translation, example.meaning]
                 fields += example.translationVariants.map(\.text)

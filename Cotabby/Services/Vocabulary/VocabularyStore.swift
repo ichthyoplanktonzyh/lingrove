@@ -10,6 +10,7 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var pending: Set<String> = []
     @Published private(set) var isLoaded = false
+    @Published private(set) var mediaRevision = UUID()
     @Published var errorMessage: String?
     var openSelection: ((VocabularySelection?) -> Void)?
     /// Composition supplies cached annotations only; saving a favorite never starts a model.
@@ -135,8 +136,19 @@ final class VocabularyStore: ObservableObject {
         await change(capture) { try await self.archive.remove(capture) }
     }
 
-    func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry) async -> Bool {
-        do { apply(try await archive.update(entry, basedOn: baseline)); return true } catch { report(error); return false }
+    func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry, importedImages: [String: Data] = [:]) async -> Bool {
+        do {
+            apply(try await archive.update(entry, basedOn: baseline, importedImages: importedImages)); return true
+        } catch { report(error); return false }
+    }
+
+    func prepareImage(_ data: Data) async throws -> VocabularyPreparedImage { try await archive.prepareImage(data) }
+    func prepareImage(at url: URL) async throws -> VocabularyPreparedImage { try await archive.prepareImage(at: url) }
+    func image(_ reference: VocabularyImageReference) async -> Data? { try? await archive.image(reference) }
+
+    func backup(to url: URL) async { do { try await archive.backup(to: url) } catch { report(error) } }
+    func restore(from url: URL) async {
+        do { apply(try await archive.restore(from: url)); mediaRevision = UUID() } catch { report(error) }
     }
 
     func remove(id: UUID) async -> Bool {

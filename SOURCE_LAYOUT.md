@@ -418,6 +418,25 @@ host from real user data, and keeps Dev/production archives in separate support 
 The v3 file is `Vocabulary/notebook-v3.json`; the retired `notebook.json` is not loaded or rewritten.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
 
+`VocabularyContentModels` adds optional, ordered text/image blocks to a sense. The existing
+`meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
+validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
+the archive actor, normalizes imports to bounded PNGs, and keeps hash-named files in
+`notebook-v3.json.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
+before the atomic JSON commit, rolls back new files on failure, and retires unreferenced images
+only after commit. `VocabularyContentEditor` and `VocabularyContentView` share the native editor
+and read-only presentation; no inference or new provider is involved.
+
+`VocabularyArchive+Media` owns portable `.lingrove` backups (versioned JSON envelope containing the
+document and referenced image bytes) and explicit replacement restore. JSON data export contains
+references only. Restore validates the entire package, preserves sense/Anki identities, and can
+repair corrupt media using verified backup bytes. `ReviewPlan.includeSenseContent` is optional:
+existing plans retain their previous fields, while new plans include sense explanations. Generated
+image markup travels in the mapped Meaning/answer field, only after `AnkiReviewSession+Images`
+uploads media to the verified Anki profile. The preview uses that same markup and local resources.
+Legacy preset gap fronts require an explicit template upgrade before including sense content.
+Arbitrary HTML and animated blocks are deferred.
+
 ## Contextual AI explanation
 
 `Models/LanguageLearning/LearningExplanationModels.swift` freezes the chosen text and exact
