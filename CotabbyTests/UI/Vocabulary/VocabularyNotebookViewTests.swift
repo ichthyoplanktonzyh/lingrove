@@ -7,6 +7,22 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyNotebookViewTests {
+    @Test func ordinaryLibraryCommandInstallsAndRetainsTheHostedRoot() throws {
+        let suite = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        let controller = VocabularyWindowController(store: store, speech: speech,
+            dictionaryProvider: LearningLexiconService(resourceURL: nil),
+            dictionarySettings: LearningDictionarySettings(defaults: defaults), preferences: defaults)
+        controller.show()
+        defer { controller.close() }
+        let host = try #require(controller.window?.contentView as? NSHostingView<VocabularyNotebookView>)
+        controller.show()
+        #expect(controller.window?.contentView === host)
+    }
+
     @Test func savingAnExplanationKeepsTheBrowsedEntrySelected() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         for text in ["The bank opens early.", "We walked along the bank."] {
@@ -21,7 +37,7 @@ struct VocabularyNotebookViewTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
-            selectedID: initial.id, learning: learning))
+            selectedID: initial.id, learning: learning, preferences: defaults))
         let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 940, height: 640),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host
@@ -65,7 +81,7 @@ struct VocabularyNotebookViewTests {
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
         let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
-            selectedID: entry.id, selectedSenseID: entry.senses[0].id, learning: learning))
+            selectedID: entry.id, selectedSenseID: entry.senses[0].id, learning: learning, preferences: defaults))
         let window = NSWindow(contentRect: .init(x: 120, y: 160, width: 1040, height: 720),
             styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host
@@ -75,7 +91,8 @@ struct VocabularyNotebookViewTests {
         try await Task.sleep(for: .milliseconds(250))
         #expect(learning.senseID == entry.senses[0].id)
         #expect(entry.senses.count == 3 && store.entries[0].examples.count == 3)
-        try await Task.sleep(for: .seconds(45))
+        let duration = Int(ProcessInfo.processInfo.environment["COTABBY_UI_REVIEW_SECONDS"] ?? "45") ?? 45
+        try await Task.sleep(for: .seconds(min(240, max(1, duration))))
     }
 
     private func tableView(in view: NSView) -> NSTableView? {
@@ -105,7 +122,8 @@ struct VocabularyNotebookViewTests {
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
-        let view = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, selectedID: entry.id))
+        let view = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+            selectedID: entry.id, preferences: defaults))
         window.contentView = view
         window.orderFrontRegardless()
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); view.layoutSubtreeIfNeeded() }
