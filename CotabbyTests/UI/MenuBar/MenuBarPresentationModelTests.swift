@@ -51,6 +51,7 @@ struct MenuBarPresentationModelTests {
         #expect(model.displayedTask == .completion && model.pageVisible)
     }
 
+    @MainActor
     private struct Fixture {
         let name = "MenuTransition-" + UUID().uuidString
         let defaults: UserDefaults
