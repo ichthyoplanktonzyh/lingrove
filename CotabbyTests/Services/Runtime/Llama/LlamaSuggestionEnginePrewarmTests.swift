@@ -79,7 +79,7 @@ private final class RecordingPrewarmRuntime: LlamaRuntimeGenerating {
         return try generateResult.get()
     }
 
-    func resetPromptCache() {}
+    func resetPromptCache() async {}
 
     func prefill(prompt: String, cachedPrefixBytes: Int?, options: LlamaGenerationOptions) async throws {
         if let prefillError {

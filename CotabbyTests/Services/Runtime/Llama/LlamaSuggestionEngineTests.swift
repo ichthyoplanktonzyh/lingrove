@@ -116,7 +116,7 @@ private final class RecordingRuntime: LlamaRuntimeGenerating {
         return .text(" ok")
     }
 
-    func resetPromptCache() {
+    func resetPromptCache() async {
         resetCount += 1
     }
 

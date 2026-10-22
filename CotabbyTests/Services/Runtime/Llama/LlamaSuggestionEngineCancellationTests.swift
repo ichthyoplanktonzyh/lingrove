@@ -157,7 +157,7 @@ private final class FakeLlamaRuntime: LlamaRuntimeGenerating {
         try generateResult.get()
     }
 
-    func resetPromptCache() {
+    func resetPromptCache() async {
         resetCount += 1
     }
 }

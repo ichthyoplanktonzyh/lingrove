@@ -173,7 +173,8 @@ protocol LlamaRuntimeGenerating: AnyObject {
         options: LlamaGenerationOptions,
         onPartialRawText: (@Sendable (String) -> Void)?
     ) async throws -> LlamaGenerationOutput
-    func resetPromptCache()
+    /// May wait for native work; callers suspend rather than park the main actor.
+    func resetPromptCache() async
     /// Decodes `prompt` into the native prompt cache without sampling any tokens, so the next
     /// `generate` whose prompt extends this one only decodes the typed delta. Best-effort warmup:
     /// callers treat failures as "no cache primed", never as a user-facing error.

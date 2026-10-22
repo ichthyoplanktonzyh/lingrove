@@ -83,5 +83,5 @@ private final class StreamingFakeRuntime: LlamaRuntimeGenerating {
         return .text(finalText)
     }
 
-    func resetPromptCache() {}
+    func resetPromptCache() async {}
 }
