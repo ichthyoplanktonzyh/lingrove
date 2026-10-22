@@ -17,17 +17,20 @@ struct WelcomeTemplateStepView: View {
     let hardware: HardwareCapability
     let selectedEngine: SuggestionEngineKind
     @Binding var selectedTemplate: OnboardingTemplate?
+    var showsHeader = true
     let onSelectEngine: (SuggestionEngineKind) -> Void
     let onSelect: (OnboardingTemplate) -> Void
 
     var body: some View {
         VStack(spacing: 24) {
+            if showsHeader {
             OnboardingStepHeader(
                 systemImage: "wand.and.stars",
                 title: String(localized: "Choose a starting point"),
                 subtitle: String(localized: "Pick one to get set up. You can fine-tune everything later in Settings.")
             )
             .onboardingReveal(0)
+            }
 
             engineSelector
                 .onboardingReveal(1)

@@ -10,28 +10,37 @@ import SwiftUI
 /// writing through `SuggestionSettingsModel`; this view only supplies onboarding's card framing.
 struct WelcomePersonalizeStepView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
+    @ObservedObject var learning: LanguageLearningSettings
 
     var body: some View {
         VStack(spacing: 24) {
             OnboardingStepHeader(
                 systemImage: "person.crop.circle.fill",
-                title: String(localized: "Make it yours"),
-                subtitle: String(localized: "Lingrove writes in your languages and can address you by name.", table: "Learning")
+                title: String(localized: "Languages"),
+                subtitle: String(localized: "Choose the languages for writing, translation, and explanation.", table: "Learning")
             )
             .onboardingReveal(0)
 
             VStack(spacing: 12) {
-                personalizeCard(icon: "textformat", title: String(localized: "Your name"), index: 1) {
+                personalizeCard(icon: "globe", title: String(localized: "Autocomplete"), index: 1) {
+                    LanguageTagsEditor(suggestionSettings: suggestionSettings, showsTitleHeader: false, collapsesSuggestions: true)
+                }
+                personalizeCard(icon: "character.bubble", title: String(localized: "Language Learning", table: "Learning"), index: 2) {
+                    languagePicker(String(localized: "Writing translation", table: "Learning"), selection: $learning.targetLanguage)
+                    languagePicker(String(localized: "Reading target language", table: "Learning"),
+                        selection: $learning.readingTargetLanguage)
+                    Picker(String(localized: "Explanation language", table: "Learning"), selection: $learning.explanationLanguage) {
+                        Text(String(localized: "Interface language", table: "Learning")).tag(nil as LearningLanguage?)
+                        ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
+                    }.pickerStyle(.menu)
+                }
+                personalizeCard(icon: "textformat", title: String(localized: "Your name"), index: 3) {
                     TextField(String(localized: "What should Lingrove call you? (Optional)", table: "Learning"), text: Binding(
                         get: { suggestionSettings.userName },
                         set: { suggestionSettings.setUserName($0) }
                     ))
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.large)
-                }
-
-                personalizeCard(icon: "globe", title: String(localized: "Languages"), index: 2) {
-                    LanguageTagsEditor(suggestionSettings: suggestionSettings, showsTitleHeader: false)
                 }
 
                 if CustomRulesCatalog.isUserFacingEnabled {
@@ -41,6 +50,12 @@ struct WelcomePersonalizeStepView: View {
                 }
             }
         }
+    }
+
+    private func languagePicker(_ title: String, selection: Binding<LearningLanguage>) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
+        }.pickerStyle(.menu)
     }
 
     private func personalizeCard(

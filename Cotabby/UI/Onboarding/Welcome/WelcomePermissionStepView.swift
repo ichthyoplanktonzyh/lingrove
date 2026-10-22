@@ -18,7 +18,7 @@ struct WelcomePermissionStepView: View {
 
     let permissionGuidanceController: PermissionGuidanceController
 
-    /// Permissions that block core autocomplete; the user must grant these to continue.
+    /// These permissions gate autocomplete itself, while setup can continue without granting them.
     private var requiredPermissions: [CotabbyPermissionKind] {
         CotabbyPermissionKind.allCases.filter(\.isRequiredForAutocomplete)
     }
@@ -33,11 +33,10 @@ struct WelcomePermissionStepView: View {
         VStack(spacing: 24) {
             OnboardingStepHeader(
                 systemImage: "lock.shield.fill",
-                title: String(localized: "Two quick permissions"),
-                subtitle: String(localized: """
-                Lingrove needs to read the field you're typing in and watch for the accept key.\nThe optional one unlocks smarter, \
-                screen-aware suggestions.
-                """, table: "Learning")
+                title: String(localized: "Permissions"),
+                subtitle: String(
+                    localized: "Enable text access, global shortcuts, and optional screen OCR. You can set these up later.",
+                    table: "Learning")
             )
             .onboardingReveal(0)
 
@@ -119,6 +118,14 @@ private struct PermissionCard: View {
 
     @State private var actionButtonFrame = CGRect.zero
 
+    private var subtitle: String {
+        switch permission {
+        case .accessibility: String(localized: "Read focused text and selections; insert completions and translations.", table: "Learning")
+        case .inputMonitoring: String(localized: "Detect typing and global completion and learning shortcuts.", table: "Learning")
+        case .screenRecording: String(localized: "Optional: screen context and OCR translation.")
+        }
+    }
+
     var body: some View {
         HStack(spacing: 14) {
             OnboardingIconTile(systemImage: permission.systemImageName, tint: permission.onboardingTint)
@@ -138,7 +145,7 @@ private struct PermissionCard: View {
                     }
                 }
 
-                Text(permission.onboardingSubtitle)
+                Text(subtitle)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }

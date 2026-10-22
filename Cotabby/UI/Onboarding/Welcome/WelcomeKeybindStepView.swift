@@ -1,82 +1,48 @@
 import SwiftUI
 
-/// Onboarding demonstrates the current accept gesture without owning a second shortcut editor.
-/// The app-owned settings model supplies these read-only keycaps; every binding is edited in the
-/// central Shortcuts pane, so onboarding and later settings cannot drift into different flows.
+/// Setup reads the same durable bindings as the guide. Editors remain in the central Shortcuts
+/// pane; this window only selects which product area to introduce and routes each row there.
 struct WelcomeKeybindStepView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
+    @ObservedObject var learning: LanguageLearningSettings
+    @ObservedObject var vocabulary: VocabularyShortcutSettings
+    let open: (SettingsItem) -> Void
+    @State private var area = ProductFeatureArea.completion
 
     var body: some View {
-        VStack(spacing: 24) {
-            OnboardingKeycapHero(label: suggestionSettings.acceptanceKeyLabel)
-                .onboardingReveal(0)
-
-            VStack(spacing: 8) {
-                Text("Learn your keys")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-
-                Text("Accept suggestions without leaving the keyboard.\nYou can change these anytime in Settings.")
-                    .font(.system(size: 14, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .onboardingReveal(1)
-
-            VStack(spacing: 10) {
-                keybindRow(title: String(localized: "Accept word"), keyLabel: suggestionSettings.acceptanceKeyLabel)
-                    .onboardingReveal(2)
-                keybindRow(title: String(localized: "Accept entire suggestion"), keyLabel: suggestionSettings.fullAcceptanceDisplayLabel)
-                    .onboardingReveal(3)
-                keybindRow(title: String(localized: "Toggle Lingrove", table: "Learning"), keyLabel: suggestionSettings.globalToggleKeyLabel)
-                    .onboardingReveal(4)
-            }
-            .frame(maxWidth: 480)
+        VStack(spacing: 20) {
+            OnboardingStepHeader(systemImage: "keyboard", title: String(localized: "Shortcuts"),
+                subtitle: String(localized: "View your current keys. Edit them in Shortcuts settings.", table: "Learning"))
+            Picker(String(localized: "Shortcuts"), selection: $area) {
+                ForEach(ProductFeatureArea.allCases) { Text($0.label).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("welcomeShortcutArea")
+            VStack(spacing: 14) {
+                if area == .completion {
+                    row(.acceptWord, key: suggestionSettings.acceptanceKeyCode, label: suggestionSettings.acceptanceKeyLabel)
+                    CurrentShortcutRow(title: SettingsItem.acceptEntireSuggestion.title,
+                        isBound: suggestionSettings.hasFullAcceptanceShortcut, label: suggestionSettings.fullAcceptanceDisplayLabel) {
+                            open(.acceptEntireSuggestion)
+                        }
+                    row(.toggleTabby, key: suggestionSettings.globalToggleKeyCode, label: suggestionSettings.globalToggleKeyLabel)
+                } else {
+                    row(.replacementTranslationShortcut, key: learning.replacementKeyCode, label: learning.replacementKeyLabel)
+                    row(.translationDetailsShortcut, key: learning.keyCode, label: learning.keyLabel)
+                    ForEach(LearningReadingSource.allCases, id: \.rawValue) { source in
+                        let binding = learning.readingBinding(source)
+                        row(source == .selection ? .selectionTranslationShortcut
+                            : source == .pointer ? .pointerTranslationShortcut : .screenshotTranslationShortcut,
+                            key: binding.key, label: binding.label)
+                    }
+                    ForEach(VocabularyShortcutSettings.Command.allCases, id: \.rawValue) { command in
+                        let binding = vocabulary.binding(command)
+                        row(command == .save ? .saveVocabularyShortcut : .openVocabularyShortcut,
+                            key: binding.key, label: binding.label)
+                    }
+                }
+            }.padding(18).onboardingCard()
         }
     }
-
-    private func keybindRow(title: String, keyLabel: String) -> some View {
-        HStack(spacing: 10) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            KeycapView(label: keyLabel)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .onboardingCard(cornerRadius: 12)
-    }
-}
-
-/// `.task` loop; Reduce Motion holds the key at rest.
-private struct OnboardingKeycapHero: View {
-    let label: String
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pressed = false
-
-    var body: some View {
-        KeycapView(label: label, fontSize: 17, minWidth: 84)
-            .scaleEffect(pressed ? 0.96 : 1.0)
-            .offset(y: pressed ? 2 : 0)
-            .shadow(
-                color: CotabbyBrand.accent.opacity(pressed ? 0.1 : 0.25),
-                radius: pressed ? 6 : 14,
-                y: pressed ? 2 : 6
-            )
-            .task(id: reduceMotion) {
-                guard !reduceMotion else {
-                    pressed = false
-                    return
-                }
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 2_300_000_000)
-                    if Task.isCancelled { return }
-                    withAnimation(.easeIn(duration: 0.1)) { pressed = true }
-                    try? await Task.sleep(nanoseconds: 160_000_000)
-                    if Task.isCancelled { return }
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.55)) { pressed = false }
-                }
-            }
-            .accessibilityHidden(true)
+    private func row(_ item: SettingsItem, key: UInt16, label: String) -> some View {
+        CurrentShortcutRow(title: item.title, isBound: key != .max, label: label) { open(item) }
     }
 }
