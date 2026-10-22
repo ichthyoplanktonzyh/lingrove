@@ -25,7 +25,8 @@ enum MenuBarSettingsDestination {
     case model(SettingsEngineTask)
 }
 
-/// Both menu pages can grow, especially with learning disclosures or missing permissions.
+/// Learning content can grow with disclosures or missing permissions; completion does not use
+/// this container, retaining its original natural layout.
 /// Measure the scrolling document independently of its viewport: short pages keep their native
 /// height, while tall pages scroll without pushing the permanent footer off a small display.
 struct MenuBarContentViewport<Content: View>: View {
@@ -55,17 +56,6 @@ struct MenuBarContentViewport<Content: View>: View {
 private struct MenuBarContentHeight: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
-}
-
-/// Shares completion's native switch style with learning. Expanding the label, rather than
-/// drawing a custom switch, aligns the trailing controls even when titles have different lengths.
-struct MenuBarToggleRow: View {
-    let title: String
-    @Binding var isOn: Bool
-    var body: some View {
-        Toggle(isOn: $isOn) { Text(title).frame(maxWidth: .infinity, alignment: .leading) }
-            .toggleStyle(.switch).controlSize(.small)
-    }
 }
 
 /// Compact labeled row for menu-bar pickers. Keeps label width consistent across

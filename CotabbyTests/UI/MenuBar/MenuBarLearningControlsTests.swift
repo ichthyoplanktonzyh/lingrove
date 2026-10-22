@@ -20,7 +20,7 @@ struct MenuBarLearningControlsTests {
         let provider = MenuSilentSpeaker()
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults), provider: provider)
         let host = NSHostingView(rootView: MenuBarContentViewport(maximumHeight: 300) {
-            MenuBarLearningControls(settings: settings, speech: speech, screenRecordingGranted: false, open: { _ in })
+            MenuBarLearningControls(settings: settings, speech: speech, screenRecordingGranted: false, open: { _ in }, review: {})
         }.padding(16).frame(width: 340))
         let window = makeWindow(host)
         defer { speech.stop(); window.close() }
