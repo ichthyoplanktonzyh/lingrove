@@ -367,30 +367,34 @@ struct HomePaneView: View {
                 caption: String(localized: "Jump straight to the controls you reach for most.")
             )
 
-            Text(String(localized: "Common settings", table: "Learning"))
-                .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
-            // Two columns at the default window width: three fit, but the captions truncate,
-            // and a quick link whose caption is cut loses the point of having one.
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 260), spacing: 12)],
-                spacing: 12
-            ) {
-                ForEach(Self.quickLinkCategories) { category in
-                    SettingsQuickLinkCard(category: category) {
-                        navigation.open(category)
+            // The groups share one horizontal row. Each retains a vertical reading order and
+            // its own heading, while equal widths keep their existing cards aligned side by side.
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(String(localized: "Common settings", table: "Learning"))
+                        .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    ForEach(Self.quickLinkCategories) { category in
+                        SettingsQuickLinkCard(category: category) {
+                            navigation.open(category)
+                        }
                     }
                 }
-            }
-            Text(String(localized: "Language Learning", table: "Learning"))
-                .font(.subheadline.weight(.medium)).foregroundStyle(.secondary).padding(.top, 6)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], spacing: 12) {
-                ForEach(SettingsLearningTask.allCases) { task in
-                    SettingsQuickLinkCard(title: task.label, caption: task.quickLinkCaption,
-                        systemImage: task.quickLinkSymbol, tint: SettingsCategory.languageLearning.tint) {
-                        navigation.openLearningTask(task)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .accessibilityElement(children: .contain)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(String(localized: "Language Learning", table: "Learning"))
+                        .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    ForEach(SettingsLearningTask.allCases) { task in
+                        SettingsQuickLinkCard(title: task.label, caption: task.quickLinkCaption,
+                            systemImage: task.quickLinkSymbol, tint: SettingsCategory.languageLearning.tint) {
+                            navigation.openLearningTask(task)
+                        }
+                        .accessibilityIdentifier("homeLearning." + task.rawValue)
                     }
-                    .accessibilityIdentifier("homeLearning." + task.rawValue)
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .accessibilityElement(children: .contain)
             }
         }
     }

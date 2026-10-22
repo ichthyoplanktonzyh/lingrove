@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// File overview:
-/// One Home quick-link card: an icon tile, a title, a one-line caption, and a chevron that walks
+/// One Home quick-link card: an icon tile, a title, a compact caption, and a chevron that walks
 /// in on hover. The whole card is a button that opens its pane. Hover lift is kept subtle (a
 /// hairline tint and a 1pt rise, no scaling) so a grid stays calm as new destinations are added.
 struct SettingsQuickLinkCard: View {
@@ -31,13 +31,15 @@ struct SettingsQuickLinkCard: View {
                     Text(title)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
+                        .lineLimit(1)
                     Text(caption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        // Equal caption space keeps adjacent cards aligned when only one
+                        // description wraps in the two-column layout or another language.
+                        .lineLimit(2, reservesSpace: true)
                 }
-
-                Spacer(minLength: 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
