@@ -60,7 +60,8 @@ struct MenuBarLearningControlsTests {
             modelDownloadManager: downloads, focusModel: FocusTrackingModel(permissionProvider: { false }, ignoredBundleIdentifier: nil),
             permissionGuidanceController: PermissionGuidanceController(permissionManager: permission), suggestionSettings: settings,
             foundationModelAvailabilityService: FoundationModelAvailabilityService(), powerSourceMonitor: PowerSourceMonitor(),
-            speech: speech, appUpdateManager: AppUpdateManager(), onOpenSettings: {}, onReportFeedback: {})
+            speech: speech, appUpdateManager: AppUpdateManager(), onOpenSettings: {}, onReportFeedback: {},
+            presentation: MenuBarPresentationModel(defaults: defaults))
             .defaultAppStorage(defaults))
         let window = makeWindow(host)
         window.title = "Lingrove menu acceptance"

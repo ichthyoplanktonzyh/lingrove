@@ -1,58 +1,21 @@
 import SwiftUI
 
 /// File overview:
-/// Declares the SwiftUI app entry point and hosts the optional menu-bar scene that renders
-/// Cotabby's compact status UI. Shared services are injected through `AppDelegate`.
+/// Declares the SwiftUI app entry point and standard app commands. AppDelegate owns the
+/// native status item/popover and injects the existing services into its hosted SwiftUI pages.
 ///
 /// `@main` marks the single process entry point for a Swift app.
 @main
 struct CotabbyApp: App {
     /// Bridges old-style AppKit lifecycle callbacks into a SwiftUI app.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    /// Scene declarations cannot directly observe the delegate's nested settings object. This
-    /// projection watches the same durable key so SwiftUI re-evaluates status-item insertion as
-    /// soon as Settings changes it; the settings model remains the app-facing preference API.
-    @AppStorage(SuggestionSettingsStore.menuBarIconVisibleDefaultsKey)
-    private var isMenuBarIconVisible = true
-
-    /// Defines the menu bar extra that surfaces Cotabby's runtime, focus, and suggestion state.
+    /// Settings supplies the standard app command scene. The existing SettingsCoordinator owns
+    /// the real settings window; AppDelegate owns the native status item and popover separately.
     var body: some Scene {
-        MenuBarExtra(isInserted: menuBarIconVisibilityBinding) {
-            MenuBarView(
-                permissionManager: appDelegate.permissionManager,
-                runtimeModel: appDelegate.runtimeModel,
-                modelDownloadManager: appDelegate.modelDownloadManager,
-                focusModel: appDelegate.focusModel,
-                permissionGuidanceController: appDelegate.permissionGuidanceController,
-                suggestionSettings: appDelegate.suggestionSettings,
-                foundationModelAvailabilityService: appDelegate.foundationModelAvailabilityService,
-                powerSourceMonitor: appDelegate.powerSourceMonitor,
-                speech: appDelegate.speechController,
-                appUpdateManager: appDelegate.appUpdateManager,
-                onOpenSettings: {
-                    appDelegate.settingsCoordinator.showSettings()
-                },
-                onReportFeedback: {
-                    // Reports belong with this fork's source and releases.
-                    // Attach host details so the landing form can pre-fill the Environment block
-                    // (Cotabby + macOS + hardware) and the user only has to write the actual report.
-                    let url = DeviceInfo.snapshot().appending(to: ProductIdentity.issuesURL)
-                    NSWorkspace.shared.open(url)
-                },
-                onOpenVocabulary: { appDelegate.vocabularyWindow.show() },
-                onOpenReview: { Task { await appDelegate.reviewController.openReviewFromMenu() } },
-                onOpenDestination: { appDelegate.settingsCoordinator.showSettings(at: $0) }
-            )
-        } label: {
-            MenuBarStatusLabelView(
-                suggestionCoordinator: appDelegate.suggestionCoordinator,
-                suggestionSettings: appDelegate.suggestionSettings
-            )
-        }
-        .menuBarExtraStyle(.window)
+        Settings { EmptyView() }
         .commands {
-            // MenuBarExtra does not create a Settings scene, so install the standard app-menu
-            // command here and send it to the same coordinator used by the status-item menu.
+            // Route the standard command to the same app-owned Settings window as the status item;
+            // the command scene must not create a second set of settings or services.
             CommandGroup(replacing: .appSettings) {
                 Button(String(localized: "Settings") + "…") {
                     appDelegate.settingsCoordinator.showSettings()
@@ -65,17 +28,5 @@ struct CotabbyApp: App {
                 }
             }
         }
-    }
-
-    /// SwiftUI owns insertion/removal of the status item, while the settings model remains the
-    /// single durable source of truth. The setter writes only through the model; `@AppStorage`
-    /// observes the same `UserDefaults` key, so the getter and the scene re-evaluate off that one
-    /// write instead of persisting the value twice (which could drift if model-side validation is
-    /// ever added).
-    private var menuBarIconVisibilityBinding: Binding<Bool> {
-        Binding(
-            get: { isMenuBarIconVisible },
-            set: { appDelegate.suggestionSettings.setMenuBarIconVisible($0) }
-        )
     }
 }

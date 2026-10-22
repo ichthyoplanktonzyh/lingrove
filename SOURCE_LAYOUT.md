@@ -600,6 +600,18 @@ content; review is an action on that page, while the original vocabulary/setting
 `SettingsNavigationModel` and the existing `SettingsCoordinator`, after popover dismissal.
 Learning rows read saved model profiles without additional model discovery, voice enumeration or
 generation; the existing menu presentation refresh still updates completion model availability.
+`AppDelegate` retains one `MenuBarController` (Services/Presentation), which owns NSStatusItem,
+NSPopover and a stable NSHostingController child. SwiftUI no longer owns a MenuBarExtra scene.
+`MenuBarPresentationModel` keeps selected/displayed page state and cancels superseded fades;
+measured layouts carry their page identity so outgoing reports cannot resize the new page.
+Only the menu controller changes `popover.contentSize`. Its parent viewport clips the top-anchored
+hosting child while native resizing occurs, keeping controls at their natural size. The native
+popover owns background, border, placement, shadow and outside-click dismissal. Header/picker
+stay mounted; only the page body fades. Reduce Motion disables both fades and native animation.
+A dedicated completion toggle calls the existing completion setting without disabling learning.
+Late geometry is rejected during closing, including while AppKit is still animating dismissal.
+The existing status label and settings bindings remain shared; status visibility, opening refresh,
+settings/vocabulary routing and lifecycle cleanup now pass through the native controller.
 
 ## Vocabulary Graph
 

@@ -5,18 +5,6 @@ import SwiftUI
 /// Small, focused components used by the menu-bar panel.
 /// These stay purely presentational; app-owned settings and controllers retain behavior.
 
-/// Only the visible menu page is persisted. This never enables a feature or loads a model.
-enum MenuBarTask: String, CaseIterable, Identifiable, Hashable {
-    case completion, learning
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .completion: String(localized: "Autocomplete")
-        case .learning: String(localized: "Language Learning", table: "Learning")
-        }
-    }
-}
-
 /// Menu actions describe their destination; the app's one SettingsCoordinator performs the
 /// navigation after the popover has closed, retaining the same window and settings instances.
 enum MenuBarSettingsDestination {

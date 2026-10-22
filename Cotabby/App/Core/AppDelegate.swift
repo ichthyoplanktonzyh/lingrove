@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import LaunchAtLogin
 import Logging
+import SwiftUI
 
 /// File overview:
 /// Starts the long-lived services that power permissions, focus tracking, suggestion generation,
@@ -33,6 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Menu quick controls borrow the same playback/review owners as learning cards and Settings.
     let speechController: LearningSpeechController
     let reviewController: AnkiReviewController
+
+    /// The delegate retains one native menu owner; its SwiftUI content borrows this same graph.
+    private var menuBarController: MenuBarController?
 
     private let activationIndicatorController: ActivationIndicatorController
     private let focusDebugOverlayController: FocusDebugOverlayController?
@@ -157,12 +161,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     }
 
+    /// Composition stays here: menu actions use the same coordinators as Settings and learning
+    /// cards. The native presentation service does not construct runtimes or observe focus itself.
+    private func startMenuBar() {
+        let presentation = MenuBarPresentationModel()
+        let content = MenuBarView(permissionManager: permissionManager, runtimeModel: runtimeModel,
+            modelDownloadManager: modelDownloadManager, focusModel: focusModel,
+            permissionGuidanceController: permissionGuidanceController, suggestionSettings: suggestionSettings,
+            foundationModelAvailabilityService: foundationModelAvailabilityService, powerSourceMonitor: powerSourceMonitor,
+            speech: speechController, appUpdateManager: appUpdateManager,
+            onOpenSettings: { [weak self] in self?.settingsCoordinator.showSettings() },
+            onReportFeedback: {
+                NSWorkspace.shared.open(DeviceInfo.snapshot().appending(to: ProductIdentity.issuesURL))
+            },
+            onOpenVocabulary: { [weak self] in self?.vocabularyWindow.show() },
+            onOpenReview: { [weak self] in Task { await self?.reviewController.openReviewFromMenu() } },
+            onOpenDestination: { [weak self] in self?.settingsCoordinator.showSettings(at: $0) },
+            presentation: presentation)
+        let controller = MenuBarController(presentation: presentation, content: AnyView(content),
+            statusLabel: AnyView(MenuBarStatusLabelView(suggestionCoordinator: suggestionCoordinator,
+                suggestionSettings: suggestionSettings))) { [weak self] in
+            self?.permissionManager.refresh()
+            self?.runtimeModel.refreshAvailableModels()
+        }
+        menuBarController = controller
+        suggestionSettings.$isMenuBarIconVisible
+            .sink { [weak controller] visible in controller?.setVisible(visible) }
+            .store(in: &cancellables)
+    }
+
     /// Starts runtime and polling services once AppKit reports that app launch finished.
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !Self.isRunningUnderXCTest else {
             CotabbyLogger.app.info("Unit test host detected; skipping production service startup")
             return
         }
+
+        startMenuBar()
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         Task {
@@ -250,6 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Read-aloud works in Settings even before Accessibility/input services are allowed.
         // Retire its request and playback on every quit path, independently of that startup gate.
+        menuBarController?.shutdown()
         environment.speechController.shutdown()
         guard didStartServices else {
             return
