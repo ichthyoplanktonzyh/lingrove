@@ -53,7 +53,9 @@ struct ProductUsageGuideView: View {
             }
         }
         .padding(20).frame(width: 780, height: 580)
-        .sheet(item: $example) { topic in UsageGuideExample(topic: topic, settings: settings.languageLearning) }
+        .sheet(item: $example) { topic in
+            ProductFeatureExample(title: topic.title, scene: topic.scene, settings: settings.languageLearning)
+        }
         .accessibilityIdentifier("productUsageGuide")
     }
 
@@ -171,7 +173,7 @@ private struct UsageGuideShortcuts: View {
         switch topic {
         case .completion:
             row(.acceptWord, key: settings.acceptanceKeyCode, label: settings.acceptanceKeyLabel)
-            UsageGuideShortcutRow(title: SettingsItem.acceptEntireSuggestion.title,
+            CurrentShortcutRow(title: SettingsItem.acceptEntireSuggestion.title,
                 isBound: settings.hasFullAcceptanceShortcut, label: settings.fullAcceptanceDisplayLabel) {
                     open(.acceptEntireSuggestion)
                 }
@@ -194,49 +196,6 @@ private struct UsageGuideShortcuts: View {
         }
     }
     private func row(_ item: SettingsItem, key: UInt16, label: String) -> some View {
-        UsageGuideShortcutRow(title: item.title, isBound: key != .max, label: label) { open(item) }
-    }
-}
-
-/// An unassigned key is visible as such. Both states lead to the existing central Shortcuts
-/// pane, so the guide never presents a separate shortcut editor or invents a default binding.
-private struct UsageGuideShortcutRow: View {
-    let title: String
-    let isBound: Bool
-    let label: String
-    let open: () -> Void
-    var body: some View {
-        HStack {
-            Text(title).font(.subheadline)
-            Spacer(minLength: 12)
-            Button(action: open) {
-                Text(isBound ? label : String(localized: "Not assigned", table: "Learning")).font(.subheadline.monospaced())
-            }.buttonStyle(.borderless).help(String(localized: "Shortcuts"))
-                .accessibilityLabel(title)
-                .accessibilityValue(isBound ? label : String(localized: "Not assigned", table: "Learning"))
-        }
-    }
-}
-
-/// The example sheet mounts the existing player only after the user requests it. Its scenes,
-/// reviewed material, controls and cancellation stay shared with Home; no second demo engine
-/// or animation loop is introduced for the guide.
-private struct UsageGuideExample: View {
-    let topic: UsageGuideTopic
-    @ObservedObject var settings: LanguageLearningSettings
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text(topic.title).font(.headline)
-                Spacer()
-                Button(String(localized: "Close", table: "Learning")) { dismiss() }.keyboardShortcut(.cancelAction)
-            }
-            if let scene = topic.scene {
-                HomeLearningShowcase(readingSettings: settings, startingScene: scene, autoplayOnHover: false)
-            } else {
-                ScrollView { OnboardingFeatureShowcase(autoplay: false, showsMacroReference: true) }
-            }
-        }.padding(20).frame(width: 640, height: 600)
+        CurrentShortcutRow(title: item.title, isBound: key != .max, label: label) { open(item) }
     }
 }

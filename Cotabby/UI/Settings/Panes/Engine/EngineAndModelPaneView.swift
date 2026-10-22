@@ -7,6 +7,8 @@ import SwiftUI
 /// sheet, while technical options stay in collapsed sibling Form sections. Navigation belongs
 /// to the settings window; all runtime, download and credential services remain app-owned.
 struct EngineAndModelPaneView: View {
+    /// Setup supplies its own task picker while borrowing the same forms and app-owned services.
+    var showsTaskPicker = true
     @ObservedObject var navigation: SettingsNavigationModel
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
@@ -22,6 +24,7 @@ struct EngineAndModelPaneView: View {
     @State var endpointCredentialError: String?
     var body: some View {
         VStack(spacing: 0) {
+            if showsTaskPicker {
             Picker(String(localized: "Model task", table: "Learning"), selection: Binding(
                 get: { navigation.engineTask }, set: navigation.openEngineTask)) {
                 ForEach(SettingsEngineTask.allCases) { task in Text(task.label).tag(task) }
@@ -32,6 +35,7 @@ struct EngineAndModelPaneView: View {
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 4)
+            }
 
             switch navigation.engineTask {
             case .completion:

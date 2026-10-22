@@ -124,12 +124,14 @@ Cotabby/
 └── UI/
     ├── Components/                   application-wide reusable views
     ├── InlineFeatures/               emoji picker and macro reference surfaces
+    ├── Components/CurrentShortcutRow.swift read-only shortcut labels shared by help and setup
     ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes
     ├── Onboarding/
     │   ├── OnboardingDemoCard.swift   shared completion/learning demo chrome with bounded content
     │   ├── LearningFeatureShowcase.swift shared area picker; legacy Welcome illustrations
     │   ├── HomeLearning*.swift       shared Home/guide scenario player; real cards and sessions using fixed local examples
-    │   └── Welcome/                  composed welcome flow and step views
+    │   ├── ProductFeatureExample.swift explicit shared examples for the guide and welcome
+    │   └── Welcome/                  resumable setup with shared task forms, language/shortcut preferences and configuration status
     ├── Overlays/                     SwiftUI overlay content
     └── Settings/
         ├── ProductUsageGuideView.swift window-owned scenario guide, live shortcut labels and explicit shared examples

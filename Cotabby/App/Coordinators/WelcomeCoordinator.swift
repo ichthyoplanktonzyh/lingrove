@@ -22,23 +22,31 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
     private let modelDownloadManager: ModelDownloadManager
     private let suggestionSettings: SuggestionSettingsModel
     private let foundationModelAvailabilityService: FoundationModelAvailabilityService
+    private let learningModels: LearningModelCollection
+    private let speech: LearningSpeechController
+    private let endpointConnection: OpenAICompatibleConnectionModel
+    private let searchService: HuggingFaceSearchService
+    /// Installed once by the composition root after both window owners exist. Weak captures in
+    /// those callbacks keep the windows as siblings rather than making a coordinator retain cycle.
+    var openSettings: (SettingsItem) -> Void = { _ in }
+    var openUsageGuide: () -> Void = {}
+    var openVocabulary: () -> Void = {}
     private let userDefaults: UserDefaults
 
     private var welcomeWindowController: NSWindowController?
     private var permissionReminderWindowController: NSWindowController?
 
-    /// Bump whenever onboarding is revamped enough that users who already finished an older version
-    /// should experience it again. `presentIfNeeded` re-shows the wizard for anyone whose stored
-    /// completed version is below this, and completing the wizard writes this value back.
+    /// Stamp completion for new users without forcing returning users through a refreshed flow.
+    /// Manual reopening always observes their saved configuration rather than applying a preset.
     private static let currentOnboardingVersion = 2
+    private static let deferredPermissionsKey = "cotabbyOnboardingPermissionsDeferred"
 
     /// Stores the onboarding version the user last *completed* (reached "done" and dismissed), not a
-    /// yes/no flag. An absent key reads as `0`, so both brand-new users and users who finished an
-    /// older onboarding fall below `currentOnboardingVersion` and get the current flow exactly once.
+    /// yes/no flag. An absent key reads as `0`, identifying a new or interrupted setup unless the
+    /// older completed boolean is present.
     ///
-    /// Replaces the legacy boolean `cotabbyOnboardingCompleted` key. That key is intentionally not
-    /// migrated: reading it as "version 1 completed" would let upgrading users skip the revamped
-    /// flow, which is the opposite of what a version bump is for.
+    /// The older completed boolean is also respected. Merely having shown a welcome window is
+    /// not completion, so the legacy presentation-only flag never bypasses an interrupted setup.
     private static let onboardingCompletedVersionKey = "cotabbyOnboardingCompletedVersion"
 
     /// Furthest onboarding step the user has reached, stored as the step's raw index. Lets the wizard
@@ -46,7 +54,7 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
     /// Input Monitoring on the permissions step typically only takes effect after the user quits and
     /// relaunches Cotabby, which lands before the final "Start Using Cotabby" tap that stamps
     /// completion. Without this, that relaunch drops them back at step one and onboarding repeats
-    /// every time (issue #314). Cleared on completion so a future version bump starts clean.
+    /// every time (issue #314). Cleared on completion so manual reopening starts clean.
     ///
     /// The "2" suffix marks the second step-numbering scheme (the redesign folded the writing-style
     /// step into "personalize", shifting every later raw index). Reading the old key would resume a
@@ -62,6 +70,10 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
         modelDownloadManager: ModelDownloadManager,
         suggestionSettings: SuggestionSettingsModel,
         foundationModelAvailabilityService: FoundationModelAvailabilityService,
+        learningModels: LearningModelCollection,
+        speech: LearningSpeechController,
+        endpointConnection: OpenAICompatibleConnectionModel,
+        searchService: HuggingFaceSearchService,
         userDefaults: UserDefaults = .standard
     ) {
         self.permissionManager = permissionManager
@@ -70,17 +82,18 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
         self.modelDownloadManager = modelDownloadManager
         self.suggestionSettings = suggestionSettings
         self.foundationModelAvailabilityService = foundationModelAvailabilityService
+        self.learningModels = learningModels
+        self.speech = speech
+        self.endpointConnection = endpointConnection
+        self.searchService = searchService
         self.userDefaults = userDefaults
     }
 
-    /// Whether the user completed the *current* onboarding version (reached "done" and dismissed).
-    ///
-    /// Versioned rather than boolean so a revamp can re-show the wizard: a stored value below
-    /// `currentOnboardingVersion` (including the `0` returned for an absent key) counts as not yet
-    /// completed. The legacy `hasShownWelcomeWindow` key is likewise not migrated, since it was set
-    /// at presentation time (before the user finished) and would skip profile and model selection.
+    /// Any completed version is sufficient. Product updates remain available through the manual
+    /// entry point; first launch and an interrupted setup are the only automatic presentations.
     private var isOnboardingCompleted: Bool {
-        userDefaults.integer(forKey: Self.onboardingCompletedVersionKey) >= Self.currentOnboardingVersion
+        !OnboardingSetupPolicy.shouldPresent(completedVersion: userDefaults.integer(forKey: Self.onboardingCompletedVersionKey),
+            legacyCompleted: userDefaults.bool(forKey: "cotabbyOnboardingCompleted"))
     }
 
     /// Presents the welcome wizard if the user has never completed onboarding.
@@ -101,12 +114,13 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
     /// more required permissions are now missing (e.g., after a permission-prompted restart, or
     /// if the user later revoked a permission in System Settings).
     func presentPermissionReminderIfNeeded() {
-        guard isOnboardingCompleted,
-              !permissionManager.requiredPermissionsGranted,
-              permissionReminderWindowController == nil
-        else {
-            return
+        if permissionManager.requiredPermissionsGranted {
+            userDefaults.removeObject(forKey: Self.deferredPermissionsKey)
         }
+        guard OnboardingSetupPolicy.shouldRemind(completed: isOnboardingCompleted,
+            permissionsGranted: permissionManager.requiredPermissionsGranted,
+            deferred: userDefaults.bool(forKey: Self.deferredPermissionsKey)),
+            permissionReminderWindowController == nil else { return }
 
         showPermissionReminder()
     }
@@ -136,7 +150,13 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
                     self?.completeOnboarding()
                 },
                 initialStepIndex: resumeStepIndex,
-                isReturningUser: userDefaults.integer(forKey: Self.onboardingCompletedVersionKey) > 0,
+                isReturningUser: isOnboardingCompleted,
+                modelConfiguration: { [weak self] navigation in self?.configuration(navigation) ?? AnyView(EmptyView()) },
+                readiness: { [weak self] filename in self?.readiness(filename) ?? AnyView(EmptyView()) },
+                openSettings: { [weak self] in self?.openSettings($0) },
+                openUsageGuide: { [weak self] in self?.openUsageGuide() },
+                openVocabulary: { [weak self] in self?.openVocabulary() },
+                deferPermissions: { [weak self] in self?.userDefaults.set(true, forKey: Self.deferredPermissionsKey) },
                 onStepChange: { [weak self] stepIndex in
                     self?.recordProgress(stepIndex: stepIndex)
                 }
@@ -173,6 +193,27 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// These forms borrow the process-lifetime services; wizard-local navigation only selects a
+    /// page. Configuration and download behavior remain exactly the same as the Settings window.
+    private func configuration(_ navigation: SettingsNavigationModel) -> AnyView {
+        AnyView(EngineAndModelPaneView(showsTaskPicker: false, navigation: navigation,
+            learningModels: learningModels, speech: speech, suggestionSettings: suggestionSettings,
+            openAICompatibleConnectionModel: endpointConnection,
+            foundationModelAvailabilityService: foundationModelAvailabilityService,
+            runtimeModel: runtimeModel, modelDownloadManager: modelDownloadManager,
+            huggingFaceSearchService: searchService))
+    }
+
+    private func readiness(_ filename: String?) -> AnyView {
+        AnyView(WelcomeReadinessView(settings: suggestionSettings, permissions: permissionManager,
+            runtime: runtimeModel, foundation: foundationModelAvailabilityService,
+            connection: endpointConnection, downloads: modelDownloadManager,
+            translation: learningModels.translation.profile, explanation: learningModels.explanation.profile,
+            speech: speech.settings, translationController: learningModels.translation,
+            explanationController: learningModels.explanation, speechController: speech,
+            pendingCompletionModel: filename, open: { [weak self] in self?.openSettings($0) }))
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let closingWindow = notification.object as? NSWindow else {
             return
@@ -188,7 +229,7 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
     }
 
     /// Called when the user completes the full onboarding wizard ("Start Using Cotabby"). Stamps the
-    /// current onboarding version so the wizard does not reappear until the next revamp bumps it.
+    /// completed version so product updates do not reopen setup automatically.
     /// This is the only thing that clears the gate: closing the window mid-flow leaves the stored
     /// version unchanged, so the wizard returns on next launch.
     private func completeOnboarding() {

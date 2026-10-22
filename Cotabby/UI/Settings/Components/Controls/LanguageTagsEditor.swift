@@ -10,8 +10,10 @@ struct LanguageTagsEditor: View {
 
     /// When false, the editor drops its own "Languages" title so an enclosing `Section("Languages")`
     /// can supply the heading without duplicating it. The Reset control stays in place either way.
-    /// Defaults to true so standalone uses (e.g. onboarding) keep their inline title.
+    /// Defaults to true so standalone editors keep their inline title.
     var showsTitleHeader: Bool = true
+    /// Setup keeps its other language roles visible; the full Settings editor retains its palette.
+    var collapsesSuggestions = false
 
     @State private var inputText: String = ""
 
@@ -64,16 +66,11 @@ struct LanguageTagsEditor: View {
             }
 
             if !availableSuggestions.isEmpty, !atCap {
-                Text("Suggestions")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.tertiary)
-
-                TagFlowLayout(spacing: 10) {
-                    ForEach(availableSuggestions) { option in
-                        AddableTagChip(text: option.nativeLabel) {
-                            suggestionSettings.addLanguage(option.name)
-                        }
-                    }
+                if collapsesSuggestions {
+                    DisclosureGroup(String(localized: "Suggestions")) { suggestionChips.padding(.top, 8) }
+                } else {
+                    Text("Suggestions").font(.system(size: 11, weight: .medium)).foregroundStyle(.tertiary)
+                    suggestionChips
                 }
             }
 
@@ -96,6 +93,14 @@ struct LanguageTagsEditor: View {
                     }
                     .controlSize(.small)
                 }
+            }
+        }
+    }
+
+    private var suggestionChips: some View {
+        TagFlowLayout(spacing: 10) {
+            ForEach(availableSuggestions) { option in
+                AddableTagChip(text: option.nativeLabel) { suggestionSettings.addLanguage(option.name) }
             }
         }
     }

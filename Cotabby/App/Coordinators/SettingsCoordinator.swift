@@ -54,6 +54,18 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         showSettings()
     }
 
+    /// Setup links use the same exact-row router as search and help, preserving one settings owner.
+    func showSettings(revealing item: SettingsItem) {
+        navigation.showsUsageGuide = false
+        navigation.reveal(item)
+        showSettings()
+    }
+
+    func showUsageGuide() {
+        navigation.showsUsageGuide = true
+        showSettings()
+    }
+
     init(
         cli: CLIInstallationModel? = nil,
         learningModels: LearningModelCollection? = nil,

@@ -155,14 +155,6 @@ final class CotabbyAppEnvironment {
             return (binding.keyCode, binding.modifiers)
         }
         let appUpdateManager = AppUpdateManager()
-        let welcomeCoordinator = WelcomeCoordinator(
-            permissionManager: permissionManager,
-            permissionGuidanceController: permissionGuidanceController,
-            runtimeModel: runtimeModel,
-            modelDownloadManager: modelDownloadManager,
-            suggestionSettings: suggestionSettings,
-            foundationModelAvailabilityService: foundationModelAvailabilityService
-        )
         let huggingFaceSearchService = HuggingFaceSearchService()
         let performanceMetricsStore = PerformanceMetricsStore()
         // Always-on quality counters (generated / shown / suppressed-by-reason / accepted).
@@ -315,6 +307,16 @@ final class CotabbyAppEnvironment {
         // "Clear History" control can reach it, and before the picker which reads and writes it.
         let emojiUsageStore = EmojiUsageStore()
 
+        let welcomeCoordinator = WelcomeCoordinator(
+            permissionManager: permissionManager,
+            permissionGuidanceController: permissionGuidanceController,
+            runtimeModel: runtimeModel,
+            modelDownloadManager: modelDownloadManager,
+            suggestionSettings: suggestionSettings,
+            foundationModelAvailabilityService: foundationModelAvailabilityService,
+            learningModels: learningModels, speech: speechController,
+            endpointConnection: openAICompatibleConnectionModel, searchService: huggingFaceSearchService
+        )
         let settingsCoordinator = SettingsCoordinator(
             cli: cliInstallation,
             learningModels: learningModels,
@@ -339,6 +341,9 @@ final class CotabbyAppEnvironment {
             clearEmojiHistory: { emojiUsageStore.clear() },
             typingHistoryStore: typingHistoryStore
         )
+        welcomeCoordinator.openSettings = { [weak settingsCoordinator] in settingsCoordinator?.showSettings(revealing: $0) }
+        welcomeCoordinator.openUsageGuide = { [weak settingsCoordinator] in settingsCoordinator?.showUsageGuide() }
+        welcomeCoordinator.openVocabulary = { [weak vocabularyWindow] in vocabularyWindow?.show() }
         reviewController.configure = { [weak settingsCoordinator] in settingsCoordinator?.showReviewSettings() }
 
         let interactionState = SuggestionInteractionState()

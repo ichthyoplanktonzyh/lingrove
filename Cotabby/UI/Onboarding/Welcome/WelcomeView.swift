@@ -3,10 +3,10 @@ import SwiftUI
 
 /// File overview:
 /// Renders the first-run onboarding wizard as a guided flow:
-/// welcome -> permissions -> choose starting point -> personalize -> keys -> done.
+/// welcome -> permissions -> task models -> language preferences -> shortcuts -> setup status.
 ///
-/// Design intent: this is the first thing a new user sees, so it leads with the product (a live
-/// ghost-text demo on the very first screen) before it asks for anything, and every step shares
+/// Design intent: the first page presents both product areas with explicit shared examples
+/// before requesting configuration. Every step shares
 /// one visual vocabulary from `OnboardingStyle` (brand-blue backdrop, tinted icon tiles, card
 /// chrome, staggered reveals). Steps slide horizontally like Setup Assistant pages; the window
 /// keeps one width and only morphs vertically (see `WelcomeStep.preferredWindowSize`).
@@ -18,7 +18,7 @@ import SwiftUI
 ///   2. Each middle step shows a progress indicator so the flow reads as finite and "where am I"
 ///      stays answerable.
 ///
-/// Picking a template applies a curated settings bundle and starts the recommended model download
+/// Only explicitly picking a completion template applies a curated bundle and starts its download
 /// in the background, so it can finish while the user fills out the remaining steps.
 struct WelcomeView: View {
     @ObservedObject var permissionManager: PermissionManager
@@ -33,10 +33,14 @@ struct WelcomeView: View {
     /// Reports the current step's raw index up to the coordinator so it can persist a resume point.
     /// The wizard is re-shown from this step if the user is pulled out before finishing (see #314).
     let onStepChange: (Int) -> Void
-    /// True when this user has completed a prior onboarding version. The Custom path keeps the
-    /// user's existing settings instead of overwriting them with template defaults, since they have
-    /// already tuned Cotabby; advancing via "Set up later" preserves that.
-    let isReturningUser: Bool
+    let modelConfiguration: (SettingsNavigationModel) -> AnyView
+    let readiness: (String?) -> AnyView
+    let openSettings: (SettingsItem) -> Void
+    let openUsageGuide: () -> Void
+    let openVocabulary: () -> Void
+    let deferPermissions: () -> Void
+    @StateObject private var modelNavigation = SettingsNavigationModel()
+    @State private var configuresCompletion = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -68,9 +72,21 @@ struct WelcomeView: View {
         onDismiss: @escaping () -> Void,
         initialStepIndex: Int = 0,
         isReturningUser: Bool = false,
+        modelConfiguration: @escaping (SettingsNavigationModel) -> AnyView,
+        readiness: @escaping (String?) -> AnyView,
+        openSettings: @escaping (SettingsItem) -> Void,
+        openUsageGuide: @escaping () -> Void,
+        openVocabulary: @escaping () -> Void,
+        deferPermissions: @escaping () -> Void,
         onStepChange: @escaping (Int) -> Void = { _ in }
     ) {
-        self.isReturningUser = isReturningUser
+        _configuresCompletion = State(initialValue: isReturningUser || suggestionSettings.selectedEngine == .openAICompatible)
+        self.modelConfiguration = modelConfiguration
+        self.readiness = readiness
+        self.openSettings = openSettings
+        self.openUsageGuide = openUsageGuide
+        self.openVocabulary = openVocabulary
+        self.deferPermissions = deferPermissions
         _permissionManager = ObservedObject(wrappedValue: permissionManager)
         _runtimeModel = ObservedObject(wrappedValue: runtimeModel)
         _modelDownloadManager = ObservedObject(wrappedValue: modelDownloadManager)
@@ -87,7 +103,8 @@ struct WelcomeView: View {
         // Source" selected on an Apple Intelligence-capable Mac and then snaps to it. Availability
         // is resolved well before onboarding appears, so reading it here is reliable.
         _selectedEngine = State(
-            initialValue: foundationModelAvailabilityService.isAvailable ? .appleIntelligence : .llamaOpenSource
+            initialValue: isReturningUser ? suggestionSettings.selectedEngine
+                : (foundationModelAvailabilityService.isAvailable ? .appleIntelligence : .llamaOpenSource)
         )
     }
 
@@ -125,6 +142,13 @@ struct WelcomeView: View {
         }
         // When the selected template's model finishes downloading, re-scan disk so the runtime
         // can discover and load it.
+        .onChange(of: configuresCompletion) { _, configuring in
+            // Entering the real form ends the preset's ownership. Its eventual download must not
+            // select an old model after the user has started configuring a different one.
+            if configuring { selectedTemplate = nil } else if selectedEngine == .openAICompatible {
+                selectedEngine = foundationModelAvailabilityService.isAvailable ? .appleIntelligence : .llamaOpenSource
+            }
+        }
         .onChange(of: selectedModelDownloadState) { _, newState in
             guard newState == .downloaded else {
                 return
@@ -177,7 +201,18 @@ extension WelcomeView {
             welcomePage
         case .done:
             donePage
-        case .permissions, .template, .personalize, .keybind:
+        case .template:
+            VStack(spacing: 0) {
+                WelcomeModelStepView(navigation: modelNavigation, configuresCompletion: $configuresCompletion,
+                    configuration: modelConfiguration) {
+                    WelcomeTemplateStepView(modelDownloadManager: modelDownloadManager,
+                        foundationModelAvailabilityService: foundationModelAvailabilityService,
+                        hardware: hardware, selectedEngine: selectedEngine, selectedTemplate: $selectedTemplate,
+                        showsHeader: false, onSelectEngine: selectEngine, onSelect: applyTemplate)
+                }
+                stepFooter.padding(.horizontal, OnboardingLayout.horizontalPadding).padding(.vertical, 20)
+            }
+        case .permissions, .personalize, .keybind:
             // Scaffold for middle steps: scrolling content above a pinned footer. The footer stays
             // put while the content scrolls, which is the core fix for "I can't find Continue."
             VStack(spacing: 0) {
@@ -205,21 +240,12 @@ extension WelcomeView {
                 permissionManager: permissionManager,
                 permissionGuidanceController: permissionGuidanceController
             )
-        case .template:
-            WelcomeTemplateStepView(
-                modelDownloadManager: modelDownloadManager,
-                foundationModelAvailabilityService: foundationModelAvailabilityService,
-                hardware: hardware,
-                selectedEngine: selectedEngine,
-                selectedTemplate: $selectedTemplate,
-                onSelectEngine: selectEngine,
-                onSelect: applyTemplate
-            )
         case .personalize:
-            WelcomePersonalizeStepView(suggestionSettings: suggestionSettings)
+            WelcomePersonalizeStepView(suggestionSettings: suggestionSettings, learning: suggestionSettings.languageLearning)
         case .keybind:
-            WelcomeKeybindStepView(suggestionSettings: suggestionSettings)
-        case .welcome, .done:
+            WelcomeKeybindStepView(suggestionSettings: suggestionSettings, learning: suggestionSettings.languageLearning,
+                vocabulary: suggestionSettings.vocabularyShortcuts, open: openSettings)
+        case .welcome, .done, .template:
             EmptyView()
         }
     }
@@ -230,27 +256,19 @@ extension WelcomeView {
         case .permissions:
             WelcomeNavigation(
                 canGoBack: true,
-                canContinue: permissionManager.requiredPermissionsGranted,
-                disabledHint: String(localized: "Grant all permissions to continue."),
+                continueTitle: permissionManager.requiredPermissionsGranted
+                    ? String(localized: "Continue") : String(localized: "Set up later"),
                 onBack: { go(to: .welcome) },
-                onContinue: { go(to: .template) }
-            )
-        case .template:
-            WelcomeNavigation(
-                canGoBack: true,
-                canContinue: canContinueFromTemplate,
-                // With no curated tier chosen, the primary button becomes "Set up later" and applies
-                // the neutral Custom path under the hood, so the user is never blocked on a card.
-                continueTitle: selectedTemplate == nil ? String(localized: "Set up later") : String(localized: "Continue"),
-                disabledHint: templateStepDisabledHint,
-                onBack: { go(to: .permissions) },
                 onContinue: {
-                    if selectedTemplate == nil {
-                        applyTemplate(.custom)
-                    }
-                    go(to: .personalize)
+                    if !permissionManager.requiredPermissionsGranted { deferPermissions() }
+                    go(to: .template)
                 }
             )
+        case .template:
+            WelcomeNavigation(canGoBack: true,
+                continueTitle: modelNavigation.engineTask == .completion && !configuresCompletion && selectedTemplate == nil
+                    ? String(localized: "Set up later") : String(localized: "Continue"),
+                onBack: { go(to: .permissions) }, onContinue: { go(to: .personalize) })
         case .personalize:
             WelcomeNavigation(
                 canGoBack: true,
@@ -302,8 +320,8 @@ extension WelcomeView {
                 }
                 .onboardingReveal(1)
 
-                WelcomeHeroDemo()
-                    .frame(maxWidth: 440)
+                WelcomeProductPreview(settings: suggestionSettings.languageLearning)
+                    .frame(maxWidth: 480)
                     .onboardingReveal(2)
 
                 HStack(spacing: 8) {
@@ -359,21 +377,21 @@ extension WelcomeView {
                         .onboardingReveal(0)
 
                     VStack(spacing: 8) {
-                        Text("You're all set")
+                        Text(String(localized: "Setup complete", table: "Learning"))
                             .font(.system(size: 28, weight: .bold, design: .rounded))
 
-                        Text(doneStepSubtitle)
-                            .font(.system(size: 15, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
                     }
                     .onboardingReveal(1)
 
                     menuBarCallout
                         .onboardingReveal(2)
 
-                    ProductFeatureShowcase()
+                    readiness(selectedTemplate.flatMap { resolvedPlan(for: $0).modelToDownload?.filename })
                         .onboardingReveal(3)
+                    HStack {
+                        Button(String(localized: "Usage Guide", table: "Learning"), action: openUsageGuide)
+                        Button(String(localized: "Vocabulary", table: "Vocabulary"), action: openVocabulary)
+                    }
                 }
                 .padding(.horizontal, OnboardingLayout.horizontalPadding)
                 .padding(.top, 40)
@@ -381,8 +399,6 @@ extension WelcomeView {
             }
 
             VStack(spacing: 12) {
-                doneStepModelStatus
-
                 WelcomeButton(title: String(localized: "Start Using Lingrove", table: "Learning")) {
                     onDismiss()
                 }
@@ -436,7 +452,7 @@ extension WelcomeView {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
 
                 Text(String(
-                    localized: "Click the whale to pause suggestions, switch models, or open Settings.",
+                    localized: "Click the whale for autocomplete, learning controls, Vocabulary, and Settings.",
                     table: "Learning"
                 ))
                     .font(.system(size: 12))
@@ -449,58 +465,6 @@ extension WelcomeView {
         .onboardingCard(cornerRadius: 12)
     }
 
-    private var doneStepSubtitle: String {
-        let wordKey = suggestionSettings.acceptanceKeyLabel
-        let fullKey = suggestionSettings.isDoubleTapFullAcceptanceActive
-            ? String(localized: "\(wordKey) twice")
-            : suggestionSettings.fullAcceptanceKeyLabel
-        let hasFullAccept = suggestionSettings.hasFullAcceptanceShortcut
-
-        if hasFullAccept {
-            return String(localized: "Start typing anywhere.\nPress \(wordKey) to accept a word, \(fullKey) for the full suggestion.")
-        }
-        return String(localized: "Start typing anywhere.\nPress \(wordKey) to accept.")
-    }
-
-    /// A compact reassurance line on the final step when a local model is still downloading or has
-    /// finished. Hidden for Apple Intelligence plans, which download nothing.
-    @ViewBuilder
-    private var doneStepModelStatus: some View {
-        switch selectedModelDownloadState {
-        case .downloading(let progress, _, _):
-            HStack(spacing: 6) {
-                ProgressView()
-                    .controlSize(.small)
-                if let progress {
-                    Text("Downloading your model… \(Int((progress * 100).rounded()))%")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Downloading your model…")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-            }
-        case .paused(let progress):
-            HStack(spacing: 6) {
-                if let progress {
-                    Text("Model download paused (\(Int((progress * 100).rounded()))%)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Model download paused")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-            }
-        case .downloaded:
-            Label("Your model is ready", systemImage: "checkmark.circle.fill")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.green)
-        case .failed, .idle, .none:
-            EmptyView()
-        }
-    }
 }
 
 // MARK: - Template application
@@ -519,60 +483,8 @@ extension WelcomeView {
         return modelDownloadManager.state(for: model)
     }
 
-    /// Whether the template step's primary button is enabled. With no tier chosen it is always
-    /// enabled: the button reads "Set up later" and applies the neutral Custom path. With a tier
-    /// chosen, Apple Intelligence is immediately ready, while Open Source waits until that tier's
-    /// model download has at least started (it finishes in the background).
-    fileprivate var canContinueFromTemplate: Bool {
-        guard let template = selectedTemplate else {
-            return true
-        }
-        let plan = resolvedPlan(for: template)
-        switch plan.engine {
-        case .appleIntelligence:
-            return true
-        case .llamaOpenSource:
-            // Allow continuing once the download is at least underway; it finishes in the background.
-            guard let state = selectedModelDownloadState else {
-                return false
-            }
-            return state == .downloaded || state.isDownloading
-        case .openAICompatible:
-            return true
-        }
-    }
-
-    /// Tooltip for the disabled primary button. Only reachable once a tier is chosen but its Open
-    /// Source download hasn't started yet — with no tier chosen the button is "Set up later" and
-    /// always enabled, so there is no longer a "pick something" hint.
-    fileprivate var templateStepDisabledHint: String {
-        String(localized: "Hang on while your model starts downloading.")
-    }
-
     fileprivate func resolvedPlan(for template: OnboardingTemplate) -> ResolvedTemplatePlan {
-        let base = OnboardingTemplateRecommender.resolvePlan(for: template, engine: selectedEngine)
-        // Returning users on the Custom path with the OSS engine keep their currently selected local
-        // model instead of the static template default, so the done-step status and model activation
-        // reflect the settings applyTemplate actually preserves for them.
-        guard
-            template == .custom,
-            isReturningUser,
-            selectedEngine == .llamaOpenSource,
-            let currentFilename = runtimeModel.selectedModelFilename,
-            currentFilename != base.modelToDownload?.filename,
-            let currentModel = RuntimeModelCatalog.downloadableModels.first(where: { $0.filename == currentFilename })
-        else {
-            return base
-        }
-        return ResolvedTemplatePlan(
-            template: base.template,
-            engine: base.engine,
-            modelToDownload: currentModel,
-            wordCountPreset: base.wordCountPreset,
-            enablesFastMode: base.enablesFastMode,
-            enablesMultiLine: base.enablesMultiLine,
-            enablesClipboardContext: base.enablesClipboardContext
-        )
+        OnboardingTemplateRecommender.resolvePlan(for: template, engine: selectedEngine)
     }
 
     /// Switches the engine. Re-applies the already-selected tier under the new engine so the
@@ -589,18 +501,10 @@ extension WelcomeView {
         }
     }
 
-    /// Applies a template's settings and starts its model download (if any). Choosing a tier card —
-    /// or taking the "Set up later" path, which applies `.custom` — is the user's explicit consent
-    /// to download, so a multi-gigabyte fetch only ever starts from here.
+    /// Only a direct template click reaches this mutation boundary. Moving forward or revisiting
+    /// a page keeps existing settings intact and cannot start a default download.
     fileprivate func applyTemplate(_ template: OnboardingTemplate) {
         selectedTemplate = template
-
-        // Returning users on the Custom path keep every setting they previously tuned. Skipping the
-        // writes here (and the model download below) preserves their engine, word count, behavior
-        // toggles, and avoids re-triggering a multi-gigabyte fetch they already completed.
-        if template == .custom && isReturningUser {
-            return
-        }
 
         let plan = resolvedPlan(for: template)
         suggestionSettings.selectEngine(plan.engine)
@@ -640,6 +544,29 @@ extension WelcomeView {
 
         Task {
             await runtimeModel.selectModel(filename)
+        }
+    }
+}
+
+/// The welcome screen introduces both product areas without mounting a running demonstration.
+/// An explicit click borrows the same example sheet used by the guide, with its normal cleanup.
+private struct WelcomeProductPreview: View {
+    @ObservedObject var settings: LanguageLearningSettings
+    @State private var example: ProductFeatureArea?
+    var body: some View {
+        HStack(spacing: 12) {
+            ForEach(ProductFeatureArea.allCases) { area in
+                Button { example = area } label: {
+                    VStack(spacing: 10) {
+                        Image(systemName: area == .completion ? "text.cursor" : "character.bubble").font(.title2)
+                        Text(area.label).font(.headline)
+                        Text(String(localized: "View example", table: "Learning")).font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity).padding(18).contentShape(Rectangle()).onboardingCard()
+                }.buttonStyle(.plain)
+            }
+        }
+        .sheet(item: $example) { area in
+            ProductFeatureExample(title: area.label, scene: area == .learning ? .writing : nil, settings: settings)
         }
     }
 }
