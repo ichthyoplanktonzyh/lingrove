@@ -16,6 +16,7 @@ final class AnkiReviewController: ObservableObject {
     @Published private(set) var catalog: AnkiReviewCatalog?
     @Published private(set) var connectionMessage: String?
     @Published private(set) var testing = false
+    private var openingMenuReview = false
     @Published private(set) var sendingReviewID: UUID?
     @Published private(set) var sendingSenseID: UUID?
     @Published private(set) var modelFields: [String] = []
@@ -24,6 +25,20 @@ final class AnkiReviewController: ObservableObject {
     @Published private(set) var unresolved: Set<UUID> = []
     var updatingTemplate = false
     var configure: (() -> Void)?
+
+    /// The menu closes before this operation finishes. Keep failure feedback on the shared
+    /// controller and reveal its existing settings window, rather than losing an alert with
+    /// the popover. A repeated menu click cannot race another Anki navigation operation.
+    func openReviewFromMenu() async {
+        guard !openingMenuReview else { return }
+        openingMenuReview = true
+        connectionMessage = nil
+        defer { openingMenuReview = false }
+        if let message = await reviewDeck() {
+            connectionMessage = message
+            configure?()
+        }
+    }
 
     init(settings: AnkiReviewSettings, store: VocabularyStore, client: any AnkiConnecting = AnkiConnectClient(),
          speech: (any SpeechExporting)? = nil, activateAnki: @escaping () -> Void = {

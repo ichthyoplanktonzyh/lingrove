@@ -30,6 +30,7 @@ final class MenuBarPresentationTrackingView: NSView {
 
     private weak var observedWindow: NSWindow?
     private var observers: [NSObjectProtocol] = []
+    private var refreshTask: Task<Void, Never>?
 
     deinit {
         removeObservers()
@@ -46,7 +47,16 @@ final class MenuBarPresentationTrackingView: NSView {
             return
         }
 
-        onPresent?()
+        guard refreshTask == nil else { return }
+        // AppKit can attach this view while SwiftUI is updating its tree. Defer publication
+        // until that transaction finishes, coalescing key/visibility notifications from one open.
+        refreshTask = Task { @MainActor [weak self] in
+            guard !Task.isCancelled, let self else { return }
+            self.refreshTask = nil
+            guard let window = self.window,
+                  window.isVisible || window.occlusionState.contains(.visible) else { return }
+            self.onPresent?()
+        }
     }
 
     private func observeCurrentWindow() {
@@ -81,6 +91,8 @@ final class MenuBarPresentationTrackingView: NSView {
     }
 
     private func removeObservers() {
+        refreshTask?.cancel()
+        refreshTask = nil
         observers.forEach(NotificationCenter.default.removeObserver(_:))
         observers.removeAll()
         observedWindow = nil

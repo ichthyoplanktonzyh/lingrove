@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let welcomeCoordinator: WelcomeCoordinator
     let settingsCoordinator: SettingsCoordinator
     let vocabularyWindow: VocabularyWindowController
+    /// Menu quick controls borrow the same playback/review owners as learning cards and Settings.
+    let speechController: LearningSpeechController
+    let reviewController: AnkiReviewController
 
     private let activationIndicatorController: ActivationIndicatorController
     private let focusDebugOverlayController: FocusDebugOverlayController?
@@ -63,6 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         welcomeCoordinator = environment.welcomeCoordinator
         settingsCoordinator = environment.settingsCoordinator
         vocabularyWindow = environment.vocabularyWindow
+        speechController = environment.speechController
+        reviewController = environment.reviewController
         activationIndicatorController = environment.activationIndicatorController
         focusDebugOverlayController = environment.focusDebugOverlayController
         super.init()
@@ -161,8 +166,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         Task {
-            do { try await environment.vocabularyCLI?.start() }
-            catch { CotabbyLogger.learning.error("Vocabulary CLI server unavailable") }
+            do { try await environment.vocabularyCLI?.start() } catch {
+                CotabbyLogger.learning.error("Vocabulary CLI server unavailable")
+            }
         }
         let isCLILaunch = ProcessInfo.processInfo.arguments.contains("-lingrove-cli")
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"

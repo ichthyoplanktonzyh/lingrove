@@ -124,7 +124,7 @@ Cotabby/
 └── UI/
     ├── Components/                   application-wide reusable views
     ├── InlineFeatures/               emoji picker and macro reference surfaces
-    ├── MenuBar/                      menu-bar status and popover content
+    ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes
     ├── Onboarding/
     │   └── Welcome/                  composed welcome flow and step views
     ├── Overlays/                     SwiftUI overlay content
@@ -587,6 +587,18 @@ segmented selection. Templates copy layout roles and custom prompts; applying on
 slots to the destination sense and never rewrites existing cards. The generic Anki model has one
 card per note and three fields: LingroveID, Front, Back. Sends verify its live templates, destination,
 source and media, while the shared session retains conflict handling and lost-ack recovery.
+
+## Menu Bar Quick Controls
+
+`MenuBarView` retains the existing completion bindings, global pause/recovery and permanent
+footer. Its persisted task selection only chooses the visible completion or learning page.
+`MenuBarLearningControls` observes the shared language settings; its speech disclosure borrows
+the same app-owned speaker used by cards and Settings. The existing `MenuBarPickerRow` and native
+small switches provide both pages' controls. `MenuBarContentViewport` bounds only their scrolling
+document, leaving window/navigation actions visible. Typed menu destinations pass through
+`SettingsNavigationModel` and the existing `SettingsCoordinator`, after popover dismissal.
+Learning rows read saved model profiles without additional model discovery, voice enumeration or
+generation; the existing menu presentation refresh still updates completion model availability.
 
 ## Vocabulary Graph
 

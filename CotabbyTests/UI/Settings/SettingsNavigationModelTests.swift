@@ -7,6 +7,22 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func test_menuDestinationsOverrideTheLastVisitedTaskAndClearSearch() {
+        let model = makeModel()
+        model.reveal(.explanationLanguage)
+        model.openMenuDestination(.model(.speech))
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.engineTask, .speech)
+        XCTAssertNil(model.highlightedItem)
+        model.openMenuDestination(.learning(.dictionary))
+        XCTAssertEqual(model.selection, .languageLearning)
+        XCTAssertEqual(model.learningTask, .dictionary)
+        model.openMenuDestination(.model(.translation))
+        XCTAssertEqual(model.engineTask, .translation)
+        model.openMenuDestination(.category(.permissions))
+        XCTAssertEqual(model.selection, .permissions)
+    }
+
     func testAnkiSearchOpensReviewAndCardTemplates() {
         let model = makeModel()
         model.reveal(.ankiReview)
