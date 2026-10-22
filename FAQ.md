@@ -26,7 +26,7 @@ an unfinished sentence, and punctuation/newlines distinguish completed sentences
 
 Inspect a colored correspondence or use the word/expression lookup. Available word definitions
 depend on the dictionaries enabled on your Mac. Escape dismisses the learning card; Tab and Return
-retain their ordinary behavior there. See [README.md](README.md#learning-behavior-and-model-details)
+retain their ordinary behavior there. See [docs/LANGUAGE_LEARNING.md](docs/LANGUAGE_LEARNING.md)
 for model and interaction details.
 
 ## Does everything run offline?
