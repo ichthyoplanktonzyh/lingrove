@@ -64121,6 +64121,1228 @@
           }
         }
       }
+    },
+    "View example": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View example"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看示例"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看範例"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "例を見る"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예시 보기"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir un exemple"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beispiel ansehen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver ejemplo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver exemplo"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vedi esempio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Посмотреть пример"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض مثال"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "उदाहरण देखें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lihat contoh"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Örneği görüntüle"
+          }
+        }
+      }
+    },
+    "Related settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Related settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相关设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相關設定"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "関連設定"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관련 설정"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages associés"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zugehörige Einstellungen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes relacionados"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes relacionados"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impostazioni correlate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Связанные настройки"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإعدادات ذات الصلة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संबंधित सेटिंग्स"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengaturan terkait"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlgili ayarlar"
+          }
+        }
+      }
+    },
+    "Global shortcuts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global shortcuts"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全局快捷键"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全域快捷鍵"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グローバルショートカット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전역 단축키"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourcis globaux"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Globale Tastenkürzel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajos globales"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atalhos globais"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scorciatoie globali"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Глобальные сочетания клавиш"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختصارات عامة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वैश्विक शॉर्टकट"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pintasan global"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel kısayollar"
+          }
+        }
+      }
+    },
+    "Not assigned": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not assigned"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未設定"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未設定"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정되지 않음"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non attribué"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht zugewiesen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin asignar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não atribuído"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non assegnata"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не назначено"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير معيّن"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सेट नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belum ditetapkan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atanmamış"
+          }
+        }
+      }
+    },
+    "Start typing in an editable field, then pause to see a suggestion.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start typing in an editable field, then pause to see a suggestion."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在可编辑的输入框中输入，稍停后查看补全建议。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在可編輯的輸入框中輸入，稍停後查看補全建議。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集可能な入力欄に入力し、少し止めると補完候補が表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집 가능한 입력란에 입력한 뒤 잠시 멈추면 완성 제안이 표시됩니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écrivez dans un champ modifiable, puis faites une pause pour voir une suggestion."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreiben Sie in ein bearbeitbares Feld und machen Sie eine Pause, um einen Vorschlag zu sehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe en un campo editable y haz una pausa para ver una sugerencia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite em um campo editável e faça uma pausa para ver uma sugestão."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi in un campo modificabile, poi fermati un momento per vedere un suggerimento."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начните ввод в редактируемом поле, затем сделайте паузу, чтобы увидеть подсказку."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابدأ الكتابة في حقل قابل للتحرير ثم توقف قليلًا لرؤية اقتراح."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संपादन योग्य फ़ील्ड में टाइप करें, फिर सुझाव देखने के लिए थोड़ा रुकें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mulai mengetik di kolom yang dapat diedit, lalu berhenti sejenak untuk melihat saran."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenlenebilir bir alana yazmaya başlayın ve öneri görmek için kısa bir ara verin."
+          }
+        }
+      }
+    },
+    "Choose which apps use autocomplete in App settings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose which apps use autocomplete in App settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 App 设置中选择哪些应用使用自动补全。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 App 設定中選擇哪些應用程式使用自動補全。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 設定で自動補完を使うアプリを選びます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 설정에서 자동 완성을 사용할 앱을 선택합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans les réglages App, choisissez les applications où utiliser la saisie automatique."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie in den App-Einstellungen, welche Apps die automatische Vervollständigung nutzen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En los ajustes de App, elige qué aplicaciones usan autocompletado."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nos ajustes de App, escolha quais aplicativos usam o preenchimento automático."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nelle impostazioni App, scegli quali applicazioni usano il completamento automatico."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В настройках App выберите приложения, где используется автодополнение."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر التطبيقات التي تستخدم الإكمال التلقائي في إعدادات App."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App सेटिंग्स में चुनें कि किन ऐप्स में स्वतः पूर्णता का उपयोग हो।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di pengaturan App, pilih aplikasi yang menggunakan pelengkapan otomatis."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App ayarlarında otomatik tamamlamayı kullanacak uygulamaları seçin."
+          }
+        }
+      }
+    },
+    "Selections take priority. Reference context never expands the replacement range.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selections take priority. Reference context never expands the replacement range."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选区优先。参考上下文不会扩大替换范围。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選取範圍優先。參考上下文不會擴大取代範圍。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲が優先されます。参照文脈を広げても置換範囲は変わりません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 영역이 우선합니다. 참고 문맥은 바꿀 범위를 넓히지 않습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sélection est prioritaire. Le contexte de référence n’élargit jamais la zone remplacée."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Auswahl hat Vorrang. Der Referenzkontext erweitert den Ersetzungsbereich nicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selección tiene prioridad. El contexto de referencia nunca amplía el fragmento que se sustituye."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A seleção tem prioridade. O contexto de referência nunca amplia o trecho substituído."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selezione ha la priorità. Il contesto di riferimento non estende mai il testo da sostituire."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделение имеет приоритет. Контекст для справки не расширяет область замены."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "للنص المحدد الأولوية. لا يوسّع السياق المرجعي نطاق الاستبدال."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चयन को प्राथमिकता मिलती है। संदर्भ बदलने वाले पाठ का दायरा नहीं बढ़ाता।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks yang dipilih diprioritaskan. Konteks referensi tidak memperluas bagian yang diganti."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçime öncelik verilir. Başvuru bağlamı değiştirme aralığını genişletmez."
+          }
+        }
+      }
+    },
+    "Reading translation leaves the original text unchanged. Screen OCR requires Screen Recording permission.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading translation leaves the original text unchanged. Screen OCR requires Screen Recording permission."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阅读翻译不会修改原文。屏幕 OCR 需要屏幕录制权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閱讀翻譯不會修改原文。螢幕 OCR 需要螢幕錄製權限。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読むための翻訳は原文を変更しません。画面 OCR には画面収録権限が必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기 번역은 원문을 변경하지 않습니다. 화면 OCR에는 화면 기록 권한이 필요합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduction en lecture ne modifie pas l’original. L’OCR d’écran nécessite l’autorisation d’enregistrement de l’écran."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Leseübersetzung verändert den Originaltext nicht. Bildschirm-OCR benötigt die Berechtigung zur Bildschirmaufnahme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción de lectura no modifica el original. El OCR de pantalla requiere permiso de grabación de pantalla."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tradução de leitura não altera o original. O OCR da tela exige permissão de gravação da tela."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traduzione in lettura non modifica l’originale. L’OCR dello schermo richiede il permesso di registrazione dello schermo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод при чтении не меняет оригинал. Для экранного OCR нужно разрешение на запись экрана."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يغيّر ترجمة النص أثناء القراءة الأصل. يتطلب OCR الشاشة إذن تسجيل الشاشة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पढ़ने के लिए किया गया अनुवाद मूल पाठ नहीं बदलता। स्क्रीन OCR के लिए स्क्रीन रिकॉर्डिंग की अनुमति चाहिए।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terjemahan bacaan tidak mengubah teks asli. OCR layar memerlukan izin perekaman layar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma çevirisi asıl metni değiştirmez. Ekran OCR’ı için ekran kaydı izni gerekir."
+          }
+        }
+      }
+    },
+    "With context, AI explains this usage; without context, it gives common meanings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With context, AI explains this usage; without context, it gives common meanings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有上下文时，AI 解释此处的用法；没有上下文时，提供常见含义。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有上下文時，AI 解釋此處的用法；沒有上下文時，提供常見含義。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文脈があればその用法を、なければ一般的な意味を AI が説明します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문맥이 있으면 해당 용법을, 없으면 일반적인 의미를 AI가 설명합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avec un contexte, l’IA explique cet usage ; sans contexte, elle donne les sens courants."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Kontext erklärt die KI diese Verwendung, ohne Kontext nennt sie übliche Bedeutungen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con contexto, la IA explica este uso; sin contexto, ofrece los significados habituales."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Com contexto, a IA explica esse uso; sem contexto, apresenta os significados comuns."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con un contesto, l’IA spiega questo uso; senza contesto, presenta i significati comuni."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При наличии контекста ИИ объясняет это употребление, без контекста — обычные значения."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مع السياق يشرح الذكاء الاصطناعي هذا الاستخدام، وبدونه يعرض المعاني الشائعة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संदर्भ होने पर AI इस प्रयोग को समझाता है; बिना संदर्भ सामान्य अर्थ देता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dengan konteks, AI menjelaskan penggunaan ini; tanpa konteks, AI memberikan makna umum."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlam varsa yapay zekâ bu kullanımı açıklar; yoksa yaygın anlamları verir."
+          }
+        }
+      }
+    },
+    "Open Vocabulary from the menu bar to search, edit, or add text and images to a sense.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Vocabulary from the menu bar to search, edit, or add text and images to a sense."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从菜单栏打开生词本，搜索、编辑，或给义项添加文字和图片。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從選單列打開生詞本，搜尋、編輯，或為義項加入文字和圖片。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メニューバーから単語帳を開き、検索、編集、語義へのテキストや画像の追加ができます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메뉴 막대에서 단어장을 열어 검색, 편집하거나 뜻에 텍스트와 이미지를 추가합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez le vocabulaire depuis la barre des menus pour rechercher, modifier ou ajouter du texte et des images à un sens."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen Sie das Vokabular über die Menüleiste, um zu suchen, zu bearbeiten oder einer Bedeutung Text und Bilder hinzuzufügen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre el vocabulario desde la barra de menús para buscar, editar o añadir texto e imágenes a una acepción."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra o vocabulário pela barra de menus para pesquisar, editar ou adicionar texto e imagens a um sentido."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri il vocabolario dalla barra dei menu per cercare, modificare o aggiungere testo e immagini a un significato."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте словарь из строки меню для поиска, редактирования и добавления текста или изображений к значению."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح المفردات من شريط القوائم للبحث والتحرير أو لإضافة نصوص وصور إلى معنى."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खोजने, संपादन करने या किसी अर्थ में पाठ और चित्र जोड़ने के लिए मेनू बार से शब्दावली खोलें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka kosakata dari bar menu untuk mencari, mengedit, atau menambahkan teks dan gambar ke suatu makna."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aramak, düzenlemek veya bir anlama metin ve resim eklemek için menü çubuğundan söz varlığını açın."
+          }
+        }
+      }
+    },
+    "Use Export in Vocabulary to save TXT, CSV, or JSON. Include images to export a ZIP package.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Export in Vocabulary to save TXT, CSV, or JSON. Include images to export a ZIP package."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在生词本中使用“导出”，保存为 TXT、CSV 或 JSON；包含图片时导出为 ZIP 包。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在生詞本使用「匯出」，儲存為 TXT、CSV 或 JSON；包含圖片時匯出為 ZIP 套件。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語帳の「書き出し」で TXT、CSV、JSON を保存します。画像を含めると ZIP になります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어장에서 내보내기로 TXT, CSV 또는 JSON을 저장합니다. 이미지를 포함하면 ZIP으로 내보냅니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans le vocabulaire, utilisez Exporter pour enregistrer en TXT, CSV ou JSON. Incluez les images pour obtenir un fichier ZIP."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportieren Sie im Vokabular als TXT, CSV oder JSON. Mit Bildern entsteht ein ZIP-Paket."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el vocabulario, usa Exportar para guardar TXT, CSV o JSON. Incluye imágenes para exportar un paquete ZIP."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No vocabulário, use Exportar para salvar TXT, CSV ou JSON. Inclua imagens para exportar um pacote ZIP."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nel vocabolario, usa Esporta per salvare TXT, CSV o JSON. Includi le immagini per esportare un pacchetto ZIP."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В словаре используйте экспорт в TXT, CSV или JSON. При включении изображений создаётся ZIP-пакет."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استخدم التصدير في المفردات لحفظ TXT أو CSV أو JSON. ضمّن الصور لتصدير حزمة ZIP."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शब्दावली में निर्यात से TXT, CSV या JSON सहेजें। चित्र शामिल करने पर ZIP पैकेज निर्यात होता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gunakan Ekspor di kosakata untuk menyimpan TXT, CSV, atau JSON. Sertakan gambar untuk mengekspor paket ZIP."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Söz varlığında Dışa Aktar ile TXT, CSV veya JSON kaydedin. Resimleri ekleyerek ZIP paketi oluşturun."
+          }
+        }
+      }
+    },
+    "Open Anki with AnkiConnect, then test the connection in Review settings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Anki with AnkiConnect, then test the connection in Review settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开已安装 AnkiConnect 的 Anki，然后在复习设置中测试连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打開已安裝 AnkiConnect 的 Anki，然後在複習設定中測試連線。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AnkiConnect を導入した Anki を開き、復習設定で接続をテストします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AnkiConnect가 설치된 Anki를 열고 복습 설정에서 연결을 테스트합니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez Anki avec AnkiConnect, puis testez la connexion dans les réglages de révision."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen Sie Anki mit AnkiConnect und testen Sie die Verbindung in den Wiederholungseinstellungen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Anki con AnkiConnect y prueba la conexión en los ajustes de repaso."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra o Anki com o AnkiConnect e teste a conexão nos ajustes de revisão."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri Anki con AnkiConnect, poi verifica la connessione nelle impostazioni di ripasso."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте Anki с AnkiConnect и проверьте подключение в настройках повторения."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح Anki مع AnkiConnect ثم اختبر الاتصال في إعدادات المراجعة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AnkiConnect के साथ Anki खोलें और अभ्यास सेटिंग्स में कनेक्शन जाँचें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka Anki dengan AnkiConnect, lalu uji koneksi di pengaturan pengulangan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AnkiConnect ile Anki’yi açın ve tekrar ayarlarında bağlantıyı test edin."
+          }
+        }
+      }
+    },
+    "Select a saved sense and add a card. You can also update an existing card.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a saved sense and add a card. You can also update an existing card."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择已收藏的义项并添加卡片，也可以更新已有卡片。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇已收藏的義項並新增卡片，也可以更新現有卡片。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存した語義を選びカードを追加します。既存のカードも更新できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장한 뜻을 선택해 카드를 추가합니다. 기존 카드도 업데이트할 수 있습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez un sens enregistré et ajoutez une carte. Vous pouvez aussi mettre à jour une carte existante."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie eine gespeicherte Bedeutung und fügen Sie eine Karte hinzu. Bestehende Karten lassen sich ebenfalls aktualisieren."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona una acepción guardada y añade una tarjeta. También puedes actualizar una tarjeta existente."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione um sentido salvo e adicione um cartão. Você também pode atualizar um cartão existente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona un significato salvato e aggiungi una scheda. Puoi anche aggiornare una scheda esistente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите сохранённое значение и добавьте карточку. Также можно обновить существующую карточку."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدد معنى محفوظًا وأضف بطاقة. يمكنك أيضًا تحديث بطاقة موجودة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सहेजा गया अर्थ चुनकर कार्ड जोड़ें। मौजूदा कार्ड भी अपडेट कर सकते हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih makna tersimpan dan tambahkan kartu. Anda juga dapat memperbarui kartu yang ada."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıtlı bir anlam seçip kart ekleyin. Mevcut bir kartı da güncelleyebilirsiniz."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -43,6 +43,31 @@ final class SettingsNavigationModelTests: XCTestCase {
         }
     }
 
+    func test_guideModelAndPermissionLinksRetargetThePreviouslySelectedTask() {
+        let model = makeModel()
+        let destinations: [(SettingsItem, SettingsEngineTask)] = [
+            (.engine, .completion), (.translationModel, .translation),
+            (.explanationModel, .explanation), (.speechProvider, .speech)
+        ]
+        for (item, task) in destinations {
+            model.openEngineTask(.speech)
+            model.showsUsageGuide = true
+            model.openUsageGuideDestination(item)
+            XCTAssertFalse(model.showsUsageGuide)
+            XCTAssertEqual(model.selection, .engineAndModel)
+            XCTAssertEqual(model.engineTask, task)
+            XCTAssertEqual(model.revealedItem, item)
+        }
+        for (item, category) in [(SettingsItem.screenRecording, SettingsCategory.permissions),
+                                 (.commandLineTools, .general)] {
+            model.showsUsageGuide = true
+            model.openUsageGuideDestination(item)
+            XCTAssertFalse(model.showsUsageGuide)
+            XCTAssertEqual(model.selection, category)
+            XCTAssertEqual(model.revealedItem, item)
+        }
+    }
+
     func test_menuDestinationsOverrideTheLastVisitedTaskAndClearSearch() {
         let model = makeModel()
         model.reveal(.explanationLanguage)

@@ -18,8 +18,8 @@ enum ProductFeatureArea: String, CaseIterable, Identifiable {
 struct ProductFeatureShowcase: View {
     var autoplay = true
     var showsMacroReference = false
-    /// Home has an interactive walkthrough; Help and first-run setup keep their own content
-    /// until their separate information-architecture review is complete.
+    /// Home uses the interactive player. The guide opens that player at a requested scene;
+    /// first-run setup retains its illustration until its separate review.
     var usesHomeLearningScenes = false
     var readingSettings: LanguageLearningSettings?
     @State private var area = ProductFeatureArea.completion

@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Home alone owns an interactive scene player. Its model lives while this tab is mounted;
+/// Home and explicit guide examples share one interactive scene player. Its model lives while mounted;
 /// real cards are embedded at their normal size, with explanations outside their action rows.
 struct HomeLearningShowcase: View {
     @StateObject private var model = HomeLearningDemoModel()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var readingSettings: LanguageLearningSettings?
+    var startingScene: HomeLearningScene?
+    var autoplayOnHover = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -37,9 +39,12 @@ struct HomeLearningShowcase: View {
                         .simultaneousGesture(TapGesture().onEnded { model.interact() })
                 }.padding(8)
             }
-            .onHover { model.hover($0, reduceMotion: reduceMotion) }
+            .onHover { if autoplayOnHover { model.hover($0, reduceMotion: reduceMotion) } }
         }
-        .task { await model.prepare() }
+        .task(id: startingScene) {
+            if let startingScene { model.select(startingScene) }
+            await model.prepare()
+        }
         .onDisappear { model.stop() }
         .onChange(of: reduceMotion) { _, reduced in if reduced { model.pause() } }
         .sheet(isPresented: $model.presentsNotebook) {

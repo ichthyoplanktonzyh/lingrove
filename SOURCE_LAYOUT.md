@@ -127,12 +127,12 @@ Cotabby/
     ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes
     ├── Onboarding/
     │   ├── OnboardingDemoCard.swift   shared completion/learning demo chrome with bounded content
-    │   ├── LearningFeatureShowcase.swift shared area picker; legacy Help/Welcome illustrations
-    │   ├── HomeLearning*.swift       Home scenario player; real cards and sessions using fixed local examples
+    │   ├── LearningFeatureShowcase.swift shared area picker; legacy Welcome illustrations
+    │   ├── HomeLearning*.swift       shared Home/guide scenario player; real cards and sessions using fixed local examples
     │   └── Welcome/                  composed welcome flow and step views
     ├── Overlays/                     SwiftUI overlay content
     └── Settings/
-        ├── ProductUsageGuideView.swift window-owned guide, observing current shortcuts without starting features
+        ├── ProductUsageGuideView.swift window-owned scenario guide, live shortcut labels and explicit shared examples
         ├── Components/
         │   ├── Controls/              settings editors, pickers, and previews
         │   │   └── InterfaceLanguageSectionView.swift interface selector and restart notice
