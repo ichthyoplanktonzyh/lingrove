@@ -13,6 +13,7 @@ struct GeneralPaneView: View {
     @ObservedObject var interfaceLanguageSettings: InterfaceLanguageSettingsModel
     let onShowWelcome: () -> Void
     let onRestart: () throws -> Void
+    var onShowUsageGuide: () -> Void = {}
 
     /// Gates the destructive reset behind an explicit confirmation so a stray click can't wipe a
     /// user's entire configuration.
@@ -167,17 +168,20 @@ struct GeneralPaneView: View {
 
             Section("Help") {
                 LabeledContent {
-                    Button("Open Welcome Guide") {
-                        onShowWelcome()
-                    }
+                    Button(String(localized: "View", table: "Learning"), action: onShowUsageGuide)
+                        .accessibilityIdentifier("openUsageGuide")
                 } label: {
-                    SettingsRowLabel(
-                        title: String(localized: "Onboarding"),
+                    SettingsRowLabel(title: String(localized: "Usage Guide", table: "Learning"),
+                        description: String(localized: "Read the writing and language learning guide.", table: "Learning"),
+                        systemImage: "book.closed")
+                }.settingsItem(.usageGuide)
+                LabeledContent {
+                    Button("Open Welcome Guide", action: onShowWelcome)
+                } label: {
+                    SettingsRowLabel(title: String(localized: "Initial Setup", table: "Learning"),
                         description: String(localized: "Replay the first-run setup walkthrough."),
-                        systemImage: "graduationcap"
-                    )
-                }
-                .settingsItem(.onboarding)
+                        systemImage: "graduationcap")
+                }.settingsItem(.onboarding)
             }
 
             Section("Reset") {

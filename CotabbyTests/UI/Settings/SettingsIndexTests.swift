@@ -6,6 +6,14 @@ import XCTest
 /// cheap invariants loud: every item must carry a non-empty title, symbol, and keyword set, and
 /// the queries users actually type for recently shipped settings must land on them.
 final class SettingsIndexTests: XCTestCase {
+    func test_usageHelpIsDiscoverableSeparatelyFromInitialSetup() {
+        for query in ["usage guide", "使用指南", "学习指南"] {
+            XCTAssertTrue(SettingsItem.results(for: query).contains(.usageGuide))
+        }
+        XCTAssertEqual(SettingsItem.usageGuide.category, .general)
+        XCTAssertNotEqual(SettingsItem.usageGuide.title, SettingsItem.onboarding.title)
+    }
+
     func test_completionSwitchIsSearchableInWriting() {
         for query in ["启用补全", "关闭补全", "autocomplete"] {
             XCTAssertTrue(SettingsItem.results(for: query).contains(.completionEnabled))

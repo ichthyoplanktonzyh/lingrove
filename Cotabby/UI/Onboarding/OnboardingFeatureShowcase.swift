@@ -54,35 +54,6 @@ private let nsPerMillisecond: UInt64 = 1_000_000
 
 // MARK: - Shared card chrome
 
-/// A captioned "mock text field" panel. Mirrors the onboarding `PermissionCard` look (regular
-/// material plus a hairline stroke) at a tighter corner radius. The content area is pinned to a fixed
-/// height so a card whose inner popup appears and disappears never changes the window's height.
-private struct DemoCard<Content: View>: View {
-    let caption: String
-    let contentHeight: CGFloat
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(caption)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary)
-
-            content
-                .frame(maxWidth: .infinity, minHeight: contentHeight, maxHeight: contentHeight, alignment: .topLeading)
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.regularMaterial)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.08), lineWidth: 0.5)
-                )
-        }
-    }
-}
-
 // MARK: - Demo 1: inline autocomplete ghost text
 
 private struct GhostTextDemoCard: View {
@@ -108,7 +79,7 @@ private struct GhostTextDemoCard: View {
     )
 
     var body: some View {
-        DemoCard(caption: String(localized: "Autocomplete"), contentHeight: 40) {
+        OnboardingDemoCard(caption: String(localized: "Autocomplete"), contentHeight: 40) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text(String(preview.typedText.prefix(typedCount)))
@@ -231,7 +202,7 @@ private struct AutocorrectDemoCard: View {
     private var fullTyped: String { leading + typo }
 
     var body: some View {
-        DemoCard(caption: String(localized: "Autocorrect"), contentHeight: 40) {
+        OnboardingDemoCard(caption: String(localized: "Autocorrect"), contentHeight: 40) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text(String(leading.prefix(min(typedCount, leading.count))))
@@ -343,7 +314,7 @@ private struct EmojiPickerDemoCard: View {
     ]
 
     var body: some View {
-        DemoCard(caption: String(localized: "Inline emoji"), contentHeight: 124) {
+        OnboardingDemoCard(caption: String(localized: "Inline emoji"), contentHeight: 124) {
             ZStack(alignment: .topLeading) {
                 Text(fieldText)
                     .font(.system(size: 16))
@@ -495,7 +466,7 @@ private struct MacroDemoCard: View {
     }
 
     var body: some View {
-        DemoCard(caption: String(localized: "Inline macros"), contentHeight: 30) {
+        OnboardingDemoCard(caption: String(localized: "Inline macros"), contentHeight: 30) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 if let example = currentExample {
                     Text(example.category)

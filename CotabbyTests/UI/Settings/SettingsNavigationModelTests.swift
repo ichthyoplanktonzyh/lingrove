@@ -7,6 +7,42 @@ import XCTest
 /// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func test_learningQuickLinksChooseTheirOwnTabAndClearSearch() {
+        let model = makeModel()
+        for task in SettingsLearningTask.allCases {
+            model.reveal(.speechModel)
+            model.openLearningTask(task)
+            XCTAssertEqual(model.selection, .languageLearning)
+            XCTAssertEqual(model.learningTask, task)
+            XCTAssertNil(model.highlightedItem)
+            XCTAssertNil(model.modelManagerTask)
+        }
+    }
+
+    func test_guideDestinationsDismissAndRevealTheirExactPaneAndTab() {
+        let model = makeModel()
+        let destinations: [(SettingsItem, SettingsLearningTask)] = [
+            (.sentencePreview, .translation), (.explanationLanguage, .explanation),
+            (.readAloudSpeed, .readAloud), (.dictionarySources, .dictionary), (.ankiReview, .review)
+        ]
+        for (item, task) in destinations {
+            model.showsUsageGuide = true
+            model.openUsageGuideDestination(item)
+            XCTAssertFalse(model.showsUsageGuide)
+            XCTAssertEqual(model.selection, .languageLearning)
+            XCTAssertEqual(model.learningTask, task)
+            XCTAssertEqual(model.revealedItem, item)
+        }
+        for item in [SettingsItem.pointerTranslationShortcut, .replacementTranslationShortcut, .translationDetailsShortcut,
+                     .saveVocabularyShortcut, .openVocabularyShortcut] {
+            model.showsUsageGuide = true
+            model.openUsageGuideDestination(item)
+            XCTAssertFalse(model.showsUsageGuide)
+            XCTAssertEqual(model.selection, .shortcuts)
+            XCTAssertEqual(model.revealedItem, item)
+        }
+    }
+
     func test_menuDestinationsOverrideTheLastVisitedTaskAndClearSearch() {
         let model = makeModel()
         model.reveal(.explanationLanguage)

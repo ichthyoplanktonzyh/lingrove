@@ -126,9 +126,12 @@ Cotabby/
     ├── InlineFeatures/               emoji picker and macro reference surfaces
     ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes
     ├── Onboarding/
+    │   ├── OnboardingDemoCard.swift   shared completion/learning demo chrome with bounded content
+    │   ├── LearningFeatureShowcase.swift read-only learning illustration shared with Home and Help
     │   └── Welcome/                  composed welcome flow and step views
     ├── Overlays/                     SwiftUI overlay content
     └── Settings/
+        ├── ProductUsageGuideView.swift window-owned guide, observing current shortcuts without starting features
         ├── Components/
         │   ├── Controls/              settings editors, pickers, and previews
         │   │   └── InterfaceLanguageSectionView.swift interface selector and restart notice

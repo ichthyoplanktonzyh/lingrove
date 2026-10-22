@@ -84,6 +84,7 @@ struct LearningShortcutRows: View {
                         comment: "Explains the explicit preview and detail command."),
                 systemImage: replacement ? "arrow.triangle.2.circlepath" : "text.magnifyingglass")
         }
+        .settingsItem(replacement ? .replacementTranslationShortcut : .translationDetailsShortcut)
         if settings.translationEnabled,
            let reason = suggestionSettings.learningShortcutConflict(
             keyCode: replacement ? settings.replacementKeyCode : settings.keyCode,
