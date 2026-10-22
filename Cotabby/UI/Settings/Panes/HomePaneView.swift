@@ -407,7 +407,8 @@ struct HomePaneView: View {
                 String(localized: "See it in action"),
                 caption: String(localized: "Hover a card to watch it play.")
             )
-            ProductFeatureShowcase(autoplay: false, showsMacroReference: true)
+            ProductFeatureShowcase(autoplay: false, showsMacroReference: true, usesHomeLearningScenes: true,
+                readingSettings: suggestionSettings.languageLearning)
         }
     }
 

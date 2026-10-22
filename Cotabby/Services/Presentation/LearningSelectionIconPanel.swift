@@ -18,11 +18,7 @@ final class LearningSelectionIconPanel {
                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel = window
         window.contentView = NSHostingView(
-            rootView: Button(action: action) {
-                Image(systemName: "character.bubble").font(.system(size: 16, weight: .medium)).frame(width: 30, height: 30)
-            }.buttonStyle(.plain).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                .help(String(localized: "Translate selected text", table: "Learning"))
-                .accessibilityLabel(String(localized: "Translate selected text", table: "Learning")))
+            rootView: LearningSelectionButton(action: action))
         window.title = String(localized: "Translate selected text", table: "Learning")
         window.isReleasedWhenClosed = false
         window.level = .floating

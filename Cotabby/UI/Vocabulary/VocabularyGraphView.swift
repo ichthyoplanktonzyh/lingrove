@@ -9,13 +9,15 @@ struct VocabularyGraphView: View {
     let selection: VocabularySelection?
     @ObservedObject var presentation: VocabularyGraphPresentation
     let select: (VocabularySelection?) -> Void
+    var interactionBegan: (() -> Void)?
     @State private var showingSettings = false
 
     var body: some View {
         let snapshot = VocabularyGraphProjection.make(entries: entries, expanded: presentation.expanded, query: query)
-        VocabularyGraphCanvas(snapshot: snapshot, selection: selection, presentation: presentation, select: select)
+        VocabularyGraphCanvas(snapshot: snapshot, selection: selection, presentation: presentation,
+            select: select, interactionBegan: interactionBegan)
             .overlay(alignment: .topTrailing) {
-                Button { showingSettings.toggle() } label: { Image(systemName: "gearshape") }
+                Button { interactionBegan?(); showingSettings.toggle() } label: { Image(systemName: "gearshape") }
                     .buttonStyle(.borderless).padding(14)
                     .help(String(localized: "Graph settings", table: "Vocabulary"))
                     .accessibilityLabel(String(localized: "Graph settings", table: "Vocabulary"))
@@ -39,7 +41,9 @@ struct VocabularyGraphView: View {
                     control("plus", label: "Zoom in", command: .zoomIn)
                     control("arrow.up.left.and.arrow.down.right", label: "Fit graph", command: .fit)
                     control("scope", label: "Locate selection", command: .locate)
-                    Button { presentation.collapse(); select(nil) } label: { Image(systemName: "arrow.down.right.and.arrow.up.left") }
+                    Button { interactionBegan?(); presentation.collapse(); select(nil) } label: {
+                        Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    }
                         .help(String(localized: "Collapse senses", table: "Vocabulary"))
                         .accessibilityLabel(String(localized: "Collapse senses", table: "Vocabulary"))
                 }.buttonStyle(.borderless).padding(9).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -54,7 +58,7 @@ struct VocabularyGraphView: View {
 
     private func control(_ symbol: String, label: String.LocalizationValue,
                          command: VocabularyGraphPresentation.Command) -> some View {
-        Button { presentation.send(command) } label: { Image(systemName: symbol).frame(width: 25, height: 22) }
+        Button { interactionBegan?(); presentation.send(command) } label: { Image(systemName: symbol).frame(width: 25, height: 22) }
             .help(String(localized: label, table: "Vocabulary"))
             .accessibilityLabel(String(localized: label, table: "Vocabulary"))
     }
@@ -65,11 +69,13 @@ private struct VocabularyGraphCanvas: NSViewRepresentable {
     let selection: VocabularySelection?
     let presentation: VocabularyGraphPresentation
     let select: (VocabularySelection?) -> Void
+    let interactionBegan: (() -> Void)?
 
     func makeNSView(context: Context) -> VocabularyGraphCanvasView {
         VocabularyGraphCanvasView(presentation: presentation)
     }
     func updateNSView(_ view: VocabularyGraphCanvasView, context: Context) {
+        view.interactionBegan = interactionBegan
         view.update(snapshot: snapshot, selection: selection, select: select)
     }
     static func dismantleNSView(_ view: VocabularyGraphCanvasView, coordinator: ()) { view.suspend() }

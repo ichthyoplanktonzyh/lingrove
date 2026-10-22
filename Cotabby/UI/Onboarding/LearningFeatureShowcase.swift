@@ -18,6 +18,10 @@ enum ProductFeatureArea: String, CaseIterable, Identifiable {
 struct ProductFeatureShowcase: View {
     var autoplay = true
     var showsMacroReference = false
+    /// Home has an interactive walkthrough; Help and first-run setup keep their own content
+    /// until their separate information-architecture review is complete.
+    var usesHomeLearningScenes = false
+    var readingSettings: LanguageLearningSettings?
     @State private var area = ProductFeatureArea.completion
 
     var body: some View {
@@ -27,7 +31,10 @@ struct ProductFeatureShowcase: View {
             }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("productShowcaseArea")
             switch area {
             case .completion: OnboardingFeatureShowcase(autoplay: autoplay, showsMacroReference: showsMacroReference)
-            case .learning: LearningFeatureShowcase(autoplay: autoplay)
+            case .learning:
+                if usesHomeLearningScenes {
+                    HomeLearningShowcase(readingSettings: readingSettings)
+                } else { LearningFeatureShowcase(autoplay: autoplay) }
             }
         }
     }

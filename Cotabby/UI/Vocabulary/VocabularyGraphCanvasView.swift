@@ -5,6 +5,8 @@ import AppKit
 /// ends when the solver cools. Hiding/closing the window also cancels that task immediately.
 @MainActor
 final class VocabularyGraphCanvasView: NSView {
+    /// Optional host notification observes the native gesture without replacing its event path.
+    var interactionBegan: (() -> Void)?
     private let presentation: VocabularyGraphPresentation
     private var snapshot = VocabularyGraphSnapshot()
     private var selection: VocabularySelection?
@@ -287,6 +289,7 @@ final class VocabularyGraphCanvasView: NSView {
     }
     override func mouseExited(with event: NSEvent) { hovered = nil; needsDisplay = true }
     override func mouseDown(with event: NSEvent) {
+        interactionBegan?()
         presentation.fitsInitialLayout = false
         window?.makeFirstResponder(self)
         let point = convert(event.locationInWindow, from: nil), node = hit(point)
@@ -335,6 +338,7 @@ final class VocabularyGraphCanvasView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
+        interactionBegan?()
         presentation.fitsInitialLayout = false
         if event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control) || !event.hasPreciseScrollingDeltas {
             presentation.camera.zoom(by: exp(-event.scrollingDeltaY * 0.025),
@@ -346,12 +350,14 @@ final class VocabularyGraphCanvasView: NSView {
         needsDisplay = true
     }
     override func magnify(with event: NSEvent) {
+        interactionBegan?()
         presentation.fitsInitialLayout = false
         presentation.camera.zoom(by: max(0.2, 1 + event.magnification),
             at: convert(event.locationInWindow, from: nil), in: bounds.size)
         needsDisplay = true
     }
     override func keyDown(with event: NSEvent) {
+        interactionBegan?()
         presentation.fitsInitialLayout = false
         switch event.keyCode {
         case 48: moveKeyboard(backwards: event.modifierFlags.contains(.shift))

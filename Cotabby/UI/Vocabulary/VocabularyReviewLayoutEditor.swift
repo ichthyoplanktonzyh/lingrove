@@ -3,24 +3,32 @@ import SwiftUI
 /// The sheet owns one card draft. This editor only rearranges typed content references; shared
 /// pure resolution supplies the exact preview that the Anki serializer will later export.
 struct VocabularyReviewLayoutEditor: View {
+    @Environment(\.learningInteraction) private var interact
     @ObservedObject var session: AnkiReviewSession
     @ObservedObject var store: VocabularyStore
     @Binding var operation: Task<Void, Never>?
-    @State private var back = false
+    /// A host may coordinate the visible side while reusing this editor's exact field controls.
+    /// Normal preparation sheets own their side locally; compact walkthroughs put the preview first.
+    var hostedSide: Binding<Bool>?
+    var previewFirst = false
+    @State private var localBack = false
+    private var side: Binding<Bool> { hostedSide ?? $localBack }
+    private var back: Bool { side.wrappedValue }
     @State private var previewHeight: CGFloat = 200
     @State private var templateName = ""
     @State private var namingTemplate = false
     @State private var failure: String?
 
     private var layout: Binding<ReviewLayout> {
-        Binding(get: { session.plan.layout ?? .init() }, set: { session.plan.layout = $0; session.plan.fieldOverrides = [:] })
+        Binding(get: { session.plan.layout ?? .init() }, set: { interact(); session.plan.layout = $0; session.plan.fieldOverrides = [:] })
     }
     private var parts: Binding<[ReviewCardPart]> { back ? layout.back : layout.front }
 
     var body: some View {
+        if previewFirst { cardPreview }
         Section {
             TextField(String(localized: "Card name", table: "Vocabulary"), text: Binding(
-                get: { session.plan.name ?? "" }, set: { session.plan.name = $0 }))
+                get: { session.plan.name ?? "" }, set: { interact(); session.plan.name = $0 }))
             HStack {
                 Menu(String(localized: "Apply template", table: "Vocabulary")) {
                     Button(String(localized: "Expression → meaning", table: "Vocabulary")) { apply(ReviewLayoutPolicy.preset(0)) }
@@ -29,19 +37,21 @@ struct VocabularyReviewLayoutEditor: View {
                     Button(String(localized: "Blank card", table: "Vocabulary")) { apply(ReviewLayoutPolicy.preset(3)) }
                     ForEach(store.reviewTemplates) { template in Button(template.name) { apply(template.layout) } }
                 }
-                Button(String(localized: "Save as template", table: "Vocabulary")) { namingTemplate = true }
+                Button(String(localized: "Save as template", table: "Vocabulary")) { interact(); namingTemplate = true }
             }
             if let current = session.current {
                 Picker(String(localized: "Review example", table: "Vocabulary"), selection: Binding(
-                    get: { session.plan.exampleID }, set: { session.plan.exampleID = $0; session.plan.fieldOverrides = [:] })) {
+                    get: { session.plan.exampleID }, set: { interact(); session.plan.exampleID = $0; session.plan.fieldOverrides = [:] })) {
                     Text(String(localized: "No context", table: "Vocabulary")).tag(nil as UUID?)
                     ForEach(current.sense.examples) { Text($0.text).lineLimit(1).tag(Optional($0.id)) }
                 }
             }
-            Picker(String(localized: "Card side", table: "Vocabulary"), selection: $back) {
-                Text(String(localized: "Front", table: "Vocabulary")).tag(false)
-                Text(String(localized: "Back", table: "Vocabulary")).tag(true)
-            }.pickerStyle(.segmented).labelsHidden()
+            if hostedSide == nil {
+                Picker(String(localized: "Card side", table: "Vocabulary"), selection: side) {
+                    Text(String(localized: "Front", table: "Vocabulary")).tag(false)
+                    Text(String(localized: "Back", table: "Vocabulary")).tag(true)
+                }.pickerStyle(.segmented).labelsHidden()
+            }
         }
         ForEach(parts) { $part in
             Section {
@@ -73,6 +83,7 @@ struct VocabularyReviewLayoutEditor: View {
                 if part.source == .expressionAudio || part.source == .sentenceAudio {
                     let kind: ReviewAudioKind = part.source == .expressionAudio ? .expression : .sentence
                     Button(String(localized: "Preview audio", table: "Vocabulary")) {
+                        interact()
                         guard operation == nil else { return }
                         operation = Task { defer { operation = nil }; await session.prepareAudio(kind, audition: true) }
                     }
@@ -98,21 +109,6 @@ struct VocabularyReviewLayoutEditor: View {
             } label: { Label(String(localized: "Add content", table: "Vocabulary"), systemImage: "plus") }
                 .disabled(layout.wrappedValue.parts.count >= 64)
         }
-        Section(String(localized: "Card preview", table: "Vocabulary")) {
-            if let current = session.current, let content = try? ReviewLayoutPolicy.content(
-                entry: current.entry, sense: current.sense, plan: session.plan, previewBack: back) {
-                let resolved = (back ? content.back : content.front) ?? []
-                let html = ReviewLayoutPolicy.preview(resolved)
-                DictionaryHTMLView(article: .init(html: html, text: "", sourceName: "Lingrove"), loadResource: { path in
-                    guard let ref = VocabularyContentPolicy.images(content.senseContent).first(where: { $0.filename == path })
-                    else { return nil }
-                    if let bytes = session.importedImages[path] { return .init(data: bytes, mimeType: "image/png") }
-                    guard let data = await store.image(ref) else { return nil }
-                    return .init(data: data, mimeType: "image/png")
-                }, reference: { _ in }, height: $previewHeight).frame(height: previewHeight).id(html)
-            } else if let issue = session.validationMessage { Text(issue).foregroundStyle(.secondary) }
-            if let failure { Text(failure).foregroundStyle(.red) }
-        }
         .alert(String(localized: "Save as template", table: "Vocabulary"), isPresented: $namingTemplate) {
             TextField(String(localized: "Template name", table: "Vocabulary"), text: $templateName)
             Button(String(localized: "Cancel"), role: .cancel) { }
@@ -128,6 +124,25 @@ struct VocabularyReviewLayoutEditor: View {
                     } catch is CancellationError { } catch { failure = error.localizedDescription }
                 }
             }.disabled(templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        if !previewFirst { cardPreview }
+    }
+
+    private var cardPreview: some View {
+        Section(String(localized: "Card preview", table: "Vocabulary")) {
+            if let current = session.current, let content = try? ReviewLayoutPolicy.content(
+                entry: current.entry, sense: current.sense, plan: session.plan, previewBack: back) {
+                let resolved = (back ? content.back : content.front) ?? []
+                let html = ReviewLayoutPolicy.preview(resolved)
+                DictionaryHTMLView(article: .init(html: html, text: "", sourceName: "Lingrove"), loadResource: { path in
+                    guard let ref = VocabularyContentPolicy.images(content.senseContent).first(where: { $0.filename == path })
+                    else { return nil }
+                    if let bytes = session.importedImages[path] { return .init(data: bytes, mimeType: "image/png") }
+                    guard let data = await store.image(ref) else { return nil }
+                    return .init(data: data, mimeType: "image/png")
+                }, reference: { _ in }, height: $previewHeight).frame(height: previewHeight).id(html)
+            } else if let issue = session.validationMessage { Text(issue).foregroundStyle(.secondary) }
+            if let failure { Text(failure).foregroundStyle(.red) }
         }
     }
 

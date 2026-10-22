@@ -20,12 +20,16 @@ struct VocabularyFavoriteIcon: View {
 struct VocabularyFavoriteButton: View {
     @ObservedObject var store: VocabularyStore
     let capture: VocabularyCapture
+    @Environment(\.learningInteraction) private var interact
     @State private var showsActions = false
     @State private var failure: String?
+    @Environment(\.learningFavoriteMenu) private var hostedMenu
+    private var menu: Binding<Bool> { hostedMenu ?? $showsActions }
 
     var body: some View {
         Button {
-            if store.contains(capture) { showsActions = true } else {
+            interact()
+            if store.contains(capture) { menu.wrappedValue = true } else {
                 Task {
                     await store.save(capture)
                     failure = store.errorMessage
@@ -42,6 +46,7 @@ struct VocabularyFavoriteButton: View {
             .frame(width: 20, height: 20).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .learningAction(.favorite)
         .disabled(store.isPending(capture))
         .help(failure ?? (store.contains(capture)
             ? String(localized: "Saved · Show actions", table: "Vocabulary")
@@ -50,14 +55,14 @@ struct VocabularyFavoriteButton: View {
         .accessibilityValue(store.contains(capture)
             ? String(localized: "Saved", table: "Vocabulary") : String(localized: "Not saved", table: "Vocabulary"))
         .task { store.loadIfNeeded() }
-        .popover(isPresented: $showsActions) {
+        .popover(isPresented: menu) {
             VStack(alignment: .leading, spacing: 12) {
                 Button(String(localized: "Show in vocabulary", table: "Vocabulary")) {
-                    showsActions = false
+                    menu.wrappedValue = false
                     store.show(capture)
                 }
                 Button(String(localized: "Remove this saved usage", table: "Vocabulary")) {
-                    showsActions = false
+                    menu.wrappedValue = false
                     Task { await store.remove(capture); failure = store.errorMessage }
                 }
             }.buttonStyle(.plain).padding(14)

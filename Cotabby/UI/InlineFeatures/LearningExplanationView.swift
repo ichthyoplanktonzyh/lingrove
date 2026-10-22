@@ -4,6 +4,7 @@ import SwiftUI
 /// supplies a session and optional adoption action; this view neither constructs a runtime nor
 /// writes an editor. Long explanations remain in the surrounding card's bounded scroll viewport.
 struct LearningExplanationView: View {
+    @Environment(\.learningInteraction) private var interact
     /// A surrounding card may already own the target and generation button. Embedded results
     /// observe the same session while omitting those duplicate controls and adding separation.
     enum Presentation { case complete, embedded, contextual }
@@ -44,12 +45,14 @@ struct LearningExplanationView: View {
                 }
             }
             if let record = session.record {
-                DisclosureGroup(String(localized: "Details", table: "Learning"), isExpanded: $showsDetails) {
+                DisclosureGroup(String(localized: "Details", table: "Learning"), isExpanded: Binding(get: { showsDetails }, set: {
+                    interact(); showsDetails = $0
+                })) {
                     VStack(alignment: .leading, spacing: 8) {
                         if let meaning, meaning != record.result.meaning {
                             Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
                             if let adopt {
-                                Button(String(localized: "Replace contextual meaning", table: "Learning")) { adopt(record) }
+                                Button(String(localized: "Replace contextual meaning", table: "Learning")) { interact(); adopt(record) }
                                     .buttonStyle(.link).font(.caption)
                             }
                         }
@@ -90,11 +93,11 @@ struct LearningExplanationView: View {
                 if presentation == .complete || adopt != nil {
                     HStack {
                         if presentation == .complete {
-                            Button(String(localized: "Regenerate", table: "Learning")) { session.explain(refresh: true) }
+                            Button(String(localized: "Regenerate", table: "Learning")) { interact(); session.explain(refresh: true) }
                                 .disabled(session.isGenerating || !session.isConfigured)
                         }
                         if let adopt {
-                            Button(String(localized: "Use as contextual meaning", table: "Learning")) { adopt(record) }
+                            Button(String(localized: "Use as contextual meaning", table: "Learning")) { interact(); adopt(record) }
                         }
                     }.buttonStyle(.link).font(.caption)
                 }
@@ -104,19 +107,23 @@ struct LearningExplanationView: View {
                     ProgressView().controlSize(.small)
                     Text(String(localized: "Explaining…", table: "Learning")).font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button(String(localized: "Stop", table: "Learning"), action: session.cancel).buttonStyle(.link)
+                    Button(String(localized: "Stop", table: "Learning")) { interact(); session.cancel() }.buttonStyle(.link)
                 }
             } else if let error = session.error {
                 Text(error).font(.caption).foregroundStyle(.secondary)
                 if presentation == .complete {
-                    Button(String(localized: "Try again", table: "Learning")) { session.explain(refresh: true) }.buttonStyle(.link)
+                    Button(String(localized: "Try again", table: "Learning")) {
+                        interact(); session.explain(refresh: true)
+                    }.buttonStyle(.link)
                 }
             } else if session.record == nil, presentation == .complete {
                 if session.isConfigured {
-                    Button(String(localized: "AI explanation", table: "Learning")) { session.explain() }.buttonStyle(.link)
+                    Button(String(localized: "AI explanation", table: "Learning")) { interact(); session.explain() }.buttonStyle(.link)
                         .disabled(session.input == nil)
                 } else {
-                    Button(String(localized: "Configure AI explanation model", table: "Learning"), action: configure).buttonStyle(.link)
+                    Button(String(localized: "Configure AI explanation model", table: "Learning")) {
+                        interact(); configure()
+                    }.buttonStyle(.link)
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -127,11 +134,13 @@ struct LearningExplanationView: View {
 /// restored results, cancellation and target changes in sync without another UI state machine.
 /// Every phase uses the same hit area; the progress ring remains a button that can stop work.
 struct LearningExplanationButton: View {
+    @Environment(\.learningInteraction) private var interact
     @ObservedObject var session: LearningExplanationSession
     var prepare: () -> Void = {}
     var configure: () -> Void = {}
     var body: some View {
         Button {
+            interact()
             // Stopping must not invoke `prepare`: in a compact card it would expand the details
             // even though the user only asked to cancel the request at its original location.
             if session.isGenerating { session.cancel(); return }
@@ -152,6 +161,7 @@ struct LearningExplanationButton: View {
             .frame(width: 22, height: 22).contentShape(Rectangle())
         }
             .buttonStyle(.plain)
+            .learningAction(.explanation)
             .disabled(session.input == nil)
             .help(tooltip)
             .accessibilityLabel(actionLabel)
