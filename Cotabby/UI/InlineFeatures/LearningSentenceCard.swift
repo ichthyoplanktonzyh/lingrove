@@ -144,13 +144,13 @@ struct LearningSentenceCard: View {
                     stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
             }
             if !presentation.isError {
-                replacementAction
+                replacementAction.learningAction(.replace)
                 iconAction(presentation.isExpanded
                     ? String(localized: "Collapse", table: "Learning")
                     : String(localized: "Expand", table: "Learning"),
-                    symbol: presentation.isExpanded ? "chevron.up" : "chevron.down", action: expand)
+                    symbol: presentation.isExpanded ? "chevron.up" : "chevron.down", action: expand).learningAction(.expand)
             }
-            iconAction(String(localized: "Dismiss"), symbol: "xmark", action: dismiss)
+            iconAction(String(localized: "Dismiss"), symbol: "xmark", action: dismiss).learningAction(.dismiss)
         }
     }
 
@@ -304,6 +304,7 @@ struct LearningSentenceCard: View {
 /// A tiny child observes only the shared playback controller. Cards keep their measured layout
 /// stable during ordinary playback; an error caption appears only when the provider reports one.
 struct LearningSpeechButton: View {
+    @Environment(\.learningInteraction) private var interact
     @ObservedObject var speech: LearningSpeechController
     let request: SpeechRequest
     let playLabel: String
@@ -314,7 +315,7 @@ struct LearningSpeechButton: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Button { speech.toggle(request) } label: {
+            Button { interact(); speech.toggle(request) } label: {
                 Group {
                     if speech.isPreparing(request.target) {
                         ProgressView().controlSize(.mini)
@@ -327,6 +328,7 @@ struct LearningSpeechButton: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .learningAction(.speech)
             .help(error ?? (isPlaying ? stopLabel : playLabel))
             .accessibilityLabel(isPlaying ? stopLabel : playLabel)
             .accessibilityHint(error ?? "")

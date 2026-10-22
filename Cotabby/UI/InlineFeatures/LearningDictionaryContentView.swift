@@ -8,12 +8,14 @@ struct LearningDictionarySourcePicker: View {
     var popupWindows: LearningPopupWindowRegistry?
     @State private var showsSources = false
     @State private var sourceHovering = false
+    @Environment(\.learningDictionaryMenu) private var hostedMenu
+    private var menu: Binding<Bool> { hostedMenu ?? $showsSources }
     private var canSelectSource: Bool {
         session.availableSources.count > 1 ||
             (!session.availableSources.isEmpty && !session.availableSources.contains(session.selectedSource))
     }
     var body: some View {
-        Button { showsSources.toggle() } label: {
+        Button { menu.wrappedValue.toggle() } label: {
             HStack(spacing: 4) {
                 Text(session.sourceName).lineLimit(1)
                 if canSelectSource { Image(systemName: "chevron.down").font(.caption2) }
@@ -23,6 +25,7 @@ struct LearningDictionarySourcePicker: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(DictionarySourceButtonStyle(hovering: sourceHovering))
+        .learningAction(.dictionarySources)
         .onHover { sourceHovering = $0 }
         .disabled(!canSelectSource)
         .accessibilityLabel(String(localized: "Dictionary sources", table: "Learning"))
@@ -30,13 +33,13 @@ struct LearningDictionarySourcePicker: View {
         .accessibilityIdentifier("learning.dictionary.sources")
         // Register the content's actual window, including the period when SwiftUI has not
         // attached it as an AppKit child. Parent-chain discovery remains a fallback.
-        .popover(isPresented: $showsSources) {
+        .popover(isPresented: menu) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(session.availableSources) { source in
                         DictionarySourceRow(title: session.name(for: source), subtitle: session.languageLabel(for: source),
                                             selected: source == session.selectedSource) {
-                            showsSources = false
+                            menu.wrappedValue = false
                             session.selectSource(source)
                         }
                         .accessibilityIdentifier("learning.dictionary.source.\(source.id)")
@@ -45,7 +48,7 @@ struct LearningDictionarySourcePicker: View {
             }.frame(width: 260, height: min(360, CGFloat(session.availableSources.count) * 54 + 28))
                 .background(LearningPopoverWindowReader(registry: popupWindows).frame(width: 0, height: 0))
         }
-        .onChange(of: session.query) { _, _ in showsSources = false }
+        .onChange(of: session.query) { _, _ in menu.wrappedValue = false }
     }
 
 }

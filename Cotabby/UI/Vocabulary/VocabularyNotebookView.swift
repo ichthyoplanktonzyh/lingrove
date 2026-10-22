@@ -241,14 +241,8 @@ struct VocabularyNotebookView: View {
                                 })).labelsHidden().toggleStyle(.checkbox)
                                     .accessibilityLabel(entry.expression + " · " + sense.displayTitle)
                               }
-                              VStack(alignment: .leading, spacing: 4) {
-                                Text(sense.displayTitle).font(.callout).lineLimit(2)
-                                Text(String(localized: "\(sense.examples.count) usages", table: "Vocabulary"))
-                                    .font(.caption).foregroundStyle(.secondary)
-                                if let example = sense.examples.first {
-                                    Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                            }}.padding(.vertical, 4).tag(sense.id)
+                              VocabularySenseSummary(sense: sense)
+                            }.padding(.vertical, 4).tag(sense.id)
                             .contextMenu {
                                 Button(String(localized: "Export this sense…", table: "Vocabulary")) {
                                     beginExport(single: .init(entryID: entry.id, senseID: sense.id))
@@ -330,7 +324,7 @@ struct VocabularyNotebookView: View {
 
 /// Read-only browsing reuses the app's speech button and material cards. Edits are explicit sheets
 /// so selecting another row cannot silently discard an in-progress note or sentence change.
-private struct VocabularyEntryDetail: View {
+struct VocabularyEntryDetail: View {
     let entry: VocabularyEntry
     let sense: VocabularySense
     let speech: LearningSpeechController
@@ -492,6 +486,22 @@ extension VocabularyEntry.Kind {
         case .expression: String(localized: "Expression", table: "Vocabulary")
         case .pattern: String(localized: "Pattern", table: "Vocabulary")
         case .sentence: String(localized: "Sentence", table: "Vocabulary")
+        }
+    }
+}
+
+/// The notebook list and its Home walkthrough share the exact sense label. Selection remains
+/// the host's responsibility; this value-only component never edits or reclassifies a usage.
+struct VocabularySenseSummary: View {
+    let sense: VocabularySense
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(sense.displayTitle).font(.callout).lineLimit(2)
+            Text(String(localized: "\(sense.examples.count) usages", table: "Vocabulary"))
+                .font(.caption).foregroundStyle(.secondary)
+            if let example = sense.examples.first {
+                Text(example.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
         }
     }
 }

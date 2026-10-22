@@ -5,6 +5,7 @@ import SwiftUI
 /// selection and captured examples; shared speech/favorite controls keep their existing owners.
 /// Only the content body scrolls, leaving the source selector and primary actions reachable.
 struct LearningDictionaryCard: View {
+    @Environment(\.learningInteraction) private var interact
     @ObservedObject var session: LearningDictionarySession
     let close: () -> Void
     let sizeChanged: (CGSize) -> Void
@@ -145,6 +146,8 @@ struct LearningDictionaryCard: View {
     }
 
     private func selectPage(_ contextual: Bool) {
+        guard contextual != showsExplanation else { return }
+        interact()
         let targetIdentity = session.targetIdentity
         // The AppKit segmented control can write its binding while SwiftUI is updating it.
         // Defer observable session mutations to the next actor turn, retaining this target's
