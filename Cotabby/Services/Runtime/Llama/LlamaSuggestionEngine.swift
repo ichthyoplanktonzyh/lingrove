@@ -268,7 +268,7 @@ final class LlamaSuggestionEngine {
         inflightPrewarmTask?.cancel()
         inflightPrewarmTask = nil
         promptCacheHintTracker.reset()
-        runtimeManager.resetPromptCache()
+        await runtimeManager.resetPromptCache()
     }
 
     /// One shared mapping from a request to engine options so prewarm prefills decode under the

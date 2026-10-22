@@ -19,6 +19,10 @@ final class LlamaRuntimeManager: ObservableObject {
     private let runtimeLocator: BundledRuntimeLocator
     private let core: LlamaRuntimeCore
     private let shutdownOperation: @Sendable () -> Void
+    private let cacheResetOperation: @Sendable () -> Void
+    /// Resets must stay ordered even when the coordinator cancels a superseded reset caller.
+    /// The newest barrier includes earlier maintenance, so no late reset can clear newer KV.
+    private var pendingCacheReset: (id: UUID, task: Task<Void, Never>)?
     /// A new load must wait for every earlier unload; native serialization alone cannot preserve
     /// the manager cache if a late unload runs after a new preparation has published readiness.
     private var pendingShutdown: (id: UUID, task: Task<Void, Never>)?
@@ -53,13 +57,15 @@ final class LlamaRuntimeManager: ObservableObject {
     init(
         configuration: LlamaRuntimeConfiguration,
         runtimeLocator: BundledRuntimeLocator,
-        shutdownOperation: (@Sendable () -> Void)? = nil
+        shutdownOperation: (@Sendable () -> Void)? = nil,
+        cacheResetOperation: (@Sendable () -> Void)? = nil
     ) {
         self.configuration = configuration
         self.runtimeLocator = runtimeLocator
         let runtimeCore = LlamaRuntimeCore()
         core = runtimeCore
         self.shutdownOperation = shutdownOperation ?? { runtimeCore.shutdown() }
+        self.cacheResetOperation = cacheResetOperation ?? { runtimeCore.resetPromptCache() }
         refreshAvailableModels()
     }
 
@@ -136,6 +142,9 @@ final class LlamaRuntimeManager: ObservableObject {
         onPartialRawText: (@Sendable (String) -> Void)?
     ) async throws -> LlamaGenerationOutput {
         _ = try await preparedRuntime(contextWindowTokens: options.contextWindowTokens)
+        // Loading can suspend while another reset is enqueued. Recheck immediately before
+        // submitting decode/prefill, so ready metadata cannot bypass queued maintenance.
+        try await awaitPendingCacheResetIfNeeded()
 
         let core = self.core
         let operationID = UUID()
@@ -188,9 +197,31 @@ final class LlamaRuntimeManager: ObservableObject {
         }
     }
 
-    /// Clears the native prompt KV cache without unloading the model.
-    func resetPromptCache() {
-        core.resetPromptCache()
+    /// Clears KV without unloading weights. Native maintenance can wait behind a noninterruptible
+    /// load/decode; calling it synchronously here would freeze every main-actor control, including
+    /// the menu's completion switch. Detach only that blocking boundary and await its completion.
+    /// Cancellation of a UI caller must not discard an already queued invalidation.
+    func resetPromptCache() async {
+        let previous = pendingCacheReset?.task
+        let operation = cacheResetOperation
+        let task = Task.detached {
+            await previous?.value
+            operation()
+        }
+        let id = UUID()
+        pendingCacheReset = (id, task)
+        await task.value
+        if pendingCacheReset?.id == id { pendingCacheReset = nil }
+    }
+
+    /// All native entry paths await the latest reset chain. The actor may reenter during a
+    /// wait, so repeat until even a newly appended reset has completed; only clear our own ID.
+    private func awaitPendingCacheResetIfNeeded() async throws {
+        while let reset = pendingCacheReset {
+            await reset.task.value
+            if pendingCacheReset?.id == reset.id { pendingCacheReset = nil }
+            try Task.checkCancellation()
+        }
     }
 
     /// Decodes `prompt` into the native prompt cache without sampling (the llama half of
@@ -203,6 +234,9 @@ final class LlamaRuntimeManager: ObservableObject {
         options: LlamaGenerationOptions
     ) async throws {
         _ = try await preparedRuntime(contextWindowTokens: options.contextWindowTokens)
+        // Loading can suspend while another reset is enqueued. Recheck immediately before
+        // submitting decode/prefill, so ready metadata cannot bypass queued maintenance.
+        try await awaitPendingCacheResetIfNeeded()
 
         let core = self.core
         let operationID = UUID()
@@ -265,6 +299,7 @@ final class LlamaRuntimeManager: ObservableObject {
 
     /// Returns cached runtime metadata when available or performs one full preparation flow otherwise.
     private func preparedRuntime(contextWindowTokens: Int? = nil) async throws -> PreparedLlamaRuntime {
+        try await awaitPendingCacheResetIfNeeded()
         try Task.checkCancellation()
         while let shutdown = pendingShutdown {
             await shutdown.task.value

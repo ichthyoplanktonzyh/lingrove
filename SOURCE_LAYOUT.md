@@ -294,6 +294,13 @@ that owns too many responsibilities and should be split by behavior rather than 
 
 ## Settings Update Boundaries and Profiling
 
+- `LlamaRuntimeManager.resetPromptCache` is an async native-maintenance barrier. Its ordered
+  detached tasks keep load/decode lock waits off MainActor; cancellation of a superseded UI caller
+  cannot let a later reset overtake earlier work. `LlamaSuggestionEngine` clears Swift reuse hints
+  immediately and awaits this barrier before returning. Native entry points also recheck pending
+  maintenance after model preparation, which can suspend while a newer reset is queued.
+  `LlamaRuntimeMaintenanceTests` uses a
+  blocked fake native operation to check UI-actor progress and cancellation ordering without a GGUF.
 - `Models/Settings/SettingsAttentionModel.swift` owns the window coordinator's small, deduplicated
   warning projection. `Support/Settings/SettingsAttentionEvaluator.swift` retains the pure policy;
   the model combines incoming permission, engine/configuration and availability/failure values.
