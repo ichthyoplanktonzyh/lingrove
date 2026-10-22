@@ -1,49 +1,51 @@
 import SwiftUI
 
 /// Mounted only on the learning page. It borrows the app's durable learning settings, while
-/// disclosure expansion remains local UI state. The same small switches and MenuBarPickerRow
-/// used by completion keep this a quick-control surface rather than another settings window.
+/// disclosure expansion remains local UI state. Direct native Toggles, eight-point stack spacing
+/// and the original MenuBarPickerRow follow the restored completion panel. No custom switch row
+/// stretches labels or repositions controls; model configuration remains in Settings.
 struct MenuBarLearningControls: View {
     @ObservedObject var settings: LanguageLearningSettings
     let speech: LearningSpeechController
     let screenRecordingGranted: Bool
     let open: (MenuBarSettingsDestination) -> Void
+    let review: () -> Void
     @State private var explanationExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MenuBarToggleRow(title: String(localized: "Translation", table: "Learning"), isOn: $settings.translationEnabled)
-                .accessibilityIdentifier("menuTranslationEnabled")
-            MenuBarLearningModelRow(profile: settings.translation) { open(.model(.translation)) }
+            Toggle(String(localized: "Translation", table: "Learning"), isOn: $settings.translationEnabled)
+                .controlSize(.small).accessibilityIdentifier("menuTranslationEnabled")
 
             Divider()
             heading(String(localized: "Writing"))
-            MenuBarToggleRow(title: String(localized: "Automatic translation preview", table: "Learning"),
+            Toggle(String(localized: "Automatic translation preview", table: "Learning"),
                 isOn: $settings.sentencePreviewEnabled)
-                .disabled(!settings.translationEnabled)
+                .controlSize(.small).disabled(!settings.translationEnabled)
                 .accessibilityIdentifier("menuSentencePreview")
             languageRow(selection: $settings.targetLanguage, identifier: "menuWritingTarget")
 
             Divider()
             heading(String(localized: "Reading", table: "Learning"))
-            MenuBarToggleRow(title: String(localized: "Enable selection translation", table: "Learning"),
+            Toggle(String(localized: "Enable selection translation", table: "Learning"),
                 isOn: $settings.selectionTranslationEnabled)
-                .disabled(!settings.translationEnabled).accessibilityIdentifier("menuSelectionTranslation")
-            MenuBarToggleRow(title: String(localized: "Enable pointer translation", table: "Learning"),
+                .controlSize(.small).disabled(!settings.translationEnabled).accessibilityIdentifier("menuSelectionTranslation")
+            Toggle(String(localized: "Enable pointer translation", table: "Learning"),
                 isOn: $settings.pointerTranslationEnabled)
-                .disabled(!settings.translationEnabled).accessibilityIdentifier("menuPointerTranslation")
-            MenuBarToggleRow(title: String(localized: "Enable screen region translation", table: "Learning"),
+                .controlSize(.small).disabled(!settings.translationEnabled).accessibilityIdentifier("menuPointerTranslation")
+            Toggle(String(localized: "Enable screen region translation", table: "Learning"),
                 isOn: $settings.screenshotTranslationEnabled)
-                .disabled(!settings.translationEnabled).accessibilityIdentifier("menuRegionTranslation")
+                .controlSize(.small).disabled(!settings.translationEnabled).accessibilityIdentifier("menuRegionTranslation")
             if settings.translationEnabled && settings.screenshotTranslationEnabled && !screenRecordingGranted {
                 Button { open(.category(.permissions)) } label: {
-                    Label(String(localized: "Unavailable while Screen Recording is off"), systemImage: "exclamationmark.circle")
-                        .font(.caption2).foregroundStyle(.orange)
+                    Text(String(localized: "Unavailable while Screen Recording is off"))
+                        .font(.caption2).foregroundStyle(.secondary)
                 }.buttonStyle(.borderless)
             }
             languageRow(selection: $settings.readingTargetLanguage, identifier: "menuReadingTarget")
 
             Divider()
+            MenuBarLearningModelRow(profile: settings.translation) { open(.model(.translation)) }
             DisclosureGroup(isExpanded: $explanationExpanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     MenuBarPickerRow(title: String(localized: "Explanation language", table: "Learning")) {
@@ -68,12 +70,15 @@ struct MenuBarLearningControls: View {
                 Label(String(localized: "Dictionary", table: "Learning"), systemImage: "book.closed")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.borderless)
+            Button(action: review) {
+                Label(String(localized: "Review", table: "Vocabulary"), systemImage: "rectangle.stack.badge.play")
+            }.buttonStyle(.borderless)
             Button { open(.learning(.translation)) } label: {
                 Label(String(localized: "Language Learning", table: "Learning") + "…", systemImage: "slider.horizontal.3")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.borderless)
         }
-        .toggleStyle(.switch).controlSize(.small)
+        .toggleStyle(.switch)
     }
 
     private func heading(_ title: String) -> some View {

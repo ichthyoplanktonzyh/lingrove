@@ -590,12 +590,13 @@ source and media, while the shared session retains conflict handling and lost-ac
 
 ## Menu Bar Quick Controls
 
-`MenuBarView` retains the existing completion bindings, global pause/recovery and permanent
-footer. Its persisted task selection only chooses the visible completion or learning page.
-`MenuBarLearningControls` observes the shared language settings; its speech disclosure borrows
-the same app-owned speaker used by cards and Settings. The existing `MenuBarPickerRow` and native
-small switches provide both pages' controls. `MenuBarContentViewport` bounds only their scrolling
-document, leaving window/navigation actions visible. Typed menu destinations pass through
+`MenuBarView` restores the completion panel from before the learning-menu change: direct native
+switches, eight-point spacing, its original status text, natural height and original footer.
+A persisted task picker is the only navigation addition. Pause/recovery children are shared through
+a layout-free ViewBuilder property. `MenuBarLearningControls` observes the shared language settings
+and follows that original native-toggle and `MenuBarPickerRow` design. Its speech disclosure borrows
+the same app-owned speaker used by cards and Settings. `MenuBarContentViewport` bounds only learning
+content; review is an action on that page, while the original vocabulary/settings footer stays visible. Typed menu destinations pass through
 `SettingsNavigationModel` and the existing `SettingsCoordinator`, after popover dismissal.
 Learning rows read saved model profiles without additional model discovery, voice enumeration or
 generation; the existing menu presentation refresh still updates completion model availability.
