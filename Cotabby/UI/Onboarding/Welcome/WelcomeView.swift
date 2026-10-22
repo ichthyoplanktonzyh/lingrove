@@ -372,7 +372,7 @@ extension WelcomeView {
                     menuBarCallout
                         .onboardingReveal(2)
 
-                    OnboardingFeatureShowcase()
+                    ProductFeatureShowcase()
                         .onboardingReveal(3)
                 }
                 .padding(.horizontal, OnboardingLayout.horizontalPadding)

@@ -367,6 +367,8 @@ struct HomePaneView: View {
                 caption: String(localized: "Jump straight to the controls you reach for most.")
             )
 
+            Text(String(localized: "Common settings", table: "Learning"))
+                .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
             // Two columns at the default window width: three fit, but the captions truncate,
             // and a quick link whose caption is cut loses the point of having one.
             LazyVGrid(
@@ -377,6 +379,17 @@ struct HomePaneView: View {
                     SettingsQuickLinkCard(category: category) {
                         navigation.open(category)
                     }
+                }
+            }
+            Text(String(localized: "Language Learning", table: "Learning"))
+                .font(.subheadline.weight(.medium)).foregroundStyle(.secondary).padding(.top, 6)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], spacing: 12) {
+                ForEach(SettingsLearningTask.allCases) { task in
+                    SettingsQuickLinkCard(title: task.label, caption: task.quickLinkCaption,
+                        systemImage: task.quickLinkSymbol, tint: SettingsCategory.languageLearning.tint) {
+                        navigation.openLearningTask(task)
+                    }
+                    .accessibilityIdentifier("homeLearning." + task.rawValue)
                 }
             }
         }
@@ -390,7 +403,7 @@ struct HomePaneView: View {
                 String(localized: "See it in action"),
                 caption: String(localized: "Hover a card to watch it play.")
             )
-            OnboardingFeatureShowcase(autoplay: false, showsMacroReference: true)
+            ProductFeatureShowcase(autoplay: false, showsMacroReference: true)
         }
     }
 

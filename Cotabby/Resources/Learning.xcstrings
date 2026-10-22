@@ -59704,6 +59704,1697 @@
           }
         }
       }
+    },
+    "Anki and review cards.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki وبطاقات المراجعة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki und Wiederholungskarten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki y tarjetas de repaso."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki et cartes de révision."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki और रिव्यू कार्ड।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki dan kartu ulasan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki e schede di ripasso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki と復習カード。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki 및 복습 카드."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki e cartões de revisão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki и карточки для повторения."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki ve tekrar kartları."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki 与复习卡片。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anki 與複習卡片。"
+          }
+        }
+      }
+    },
+    "Click the fish tail to save a sense with its example. Find it again in Vocabulary.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انقر على ذيل السمكة لحفظ المعنى مع مثاله. يمكنك العثور عليه لاحقًا في دفتر المفردات."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klicke auf die Fischflosse, um eine Bedeutung mit ihrem Beispiel zu speichern. Du findest sie im Vokabelbuch wieder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic en la cola de pez para guardar una acepción con su ejemplo. La encontrarás en el vocabulario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cliquez sur la queue de poisson pour enregistrer un sens avec son exemple. Retrouvez-le dans le vocabulaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अर्थ को उसके उदाहरण के साथ सहेजने के लिए मछली की पूँछ पर क्लिक करें। इसे बाद में शब्दावली में देखें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klik ekor ikan untuk menyimpan makna beserta contohnya. Temukan kembali di kosakata."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fai clic sulla coda di pesce per salvare un significato con il suo esempio. Lo ritroverai nel vocabolario."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "魚の尾をクリックして、語義を例文と一緒に保存します。保存した内容は単語帳で確認できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "물고기 꼬리를 클릭하여 뜻과 예문을 함께 저장하세요. 저장한 내용은 단어장에서 다시 볼 수 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clique na cauda de peixe para salvar um sentido com seu exemplo. Você poderá encontrá-lo no vocabulário."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите на рыбий хвост, чтобы сохранить значение вместе с примером. Найти его можно в словаре изучаемых слов."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir anlamı örneğiyle kaydetmek için balık kuyruğuna tıklayın. Daha sonra söz varlığında bulabilirsiniz."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击鱼尾，将义项和例句一起收藏。之后可在生词本中查看。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點擊魚尾，將義項和例句一起收藏。之後可在生詞本中查看。"
+          }
+        }
+      }
+    },
+    "Click the speaker beside a word, expression, or sentence. The language follows the text.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انقر على مكبر الصوت بجانب الكلمة أو التعبير أو الجملة. تُحدَّد اللغة من النص تلقائيًا."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klicke auf den Lautsprecher neben einem Wort, Ausdruck oder Satz. Die Sprache wird anhand des Texts erkannt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic en el altavoz junto a una palabra, expresión o frase. El idioma se detecta a partir del texto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cliquez sur le haut-parleur à côté d’un mot, d’une expression ou d’une phrase. La langue est détectée à partir du texte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शब्द, अभिव्यक्ति या वाक्य के पास स्पीकर पर क्लिक करें। भाषा पाठ से अपने आप पहचानी जाती है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klik speaker di samping kata, ungkapan, atau kalimat. Bahasa dideteksi dari teks."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fai clic sull’altoparlante accanto a una parola, espressione o frase. La lingua viene rilevata dal testo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語・表現・文の横にあるスピーカーをクリックします。言語はテキストから自動判定されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어, 표현, 문장 옆의 스피커를 클릭하세요. 텍스트에 따라 언어가 자동으로 감지됩니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clique no alto-falante ao lado de uma palavra, expressão ou frase. O idioma é detectado a partir do texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите на динамик рядом со словом, выражением или предложением. Язык определяется по тексту."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir sözcük, ifade veya cümlenin yanındaki hoparlöre tıklayın. Dil, metinden otomatik algılanır."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击单词、表达或句子旁的小喇叭，朗读语言会根据文字自动识别。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點擊單字、表達或句子旁的小喇叭，朗讀語言會根據文字自動辨識。"
+          }
+        }
+      }
+    },
+    "Common settings": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإعدادات الشائعة"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Häufige Einstellungen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes frecuentes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages courants"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सामान्य सेटिंग्स"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengaturan umum"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impostazioni frequenti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "よく使う設定"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자주 사용하는 설정"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes frequentes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Частые настройки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sık kullanılan ayarlar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常用设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常用設定"
+          }
+        }
+      }
+    },
+    "Contextual meanings and explanations.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المعاني في السياق والشروح."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bedeutungen im Kontext und Erklärungen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Significados en contexto y explicaciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sens en contexte et explications."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संदर्भ के अनुसार अर्थ और व्याख्याएँ।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Makna dalam konteks dan penjelasan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Significati nel contesto e spiegazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文脈に合った意味と解説。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문맥에 맞는 뜻과 해설."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Significados no contexto e explicações."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значения в контексте и объяснения."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlama göre anlamlar ve açıklamalar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语境释义与详解。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "語境釋義與詳解。"
+          }
+        }
+      }
+    },
+    "Dictionary sources and lookup.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مصادر القواميس والبحث فيها."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wörterbuchquellen und Nachschlagen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes y consultas de diccionario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sources et recherche dans les dictionnaires."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शब्दकोश के स्रोत और खोज।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sumber dan pencarian kamus."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonti e consultazione dei dizionari."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辞書の参照先と検索。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사전 출처 및 검색."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fontes e consultas de dicionário."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Источники словарей и поиск."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sözlük kaynakları ve arama."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "词典来源与查询。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詞典來源與查詢。"
+          }
+        }
+      }
+    },
+    "Initial Setup": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإعداد الأولي"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ersteinrichtung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuración inicial"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration initiale"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शुरुआती सेटअप"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Penyiapan awal"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurazione iniziale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初期設定"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "초기 설정"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuração inicial"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начальная настройка"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlk kurulum"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初始设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初始設定"
+          }
+        }
+      }
+    },
+    "Insert the next word or the entire suggestion with your configured shortcuts.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أدرج الكلمة التالية أو الاقتراح كاملًا باستخدام الاختصارات التي ضبطتها."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge mit deinen konfigurierten Tastenkürzeln das nächste Wort oder den gesamten Vorschlag ein."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserta la siguiente palabra o la sugerencia completa con los atajos que hayas configurado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insérez le mot suivant ou toute la suggestion avec vos raccourcis configurés."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपने सेट किए गए शॉर्टकट से अगला शब्द या पूरा सुझाव डालें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sisipkan kata berikutnya atau seluruh saran dengan pintasan yang telah diatur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci la parola successiva o l’intero suggerimento con le scorciatoie configurate."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定したショートカットで、次の単語または候補全体を挿入します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정한 단축키로 다음 단어나 제안 전체를 삽입하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insira a próxima palavra ou toda a sugestão com os atalhos configurados."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставляйте следующее слово или всю подсказку с помощью настроенных сочетаний клавиш."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarladığınız kısayollarla sonraki sözcüğü veya önerinin tamamını ekleyin."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用已配置的快捷键，插入下一个词或整条补全。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用已設定的快速鍵，插入下一個詞或整條補全。"
+          }
+        }
+      }
+    },
+    "Keep someone informed about new developments.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إبقاء شخص ما على اطلاع بآخر المستجدات."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jemanden über neue Entwicklungen auf dem Laufenden halten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener a alguien al tanto de las novedades."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tenir quelqu’un au courant des nouveautés."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "किसी को नई प्रगति की जानकारी देते रहना।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terus memberi tahu seseorang tentang perkembangan terbaru."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tenere qualcuno aggiornato sulle novità."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい進展を随時知らせる。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로운 진행 상황을 계속 알려 주다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manter alguém informado sobre as novidades."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Держать кого-либо в курсе новых событий."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birini yeni gelişmelerden haberdar etmek."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随时告知某人最新进展。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隨時告知某人最新進展。"
+          }
+        }
+      }
+    },
+    "Pause to preview the current sentence. Use ⇄ to replace its source; a selection takes priority.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقف قليلًا عن الكتابة لمعاينة ترجمة الجملة الحالية. استخدم ⇄ لاستبدال النص الأصلي؛ يُعطى النص المحدد الأولوية."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halte kurz inne, um die Satzübersetzung zu sehen. Ersetze den Ausgangstext mit ⇄. Eine Textauswahl hat Vorrang."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa la escritura para ver la traducción de la frase actual. Usa ⇄ para sustituir el original; una selección tiene prioridad."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites une pause pour prévisualiser la traduction de la phrase. Utilisez ⇄ pour remplacer le texte source ; une sélection est prioritaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "लिखना थोड़ा रोकें ताकि मौजूदा वाक्य का अनुवाद दिखे। मूल पाठ बदलने के लिए ⇄ दबाएँ; चुने गए पाठ को प्राथमिकता दी जाती है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berhenti mengetik sejenak untuk melihat terjemahan kalimat saat ini. Gunakan ⇄ untuk mengganti teks asli; pilihan teks diprioritaskan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrompi brevemente la digitazione per vedere la traduzione della frase. Usa ⇄ per sostituire il testo originale; la selezione ha priorità."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力を止めると現在の文の翻訳が表示されます。⇄ で原文を置き換えます。選択範囲がある場合はそちらを優先します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력을 잠시 멈추면 현재 문장의 번역이 표시됩니다. ⇄로 원문을 바꾸세요. 선택 영역이 있으면 우선 처리합니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause a digitação para ver a tradução da frase atual. Use ⇄ para substituir o original; uma seleção tem prioridade."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приостановите ввод, чтобы увидеть перевод текущего предложения. Нажмите ⇄ для замены оригинала; выделенный текст имеет приоритет."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli cümlenin çevirisini görmek için yazmaya ara verin. Kaynak metni ⇄ ile değiştirin; seçili metin önceliklidir."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停输入即可预览当前句译文。点击 ⇄ 替换原文；有选区时优先处理选区。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫停輸入即可預覽目前句子的譯文。點擊 ⇄ 取代原文；有選取範圍時優先處理選取內容。"
+          }
+        }
+      }
+    },
+    "Query a word or expression for its meaning in context. Expand to read the explanation.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابحث عن معنى كلمة أو تعبير في سياقه. وسّع البطاقة لقراءة الشرح."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlage ein Wort oder einen Ausdruck im Kontext nach. Klappe die Erklärung für weitere Details auf."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta el significado de una palabra o expresión en su contexto. Despliega para leer la explicación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultez le sens d’un mot ou d’une expression en contexte. Développez pour lire l’explication."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "संदर्भ में किसी शब्द या अभिव्यक्ति का अर्थ देखें। व्याख्या पढ़ने के लिए विस्तार करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cari makna kata atau ungkapan dalam konteksnya. Perluas untuk membaca penjelasan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta il significato di una parola o espressione nel contesto. Espandi per leggere la spiegazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語や表現の文脈に合った意味を調べます。展開すると詳しい解説を読めます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어나 표현이 현재 문맥에서 어떤 뜻인지 확인하세요. 펼치면 자세한 해설을 볼 수 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulte o significado de uma palavra ou expressão no contexto. Expanda para ler a explicação."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Узнайте значение слова или выражения в контексте. Разверните, чтобы прочитать объяснение."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir sözcük veya ifadenin bağlamdaki anlamını sorgulayın. Açıklamayı okumak için genişletin."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查询单词或表达在当前语境中的含义，展开可查看详解。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查詢單字或表達在目前語境中的含義，展開可查看詳解。"
+          }
+        }
+      }
+    },
+    "Read the writing and language learning guide.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اطّلع على دليل الإكمال التلقائي وتعلّم اللغات."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lies die Anleitung zur Autovervollständigung und zum Sprachenlernen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta la guía de autocompletado y aprendizaje de idiomas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultez le guide de la saisie et de l’apprentissage des langues."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ऑटोकम्प्लीट और भाषा सीखने की गाइड देखें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baca panduan pelengkapan otomatis dan pembelajaran bahasa."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta la guida al completamento e all’apprendimento delle lingue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力補完と言語学習の使い方を確認します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 완성과 언어 학습 사용법을 확인하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veja o guia de preenchimento automático e aprendizado de idiomas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте руководство по автодополнению и изучению языков."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik tamamlama ve dil öğrenme kılavuzunu okuyun."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看补全与语言学习的使用指南。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看補全與語言學習的使用指南。"
+          }
+        }
+      }
+    },
+    "Select text, point at text with the configured shortcut, or capture a screen region.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدّد نصًا، أو استخدم الاختصار المضبوط للنص تحت المؤشر، أو التقط منطقة من الشاشة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle Text aus, nutze das konfigurierte Tastenkürzel über dem Text unter dem Zeiger oder erfasse einen Bildschirmbereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona texto, usa el atajo configurado sobre el texto bajo el puntero o captura una zona de la pantalla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez du texte, utilisez le raccourci configuré sur le texte pointé ou capturez une zone de l’écran."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पाठ चुनें, पॉइंटर के नीचे के पाठ के लिए सेट किया गया शॉर्टकट इस्तेमाल करें या स्क्रीन का कोई हिस्सा कैप्चर करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih teks, gunakan pintasan yang diatur pada teks di bawah penunjuk, atau tangkap area layar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona il testo, usa la scorciatoia configurata sul testo sotto il puntatore o cattura un’area dello schermo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを選択するか、設定したショートカットでポインタ下の文字を調べるか、画面の範囲を指定します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트를 선택하거나, 설정한 단축키로 포인터 아래 텍스트를 조회하거나, 화면 영역을 캡처하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione texto, use o atalho configurado sobre o texto sob o ponteiro ou capture uma região da tela."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделите текст, используйте настроенное сочетание клавиш над текстом под указателем или захватите область экрана."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metin seçin, işaretçinin altındaki metin için ayarlanan kısayolu kullanın veya ekranın bir bölgesini yakalayın."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选中文字、使用已配置的快捷键查询鼠标指向的文字，或框选屏幕区域。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選取文字、使用已設定的快速鍵查詢滑鼠指向的文字，或框選螢幕區域。"
+          }
+        }
+      }
+    },
+    "Send saved senses to Anki, choose card faces, and review them.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أرسل المعاني المحفوظة إلى Anki واختر وجهي البطاقات وراجعها."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sende gespeicherte Bedeutungen an Anki, wähle die Kartenseiten und wiederhole sie."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envía las acepciones guardadas a Anki, elige las caras de las tarjetas y repásalas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyez les sens enregistrés vers Anki, choisissez le recto et le verso des cartes, puis révisez."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सहेजे गए अर्थ Anki में भेजें, कार्ड के आगे और पीछे का भाग चुनें और रिव्यू करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kirim makna tersimpan ke Anki, pilih sisi kartu, lalu ulas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia i significati salvati ad Anki, scegli i lati delle schede e ripassa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存した語義を Anki に送り、カードの表裏を選んで復習します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장한 뜻을 Anki로 보내고 카드의 앞뒷면을 선택하여 복습하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envie os sentidos salvos ao Anki, escolha as faces dos cartões e revise."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправляйте сохранённые значения в Anki, выбирайте стороны карточек и повторяйте материал."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydedilen anlamları Anki’ye gönderin, kart yüzlerini seçin ve tekrar yapın."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将已收藏的义项发送至 Anki，选择卡片正反面并进行复习。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將已收藏的義項傳送至 Anki，選擇卡片正反面並進行複習。"
+          }
+        }
+      }
+    },
+    "Switch dictionary sources in the lookup card.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بدّل مصدر القاموس في بطاقة البحث."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wechsle die Wörterbuchquelle in der Nachschlagekarte."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia de fuente en la tarjeta de diccionario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changez de source dans la fiche de dictionnaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खोज कार्ड में शब्दकोश का स्रोत बदलें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganti sumber kamus di kartu pencarian."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia la fonte nella scheda del dizionario."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辞書カードで参照先を切り替えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사전 카드에서 사전 출처를 전환하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troque a fonte na ficha de dicionário."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меняйте источник в карточке словаря."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arama kartında sözlük kaynağını değiştirin."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在查词卡片中切换词典来源。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在查詞卡片中切換詞典來源。"
+          }
+        }
+      }
+    },
+    "Translation previews and reading sources.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معاينة الترجمة والتقاط نصوص القراءة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzungsvorschau und Text beim Lesen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vistas previas y texto de lectura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçus de traduction et texte de lecture."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनुवाद प्रीव्यू और पढ़ते समय पाठ प्राप्त करना।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pratinjau terjemahan dan teks bacaan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteprime di traduzione e testo di lettura."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳プレビューと読書中のテキスト取得。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역 미리보기 및 읽기 텍스트 가져오기."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prévia de tradução e texto de leitura."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предпросмотр перевода и текст для чтения."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çeviri önizlemeleri ve okuma kaynakları."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "译文预览与阅读取词。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "譯文預覽與閱讀取詞。"
+          }
+        }
+      }
+    },
+    "Usage Guide": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دليل الاستخدام"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benutzerhandbuch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía de uso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide d’utilisation"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "उपयोग गाइड"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panduan penggunaan"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida all’uso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使い方ガイド"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 가이드"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guia de uso"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Руководство"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanım kılavuzu"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用指南"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用指南"
+          }
+        }
+      }
+    },
+    "Voices and speaking speed.": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأصوات وسرعة القراءة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stimmen und Vorlesetempo."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voces y velocidad de lectura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix et vitesse de lecture."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ें और पढ़ने की गति।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara dan kecepatan baca."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voci e velocità di lettura."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声と読み上げ速度。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 및 읽기 속도."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vozes e velocidade de leitura."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голоса и скорость чтения."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesler ve okuma hızı."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音与朗读速度。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聲音與朗讀速度。"
+          }
+        }
+      }
+    },
+    "View": {
+      "comment": "Read-only product guide or Home quick-link copy.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "देखें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lihat"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüntüle"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

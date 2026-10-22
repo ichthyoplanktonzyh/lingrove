@@ -3,23 +3,35 @@ import SwiftUI
 /// File overview:
 /// One Home quick-link card: an icon tile, a title, a one-line caption, and a chevron that walks
 /// in on hover. The whole card is a button that opens its pane. Hover lift is kept subtle (a
-/// hairline tint and a 1pt rise, no scaling) so a grid of six never feels like a game menu.
+/// hairline tint and a 1pt rise, no scaling) so a grid stays calm as new destinations are added.
 struct SettingsQuickLinkCard: View {
-    let category: SettingsCategory
+    let title: String
+    let caption: String
+    let systemImage: String
+    let tint: Color
     let action: () -> Void
+
+    init(category: SettingsCategory, action: @escaping () -> Void) {
+        self.init(title: category.label, caption: category.summary, systemImage: category.systemImage,
+            tint: category.tint, action: action)
+    }
+
+    init(title: String, caption: String, systemImage: String, tint: Color, action: @escaping () -> Void) {
+        self.title = title; self.caption = caption; self.systemImage = systemImage; self.tint = tint; self.action = action
+    }
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                SettingsIconTile(systemImage: category.systemImage, tint: category.tint, size: 34)
+                SettingsIconTile(systemImage: systemImage, tint: tint, size: 34)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(category.label)
+                    Text(title)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
-                    Text(category.summary)
+                    Text(caption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -43,7 +55,7 @@ struct SettingsQuickLinkCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(
-                        isHovering ? category.tint.opacity(0.35) : Color.primary.opacity(0.07),
+                        isHovering ? tint.opacity(0.35) : Color.primary.opacity(0.07),
                         lineWidth: 1
                     )
             )
@@ -61,7 +73,30 @@ struct SettingsQuickLinkCard: View {
                 isHovering = hovering
             }
         }
-        .accessibilityLabel("\(category.label) settings")
-        .accessibilityHint(category.summary)
+        .accessibilityLabel("\(title) settings")
+        .accessibilityHint(caption)
+    }
+}
+
+/// The five existing learning tabs supply Home's destinations and Help's familiar icons. This
+/// metadata describes navigation only; visiting a quick link never enables a feature.
+extension SettingsLearningTask {
+    var quickLinkSymbol: String {
+        switch self {
+        case .translation: "character.bubble"
+        case .explanation: "sparkles"
+        case .readAloud: "speaker.wave.2"
+        case .dictionary: "book.closed"
+        case .review: "rectangle.stack"
+        }
+    }
+    var quickLinkCaption: String {
+        switch self {
+        case .translation: String(localized: "Translation previews and reading sources.", table: "Learning")
+        case .explanation: String(localized: "Contextual meanings and explanations.", table: "Learning")
+        case .readAloud: String(localized: "Voices and speaking speed.", table: "Learning")
+        case .dictionary: String(localized: "Dictionary sources and lookup.", table: "Learning")
+        case .review: String(localized: "Anki and review cards.", table: "Learning")
+        }
     }
 }

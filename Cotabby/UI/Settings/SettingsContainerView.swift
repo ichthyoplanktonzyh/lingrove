@@ -81,6 +81,9 @@ struct SettingsContainerView: View {
                     table: "Learning"
                 ) : navigation.selection.label)
         }
+        .sheet(isPresented: $navigation.showsUsageGuide) {
+            ProductUsageGuideView(settings: suggestionSettings, open: navigation.openUsageGuideDestination)
+        }
         .environment(\.settingsHighlightedItem, navigation.highlightedItem)
         .environment(\.settingsRevealSequence, navigation.revealSequence)
         // Window-level Cmd-F: jump to the search surface from any pane. The button renders
@@ -139,7 +142,8 @@ struct SettingsContainerView: View {
                 permissionManager: permissionManager,
                 interfaceLanguageSettings: interfaceLanguageSettings,
                 onShowWelcome: onShowWelcome,
-                onRestart: onRestart
+                onRestart: onRestart,
+                onShowUsageGuide: { navigation.showsUsageGuide = true }
             )
         case .appearance:
             AppearancePaneView(suggestionSettings: suggestionSettings)

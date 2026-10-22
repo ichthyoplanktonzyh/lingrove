@@ -25,6 +25,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case showFollowingWords
     case inlineMacros
     case onboarding
+    case usageGuide
     case interfaceLanguage
     case resetAllSettings
     #if DEBUG
@@ -121,6 +122,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case acceptWord
     case acceptEntireSuggestion
     case toggleTabby
+    case replacementTranslationShortcut, translationDetailsShortcut
+    case saveVocabularyShortcut, openVocabularyShortcut
     // Apps
     case disabledApps
     case suggestInIntegratedTerminals
@@ -165,6 +168,10 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .replacementTranslationShortcut: return String(localized: "Replace preview translation", table: "Learning")
+        case .translationDetailsShortcut: return String(localized: "Expand / collapse translation details", table: "Learning")
+        case .saveVocabularyShortcut: return String(localized: "Save current learning item", table: "Vocabulary")
+        case .openVocabularyShortcut: return String(localized: "Open vocabulary", table: "Vocabulary")
         case .ankiReview: return String(localized: "Anki review", table: "Vocabulary")
         case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
         case .explanationModel: return String(localized: "AI explanation model", table: "Learning")
@@ -203,7 +210,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .acceptPunctuation: return String(localized: "Accept Punctuation With Word")
         case .addSpaceAfterAccept: return String(localized: "Add Space After Accepting")
         case .inlineMacros: return String(localized: "Inline Macros")
-        case .onboarding: return String(localized: "Onboarding")
+        case .usageGuide: return String(localized: "Usage Guide", table: "Learning")
+        case .onboarding: return String(localized: "Initial Setup", table: "Learning")
         case .interfaceLanguage: return String(localized: "Interface Language")
         case .resetAllSettings: return String(localized: "Reset All Settings")
         #if DEBUG
@@ -293,6 +301,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
+            return "command"
         case .ankiReview: return "rectangle.stack"
         case .ankiReviewFields: return "slider.horizontal.3"
         case .explanationModel: return "sparkles"
@@ -322,6 +332,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .acceptPunctuation: return "textformat.abc"
         case .addSpaceAfterAccept: return "space"
         case .inlineMacros: return "slash.circle"
+        case .usageGuide: return "book.closed"
         case .onboarding: return "graduationcap"
         case .interfaceLanguage: return "globe"
         case .resetAllSettings: return "arrow.counterclockwise"
@@ -407,6 +418,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
+            return .shortcuts
         case .ankiReview, .ankiReviewFields: return .languageLearning
         case .explanationModel, .explanationParameters: return .engineAndModel
         case .explanationLanguage: return .languageLearning
@@ -421,7 +434,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         #endif
         case .enableGlobally, .useScreenContext, .openAtLogin, .commandLineTools, .includeClipboardContext, .includeAppContext,
              .allowMultiLine, .suggestWithinWords, .predictAheadWhileTyping, .showFollowingWords,
-             .inlineMacros, .onboarding, .interfaceLanguage, .resetAllSettings:
+             .inlineMacros, .onboarding, .usageGuide, .interfaceLanguage, .resetAllSettings:
             return .general
         case .suggestionDisplay, .streamWhileGenerating, .fadeInSuggestions, .showFieldIndicator,
              .showWordCount, .showMenuBarIcon, .showKeyHint, .ghostTextColor, .ghostTextStyle,
@@ -462,6 +475,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
+            return title
         case .ankiReview: return String(localized: "Anki connection and card defaults", table: "Vocabulary")
         case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
         case .explanationModel, .explanationParameters: return String(localized: "AI explanation", table: "Learning")
@@ -499,6 +514,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .acceptPunctuation: return String(localized: "Also accept trailing commas and periods with a word.")
         case .addSpaceAfterAccept: return String(localized: "Add a space when an accept finishes a word.")
         case .inlineMacros: return String(localized: "Type / for dates, math, units, currency, and randoms.")
+        case .usageGuide: return String(localized: "Read the writing and language learning guide.", table: "Learning")
         case .onboarding: return String(localized: "Replay the first-run setup walkthrough.")
         case .interfaceLanguage:
             return String(localized: "Choose the language used in Lingrove's interface. Changes apply after restarting.", table: "Learning")
@@ -606,6 +622,10 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .replacementTranslationShortcut: return ["replace translation", "shortcut", "替换译文", "翻译快捷键"]
+        case .translationDetailsShortcut: return ["translation details", "shortcut", "展开翻译", "详情快捷键"]
+        case .saveVocabularyShortcut: return ["save vocabulary", "favorite shortcut", "收藏快捷键", "保存生词"]
+        case .openVocabularyShortcut: return ["open vocabulary", "notebook shortcut", "打开生词本", "生词本快捷键"]
         case .ankiReview: return ["Anki", "AnkiConnect", "review", "flashcard", "deck", "复习", "制卡", "牌组"]
         case .ankiReviewFields: return ["Anki", "cards", "front", "back", "template", "卡片", "正面", "背面", "模板", "字段映射"]
         case .explanationModel, .explanationParameters, .explanationLanguage:
@@ -672,6 +692,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .inlineMacros:
             return ["macro", "macros", "math", "convert", "currency", "date", "random",
                     "expansion", "slash", "snippet", "shortcut", "formula", "calculator"]
+        case .usageGuide:
+            return ["usage", "guide", "help", "tutorial", "learning", "使用指南", "帮助", "教程", "入门", "学习指南"]
         case .onboarding:
             return ["welcome", "guide", "tutorial", "intro", "help", "getting started",
                     "first run", "walkthrough"]

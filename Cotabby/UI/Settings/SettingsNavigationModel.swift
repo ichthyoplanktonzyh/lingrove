@@ -50,6 +50,16 @@ enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
 /// pane switch cancels it immediately.
 @MainActor
 final class SettingsNavigationModel: ObservableObject {
+    /// The settings window owns one read-only guide sheet. Closing it never changes a feature.
+    @Published var showsUsageGuide = false
+
+    /// Guide links dismiss the sheet and reuse search's precise routing in the same UI update.
+    /// Keeping this transition here prevents a help link from losing the selected learning tab.
+    func openUsageGuideDestination(_ item: SettingsItem) {
+        showsUsageGuide = false
+        reveal(item)
+    }
+
     @Published var shortcutAppBundleIdentifier: String?
 
     /// Menu shortcuts name a precise destination instead of reopening whichever tab happened

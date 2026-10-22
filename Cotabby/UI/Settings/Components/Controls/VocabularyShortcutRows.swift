@@ -24,6 +24,7 @@ struct VocabularyShortcutRows: View {
                             suggestionSettings.vocabularyShortcutConflict(command, key: UInt16(clamping: key), modifiers: modifiers)
                         })
                 }
+                .settingsItem(command == .save ? .saveVocabularyShortcut : .openVocabularyShortcut)
                 if let reason = suggestionSettings.vocabularyShortcutConflict(command, key: binding.key, modifiers: binding.modifiers) {
                     Text(String(localized: "This shortcut conflicts with \(reason). Choose a different key combination.",
                         table: "Learning"))
