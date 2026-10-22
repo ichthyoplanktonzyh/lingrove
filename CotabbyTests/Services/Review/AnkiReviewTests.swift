@@ -125,9 +125,24 @@ actor ReviewFakeAnki: AnkiConnecting {
 @Suite(.serialized)
 @MainActor
 struct AnkiReviewTests {
+    @Test func menuReviewRetainsFailureAfterPopoverClosesAndRoutesToSettings() async throws {
+        let (controller, fake, defaults, name) = try await fixture()
+        defer { defaults.removePersistentDomain(forName: name) }
+        await fake.setDecks([])
+        var revealedSettings = false
+        controller.configure = { revealedSettings = true }
+        await controller.openReviewFromMenu()
+        #expect(revealedSettings && controller.connectionMessage != nil)
+        await fake.setDecks(["Default"])
+        revealedSettings = false
+        await controller.openReviewFromMenu()
+        #expect(!revealedSettings && controller.connectionMessage == nil)
+        #expect(await fake.navigationDeck == "Default")
+    }
+
     // Four shared fixture dependencies keep each transaction test focused on observable effects.
-    // swiftlint:disable:next large_tuple
-    func fixture(url: URL? = nil, speech: (any SpeechExporting)? = nil) async throws -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) {
+    func fixture(url: URL? = nil, speech: (any SpeechExporting)? = nil) async throws
+        -> (AnkiReviewController, ReviewFakeAnki, UserDefaults, String) { // swiftlint:disable:this large_tuple
         let name = "test.anki-review." + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
         let store = VocabularyStore(archive: VocabularyArchive(url: url))
@@ -139,7 +154,8 @@ struct AnkiReviewTests {
         }
         let fake = ReviewFakeAnki()
         let settings = AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil))
-        return (AnkiReviewController(settings: settings, store: store, client: fake, speech: speech, activateAnki: {}), fake, defaults, name)
+        return (AnkiReviewController(settings: settings, store: store, client: fake, speech: speech, activateAnki: {}),
+                fake, defaults, name)
     }
     func session(_ controller: AnkiReviewController, index: Int = 0) throws -> AnkiReviewSession {
         let entry = try #require(controller.store.entries.first)
@@ -478,7 +494,8 @@ struct AnkiReviewTests {
         let name = "test.speech-export." + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name)); defer { defaults.removePersistentDomain(forName: name) }
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
-        let request = try speech.exportRequest(text: "Please keep me posted on the progress. This recording is for a language learning card.", language: .english)
+        let request = try speech.exportRequest(
+            text: "Please keep me posted on the progress. This recording is for a language learning card.", language: .english)
         let audio = try await speech.exportAudio(request)
         #expect(audio.fileExtension == "wav")
         #expect(audio.data.count > 44)

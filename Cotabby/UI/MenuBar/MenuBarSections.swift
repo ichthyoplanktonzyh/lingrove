@@ -3,7 +3,70 @@ import SwiftUI
 
 /// File overview:
 /// Small, focused components used by the menu-bar panel.
-/// These stay purely presentational — all state derivation lives in `MenuBarView`.
+/// These stay purely presentational; app-owned settings and controllers retain behavior.
+
+/// Only the visible menu page is persisted. This never enables a feature or loads a model.
+enum MenuBarTask: String, CaseIterable, Identifiable, Hashable {
+    case completion, learning
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .completion: String(localized: "Autocomplete")
+        case .learning: String(localized: "Language Learning", table: "Learning")
+        }
+    }
+}
+
+/// Menu actions describe their destination; the app's one SettingsCoordinator performs the
+/// navigation after the popover has closed, retaining the same window and settings instances.
+enum MenuBarSettingsDestination {
+    case category(SettingsCategory)
+    case learning(SettingsLearningTask)
+    case model(SettingsEngineTask)
+}
+
+/// Both menu pages can grow, especially with learning disclosures or missing permissions.
+/// Measure the scrolling document independently of its viewport: short pages keep their native
+/// height, while tall pages scroll without pushing the permanent footer off a small display.
+struct MenuBarContentViewport<Content: View>: View {
+    let maximumHeight: CGFloat
+    let content: Content
+    @State private var contentHeight: CGFloat = 0
+
+    init(maximumHeight: CGFloat, @ViewBuilder content: () -> Content) {
+        self.maximumHeight = maximumHeight
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            content.frame(maxWidth: .infinity, alignment: .leading)
+                .background(GeometryReader { geometry in
+                    Color.clear.preference(key: MenuBarContentHeight.self, value: geometry.size.height)
+                })
+        }
+        .frame(height: min(maximumHeight, contentHeight > 0 ? contentHeight : maximumHeight))
+        .onPreferenceChange(MenuBarContentHeight.self) { height in
+            if abs(height - contentHeight) > 0.5 { contentHeight = height }
+        }
+    }
+}
+
+private struct MenuBarContentHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// Shares completion's native switch style with learning. Expanding the label, rather than
+/// drawing a custom switch, aligns the trailing controls even when titles have different lengths.
+struct MenuBarToggleRow: View {
+    let title: String
+    @Binding var isOn: Bool
+    var body: some View {
+        Toggle(isOn: $isOn) { Text(title).frame(maxWidth: .infinity, alignment: .leading) }
+            .toggleStyle(.switch).controlSize(.small)
+    }
+}
 
 /// Compact labeled row for menu-bar pickers. Keeps label width consistent across
 /// Engine / Model / Length rows without a heavy generic layout container.

@@ -49,6 +49,11 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         showSettings()
     }
 
+    func showSettings(at destination: MenuBarSettingsDestination) {
+        navigation.openMenuDestination(destination)
+        showSettings()
+    }
+
     init(
         cli: CLIInstallationModel? = nil,
         learningModels: LearningModelCollection? = nil,

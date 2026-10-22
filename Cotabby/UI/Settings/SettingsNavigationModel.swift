@@ -52,6 +52,16 @@ enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
 final class SettingsNavigationModel: ObservableObject {
     @Published var shortcutAppBundleIdentifier: String?
 
+    /// Menu shortcuts name a precise destination instead of reopening whichever tab happened
+    /// to be selected last. The same routing methods also clear stale search highlights.
+    func openMenuDestination(_ destination: MenuBarSettingsDestination) {
+        switch destination {
+        case .category(let category): open(category)
+        case .learning(let task): openLearningTask(task)
+        case .model(let task): openEngineTask(task)
+        }
+    }
+
     func openShortcuts(for bundleIdentifier: String? = nil) {
         shortcutAppBundleIdentifier = bundleIdentifier
         open(.shortcuts)

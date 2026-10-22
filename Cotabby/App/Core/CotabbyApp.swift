@@ -27,6 +27,7 @@ struct CotabbyApp: App {
                 suggestionSettings: appDelegate.suggestionSettings,
                 foundationModelAvailabilityService: appDelegate.foundationModelAvailabilityService,
                 powerSourceMonitor: appDelegate.powerSourceMonitor,
+                speech: appDelegate.speechController,
                 appUpdateManager: appDelegate.appUpdateManager,
                 onOpenSettings: {
                     appDelegate.settingsCoordinator.showSettings()
@@ -38,7 +39,9 @@ struct CotabbyApp: App {
                     let url = DeviceInfo.snapshot().appending(to: ProductIdentity.issuesURL)
                     NSWorkspace.shared.open(url)
                 },
-                onOpenVocabulary: { appDelegate.vocabularyWindow.show() }
+                onOpenVocabulary: { appDelegate.vocabularyWindow.show() },
+                onOpenReview: { Task { await appDelegate.reviewController.openReviewFromMenu() } },
+                onOpenDestination: { appDelegate.settingsCoordinator.showSettings(at: $0) }
             )
         } label: {
             MenuBarStatusLabelView(

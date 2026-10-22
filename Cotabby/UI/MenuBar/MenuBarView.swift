@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// Design philosophy: the menu bar is the primary interaction surface for a menu bar app.
 /// It shows status at a glance and exposes the controls users reach for mid-session
-/// (engine, model, completion length). Rarely-changed settings (model management,
+/// (completion, translation, explanation and speech). Rarely-changed settings (model management,
 /// profile personalization, updates) live in the Settings window.
 ///
 /// The focused-app context card was intentionally removed: opening the menu bar panel
@@ -22,10 +22,16 @@ struct MenuBarView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     @ObservedObject var foundationModelAvailabilityService: FoundationModelAvailabilityService
     @ObservedObject var powerSourceMonitor: PowerSourceMonitor
+    let speech: LearningSpeechController
     let appUpdateManager: AppUpdateManager
     let onOpenSettings: () -> Void
     let onReportFeedback: () -> Void
     var onOpenVocabulary: () -> Void = {}
+    var onOpenReview: () -> Void = {}
+    var onOpenDestination: (MenuBarSettingsDestination) -> Void = { _ in }
+
+    @AppStorage("menuBarTask") private var task: MenuBarTask = .completion
+    @State private var maximumContentHeight: CGFloat = 440
 
     /// Captures the popover's host window so `Button` actions that open another window can dismiss
     /// the popover behind them. SwiftUI's `\.dismiss` does not work for `MenuBarExtra(.window)`.
@@ -35,8 +41,25 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             headerSection
             Divider().padding(.bottom, 12)
-            controlsSection
-            permissionsCard
+            activationSection
+            Picker(String(localized: "Quick controls", table: "Learning"), selection: $task) {
+                ForEach(MenuBarTask.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented).labelsHidden().frame(maxWidth: .infinity).padding(.bottom, 12)
+            .accessibilityIdentifier("menuBarTask")
+            MenuBarContentViewport(maximumHeight: maximumContentHeight) {
+                VStack(alignment: .leading, spacing: 0) {
+                    switch task {
+                    case .completion: controlsSection
+                    case .learning:
+                        MenuBarLearningControls(settings: suggestionSettings.languageLearning, speech: speech,
+                            screenRecordingGranted: permissionManager.screenRecordingGranted,
+                            open: openDestination)
+                            .padding(.bottom, 12)
+                    }
+                    permissionsCard
+                }
+            }
             footerSection
         }
         .padding(16)
@@ -54,10 +77,6 @@ struct MenuBarView: View {
                 onWindowBind: configureMenuBarWindowIfNeeded
             )
         )
-        .onAppear {
-            permissionManager.refresh()
-            runtimeModel.refreshAvailableModels()
-        }
     }
 
     // MARK: - Header
@@ -96,6 +115,14 @@ struct MenuBarView: View {
     }
 
     private func configureMenuBarWindowIfNeeded(_ window: NSWindow) {
+        // Leave room for the header, global pause and permanent footer on this display.
+        let screenHeight = (window.screen ?? NSScreen.main)?.visibleFrame.height ?? 800
+        let height = max(160, min(440, screenHeight - 290))
+        if maximumContentHeight != height {
+            // Window attachment can occur during a SwiftUI update. Commit sizing on the next
+            // main-actor turn so the AppKit bridge cannot mutate the current render transaction.
+            Task { @MainActor in maximumContentHeight = height }
+        }
         if #available(macOS 26.0, *) {
             MenuBarWindowChromeConfigurator.configure(window)
         }
@@ -103,10 +130,10 @@ struct MenuBarView: View {
 
     // MARK: - Quick controls
 
-    /// Session-level preferences that users reach for mid-work: engine choice,
-    /// model selection (when using local llama), and completion length.
+    /// Global pause is outside either task page. Recovery changes only the global gate, so
+    /// independent completion and translation choices survive a pause/resume cycle.
     @ViewBuilder
-    private var controlsSection: some View {
+    private var activationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Activation lives in its own band. While active, the menu offers bounded and manual
             // pauses. While paused or globally disabled, those choices are replaced by one recovery
@@ -146,21 +173,30 @@ struct MenuBarView: View {
                 }
             }
 
-            if !suggestionSettings.isCompletionEnabled {
-                Text(String(localized: "Autocomplete is turned off", table: "Learning"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        }
+        .padding(.bottom, 12)
+    }
 
+    /// Retains the existing completion pickers, context switches and power-profile bindings.
+    /// The new task switch changes their presentation, not which runtime owns those settings.
+    @ViewBuilder
+    private var controlsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MenuBarToggleRow(title: String(localized: "Autocomplete"), isOn: Binding(
+                get: { suggestionSettings.isCompletionEnabled },
+                set: { suggestionSettings.setCompletionEnabled($0) }))
+                .toggleStyle(.switch).controlSize(.small)
+                .accessibilityIdentifier("menuCompletionEnabled")
             Divider()
 
             // Context-shaping toggles that change what the model is fed.
-            Toggle("Include Clipboard Context", isOn: clipboardContextEnabledBinding)
+            MenuBarToggleRow(title: String(localized: "Include Clipboard Context"), isOn: clipboardContextEnabledBinding)
                 .toggleStyle(.switch)
                 .controlSize(.small)
 
             VStack(alignment: .leading, spacing: 2) {
-                Toggle("Use screen context", isOn: screenContextUnavailable ? .constant(false) : screenContextEnabledBinding)
+                MenuBarToggleRow(title: String(localized: "Use screen context"),
+                    isOn: screenContextUnavailable ? .constant(false) : screenContextEnabledBinding)
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .disabled(screenContextUnavailable)
@@ -318,15 +354,24 @@ struct MenuBarView: View {
         Divider()
             .padding(.bottom, 10)
 
-        Button {
-            popoverDismisser.dismiss()
-            onOpenVocabulary()
-        } label: {
-            HStack(spacing: 7) {
-                VocabularyFavoriteIcon(isSaved: true).frame(width: 18, height: 18)
-                Text(String(localized: "Vocabulary", table: "Vocabulary") + "…")
-            }
-        }.buttonStyle(.borderless).padding(.bottom, 10)
+        HStack {
+            Button {
+                popoverDismisser.dismiss()
+                onOpenVocabulary()
+            } label: {
+                HStack(spacing: 7) {
+                    VocabularyFavoriteIcon(isSaved: true).frame(width: 18, height: 18)
+                    Text(String(localized: "Vocabulary", table: "Vocabulary") + "…")
+                }
+            }.buttonStyle(.borderless)
+            Spacer()
+            Button {
+                popoverDismisser.dismiss()
+                onOpenReview()
+            } label: {
+                Label(String(localized: "Review", table: "Vocabulary"), systemImage: "rectangle.stack.badge.play")
+            }.buttonStyle(.borderless)
+        }.padding(.bottom, 10)
 
         HStack {
             Button("Settings") {
@@ -354,6 +399,11 @@ struct MenuBarView: View {
     }
 
     // MARK: - Bindings
+
+    private func openDestination(_ destination: MenuBarSettingsDestination) {
+        popoverDismisser.dismiss()
+        onOpenDestination(destination)
+    }
 
     private var clipboardContextEnabledBinding: Binding<Bool> {
         Binding(
