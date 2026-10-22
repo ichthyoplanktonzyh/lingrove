@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// File overview:
-/// Renders the tiny always-visible menu-bar label. This view stays intentionally separate from
-/// the larger menu content so the menu-bar extra can stay minimal even as the panel layout evolves.
+/// Renders the tiny menu-bar label hosted inside the native status button. It stays separate
+/// from the popover pages so icon/status updates do not rebuild the larger menu.
 ///
-/// This label lives in its own view because `MenuBarExtra` does not automatically observe
-/// plain properties hanging off `AppDelegate`. By observing the coordinator directly here,
-/// SwiftUI knows when to redraw the menu bar item as the accepted word count changes.
+/// The controller borrows this view rather than constructing another settings/coordinator graph.
+/// Observing the existing coordinator directly updates both the displayed accepted-word count
+/// and the native button's accessibility text.
 struct MenuBarStatusLabelView: View {
     @ObservedObject var suggestionCoordinator: SuggestionCoordinator
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
@@ -33,6 +33,19 @@ struct MenuBarStatusLabelView: View {
                     .font(.system(size: 10, weight: .medium).monospacedDigit())
             }
         }
+        .preference(key: MenuBarStatusAccessibilityKey.self, value: statusAccessibilityLabel)
+    }
+
+    private var statusAccessibilityLabel: String {
+        var parts = [String(localized: "Lingrove", table: "Learning")]
+        if suggestionSettings.isTemporarilyPaused || !suggestionSettings.isGloballyEnabled {
+            parts.append(inactiveAccessibilityLabel)
+        }
+        if suggestionSettings.isMenuBarWordCountVisible,
+           let count = WordCountFormatter.compactLabel(for: suggestionCoordinator.totalTabAcceptedWordCount) {
+            parts.append(count)
+        }
+        return parts.joined(separator: ", ")
     }
 
     /// VoiceOver needs the persistent global disable state distinguished from a temporary pause.
@@ -47,4 +60,11 @@ struct MenuBarStatusLabelView: View {
             table: "Learning"
         )
     }
+}
+
+/// Passes the existing label's dynamic semantics to the native status button. The label still
+/// owns formatting and observes the app settings; the container only applies the resulting text.
+struct MenuBarStatusAccessibilityKey: PreferenceKey {
+    static let defaultValue = ""
+    static func reduce(value: inout String, nextValue: () -> String) { value = nextValue() }
 }

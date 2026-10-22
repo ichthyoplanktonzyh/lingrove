@@ -30,57 +30,55 @@ struct MenuBarView: View {
     var onOpenReview: () -> Void = {}
     var onOpenDestination: (MenuBarSettingsDestination) -> Void = { _ in }
 
-    @AppStorage("menuBarTask") private var task: MenuBarTask = .completion
-    @State private var maximumLearningHeight: CGFloat = 440
-
-    /// Captures the popover's host window so `Button` actions that open another window can dismiss
-    /// the popover behind them. SwiftUI's `\.dismiss` does not work for `MenuBarExtra(.window)`.
-    @StateObject private var popoverDismisser = MenuBarPopoverDismisser()
+    @ObservedObject var presentation: MenuBarPresentationModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerSection
             Divider().padding(.bottom, 12)
-            Picker(String(localized: "Quick controls", table: "Learning"), selection: $task) {
+            Picker(String(localized: "Quick controls", table: "Learning"),
+                   selection: Binding(get: { presentation.selectedTask }, set: presentation.select)) {
                 ForEach(MenuBarTask.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented).labelsHidden().padding(.bottom, 12)
             .accessibilityIdentifier("menuBarTask")
-            switch task {
-            case .completion:
-                // Keep the original completion content in its natural, non-scrolling layout.
-                controlsSection
-                permissionsCard
-            case .learning:
-                activationControls.padding(.bottom, 8)
-                Divider().padding(.bottom, 8)
-                MenuBarContentViewport(maximumHeight: maximumLearningHeight) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        MenuBarLearningControls(settings: suggestionSettings.languageLearning, speech: speech,
-                            screenRecordingGranted: permissionManager.screenRecordingGranted,
-                            open: openDestination, review: openReview)
-                            .padding(.bottom, 12)
-                        permissionsCard
+            VStack(alignment: .leading, spacing: 0) {
+                switch presentation.displayedTask {
+                case .completion:
+                    // Keep the original completion content in its natural, non-scrolling layout.
+                    controlsSection
+                    permissionsCard
+                case .learning:
+                    activationControls.padding(.bottom, 8)
+                    Divider().padding(.bottom, 8)
+                    MenuBarContentViewport(maximumHeight: presentation.maximumLearningHeight) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            MenuBarLearningControls(settings: suggestionSettings.languageLearning, speech: speech,
+                                screenRecordingGranted: permissionManager.screenRecordingGranted,
+                                open: openDestination, review: openReview)
+                                .padding(.bottom, 12)
+                            permissionsCard
+                        }
                     }
                 }
             }
+            // Fade the page body only. The header and picker keep their identity and top position.
+            .opacity(presentation.pageVisible ? 1 : 0)
+            .animation(presentation.reduceMotion ? nil : .easeOut(duration: 0.08), value: presentation.pageVisible)
+            .allowsHitTesting(presentation.pageVisible)
+            .accessibilityHidden(!presentation.pageVisible)
             footerSection
         }
         .padding(16)
         .frame(width: 340)
-        .modifier(MenuBarWindowBackgroundModifier())
-        .background(
-            MenuBarPresentationObserver {
-                permissionManager.refresh()
-                runtimeModel.refreshAvailableModels()
-            }
-        )
-        .background(
-            MenuBarPopoverDismisserBinder(
-                dismisser: popoverDismisser,
-                onWindowBind: configureMenuBarWindowIfNeeded
-            )
-        )
+        .fixedSize(horizontal: false, vertical: true)
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: MenuBarContentMeasurementKey.self,
+                value: MenuBarContentMeasurement(page: presentation.displayedTask, size: geometry.size))
+        })
+        .onPreferenceChange(MenuBarContentMeasurementKey.self) { measurement in
+            if let measurement { presentation.onMeasure?(measurement) }
+        }
     }
 
     // MARK: - Header
@@ -116,18 +114,6 @@ struct MenuBarView: View {
     /// `CFBundleShortVersionString`, the same canonical source the About pane uses.
     private var appShortVersion: String? {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-    }
-
-    private func configureMenuBarWindowIfNeeded(_ window: NSWindow) {
-        // Only learning content is bounded; completion keeps its original natural height.
-        let screenHeight = (window.screen ?? NSScreen.main)?.visibleFrame.height ?? 800
-        let height = max(160, min(440, screenHeight - 290))
-        if maximumLearningHeight != height {
-            Task { @MainActor in maximumLearningHeight = height }
-        }
-        if #available(macOS 26.0, *) {
-            MenuBarWindowChromeConfigurator.configure(window)
-        }
     }
 
     // MARK: - Quick controls
@@ -182,11 +168,11 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 8) {
             activationControls
 
-            if !suggestionSettings.isCompletionEnabled {
-                Text(String(localized: "Autocomplete is turned off", table: "Learning"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Toggle("Autocomplete", isOn: Binding(get: { suggestionSettings.isCompletionEnabled },
+                set: suggestionSettings.setCompletionEnabled))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .accessibilityIdentifier("menuCompletionEnabled")
 
             Divider()
 
@@ -355,7 +341,7 @@ struct MenuBarView: View {
             .padding(.bottom, 10)
 
         Button {
-            popoverDismisser.dismiss()
+            presentation.dismiss()
             onOpenVocabulary()
         } label: {
             HStack(spacing: 7) {
@@ -368,7 +354,7 @@ struct MenuBarView: View {
             Button("Settings") {
                 // Dismiss the popover before opening the Settings window so the popover doesn't
                 // remain on top of (and obscure) the Settings pane. See issue #455.
-                popoverDismisser.dismiss()
+                presentation.dismiss()
                 onOpenSettings()
             }
             .buttonStyle(.borderless)
@@ -392,12 +378,12 @@ struct MenuBarView: View {
     // MARK: - Bindings
 
     private func openDestination(_ destination: MenuBarSettingsDestination) {
-        popoverDismisser.dismiss()
+        presentation.dismiss()
         onOpenDestination(destination)
     }
 
     private func openReview() {
-        popoverDismisser.dismiss()
+        presentation.dismiss()
         onOpenReview()
     }
 
@@ -544,88 +530,11 @@ struct MenuBarView: View {
 
 }
 
-/// Applies the menu panel's fill at the native window-container level when the OS supports it.
-///
-/// `MenuBarView` owns the menu contents, but SwiftUI owns the actual `NSWindow` created by
-/// `MenuBarExtra`. Keeping this as a dedicated modifier gives the UI a narrow boundary for one
-/// platform-specific presentation rule without mixing availability checks into the main view body.
-private struct MenuBarWindowBackgroundModifier: ViewModifier {
-    private static let macOS26PopoverCornerRadius: CGFloat = 16
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            // macOS 26 Liquid Glass composites `containerBackground(_, for: .window)` through a
-            // translucent glass backdrop (a `CABackdropLayer`), so passing it an opaque `Color`
-            // does NOT produce an opaque fill: the desktop still bleeds through the glass and the
-            // native window shadow detaches from the see-through panel on light backgrounds. That
-            // is why #492 (translucent material) recurred as #646 even after #566 swapped the
-            // material for an opaque color, which the system still re-routed through the backdrop.
-            //
-            // Draw the panel as ordinary SwiftUI content and make the native host window clear in
-            // `MenuBarWindowChromeConfigurator`. On macOS 26 the host adds its own rounded frame
-            // outside the content; keeping both surfaces visible is what creates the double
-            // outline. By owning the one visible rounded surface here, the menu has a single border
-            // regardless of how much padding the system host reserves around it.
-            //
-            // No SwiftUI `.shadow` here: the host window is only a few points larger than this
-            // panel, so a soft shadow gets clipped at the window edge and reads as a hard gray
-            // frame around the menu. The native window shadow (enabled in the configurator) is
-            // drawn by the window server outside the window and follows the panel's alpha shape.
-            //
-            // `.ignoresSafeArea()` matters on macOS 27: the host window is 8pt taller than this
-            // view (a 4pt safe-area inset top and bottom), and the system paints its own rounded
-            // backing across the whole window. A panel that stops at the safe area leaves that
-            // backing showing as a gray frame above and below the menu; filling to the window
-            // edges covers it so there is one surface.
-            content
-                .background {
-                    RoundedRectangle(cornerRadius: Self.macOS26PopoverCornerRadius, style: .continuous)
-                        .fill(Color(nsColor: .windowBackgroundColor))
-                        .ignoresSafeArea()
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: Self.macOS26PopoverCornerRadius, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.7), lineWidth: 1)
-                        .ignoresSafeArea()
-                }
-        } else if #available(macOS 15.0, *) {
-            // MenuBarExtra's `.window` style already gives us native rounded window chrome. Place
-            // the fill at the hosting window instead of this view's local bounds so it reaches the
-            // native rounded frame as one surface (avoids the double-border look fixed in #403).
-            // The `.windowBackground` material renders correctly on macOS 15 through pre-26, so
-            // keep it there to preserve the vibrant appearance and only patch the 26 regression.
-            content.containerBackground(.windowBackground, for: .window)
-        } else {
-            content
-        }
-    }
-}
-
-/// Configures the AppKit window behind `MenuBarExtra(.window)` on macOS 26.
-///
-/// SwiftUI owns the menu contents, but the double-outline regression lives one layer above SwiftUI:
-/// macOS 26 gives the menu popover a larger non-opaque host window than the SwiftUI root view. A
-/// normal SwiftUI background can stop at that root view and read as a second rounded panel. This
-/// helper clears the actual `NSWindow` and its content view so the SwiftUI panel remains the only
-/// visible rounded shape.
-@available(macOS 26.0, *)
-private enum MenuBarWindowChromeConfigurator {
-    static func configure(_ window: NSWindow) {
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        // The window itself is clear, so the window server derives the shadow from the alpha of
-        // the SwiftUI panel: it hugs the rounded rectangle and, unlike a SwiftUI shadow, is not
-        // clipped by the window's bounds.
-        window.hasShadow = true
-
-        for backingView in [window.contentView, window.contentView?.superview].compactMap({ $0 }) {
-            backingView.wantsLayer = true
-            backingView.layer?.backgroundColor = NSColor.clear.cgColor
-            backingView.layer?.borderWidth = 0
-            backingView.layer?.shadowOpacity = 0
-            backingView.layer?.masksToBounds = false
-        }
-        window.invalidateShadow()
+/// The measurement carries the page identity so a deferred layout from an outgoing page cannot
+/// resize the new one. Geometry is measured before the native container clips its content.
+private struct MenuBarContentMeasurementKey: PreferenceKey {
+    static let defaultValue: MenuBarContentMeasurement? = nil
+    static func reduce(value: inout MenuBarContentMeasurement?, nextValue: () -> MenuBarContentMeasurement?) {
+        if let next = nextValue() { value = next }
     }
 }
