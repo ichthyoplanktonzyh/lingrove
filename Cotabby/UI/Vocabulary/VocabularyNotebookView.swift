@@ -68,22 +68,7 @@ struct VocabularyNotebookView: View {
     var body: some View {
         Group {
             if browserMode == "graph" {
-                HSplitView {
-                    VocabularyGraphView(entries: visibleEntries, query: query, selection: graphSelection,
-                        presentation: graph, select: { selection = $0?.senseID })
-                        .frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
-                    if selectedSense != nil {
-                        VStack(spacing: 0) {
-                            HStack {
-                                Spacer()
-                                Button { selection = nil; graph.clearFocus() } label: { Image(systemName: "xmark") }
-                                    .buttonStyle(.borderless).help(String(localized: "Close details", table: "Vocabulary"))
-                                    .accessibilityLabel(String(localized: "Close details", table: "Vocabulary"))
-                            }.padding(12)
-                            entryDetail
-                        }.frame(minWidth: 300, idealWidth: 380, maxWidth: 480)
-                    }
-                }
+                graphBrowser
             } else { listBrowser }
         }
         .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
@@ -202,6 +187,71 @@ struct VocabularyNotebookView: View {
             self.selection = nil
             graph.clearFocus()
         }
+    }
+
+    private var graphBrowser: some View {
+        let drawerWidth: CGFloat = 396
+        let hasSelection = selectedSense != nil
+        return ZStack(alignment: .trailing) {
+            VocabularyGraphView(
+                entries: visibleEntries,
+                query: query,
+                selection: graphSelection,
+                presentation: graph,
+                select: { next in
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92)) {
+                        selection = next?.senseID
+                    }
+                },
+                trailingInset: hasSelection ? (drawerWidth + 16) : 0
+            )
+            .frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
+
+            if hasSelection {
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Label(
+                            selectedEntry?.expression ?? String(localized: "Core meaning", table: "Vocabulary"),
+                            systemImage: "sparkles.rectangle.stack"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        Spacer()
+                        Button {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+                                selection = nil
+                                graph.clearFocus()
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(Color.primary.opacity(0.06)))
+                        }
+                        .buttonStyle(.borderless)
+                        .help(String(localized: "Close details", table: "Vocabulary"))
+                        .accessibilityLabel(String(localized: "Close details", table: "Vocabulary"))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    Divider().opacity(0.6)
+                    entryDetail
+                }
+                .frame(width: drawerWidth)
+                .frame(maxHeight: .infinity)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.11), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.14), radius: 18, x: -4, y: 4)
+                .padding(12)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92), value: hasSelection)
     }
 
     private var listBrowser: some View {

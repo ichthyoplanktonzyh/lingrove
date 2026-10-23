@@ -222,16 +222,30 @@ final class VocabularyGraphCanvasView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.textBackgroundColor.setFill(); bounds.fill()
+        NSColor.textBackgroundColor.setFill()
+        bounds.fill()
+        drawDotGrid()
+
         let focused = hovered?.entryID ?? presentation.focusedEntryID
         for edge in snapshot.edges {
             guard let start = positions[edge.source], let end = positions[edge.target] else { continue }
+            let screenStart = screen(start)
+            let screenEnd = screen(end)
             let path = NSBezierPath()
-            path.move(to: screen(start)); path.line(to: screen(end))
+            path.lineCapStyle = .round
+            path.move(to: screenStart)
+            path.line(to: screenEnd)
             let highlighted = edge.source.entryID == focused
-            (highlighted ? NSColor.controlAccentColor : NSColor.separatorColor)
-                .withAlphaComponent(hovered != nil && !highlighted ? 0.2 : 1).setStroke()
-            path.lineWidth = appliedSettings.linkWidth; path.stroke()
+            if highlighted {
+                NSColor.controlAccentColor.withAlphaComponent(0.16).setStroke()
+                path.lineWidth = appliedSettings.linkWidth + 2.5
+                path.stroke()
+            }
+            let baseColor = highlighted ? NSColor.controlAccentColor : NSColor.separatorColor
+            let edgeAlpha: CGFloat = hovered != nil && !highlighted ? 0.18 : (highlighted ? 0.85 : 0.65)
+            baseColor.withAlphaComponent(edgeAlpha).setStroke()
+            path.lineWidth = highlighted ? max(1.4, appliedSettings.linkWidth * 1.15) : appliedSettings.linkWidth
+            path.stroke()
         }
         for node in snapshot.nodes {
             guard let world = positions[node.id] else { continue }
@@ -241,36 +255,122 @@ final class VocabularyGraphCanvasView: NSView {
         }
     }
 
+    /// Subtle world-space dot grid gives panning and zooming a physical spatial reference
+    /// without competing with nodes or edges.
+    private func drawDotGrid() {
+        let rawStep = 36 * presentation.camera.scale
+        guard rawStep >= 14, bounds.width > 0, bounds.height > 0 else { return }
+        let step = rawStep < 22 ? rawStep * 2 : rawStep
+        let origin = screen(.zero)
+        let firstX = origin.x.truncatingRemainder(dividingBy: step)
+        let firstY = origin.y.truncatingRemainder(dividingBy: step)
+        let startX = firstX >= 0 ? firstX : firstX + step
+        let startY = firstY >= 0 ? firstY : firstY + step
+
+        let gridPath = NSBezierPath()
+        let dotRadius: CGFloat = 0.85
+        var x = startX
+        while x < bounds.width {
+            var y = startY
+            while y < bounds.height {
+                gridPath.appendOval(in: CGRect(x: x - dotRadius, y: y - dotRadius, width: dotRadius * 2, height: dotRadius * 2))
+                y += step
+            }
+            x += step
+        }
+        NSColor.separatorColor.withAlphaComponent(0.28).setFill()
+        gridPath.fill()
+    }
+
     private func draw(_ node: VocabularyGraphNode, at point: CGPoint, focused: UUID?) {
         let isSense = node.id.selection != nil
         let selected = node.id.selection.map { $0 == selection } ?? (node.id.entryID == presentation.focusedEntryID)
         let active = selected || snapshot.matches.contains(node.id)
+        let isHovered = hovered == node.id
+        let isKeyFocused = keyboardNode == node.id
         let related = node.id.entryID == focused
         let alpha: CGFloat = hovered != nil && !related ? 0.23 : 1
-        let radius = max(3, min(20, appliedSettings.nodeSize * (isSense ? 0.29 : 0.5) * presentation.camera.scale))
+        let baseRadius = max(3.5, min(20, appliedSettings.nodeSize * (isSense ? 0.31 : 0.52) * presentation.camera.scale))
+        let radius = isHovered ? baseRadius * 1.12 : baseRadius
         let rect = CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)
-        if active || hovered == node.id || keyboardNode == node.id {
-            NSColor.controlAccentColor.withAlphaComponent(0.1).setFill()
-            NSBezierPath(ovalIn: rect.insetBy(dx: -5, dy: -5)).fill()
+
+        if active || isHovered || isKeyFocused {
+            NSColor.controlAccentColor.withAlphaComponent(active ? 0.16 : 0.11).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: -6, dy: -6)).fill()
+            if active || isKeyFocused {
+                let ring = NSBezierPath(ovalIn: rect.insetBy(dx: -3, dy: -3))
+                ring.lineWidth = 1.2
+                NSColor.controlAccentColor.withAlphaComponent(0.45 * alpha).setStroke()
+                ring.stroke()
+            }
         }
-        let color = (active || isSense ? NSColor.controlAccentColor : NSColor.secondaryLabelColor)
-            .withAlphaComponent(alpha)
-        color.setFill(); color.setStroke()
+
         let dot = NSBezierPath(ovalIn: rect)
-        if isSense && !active { dot.lineWidth = 1.4; dot.stroke() } else { dot.fill() }
+        if isSense && !active {
+            NSColor.textBackgroundColor.withAlphaComponent(alpha).setFill()
+            dot.fill()
+            NSColor.controlAccentColor.withAlphaComponent(0.85 * alpha).setStroke()
+            dot.lineWidth = 1.6
+            dot.stroke()
+        } else {
+            let fill = active || isSense ? NSColor.controlAccentColor : NSColor.labelColor.withAlphaComponent(0.76)
+            fill.withAlphaComponent(alpha).setFill()
+            dot.fill()
+            NSColor.textBackgroundColor.withAlphaComponent(0.85 * alpha).setStroke()
+            dot.lineWidth = 1.25
+            dot.stroke()
+        }
+
         let labels = appliedSettings.labels
-        let showLabel = labels == .all || active || keyboardNode == node.id || related
+        let showLabel = labels == .all || active || isKeyFocused || isHovered || related
             || (labels == .automatic && presentation.camera.scale >= 0.65)
         guard showLabel else { return }
+
         let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center; paragraph.lineBreakMode = .byTruncatingTail
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byTruncatingTail
         let textColor = active ? NSColor.controlAccentColor : (isSense ? NSColor.secondaryLabelColor : NSColor.labelColor)
+        let font = NSFont.systemFont(ofSize: isSense ? 11.5 : 12.5, weight: active || !isSense ? .medium : .regular)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: isSense ? 12 : 13, weight: active ? .medium : .regular),
-            .foregroundColor: textColor.withAlphaComponent(alpha), .paragraphStyle: paragraph
+            .font: font,
+            .foregroundColor: textColor.withAlphaComponent(alpha),
+            .paragraphStyle: paragraph
         ]
-        (node.label as NSString).draw(with: CGRect(x: point.x - 76, y: point.y + radius + 6, width: 152, height: 36),
-            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attributes)
+        let labelString = node.label as NSString
+        let maxBoxSize = CGSize(width: 152, height: 34)
+        let measured = labelString.boundingRect(
+            with: maxBoxSize,
+            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+            attributes: attributes
+        )
+        let pillWidth = min(maxBoxSize.width, ceil(measured.width) + 12)
+        let pillHeight = min(maxBoxSize.height, ceil(measured.height) + 4)
+        let pillRect = CGRect(
+            x: point.x - pillWidth / 2,
+            y: point.y + radius + 5,
+            width: pillWidth,
+            height: pillHeight
+        )
+        let pillPath = NSBezierPath(roundedRect: pillRect, xRadius: 6, yRadius: 6)
+        NSColor.textBackgroundColor.withAlphaComponent(0.84 * alpha).setFill()
+        pillPath.fill()
+        if active || isHovered {
+            NSColor.controlAccentColor.withAlphaComponent(0.24 * alpha).setStroke()
+            pillPath.lineWidth = 0.75
+            pillPath.stroke()
+        }
+
+        let textRect = CGRect(
+            x: point.x - 76,
+            y: pillRect.minY + 2,
+            width: 152,
+            height: pillHeight - 2
+        )
+        labelString.draw(
+            with: textRect,
+            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+            attributes: attributes
+        )
     }
 
     private func screen(_ point: CGPoint) -> CGPoint { presentation.camera.screen(point, in: bounds.size) }
