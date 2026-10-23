@@ -39,6 +39,54 @@ struct MenuBarLearningControlsTests {
         #expect(provider.refreshes == 0 && speech.phase == nil)
     }
 
+    @Test func menuBarViewRendersBothTabsAndPausedBannerAtFixedWidth() async throws {
+        let suite = "MenuFullView-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        let provider = MenuSilentSpeaker()
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults), provider: provider)
+        let permission = PermissionManager()
+        let runtime = RuntimeBootstrapModel(runtimeManager: LlamaRuntimeManager(), userDefaults: defaults)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("MenuModels-" + UUID().uuidString)
+        let downloads = ModelDownloadManager(runtimeDirectoryURL: directory, assetCatalog: [])
+        let presentation = MenuBarPresentationModel(defaults: defaults)
+        let host = NSHostingView(rootView: MenuBarView(
+            permissionManager: permission,
+            runtimeModel: runtime,
+            modelDownloadManager: downloads,
+            focusModel: FocusTrackingModel(permissionProvider: { false }, ignoredBundleIdentifier: nil),
+            permissionGuidanceController: PermissionGuidanceController(permissionManager: permission),
+            suggestionSettings: settings,
+            foundationModelAvailabilityService: FoundationModelAvailabilityService(),
+            powerSourceMonitor: PowerSourceMonitor(),
+            speech: speech,
+            appUpdateManager: AppUpdateManager(),
+            onOpenSettings: {},
+            onReportFeedback: {},
+            presentation: presentation
+        ).defaultAppStorage(defaults))
+        let window = makeWindow(host)
+        defer { speech.stop(); settings.clearPause(); window.close() }
+        Self.retained.append(settings)
+        Self.retained.append(speech)
+        Self.retained.append(runtime)
+        await settle(host)
+        let activeCompletionHeight = host.fittingSize.height
+        #expect(host.fittingSize.width == 340 && activeCompletionHeight > 200)
+
+        // Pausing suggestions surfaces the header pause banner and increases the natural height.
+        settings.pauseSuggestions(for: .fifteenMinutes)
+        await settle(host)
+        #expect(host.fittingSize.width == 340 && host.fittingSize.height > activeCompletionHeight)
+
+        // Switching to the learning tab in reduced-motion mode settles immediately at 340pt width.
+        presentation.setReduceMotion(true)
+        presentation.select(.learning)
+        await settle(host)
+        #expect(presentation.displayedTask == .learning && host.fittingSize.width == 340)
+    }
+
     @Test(.enabled(if: ProcessInfo.processInfo.environment["COTABBY_UI_MENU_REVIEW"] == "1"))
     func nativeMenuCanBeReviewedWithIsolatedPreferences() async throws {
         let suite = "MenuControls-" + UUID().uuidString

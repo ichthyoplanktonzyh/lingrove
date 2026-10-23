@@ -6,9 +6,10 @@ import SwiftUI
 /// with inline quick controls for session-level preferences.
 ///
 /// Design philosophy: the menu bar is the primary interaction surface for a menu bar app.
-/// It shows status at a glance and exposes the controls users reach for mid-session
-/// (engine, model, completion length). Rarely-changed settings (model management,
-/// profile personalization, updates) live in the Settings window.
+/// It shows status at a glance in the header, groups session controls into calm Control-Center-style
+/// surface cards, and exposes the controls users reach for mid-session (engine, model, completion
+/// length, translation toggles). Rarely-changed settings (model management, profile personalization,
+/// updates) live in the Settings window.
 ///
 /// The focused-app context card was intentionally removed: opening the menu bar panel
 /// steals focus from whatever app the user was typing in, so live focus state is always
@@ -35,79 +36,192 @@ struct MenuBarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerSection
-            Divider().padding(.bottom, 12)
-            Picker(String(localized: "Quick controls", table: "Learning"),
-                   selection: Binding(get: { presentation.selectedTask }, set: presentation.select)) {
+                .padding(.bottom, 10)
+
+            Picker(
+                String(localized: "Quick controls", table: "Learning"),
+                selection: Binding(get: { presentation.selectedTask }, set: presentation.select)
+            ) {
                 ForEach(MenuBarTask.allCases) { Text($0.label).tag($0) }
             }
-            .pickerStyle(.segmented).labelsHidden().padding(.bottom, 12)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.bottom, 10)
             .accessibilityIdentifier("menuBarTask")
+
             VStack(alignment: .leading, spacing: 0) {
                 switch presentation.displayedTask {
                 case .completion:
-                    // Keep the original completion content in its natural, non-scrolling layout.
+                    // Keep the completion content in its natural, non-scrolling layout.
                     controlsSection
                     permissionsCard
                 case .learning:
-                    activationControls.padding(.bottom, 8)
-                    Divider().padding(.bottom, 8)
                     MenuBarContentViewport(maximumHeight: presentation.maximumLearningHeight) {
                         VStack(alignment: .leading, spacing: 0) {
-                            MenuBarLearningControls(settings: suggestionSettings.languageLearning, speech: speech,
+                            MenuBarLearningControls(
+                                settings: suggestionSettings.languageLearning,
+                                speech: speech,
                                 screenRecordingGranted: permissionManager.screenRecordingGranted,
-                                open: openDestination, review: openReview)
-                                .padding(.bottom, 12)
+                                open: openDestination,
+                                review: openReview
+                            )
+                            .padding(.bottom, 10)
                             permissionsCard
                         }
                     }
                 }
             }
-            // Fade the page body only. The header and picker keep their identity and top position.
+            // Fade and subtly settle the page body only. The header and picker keep their identity
+            // and top position while MenuBarController resizes the native popover container.
             .opacity(presentation.pageVisible ? 1 : 0)
-            .animation(presentation.reduceMotion ? nil : .easeOut(duration: 0.08), value: presentation.pageVisible)
+            .blur(radius: presentation.pageVisible || presentation.reduceMotion ? 0 : 1.2)
+            .offset(y: presentation.pageVisible || presentation.reduceMotion ? 0 : -2)
+            .animation(
+                presentation.reduceMotion ? nil : .easeOut(duration: 0.12),
+                value: presentation.pageVisible
+            )
             .allowsHitTesting(presentation.pageVisible)
             .accessibilityHidden(!presentation.pageVisible)
+
             footerSection
         }
-        .padding(16)
+        .padding(14)
         .frame(width: 340)
         .fixedSize(horizontal: false, vertical: true)
         .background(GeometryReader { geometry in
-            Color.clear.preference(key: MenuBarContentMeasurementKey.self,
-                value: MenuBarContentMeasurement(page: presentation.displayedTask, size: geometry.size))
+            Color.clear.preference(
+                key: MenuBarContentMeasurementKey.self,
+                value: MenuBarContentMeasurement(page: presentation.displayedTask, size: geometry.size)
+            )
         })
         .onPreferenceChange(MenuBarContentMeasurementKey.self) { measurement in
             if let measurement { presentation.onMeasure?(measurement) }
         }
     }
 
-    // MARK: - Header
+    // MARK: - Header & Global Activation
 
+    /// Top identity and status bar. Putting global pause/resume in the header makes it reachable
+    /// from both tabs without duplicating rows, and immediately communicates whether Lingrove is
+    /// active, loading a model, or paused.
     @ViewBuilder
     private var headerSection: some View {
-        HStack(alignment: .center) {
-            Text(ProductIdentity.appDisplayName)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [CotabbyBrand.accentSoft, CotabbyBrand.accent],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                    Image("MenuBarWhaleIcon")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 22, height: 22)
+                .shadow(color: CotabbyBrand.accent.opacity(0.25), radius: 3, y: 1)
+                .accessibilityHidden(true)
 
-            if let appShortVersion {
-                Text(appShortVersion)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Version \(appShortVersion)")
+                Text(ProductIdentity.appDisplayName)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+
+                if let appShortVersion {
+                    Text(appShortVersion)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1.5)
+                        .background(.quaternary.opacity(0.65), in: Capsule())
+                        .accessibilityLabel("Version \(appShortVersion)")
+                }
+
+                Spacer(minLength: 4)
+
+                activationPill
             }
 
-            // A plain source link keeps project information separate from the product title.
-            Link("GitHub", destination: ProductIdentity.repositoryURL)
-                .buttonStyle(.borderless)
-                .font(.subheadline)
-
-            Spacer(minLength: 0)
-
-            Button("Report Bug", action: onReportFeedback)
-                .buttonStyle(.borderless)
-                .font(.subheadline)
+            if isInactiveOrPaused {
+                HStack(spacing: 6) {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    if let pauseStatus = suggestionSettings.pauseStatusText {
+                        Text(pauseStatus)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text(String(localized: "Lingrove is turned off", table: "Learning"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.orange.opacity(0.10))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.orange.opacity(0.24), lineWidth: 0.5)
+                )
+            }
         }
-        .padding(.bottom, 12)
+    }
+
+    /// Global pause/resume pill in the header. While active, it offers bounded and manual pause
+    /// durations; while paused or globally disabled, it switches to a single recovery action so
+    /// the user cannot stack contradictory disable states.
+    @ViewBuilder
+    private var activationPill: some View {
+        if isInactiveOrPaused {
+            Button {
+                suggestionSettings.enableCotabby()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 9, weight: .bold))
+                    Text(String(localized: "Enable Lingrove", table: "Learning"))
+                        .font(.caption.weight(.medium))
+                }
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color.orange.opacity(0.14))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color.orange.opacity(0.30), lineWidth: 0.5)
+                )
+            }
+            .buttonStyle(.plain)
+        } else {
+            Menu {
+                ForEach(SuggestionPauseDuration.allCases) { duration in
+                    Button(duration.menuLabel) {
+                        suggestionSettings.pauseSuggestions(for: duration)
+                    }
+                }
+            } label: {
+                Label(String(localized: "Pause Lingrove", table: "Learning"), systemImage: "pause.fill")
+                    .font(.caption)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    private var isInactiveOrPaused: Bool {
+        suggestionSettings.isTemporarilyPaused || !suggestionSettings.isGloballyEnabled
     }
 
     /// Short, user-facing app version (e.g. "0.4.2-beta") shown next to the title. Reads the bundle's
@@ -116,90 +230,44 @@ struct MenuBarView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     }
 
-    // MARK: - Quick controls
+    // MARK: - Autocomplete Quick Controls
 
-    /// The original pause/recovery children are shared without adding a layout container.
-    /// Their spacing remains owned by each page, so completion keeps its pre-learning layout.
-    @ViewBuilder
-    private var activationControls: some View {
-        // Activation lives in its own band. While active, the menu offers bounded and manual
-        // pauses. While paused or globally disabled, those choices are replaced by one recovery
-        // action so the user cannot accidentally stack contradictory disable states.
-        Group {
-            if suggestionSettings.isTemporarilyPaused || !suggestionSettings.isGloballyEnabled {
-                Button {
-                    suggestionSettings.enableCotabby()
-                } label: {
-                    Label(String(localized: "Enable Lingrove", table: "Learning"), systemImage: "play.fill")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.borderless)
-
-                if let pauseStatus = suggestionSettings.pauseStatusText {
-                    Text(pauseStatus)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                } else {
-                    Text(String(localized: "Lingrove is turned off", table: "Learning"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Menu {
-                    ForEach(SuggestionPauseDuration.allCases) { duration in
-                        Button(duration.menuLabel) {
-                            suggestionSettings.pauseSuggestions(for: duration)
-                        }
-                    }
-                } label: {
-                    Label(String(localized: "Pause Lingrove", table: "Learning"), systemImage: "pause.fill")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    /// Session-level preferences that users reach for mid-work: engine choice,
-    /// model selection (when using local llama), and completion length.
+    /// Session-level preferences that users reach for mid-work: completion & context toggles in one
+    /// surface card, and engine / model / length selection in a second surface card.
     @ViewBuilder
     private var controlsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            activationControls
+        VStack(alignment: .leading, spacing: 10) {
+            MenuBarSurfaceCard(padding: 10, spacing: 8) {
+                MenuBarToggleRow(
+                    title: String(localized: "Autocomplete"),
+                    systemImage: "sparkles",
+                    isOn: Binding(
+                        get: { suggestionSettings.isCompletionEnabled },
+                        set: suggestionSettings.setCompletionEnabled
+                    ),
+                    identifier: "menuCompletionEnabled"
+                )
 
-            Toggle("Autocomplete", isOn: Binding(get: { suggestionSettings.isCompletionEnabled },
-                set: suggestionSettings.setCompletionEnabled))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .accessibilityIdentifier("menuCompletionEnabled")
+                MenuBarCardDivider()
 
-            Divider()
+                MenuBarToggleRow(
+                    title: String(localized: "Include Clipboard Context"),
+                    systemImage: "doc.on.clipboard",
+                    isOn: clipboardContextEnabledBinding
+                )
 
-            // Context-shaping toggles that change what the model is fed.
-            Toggle("Include Clipboard Context", isOn: clipboardContextEnabledBinding)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Toggle("Use screen context", isOn: screenContextUnavailable ? .constant(false) : screenContextEnabledBinding)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .disabled(screenContextUnavailable)
-
-                if screenContextUnavailable {
-                    Text("Unavailable while Screen Recording is off")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                MenuBarToggleRow(
+                    title: String(localized: "Use screen context"),
+                    systemImage: "macwindow",
+                    subtitle: screenContextUnavailable
+                        ? String(localized: "Unavailable while Screen Recording is off")
+                        : nil,
+                    isOn: screenContextUnavailable ? .constant(false) : screenContextEnabledBinding,
+                    isDisabled: screenContextUnavailable
+                )
             }
 
-            Divider()
-
-            // Generation setup: which engine/model produces completions and how long they run.
-            // Wrapped in a Group so the four rows plus the toggles and dividers above stay under
-            // SwiftUI's 10-child ViewBuilder limit for the enclosing VStack.
-            Group {
+            MenuBarSurfaceCard(padding: 10, spacing: 8) {
                 MenuBarPickerRow(title: String(localized: "Engine")) {
                     Picker("Engine", selection: selectedEngineBinding) {
                         // Same gating as Settings and onboarding: an unavailable engine is shown
@@ -221,14 +289,22 @@ struct MenuBarView: View {
 
                 if suggestionSettings.selectedEngine == .appleIntelligence,
                    !foundationModelAvailabilityService.isAvailable {
-                    Text(foundationModelAvailabilityService.userVisibleMessage)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text(foundationModelAvailabilityService.userVisibleMessage)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 if suggestionSettings.selectedEngine.supportsLocalModelManagement {
+                    MenuBarCardDivider()
                     modelRow
                 }
+
+                MenuBarCardDivider()
 
                 MenuBarPickerRow(title: String(localized: "Length")) {
                     Picker("Length", selection: lengthChoiceBinding) {
@@ -245,25 +321,23 @@ struct MenuBarView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
-
             }
         }
-        .padding(.bottom, 12)
+        .padding(.bottom, 10)
     }
 
     /// Model selector with folder + refresh shortcuts — only visible when local llama engine is active.
     /// The picker is constrained to fill remaining row width so long filenames truncate inside the
-    /// NSPopUpButton label instead of pushing the trailing icons off-row. Per-item `.lineLimit` /
-    /// `.truncationMode` modifiers are unreliable here because AppKit's native popup ignores them
-    /// for the selected-value label.
+    /// NSPopUpButton label instead of pushing the trailing icons off-row.
     @ViewBuilder
     private var modelRow: some View {
         MenuBarPickerRow(title: String(localized: "Model")) {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 if runtimeModel.availableModels.isEmpty {
                     Text("No models found")
                         .foregroundStyle(.secondary)
-                        .font(.subheadline)
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 } else {
                     Picker("Model", selection: selectedModelBinding) {
                         ForEach(runtimeModel.availableModels) { model in
@@ -277,22 +351,20 @@ struct MenuBarView: View {
                     .disabled(runtimePickerDisabled)
                 }
 
-                Button {
+                MenuBarIconButton(
+                    systemImage: "folder",
+                    helpText: String(localized: "Show Models in Finder")
+                ) {
                     modelDownloadManager.openModelsDirectory()
-                } label: {
-                    Image(systemName: "folder")
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
 
-                Button {
+                MenuBarIconButton(
+                    systemImage: "arrow.clockwise",
+                    helpText: String(localized: "Refresh Models")
+                ) {
                     modelDownloadManager.refreshModelStates()
                     runtimeModel.refreshAvailableModels()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
             }
         }
     }
@@ -302,16 +374,18 @@ struct MenuBarView: View {
     /// Lists every permission Cotabby can use and appears whenever at least one is missing, including
     /// the optional Screen Recording enhancement. Each row carries its own grant state, so the card
     /// keeps showing the still-missing permission until nothing is left to grant, then vanishes.
-    /// Screen Recording is surfaced as a normal "(Optional)" permission row rather than hidden or
-    /// shown as a feature toggle, but it never blocks autocomplete (see
-    /// `CotabbyPermissionKind.isRequiredForAutocomplete`).
     @ViewBuilder
     private var permissionsCard: some View {
         if !allPermissionsGranted {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Permissions")
-                    .font(.subheadline.weight(.medium))
-                    .padding(.bottom, 2)
+            MenuBarSurfaceCard(padding: 10, spacing: 6, tint: .orange) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.orange)
+                    Text("Permissions")
+                        .font(.subheadline.weight(.medium))
+                }
+                .padding(.bottom, 2)
 
                 ForEach(CotabbyPermissionKind.allCases) { permission in
                     PermissionRow(
@@ -326,10 +400,7 @@ struct MenuBarView: View {
                     )
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-            .padding(.bottom, 12)
+            .padding(.bottom, 10)
         }
     }
 
@@ -337,42 +408,75 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private var footerSection: some View {
-        Divider()
-            .padding(.bottom, 10)
+        VStack(alignment: .leading, spacing: 8) {
+            MenuBarSurfaceCard(padding: 4, spacing: 2) {
+                Button {
+                    presentation.dismiss()
+                    onOpenVocabulary()
+                } label: {
+                    HStack(spacing: 8) {
+                        VocabularyFavoriteIcon(isSaved: true)
+                            .frame(width: 16, height: 16)
+                        Text(String(localized: "Vocabulary", table: "Vocabulary") + "…")
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 6)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(MenuBarInteractiveRowButtonStyle())
 
-        Button {
-            presentation.dismiss()
-            onOpenVocabulary()
-        } label: {
-            HStack(spacing: 7) {
-                VocabularyFavoriteIcon(isSaved: true).frame(width: 18, height: 18)
-                Text(String(localized: "Vocabulary", table: "Vocabulary") + "…")
+                MenuBarActionRow(
+                    title: String(localized: "Settings"),
+                    systemImage: "gearshape",
+                    iconTint: .secondary,
+                    trailingText: "⌘,",
+                    showsChevron: false
+                ) {
+                    // Dismiss the popover before opening the Settings window so the popover doesn't
+                    // remain on top of (and obscure) the Settings pane. See issue #455.
+                    presentation.dismiss()
+                    onOpenSettings()
+                }
             }
-        }.buttonStyle(.borderless).padding(.bottom, 10)
 
-        HStack {
-            Button("Settings") {
-                // Dismiss the popover before opening the Settings window so the popover doesn't
-                // remain on top of (and obscure) the Settings pane. See issue #455.
-                presentation.dismiss()
-                onOpenSettings()
+            HStack(spacing: 4) {
+                Button("Check for Updates") {
+                    appUpdateManager.checkForUpdates()
+                }
+                .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
+
+                Text("·")
+                    .foregroundStyle(.quaternary)
+                    .accessibilityHidden(true)
+
+                Button("Report Bug", action: onReportFeedback)
+                    .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
+
+                Text("·")
+                    .foregroundStyle(.quaternary)
+                    .accessibilityHidden(true)
+
+                Link("GitHub", destination: ProductIdentity.repositoryURL)
+                    .buttonStyle(.borderless)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 3)
+
+                Spacer(minLength: 0)
+
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
+                .keyboardShortcut("q")
             }
-            .buttonStyle(.borderless)
-
-            Button("Check for Updates") {
-                appUpdateManager.checkForUpdates()
-            }
-            .buttonStyle(.borderless)
-
-            Spacer(minLength: 0)
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut("q")
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .font(.subheadline)
     }
 
     // MARK: - Bindings
@@ -527,7 +631,6 @@ struct MenuBarView: View {
     private var screenContextUnavailable: Bool {
         !permissionManager.screenRecordingGranted
     }
-
 }
 
 /// The measurement carries the page identity so a deferred layout from an outgoing page cannot
