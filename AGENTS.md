@@ -152,9 +152,16 @@ own `Contents/Resources` are registered for the pixel match (`HostBundledFontReg
 Visual context currently flows through:
 
 - `VisualContextCoordinator`: field-scoped visual-context session lifecycle.
+- `VisualContextActivity`: ten-second background refresh budget renewed by focus/editing activity;
+  AX polling does not renew it. Six-second excerpt expiry remains independent of idle suspension.
 - `ScreenshotContextGenerator`: screenshot -> OCR -> `OCRTextHygiene` cleanup -> bounded excerpt.
 - `WindowScreenshotService`: captures the relevant window or region.
-- `ScreenTextExtractor`: Vision OCR extraction, carrying per-line recognition confidence.
+- `ScreenTextExtractor`: request/result conversion borrowing the app-owned `OCRRuntime`, carrying
+  per-line recognition confidence and optional pointer word boxes.
+- `OCRRuntime`: shared, bounded context/reading admission and logical cancellation; its dedicated
+  native thread owns `OCRWorkerProcess` for deadline-checked memory-pipe I/O and child retirement.
+- `native/ocr/main.swift`: the isolated Vision worker. A timeout retires this process before any
+  replacement starts; focus changes never call native Vision cancellation in the app.
 - `OCRTextHygiene`: pure cleanup of raw OCR (drops low-confidence lines and chrome noise). There is
   no model summarization step; a base model conditions fine on cleaned raw context.
 - `VisualContextModels`: configuration, status, and excerpt values.
@@ -262,6 +269,11 @@ Console.app stream.
 - `~/Desktop/cotabby-ax-dump.txt` — most recent Chrome AX tree snapshot. Overwritten on each
   Chrome focus change (debounced by focused-element identity).
 - Rotated previous logs: `*.jsonl.1` (one-step rotation when a file exceeds 10 MB).
+- `~/Library/Logs/<app>/screenshots/` — sampled visual-context PNG/OCR text pairs. The optional
+  writer requires `-cotabby-debug-screenshots` in addition to `-cotabby-debug`; routine Dev logs
+  alone do not save screenshots. The
+  `DebugScreenshotWriter` owns a bounded native disk thread; context delivery and shutdown never
+  wait for it. Identical-pixel cache hits skip capture writes. The old Desktop archive is untouched.
 - `~/Library/Logs/<app>/strips/` — every calibration strip the overlay captured, as PNG plus a JSON
   sidecar (caret column, size, line text), written only while
   `defaults write <bundle> cotabbyDumpCalibrationStrips -bool YES` is set at launch. Replay one

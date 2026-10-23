@@ -47,7 +47,7 @@ final class SystemMetricsStore: ObservableObject {
     var ownedProcessIDs: () -> [pid_t] = { [] }
     var ownedProcessSampler: (pid_t) -> OwnedProcessResourceReading? = { OwnedProcessResourceReader.read(pid: $0) }
     private var previousOwnedCPU: [pid_t: (reading: OwnedProcessResourceReading, uptime: TimeInterval)] = [:]
-    private var previousGPUPIDs: Set<pid_t> = [getpid()]
+    private var previousGPUHelperEpochs: [pid_t: UInt64] = [:]
     /// Monotonic seconds used to time the GPU share. Wall-clock `Date` can jump when the clock is
     /// set, which would skew the share for one sample, and tests inject a fixed step to get exact
     /// percentages.
@@ -110,7 +110,7 @@ final class SystemMetricsStore: ObservableObject {
         nextSampleID = 0
         previousGPUReading = nil
         previousOwnedCPU = [:]
-        previousGPUPIDs = [getpid()]
+        previousGPUHelperEpochs = [:]
     }
 
     private func startTimer() {
@@ -155,9 +155,13 @@ final class SystemMetricsStore: ObservableObject {
         }
         previousOwnedCPU = ownedReadings
         let pids = Set(ownedReadings.keys).union([getpid()])
-        // Adding a new helper introduces a cumulative counter with another epoch. Reset the GPU
-        // baseline on membership changes so startup/exit never becomes a false utilization spike.
-        if pids != previousGPUPIDs { previousGPUReading = nil; previousGPUPIDs = pids }
+        // A restarted helper introduces another counter epoch, even if the OS reused its PID.
+        // Match kernel start times as well as membership before comparing cumulative GPU time.
+        let helperEpochs = ownedReadings.mapValues { $0.reading.startTime }
+        if helperEpochs != previousGPUHelperEpochs {
+            previousGPUReading = nil
+            previousGPUHelperEpochs = helperEpochs
+        }
         let gpu = gpuSampler?() ?? GPUStatisticsReader.read(pids: pids)
         let gpuPercent = previousGPUReading.flatMap { previous in
             GPUStatisticsReader.processUtilizationPercent(

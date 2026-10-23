@@ -419,7 +419,8 @@ Visual context is one field-scoped session:
 ~~~text
 VisualContextCoordinator
   -> WindowScreenshotService (local: focused window; endpoint: original field crop)
-  -> ScreenTextExtractor (Vision OCR + line confidence)
+  -> ScreenTextExtractor -> shared OCRRuntime -> local Vision helper
+  -> text, line confidence and optional word rectangles
   -> OCRTextHygiene
   -> VisualContextExcerptSelector (local: proximity, deduplication, reading order)
   -> bounded sanitized excerpt
@@ -428,6 +429,38 @@ VisualContextCoordinator
 There is no model summarization step and raw screenshots do not enter prompts. Missing Screen Recording
 produces an explicit unavailable state without disabling text-only autocomplete. Debug screenshot/OCR
 artifacts exist only under the explicit debug launch mode.
+
+`DebugScreenshotWriter` is a separate, optional app-owned diagnostic boundary. One background OS
+thread encodes PNGs, writes OCR text and trims archives without delaying excerpt delivery or using
+the shared executor. It retains one active and one latest pending capture, samples at most once per
+five seconds, skips identical-pixel cache hits, and never waits for storage during app shutdown.
+Captures now live in `~/Library/Logs/<app>/screenshots/`, with 20 pairs per application; the old
+Desktop archive is not traversed or migrated. Filesystem stalls can suppress diagnostics, not OCR.
+The writer is created only when both `-cotabby-debug` and `-cotabby-debug-screenshots` are passed;
+ordinary development retains JSONL logs without producing PNG/OCR archives.
+
+`CotabbyAppEnvironment` owns one `OCRRuntime` for both screen context and explicit reading. A
+dedicated native thread handles bounded image preparation and pipe I/O; Vision executes in
+`Contents/Helpers/lingrove-ocr-helper`, outside the app's Dispatch pool. One operation runs at a
+time, with only the latest context and reading requests queued; queued reading has priority.
+Its process-ID snapshot joins speech in the existing visible Performance-pane sampler. Kernel
+start times reset CPU/GPU baselines across helper exit, restart and PID reuse.
+
+`VisualContextActivity` grants ten seconds of periodic refresh after a new field or eligible
+editing key. AX polling, model requests and repeated starts for the same field do not renew it.
+An idle refresh stops before querying AX or taking pixels and does not rearm; typing resumes
+capture immediately (or once the current capture drains). Existing six-second excerpt expiry,
+focus/privacy guards, recognition settings and explicit reading behavior remain in force.
+Cancelling a caller discards its result immediately while preserving the execution slot until
+the child responds or exits. It does not call `VNRequest.cancel()` during focus changes.
+
+Context and reading deadlines are four and twelve seconds, including IPC. Timeout or malformed
+transport retires the child with TERM then KILL before replacement. Failed retirement retains the
+same child and refuses overlap. Failures back off for one second, rising to thirty seconds after
+three consecutive failures; a healthy response resets that count. Sixty idle seconds release the
+helper, and parent death also ends it. Images travel as bounded in-memory RGBA frames, never as
+temporary files. The existing recognition options, confidence cleanup and prompt budgets remain
+at their original ownership points.
 
 Local engines refresh context three seconds after the previous capture finishes, while generation
 continues using the last ready excerpt. Every refresh rechecks focus, permissions and eligibility;
@@ -581,10 +614,11 @@ SuggestionCoordinator just because that is where its symptom becomes visible.
 Development schemes launch with -cotabby-debug. That enables local privacy-sensitive diagnostics in
 addition to unified logging:
 
-- ~/Library/Logs/Cotabby/cotabby.jsonl: structured event stream.
-- ~/Library/Logs/Cotabby/llm-io.jsonl: full prompt/completion records.
+- ~/Library/Logs/<app>/cotabby.jsonl: structured event stream (`<app>` is Lingrove or Lingrove Dev).
+- ~/Library/Logs/<app>/llm-io.jsonl: full prompt/completion records.
 - ~/Desktop/cotabby-ax-dump.txt: most recent Chrome focus AX tree.
-- ~/Desktop/cotabby-debug-screenshots/: retained visual-context capture/OCR pairs.
+- ~/Library/Logs/<app>/screenshots/: sampled visual-context capture/OCR pairs, requiring the additional
+  -cotabby-debug-screenshots launch argument.
 
 Every prediction carries a request_id through coordinator, router, engine, and LLM-I/O records. Start
 with category focus for field/geometry failures, suggestion for state/acceptance failures, runtime for

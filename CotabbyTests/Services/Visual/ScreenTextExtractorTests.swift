@@ -4,12 +4,14 @@ import XCTest
 
 /// Direct tests for the Vision-backed OCR service boundary.
 ///
-/// Screenshot-context tests usually stub OCR so they can focus on orchestration. This file exists
-/// separately because the crash happened inside `ScreenTextExtractor`'s callback-to-async bridge,
-/// which only runs when the real Vision request path is exercised.
+/// Screenshot-context tests usually stub OCR. These tests instead cover the real helper's blank
+/// and degenerate-image outcomes, preserving the context generator's unavailable-text behavior.
+@MainActor
 final class ScreenTextExtractorTests: XCTestCase {
     func test_extractText_tinyImagesReturnNoRecognizedTextWithoutCrashing() async throws {
-        let extractor = ScreenTextExtractor()
+        let runtime = OCRRuntime()
+        defer { runtime.shutdown() }
+        let extractor = ScreenTextExtractor(runtime: runtime)
 
         for dimension in [1, 2] {
             let image = try makeSolidImage(width: dimension, height: dimension)
@@ -18,9 +20,11 @@ final class ScreenTextExtractorTests: XCTestCase {
     }
 
     func test_extractText_blankNormalImageReturnsNoRecognizedText() async throws {
+        let runtime = OCRRuntime()
+        defer { runtime.shutdown() }
         let image = try makeSolidImage(width: 128, height: 128)
 
-        await assertNoRecognizedText(from: image, extractor: ScreenTextExtractor())
+        await assertNoRecognizedText(from: image, extractor: ScreenTextExtractor(runtime: runtime))
     }
 
     private func assertNoRecognizedText(

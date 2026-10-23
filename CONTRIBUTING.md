@@ -60,6 +60,14 @@ set `CMAKE_OSX_ARCHITECTURES=arm64` for a faster Apple Silicon-only development 
 The embed phase verifies that every app architecture has a matching helper slice. Downloading neural speech weights is a separate optional
 runtime action; building the app does not download them.
 
+Workspace preparation also compiles the local Vision OCR executable from `native/ocr/` and the
+shared `OCRWorkerProtocol.swift`. `scripts/prepare_ocr_helper.sh` emits a universal binary under
+`build/ocr-native`; both app targets embed and sign it in `Contents/Helpers`. The parent keeps
+Screen Recording acquisition and sends pixels through memory pipes, so the worker needs no
+separate Screen Recording grant. Run the OCR runtime, extractor, reading OCR and screenshot
+context test suites when changing this path. Runtime hang/crash fixtures exist only in tests;
+there is no fault-injection launch flag or production switch.
+
 The TTS build applies `patches/llama-tts-streaming.patch` to the exact pinned checkout and rejects
 other source changes. Local speech uses framed PCM pipes; only explicit model-backed validation
 may save audio artifacts under `build/`. To check decoder continuity after changing the overlay,
@@ -382,10 +390,25 @@ developer-only diagnostics:
   polling events, and visual-context pipeline status.
 - **Suggestion debug logger**: color-coded console output for each generation cycle: prompt sent,
   raw model response, and normalized output.
-- **Screenshot capture**: saves OCR debug screenshots to disk when the visual-context pipeline
-  runs.
+- **Screenshot capture**: additionally pass `-cotabby-debug-screenshots` alongside `-cotabby-debug`
+  to save fresh visual-context PNG/OCR pairs under
+  `~/Library/Logs/<app>/screenshots/` at most once every five seconds, retaining 20 pairs per source
+  application. A bounded background disk thread prevents slow storage from delaying context or
+  shutdown. Identical-pixel OCR cache hits do not save another image; the old Desktop archive stays
+  untouched. Normal launches omit this diagnostic writer entirely.
 
 To disable it, uncheck `-cotabby-debug` in the scheme's Run → Arguments tab.
+
+The Performance pane aggregates the main process with its owned OCR and speech helpers only while
+the pane is visible. Background screen-context refresh stops ten seconds after the last new focus
+or editing key and resumes on input; explicit reading OCR is independent. Excerpts still expire
+after six seconds rather than remaining available throughout an idle pause.
+
+`VisualContextPerformanceTests` is a local-only, opt-in Release comparison using synthetic pixels
+and real Vision. Run that suite alone with `RUN_OCR_PERFORMANCE=1` and an absolute
+`OCR_PERFORMANCE_REPORT` path in the test host environment, after compilation ends. It compares
+60 seconds of continuous refresh with the activity gate, checks synthetic excerpt hashes, and
+observes idle helper release. Ordinary test runs do not perform this measurement.
 
 ## Pull Requests
 

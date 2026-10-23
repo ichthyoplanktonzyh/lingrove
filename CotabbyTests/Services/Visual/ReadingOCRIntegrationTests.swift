@@ -9,6 +9,8 @@ import Testing
 @MainActor
 struct ReadingOCRIntegrationTests {
     @Test func automaticallyRecognizesChineseWithoutAUserSelectedOCRLanguage() async throws {
+        let runtime = OCRRuntime()
+        defer { runtime.shutdown() }
         let image = NSImage(size: NSSize(width: 900, height: 160))
         image.lockFocus()
         NSColor.white.setFill()
@@ -18,7 +20,7 @@ struct ReadingOCRIntegrationTests {
         ])
         image.unlockFocus()
         let cgImage = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
-        var extractor = ScreenTextExtractor(maxImageDimension: max(cgImage.width, cgImage.height), maxRecognizedCharacters: 1)
+        var extractor = ScreenTextExtractor(runtime: runtime, maxImageDimension: max(cgImage.width, cgImage.height), maxRecognizedCharacters: 1)
         extractor.detectsLanguageAutomatically = true
         extractor.minimumTextHeight = 0
         extractor.logsTextPreview = false
@@ -27,6 +29,8 @@ struct ReadingOCRIntegrationTests {
     }
 
     @Test func uncappedLinesAndPointedWordBoxesSurviveContextTextCap() async throws {
+        let runtime = OCRRuntime()
+        defer { runtime.shutdown() }
         let image = NSImage(size: NSSize(width: 900, height: 220))
         image.lockFocus()
         NSColor.white.setFill()
@@ -41,6 +45,7 @@ struct ReadingOCRIntegrationTests {
         image.unlockFocus()
         let cgImage = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
         var extractor = ScreenTextExtractor(
+            runtime: runtime,
             maxImageDimension: max(cgImage.width, cgImage.height), maxRecognizedCharacters: 1)
         extractor.minimumTextHeight = 0
         extractor.capturesWordBounds = true
@@ -60,13 +65,15 @@ struct ReadingOCRIntegrationTests {
     }
 
     @Test func cancelledOCRCannotReturnAUsableTarget() async throws {
+        let runtime = OCRRuntime()
+        defer { runtime.shutdown() }
         let image = NSImage(size: NSSize(width: 300, height: 100))
         image.lockFocus()
         NSColor.white.setFill()
         NSBezierPath(rect: CGRect(x: 0, y: 0, width: 300, height: 100)).fill()
         image.unlockFocus()
         let cgImage = try #require(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
-        let task = Task { try await ScreenTextExtractor().extractText(from: cgImage) }
+        let task = Task { try await ScreenTextExtractor(runtime: runtime).extractText(from: cgImage) }
         task.cancel()
         do {
             _ = try await task.value

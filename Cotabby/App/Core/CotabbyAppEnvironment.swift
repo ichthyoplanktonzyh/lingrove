@@ -17,6 +17,10 @@ final class CotabbyAppEnvironment {
     let learningModels: LearningModelCollection
     /// One shared playback owner serves the settings voice preview and every learning card.
     let speechController: LearningSpeechController
+    /// One helper and admission policy shared by background context and explicit reading OCR.
+    let ocrRuntime: OCRRuntime
+    /// Optional debug artifacts share one bounded disk writer across all visual-context sessions.
+    let debugScreenshotWriter: DebugScreenshotWriter?
     let vocabularyStore: VocabularyStore
     let vocabularyCLI: CLIMailboxServer?
     let cliInstallation: CLIInstallationModel?
@@ -166,9 +170,6 @@ final class CotabbyAppEnvironment {
         let speechTelemetry = SpeechTelemetry(metrics: performanceMetricsStore,
             trackingEnabled: { [weak suggestionSettings] in suggestionSettings?.isPerformanceTrackingEnabled == true })
         let speechController = LearningSpeechController(settings: LearningSpeechSettings(), telemetry: speechTelemetry)
-        systemMetricsStore.ownedProcessIDs = { [weak speechTelemetry] in
-            speechTelemetry?.runtime.processID.map { [$0] } ?? []
-        }
         let suggestionInserter = SuggestionInserter(suppressionController: suppressionController)
         // Commit accepted text through an IME-safe path (Accessibility / paste) while a composing IME
         // is active; a synthetic keystroke would be re-absorbed into composition and the accept would
@@ -184,7 +185,22 @@ final class CotabbyAppEnvironment {
         let activationIndicatorController = ActivationIndicatorController()
         let clipboardContextProvider = ClipboardContextProvider()
         let clipboardRelevanceFilter = ClipboardRelevanceFilter()
-        let screenshotContextGenerator = ScreenshotContextGenerator()
+        let ocrRuntime = OCRRuntime { message, fields in
+            let metadata = fields.mapValues { Logging.Logger.MetadataValue.string($0) }
+            if fields["failure"] != nil {
+                CotabbyLogger.app.warning("\(message)", metadata: metadata)
+            } else {
+                CotabbyLogger.app.debug("\(message)", metadata: metadata)
+            }
+        }
+        systemMetricsStore.ownedProcessIDs = { [weak speechTelemetry, weak ocrRuntime] in
+            [speechTelemetry?.runtime.processID, ocrRuntime?.processID].compactMap { $0 }
+        }
+        let debugScreenshotWriter = CotabbyDebugOptions.isScreenshotCaptureEnabled ? DebugScreenshotWriter(onFailure: {
+            CotabbyLogger.app.debug("Diagnostic screenshot write failed; context delivery is unaffected")
+        }) : nil
+        let screenshotContextGenerator = ScreenshotContextGenerator(ocrRuntime: ocrRuntime,
+            debugScreenshotWriter: debugScreenshotWriter)
         let visualContextCoordinator = VisualContextCoordinator(
             screenshotContextGenerator: screenshotContextGenerator,
             screenRecordingPermissionProvider: { permissionManager.screenRecordingGranted }
@@ -448,7 +464,7 @@ final class CotabbyAppEnvironment {
             availability: learningAvailability
         )
         let reading = LearningReadingCoordinator(
-            service: learningService, reader: LearningReadingSourceReader(metrics: performanceMetricsStore,
+            service: learningService, reader: LearningReadingSourceReader(ocrRuntime: ocrRuntime, metrics: performanceMetricsStore,
                 trackingEnabled: { suggestionSettings.isPerformanceTrackingEnabled }),
             panel: readingPanel,
             recognizer: learningLexicon,
@@ -499,6 +515,8 @@ final class CotabbyAppEnvironment {
         self.runtimeModel = runtimeModel
         self.learningModels = learningModels
         self.speechController = speechController
+        self.ocrRuntime = ocrRuntime
+        self.debugScreenshotWriter = debugScreenshotWriter
         self.vocabularyStore = vocabularyStore
         self.vocabularyCLI = vocabularyCLI
         self.cliInstallation = cliInstallation

@@ -78,7 +78,7 @@ Cotabby/
 │   ├── Suggestion/
 │   │   └── State/                    work identity and mutable interaction state
 │   ├── Updates/                      manual release checks
-│   └── Visual/                       capture, OCR, and visual-context sessions
+│   └── Visual/                       capture, OCR admission/helper lifetime, and visual-context sessions
 ├── Support/
 │   ├── Accessibility/                pure AX and secure-surface policies
 │   ├── Context/                      sanitization, relevance, and OCR hygiene
@@ -406,8 +406,21 @@ The autocomplete inference package and its revision remain separate.
   all recognized lines, never autocomplete's confidence/chrome filters or capped context string.
 - `WindowScreenshotService.captureRegion` matches the screen's display ID before computing its
   local crop; no editable focus or automatic screen-context preference is needed. `ScreenTextExtractor`
-  optionally returns exact Vision word boxes only for explicit pointer queries, and cancels its own
-  native request when its task is retired. Existing autocomplete extraction defaults are preserved.
+  optionally returns exact Vision word boxes only for explicit pointer queries. It borrows the
+  app-owned `OCRRuntime`, shared with autocomplete context; retiring a caller cancels its result
+  without entering Vision's native cancellation path. Existing extraction defaults are preserved.
+- `Models/Context/OCRWorkerProtocol.swift` is compiled by the app and `native/ocr/main.swift`;
+  it owns bounded, versioned local image/result frames. `Services/Visual/OCRRuntime.swift` owns
+  one native transport thread, one active child operation, latest-only pending images, priority,
+  cancellation and backoff. `OCRWorkerProcess.swift` exclusively owns child/pipes on that thread.
+  Tests mirror this under `CotabbyTests/Services/Visual/`; helper faults never ship in the app.
+- `Services/Visual/DebugScreenshotWriter.swift` owns optional sampled PNG/OCR archives. Its single
+  background native thread bounds pending captures and keeps encoding, writing and retention off
+  MainActor and the shared executor. The environment owns shutdown; the generator only submits
+  fresh captures, so a cache hit does not repeat diagnostic I/O. Tests mirror this under Visual.
+- `Support/Context/VisualContextActivity.swift` owns the monotonic activity window for background
+  refresh. New fields and eligible keyboard input renew it; AX polls cannot. The visual coordinator
+  owns timers and expiry while the suggestion input boundary supplies actual editing activity.
 - Each source has an independent default-off feature switch, explicit App permission, and central
   shortcut. Legacy App rows gain no pointer/screenshot permission. OCR metrics use their own source
   and the same trace ID as translation; persisted records contain timings and status, not text/images.

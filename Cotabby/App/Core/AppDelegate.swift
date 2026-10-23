@@ -270,6 +270,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Retire its request and playback on every quit path, independently of that startup gate.
         menuBarController?.shutdown()
         environment.speechController.shutdown()
+        environment.ocrRuntime.shutdown()
+        environment.debugScreenshotWriter?.shutdown()
         guard didStartServices else {
             return
         }

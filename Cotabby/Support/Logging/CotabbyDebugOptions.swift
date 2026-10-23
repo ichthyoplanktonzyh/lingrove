@@ -5,10 +5,11 @@ import os
 /// File overview:
 /// Centralizes Cotabby's developer-only runtime switches.
 ///
-/// Passing `-cotabby-debug` opts into local logs and screenshot/OCR captures. On-screen overlays
-/// have a separate, default-off setting so a development session can keep logging quietly.
+/// Passing `-cotabby-debug` opts into local logs. Screenshot archives additionally require
+/// `-cotabby-debug-screenshots`, so ordinary development does not encode or persist screen pixels.
 nonisolated enum CotabbyDebugOptions {
     static let launchArgument = "-cotabby-debug"
+    static let screenshotLaunchArgument = "-cotabby-debug-screenshots"
 
     /// Compile-time availability prevents a saved preference from exposing developer panels in
     /// release builds. The settings model owns the user's separate, durable visibility choice.
@@ -22,6 +23,16 @@ nonisolated enum CotabbyDebugOptions {
 
     static var isEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
+    }
+
+    static var isScreenshotCaptureEnabled: Bool {
+        shouldCaptureScreenshots(arguments: ProcessInfo.processInfo.arguments)
+    }
+
+    /// The screenshot switch alone cannot opt a normal launch into privacy-sensitive artifacts.
+    /// Keeping this decision pure also lets tests check all flag combinations without relaunching.
+    static func shouldCaptureScreenshots(arguments: [String]) -> Bool {
+        arguments.contains(launchArgument) && arguments.contains(screenshotLaunchArgument)
     }
 
     /// The swift-log floor applied to the always-on `OSLogHandler` and the debug-only file sinks.

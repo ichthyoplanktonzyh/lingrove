@@ -11,6 +11,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     private let selection = LearningReadingSelectionReader()
     private let picker = LearningRegionSelectionPanel()
     private let screenshots = WindowScreenshotService()
+    private let ocrRuntime: OCRRuntime
     private let metrics: PerformanceMetricsStore?
     private let trackingEnabled: () -> Bool
     private var receipt: LearningReadingSelection?
@@ -36,7 +37,8 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     private var pointerEvidence: PointerEvidence?
     var isSelectingRegion: Bool { picker.isSelecting }
 
-    init(metrics: PerformanceMetricsStore? = nil, trackingEnabled: @escaping () -> Bool = { false }) {
+    init(ocrRuntime: OCRRuntime, metrics: PerformanceMetricsStore? = nil, trackingEnabled: @escaping () -> Bool = { false }) {
+        self.ocrRuntime = ocrRuntime
         self.metrics = metrics
         self.trackingEnabled = trackingEnabled
     }
@@ -245,11 +247,13 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             // Keep original pixels and all recognized lines. The context extractor's capped text
             // field is deliberately ignored, and zero minimum height retains small target text.
             var extractor = ScreenTextExtractor(
+                runtime: ocrRuntime,
                 maxImageDimension: max(image.width, image.height), maxRecognizedCharacters: 1)
             extractor.minimumTextHeight = 0
             extractor.capturesWordBounds = pointer != nil
             extractor.logsTextPreview = false
             extractor.detectsLanguageAutomatically = true
+            extractor.purpose = .reading
             let extraction = try await extractor.extractText(from: image)
             try Task.checkCancellation()
             let text: String

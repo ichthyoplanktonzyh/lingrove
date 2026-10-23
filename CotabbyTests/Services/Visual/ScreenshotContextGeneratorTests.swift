@@ -1,5 +1,6 @@
 import CoreGraphics
 import XCTest
+import Testing
 @testable import Cotabby
 
 /// Tests for the screenshot -> OCR -> bounded-excerpt pipeline in `ScreenshotContextGenerator`.
@@ -18,7 +19,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
         let lines = (0..<80).map { OCRTextHygiene.OCRLine(text: "Project agenda item \($0)", confidence: 1) }
         let extractor = CountingTextExtractor(extracted: extracted(lines))
         let capture = RecordingScreenshotCapture(image: makeImage())
-        let generator = ScreenshotContextGenerator(screenshotService: capture, textExtractor: extractor)
+        let generator = ScreenshotContextGenerator(ocrRuntime: OCRRuntime(), screenshotService: capture, textExtractor: extractor)
 
         let endpoint = try await generator.generateContext(for: makeSnapshot(), configuration: .default)
         let local = try await generator.generateContext(for: makeSnapshot(), configuration: .local)
@@ -90,6 +91,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
     func test_generateContext_reusesExtractionForIdenticalPixels() async throws {
         let extractor = CountingTextExtractor(extracted: extracted(text: Self.meaningfulLine))
         let generator = ScreenshotContextGenerator(
+            ocrRuntime: OCRRuntime(),
             screenshotService: RecordingScreenshotCapture(image: makeImage()),
             textExtractor: extractor,
             configuration: .default
@@ -106,6 +108,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
         let extractor = CountingTextExtractor(extracted: extracted(text: Self.meaningfulLine))
         let capture = RecordingScreenshotCapture(image: makeImage())
         let generator = ScreenshotContextGenerator(
+            ocrRuntime: OCRRuntime(),
             screenshotService: capture,
             textExtractor: extractor,
             configuration: .default
@@ -176,7 +179,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
         let capture = RecordingScreenshotCapture(image: makeImage())
         capture.error = WindowScreenshotError.screenRecordingPermissionMissing
         let extractor = CountingTextExtractor(extracted: extracted(text: Self.meaningfulLine))
-        let generator = ScreenshotContextGenerator(screenshotService: capture, textExtractor: extractor)
+        let generator = ScreenshotContextGenerator(ocrRuntime: OCRRuntime(), screenshotService: capture, textExtractor: extractor)
 
         await assertUnavailable(generator, containing: "Screen Recording permission is required")
         XCTAssertEqual(extractor.extractionCount, 0)
@@ -187,6 +190,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
         let capture = RecordingScreenshotCapture(image: makeImage())
         capture.error = CaptureExploded()
         let generator = ScreenshotContextGenerator(
+            ocrRuntime: OCRRuntime(),
             screenshotService: capture,
             textExtractor: CountingTextExtractor(extracted: extracted(text: Self.meaningfulLine))
         )
@@ -224,6 +228,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
         configuration: VisualContextConfiguration = .default
     ) -> ScreenshotContextGenerator {
         ScreenshotContextGenerator(
+            ocrRuntime: OCRRuntime(),
             screenshotService: RecordingScreenshotCapture(image: makeImage()),
             textExtractor: StubTextExtractor(result: .success(extracted)),
             configuration: configuration
@@ -232,6 +237,7 @@ final class ScreenshotContextGeneratorTests: XCTestCase {
 
     private func makeGenerator(extractionError: Error, windowTitle: String?) -> ScreenshotContextGenerator {
         ScreenshotContextGenerator(
+            ocrRuntime: OCRRuntime(),
             screenshotService: RecordingScreenshotCapture(image: makeImage(), windowTitle: windowTitle),
             textExtractor: StubTextExtractor(result: .failure(extractionError)),
             configuration: .default
@@ -360,4 +366,62 @@ private struct StubTextExtractor: ScreenTextExtracting {
 @MainActor
 private final class StatusRecorder {
     var statuses: [VisualContextStatus] = []
+}
+
+/// The generator borrows a diagnostic writer; a blocked or skipped artifact must not change
+/// the excerpt. These tests reuse the existing deterministic capture/OCR doubles above.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct ScreenshotDiagnosticIsolationTests {
+    @Test func blockedDebugStorageDoesNotDelayFreshOrCachedExcerpts() async throws {
+        let probe = DebugScreenshotProbe(holdsFirstWrite: true)
+        let writer = DebugScreenshotWriter(minimumInterval: 0, writeCapture: { probe.write($0) })
+        defer { writer.shutdown(); probe.release() }
+        let generator = try makeGenerator(writer: writer)
+        let first = try await generator.generateContext(for: snapshot)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while probe.names.isEmpty && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        try #require(probe.names.count == 1)
+        #expect(probe.completed == 0, "The excerpt must arrive while the disk write is still blocked")
+        #expect(first.text.contains("Quarterly budget"))
+        #expect(try await generator.generateContext(for: snapshot) == first)
+    }
+
+    @Test func identicalPixelCacheHitsDoNotSaveDuplicateDebugImages() async throws {
+        try await confirmation("Only the fresh extraction writes a debug capture", expectedCount: 1) { saved in
+            let probe = DebugScreenshotProbe()
+            let writer = DebugScreenshotWriter(minimumInterval: 0, writeCapture: { capture in
+                probe.write(capture)
+                saved()
+            })
+            defer { writer.shutdown() }
+            let generator = try makeGenerator(writer: writer)
+            _ = try await generator.generateContext(for: snapshot)
+            let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+            while probe.completed == 0 && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+            try #require(probe.completed == 1)
+            _ = try await generator.generateContext(for: snapshot)
+            try await Task.sleep(for: .milliseconds(200))
+            #expect(probe.completed == 1)
+        }
+    }
+
+    private var snapshot: FocusedInputSnapshot {
+        CotabbyTestFixtures.focusedInputSnapshot(applicationName: "Xcode", bundleIdentifier: "com.apple.dt.Xcode",
+            elementIdentifier: "test-field", role: "AXTextArea",
+            caretRect: CGRect(x: 140, y: 420, width: 2, height: 18),
+            inputFrameRect: CGRect(x: 100, y: 380, width: 600, height: 120), precedingText: "Screen Recording")
+    }
+
+    private func makeGenerator(writer: DebugScreenshotWriter) throws -> ScreenshotContextGenerator {
+        let context = try #require(CGContext(data: nil, width: 16, height: 16, bitsPerComponent: 8, bytesPerRow: 64,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let image = try #require(context.makeImage())
+        let text = "Quarterly budget review draft for the finance meeting"
+        let extraction = ExtractedScreenText(text: text, lineCount: 1,
+            lines: [.init(text: text, confidence: 1)])
+        return ScreenshotContextGenerator(ocrRuntime: OCRRuntime(), debugScreenshotWriter: writer,
+            screenshotService: RecordingScreenshotCapture(image: image),
+            textExtractor: StubTextExtractor(result: .success(extraction)))
+    }
 }

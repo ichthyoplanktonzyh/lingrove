@@ -305,6 +305,7 @@ protocol VisualContextCoordinating: AnyObject {
     var refreshContextProvider: (() -> FocusedInputSnapshot?)? { get set }
 
     func startSessionIfNeeded(for snapshotContext: FocusedInputSnapshot, configuration: VisualContextConfiguration)
+    func noteInputActivity(for context: FocusedInputSnapshot)
     func cancel(resetState: Bool)
     func excerpt(for context: FocusedInputContext) -> String?
 }

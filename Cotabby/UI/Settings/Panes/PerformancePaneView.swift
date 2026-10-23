@@ -191,7 +191,7 @@ struct PerformancePaneView: View {
             Text(
                 String(localized: """
                 Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and \
-                its local speech process. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run \
+                its local OCR and speech processes. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run \
                 separately and are excluded. The line below the GPU graph covers every app on this Mac.
                 """, table: "Learning")
             )

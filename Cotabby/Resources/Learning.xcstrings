@@ -61939,96 +61939,96 @@
         }
       }
     },
-    "Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and its local speech process. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run separately and are excluded. The line below the GPU graph covers every app on this Mac." : {
+    "Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and its local OCR and speech processes. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run separately and are excluded. The line below the GPU graph covers every app on this Mac." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يُحدّث كل ثانية أثناء فتح هذه الصفحة فقط. يشمل المعالج والذاكرة الفعلية وعدادات GPU المتاحة تطبيق Lingrove وعملية الصوت المحلية. قد يتجاوز المعالج 100% عبر عدة أنوية. تعمل Apple Intelligence وخوادم نقاط النهاية بشكل منفصل ولا تُحتسب. يشمل السطر أسفل مخطط GPU جميع تطبيقات جهاز Mac هذا."
+            "value" : "يُحدّث كل ثانية أثناء فتح هذه الصفحة فقط. يشمل المعالج والذاكرة الفعلية وعدادات GPU المتاحة تطبيق Lingrove وعمليتي OCR والصوت المحليتين. قد يتجاوز المعالج 100% عبر عدة أنوية. تعمل Apple Intelligence وخوادم نقاط النهاية بشكل منفصل ولا تُحتسب. يشمل السطر أسفل مخطط GPU جميع تطبيقات جهاز Mac هذا."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur bei geöffneter Seite jede Sekunde aktualisiert. CPU, physischer Speicher und verfügbare GPU-Zähler umfassen Lingrove und seinen lokalen Sprachprozess. Die CPU kann über mehrere Kerne 100 % überschreiten. Apple Intelligence und Endpunktserver laufen separat und sind ausgeschlossen. Die Zeile unter der GPU-Grafik umfasst alle Apps auf diesem Mac."
+            "value" : "Nur bei geöffneter Seite jede Sekunde aktualisiert. CPU, physischer Speicher und verfügbare GPU-Zähler umfassen Lingrove und seine lokalen OCR- und Sprachprozesse. Die CPU kann über mehrere Kerne 100 % überschreiten. Apple Intelligence und Endpunktserver laufen separat und sind ausgeschlossen. Die Zeile unter der GPU-Grafik umfasst alle Apps auf diesem Mac."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and its local speech process. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run separately and are excluded. The line below the GPU graph covers every app on this Mac."
+            "value" : "Updated every second while this pane is open. CPU, physical memory and available GPU counters include Lingrove and its local OCR and speech processes. CPU can exceed 100% across multiple cores. Apple Intelligence and endpoint servers run separately and are excluded. The line below the GPU graph covers every app on this Mac."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se actualiza cada segundo solo mientras esta página está abierta. La CPU, la memoria física y los contadores GPU disponibles incluyen Lingrove y su proceso de voz local. La CPU puede superar el 100 % con varios núcleos. Apple Intelligence y los servidores de endpoint se ejecutan por separado y no se incluyen. La línea bajo el gráfico GPU abarca todas las apps de este Mac."
+            "value" : "Se actualiza cada segundo solo mientras esta página está abierta. La CPU, la memoria física y los contadores GPU disponibles incluyen Lingrove y sus procesos locales de OCR y voz. La CPU puede superar el 100 % con varios núcleos. Apple Intelligence y los servidores de endpoint se ejecutan por separado y no se incluyen. La línea bajo el gráfico GPU abarca todas las apps de este Mac."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mise à jour chaque seconde uniquement sur cette page. Le CPU, la mémoire physique et les compteurs GPU disponibles incluent Lingrove et son processus vocal local. Le CPU peut dépasser 100 % avec plusieurs cœurs. Apple Intelligence et les serveurs distants sont exclus car ils s’exécutent séparément. La ligne sous le graphique GPU couvre toutes les apps de ce Mac."
+            "value" : "Mise à jour chaque seconde uniquement sur cette page. Le CPU, la mémoire physique et les compteurs GPU disponibles incluent Lingrove et ses processus locaux d’OCR et de synthèse vocale. Le CPU peut dépasser 100 % avec plusieurs cœurs. Apple Intelligence et les serveurs distants sont exclus car ils s’exécutent séparément. La ligne sous le graphique GPU couvre toutes les apps de ce Mac."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "केवल यह पेज खुला रहने पर हर सेकंड अपडेट होता है। CPU, भौतिक मेमोरी और उपलब्ध GPU काउंटर में Lingrove और उसकी स्थानीय वॉइस प्रक्रिया शामिल हैं। कई कोर पर CPU 100% से अधिक हो सकता है। Apple Intelligence और एंडपॉइंट सर्वर अलग चलते हैं और शामिल नहीं हैं। GPU ग्राफ़ के नीचे की पंक्ति इस Mac के सभी ऐप दिखाती है।"
+            "value" : "केवल यह पेज खुला रहने पर हर सेकंड अपडेट होता है। CPU, भौतिक मेमोरी और उपलब्ध GPU काउंटर में Lingrove और उसकी स्थानीय OCR और वॉइस प्रक्रियाएँ शामिल हैं। कई कोर पर CPU 100% से अधिक हो सकता है। Apple Intelligence और एंडपॉइंट सर्वर अलग चलते हैं और शामिल नहीं हैं। GPU ग्राफ़ के नीचे की पंक्ति इस Mac के सभी ऐप दिखाती है।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diperbarui setiap detik hanya saat halaman ini terbuka. CPU, memori fisik, dan penghitung GPU yang tersedia mencakup Lingrove dan proses suara lokalnya. CPU dapat melebihi 100% pada beberapa inti. Apple Intelligence dan server endpoint berjalan terpisah dan tidak dihitung. Baris di bawah grafik GPU mencakup semua app di Mac ini."
+            "value" : "Diperbarui setiap detik hanya saat halaman ini terbuka. CPU, memori fisik, dan penghitung GPU yang tersedia mencakup Lingrove dan proses OCR dan suara lokalnya. CPU dapat melebihi 100% pada beberapa inti. Apple Intelligence dan server endpoint berjalan terpisah dan tidak dihitung. Baris di bawah grafik GPU mencakup semua app di Mac ini."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si aggiorna ogni secondo solo mentre questa pagina è aperta. CPU, memoria fisica e contatori GPU disponibili includono Lingrove e il processo vocale locale. La CPU può superare il 100% su più core. Apple Intelligence e i server endpoint sono eseguiti separatamente ed esclusi. La riga sotto il grafico GPU comprende tutte le app di questo Mac."
+            "value" : "Si aggiorna ogni secondo solo mentre questa pagina è aperta. CPU, memoria fisica e contatori GPU disponibili includono Lingrove e i processi locali di OCR e sintesi vocale. La CPU può superare il 100% su più core. Apple Intelligence e i server endpoint sono eseguiti separatamente ed esclusi. La riga sotto il grafico GPU comprende tutte le app di questo Mac."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このページを開いている間のみ毎秒更新します。CPU、物理メモリ、取得可能な GPU カウンターには Lingrove とローカル音声プロセスが含まれます。複数コアでは CPU 使用率が 100% を超える場合があります。Apple Intelligence とエンドポイントサーバーは別プロセスのため含まれません。GPU グラフの下の行はこの Mac 全体の使用状況です。"
+            "value" : "このページを開いている間のみ毎秒更新します。CPU、物理メモリ、取得可能な GPU カウンターには Lingrove とローカルの OCR および音声プロセスが含まれます。複数コアでは CPU 使用率が 100% を超える場合があります。Apple Intelligence とエンドポイントサーバーは別プロセスのため含まれません。GPU グラフの下の行はこの Mac 全体の使用状況です。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 페이지가 열려 있을 때만 매초 업데이트합니다. CPU, 물리 메모리 및 사용 가능한 GPU 카운터에는 Lingrove와 로컬 음성 프로세스가 포함됩니다. 여러 코어의 CPU 사용률은 100%를 넘을 수 있습니다. Apple Intelligence와 엔드포인트 서버는 별도로 실행되어 제외됩니다. GPU 그래프 아래 줄은 이 Mac의 모든 앱을 나타냅니다."
+            "value" : "이 페이지가 열려 있을 때만 매초 업데이트합니다. CPU, 물리 메모리 및 사용 가능한 GPU 카운터에는 Lingrove와 로컬 OCR 및 음성 프로세스가 포함됩니다. 여러 코어의 CPU 사용률은 100%를 넘을 수 있습니다. Apple Intelligence와 엔드포인트 서버는 별도로 실행되어 제외됩니다. GPU 그래프 아래 줄은 이 Mac의 모든 앱을 나타냅니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atualiza a cada segundo apenas com esta página aberta. CPU, memória física e contadores de GPU disponíveis incluem o Lingrove e seu processo de voz local. A CPU pode exceder 100% com vários núcleos. Apple Intelligence e servidores de endpoint são executados separadamente e ficam de fora. A linha abaixo do gráfico de GPU abrange todos os apps deste Mac."
+            "value" : "Atualiza a cada segundo apenas com esta página aberta. CPU, memória física e contadores de GPU disponíveis incluem o Lingrove e seus processos locais de OCR e voz. A CPU pode exceder 100% com vários núcleos. Apple Intelligence e servidores de endpoint são executados separadamente e ficam de fora. A linha abaixo do gráfico de GPU abrange todos os apps deste Mac."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Обновляется каждую секунду только на открытой странице. CPU, физическая память и доступные счётчики GPU включают Lingrove и его локальный речевой процесс. На нескольких ядрах CPU может превышать 100%. Apple Intelligence и серверы конечных точек работают отдельно и не учитываются. Строка под графиком GPU охватывает все приложения этого Mac."
+            "value" : "Обновляется каждую секунду только на открытой странице. CPU, физическая память и доступные счётчики GPU включают Lingrove и его локальные процессы OCR и речи. На нескольких ядрах CPU может превышать 100%. Apple Intelligence и серверы конечных точек работают отдельно и не учитываются. Строка под графиком GPU охватывает все приложения этого Mac."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yalnızca bu sayfa açıkken saniyede bir güncellenir. CPU, fiziksel bellek ve kullanılabilir GPU sayaçları Lingrove'u ve yerel ses sürecini içerir. CPU birden çok çekirdekte %100'ü aşabilir. Apple Intelligence ve uç nokta sunucuları ayrı çalışır ve dahil edilmez. GPU grafiğinin altındaki satır bu Mac'teki tüm uygulamaları kapsar."
+            "value" : "Yalnızca bu sayfa açıkken saniyede bir güncellenir. CPU, fiziksel bellek ve kullanılabilir GPU sayaçları Lingrove'u ve yerel OCR ve ses süreçlerini içerir. CPU birden çok çekirdekte %100'ü aşabilir. Apple Intelligence ve uç nokta sunucuları ayrı çalışır ve dahil edilmez. GPU grafiğinin altındaki satır bu Mac'teki tüm uygulamaları kapsar."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅在此页打开时每秒更新。CPU、物理内存和可读取的 GPU 计数包含拾语及其本地语音进程。多核心 CPU 使用率可超过 100%。Apple Intelligence 和端点服务器独立运行，不计入其中。GPU 图下方一行显示这台 Mac 上所有应用的情况。"
+            "value" : "仅在此页打开时每秒更新。CPU、物理内存和可读取的 GPU 计数包含拾语及其本地 OCR 及语音进程。多核心 CPU 使用率可超过 100%。Apple Intelligence 和端点服务器独立运行，不计入其中。GPU 图下方一行显示这台 Mac 上所有应用的情况。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅在此頁開啟時每秒更新。CPU、實體記憶體和可讀取的 GPU 計數包含拾語及其本機語音行程。多核心 CPU 使用率可超過 100%。Apple Intelligence 和端點伺服器獨立執行，不計入其中。GPU 圖下方一行顯示這台 Mac 上所有應用程式的情況。"
+            "value" : "僅在此頁開啟時每秒更新。CPU、實體記憶體和可讀取的 GPU 計數包含拾語及其本機 OCR 與語音行程。多核心 CPU 使用率可超過 100%。Apple Intelligence 和端點伺服器獨立執行，不計入其中。GPU 圖下方一行顯示這台 Mac 上所有應用程式的情況。"
           }
         }
       }
@@ -66703,6 +66703,294 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "輸入法仍有未確認的文字。請選定候選字並完成組字後再預覽；原文仍保留。"
+          }
+        }
+      }
+    },
+    "Screen text recognition timed out." : {
+      "comment" : "OCR helper failure shown for explicit screen reading; background autocomplete continues without screen context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "انتهت مهلة التعرّف على النص على الشاشة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitüberschreitung bei der Bildschirmtexterkennung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen text recognition timed out."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se agotó el tiempo de reconocimiento del texto en pantalla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance du texte à l’écran a expiré."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्क्रीन पर मौजूद टेक्स्ट की पहचान का समय समाप्त हो गया।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pengenalan teks layar kehabisan waktu."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il riconoscimento del testo sullo schermo è scaduto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面の文字認識がタイムアウトしました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 텍스트 인식 시간이 초과되었습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O reconhecimento do texto na tela excedeu o tempo limite."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время распознавания текста на экране истекло."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekran metni tanıma zaman aşımına uğradı."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕文字识别超时。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "螢幕文字辨識逾時。"
+          }
+        }
+      }
+    },
+    "Screen text recognition is temporarily unavailable. Try again shortly." : {
+      "comment" : "OCR helper failure shown for explicit screen reading; background autocomplete continues without screen context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التعرّف على النص على الشاشة غير متاح مؤقتًا. حاول مجددًا بعد قليل."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bildschirmtexterkennung ist vorübergehend nicht verfügbar. Versuche es gleich erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen text recognition is temporarily unavailable. Try again shortly."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El reconocimiento del texto en pantalla no está disponible temporalmente. Inténtalo de nuevo en unos instantes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance du texte à l’écran est temporairement indisponible. Réessayez dans un instant."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्क्रीन पर मौजूद टेक्स्ट की पहचान अभी उपलब्ध नहीं है। कुछ देर में फिर कोशिश करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pengenalan teks layar untuk sementara tidak tersedia. Coba lagi sebentar lagi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il riconoscimento del testo sullo schermo non è temporaneamente disponibile. Riprova tra poco."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面の文字認識は一時的に利用できません。しばらくしてから再試行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 텍스트 인식을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O reconhecimento do texto na tela está temporariamente indisponível. Tente novamente em instantes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Распознавание текста на экране временно недоступно. Повторите попытку чуть позже."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekran metni tanıma geçici olarak kullanılamıyor. Kısa bir süre sonra tekrar deneyin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕文字识别暂时不可用，请稍后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "螢幕文字辨識暫時無法使用，請稍後再試。"
+          }
+        }
+      }
+    },
+    "Screen text recognition failed." : {
+      "comment" : "OCR helper failure shown for explicit screen reading; background autocomplete continues without screen context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر التعرّف على النص على الشاشة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bildschirmtexterkennung ist fehlgeschlagen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen text recognition failed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error al reconocer el texto en pantalla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance du texte à l’écran a échoué."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्क्रीन पर मौजूद टेक्स्ट की पहचान नहीं हो सकी।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pengenalan teks layar gagal."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il riconoscimento del testo sullo schermo non è riuscito."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面の文字認識に失敗しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 텍스트 인식에 실패했습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falha ao reconhecer o texto na tela."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось распознать текст на экране."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekran metni tanıma başarısız oldu."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕文字识别失败。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "螢幕文字辨識失敗。"
           }
         }
       }

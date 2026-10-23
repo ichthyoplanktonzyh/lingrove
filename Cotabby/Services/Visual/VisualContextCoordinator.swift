@@ -23,6 +23,8 @@ final class VisualContextCoordinator {
     private var expiryTask: Task<Void, Never>?
     private var excerptCapturedAt: TimeInterval?
     private var activeSessionIdentity: FocusedInputSessionIdentity?
+    private var activity: VisualContextActivity
+    private var refreshAfterCapture = false
 
     private(set) var status: VisualContextStatus = .idle
     private(set) var latestExcerpt: String?
@@ -45,12 +47,14 @@ final class VisualContextCoordinator {
         screenRecordingPermissionProvider: @escaping @MainActor () -> Bool,
         refreshIntervalNanoseconds: UInt64 = 3_000_000_000,
         excerptLifetimeNanoseconds: UInt64 = 6_000_000_000,
+        idleInterval: TimeInterval = 10,
         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.screenshotContextGenerator = screenshotContextGenerator
         self.screenRecordingPermissionProvider = screenRecordingPermissionProvider
         self.refreshIntervalNanoseconds = refreshIntervalNanoseconds
         self.excerptLifetimeNanoseconds = excerptLifetimeNanoseconds
+        activity = VisualContextActivity(idleInterval: idleInterval)
         self.now = now
     }
 
@@ -112,7 +116,26 @@ final class VisualContextCoordinator {
         // churning focusChangeSequence. Coalescing (above) plus a short settle window runs the
         // pipeline once focus is stable instead of once per flap — the retrigger storm in #280.
         cancel(resetState: true)
+        activity.record(at: now())
         scheduleSessionStart(for: snapshotContext)
+    }
+
+    /// Only the keyboard entry point calls this; repeated focus snapshots and completed model
+    /// requests must not keep an abandoned field capturing screenshots forever. On resumption,
+    /// refresh immediately without blocking the suggestion that is already being requested.
+    func noteInputActivity(for context: FocusedInputSnapshot) {
+        guard let session = activeAugmentationSession,
+              session.elementIdentifier == context.elementIdentifier,
+              session.focusChangeSequence == context.focusChangeSequence,
+              let identity = activeSessionIdentity, context.sessionIdentity.continues(identity),
+              !context.isSecure, screenRecordingPermissionProvider() else { return }
+        let resumed = !activity.allowsRefresh(at: now())
+        activity.record(at: now())
+        guard resumed else { return }
+        refreshTask?.cancel()
+        refreshTask = nil
+        guard visualContextTask == nil else { refreshAfterCapture = true; return }
+        capture(context: context, session: session)
     }
 
     /// Whether the active session is currently parked on missing Screen Recording permission, so a
@@ -232,20 +255,26 @@ final class VisualContextCoordinator {
             }
             guard !Task.isCancelled, activeAugmentationSession?.sessionID == session.sessionID else { return }
             visualContextTask = nil
-            scheduleRefresh(sessionID: session.sessionID)
+            let immediately = refreshAfterCapture
+            refreshAfterCapture = false
+            scheduleRefresh(sessionID: session.sessionID, immediately: immediately)
         }
     }
 
     /// One timer per field, rearmed only after capture completes: slow OCR cannot accumulate jobs.
     /// Refresh uses the same engine-specific crop and limits as the initial capture. In particular,
     /// enabling endpoint refresh does not widen what can reach a network request.
-    private func scheduleRefresh(sessionID: UUID) {
-        guard refreshContextProvider != nil else { return }
-        let delay = refreshIntervalNanoseconds
+    private func scheduleRefresh(sessionID: UUID, immediately: Bool = false) {
+        guard refreshContextProvider != nil, activity.allowsRefresh(at: now()) else { return }
+        let delay = immediately ? 0 : refreshIntervalNanoseconds
         refreshTask = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: delay) } catch { return }
             guard let self, !Task.isCancelled,
                   let session = self.activeAugmentationSession, session.sessionID == sessionID else { return }
+            self.refreshTask = nil
+            // Check before querying AX or capturing pixels: an idle field incurs neither work
+            // nor another periodic wakeup. The independent six-second excerpt expiry still runs.
+            guard self.activity.allowsRefresh(at: self.now()) else { return }
             let liveContext = self.refreshContextProvider?()
             // Refreshing AX can synchronously publish a different field and start its session.
             // Never cancel that replacement on behalf of this old timer.
@@ -269,6 +298,8 @@ final class VisualContextCoordinator {
     /// 1. Fully returning the service to `.idle`
     /// 2. Silently tearing down a prior session because a replacement session is about to start
     func cancel(resetState: Bool) {
+        activity.reset()
+        refreshAfterCapture = false
         expiryTask?.cancel()
         expiryTask = nil
         excerptCapturedAt = nil

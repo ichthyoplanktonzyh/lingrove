@@ -153,6 +153,13 @@ targetTemplates:
           - $(SRCROOT)/build/dictionary-native/lingrove-dictionary-helper
         outputFiles:
           - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/lingrove-dictionary-helper
+      - name: Embed OCR helper
+        script: '"${SRCROOT}/scripts/embed_ocr_helper.sh"'
+        inputFiles:
+          - $(SRCROOT)/scripts/embed_ocr_helper.sh
+          - $(SRCROOT)/build/ocr-native/lingrove-ocr-helper
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/lingrove-ocr-helper
       - name: Embed local speech runtime
         script: '"${SRCROOT}/scripts/embed_tts_runtime.sh"'
         inputFiles:

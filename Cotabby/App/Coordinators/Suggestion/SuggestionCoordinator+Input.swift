@@ -300,6 +300,8 @@ extension SuggestionCoordinator {
             return false
         }
 
+        recordVisualContextActivity(event)
+
         // A Tab held during post-acceptance regeneration answers the text as it was when pressed.
         // Once the user edits, moves, or dismisses, it must not accept whatever appears next: with
         // no overlay to hide, the usual `.hidden` release never runs on these idle paths.
@@ -604,5 +606,19 @@ extension SuggestionCoordinator {
         case .other, .acceptance, .fullAcceptance:
             return false
         }
+    }
+
+    /// Eligibility remains at the suggestion boundary. The visual service receives only genuine
+    /// editing keys for an allowed field, never synthetic insertion callbacks or AX polling.
+    private func recordVisualContextActivity(_ event: CapturedInputEvent) {
+        switch event.kind {
+        case .textMutation, .shortcutMutation, .navigation, .acceptance, .fullAcceptance: break
+        case .other, .dismissal: return
+        }
+        // handleInputEvent already passed the shared suggestion eligibility gate. Only the
+        // visual-specific switches remain; avoid another UserDefaults/domain lookup per key.
+        guard !settingsSnapshot.isFastModeEnabled, permissionManager.screenRecordingGranted,
+              let context = focusModel.snapshot.context, !context.isSecure else { return }
+        visualContextCoordinator.noteInputActivity(for: context)
     }
 }

@@ -251,6 +251,7 @@ final class RigVisualContextCoordinator: VisualContextCoordinating {
     var onInjectedContextReady: ((FocusedInputIdentity) -> Void)?
     var refreshContextProvider: (() -> FocusedInputSnapshot?)?
     private(set) var startedSessions: [FocusedInputSnapshot] = []
+    private(set) var inputActivity: [FocusedInputSnapshot] = []
     private(set) var cancelCalls: [Bool] = []
     var excerptValue: String?
 
@@ -261,6 +262,8 @@ final class RigVisualContextCoordinator: VisualContextCoordinating {
     func cancel(resetState: Bool) {
         cancelCalls.append(resetState)
     }
+
+    func noteInputActivity(for context: FocusedInputSnapshot) { inputActivity.append(context) }
 
     func excerpt(for context: FocusedInputContext) -> String? {
         excerptValue
