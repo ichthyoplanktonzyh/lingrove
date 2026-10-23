@@ -108,25 +108,12 @@ struct MenuBarView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [CotabbyBrand.accentSoft, CotabbyBrand.accent],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                    Image("MenuBarWhaleIcon")
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 14, height: 14)
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 22, height: 22)
-                .shadow(color: CotabbyBrand.accent.opacity(0.25), radius: 3, y: 1)
-                .accessibilityHidden(true)
+                Image("LingroveLogo")
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
 
                 Text(ProductIdentity.appDisplayName)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
