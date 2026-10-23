@@ -7,6 +7,7 @@ import SwiftUI
 struct EmojiPaneView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     let clearEmojiHistory: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         SettingsPaneScaffold {
@@ -79,7 +80,11 @@ struct EmojiPaneView: View {
     private var emojiPickerEnabledBinding: Binding<Bool> {
         Binding(
             get: { suggestionSettings.isEmojiPickerEnabled },
-            set: { suggestionSettings.setEmojiPickerEnabled($0) }
+            set: { newValue in
+                withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                    suggestionSettings.setEmojiPickerEnabled(newValue)
+                }
+            }
         )
     }
 

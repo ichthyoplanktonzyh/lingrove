@@ -7,6 +7,7 @@ import SwiftUI
 struct WritingPaneView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     var renderDiagnostics: SettingsRenderDiagnostics?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         _ = renderDiagnostics?.body("writing", category: .writing)
@@ -216,7 +217,11 @@ struct WritingPaneView: View {
     private var suppressCompletionsOnTypoBinding: Binding<Bool> {
         Binding(
             get: { suggestionSettings.suppressCompletionsOnTypo },
-            set: { suggestionSettings.setSuppressCompletionsOnTypo($0) }
+            set: { newValue in
+                withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                    suggestionSettings.setSuppressCompletionsOnTypo(newValue)
+                }
+            }
         )
     }
 
@@ -247,12 +252,14 @@ struct WritingPaneView: View {
                     : .preset(suggestionSettings.selectedWordCountPreset)
             },
             set: { choice in
-                switch choice {
-                case let .preset(preset):
-                    suggestionSettings.setUsingCustomWordCountRange(false)
-                    suggestionSettings.selectWordCountPreset(preset)
-                case .custom:
-                    suggestionSettings.setUsingCustomWordCountRange(true)
+                withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                    switch choice {
+                    case let .preset(preset):
+                        suggestionSettings.setUsingCustomWordCountRange(false)
+                        suggestionSettings.selectWordCountPreset(preset)
+                    case .custom:
+                        suggestionSettings.setUsingCustomWordCountRange(true)
+                    }
                 }
             }
         )

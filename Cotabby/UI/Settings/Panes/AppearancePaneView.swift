@@ -9,6 +9,7 @@ struct AppearancePaneView: View {
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         SettingsPaneScaffold {
@@ -152,7 +153,11 @@ struct AppearancePaneView: View {
                     fontSize: GhostTextPreview.baseFontSize * (suggestionSettings.matchesHostTextSize
                         ? 1 : CGFloat(suggestionSettings.ghostTextSizeMultiplier)),
                     isBold: suggestionSettings.isGhostTextBold,
-                    isItalic: suggestionSettings.isGhostTextItalic
+                    isItalic: suggestionSettings.isGhostTextItalic,
+                    showAcceptanceHint: suggestionSettings.showAcceptanceHint,
+                    acceptanceKeyLabel: suggestionSettings.acceptanceKeyLabel,
+                    fadeInSuggestions: suggestionSettings.fadeInSuggestions,
+                    fadeInDurationSeconds: suggestionSettings.fadeInDurationSeconds
                 )
 
                 LabeledContent {
@@ -335,7 +340,11 @@ struct AppearancePaneView: View {
     private var fadeInSuggestionsBinding: Binding<Bool> {
         Binding(
             get: { suggestionSettings.fadeInSuggestions },
-            set: { suggestionSettings.setFadeInSuggestions($0) }
+            set: { newValue in
+                withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                    suggestionSettings.setFadeInSuggestions(newValue)
+                }
+            }
         )
     }
 

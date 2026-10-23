@@ -276,6 +276,7 @@ extension View {
 private struct SettingsItemAnchorModifier: ViewModifier {
     let item: SettingsItem
     @Environment(\.settingsHighlightedItem) private var highlightedItem
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         let isHighlighted = highlightedItem == item
@@ -284,15 +285,22 @@ private struct SettingsItemAnchorModifier: ViewModifier {
             // The wash draws behind the row content rather than via `listRowBackground`, which
             // macOS grouped forms ignore. An always-present background whose opacity animates to
             // zero keeps the idle row untouched (opacity 0 renders nothing) while letting the
-            // pulse fade smoothly instead of vanishing when the highlight clears. The negative
-            // padding spreads the wash a little past the content so it reads as a row highlight,
-            // not a text box; backgrounds never affect layout, so rows cannot shift.
+            // pulse fade smoothly instead of vanishing when the highlight clears. Pairing the
+            // fill wash with a subtle accent border ring makes the target row unmistakable on
+            // arrival without affecting layout geometry.
             .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.accentColor.opacity(isHighlighted ? 0.16 : 0))
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.accentColor.opacity(isHighlighted ? 0.14 : 0))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color.accentColor.opacity(isHighlighted ? 0.42 : 0), lineWidth: 1.5)
+                    )
                     .padding(.horizontal, -8)
                     .padding(.vertical, -5)
-                    .animation(.easeInOut(duration: 0.6), value: isHighlighted)
+                    .animation(
+                        SettingsMotion.resolved(.easeInOut(duration: 0.45), reduceMotion: reduceMotion),
+                        value: isHighlighted
+                    )
             )
     }
 }

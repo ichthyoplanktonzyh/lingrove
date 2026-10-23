@@ -21,6 +21,7 @@ struct SettingsQuickLinkCard: View {
     }
 
     @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -71,7 +72,7 @@ struct SettingsQuickLinkCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.15)) {
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
                 isHovering = hovering
             }
         }

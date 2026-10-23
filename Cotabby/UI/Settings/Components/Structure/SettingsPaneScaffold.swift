@@ -1,5 +1,30 @@
 import SwiftUI
 
+/// Centralized motion tokens for the Settings window.
+///
+/// Why a dedicated token namespace:
+/// Scattering ad-hoc `easeOut` and `easeInOut` curves across panes makes progressive disclosure,
+/// hover states, and live previews feel disconnected. Defining critically damped springs (`dampingFraction`
+/// near `0.88–0.92`) in one place gives every Settings transition the same responsive, interruptible
+/// physical character while honoring `accessibilityReduceMotion` at the boundary.
+enum SettingsMotion {
+    /// Critically damped spring for progressive disclosure (revealing dependent rows or sections).
+    static let disclosure = Animation.spring(response: 0.30, dampingFraction: 0.88)
+
+    /// Snappy spring for direct control feedback (selection rings, swatches, live preview updates).
+    static let interaction = Animation.spring(response: 0.22, dampingFraction: 0.90)
+
+    /// Smooth spring for programmatic scroll-to-row reveals from search.
+    static let scroll = Animation.spring(response: 0.36, dampingFraction: 0.90)
+
+    /// Returns `nil` when the user has requested reduced motion, allowing callers to wrap state
+    /// mutations in `withAnimation(SettingsMotion.resolved(..., reduceMotion: reduceMotion))` without
+    /// branching at every call site.
+    static func resolved(_ animation: Animation, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : animation
+    }
+}
+
 /// File overview:
 /// Shared chrome for every settings detail pane. Pulls the form styling, scrolling, and
 /// optional top-of-pane callout into one place so individual panes stay focused on their rows
@@ -21,6 +46,7 @@ struct SettingsPaneScaffold<Content: View>: View {
 
     @Environment(\.settingsHighlightedItem) private var highlightedItem
     @Environment(\.settingsRevealSequence) private var revealSequence
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A short-lived task identity combines the row and the explicit navigation action.
     /// The scaffold owns it so ordinary layout updates cannot trigger repeated scrolling.
@@ -66,7 +92,7 @@ struct SettingsPaneScaffold<Content: View>: View {
                     return
                 }
                 guard !Task.isCancelled else { return }
-                withAnimation(.easeInOut(duration: 0.35)) {
+                withAnimation(SettingsMotion.resolved(SettingsMotion.scroll, reduceMotion: reduceMotion)) {
                     proxy.scrollTo(item, anchor: .center)
                 }
             }
