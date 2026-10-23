@@ -192,31 +192,30 @@ struct MenuBarView: View {
                         .font(.caption.weight(.medium))
                 }
                 .foregroundStyle(.orange)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(Color.orange.opacity(0.14))
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.orange.opacity(0.30), lineWidth: 0.5)
-                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                MenuBarInteractiveRowButtonStyle(
+                    horizontalPadding: 8,
+                    verticalPadding: 4,
+                    cornerRadius: 99,
+                    tint: .orange
+                )
+            )
         } else {
-            Menu {
-                ForEach(SuggestionPauseDuration.allCases) { duration in
-                    Button(duration.menuLabel) {
-                        suggestionSettings.pauseSuggestions(for: duration)
+            MenuBarHoverPill(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 6) {
+                Menu {
+                    ForEach(SuggestionPauseDuration.allCases) { duration in
+                        Button(duration.menuLabel) {
+                            suggestionSettings.pauseSuggestions(for: duration)
+                        }
                     }
+                } label: {
+                    Label(String(localized: "Pause Lingrove", table: "Learning"), systemImage: "pause.fill")
+                        .font(.caption)
                 }
-            } label: {
-                Label(String(localized: "Pause Lingrove", table: "Learning"), systemImage: "pause.fill")
-                    .font(.caption)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
         }
     }
 
@@ -461,10 +460,10 @@ struct MenuBarView: View {
                     .foregroundStyle(.quaternary)
                     .accessibilityHidden(true)
 
-                Link("GitHub", destination: ProductIdentity.repositoryURL)
-                    .buttonStyle(.borderless)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 3)
+                Button("GitHub") {
+                    NSWorkspace.shared.open(ProductIdentity.repositoryURL)
+                }
+                .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
 
                 Spacer(minLength: 0)
 

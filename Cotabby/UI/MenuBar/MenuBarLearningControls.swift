@@ -84,7 +84,7 @@ struct MenuBarLearningControls: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
                     }
 
                     languageRow(selection: $settings.readingTargetLanguage, identifier: "menuReadingTarget")

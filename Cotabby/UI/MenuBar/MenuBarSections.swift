@@ -202,6 +202,7 @@ struct MenuBarInteractiveRowButtonStyle: ButtonStyle {
     var horizontalPadding: CGFloat = 8
     var verticalPadding: CGFloat = 5
     var cornerRadius: CGFloat = 7
+    var tint: Color? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
@@ -214,6 +215,10 @@ struct MenuBarInteractiveRowButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(backgroundColor(isPressed: configuration.isPressed))
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: tint != nil ? 0.5 : 0)
+            )
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1.0)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: configuration.isPressed)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
@@ -224,6 +229,11 @@ struct MenuBarInteractiveRowButtonStyle: ButtonStyle {
     }
 
     private func backgroundColor(isPressed: Bool) -> Color {
+        if let tint {
+            if isPressed { return tint.opacity(0.24) }
+            if isHovering { return tint.opacity(0.18) }
+            return tint.opacity(0.12)
+        }
         if isPressed {
             return Color.primary.opacity(0.11)
         }
@@ -231,6 +241,49 @@ struct MenuBarInteractiveRowButtonStyle: ButtonStyle {
             return Color.primary.opacity(0.065)
         }
         return .clear
+    }
+
+    private var borderColor: Color {
+        guard let tint else { return .clear }
+        return tint.opacity(isHovering ? 0.42 : 0.28)
+    }
+}
+
+/// Hover-aware pill wrapper for controls like `Menu` whose native AppKit `.borderlessButton`
+/// style does not draw its own hover background.
+struct MenuBarHoverPill<Content: View>: View {
+    var horizontalPadding: CGFloat = 7
+    var verticalPadding: CGFloat = 3
+    var cornerRadius: CGFloat = 6
+    let content: Content
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovering = false
+
+    init(
+        horizontalPadding: CGFloat = 7,
+        verticalPadding: CGFloat = 3,
+        cornerRadius: CGFloat = 6,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
+        self.cornerRadius = cornerRadius
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(isHovering ? Color.primary.opacity(0.065) : Color.clear)
+            )
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
+            .onHover { hovering in
+                isHovering = hovering
+            }
     }
 }
 
@@ -330,13 +383,14 @@ struct PermissionRow: View {
                     action(actionButtonFrame.isEmpty ? nil : actionButtonFrame)
                 }
                 .font(.caption.weight(.medium))
-                .buttonStyle(.borderless)
                 .foregroundStyle(.tint)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule()
-                        .fill(Color.accentColor.opacity(0.14))
+                .buttonStyle(
+                    MenuBarInteractiveRowButtonStyle(
+                        horizontalPadding: 8,
+                        verticalPadding: 2,
+                        cornerRadius: 99,
+                        tint: .accentColor
+                    )
                 )
                 .background(ScreenFrameReader(frameInScreen: $actionButtonFrame))
             }
