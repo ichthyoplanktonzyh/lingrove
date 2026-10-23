@@ -98,8 +98,8 @@ struct LearningSentenceCardTests {
             .joined().lowercased().filter { $0.isLetter }
         for label in [String(localized: "Copy source text", table: "Learning"),
                       String(localized: "Copy translation", table: "Learning")] {
-            #expect(painted.contains(label.lowercased().filter { $0.isLetter }),
-                    "The localized native copy buttons must remain fully visible inside the compact width")
+            #expect(!painted.contains(label.lowercased().filter { $0.isLetter }),
+                    "Copy actions use inline row icons rather than verbose footer text buttons")
         }
         if let output = ProcessInfo.processInfo.environment["COTABBY_UI_SCREENSHOT_DIR"] {
             try bitmap.representation(using: .png, properties: [:])?.write(
@@ -370,8 +370,10 @@ struct LearningSentenceCardTests {
             let explanationLabel = String(localized: "AI explanation", table: "Learning")
             #expect(!visible.contains(normalized(explanationLabel)))
             if expanded {
-                #expect(visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))))
-                #expect(visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))))
+                #expect(!visible.contains(normalized(String(localized: "Copy source text", table: "Learning"))),
+                    "The source copy action must use only its inline icon")
+                #expect(!visible.contains(normalized(String(localized: "Copy translation", table: "Learning"))),
+                    "The translation copy action must use only its inline icon")
             }
             if nativeReview, !dark, expanded {
                 // Opt-in local acceptance exposes a normal window to an external AX client.

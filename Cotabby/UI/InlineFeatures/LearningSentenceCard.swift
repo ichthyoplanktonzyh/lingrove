@@ -20,7 +20,6 @@ struct LearningSentenceCard: View {
     @State private var detailsHeight: CGFloat = 100
     @State private var compactTranslationHeight: CGFloat = 20
     @State private var expandedWidth: CGFloat = 320
-    @State private var copyActionsWidth: CGFloat = 0
 
     /// Width follows the sentence pair, not every streamed token or caret movement. This small
     /// value is the card's measurement identity: a new source/document or completed translation
@@ -81,7 +80,7 @@ struct LearningSentenceCard: View {
             }
         }
         .padding(10)
-        .frame(width: presentation.isExpanded ? min(480, max(expandedWidth, ceil(copyActionsWidth) + 20)) : 320, alignment: .topLeading)
+        .frame(width: presentation.isExpanded ? min(480, expandedWidth) : 320, alignment: .topLeading)
         .onChange(of: expandedSizingContent, initial: true) { _, content in
             guard content.isExpanded else { return }
             expandedWidth = measuredExpandedWidth(content)
@@ -97,7 +96,7 @@ struct LearningSentenceCard: View {
     }
 
     /// Match the fonts used by the two existing TextKit views. The 320pt floor leaves room for
-    /// header/copy actions, while the 480pt ceiling preserves the current wrapping and viewport
+    /// header controls, while the 480pt ceiling preserves the current wrapping and viewport
     /// limits. Status messages wrap at this width instead of widening a short sentence pair.
     private func measuredExpandedWidth(_ content: ExpandedSizingContent) -> CGFloat {
         let source = (content.source as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 16)]).width + 11
@@ -106,7 +105,8 @@ struct LearningSentenceCard: View {
         // The outer padding is already part of the panel's measured frame. A small glyph margin
         // keeps the final punctuation inside TextKit's line box despite fractional font advances.
         let speechWidth: CGFloat = speech == nil ? 0 : 28
-        return min(480, max(320, ceil(max(source, translation)) + 22 + speechWidth))
+        let copyWidth: CGFloat = 28
+        return min(480, max(320, ceil(max(source, translation)) + 22 + speechWidth + copyWidth))
     }
 
     /// Compact describes the viewport, not a shortened translation. TextKit lays out the entire
@@ -223,107 +223,89 @@ struct LearningSentenceCard: View {
     }
 
     private var details: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 8) {
-                        sentence(presentation.source, source: true)
-                            .padding(.leading, 10.5)
-                            .overlay(alignment: .leading) {
-                                // Decoration must not add another HStack sizing probe: that
-                                // probe can leave TextKit at infinite width after the row fits.
-                                RoundedRectangle(cornerRadius: 1.25, style: .continuous)
-                                    .fill(Color.secondary.opacity(0.32))
-                                    .frame(width: 2.5)
-                                    .padding(.vertical, 2)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                            }
-                        if let speech, let request = sourceSpeechRequest {
-                            LearningSpeechButton(speech: speech, request: request,
-                                playLabel: String(localized: "Play source text aloud", table: "Learning"),
-                                stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    sentence(presentation.source, source: true)
+                        .padding(.leading, 10.5)
+                        .overlay(alignment: .leading) {
+                            // Decoration must not add another HStack sizing probe: that
+                            // probe can leave TextKit at infinite width after the row fits.
+                            RoundedRectangle(cornerRadius: 1.25, style: .continuous)
+                                .fill(Color.secondary.opacity(0.32))
+                                .frame(width: 2.5)
+                                .padding(.vertical, 2)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
                         }
+                    if let speech, let request = sourceSpeechRequest {
+                        LearningSpeechButton(speech: speech, request: request,
+                            playLabel: String(localized: "Play source text aloud", table: "Learning"),
+                            stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
                     }
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.06))
-                        .frame(height: 1)
-                    HStack(alignment: .top, spacing: 8) {
-                        sentence(presentation.translation, source: false)
-                        if let speech, let request = translationSpeechRequest {
-                            LearningSpeechButton(speech: speech, request: request,
-                                playLabel: String(localized: "Play translation aloud", table: "Learning"),
-                                stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
-                        }
-                    }
-                    if !presentation.translation.isEmpty, presentation.unitStage == .failed {
-                        Text(String(localized: "Expression highlights are unavailable; you can still double-click words to look them up.",
-                            table: "Learning", comment: """
-                            Status when expression recognition failed but dictionary lookup remains available.
-                            """))
-                            .font(.caption).foregroundStyle(.secondary)
-                    } else if !presentation.translation.isEmpty, !presentation.isTranslating, presentation.unitStage == .pending {
-                        Text(String(localized: "Recognizing expressions… You can still double-click words to look them up.",
-                            table: "Learning", comment: """
-                            Status while expression recognition runs; dictionary lookup is already available.
-                            """))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if !presentation.message.isEmpty, !presentation.isGenerating {
-                        Text(presentation.message).font(.caption).foregroundStyle(.secondary)
-                    }
-                    if let explanation {
-                        if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
-                            LearningCapturedExplanationView(session: explanation, store: vocabulary, capture: capture,
-                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
-                        } else {
-                            LearningExplanationView(session: explanation,
-                                configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
-                        }
+                    if !presentation.source.isEmpty {
+                        LearningCopyIconButton(
+                            title: String(
+                                localized: "Copy source text", table: "Learning",
+                                comment: "Copies the verified original text for manual recovery."),
+                            text: presentation.source
+                        )
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-                    // Observe the content itself: a preference routed across ScrollView can
-                    // retain its old value after the sentence gains lines. Intrinsic vertical
-                    // sizing keeps this measurement independent of the bounded viewport.
-                    if height.isFinite, height > 0 { detailsHeight = height }
+                Rectangle()
+                    .fill(Color.primary.opacity(0.06))
+                    .frame(height: 1)
+                HStack(alignment: .top, spacing: 8) {
+                    sentence(presentation.translation, source: false)
+                    if let speech, let request = translationSpeechRequest {
+                        LearningSpeechButton(speech: speech, request: request,
+                            playLabel: String(localized: "Play translation aloud", table: "Learning"),
+                            stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
+                    }
+                    if !presentation.translation.isEmpty, !presentation.isTranslating {
+                        LearningCopyIconButton(
+                            title: String(localized: "Copy translation", table: "Learning",
+                                comment: "Copies the target-language sentence to the clipboard."),
+                            text: presentation.translation
+                        )
+                    }
+                }
+                if !presentation.translation.isEmpty, presentation.unitStage == .failed {
+                    Text(String(localized: "Expression highlights are unavailable; you can still double-click words to look them up.",
+                        table: "Learning", comment: """
+                        Status when expression recognition failed but dictionary lookup remains available.
+                        """))
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if !presentation.translation.isEmpty, !presentation.isTranslating, presentation.unitStage == .pending {
+                    Text(String(localized: "Recognizing expressions… You can still double-click words to look them up.",
+                        table: "Learning", comment: """
+                        Status while expression recognition runs; dictionary lookup is already available.
+                        """))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if !presentation.message.isEmpty, !presentation.isGenerating {
+                    Text(presentation.message).font(.caption).foregroundStyle(.secondary)
+                }
+                if let explanation {
+                    if let vocabulary, let capture = VocabularyCaptureFactory.preview(presentation) {
+                        LearningCapturedExplanationView(session: explanation, store: vocabulary, capture: capture,
+                            configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
+                    } else {
+                        LearningExplanationView(session: explanation,
+                            configure: { (explanation.service as? LearningExplanationService)?.configure?() }, presentation: .embedded)
+                    }
                 }
             }
-            .frame(height: min(max(detailsHeight, 1), 320))
-            copyActions
-                .background(alignment: .topLeading) {
-                    // Native SwiftUI button padding varies with locale/style. Measure the exact
-                    // reused controls at their ideal width, without letting the measuring copy
-                    // affect layout, accessibility, clipboard actions, or pointer hit testing.
-                    copyActions.fixedSize(horizontal: true, vertical: true)
-                        .hidden().accessibilityHidden(true).allowsHitTesting(false)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
-                            if width.isFinite, width > 0 { copyActionsWidth = width }
-                        }
-                }
-        }
-    }
-
-    /// The visible and sizing copies use one definition, so changing a localized title or native
-    /// control style cannot make the width estimate drift away from the actual footer.
-    private var copyActions: some View {
-        HStack(spacing: 8) {
-            LearningCopyActionButton(
-                title: String(
-                    localized: "Copy source text", table: "Learning", comment: "Copies the verified original text for manual recovery."),
-                text: presentation.source
-            )
-            if !presentation.translation.isEmpty, !presentation.isTranslating {
-                LearningCopyActionButton(
-                    title: String(localized: "Copy translation", table: "Learning",
-                        comment: "Copies the target-language sentence to the clipboard."),
-                    text: presentation.translation
-                )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                // Observe the content itself: a preference routed across ScrollView can
+                // retain its old value after the sentence gains lines. Intrinsic vertical
+                // sizing keeps this measurement independent of the bounded viewport.
+                if height.isFinite, height > 0 { detailsHeight = height }
             }
-            Spacer()
         }
+        .frame(height: min(max(detailsHeight, 1), 320))
     }
 
     private func sentence(_ text: String, source: Bool) -> some View {
@@ -380,10 +362,11 @@ private struct LearningToolbarIconButton: View {
     }
 }
 
-/// Compact pill button for copying source or translated sentences in the expanded card footer.
-/// Clicking copies to the system pasteboard and briefly confirms with a subtle accent/green state
-/// before returning to rest.
-private struct LearningCopyActionButton: View {
+/// Inline 20pt icon control placed at the trailing edge of each sentence row in the expanded
+/// details view. Keeping copy as a quiet row-level icon rather than a full-width footer row
+/// preserves vertical density for low-frequency clipboard recovery while still giving immediate
+/// symbol-replacement (`checkmark`) confirmation on click.
+private struct LearningCopyIconButton: View {
     let title: String
     let text: String
     @Environment(\.learningInteraction) private var interact
@@ -409,51 +392,18 @@ private struct LearningCopyActionButton: View {
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                if didCopy {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.green)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(didCopy ? Color.primary : (hovering ? Color.primary : Color.secondary))
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            Image(systemName: didCopy ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 11.5, weight: didCopy ? .bold : .regular))
+                .foregroundStyle(didCopy ? Color.green : (hovering ? Color.primary : Color.secondary.opacity(0.65)))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(LearningCopyPillButtonStyle(hovering: hovering, didCopy: didCopy))
+        .buttonStyle(LearningIconActionButtonStyle(hovering: hovering))
         .onHover { hovering = $0 }
         .onDisappear { resetTask?.cancel() }
-    }
-}
-
-private struct LearningCopyPillButtonStyle: ButtonStyle {
-    var hovering = false
-    var didCopy = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
-        configuration.label
-            .background {
-                shape.fill(
-                    didCopy
-                        ? Color.green.opacity(0.12)
-                        : Color.primary.opacity(configuration.isPressed ? 0.12 : (hovering ? 0.08 : 0.045))
-                )
-            }
-            .overlay {
-                shape.strokeBorder(
-                    didCopy ? Color.green.opacity(0.4) : Color.primary.opacity(hovering ? 0.14 : 0.08),
-                    lineWidth: 0.5
-                )
-            }
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-            .animation(.easeOut(duration: 0.12), value: hovering)
+        .help(title)
+        .accessibilityLabel(title)
     }
 }
 
