@@ -148,13 +148,12 @@ struct VocabularyNotebookView: View {
         .onAppear { store.loadIfNeeded(); if browserMode == "graph" { graph.reveal(graphSelection) } }
         .onChange(of: selectedEntry, initial: true) { _, entry in
             learning?.select(entry, senseID: selection)
-            guard let entry else { return }
-            withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
-                if listDensity == "compact" && query.isEmpty {
-                    expandedEntries = [entry.id]
-                } else {
-                    expandedEntries.insert(entry.id)
-                }
+            // Selections that originate outside the sidebar (graph, "show in notebook") must
+            // reveal their sense row. Insert-only: never collapse other entries, so rows above
+            // the click target cannot shift. A headword click already expanded synchronously in
+            // `activateHeadword`, making this a no-op for that path (no second, delayed jump).
+            if let entry, entry.senses.count > 1, !expandedEntries.contains(entry.id) {
+                expandedEntries.insert(entry.id)
             }
         }
         .onChange(of: selection) { _, _ in
@@ -303,15 +302,11 @@ struct VocabularyNotebookView: View {
     }
 
     private func activateHeadword(_ entry: VocabularyEntry) {
-        withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.96)) {
             if expandedEntries.contains(entry.id) && isEntrySelected(entry) {
                 expandedEntries.remove(entry.id)
             } else {
-                if !isDetailedList && query.isEmpty {
-                    expandedEntries = [entry.id]
-                } else {
-                    expandedEntries.insert(entry.id)
-                }
+                expandedEntries.insert(entry.id)
                 if !isEntrySelected(entry) {
                     selection = entry.senses.first?.id
                 }
@@ -333,11 +328,12 @@ struct VocabularyNotebookView: View {
                             VocabularySingleEntryRow(
                                 entry: entry,
                                 sense: singleSense,
-                                showsDetails: isDetailedList || isSelected,
+                                isDetailed: isDetailedList,
+                                isSelected: isSelected,
                                 query: query
                             )
                         }
-                        .padding(.vertical, isDetailedList || isSelected ? 4 : 2)
+                        .padding(.vertical, isDetailedList ? 4 : 2.5)
                         .tag(singleSense.id)
                         .contextMenu {
                             Button(String(localized: "Export this sense…", table: "Vocabulary")) {
@@ -348,14 +344,12 @@ struct VocabularyNotebookView: View {
                         let isSelected = isEntrySelected(entry)
                         let isExpanded = expandedEntries.contains(entry.id)
                         DisclosureGroup(isExpanded: Binding(get: { expandedEntries.contains(entry.id) }, set: { expanded in
-                            if expanded {
-                                if !isDetailedList && query.isEmpty {
-                                    expandedEntries = [entry.id]
-                                } else {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.96)) {
+                                if expanded {
                                     expandedEntries.insert(entry.id)
+                                } else {
+                                    expandedEntries.remove(entry.id)
                                 }
-                            } else {
-                                expandedEntries.remove(entry.id)
                             }
                         })) {
                             ForEach(Array(entry.senses.enumerated()), id: \.element.id) { index, sense in
@@ -381,7 +375,8 @@ struct VocabularyNotebookView: View {
                         } label: {
                             VocabularyMultiSenseHeaderRow(
                                 entry: entry,
-                                showsSummary: isDetailedList && !isExpanded,
+                                isDetailed: isDetailedList,
+                                isExpanded: isExpanded,
                                 isSelected: isSelected
                             )
                             .contentShape(Rectangle())
@@ -543,9 +538,6 @@ struct VocabularyNotebookView: View {
             Button {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
                     listDensity = isDetailedList ? "compact" : "detailed"
-                    if !isDetailedList, let currentID = selectedEntry?.id, query.isEmpty {
-                        expandedEntries = [currentID]
-                    }
                 }
             } label: {
                 Image(systemName: isDetailedList ? "rectangle.grid.1x2" : "list.bullet")
@@ -1265,13 +1257,15 @@ extension VocabularyEntry.Kind {
 }
 
 /// Flat, scannable sidebar row for the single-sense entry case.
-/// In Compact mode (`showsDetails == false`), it renders strictly as a single line (headword +
-/// lightweight badges) so thousands of words can be scanned effortlessly; when selected or in
-/// Detailed mode (`showsDetails == true`), it expands in-place to reveal its core meaning.
+/// In Compact mode (`isDetailed == false`), it maintains a strictly constant single-line height
+/// so clicking between entries never causes `NSTableView` row-height reflows or vertical jitter;
+/// selecting the row reveals an inline meaning preview on the same baseline. In Detailed mode
+/// (`isDetailed == true`), it renders a stable two-line headword + meaning layout.
 private struct VocabularySingleEntryRow: View {
     let entry: VocabularyEntry
     let sense: VocabularySense
-    let showsDetails: Bool
+    let isDetailed: Bool
+    let isSelected: Bool
     let query: String
 
     private var matchedExampleSnippet: String? {
@@ -1290,6 +1284,13 @@ private struct VocabularySingleEntryRow: View {
                 Text(entry.expression)
                     .font(.headline)
                     .lineLimit(1)
+                if !isDetailed && isSelected && !sense.displayTitle.isEmpty {
+                    Text(sense.displayTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .transition(.opacity)
+                }
                 Spacer(minLength: 4)
                 if !(sense.reviewCards ?? []).isEmpty {
                     Image(systemName: "rectangle.stack.fill")
@@ -1304,7 +1305,7 @@ private struct VocabularySingleEntryRow: View {
                     .padding(.vertical, 1)
                     .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
             }
-            if showsDetails {
+            if isDetailed {
                 Text(sense.displayTitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1318,15 +1319,18 @@ private struct VocabularySingleEntryRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.easeOut(duration: 0.14), value: isSelected)
     }
 }
 
 /// Full-row clickable header for multi-sense entries in the sidebar. Clicking anywhere on this
 /// header selects and expands the entry in-place without forcing the user to aim at the tiny
-/// disclosure triangle.
+/// disclosure triangle, while keeping a constant header height so expanding never causes a double
+/// vertical jump.
 private struct VocabularyMultiSenseHeaderRow: View {
     let entry: VocabularyEntry
-    let showsSummary: Bool
+    let isDetailed: Bool
+    let isExpanded: Bool
     let isSelected: Bool
 
     private var combinedSummary: String {
@@ -1355,10 +1359,10 @@ private struct VocabularyMultiSenseHeaderRow: View {
                     .padding(.vertical, 1)
                     .background(Capsule(style: .continuous).fill(CotabbyBrand.accent.opacity(0.12)))
             }
-            if showsSummary && !combinedSummary.isEmpty {
+            if isDetailed && !combinedSummary.isEmpty {
                 Text(combinedSummary)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isExpanded ? .tertiary : .secondary)
                     .lineLimit(1)
             }
         }
