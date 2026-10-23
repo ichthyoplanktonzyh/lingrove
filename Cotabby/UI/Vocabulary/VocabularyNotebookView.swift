@@ -67,19 +67,55 @@ struct VocabularyNotebookView: View {
         return .init(entryID: entry.id, senseID: sense.id)
     }
 
+    private var animatedBrowserMode: Binding<String> {
+        Binding(
+            get: { browserMode },
+            set: { next in
+                guard next != browserMode else { return }
+                withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92)) {
+                    browserMode = next
+                    if next == "graph" {
+                        selectingSenses = false
+                    }
+                }
+            }
+        )
+    }
+
     var body: some View {
-        Group {
+        ZStack {
             if browserMode == "graph" {
                 graphBrowser
-            } else { listBrowser }
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.975)),
+                                removal: .opacity.combined(with: .scale(scale: 0.985))
+                            )
+                    )
+            } else {
+                listBrowser
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 1.012)),
+                                removal: .opacity.combined(with: .scale(scale: 0.988))
+                            )
+                    )
+            }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92), value: browserMode)
         .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: $browserMode) {
-                    Text(String(localized: "List", table: "Vocabulary")).tag("list")
-                    Text(String(localized: "Graph", table: "Vocabulary")).tag("graph")
-                }.pickerStyle(.segmented).frame(width: 150)
+                Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: animatedBrowserMode) {
+                    Label(String(localized: "List", table: "Vocabulary"), systemImage: "list.bullet").tag("list")
+                    Label(String(localized: "Graph", table: "Vocabulary"), systemImage: "point.3.connected.trianglepath.dotted").tag("graph")
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 164)
             }
             ToolbarItemGroup {
                 Button {
@@ -96,18 +132,6 @@ struct VocabularyNotebookView: View {
                 if let review {
                     Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
                         .help(String(localized: "Review in Anki", table: "Vocabulary"))
-                }
-                if browserMode == "graph" {
-                    if !allTags.isEmpty {
-                        Picker(String(localized: "Tags", table: "Vocabulary"), selection: $selectedTag) {
-                            Text(String(localized: "All tags", table: "Vocabulary")).tag("")
-                            ForEach(allTags, id: \.self) { Text($0).tag($0) }
-                        }.frame(maxWidth: 120)
-                    }
-                    Picker(String(localized: "Language", table: "Vocabulary"), selection: $language) {
-                        Text(String(localized: "All languages", table: "Vocabulary")).tag(nil as LearningLanguage?)
-                        ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
-                    }.frame(maxWidth: 140)
                 }
                 Menu {
                     Button(String(localized: "Export…", table: "Vocabulary")) { beginExport() }
@@ -217,6 +241,9 @@ struct VocabularyNotebookView: View {
                 },
                 trailingInset: hasSelection ? (drawerWidth + 16) : 0
             )
+            .overlay(alignment: .topLeading) {
+                graphFilterHUD
+            }
             .frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
 
             if hasSelection {
@@ -399,87 +426,112 @@ struct VocabularyNotebookView: View {
         .accessibilityLabel(entry.expression + " · " + sense.displayTitle)
     }
 
-    /// Compact filter strip anchored above the sidebar list. Keeping language, tag, and sort
-    /// controls inside the sidebar eliminates main-toolbar clutter and visually ties filters to
-    /// the list they govern.
-    private var sidebarFilterBar: some View {
+    /// Floating glass filter pill in the top-left corner of the graph canvas. Mirrors the
+    /// sidebar's filter controls so switching between List and Graph never mutates or shifts
+    /// the window toolbar.
+    private var graphFilterHUD: some View {
         HStack(spacing: 6) {
-            Menu {
+            filterMenus
+            Text("\(visibleEntries.count)")
+                .font(.caption2.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(.regularMaterial, in: Capsule(style: .continuous))
+        .overlay(Capsule(style: .continuous).strokeBorder(Color.primary.opacity(0.09), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
+        .padding(14)
+    }
+
+    @ViewBuilder
+    private var filterMenus: some View {
+        Menu {
+            Button {
+                language = nil
+            } label: {
+                HStack {
+                    Text(String(localized: "All languages", table: "Vocabulary"))
+                    if language == nil { Image(systemName: "checkmark") }
+                }
+            }
+            Divider()
+            ForEach(LearningLanguage.allCases) { item in
                 Button {
-                    language = nil
+                    language = item
                 } label: {
                     HStack {
-                        Text(String(localized: "All languages", table: "Vocabulary"))
-                        if language == nil { Image(systemName: "checkmark") }
+                        Text(item.label)
+                        if language == item { Image(systemName: "checkmark") }
+                    }
+                }
+            }
+        } label: {
+            filterPillLabel(
+                title: language?.compactLabel ?? String(localized: "All languages", table: "Vocabulary"),
+                symbol: "globe",
+                isActive: language != nil
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+
+        if !allTags.isEmpty {
+            Menu {
+                Button {
+                    selectedTag = ""
+                } label: {
+                    HStack {
+                        Text(String(localized: "All tags", table: "Vocabulary"))
+                        if selectedTag.isEmpty { Image(systemName: "checkmark") }
                     }
                 }
                 Divider()
-                ForEach(LearningLanguage.allCases) { item in
+                ForEach(allTags, id: \.self) { tag in
                     Button {
-                        language = item
+                        selectedTag = tag
                     } label: {
                         HStack {
-                            Text(item.label)
-                            if language == item { Image(systemName: "checkmark") }
+                            Text(tag)
+                            if selectedTag == tag { Image(systemName: "checkmark") }
                         }
                     }
                 }
             } label: {
                 filterPillLabel(
-                    title: language?.compactLabel ?? String(localized: "All languages", table: "Vocabulary"),
-                    symbol: "globe",
-                    isActive: language != nil
+                    title: selectedTag.isEmpty ? String(localized: "All tags", table: "Vocabulary") : "#\(selectedTag)",
+                    symbol: "tag",
+                    isActive: !selectedTag.isEmpty
                 )
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+        }
 
-            if !allTags.isEmpty {
-                Menu {
-                    Button {
-                        selectedTag = ""
-                    } label: {
-                        HStack {
-                            Text(String(localized: "All tags", table: "Vocabulary"))
-                            if selectedTag.isEmpty { Image(systemName: "checkmark") }
-                        }
-                    }
-                    Divider()
-                    ForEach(allTags, id: \.self) { tag in
-                        Button {
-                            selectedTag = tag
-                        } label: {
-                            HStack {
-                                Text(tag)
-                                if selectedTag == tag { Image(systemName: "checkmark") }
-                            }
-                        }
-                    }
-                } label: {
-                    filterPillLabel(
-                        title: selectedTag.isEmpty ? String(localized: "All tags", table: "Vocabulary") : "#\(selectedTag)",
-                        symbol: "tag",
-                        isActive: !selectedTag.isEmpty
-                    )
+        if language != nil || !selectedTag.isEmpty {
+            Button {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
+                    language = nil
+                    selectedTag = ""
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+            .buttonStyle(.plain)
+            .help(String(localized: "Clear filters", table: "Vocabulary"))
+        }
+    }
 
-            if language != nil || !selectedTag.isEmpty {
-                Button {
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
-                        language = nil
-                        selectedTag = ""
-                    }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(String(localized: "Clear filters", table: "Vocabulary"))
-            }
+    /// Compact filter strip anchored above the sidebar list. Keeping language, tag, and sort
+    /// controls inside the sidebar eliminates main-toolbar clutter and visually ties filters to
+    /// the list they govern.
+    private var sidebarFilterBar: some View {
+        HStack(spacing: 6) {
+            filterMenus
 
             Spacer(minLength: 4)
 
