@@ -13,10 +13,19 @@ struct WritingPaneView: View {
         _ = renderDiagnostics?.body("writing", category: .writing)
         return SettingsPaneScaffold {
             Section {
-                Toggle(String(localized: "Enable autocomplete", table: "Learning"), isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { suggestionSettings.isCompletionEnabled },
-                    set: { suggestionSettings.setCompletionEnabled($0) }
-                ))
+                    set: { newValue in
+                        withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                            suggestionSettings.setCompletionEnabled(newValue)
+                        }
+                    }
+                )) {
+                    SettingsRowLabel(
+                        title: String(localized: "Enable autocomplete", table: "Learning"),
+                        systemImage: "text.cursor"
+                    )
+                }
                 .settingsItem(.completionEnabled)
             }
             completionOptions

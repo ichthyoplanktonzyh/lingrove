@@ -95,7 +95,9 @@ struct EmojiPaneView: View {
         let isSelected = suggestionSettings.preferredEmojiSkinTone == tone
 
         Button {
-            suggestionSettings.setPreferredEmojiSkinTone(tone)
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                suggestionSettings.setPreferredEmojiSkinTone(tone)
+            }
         } label: {
             ZStack(alignment: .bottomTrailing) {
                 Text(tone.sampleGlyph)
@@ -134,7 +136,9 @@ struct EmojiPaneView: View {
         let isSelected = suggestionSettings.preferredEmojiGender == gender
 
         Button {
-            suggestionSettings.setPreferredEmojiGender(gender)
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                suggestionSettings.setPreferredEmojiGender(gender)
+            }
         } label: {
             ZStack(alignment: .bottomTrailing) {
                 Text(gender.sampleGlyph)

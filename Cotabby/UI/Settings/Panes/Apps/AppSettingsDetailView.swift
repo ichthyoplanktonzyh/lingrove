@@ -16,16 +16,34 @@ struct AppSettingsDetailView: View {
 
     var body: some View {
         Section {
-            Button(action: onBack) { Label("Back", systemImage: "chevron.left") }
-                .buttonStyle(.borderless)
             HStack(spacing: 12) {
-                Image(nsImage: AppIconCache.icon(for: bundleIdentifier))
-                    .resizable().frame(width: 36, height: 36).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(displayName).font(.title3.weight(.semibold))
-                    Text(bundleIdentifier).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                Button(action: onBack) {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.callout.weight(.medium))
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Divider()
+                    .frame(height: 24)
+
+                Image(nsImage: AppIconCache.icon(for: bundleIdentifier))
+                    .resizable()
+                    .frame(width: 36, height: 36)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayName)
+                        .font(.title3.weight(.semibold))
+                    Text(bundleIdentifier)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
+                Spacer(minLength: 0)
             }
+            .padding(.vertical, 4)
         }
         Section(String(localized: "Completions", table: "Learning")) {
             Picker(selection: completionsBinding) {
@@ -62,15 +80,36 @@ struct AppSettingsDetailView: View {
             }
         }
         Section(String(localized: "Translation", table: "Learning")) {
-            Toggle(String(localized: "Allow selection translation shortcut", table: "Learning"), isOn: Binding(
+            Toggle(isOn: Binding(
                 get: { suggestionSettings.selectionTranslationAllowed(in: bundleIdentifier) },
-                set: { value in updateTranslationPolicy { $0.selectionTranslationAllowed = value } }))
-            Toggle(String(localized: "Allow pointer translation shortcut", table: "Learning"), isOn: Binding(
+                set: { value in updateTranslationPolicy { $0.selectionTranslationAllowed = value } }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Allow selection translation shortcut", table: "Learning"),
+                    systemImage: "selection.pin.in.out"
+                )
+            }
+
+            Toggle(isOn: Binding(
                 get: { suggestionSettings.readingTranslationAllowed(.pointer, in: bundleIdentifier) },
-                set: { value in updateTranslationPolicy { $0.pointerTranslationAllowed = value } }))
-            Toggle(String(localized: "Allow screen region translation shortcut", table: "Learning"), isOn: Binding(
+                set: { value in updateTranslationPolicy { $0.pointerTranslationAllowed = value } }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Allow pointer translation shortcut", table: "Learning"),
+                    systemImage: "cursorarrow.rays"
+                )
+            }
+
+            Toggle(isOn: Binding(
                 get: { suggestionSettings.readingTranslationAllowed(.screenshot, in: bundleIdentifier) },
-                set: { value in updateTranslationPolicy { $0.screenshotTranslationAllowed = value } }))
+                set: { value in updateTranslationPolicy { $0.screenshotTranslationAllowed = value } }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Allow screen region translation shortcut", table: "Learning"),
+                    systemImage: "viewfinder"
+                )
+            }
+
             ForEach(LearningReadingSource.allCases, id: \.rawValue) { source in
                 if suggestionSettings.languageLearning.readingEnabled(source),
                    suggestionSettings.readingTranslationAllowed(source, in: bundleIdentifier),
@@ -80,26 +119,68 @@ struct AppSettingsDetailView: View {
                         .font(.caption).foregroundStyle(.red)
                 }
             }
-            Toggle(String(localized: "Allow writing translation shortcuts", table: "Learning"), isOn: Binding(
+
+            Toggle(isOn: Binding(
                 get: { suggestionSettings.writingTranslationShortcutsAllowed(in: bundleIdentifier) },
-                set: { value in updateTranslationPolicy { $0.writingTranslationShortcutsAllowed = value } }))
-            Picker(String(localized: "Selection translation icon", table: "Learning"), selection: Binding(
+                set: { value in updateTranslationPolicy { $0.writingTranslationShortcutsAllowed = value } }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Allow writing translation shortcuts", table: "Learning"),
+                    systemImage: "character.bubble"
+                )
+            }
+
+            Picker(selection: Binding(
                 get: { translationPolicy?.selectionIcon ?? .useDefault },
-                set: { value in updateTranslationPolicy { $0.selectionIcon = value == .useDefault ? nil : value } })) {
+                set: { value in updateTranslationPolicy { $0.selectionIcon = value == .useDefault ? nil : value } }
+            )) {
                 defaultAndOffChoices
                 Text("On", tableName: "Learning").tag(PerAppToggle.on)
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Selection translation icon", table: "Learning"),
+                    systemImage: "sparkles.rectangle.stack"
+                )
             }
         }
         Section("Keys") {
-            LabeledContent(
-                String(localized: "Accept Word"),
-                value: suggestionSettings.resolvedAcceptBinding(forBundleIdentifier: bundleIdentifier).label)
-            LabeledContent(
-                String(localized: "Accept Entire Suggestion"),
-                value: suggestionSettings.inheritedFullAcceptanceDisplayLabel(forBundleIdentifier: bundleIdentifier))
-            Button(
-                String(localized: "Manage in Shortcuts", table: "Learning", comment: "Navigates to the single shortcut editor."),
-                action: openShortcuts)
+            LabeledContent {
+                KeycapView(
+                    label: suggestionSettings.resolvedAcceptBinding(forBundleIdentifier: bundleIdentifier).label,
+                    fontSize: 12,
+                    minWidth: 36
+                )
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Accept Word"),
+                    systemImage: "arrow.right.to.line"
+                )
+            }
+
+            LabeledContent {
+                KeycapView(
+                    label: suggestionSettings.inheritedFullAcceptanceDisplayLabel(forBundleIdentifier: bundleIdentifier),
+                    fontSize: 12,
+                    minWidth: 36
+                )
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Accept Entire Suggestion"),
+                    systemImage: "text.insert"
+                )
+            }
+
+            LabeledContent {
+                Button(
+                    String(localized: "Manage in Shortcuts", table: "Learning", comment: "Navigates to the single shortcut editor."),
+                    action: openShortcuts
+                )
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Shortcuts"),
+                    systemImage: "keyboard"
+                )
+            }
         }
         Section {
             SettingsRowLabel(

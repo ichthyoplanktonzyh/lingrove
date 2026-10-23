@@ -74,7 +74,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .appearance: return .purple
         case .emoji: return .yellow
         case .writing: return .indigo
-        case .languageLearning: return .purple
+        case .languageLearning: return .mint
         case .context: return .teal
         case .engineAndModel: return .orange
         case .shortcuts: return .pink

@@ -27,10 +27,16 @@ struct LanguageLearningSection: View {
 
     private var explanationSection: some View {
         Section(String(localized: "AI explanation", table: "Learning")) {
-            Picker(String(localized: "Explanation language", table: "Learning"), selection: $settings.explanationLanguage) {
+            Picker(selection: $settings.explanationLanguage) {
                 Text(String(localized: "Interface language", table: "Learning")).tag(nil as LearningLanguage?)
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
-            }.settingsItem(.explanationLanguage)
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Explanation language", table: "Learning"),
+                    systemImage: "globe"
+                )
+            }
+            .settingsItem(.explanationLanguage)
             LearningModelSummaryRow(title: String(localized: "AI explanation model", table: "Learning"),
                 profile: settings.explanation) { configureModel(.explanation) }
         }
@@ -39,13 +45,23 @@ struct LanguageLearningSection: View {
     private var translationSection: some View {
         Section(String(localized: "Writing translation", table: "Learning",
             comment: "Settings section for language translation and sentence-learning controls.")) {
-            Toggle(String(localized: "Enable expression translation", table: "Learning",
-                comment: "Turns explicit translation previews on or off."),
-                isOn: $settings.translationEnabled).settingsItem(.translationEnabled)
-            Toggle(String(localized: "Show sentence expressions after a pause", table: "Learning",
-                comment: "Automatically translates newly typed complete sentences after a brief pause."),
-                isOn: $settings.sentencePreviewEnabled)
-                .disabled(!settings.translationEnabled).settingsItem(.sentencePreview)
+            Toggle(isOn: $settings.translationEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Enable expression translation", table: "Learning",
+                        comment: "Turns explicit translation previews on or off."),
+                    systemImage: "character.bubble"
+                )
+            }
+            .settingsItem(.translationEnabled)
+            Toggle(isOn: $settings.sentencePreviewEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Show sentence expressions after a pause", table: "Learning",
+                        comment: "Automatically translates newly typed complete sentences after a brief pause."),
+                    systemImage: "clock.badge.checkmark"
+                )
+            }
+            .disabled(!settings.translationEnabled)
+            .settingsItem(.sentencePreview)
             translationControls
             Text(String(localized: """
             Translation sends the target, optional draft excerpts and style instructions to the chosen engine. \
@@ -63,58 +79,128 @@ struct LanguageLearningSection: View {
             LabeledContent {
                 Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
             } label: {
-                Text(
-                    String(
-                        localized: "Translation shortcuts", table: "Learning", comment: "Read-only route to the central shortcut editor."))
+                SettingsRowLabel(
+                    title: String(
+                        localized: "Translation shortcuts",
+                        table: "Learning",
+                        comment: "Read-only route to the central shortcut editor."
+                    ),
+                    systemImage: "keyboard"
+                )
             }
         }
     }
 
     private var selectionSection: some View {
         Section(String(localized: "Reading translation", table: "Learning")) {
-            Toggle(String(localized: "Enable selection translation", table: "Learning"), isOn: $settings.selectionTranslationEnabled)
-                .disabled(!settings.translationEnabled).settingsItem(.selectionTranslation)
-            Toggle(String(localized: "Enable pointer translation", table: "Learning"), isOn: $settings.pointerTranslationEnabled)
-                .disabled(!settings.translationEnabled).settingsItem(.pointerTranslation)
-            Toggle(String(localized: "Enable screen region translation", table: "Learning"), isOn: $settings.screenshotTranslationEnabled)
-                .disabled(!settings.translationEnabled).settingsItem(.screenshotTranslation)
-            Picker(String(localized: "Reading target language", table: "Learning"), selection: $settings.readingTargetLanguage) {
+            Toggle(isOn: $settings.selectionTranslationEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Enable selection translation", table: "Learning"),
+                    systemImage: "selection.pin.in.out"
+                )
+            }
+            .disabled(!settings.translationEnabled)
+            .settingsItem(.selectionTranslation)
+
+            Toggle(isOn: $settings.pointerTranslationEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Enable pointer translation", table: "Learning"),
+                    systemImage: "cursorarrow.rays"
+                )
+            }
+            .disabled(!settings.translationEnabled)
+            .settingsItem(.pointerTranslation)
+
+            Toggle(isOn: $settings.screenshotTranslationEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Enable screen region translation", table: "Learning"),
+                    systemImage: "viewfinder"
+                )
+            }
+            .disabled(!settings.translationEnabled)
+            .settingsItem(.screenshotTranslation)
+
+            Picker(selection: $settings.readingTargetLanguage) {
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
-            }.disabled(!settings.translationEnabled).settingsItem(.readingTargetLanguage)
-            Toggle(String(localized: "Show selection translation icon", table: "Learning"), isOn: $settings.selectionIconEnabled)
-                .disabled(!settings.translationEnabled || !settings.selectionTranslationEnabled).settingsItem(.selectionTranslationIcon)
-            Button(String(localized: "Manage allowed apps", table: "Learning"), action: openApps)
-                .settingsItem(.selectionTranslationApps)
-            Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Reading target language", table: "Learning"),
+                    systemImage: "globe"
+                )
+            }
+            .disabled(!settings.translationEnabled)
+            .settingsItem(.readingTargetLanguage)
+
+            Toggle(isOn: $settings.selectionIconEnabled) {
+                SettingsRowLabel(
+                    title: String(localized: "Show selection translation icon", table: "Learning"),
+                    systemImage: "sparkles.rectangle.stack"
+                )
+            }
+            .disabled(!settings.translationEnabled || !settings.selectionTranslationEnabled)
+            .settingsItem(.selectionTranslationIcon)
+
+            LabeledContent {
+                Button(String(localized: "Manage allowed apps", table: "Learning"), action: openApps)
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Manage allowed apps", table: "Learning"),
+                    systemImage: "app.badge"
+                )
+            }
+            .settingsItem(.selectionTranslationApps)
+
+            LabeledContent {
+                Button(String(localized: "Manage in Shortcuts", table: "Learning"), action: openShortcuts)
+            } label: {
+                SettingsRowLabel(
+                    title: String(
+                        localized: "Translation shortcuts",
+                        table: "Learning",
+                        comment: "Read-only route to the central shortcut editor."
+                    ),
+                    systemImage: "keyboard"
+                )
+            }
         }
     }
 
     private var translationControls: some View {
         Group {
-            Picker(
-                String(
-                    localized: "Translation reference", table: "Learning",
-                    comment: "Selects extra translation context without changing the target."),
-                selection: $settings.referenceMode
-            ) {
+            Picker(selection: $settings.referenceMode) {
                 Text(String(localized: "Current sentence", table: "Learning", comment: "Translate without extra draft reference.")).tag(
                     LearningReferenceMode.currentSentence)
                 Text(String(localized: "Draft context", table: "Learning", comment: "Use budgeted reference from the current draft.")).tag(
                     LearningReferenceMode.draft)
+            } label: {
+                SettingsRowLabel(
+                    title: String(
+                        localized: "Translation reference",
+                        table: "Learning",
+                        comment: "Selects extra translation context without changing the target."
+                    ),
+                    description: String(
+                        localized: """
+                        The target remains the current sentence or your selection. Only reference text may be shortened to fit the budget.
+                        """,
+                        table: "Learning",
+                        comment: "Distinguishes immutable translation target from bounded reference."
+                    ),
+                    systemImage: "doc.text"
+                )
             }
             .settingsItem(.translationReferenceMode)
-            Text(
-                String(
-                    localized:
-                        "The target remains the current sentence or your selection. Only reference text may be shortened to fit the budget.",
-                    table: "Learning", comment: "Distinguishes immutable translation target from bounded reference.")
-            )
-            .font(.caption).foregroundStyle(.secondary)
-            Picker(String(localized: "Target language", table: "Learning",
-                comment: "Picker label for the language to translate into."),
-                selection: $settings.targetLanguage) {
+
+            Picker(selection: $settings.targetLanguage) {
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
-            }.settingsItem(.translationTargetLanguage)
+            } label: {
+                SettingsRowLabel(
+                    title: String(localized: "Target language", table: "Learning",
+                        comment: "Picker label for the language to translate into."),
+                    systemImage: "globe"
+                )
+            }
+            .settingsItem(.translationTargetLanguage)
             DisclosureGroup(String(localized: "Source languages (optional; \(settings.sourceLanguages.count) selected)", table: "Learning",
                 comment: "Disclosure label for source-language choices; the selected language count is inserted."),
                             isExpanded: sourceExpansionBinding) {
@@ -175,19 +261,21 @@ private struct LearningModelSummaryRow: View {
 
     private var summary: String {
         let selection = profile.snapshot
-        return switch selection.backend {
+        switch selection.backend {
         case .local:
-            selection.localModel.isEmpty
-                ? String(localized: "Local GGUF · no model selected", table: "Learning",
+            if selection.localModel.isEmpty {
+                return String(localized: "Local GGUF · no model selected", table: "Learning",
                     comment: "Summary shown when the local backend is selected but this task has no GGUF model.")
-                : String(localized: "Local GGUF · \(selection.localModel)", table: "Learning",
-                    comment: "Summary of the local GGUF backend and selected model filename.")
+            }
+            return String(localized: "Local GGUF · \(selection.localModel)", table: "Learning",
+                comment: "Summary of the local GGUF backend and selected model filename.")
         case .endpoint:
-            selection.endpointModel.isEmpty
-                ? String(localized: "Endpoint · no model entered", table: "Learning",
+            if selection.endpointModel.isEmpty {
+                return String(localized: "Endpoint · no model entered", table: "Learning",
                     comment: "Summary shown when the endpoint backend is selected but its model identifier is empty.")
-                : String(localized: "Endpoint · \(selection.endpointModel)", table: "Learning",
-                    comment: "Summary of the endpoint backend and user-configured model identifier.")
+            }
+            return String(localized: "Endpoint · \(selection.endpointModel)", table: "Learning",
+                comment: "Summary of the endpoint backend and user-configured model identifier.")
         }
     }
 }

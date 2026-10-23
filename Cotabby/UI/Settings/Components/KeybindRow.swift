@@ -20,6 +20,8 @@ struct KeybindRow: View {
     var doubleTapKey: DoubleTapRecordingKey?
     var onDoubleTapRecorded: (() -> Void)?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         HStack(spacing: 8) {
             KeycapView(label: label, fontSize: 12, minWidth: 36)
@@ -27,36 +29,51 @@ struct KeybindRow: View {
             if isRecording {
                 KeyRecorderView(
                     onKeyRecorded: { keyCode, modifiers, label in
-                        onRecord(keyCode, modifiers, label)
-                        isRecording = false
+                        withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                            onRecord(keyCode, modifiers, label)
+                            isRecording = false
+                        }
                     },
-                    onCancelled: { isRecording = false },
+                    onCancelled: {
+                        withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                            isRecording = false
+                        }
+                    },
                     conflictChecker: conflictChecker,
                     doubleTapKey: doubleTapKey,
                     onDoubleTapRecorded: onDoubleTapRecorded.map { record in
                         {
-                            record()
-                            isRecording = false
+                            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                                record()
+                                isRecording = false
+                            }
                         }
                     }
                 )
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
             } else {
                 Button("Change") {
-                    isRecording = true
+                    withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                        isRecording = true
+                    }
                 }
             }
 
             if let onReset, shouldShowReset {
                 Button(resetLabel) {
-                    onReset()
-                    isRecording = false
+                    withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                        onReset()
+                        isRecording = false
+                    }
                 }
             }
 
             if isBound ?? (keyCode != SuggestionSettingsModel.disabledKeyCode) {
                 Button(clearLabel) {
-                    onClear()
-                    isRecording = false
+                    withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                        onClear()
+                        isRecording = false
+                    }
                 }
                 .help(clearHelp)
             }

@@ -10,6 +10,7 @@ struct AppsPaneView: View {
     @ObservedObject var typingHistory: TypingHistoryStore
     var openShortcuts: (String) -> Void = { _ in }
     @Environment(\.settingsHighlightedItem) private var highlightedItem
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var runningApps: [RunningAppSuggestion] = []
     @State private var selectedApp: AppSettingsEntry?
     @State private var searchText = ""
@@ -20,7 +21,12 @@ struct AppsPaneView: View {
                 AppSettingsDetailView(
                     suggestionSettings: suggestionSettings, typingHistory: typingHistory,
                     bundleIdentifier: selectedApp.bundleIdentifier, displayName: selectedApp.displayName,
-                    onBack: { self.selectedApp = nil }, openShortcuts: { openShortcuts(selectedApp.bundleIdentifier) }
+                    onBack: {
+                        withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                            self.selectedApp = nil
+                        }
+                    },
+                    openShortcuts: { openShortcuts(selectedApp.bundleIdentifier) }
                 )
             } else {
                 appListSection
@@ -69,26 +75,11 @@ struct AppsPaneView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(visible) { entry in
-                    Button { selectedApp = entry } label: {
-                        HStack(spacing: 10) {
-                            Image(nsImage: AppIconCache.icon(for: entry.bundleIdentifier))
-                                .resizable().frame(width: 24, height: 24).accessibilityHidden(true)
-                            Text(entry.displayName)
-                            if entry.isDisabled {
-                                Text("Off", tableName: "Learning").foregroundStyle(.secondary)
-                            } else if entry.hasOverrides {
-                                Text("Customized", tableName: "Learning").foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                            if entry.inputCount > 0 {
-                                Text("\(entry.inputCount) entries stored")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Image(systemName: "chevron.right").foregroundStyle(.tertiary).accessibilityHidden(true)
+                    AppSettingsRowButton(entry: entry) {
+                        withAnimation(SettingsMotion.resolved(SettingsMotion.disclosure, reduceMotion: reduceMotion)) {
+                            selectedApp = entry
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -154,5 +145,67 @@ private struct RunningAppSuggestion: Identifiable {
         return suggestions
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
 
+    }
+}
+
+/// Interactive row for one app in the Apps list, featuring a status capsule badge ("Off" or
+/// "Customized") and subtle hover feedback on the row and trailing chevron.
+private struct AppSettingsRowButton: View {
+    let entry: AppSettingsEntry
+    let action: () -> Void
+
+    @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(nsImage: AppIconCache.icon(for: entry.bundleIdentifier))
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                    .accessibilityHidden(true)
+
+                Text(entry.displayName)
+                    .fontWeight(.medium)
+
+                if entry.isDisabled {
+                    Text("Off", tableName: "Learning")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                } else if entry.hasOverrides {
+                    Text("Customized", tableName: "Learning")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+
+                Spacer(minLength: 0)
+
+                if entry.inputCount > 0 {
+                    Text("\(entry.inputCount) entries stored")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isHovering ? .secondary : .tertiary)
+                    .offset(x: isHovering ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                isHovering = hovering
+            }
+        }
     }
 }

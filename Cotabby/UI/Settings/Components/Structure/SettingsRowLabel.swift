@@ -17,14 +17,14 @@ struct SettingsRowLabel: View {
     /// because the title already names the setting.
     var systemImage: String?
 
-    init(title: String, description: String, systemImage: String? = nil) {
+    init(title: String, description: String = "", systemImage: String? = nil) {
         self.title = title
         self.description = description
         self.systemImage = systemImage
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: description.isEmpty ? .center : .firstTextBaseline, spacing: 10) {
             if let systemImage {
                 Image(systemName: systemImage)
                     .foregroundStyle(.secondary)
@@ -33,10 +33,12 @@ struct SettingsRowLabel: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

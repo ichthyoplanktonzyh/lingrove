@@ -25,12 +25,58 @@ struct KeyRecorderView: View {
     @State private var conflictMessage: String?
     /// Event timestamp of a first press of `doubleTapKey` still waiting for its second press.
     @State private var pendingFirstTapTimestamp: TimeInterval?
+    @State private var shakePhase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var activeTint: Color {
+        conflictMessage == nil ? .accentColor : .red
+    }
 
     var body: some View {
-        Text(promptText)
-            .foregroundStyle(conflictMessage == nil ? .secondary : Color.red)
-            .onAppear { installMonitor() }
-            .onDisappear { removeMonitor() }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(activeTint)
+                .frame(width: 6, height: 6)
+                .accessibilityHidden(true)
+
+            Text(promptText)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(conflictMessage == nil ? .primary : Color.red)
+                .lineLimit(1)
+
+            if let onCancelled {
+                Button {
+                    removeMonitor()
+                    onCancelled()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(activeTint.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(activeTint.opacity(0.55), lineWidth: 1)
+        )
+        .offset(x: sin(shakePhase * .pi * 4) * 4)
+        .onChange(of: conflictMessage) { _, message in
+            guard message != nil, !reduceMotion else { return }
+            shakePhase = 1
+            withAnimation(.easeOut(duration: 0.32)) {
+                shakePhase = 0
+            }
+        }
+        .onAppear { installMonitor() }
+        .onDisappear { removeMonitor() }
     }
 
     private var promptText: String {

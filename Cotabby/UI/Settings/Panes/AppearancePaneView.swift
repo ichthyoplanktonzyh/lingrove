@@ -483,18 +483,26 @@ struct AppearancePaneView: View {
         ) == preset
 
         Button {
-            suggestionSettings.setCustomSuggestionTextColorHex(preset.hex)
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                suggestionSettings.setCustomSuggestionTextColorHex(preset.hex)
+            }
         } label: {
-            Circle()
-                .fill(swatchFill(for: preset))
-                .frame(width: 18, height: 18)
-                .overlay(
-                    Circle()
-                        .strokeBorder(
-                            Color.primary.opacity(isSelected ? 0.9 : 0.18),
-                            lineWidth: isSelected ? 2 : 1
-                        )
-                )
+            ZStack {
+                Circle()
+                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                    .frame(width: 24, height: 24)
+                    .opacity(isSelected ? 1 : 0)
+                    .scaleEffect(isSelected ? 1 : 0.85)
+
+                Circle()
+                    .fill(swatchFill(for: preset))
+                    .frame(width: 18, height: 18)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.primary.opacity(0.20), lineWidth: 1)
+                    )
+            }
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(localizedName)
