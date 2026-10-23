@@ -22,6 +22,8 @@ struct SettingsSidebarView: View {
     let onQuit: () -> Void
 
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,14 +38,15 @@ struct SettingsSidebarView: View {
 
             appActionsFooter
         }
-        // `.navigationSplitViewColumnWidth` is only a hint; AppKit's underlying split view ignores
-        // it when the window is at or near its minimum, which truncated labels like "Engine &..."
-        // and "Permissio..." in earlier small-window screenshots. A direct `.frame()` is a real
-        // SwiftUI layout constraint, so the split view has to give the sidebar at least the
-        // minWidth. Keep the column-width hint as a paired ideal so a fresh window opens at the
-        // right size.
-        .frame(minWidth: 300, idealWidth: 340)
-        .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
+        // Keep the sidebar wide enough to prevent label truncation ("Language Learning",
+        // "Engine & Model") while leaving generous horizontal space for the detail Form.
+        .frame(minWidth: 230, idealWidth: 250)
+        .navigationSplitViewColumnWidth(min: 230, ideal: 250, max: 300)
+        .onChange(of: navigation.pendingSearchFocus) { _, pending in
+            guard pending, navigation.selection != .home else { return }
+            isSearchFocused = true
+            Task { navigation.consumeSearchFocusRequest() }
+        }
     }
 
     private var trimmedQuery: String {
@@ -55,16 +58,19 @@ struct SettingsSidebarView: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSearchFocused ? Color.accentColor : .secondary)
                 .accessibilityHidden(true)
 
             TextField(String(localized: "Search settings"), text: $searchText)
                 .textFieldStyle(.plain)
+                .focused($isSearchFocused)
                 .onSubmit(openTopResult)
 
             if !trimmedQuery.isEmpty {
                 Button {
-                    searchText = ""
+                    withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                        searchText = ""
+                    }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
@@ -75,7 +81,14 @@ struct SettingsSidebarView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(.quaternary.opacity(0.8), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(
+                    isSearchFocused ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.06),
+                    lineWidth: 1
+                )
+        )
         .padding(.horizontal, 10)
         // The app header above now provides the clearance from the title bar; keep only a small gap
         // here so the field reads as the head of the same group as the category rows beneath it.

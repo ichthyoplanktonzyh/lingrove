@@ -256,13 +256,13 @@ final class SettingsNavigationModelTests: XCTestCase {
         XCTAssertNil(model.highlightedItem, "A manual pane switch must drop the search pulse immediately")
     }
 
-    func test_searchFocusRequestFromAnotherPaneGoesHomeAndClearsHighlight() {
+    func test_searchFocusRequestFromAnotherPaneKeepsPaneAndClearsHighlight() {
         let model = makeModel()
         model.reveal(.batteryModel)
 
         model.requestSearchFocus()
 
-        XCTAssertEqual(model.selection, .home)
+        XCTAssertEqual(model.selection, .engineAndModel)
         XCTAssertNil(model.highlightedItem)
         XCTAssertTrue(model.pendingSearchFocus)
     }

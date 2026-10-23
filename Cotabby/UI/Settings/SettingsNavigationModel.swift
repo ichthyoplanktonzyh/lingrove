@@ -211,12 +211,10 @@ final class SettingsNavigationModel: ObservableObject {
         }
     }
 
-    /// Cmd-F: bring the user to the search surface. Switching to Home first means the shortcut
-    /// works from any pane.
+    /// Cmd-F: focus the active search field in place. On Home this focuses the hero search bar;
+    /// on any detail pane the sidebar search field takes focus without losing the current pane.
     func requestSearchFocus() {
-        if selection != .home {
-            open(.home)
-        }
+        cancelHighlight()
         pendingSearchFocus = true
     }
 

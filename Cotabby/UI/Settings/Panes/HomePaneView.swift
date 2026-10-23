@@ -68,10 +68,10 @@ struct HomePaneView: View {
                 }
             }
         }
-        // Cmd-F routes here from the container. `initial: true` covers the cross-pane case where
-        // Home is rebuilt because of the shortcut and the publish happens before this view exists.
+        // Cmd-F routes here when Home is active. `initial: true` covers the case where the
+        // shortcut fires right as Home appears.
         .onChange(of: navigation.pendingSearchFocus, initial: true) { _, pending in
-            guard pending else { return }
+            guard pending, navigation.selection == .home else { return }
             isSearchFocused = true
             Task { navigation.consumeSearchFocusRequest() }
         }
@@ -289,7 +289,8 @@ struct HomePaneView: View {
                 tint: engineNeedsAttention ? .orange : SettingsCategory.engineAndModel.tint,
                 title: suggestionSettings.selectedEngine.displayLabel,
                 caption: engineCaption,
-                captionStyle: engineNeedsAttention ? .warning : .normal
+                captionStyle: engineNeedsAttention ? .warning : .normal,
+                isInteractive: true
             ) {
                 HomeStatusChevron()
             }
@@ -311,7 +312,8 @@ struct HomePaneView: View {
                 tint: permissionManager.requiredPermissionsGranted ? SettingsCategory.permissions.tint : .orange,
                 title: String(localized: "Permissions"),
                 caption: permissionManager.requiredPermissionsGranted ? String(localized: "All set") : String(localized: "Needs attention"),
-                captionStyle: permissionManager.requiredPermissionsGranted ? .normal : .warning
+                captionStyle: permissionManager.requiredPermissionsGranted ? .normal : .warning,
+                isInteractive: true
             ) {
                 HomeStatusChevron()
             }
@@ -469,7 +471,11 @@ private struct HomeStatusCard<Accessory: View>: View {
     let title: String
     let caption: String
     var captionStyle: CaptionStyle = .normal
+    var isInteractive = false
     @ViewBuilder let accessory: () -> Accessory
+
+    @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 10) {
@@ -490,6 +496,7 @@ private struct HomeStatusCard<Accessory: View>: View {
             Spacer(minLength: 4)
 
             accessory()
+                .offset(x: isInteractive && isHovering ? 1 : 0)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
@@ -500,8 +507,23 @@ private struct HomeStatusCard<Accessory: View>: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
+                .strokeBorder(
+                    isInteractive && isHovering ? tint.opacity(0.35) : Color.primary.opacity(0.07),
+                    lineWidth: 1
+                )
         )
+        .shadow(
+            color: .black.opacity(isInteractive && isHovering ? 0.08 : 0.03),
+            radius: isInteractive && isHovering ? 5 : 2,
+            y: isInteractive && isHovering ? 2 : 1
+        )
+        .offset(y: isInteractive && isHovering ? -1 : 0)
+        .onHover { hovering in
+            guard isInteractive else { return }
+            withAnimation(SettingsMotion.resolved(SettingsMotion.interaction, reduceMotion: reduceMotion)) {
+                isHovering = hovering
+            }
+        }
     }
 }
 

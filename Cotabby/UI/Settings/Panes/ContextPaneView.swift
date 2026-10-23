@@ -34,9 +34,42 @@ struct ContextPaneView: View {
     var body: some View {
         SettingsPaneScaffold {
             livePreviewSection
+            contextSourcesSection
             extendedContextSection
             howThisIsUsedSection
             TypingHistorySectionView(store: typingHistory)
+        }
+    }
+
+    // MARK: - Context Sources
+
+    /// Surfaces the clipboard and app-metadata context toggles directly inside the Context pane so
+    /// users managing prompt context do not have to hunt back to General to see what else is sent.
+    private var contextSourcesSection: some View {
+        Section("Context") {
+            Toggle(isOn: Binding(
+                get: { suggestionSettings.isClipboardContextEnabled },
+                set: { suggestionSettings.setClipboardContextEnabled($0) }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Include Clipboard Context"),
+                    description: String(localized: "Let suggestions reference whatever you most recently copied."),
+                    systemImage: "doc.on.clipboard"
+                )
+            }
+
+            Toggle(isOn: Binding(
+                get: { suggestionSettings.isSurfaceContextEnabled },
+                set: { suggestionSettings.setSurfaceContextEnabled($0) }
+            )) {
+                SettingsRowLabel(
+                    title: String(localized: "Include App Context"),
+                    description: String(localized: """
+                    Include the app and window name in suggestions. With an endpoint selected, this context is sent to that server.
+                    """),
+                    systemImage: "macwindow"
+                )
+            }
         }
     }
 
