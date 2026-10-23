@@ -81,15 +81,41 @@ struct LearningExplanationView: View {
         return result
     }
 
+    @ViewBuilder
     private var content: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if presentation == .embedded { Divider() }
+        if presentation == .embedded {
+            explanationBody
+                .padding(9)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.primary.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5)
+                )
+        } else {
+            explanationBody
+        }
+    }
+
+    private var explanationBody: some View {
+        VStack(alignment: .leading, spacing: 8) {
             if presentation == .complete, let input = session.input {
                 Text(input.target).font(.caption).foregroundStyle(.secondary).lineLimit(3)
             }
             if let record = session.record {
-                Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
-                Text(record.result.explanation).font(.callout).textSelection(.enabled)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if presentation == .embedded {
+                        Image(systemName: "sparkles")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(CotabbyBrand.accent)
+                            .accessibilityHidden(true)
+                    }
+                    Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
+                }
+                Text(record.result.explanation).font(.callout).foregroundStyle(presentation == .embedded ? .secondary : .primary)
+                    .textSelection(.enabled)
                 if presentation == .complete || adopt != nil {
                     HStack {
                         if presentation == .complete {
@@ -103,7 +129,7 @@ struct LearningExplanationView: View {
                 }
             }
             if session.isGenerating {
-                HStack {
+                HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(String(localized: "Explaining…", table: "Learning")).font(.caption).foregroundStyle(.secondary)
                     Spacer()
@@ -138,6 +164,8 @@ struct LearningExplanationButton: View {
     @ObservedObject var session: LearningExplanationSession
     var prepare: () -> Void = {}
     var configure: () -> Void = {}
+    @State private var hovering = false
+
     var body: some View {
         Button {
             interact()
@@ -160,7 +188,8 @@ struct LearningExplanationButton: View {
             .foregroundStyle(tint)
             .frame(width: 22, height: 22).contentShape(Rectangle())
         }
-            .buttonStyle(.plain)
+            .buttonStyle(LearningIconActionButtonStyle(hovering: hovering, isEnabled: session.input != nil))
+            .onHover { hovering = $0 }
             .learningAction(.explanation)
             .disabled(session.input == nil)
             .help(tooltip)
@@ -170,9 +199,10 @@ struct LearningExplanationButton: View {
 
     private var tint: Color {
         if session.isGenerating { return .blue }
-        if !session.isConfigured { return .secondary }
+        if !session.isConfigured { return hovering ? .primary : .secondary }
         if session.error != nil { return .orange }
-        return session.record == nil ? .secondary : .blue
+        if session.record != nil { return .blue }
+        return hovering ? .primary : .secondary
     }
 
     private var actionLabel: String {
@@ -209,3 +239,12 @@ struct LearningCapturedExplanationView: View {
             context: context, detailsChanged: detailsChanged)
     }
 }
+
+#if DEBUG
+#Preview("AI 解释 · 交互") {
+    LearningCardPreview(kind: .explanation)
+}
+#Preview("AI 解释 · 长文本") {
+    LearningCardPreview(kind: .explanation, state: .longText)
+}
+#endif

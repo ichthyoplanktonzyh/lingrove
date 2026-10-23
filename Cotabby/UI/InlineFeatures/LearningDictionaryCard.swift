@@ -16,6 +16,7 @@ struct LearningDictionaryCard: View {
     var popupWindows: LearningPopupWindowRegistry?
     @State private var viewport = LearningDictionaryViewport()
     @State private var measuredHTMLRequest: UUID?
+    @State private var closeHovered = false
     private var showsExplanation: Bool { session.page == .contextual }
     var body: some View {
         // Geometry transforms may execute outside MainActor. Capture immutable values rather
@@ -39,9 +40,17 @@ struct LearningDictionaryCard: View {
                     LearningSpeechButton(speech: speech, request: request,
                         playLabel: speechLabels.play, stopLabel: speechLabels.stop)
                 }
-                Button(action: close) { Image(systemName: "xmark") }.buttonStyle(.plain)
-                    .help(String(localized: "Close dictionary · Esc", table: "Learning",
-                        comment: "Tooltip for closing the learning dictionary panel with Escape."))
+                Button(action: close) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(closeHovered ? Color.primary : Color.secondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(LearningIconActionButtonStyle(hovering: closeHovered))
+                .onHover { closeHovered = $0 }
+                .help(String(localized: "Close dictionary · Esc", table: "Learning",
+                    comment: "Tooltip for closing the learning dictionary panel with Escape."))
             }.frame(minHeight: 20)
             if session.isRelatedEntry {
                 Button(String(localized: "← Back to the full expression", table: "Learning",
@@ -116,7 +125,7 @@ struct LearningDictionaryCard: View {
             Color.clear.preference(key: LearningCardSizePreference.self, value: geometry.size)
         })
         .onPreferenceChange(LearningCardSizePreference.self, perform: sizeChanged)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .learningCardChrome(cornerRadius: 12)
         .onChange(of: session.query) { oldQuery, newQuery in
             measuredHTMLRequest = nil
             guard oldQuery != newQuery, let documentID = session.documentID else { return }
@@ -235,3 +244,12 @@ private nonisolated struct DictionaryBodyMeasurement: Equatable {
     let requestID: UUID
     let resolved: Bool
 }
+
+#if DEBUG
+#Preview("查词 · 语境释义") {
+    LearningCardPreview(kind: .dictionary)
+}
+#Preview("查词 · 词典来源") {
+    LearningCardPreview(kind: .dictionary, dictionaryPage: true)
+}
+#endif

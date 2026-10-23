@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Logging
+import QuartzCore
 import SwiftUI
 
 /// Owns one nonactivating learning window and its dictionary panel. Updating its hosting
@@ -130,6 +131,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
         if let documentID = currentPresentation?.id { speech?.stop(ownerID: documentID) }
         isVisible = false
         detailPanel.hide()
+        panel?.alphaValue = 1
         panel?.orderOut(nil)
         panel?.contentView = nil
         hosting = nil
@@ -299,8 +301,23 @@ final class LearningSentencePanel: LearningSentencePresenting {
                 "screen_frame": .string(NSStringFromRect(screen?.visibleFrame ?? .zero))
             ])
         }
+        let wasVisible = isVisible && panel.isVisible
         isVisible = true
-        if !panel.isVisible { panel.orderFrontRegardless() }
+        if !panel.isVisible {
+            let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            if !wasVisible && !reduceMotion {
+                panel.alphaValue = 0
+                panel.orderFrontRegardless()
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.14
+                    context.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+                    panel.animator().alphaValue = 1
+                }
+            } else {
+                panel.alphaValue = 1
+                panel.orderFrontRegardless()
+            }
+        }
         updateDetailParent(panel.frame, presentation: presentation, screen: screen)
     }
 

@@ -73,17 +73,21 @@ final class LearningDictionaryTextView: NSTextView {
     /// Attributes annotate the original string; they never introduce separators or replacement
     /// characters. Lexical underlines do not alter the saved sentence or occurrence ranges.
     func present(_ text: String) {
+        let foreground = source ? NSColor.labelColor.withAlphaComponent(0.76) : NSColor.labelColor
         let value = NSMutableAttributedString(string: text, attributes: [
-            .font: font ?? .systemFont(ofSize: 16), .foregroundColor: NSColor.labelColor])
+            .font: font ?? .systemFont(ofSize: 16), .foregroundColor: foreground])
         func valid(_ range: NSRange) -> Bool {
             range.location >= 0 && range.length > 0 && range.location <= value.length &&
                 range.length <= value.length - range.location && Range(range, in: text) != nil
         }
         if !source {
+            let underlineStyle = NSUnderlineStyle.single.rawValue | NSUnderlineStyle.patternDot.rawValue
             for unit in units where unit.kind != .word {
                 for range in unit.ranges where valid(range) {
-                    value.addAttributes([.underlineStyle: NSUnderlineStyle.single.rawValue,
-                        .underlineColor: NSColor.secondaryLabelColor.withAlphaComponent(0.45)], range: range)
+                    value.addAttributes([
+                        .underlineStyle: underlineStyle,
+                        .underlineColor: NSColor.controlAccentColor.withAlphaComponent(0.65)
+                    ], range: range)
                 }
             }
         }

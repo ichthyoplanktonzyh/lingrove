@@ -58,3 +58,77 @@ nonisolated struct LearningCardSizePreference: PreferenceKey {
     static var defaultValue: CGSize { .zero }
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }
+
+/// Shared adaptive glass chrome for floating language-learning cards (`LearningSentenceCard` and
+/// `LearningDictionaryCard`). It pairs `.regularMaterial` with continuous corner curvature, a
+/// subtle top-lit sheen, and an adaptive hairline border so the card separates cleanly from both
+/// bright document editors and dark IDEs without shifting layout geometry.
+struct LearningCardChrome: ViewModifier {
+    var cornerRadius: CGFloat = 12
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .background {
+                ZStack {
+                    shape.fill(.regularMaterial)
+                    shape.fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.045 : 0.28),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                }
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.65),
+                            Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.09)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 0.75
+                )
+                .allowsHitTesting(false)
+            }
+            .clipShape(shape)
+    }
+}
+
+extension View {
+    /// Applies the shared adaptive glass backdrop and top-lit hairline border for learning cards.
+    func learningCardChrome(cornerRadius: CGFloat = 12) -> some View {
+        modifier(LearningCardChrome(cornerRadius: cornerRadius))
+    }
+}
+
+/// Size-neutral button style for compact toolbar icons inside floating learning cards.
+/// Hovering reveals a soft rounded highlight and pressing scales the glyph down slightly on
+/// pointer-down (`scaleEffect(0.92)`), while keeping the outer hit rectangle fixed so neighboring
+/// controls and `NSHostingView` fitting sizes never shift.
+struct LearningIconActionButtonStyle: ButtonStyle {
+    var hovering = false
+    var isEnabled = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        let activeHover = hovering && isEnabled
+        let activePress = configuration.isPressed && isEnabled
+        configuration.label
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(activePress ? 0.13 : (activeHover ? 0.075 : 0)))
+            }
+            .scaleEffect(activePress && !reduceMotion ? 0.92 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: activePress)
+            .animation(.easeOut(duration: 0.12), value: activeHover)
+    }
+}

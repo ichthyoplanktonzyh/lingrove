@@ -123,6 +123,7 @@ Cotabby/
 │   └── Utilities/                    small cross-subsystem value helpers
 └── UI/
     ├── Components/                   application-wide reusable views
+    ├── Previews/                     Debug-only Canvas hosts and isolated card fixtures; renders the real InlineFeatures views
     ├── InlineFeatures/               emoji picker and macro reference surfaces
     ├── Components/CurrentShortcutRow.swift read-only shortcut labels shared by help and setup
     ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes

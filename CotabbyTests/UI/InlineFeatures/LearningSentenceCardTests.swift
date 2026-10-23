@@ -10,6 +10,47 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningSentenceCardTests {
+    /// Check TextKit's actual line boxes inside the production card: a fitting-size probe must
+    /// never leave the original laid out wider than its final row and paint over the speaker.
+    @Test(arguments: [LearningLanguage.chinese, .english, .arabic])
+    func longOriginalWrapsInsideItsRowBesideTheSpeechButton(language: LearningLanguage) async throws {
+        let suite = "LearningSentenceCardTests.original.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
+        defer { speech.shutdown() }
+        let sentence: String
+        switch language {
+        case .chinese: sentence = "请在确认时间安排后告诉我，如果遇到任何问题，也请及时联系我，我们可以一起讨论解决方案。"
+        case .arabic: sentence = "يرجى إخباري بآخر المستجدات حول المشروع والتواصل معي إذا كانت هناك أي أسئلة. "
+        default: sentence = "Please keep me posted on the project's progress and let me know if anything needs our attention. "
+        }
+        let source = String(repeating: sentence, count: 3)
+        let presentation = LearningSentencePresentation(id: UUID(), source: source, translation: "Thank you.",
+            sourceLanguage: language, targetLanguage: .english, caret: .zero, isExpanded: true,
+            isGenerating: false, message: "", previousTranslation: nil, shortcutLabel: "", unitStage: .ready)
+        let host = NSHostingView(rootView: LearningSentenceCard(presentation: presentation,
+            expand: {}, dismiss: {}, speech: speech, sizeChanged: { _ in }))
+        let window = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 480, height: 350),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        window.orderFrontRegardless()
+        await settle(host, in: window)
+        let view = try #require(findTranslation(source, in: host))
+        let container = try #require(view.textContainer), manager = try #require(view.layoutManager)
+        manager.ensureLayout(for: container)
+        var lines = 0
+        manager.enumerateLineFragments(forGlyphRange: manager.glyphRange(for: container)) { _, _, _, _, _ in lines += 1 }
+        #expect(lines > 1, "A long original must wrap, just as the translation does")
+        #expect(abs(container.size.width - view.bounds.width) < 1,
+                "The drawn TextKit width must match the final SwiftUI frame, not an earlier fitting probe")
+        let frame = view.convert(view.bounds, to: host)
+        #expect(frame.maxX <= host.bounds.maxX - 37.5,
+                "The original must leave the speaker's 20pt target and 8pt gap inside the 10pt card padding")
+    }
+
     @Test
     func expandedWidthFitsBothTextsAndShrinksWhenTheSameHostShowsAShortSentence() async throws {
         if let expected = ProcessInfo.processInfo.environment["COTABBY_TEST_LANGUAGE"] {

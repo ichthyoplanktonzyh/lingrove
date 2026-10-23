@@ -16,6 +16,7 @@ struct LearningSentenceCard: View {
     let sizeChanged: (CGSize) -> Void
     // Begin with the sentence pair's short layout; longer content measures itself below.
     // The former instruction-sized fallback leaves a blank block after the guide text is removed.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var detailsHeight: CGFloat = 100
     @State private var compactTranslationHeight: CGFloat = 20
     @State private var expandedWidth: CGFloat = 320
@@ -38,7 +39,7 @@ struct LearningSentenceCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             header
             if !presentation.isError, let reason = presentation.replacementUnavailableReason {
                 Text(reason).font(.caption).foregroundStyle(.secondary)
@@ -48,9 +49,15 @@ struct LearningSentenceCard: View {
                 Text(presentation.message).font(.callout).fixedSize(horizontal: false, vertical: true)
             } else if presentation.isExpanded {
                 details
+                    .transition(.opacity)
             } else {
                 if let previous = presentation.previousTranslation {
-                    Text(previous).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 1, style: .continuous)
+                            .fill(Color.secondary.opacity(0.35))
+                            .frame(width: 2, height: 12)
+                        Text(previous).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
                 if !presentation.translation.isEmpty, !presentation.isStale {
                     compactTranslation
@@ -84,14 +91,16 @@ struct LearningSentenceCard: View {
             Color.clear.preference(key: LearningCardSizePreference.self, value: geometry.size)
         })
         .onPreferenceChange(LearningCardSizePreference.self, perform: sizeChanged)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .learningCardChrome(cornerRadius: 12)
+        .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 1.0), value: presentation.isExpanded)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: presentation.isTranslating)
     }
 
     /// Match the fonts used by the two existing TextKit views. The 320pt floor leaves room for
     /// header/copy actions, while the 480pt ceiling preserves the current wrapping and viewport
     /// limits. Status messages wrap at this width instead of widening a short sentence pair.
     private func measuredExpandedWidth(_ content: ExpandedSizingContent) -> CGFloat {
-        let source = (content.source as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 16)]).width
+        let source = (content.source as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 16)]).width + 11
         let translation = ((content.translation ?? "") as NSString)
             .size(withAttributes: [.font: NSFont.systemFont(ofSize: 18)]).width
         // The outer padding is already part of the panel's measured frame. A small glyph margin
@@ -117,19 +126,46 @@ struct LearningSentenceCard: View {
         .id(presentation.id)
     }
 
+    private var headerTitle: String {
+        if presentation.isError {
+            return String(
+                localized: "Translation preview unavailable", table: "Learning",
+                comment: "Header for an explicit preview capture error.")
+        }
+        if presentation.isExpanded {
+            return String(localized: "\(presentation.sourceLanguage.compactLabel) → \(presentation.targetLanguage.compactLabel)",
+                table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
+        }
+        return presentation.targetLanguage.compactLabel
+    }
+
+    private var hasLearningToolsInHeader: Bool {
+        explanation != nil ||
+            (vocabulary != nil && VocabularyCaptureFactory.preview(presentation) != nil) ||
+            (!presentation.isExpanded && speech != nil && translationSpeechRequest != nil)
+    }
+
     private var header: some View {
         HStack(spacing: 8) {
-            Text(
-                presentation.isError
-                    ? String(
-                        localized: "Translation preview unavailable", table: "Learning",
-                        comment: "Header for an explicit preview capture error.")
-                : presentation.isExpanded
-                    ? String(localized: "\(presentation.sourceLanguage.compactLabel) → \(presentation.targetLanguage.compactLabel)",
-                        table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
-                    : presentation.targetLanguage.compactLabel)
-                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                .lineLimit(1).truncationMode(.middle)
+            HStack(spacing: 5) {
+                if presentation.isTranslating {
+                    Circle()
+                        .fill(CotabbyBrand.accent)
+                        .frame(width: 5, height: 5)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                Text(headerTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(0.055))
+            )
             Spacer(minLength: 0)
             if let explanation {
                 LearningExplanationButton(session: explanation, prepare: { if !presentation.isExpanded { expand() } },
@@ -142,6 +178,12 @@ struct LearningSentenceCard: View {
                 LearningSpeechButton(speech: speech, request: request,
                     playLabel: String(localized: "Play translation aloud", table: "Learning"),
                     stopLabel: String(localized: "Stop speaking translation", table: "Learning"))
+            }
+            if !presentation.isError, hasLearningToolsInHeader {
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(0.10))
+                    .frame(width: 1, height: 11)
+                    .accessibilityHidden(true)
             }
             if !presentation.isError {
                 replacementAction.learningAction(.replace)
@@ -160,7 +202,9 @@ struct LearningSentenceCard: View {
             ProgressView().controlSize(.small).frame(width: 22, height: 22)
         } else {
             iconAction(String(localized: "Replace", table: "Learning"), symbol: "arrow.left.arrow.right",
-                color: isReplacementEnabled ? .blue : .secondary, action: { if isReplacementEnabled { replace?() } })
+                color: isReplacementEnabled ? .secondary : .secondary.opacity(0.42),
+                isEnabled: isReplacementEnabled,
+                action: { if isReplacementEnabled { replace?() } })
                 .disabled(!isReplacementEnabled)
         }
     }
@@ -171,29 +215,39 @@ struct LearningSentenceCard: View {
         presentation.canReplace && replace != nil && !presentation.isTranslating && !presentation.isStale
     }
 
-    /// Disclosure and dismissal use familiar symbols with a full click target. Labels stay
-    /// available to VoiceOver and hover help without competing with the translation for space.
+    /// Disclosure, replacement, and dismissal share one tactile 22pt control with hover and press
+    /// feedback. Labels stay available to VoiceOver and hover help without competing for space.
     private func iconAction(_ title: String, symbol: String, color: Color = .secondary,
-                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol).labelStyle(.iconOnly)
-                .font(.caption.weight(.semibold)).foregroundStyle(color)
-                .frame(width: 22, height: 22).contentShape(Rectangle())
-        }.buttonStyle(.plain).help(title).accessibilityLabel(title)
+                            isEnabled: Bool = true, action: @escaping () -> Void) -> some View {
+        LearningToolbarIconButton(title: title, symbol: symbol, color: color, isEnabled: isEnabled, action: action)
     }
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 8) {
                         sentence(presentation.source, source: true)
+                            .padding(.leading, 10.5)
+                            .overlay(alignment: .leading) {
+                                // Decoration must not add another HStack sizing probe: that
+                                // probe can leave TextKit at infinite width after the row fits.
+                                RoundedRectangle(cornerRadius: 1.25, style: .continuous)
+                                    .fill(Color.secondary.opacity(0.32))
+                                    .frame(width: 2.5)
+                                    .padding(.vertical, 2)
+                                    .allowsHitTesting(false)
+                                    .accessibilityHidden(true)
+                            }
                         if let speech, let request = sourceSpeechRequest {
                             LearningSpeechButton(speech: speech, request: request,
                                 playLabel: String(localized: "Play source text aloud", table: "Learning"),
                                 stopLabel: String(localized: "Stop speaking source text", table: "Learning"))
                         }
                     }
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(height: 1)
                     HStack(alignment: .top, spacing: 8) {
                         sentence(presentation.translation, source: false)
                         if let speech, let request = translationSpeechRequest {
@@ -255,20 +309,18 @@ struct LearningSentenceCard: View {
     /// The visible and sizing copies use one definition, so changing a localized title or native
     /// control style cannot make the width estimate drift away from the actual footer.
     private var copyActions: some View {
-        HStack {
-            Button(
-                String(
-                    localized: "Copy source text", table: "Learning", comment: "Copies the verified original text for manual recovery.")
-            ) {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(presentation.source, forType: .string)
-            }
+        HStack(spacing: 8) {
+            LearningCopyActionButton(
+                title: String(
+                    localized: "Copy source text", table: "Learning", comment: "Copies the verified original text for manual recovery."),
+                text: presentation.source
+            )
             if !presentation.translation.isEmpty, !presentation.isTranslating {
-                Button(String(localized: "Copy translation", table: "Learning",
-                    comment: "Copies the target-language sentence to the clipboard.")) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(presentation.translation, forType: .string)
-                }
+                LearningCopyActionButton(
+                    title: String(localized: "Copy translation", table: "Learning",
+                        comment: "Copies the target-language sentence to the clipboard."),
+                    text: presentation.translation
+                )
             }
             Spacer()
         }
@@ -301,6 +353,110 @@ struct LearningSentenceCard: View {
 
 }
 
+/// Tactile 22pt header button with hover highlight, pointer-down scale feedback, and smooth
+/// symbol replacement when toggling states (such as expand/collapse chevrons).
+private struct LearningToolbarIconButton: View {
+    let title: String
+    let symbol: String
+    var color: Color = .secondary
+    var isEnabled: Bool = true
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .labelStyle(.iconOnly)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(hovering && isEnabled ? Color.primary : color)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(LearningIconActionButtonStyle(hovering: hovering, isEnabled: isEnabled))
+        .onHover { hovering = $0 }
+        .help(title)
+        .accessibilityLabel(title)
+    }
+}
+
+/// Compact pill button for copying source or translated sentences in the expanded card footer.
+/// Clicking copies to the system pasteboard and briefly confirms with a subtle accent/green state
+/// before returning to rest.
+private struct LearningCopyActionButton: View {
+    let title: String
+    let text: String
+    @Environment(\.learningInteraction) private var interact
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    @State private var didCopy = false
+    @State private var resetTask: Task<Void, Never>?
+
+    var body: some View {
+        Button {
+            interact()
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            resetTask?.cancel()
+            withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.9)) {
+                didCopy = true
+            }
+            resetTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(1200))
+                guard !Task.isCancelled else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                    didCopy = false
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if didCopy {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.green)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(didCopy ? Color.primary : (hovering ? Color.primary : Color.secondary))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(LearningCopyPillButtonStyle(hovering: hovering, didCopy: didCopy))
+        .onHover { hovering = $0 }
+        .onDisappear { resetTask?.cancel() }
+    }
+}
+
+private struct LearningCopyPillButtonStyle: ButtonStyle {
+    var hovering = false
+    var didCopy = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        configuration.label
+            .background {
+                shape.fill(
+                    didCopy
+                        ? Color.green.opacity(0.12)
+                        : Color.primary.opacity(configuration.isPressed ? 0.12 : (hovering ? 0.08 : 0.045))
+                )
+            }
+            .overlay {
+                shape.strokeBorder(
+                    didCopy ? Color.green.opacity(0.4) : Color.primary.opacity(hovering ? 0.14 : 0.08),
+                    lineWidth: 0.5
+                )
+            }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+}
+
 /// A tiny child observes only the shared playback controller. Cards keep their measured layout
 /// stable during ordinary playback; an error caption appears only when the provider reports one.
 struct LearningSpeechButton: View {
@@ -309,6 +465,7 @@ struct LearningSpeechButton: View {
     let request: SpeechRequest
     let playLabel: String
     let stopLabel: String
+    @State private var hovering = false
 
     private var isPlaying: Bool { speech.isPlaying(request.target) }
     private var error: String? { speech.error(for: request.target) }
@@ -321,13 +478,15 @@ struct LearningSpeechButton: View {
                         ProgressView().controlSize(.mini)
                     } else {
                         Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.wave.2")
+                            .contentTransition(.symbolEffect(.replace))
                     }
                 }
-                .foregroundStyle(isPlaying ? Color.accentColor : Color.secondary)
+                .foregroundStyle(isPlaying ? Color.accentColor : (hovering ? Color.primary : Color.secondary))
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LearningIconActionButtonStyle(hovering: hovering))
+            .onHover { hovering = $0 }
             .learningAction(.speech)
             .help(error ?? (isPlaying ? stopLabel : playLabel))
             .accessibilityLabel(isPlaying ? stopLabel : playLabel)
@@ -343,3 +502,15 @@ struct LearningSpeechButton: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("翻译预览 · 交互") {
+    LearningCardPreview(kind: .sentence)
+}
+#Preview("翻译详情 · 长文本") {
+    LearningCardPreview(kind: .sentence, state: .longText, expanded: true)
+}
+#Preview("翻译预览 · 深色") {
+    LearningCardPreview(kind: .sentence).preferredColorScheme(.dark)
+}
+#endif

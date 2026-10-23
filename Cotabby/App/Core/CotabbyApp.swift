@@ -18,12 +18,14 @@ struct CotabbyApp: App {
             // the command scene must not create a second set of settings or services.
             CommandGroup(replacing: .appSettings) {
                 Button(String(localized: "Settings") + "…") {
+                    guard !AppDelegate.isRunningForPreviews else { return }
                     appDelegate.settingsCoordinator.showSettings()
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
             CommandGroup(after: .appSettings) {
                 Button(String(localized: "Vocabulary", table: "Vocabulary")) {
+                    guard !AppDelegate.isRunningForPreviews else { return }
                     appDelegate.vocabularyWindow.show()
                 }
             }

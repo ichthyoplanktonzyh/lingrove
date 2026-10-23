@@ -4,13 +4,14 @@ import SwiftUI
 /// SVG; template rendering lets the same geometry adapt to card materials and dark appearance.
 struct VocabularyFavoriteIcon: View {
     var isSaved = false
+    var isHovered = false
     @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         Image(isSaved ? "FavoriteFishFilled" : "FavoriteFishOutline")
             .resizable().renderingMode(.template).scaledToFit()
             .foregroundStyle(isSaved
                 ? (colorScheme == .dark ? Color(red: 10 / 255, green: 132 / 255, blue: 1) : CotabbyBrand.accent)
-                : Color.secondary)
+                : (isHovered ? Color.primary : Color.secondary))
             .accessibilityHidden(true)
     }
 }
@@ -23,6 +24,7 @@ struct VocabularyFavoriteButton: View {
     @Environment(\.learningInteraction) private var interact
     @State private var showsActions = false
     @State private var failure: String?
+    @State private var hovering = false
     @Environment(\.learningFavoriteMenu) private var hostedMenu
     private var menu: Binding<Bool> { hostedMenu ?? $showsActions }
 
@@ -40,12 +42,13 @@ struct VocabularyFavoriteButton: View {
                 if store.isPending(capture) {
                     ProgressView().controlSize(.mini)
                 } else {
-                    VocabularyFavoriteIcon(isSaved: store.contains(capture))
+                    VocabularyFavoriteIcon(isSaved: store.contains(capture), isHovered: hovering)
                 }
             }
             .frame(width: 20, height: 20).contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LearningIconActionButtonStyle(hovering: hovering, isEnabled: !store.isPending(capture)))
+        .onHover { hovering = $0 }
         .learningAction(.favorite)
         .disabled(store.isPending(capture))
         .help(failure ?? (store.contains(capture)

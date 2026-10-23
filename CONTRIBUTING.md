@@ -203,6 +203,32 @@ ad-hoc build changes identity on every rebuild and loses the grant each time.
 If a suggestion does not appear or the overlay is misplaced, start with the focus and geometry
 sections in [ARCHITECTURE.md](ARCHITECTURE.md) before changing coordinator logic.
 
+## SwiftUI Card Previews
+
+Open `build/cotabby-dependencies/Cotabby.xcworkspace`, select **Cotabby Dev / My Mac**,
+then open one of these source files and enable **Editor > Canvas**:
+
+- `Cotabby/UI/InlineFeatures/LearningSentenceCard.swift`: translation preview, expanded details,
+  long text, and dark appearance.
+- `Cotabby/UI/InlineFeatures/LearningDictionaryCard.swift`: contextual meaning and dictionary tabs.
+- `Cotabby/UI/InlineFeatures/LearningExplanationView.swift`: AI explanation and long content.
+
+The Canvas toolbar switches between ready, loading, error, and long-text scenarios. The previews
+render the production views; edit those views and save to refresh their layout. Use the Canvas
+live interaction mode to exercise expansion, lookup, favorites, and playback feedback. Replacement
+only updates a preview status, and playback is silent. Preview fixtures own an in-memory notebook,
+isolated preferences, and fake data providers, so layout work needs no model download or endpoint.
+The app delegate also skips normal service startup inside Xcode's preview host.
+
+If Canvas reports `Could not find library ... libswiftWebKit.dylib`, use
+**Editor > Canvas > Use Legacy Previews Execution**. This is a workaround for the Xcode preview
+loader; ordinary application builds still work. Refresh Canvas after changing the mode.
+
+For repeated UI work, set **File > Workspace Settings > Derived Data** to a custom absolute
+location under this checkout's `build/DerivedData`. Keep that cache while iterating. Use **⌘R**
+to validate the complete Dev app, including menu-bar containers and cross-app behavior that Canvas
+does not reproduce. Quit any separately launched Dev instance before running from Xcode.
+
 ## Test
 
 The strict SwiftLint gate uses `.swiftlint-baseline.json`, exported from commit `2d5549c2` before

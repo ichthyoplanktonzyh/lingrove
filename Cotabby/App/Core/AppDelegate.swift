@@ -16,65 +16,46 @@ import SwiftUI
 /// App lifecycle callbacks happen on the main thread; marking this type clarifies actor expectations.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let permissionManager: PermissionManager
-    let runtimeModel: RuntimeBootstrapModel
-    let modelDownloadManager: ModelDownloadManager
-    let focusModel: FocusTrackingModel
-    let inputMonitor: InputMonitor
-    let appUpdateManager: AppUpdateManager
-    let permissionGuidanceController: PermissionGuidanceController
-    let suggestionSettings: SuggestionSettingsModel
-    let foundationModelAvailabilityService: FoundationModelAvailabilityService
-    let powerSourceMonitor: PowerSourceMonitor
-    let suggestionCoordinator: SuggestionCoordinator
-    let inlineCommandCoordinator: InlineCommandCoordinator
-    let welcomeCoordinator: WelcomeCoordinator
-    let settingsCoordinator: SettingsCoordinator
-    let vocabularyWindow: VocabularyWindowController
+    var permissionManager: PermissionManager { environment.permissionManager }
+    var runtimeModel: RuntimeBootstrapModel { environment.runtimeModel }
+    var modelDownloadManager: ModelDownloadManager { environment.modelDownloadManager }
+    var focusModel: FocusTrackingModel { environment.focusModel }
+    var inputMonitor: InputMonitor { environment.inputMonitor }
+    var appUpdateManager: AppUpdateManager { environment.appUpdateManager }
+    var permissionGuidanceController: PermissionGuidanceController { environment.permissionGuidanceController }
+    var suggestionSettings: SuggestionSettingsModel { environment.suggestionSettings }
+    var foundationModelAvailabilityService: FoundationModelAvailabilityService { environment.foundationModelAvailabilityService }
+    var powerSourceMonitor: PowerSourceMonitor { environment.powerSourceMonitor }
+    var suggestionCoordinator: SuggestionCoordinator { environment.suggestionCoordinator }
+    var inlineCommandCoordinator: InlineCommandCoordinator { environment.inlineCommandCoordinator }
+    var welcomeCoordinator: WelcomeCoordinator { environment.welcomeCoordinator }
+    var settingsCoordinator: SettingsCoordinator { environment.settingsCoordinator }
+    var vocabularyWindow: VocabularyWindowController { environment.vocabularyWindow }
     /// Menu quick controls borrow the same playback/review owners as learning cards and Settings.
-    let speechController: LearningSpeechController
-    let reviewController: AnkiReviewController
+    var speechController: LearningSpeechController { environment.speechController }
+    var reviewController: AnkiReviewController { environment.reviewController }
 
     /// The delegate retains one native menu owner; its SwiftUI content borrows this same graph.
     private var menuBarController: MenuBarController?
 
-    private let activationIndicatorController: ActivationIndicatorController
-    private let focusDebugOverlayController: FocusDebugOverlayController?
+    private var activationIndicatorController: ActivationIndicatorController { environment.activationIndicatorController }
+    private var focusDebugOverlayController: FocusDebugOverlayController? { environment.focusDebugOverlayController }
     /// Retained for the app's lifetime because the environment owns its own `cancellables` (the only
     /// subscriptions wiring the focus-poll-interval setting and the global-toggle hotkey rebind to the
     /// runtime). If the environment deallocated when `init` returned, those subscriptions would be
     /// cancelled and both settings would silently stop working until the next relaunch.
-    private let environment: CotabbyAppEnvironment
+    private lazy var environment = CotabbyAppEnvironment()
     private var cancellables = Set<AnyCancellable>()
     private var didStartServices = false
 
     override init() {
-        CotabbyLogger.bootstrap()
-
-        // Build the dependency graph once up front so every scene/view observes the same
-        // long-lived objects for the entire app session.
-        let environment = CotabbyAppEnvironment()
-        self.environment = environment
-        permissionManager = environment.permissionManager
-        runtimeModel = environment.runtimeModel
-        modelDownloadManager = environment.modelDownloadManager
-        focusModel = environment.focusModel
-        inputMonitor = environment.inputMonitor
-        appUpdateManager = environment.appUpdateManager
-        permissionGuidanceController = environment.permissionGuidanceController
-        suggestionSettings = environment.suggestionSettings
-        foundationModelAvailabilityService = environment.foundationModelAvailabilityService
-        powerSourceMonitor = environment.powerSourceMonitor
-        suggestionCoordinator = environment.suggestionCoordinator
-        inlineCommandCoordinator = environment.inlineCommandCoordinator
-        welcomeCoordinator = environment.welcomeCoordinator
-        settingsCoordinator = environment.settingsCoordinator
-        vocabularyWindow = environment.vocabularyWindow
-        speechController = environment.speechController
-        reviewController = environment.reviewController
-        activationIndicatorController = environment.activationIndicatorController
-        focusDebugOverlayController = environment.focusDebugOverlayController
         super.init()
+        // SwiftUI previews also instantiate the app delegate. Its graph constructors register
+        // permission/power/input observers and can warm models, so Canvas must return BEFORE
+        // creating that graph. Computed aliases borrow the same lazy owner in the real app.
+        guard !Self.isRunningForPreviews else { return }
+        CotabbyLogger.bootstrap()
+        _ = environment
 
         // These closures bridge events across subsystems without forcing those subsystems
         // to know about each other directly.
@@ -192,8 +173,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Starts runtime and polling services once AppKit reports that app launch finished.
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard !Self.isRunningUnderXCTest else {
-            CotabbyLogger.app.info("Unit test host detected; skipping production service startup")
+        guard !Self.isRunningUnderXCTest, !Self.isRunningForPreviews else {
+            CotabbyLogger.app.info("Isolated UI/test host detected; skipping production service startup")
             return
         }
 
@@ -251,6 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows _: Bool
     ) -> Bool {
+        guard !Self.isRunningForPreviews else { return false }
         CotabbyLogger.app.info("Opening Settings because Cotabby was explicitly reopened")
         settingsCoordinator.showSettings()
         // The coordinator has already activated or presented the Settings window; returning false
@@ -283,6 +265,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// before Metal teardown. The 1.5s autocomplete grace period never permits freeing live native
     /// work. Ordinary decoding exits promptly; already-started model loading can delay termination.
     func applicationWillTerminate(_ notification: Notification) {
+        guard !Self.isRunningForPreviews else { return }
         // Read-aloud works in Settings even before Accessibility/input services are allowed.
         // Retire its request and playback on every quit path, independently of that startup gate.
         menuBarController?.shutdown()
@@ -368,5 +351,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// crash before a test assertion runs. The environment variable is supplied by XCTest only.
     private static var isRunningUnderXCTest: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    static var isRunningForPreviews: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
 }
