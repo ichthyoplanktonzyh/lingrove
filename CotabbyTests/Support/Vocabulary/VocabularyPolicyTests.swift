@@ -96,6 +96,17 @@ nonisolated struct VocabularyPolicyTests {
         #expect(document.entries[0].examples[0].translationVariants.count == 2)
     }
 
+    @Test func reconciledRangesReanchorExpressionAfterExampleTextEdit() {
+        let updatedText = "🐟 Please keep me posted about the schedule."
+        let ranges = VocabularyPolicy.reconciledRanges(
+            in: updatedText,
+            expression: "Keep me posted",
+            dictionaryForm: "keep someone posted"
+        )
+        #expect(ranges.count == 1)
+        #expect((updatedText as NSString).substring(with: ranges[0].nsRange) == "keep me posted")
+    }
+
     private func fixture(text: String = "Please keep me posted.") throws -> VocabularyCapture {
         let example = try #require(VocabularyPolicy.example(text: text, ranges: [(text as NSString).range(of: "posted")],
             language: .english))

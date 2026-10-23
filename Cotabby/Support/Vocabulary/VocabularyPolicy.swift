@@ -52,6 +52,36 @@ nonisolated enum VocabularyPolicy {
             (text as NSString).rangeOfComposedCharacterSequences(for: range) == range
     }
 
+    /// Reconciles an example's highlight spans after the user edits `example.text` or `expression`
+    /// in the notebook editor. Existing translations, translation variants, and contextual meanings
+    /// remain intact while valid occurrences of the expression (or dictionary form) are re-anchored.
+    static func reconciledRanges(in text: String, expression: String, dictionaryForm: String = "") -> [VocabularyTextRange] {
+        let candidates = [normalized(expression), normalized(dictionaryForm)].filter { !$0.isEmpty }
+        guard !text.isEmpty, !candidates.isEmpty else { return [] }
+        let nsText = text as NSString
+        for needle in candidates {
+            var matches: [VocabularyTextRange] = []
+            var searchRange = NSRange(location: 0, length: nsText.length)
+            while searchRange.location < nsText.length {
+                let found = nsText.range(
+                    of: needle,
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    range: searchRange
+                )
+                guard found.location != NSNotFound, found.length > 0 else { break }
+                let composed = nsText.rangeOfComposedCharacterSequences(for: found)
+                if valid(composed, in: text) {
+                    matches.append(VocabularyTextRange(composed))
+                }
+                let nextLocation = NSMaxRange(found)
+                guard nextLocation > searchRange.location, nextLocation <= nsText.length else { break }
+                searchRange = NSRange(location: nextLocation, length: nsText.length - nextLocation)
+            }
+            if !matches.isEmpty { return matches }
+        }
+        return []
+    }
+
     /// The window's two completeness flags describe acquisition boundaries, not punctuation.
     /// A sentence touching an artificial AX/OCR crop edge stays explicitly a fragment.
     static func example(text: String, ranges: [NSRange], language: LearningLanguage,
