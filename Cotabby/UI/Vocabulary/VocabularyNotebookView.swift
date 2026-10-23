@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// store used by cards and the existing speech controller; this view owns only browsing state.
 struct VocabularyNotebookView: View {
     @AppStorage private var browserMode: String
+    @AppStorage private var listDensity: String
     @StateObject private var graph: VocabularyGraphPresentation
     @State private var selectedTag = ""
     @State private var restoreURL: URL?
@@ -33,6 +34,7 @@ struct VocabularyNotebookView: View {
          learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
          preferences: UserDefaults = .standard) {
         _browserMode = AppStorage(wrappedValue: "list", "vocabularyBrowserMode", store: preferences)
+        _listDensity = AppStorage(wrappedValue: "compact", "vocabularyListDensity", store: preferences)
         _graph = StateObject(wrappedValue: VocabularyGraphPresentation(defaults: preferences))
         self.store = store
         self.speech = speech
@@ -120,7 +122,17 @@ struct VocabularyNotebookView: View {
         }
         .frame(minWidth: 760, minHeight: 460)
         .onAppear { store.loadIfNeeded(); if browserMode == "graph" { graph.reveal(graphSelection) } }
-        .onChange(of: selectedEntry, initial: true) { _, entry in learning?.select(entry, senseID: selection) }
+        .onChange(of: selectedEntry, initial: true) { _, entry in
+            learning?.select(entry, senseID: selection)
+            guard let entry else { return }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+                if listDensity == "compact" && query.isEmpty {
+                    expandedEntries = [entry.id]
+                } else {
+                    expandedEntries.insert(entry.id)
+                }
+            }
+        }
         .onChange(of: selection) { _, _ in
             learning?.select(selectedEntry, senseID: selection)
             if browserMode == "graph" { graph.reveal(graphSelection) }
@@ -254,19 +266,51 @@ struct VocabularyNotebookView: View {
         .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92), value: hasSelection)
     }
 
+    private var isDetailedList: Bool {
+        listDensity == "detailed"
+    }
+
+    private func isEntrySelected(_ entry: VocabularyEntry) -> Bool {
+        guard let selection else { return false }
+        return VocabularySensePolicy.index(selection, in: entry) != nil
+    }
+
+    private func activateHeadword(_ entry: VocabularyEntry) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+            if expandedEntries.contains(entry.id) && isEntrySelected(entry) {
+                expandedEntries.remove(entry.id)
+            } else {
+                if !isDetailedList && query.isEmpty {
+                    expandedEntries = [entry.id]
+                } else {
+                    expandedEntries.insert(entry.id)
+                }
+                if !isEntrySelected(entry) {
+                    selection = entry.senses.first?.id
+                }
+            }
+        }
+    }
+
     private var listBrowser: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 ForEach(visibleEntries) { entry in
                     if entry.senses.count == 1, let singleSense = entry.senses.first {
+                        let isSelected = selection == singleSense.id
                         HStack(alignment: .top, spacing: 8) {
                             if selectingSenses {
                                 senseCheckbox(entry: entry, sense: singleSense)
                                     .padding(.top, 2)
                             }
-                            VocabularySingleEntryRow(entry: entry, sense: singleSense)
+                            VocabularySingleEntryRow(
+                                entry: entry,
+                                sense: singleSense,
+                                showsDetails: isDetailedList || isSelected,
+                                query: query
+                            )
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, isDetailedList || isSelected ? 4 : 2)
                         .tag(singleSense.id)
                         .contextMenu {
                             Button(String(localized: "Export this sense…", table: "Vocabulary")) {
@@ -274,18 +318,32 @@ struct VocabularyNotebookView: View {
                             }
                         }
                     } else {
+                        let isSelected = isEntrySelected(entry)
+                        let isExpanded = expandedEntries.contains(entry.id)
                         DisclosureGroup(isExpanded: Binding(get: { expandedEntries.contains(entry.id) }, set: { expanded in
-                            if expanded { expandedEntries.insert(entry.id) } else { expandedEntries.remove(entry.id) }
+                            if expanded {
+                                if !isDetailedList && query.isEmpty {
+                                    expandedEntries = [entry.id]
+                                } else {
+                                    expandedEntries.insert(entry.id)
+                                }
+                            } else {
+                                expandedEntries.remove(entry.id)
+                            }
                         })) {
-                            ForEach(entry.senses) { sense in
+                            ForEach(Array(entry.senses.enumerated()), id: \.element.id) { index, sense in
                                 HStack(alignment: .top, spacing: 8) {
                                     if selectingSenses {
                                         senseCheckbox(entry: entry, sense: sense)
                                             .padding(.top, 2)
                                     }
-                                    VocabularySenseSummary(sense: sense)
+                                    VocabularySidebarSenseRow(
+                                        sense: sense,
+                                        index: index + 1,
+                                        query: query
+                                    )
                                 }
-                                .padding(.vertical, 4)
+                                .padding(.vertical, 3)
                                 .tag(sense.id)
                                 .contextMenu {
                                     Button(String(localized: "Export this sense…", table: "Vocabulary")) {
@@ -294,24 +352,14 @@ struct VocabularyNotebookView: View {
                                 }
                             }
                         } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(entry.expression)
-                                    .font(.headline)
-                                    .lineLimit(2)
-                                Spacer(minLength: 4)
-                                Text(entry.language.compactLabel)
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
-                                Text("\(entry.senses.count)")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(CotabbyBrand.accent)
-                                    .padding(.horizontal, 5.5)
-                                    .padding(.vertical, 1)
-                                    .background(Capsule(style: .continuous).fill(CotabbyBrand.accent.opacity(0.12)))
+                            VocabularyMultiSenseHeaderRow(
+                                entry: entry,
+                                showsSummary: isDetailedList && !isExpanded,
+                                isSelected: isSelected
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                activateHeadword(entry)
                             }
                         }
                     }
@@ -439,6 +487,26 @@ struct VocabularyNotebookView: View {
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
+
+            Button {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+                    listDensity = isDetailedList ? "compact" : "detailed"
+                    if !isDetailedList, let currentID = selectedEntry?.id, query.isEmpty {
+                        expandedEntries = [currentID]
+                    }
+                }
+            } label: {
+                Image(systemName: isDetailedList ? "rectangle.grid.1x2" : "list.bullet")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isDetailedList ? CotabbyBrand.accent : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(isDetailedList
+                ? String(localized: "Detailed list", table: "Vocabulary")
+                : String(localized: "Compact list", table: "Vocabulary"))
 
             Button {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 1.0)) {
@@ -1144,14 +1212,28 @@ extension VocabularyEntry.Kind {
     }
 }
 
-/// Flat, scannable sidebar row for the common single-sense entry case. Clicking selects the
-/// sense directly without requiring a disclosure-triangle expansion first.
+/// Flat, scannable sidebar row for the single-sense entry case.
+/// In Compact mode (`showsDetails == false`), it renders strictly as a single line (headword +
+/// lightweight badges) so thousands of words can be scanned effortlessly; when selected or in
+/// Detailed mode (`showsDetails == true`), it expands in-place to reveal its core meaning.
 private struct VocabularySingleEntryRow: View {
     let entry: VocabularyEntry
     let sense: VocabularySense
+    let showsDetails: Bool
+    let query: String
+
+    private var matchedExampleSnippet: String? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              !entry.expression.localizedStandardContains(trimmed),
+              !sense.displayTitle.localizedStandardContains(trimmed) else { return nil }
+        return sense.examples.first {
+            $0.text.localizedStandardContains(trimmed) || $0.translation.localizedStandardContains(trimmed)
+        }?.text
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(entry.expression)
                     .font(.headline)
@@ -1170,20 +1252,110 @@ private struct VocabularySingleEntryRow: View {
                     .padding(.vertical, 1)
                     .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
             }
-            Text(sense.displayTitle)
-                .font(.callout)
-                .foregroundStyle(.primary.opacity(0.88))
-                .lineLimit(1)
-            if let example = sense.examples.first {
-                Text(example.text)
+            if showsDetails {
+                Text(sense.displayTitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let snippet = matchedExampleSnippet {
+                Text(snippet)
                     .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Full-row clickable header for multi-sense entries in the sidebar. Clicking anywhere on this
+/// header selects and expands the entry in-place without forcing the user to aim at the tiny
+/// disclosure triangle.
+private struct VocabularyMultiSenseHeaderRow: View {
+    let entry: VocabularyEntry
+    let showsSummary: Bool
+    let isSelected: Bool
+
+    private var combinedSummary: String {
+        entry.senses.map(\.displayTitle).filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(entry.expression)
+                    .font(.headline)
+                    .foregroundStyle(isSelected ? CotabbyBrand.accent : .primary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Text(entry.language.compactLabel)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
+                Text("\(entry.senses.count)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(CotabbyBrand.accent)
+                    .padding(.horizontal, 5.5)
+                    .padding(.vertical, 1)
+                    .background(Capsule(style: .continuous).fill(CotabbyBrand.accent.opacity(0.12)))
+            }
+            if showsSummary && !combinedSummary.isEmpty {
+                Text(combinedSummary)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-            } else if !sense.tags.isEmpty {
-                Text(sense.tags.map { "#\($0)" }.joined(separator: " "))
-                    .font(.caption2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Compact child row for an expanded multi-sense entry in the sidebar. Keeps each sense to a
+/// clean numbered meaning line plus usage count so expanding a word never floods the list with
+/// multi-line example paragraphs.
+private struct VocabularySidebarSenseRow: View {
+    let sense: VocabularySense
+    let index: Int
+    let query: String
+
+    private var matchedExampleSnippet: String? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !sense.displayTitle.localizedStandardContains(trimmed) else { return nil }
+        return sense.examples.first {
+            $0.text.localizedStandardContains(trimmed) || $0.translation.localizedStandardContains(trimmed)
+        }?.text
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(index)")
+                    .font(.system(size: 10, weight: .bold))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .frame(width: 15, height: 15)
+                    .background(Circle().fill(Color.primary.opacity(0.07)))
+                Text(sense.displayTitle)
+                    .font(.subheadline.weight(.medium))
                     .lineLimit(1)
+                Spacer(minLength: 4)
+                if !sense.examples.isEmpty {
+                    Text("\(sense.examples.count)")
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            if let snippet = matchedExampleSnippet {
+                Text(snippet)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .padding(.leading, 21)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
