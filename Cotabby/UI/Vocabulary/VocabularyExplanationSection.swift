@@ -12,18 +12,23 @@ struct VocabularyExplanationSection: View {
 
     var body: some View {
         if let session = learning.explanations[VocabularyNotebookSession.key(example)] {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
+            let meaning = example?.meaning ?? sense.meaning
+            let origin = example?.meaningOrigin ?? sense.meaningOrigin
+            let hasContent = !meaning.isEmpty || session.record != nil || session.isGenerating || session.error != nil
+            VStack(alignment: .leading, spacing: hasContent ? 8 : 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(session.record != nil || session.isGenerating ? CotabbyBrand.accent : .secondary)
+                        .accessibilityHidden(true)
                     Text(example == nil ? String(localized: "General meaning", table: "Vocabulary")
                         : String(localized: "Meaning in this context", table: "Vocabulary"))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                     Spacer()
                     LearningExplanationButton(session: session,
                         prepare: { learning.activateExplanation(VocabularyNotebookSession.key(example)) },
                         configure: { (session.service as? LearningExplanationService)?.configure?() })
                 }
-                let meaning = example?.meaning ?? sense.meaning
-                let origin = example?.meaningOrigin ?? sense.meaningOrigin
                 LearningExplanationView(session: session,
                     configure: { (session.service as? LearningExplanationService)?.configure?() },
                     adopt: { record in
@@ -32,6 +37,16 @@ struct VocabularyExplanationSection: View {
                     }, presentation: .contextual,
                     meaning: example == nil || origin == .user || session.record == nil ? meaning : nil)
             }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(0.035))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+            )
         }
     }
 }

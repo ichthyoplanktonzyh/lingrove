@@ -6,15 +6,62 @@ import SwiftUI
 struct VocabularyDictionarySection: View {
     let entry: VocabularyEntry
     @ObservedObject var learning: VocabularyNotebookSession
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expanded = false
+    @State private var hoveringHeader = false
 
     var body: some View {
-        DisclosureGroup(String(localized: "Dictionary", table: "Vocabulary"), isExpanded: $expanded) {
-            VocabularyLiveDictionaryContent(session: learning.dictionary)
-                .padding(.top, 8)
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.94)) {
+                    expanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "character.book.closed")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(expanded ? CotabbyBrand.accent : .secondary)
+                    Text(String(localized: "Dictionary", table: "Vocabulary"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    if entry.dictionaryForm != entry.expression {
+                        Text(entry.dictionaryForm)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hoveringHeader = $0 }
+            .background(Color.primary.opacity(hoveringHeader && !expanded ? 0.025 : 0))
+
+            if expanded {
+                Divider().opacity(0.5)
+                VocabularyLiveDictionaryContent(session: learning.dictionary)
+                    .padding(14)
+                    .transition(.opacity)
+            }
         }
-        .onChange(of: expanded) { _, expanded in
-            if expanded { learning.showDictionary(entry) } else { learning.hideDictionary() }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.075), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onChange(of: expanded) { _, isExpanded in
+            if isExpanded { learning.showDictionary(entry) } else { learning.hideDictionary() }
         }
         .onChange(of: entry.dictionaryForm) { _, _ in if expanded { learning.showDictionary(entry) } }
         .onDisappear {
