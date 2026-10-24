@@ -8,7 +8,7 @@ installed copies discover it. App lifecycle stays in `AppUpdateManager`, packagi
 
 - The production `Lingrove` scheme produces `Lingrove.app` with Bundle ID
   `io.ichthyoplanktonzyh.lingrove`; `Lingrove Dev` produces `Lingrove Dev.app` with
-  `io.ichthyoplanktonzyh.lingrove.dev`. The internal target/module names remain unchanged.
+  `io.ichthyoplanktonzyh.lingrove.dev`. First-party targets and modules also use Lingrove; installed Bundle IDs and storage identities remain unchanged.
 - Sparkle is included but never started: `LingroveUpdatesEnabled` is false, automatic checks and
   installation are off, and there is no inherited `SUFeedURL` or `SUPublicEDKey`.
 - The manual update action opens this repository's GitHub Releases page. There is no independent
@@ -207,7 +207,7 @@ and both must belong to Lingrove's release process.
    <Sparkle tools>/generate_keys --account lingrove
    ```
 
-   Put the printed public key in `SUPublicEDKey` in `CotabbyInfo.plist`. Keep the private key in
+   Put the printed public key in `SUPublicEDKey` in `LingroveInfo.plist`. Keep the private key in
    Keychain, back it up securely, and provide the exported key to CI as
    `SPARKLE_ED25519_PRIVATE_KEY`. Do not put it in the repository or command output. The existing
    release job checks that CI's private key matches the bundled public key.
@@ -229,7 +229,7 @@ and both must belong to Lingrove's release process.
 
 ## Native dependency and historical releases
 
-Run `scripts/prepare_cotabby_workspace.sh` before building: it pins CotabbyInference and applies
+Run `scripts/prepare_lingrove_workspace.sh` before building: it pins CotabbyInference and applies
 `patches/cotabbyinference-upstream-pending.patch`. Do not remove the patch before a compatible
 package revision is available. See CONTRIBUTING.md for builds and tests.
 

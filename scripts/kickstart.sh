@@ -188,7 +188,7 @@ step "Building signed Release DMG"
 mkdir -p "$OUT_DIR"
 archive="$OUT_DIR/Lingrove.xcarchive"
 rm -rf "$archive" "$DMG_PATH"
-"$REPO_ROOT/scripts/prepare_cotabby_workspace.sh"
+"$REPO_ROOT/scripts/prepare_lingrove_workspace.sh"
 
 marketing_version="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
 marketing_version="${marketing_version:-0.0.0}-kickstart"
@@ -196,7 +196,7 @@ sign_settings=(CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$signing_identity")
 [[ "$signing_identity" == "-" ]] || sign_settings+=(DEVELOPMENT_TEAM="$team_id" OTHER_CODE_SIGN_FLAGS="--timestamp")
 
 xcodebuild archive \
-    -workspace "$REPO_ROOT/build/cotabby-dependencies/Cotabby.xcworkspace" \
+    -workspace "$REPO_ROOT/build/lingrove-dependencies/Lingrove.xcworkspace" \
     -scheme Lingrove \
     -configuration Release \
     -archivePath "$archive" \
@@ -258,5 +258,5 @@ if $open_dmg; then
     note "1. Drag Lingrove into Applications in the DMG window, then open it from Applications."
     note "2. Go through onboarding and grant the permissions it asks for."
     note "3. Quit and reopen Lingrove to confirm the permissions stuck."
-    note "Logs: /usr/bin/log stream --predicate 'subsystem == \"com.cotabby.app\"' --level info"
+    note "Logs: /usr/bin/log stream --predicate 'subsystem == \"io.ichthyoplanktonzyh.lingrove\"' --level info"
 fi

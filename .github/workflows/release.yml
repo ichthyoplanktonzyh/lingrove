@@ -37,7 +37,7 @@ concurrency:
 env:
   APP_NAME: Lingrove
   DMG_NAME: Lingrove.dmg
-  WORKSPACE_PATH: build/cotabby-dependencies/Cotabby.xcworkspace
+  WORKSPACE_PATH: build/lingrove-dependencies/Lingrove.xcworkspace
   SCHEME: Lingrove
   CONFIGURATION: Release
   # Optional. Without a domain, deploy to this repository's standard GitHub Pages URL.
@@ -90,7 +90,7 @@ jobs:
         run: brew install cmake ninja
 
       - name: Prepare matching inference dependency
-        run: scripts/prepare_cotabby_workspace.sh
+        run: scripts/prepare_lingrove_workspace.sh
 
       - name: Toolchain info
         run: |
@@ -121,7 +121,7 @@ jobs:
 
           sparkle_version="$(python3 -c "
           import json, sys
-          resolved = json.load(open('build/cotabby-dependencies/Cotabby.xcworkspace/xcshareddata/swiftpm/Package.resolved'))
+          resolved = json.load(open('build/lingrove-dependencies/Lingrove.xcworkspace/xcshareddata/swiftpm/Package.resolved'))
           pins = {p['identity']: p for p in resolved['pins']}
           if 'sparkle' not in pins:
               print('Sparkle not found in Package.resolved', file=sys.stderr)
@@ -201,11 +201,11 @@ jobs:
 
           expected_public_key="$(/usr/libexec/PlistBuddy \
             -c 'Print :SUPublicEDKey' \
-            CotabbyInfo.plist)"
+            LingroveInfo.plist)"
           actual_public_key="$("${GENERATE_KEYS_TOOL}" -p)"
 
           if [[ "${actual_public_key}" != "${expected_public_key}" ]]; then
-            echo "Sparkle private key does not match SUPublicEDKey in CotabbyInfo.plist." >&2
+            echo "Sparkle private key does not match SUPublicEDKey in LingroveInfo.plist." >&2
             exit 1
           fi
 
@@ -284,7 +284,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          keychain_path="${RUNNER_TEMP}/cotabby-release.keychain-db"
+          keychain_path="${RUNNER_TEMP}/lingrove-release.keychain-db"
           keychain_password="$(uuidgen)"
           certificate_path="${RUNNER_TEMP}/developer-id-application.p12"
 
@@ -476,7 +476,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          xcrun notarytool store-credentials "cotabby-notarytool-profile" \
+          xcrun notarytool store-credentials "lingrove-notarytool-profile" \
             --apple-id "${APPLE_ID}" \
             --team-id "${APPLE_TEAM_ID}" \
             --password "${APPLE_APP_SPECIFIC_PASSWORD}"
@@ -542,7 +542,7 @@ jobs:
             # Apple only returns a useful log once processing has completed. This
             # best-effort call still captures stderr when the log is unavailable.
             xcrun notarytool log "${submission_id}" \
-              --keychain-profile "cotabby-notarytool-profile" \
+              --keychain-profile "lingrove-notarytool-profile" \
               "${log_json}" \
               > "${log_stdout}" \
               2> "${log_stderr}" || true
@@ -551,7 +551,7 @@ jobs:
           trap write_summary EXIT
 
           if ! xcrun notarytool submit "${dmg_path}" \
-            --keychain-profile "cotabby-notarytool-profile" \
+            --keychain-profile "lingrove-notarytool-profile" \
             --output-format json \
             > "${submit_json}" \
             2> "${submit_stderr}"; then
@@ -576,7 +576,7 @@ jobs:
             timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
             if xcrun notarytool info "${submission_id}" \
-              --keychain-profile "cotabby-notarytool-profile" \
+              --keychain-profile "lingrove-notarytool-profile" \
               --output-format json \
               > "${info_json}" \
               2> "${info_stderr}"; then

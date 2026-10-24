@@ -196,7 +196,7 @@ def main():
     commands.add_parser('sync-regions')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    paths = [Path(p) for p in args.catalog] if args.catalog else sorted((root / 'Cotabby/Resources').glob('*.xcstrings'))
+    paths = [Path(p) for p in args.catalog] if args.catalog else sorted((root / 'Lingrove/Resources').glob('*.xcstrings'))
     catalogs = [(p, read_json(p)) for p in paths]
     if not catalogs:
         parser.error('No String Catalogs found')
@@ -206,7 +206,7 @@ def main():
         elif args.command == 'merge':
             merge(catalogs, args.language, read_json(args.input))
         elif args.command == 'sync-regions':
-            sync_regions(catalogs, root / 'Cotabby.xcodeproj/project.pbxproj')
+            sync_regions(catalogs, root / 'Lingrove.xcodeproj/project.pbxproj')
         else:
             validate(catalogs)
     except (ValueError, KeyError) as error:

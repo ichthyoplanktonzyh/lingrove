@@ -4,7 +4,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
         "line": 53
       },
       "reason": "Line should be 140 characters or less; currently it has 152 characters",
@@ -19,7 +19,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LanguageLearningCoordinator.swift",
         "line": 54
       },
       "reason": "Line should be 140 characters or less; currently it has 155 characters",
@@ -34,7 +34,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
         "line": 119
       },
       "reason": "Line should be 140 characters or less; currently it has 156 characters",
@@ -49,7 +49,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
         "line": 120
       },
       "reason": "Line should be 140 characters or less; currently it has 151 characters",
@@ -64,7 +64,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
         "line": 406
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 12",
@@ -79,7 +79,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
+        "file": "Lingrove/App/Coordinators/InlineFeatures/LearningSentencePreviewCoordinator.swift",
         "line": 586
       },
       "reason": "Line should be 140 characters or less; currently it has 181 characters",
@@ -94,7 +94,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 52
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 13",
@@ -109,7 +109,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 378
       },
       "reason": "Line should be 140 characters or less; currently it has 142 characters",
@@ -124,7 +124,7 @@
     "violation": {
       "location": {
         "character": 22,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 448
       },
       "reason": "Closure parameters should be on the same line as opening brace",
@@ -139,7 +139,7 @@
     "violation": {
       "location": {
         "character": 48,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 448
       },
       "reason": "Closure parameters should be on the same line as opening brace",
@@ -154,7 +154,7 @@
     "violation": {
       "location": {
         "character": 22,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 449
       },
       "reason": "Closure parameters should be on the same line as opening brace",
@@ -169,7 +169,7 @@
     "violation": {
       "location": {
         "character": 39,
-        "file": "Cotabby/App/Core/CotabbyAppEnvironment.swift",
+        "file": "Lingrove/App/Core/LingroveAppEnvironment.swift",
         "line": 449
       },
       "reason": "Closure parameters should be on the same line as opening brace",
@@ -184,7 +184,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Models/LanguageLearning/LanguageLearningSettings.swift",
+        "file": "Lingrove/Models/LanguageLearning/LanguageLearningSettings.swift",
         "line": 159
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -199,7 +199,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningLocalExecution.swift",
         "line": 9
       },
       "reason": "Function should have 5 parameters or less: it currently has 8",
@@ -214,7 +214,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningLocalExecution.swift",
         "line": 16
       },
       "reason": "Function should have 5 parameters or less: it currently has 7",
@@ -229,7 +229,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningLocalExecution.swift",
         "line": 21
       },
       "reason": "Function should have 5 parameters or less: it currently has 7",
@@ -244,7 +244,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningLocalExecution.swift",
         "line": 34
       },
       "reason": "Function should have 5 parameters or less: it currently has 7",
@@ -259,7 +259,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/LanguageLearning/LearningLocalExecution.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningLocalExecution.swift",
         "line": 43
       },
       "reason": "Function should have 5 parameters or less: it currently has 7",
@@ -274,7 +274,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningModelSettings.swift",
         "line": 101
       },
       "reason": "Line should be 140 characters or less; currently it has 142 characters",
@@ -289,7 +289,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningModelSettings.swift",
         "line": 102
       },
       "reason": "Line should be 140 characters or less; currently it has 148 characters",
@@ -304,7 +304,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Models/LanguageLearning/LearningModelSettings.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningModelSettings.swift",
         "line": 131
       },
       "reason": "Line should be 140 characters or less; currently it has 156 characters",
@@ -319,7 +319,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Models/LanguageLearning/LearningSentenceModels.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningSentenceModels.swift",
         "line": 51
       },
       "reason": "Line should be 140 characters or less; currently it has 146 characters",
@@ -334,7 +334,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Models/LanguageLearning/LearningUnitModels.swift",
+        "file": "Lingrove/Models/LanguageLearning/LearningUnitModels.swift",
         "line": 14
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -349,7 +349,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/Models/Runtime/Metrics/ModelRequestMetrics.swift",
+        "file": "Lingrove/Models/Runtime/Metrics/ModelRequestMetrics.swift",
         "line": 63
       },
       "reason": "Variable name 'c' should be between 2 and 40 characters long",
@@ -364,7 +364,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Models/Settings/SuggestionSettingsModel+Context.swift",
+        "file": "Lingrove/Models/Settings/SuggestionSettingsModel+Context.swift",
         "line": 71
       },
       "reason": "Function should have 5 parameters or less: it currently has 6",
@@ -379,7 +379,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/Services/Focus/Resolution/FocusSnapshotResolver.swift",
+        "file": "Lingrove/Services/Focus/Resolution/FocusSnapshotResolver.swift",
         "line": 1555
       },
       "reason": "Function should have 5 parameters or less: it currently has 6",
@@ -394,7 +394,7 @@
     "violation": {
       "location": {
         "character": 19,
-        "file": "Cotabby/Services/LanguageLearning/LearningAnalysisService.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningAnalysisService.swift",
         "line": 25
       },
       "reason": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
@@ -409,7 +409,7 @@
     "violation": {
       "location": {
         "character": 19,
-        "file": "Cotabby/Services/LanguageLearning/LearningAnalysisService.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningAnalysisService.swift",
         "line": 26
       },
       "reason": "Function parameters should be aligned vertically if they're in multiple lines in a declaration",
@@ -424,7 +424,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/LanguageLearning/LearningExpressionService+Sentence.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningExpressionService+Sentence.swift",
         "line": 26
       },
       "reason": "Prefer implicit returns in closures, functions and getters",
@@ -439,7 +439,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningLocalRuntime.swift",
         "line": 52
       },
       "reason": "Function should have 5 parameters or less: it currently has 6",
@@ -454,7 +454,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningLocalRuntime.swift",
         "line": 61
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 12",
@@ -469,7 +469,7 @@
     "violation": {
       "location": {
         "character": 29,
-        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningLocalRuntime.swift",
         "line": 131
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -484,7 +484,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Services/LanguageLearning/LearningLocalRuntime.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningLocalRuntime.swift",
         "line": 144
       },
       "reason": "Function should have 5 parameters or less: it currently has 7",
@@ -499,7 +499,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningModelController.swift",
         "line": 215
       },
       "reason": "Line should be 140 characters or less; currently it has 142 characters",
@@ -514,7 +514,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningModelController.swift",
         "line": 229
       },
       "reason": "Function should have 5 parameters or less: it currently has 6",
@@ -529,7 +529,7 @@
     "violation": {
       "location": {
         "character": 71,
-        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningModelController.swift",
         "line": 244
       },
       "reason": "Trailing closure syntax should not be used when passing more than one closure argument",
@@ -544,7 +544,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningModelController.swift",
         "line": 291
       },
       "reason": "Line should be 140 characters or less; currently it has 145 characters",
@@ -558,7 +558,7 @@
     "text": "",
     "violation": {
       "location": {
-        "file": "Cotabby/Services/LanguageLearning/LearningModelController.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningModelController.swift",
         "line": 379
       },
       "reason": "Files should have a single trailing newline",
@@ -573,7 +573,7 @@
     "violation": {
       "location": {
         "character": 26,
-        "file": "Cotabby/Services/LanguageLearning/LearningRequestTelemetry.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningRequestTelemetry.swift",
         "line": 38
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -588,7 +588,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/LanguageLearning/LearningTranslationService.swift",
+        "file": "Lingrove/Services/LanguageLearning/LearningTranslationService.swift",
         "line": 19
       },
       "reason": "Prefer implicit returns in closures, functions and getters",
@@ -603,7 +603,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Services/Presentation/LearningSentencePanel.swift",
+        "file": "Lingrove/Services/Presentation/LearningSentencePanel.swift",
         "line": 157
       },
       "reason": "Line should be 140 characters or less; currently it has 146 characters",
@@ -618,7 +618,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "file": "Lingrove/Services/Runtime/Llama/LlamaRuntimeCore.swift",
         "line": 47
       },
       "reason": "Prefer implicit returns in closures, functions and getters",
@@ -633,7 +633,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "file": "Lingrove/Services/Runtime/Llama/LlamaRuntimeCore.swift",
         "line": 120
       },
       "reason": "Prefer implicit returns in closures, functions and getters",
@@ -648,7 +648,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/Runtime/Llama/LlamaRuntimeCore.swift",
+        "file": "Lingrove/Services/Runtime/Llama/LlamaRuntimeCore.swift",
         "line": 163
       },
       "reason": "Prefer implicit returns in closures, functions and getters",
@@ -663,7 +663,7 @@
     "violation": {
       "location": {
         "character": 69,
-        "file": "Cotabby/Services/Runtime/Native/NativeLlamaSession.swift",
+        "file": "Lingrove/Services/Runtime/Native/NativeLlamaSession.swift",
         "line": 72
       },
       "reason": "Trailing closure syntax should not be used when passing more than one closure argument",
@@ -678,7 +678,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/Services/Runtime/SuggestionEngineRouter.swift",
+        "file": "Lingrove/Services/Runtime/SuggestionEngineRouter.swift",
         "line": 64
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -693,7 +693,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Services/Runtime/SuggestionEngineRouter.swift",
+        "file": "Lingrove/Services/Runtime/SuggestionEngineRouter.swift",
         "line": 142
       },
       "reason": "Line should be 140 characters or less; currently it has 150 characters",
@@ -708,7 +708,7 @@
     "violation": {
       "location": {
         "character": 23,
-        "file": "Cotabby/Support/LanguageLearning/LearningAlignmentParser.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningAlignmentParser.swift",
         "line": 33
       },
       "reason": "Tuples should have at most 2 members",
@@ -723,7 +723,7 @@
     "violation": {
       "location": {
         "character": 30,
-        "file": "Cotabby/Support/LanguageLearning/LearningAlignmentParser.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningAlignmentParser.swift",
         "line": 36
       },
       "reason": "Tuples should have at most 2 members",
@@ -738,7 +738,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningAnalysisPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningAnalysisPrompt.swift",
         "line": 17
       },
       "reason": "Line should be 200 characters or less; currently it has 288 characters",
@@ -753,7 +753,7 @@
     "violation": {
       "location": {
         "character": 11,
-        "file": "Cotabby/Support/LanguageLearning/LearningAnalysisPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningAnalysisPrompt.swift",
         "line": 22
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -768,7 +768,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 7
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 11",
@@ -783,7 +783,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 78
       },
       "reason": "Line should be 140 characters or less; currently it has 157 characters",
@@ -798,7 +798,7 @@
     "violation": {
       "location": {
         "character": 61,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 87
       },
       "reason": "Tuples should have at most 2 members",
@@ -813,7 +813,7 @@
     "violation": {
       "location": {
         "character": 20,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 128
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -828,7 +828,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 139
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -843,7 +843,7 @@
     "violation": {
       "location": {
         "character": 86,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 146
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -858,7 +858,7 @@
     "violation": {
       "location": {
         "character": 73,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 148
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -873,7 +873,7 @@
     "violation": {
       "location": {
         "character": 87,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 167
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -888,7 +888,7 @@
     "violation": {
       "location": {
         "character": 76,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 168
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -903,7 +903,7 @@
     "violation": {
       "location": {
         "character": 95,
-        "file": "Cotabby/Support/LanguageLearning/LearningLocalPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningLocalPrompt.swift",
         "line": 169
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -918,7 +918,7 @@
     "violation": {
       "location": {
         "character": 12,
-        "file": "Cotabby/Support/LanguageLearning/LearningTranslationBudget.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningTranslationBudget.swift",
         "line": 23
       },
       "reason": "Function should have 5 parameters or less: it currently has 8",
@@ -933,7 +933,7 @@
     "violation": {
       "location": {
         "character": 73,
-        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningTranslationPrompt.swift",
         "line": 25
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -948,7 +948,7 @@
     "violation": {
       "location": {
         "character": 88,
-        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningTranslationPrompt.swift",
         "line": 26
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -963,7 +963,7 @@
     "violation": {
       "location": {
         "character": 48,
-        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningTranslationPrompt.swift",
         "line": 50
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -978,7 +978,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningTranslationPrompt.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningTranslationPrompt.swift",
         "line": 74
       },
       "reason": "Line should be 140 characters or less; currently it has 191 characters",
@@ -993,7 +993,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 71
       },
       "reason": "Line should be 140 characters or less; currently it has 172 characters",
@@ -1008,7 +1008,7 @@
     "violation": {
       "location": {
         "character": 13,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 87
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 14",
@@ -1023,7 +1023,7 @@
     "violation": {
       "location": {
         "character": 12,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 88
       },
       "reason": "Tuples should have at most 2 members",
@@ -1038,7 +1038,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 98
       },
       "reason": "Line should be 140 characters or less; currently it has 162 characters",
@@ -1053,7 +1053,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 100
       },
       "reason": "Line should be 140 characters or less; currently it has 146 characters",
@@ -1068,7 +1068,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 103
       },
       "reason": "Line should be 140 characters or less; currently it has 176 characters",
@@ -1083,7 +1083,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 109
       },
       "reason": "Line should be 140 characters or less; currently it has 162 characters",
@@ -1098,7 +1098,7 @@
     "violation": {
       "location": {
         "character": 67,
-        "file": "Cotabby/Support/LanguageLearning/LearningUnitRecognizer.swift",
+        "file": "Lingrove/Support/LanguageLearning/LearningUnitRecognizer.swift",
         "line": 111
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -1113,7 +1113,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/Prompting/BaseCompletionPromptRenderer.swift",
+        "file": "Lingrove/Support/Prompting/BaseCompletionPromptRenderer.swift",
         "line": 132
       },
       "reason": "Line should be 140 characters or less; currently it has 141 characters",
@@ -1128,7 +1128,7 @@
     "violation": {
       "location": {
         "character": 21,
-        "file": "Cotabby/Support/Prompting/FoundationModelPromptRenderer.swift",
+        "file": "Lingrove/Support/Prompting/FoundationModelPromptRenderer.swift",
         "line": 96
       },
       "reason": "Tuples should have at most 2 members",
@@ -1143,7 +1143,7 @@
     "violation": {
       "location": {
         "character": 5,
-        "file": "Cotabby/Support/Prompting/FoundationModelPromptRenderer.swift",
+        "file": "Lingrove/Support/Prompting/FoundationModelPromptRenderer.swift",
         "line": 125
       },
       "reason": "Function should have complexity 10 or less; currently complexity is 11",
@@ -1158,7 +1158,7 @@
     "violation": {
       "location": {
         "character": 16,
-        "file": "Cotabby/Support/Prompting/ModelContextBudget.swift",
+        "file": "Lingrove/Support/Prompting/ModelContextBudget.swift",
         "line": 29
       },
       "reason": "Prefer failable `String(bytes:encoding:)` initializer when converting `Data` to `String`",
@@ -1173,7 +1173,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/Support/Prompting/ModelContextBudget.swift",
+        "file": "Lingrove/Support/Prompting/ModelContextBudget.swift",
         "line": 52
       },
       "reason": "Line should be 140 characters or less; currently it has 158 characters",
@@ -1188,7 +1188,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/InlineFeatures/LearningDetailCard.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningDetailCard.swift",
         "line": 11
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1203,7 +1203,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceCard.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceCard.swift",
         "line": 15
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1218,7 +1218,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceCard.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceCard.swift",
         "line": 127
       },
       "reason": "Line should be 140 characters or less; currently it has 145 characters",
@@ -1233,7 +1233,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
         "line": 13
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1248,7 +1248,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
         "line": 17
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1263,7 +1263,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
         "line": 150
       },
       "reason": "Line should be 140 characters or less; currently it has 143 characters",
@@ -1278,7 +1278,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
         "line": 153
       },
       "reason": "Line should be 140 characters or less; currently it has 143 characters",
@@ -1293,7 +1293,7 @@
     "violation": {
       "location": {
         "character": 93,
-        "file": "Cotabby/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
+        "file": "Lingrove/UI/InlineFeatures/LearningSentenceDictionaryText.swift",
         "line": 169
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -1308,7 +1308,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Onboarding/Welcome/WelcomeKeybindStepView.swift",
+        "file": "Lingrove/UI/Onboarding/Welcome/WelcomeKeybindStepView.swift",
         "line": 30
       },
       "reason": "Line should be 140 characters or less; currently it has 141 characters",
@@ -1323,7 +1323,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Components/Controls/AppShortcutSection.swift",
+        "file": "Lingrove/UI/Settings/Components/Controls/AppShortcutSection.swift",
         "line": 43
       },
       "reason": "Line should be 140 characters or less; currently it has 160 characters",
@@ -1338,7 +1338,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/Settings/ModelManagement/DownloadableModelCatalogView.swift",
+        "file": "Lingrove/UI/Settings/ModelManagement/DownloadableModelCatalogView.swift",
         "line": 14
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1353,7 +1353,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/Settings/ModelManagement/InstalledRuntimeModelRow.swift",
+        "file": "Lingrove/UI/Settings/ModelManagement/InstalledRuntimeModelRow.swift",
         "line": 9
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1368,7 +1368,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
+        "file": "Lingrove/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
         "line": 11
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1383,7 +1383,7 @@
     "violation": {
       "location": {
         "character": 101,
-        "file": "Cotabby/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
+        "file": "Lingrove/UI/Settings/ModelManagement/ModelEndpointConnectionSection.swift",
         "line": 36
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -1398,7 +1398,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Apps/PerAppShortcutRowsView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Apps/PerAppShortcutRowsView.swift",
         "line": 14
       },
       "reason": "Limit vertical whitespace to a single empty line; currently 2",
@@ -1413,7 +1413,7 @@
     "violation": {
       "location": {
         "character": 108,
-        "file": "Cotabby/UI/Settings/Panes/Engine/EngineAndModelPaneView+Endpoint.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/EngineAndModelPaneView+Endpoint.swift",
         "line": 18
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -1428,7 +1428,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
         "line": 86
       },
       "reason": "Line should be 140 characters or less; currently it has 143 characters",
@@ -1443,7 +1443,7 @@
     "violation": {
       "location": {
         "character": 17,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView+Power.swift",
         "line": 99
       },
       "reason": "Using ternary to call Void functions should be avoided",
@@ -1458,7 +1458,7 @@
     "violation": {
       "location": {
         "character": 9,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 11
       },
       "reason": "Optional should be implicitly initialized without nil",
@@ -1473,7 +1473,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 33
       },
       "reason": "Line should be 140 characters or less; currently it has 163 characters",
@@ -1488,7 +1488,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 36
       },
       "reason": "Line should be 140 characters or less; currently it has 153 characters",
@@ -1503,7 +1503,7 @@
     "violation": {
       "location": {
         "character": 77,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 71
       },
       "reason": "Else and catch should be on the same line, one space after the previous declaration",
@@ -1518,7 +1518,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 143
       },
       "reason": "Line should be 140 characters or less; currently it has 150 characters",
@@ -1533,7 +1533,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
+        "file": "Lingrove/UI/Settings/Panes/Engine/LearningModelConfigurationView.swift",
         "line": 174
       },
       "reason": "Line should be 140 characters or less; currently it has 141 characters",
@@ -1548,7 +1548,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "file": "Lingrove/UI/Settings/Panes/LanguageLearningSection.swift",
         "line": 97
       },
       "reason": "Line should be 140 characters or less; currently it has 141 characters",
@@ -1563,7 +1563,7 @@
     "violation": {
       "location": {
         "character": 17,
-        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "file": "Lingrove/UI/Settings/Panes/LanguageLearningSection.swift",
         "line": 166
       },
       "reason": "Using ternary to call Void functions should be avoided",
@@ -1578,7 +1578,7 @@
     "violation": {
       "location": {
         "character": 17,
-        "file": "Cotabby/UI/Settings/Panes/LanguageLearningSection.swift",
+        "file": "Lingrove/UI/Settings/Panes/LanguageLearningSection.swift",
         "line": 172
       },
       "reason": "Using ternary to call Void functions should be avoided",
@@ -1593,7 +1593,7 @@
     "violation": {
       "location": {
         "character": 1,
-        "file": "Cotabby/UI/Settings/Panes/ShortcutsPaneView.swift",
+        "file": "Lingrove/UI/Settings/Panes/ShortcutsPaneView.swift",
         "line": 145
       },
       "reason": "Line should be 140 characters or less; currently it has 141 characters",

@@ -1,0 +1,220 @@
+import Foundation
+import Testing
+@testable import Lingrove
+
+/// Checks the compiled bundle rather than only the catalog JSON. This catches a catalog omitted
+/// from the target, a wrong table name, or plural format arguments that fail at runtime after a
+/// structurally valid translator import. No inference or production service startup is needed.
+@MainActor
+struct LocalizationResourceTests {
+    static let translatedLanguages = [
+        "zh-Hans", "zh-Hant", "ja", "ko", "fr", "de", "es", "pt-BR",
+        "it", "ru", "ar", "hi", "id", "tr"
+    ]
+
+    @Test(arguments: translatedLanguages)
+    func ghostAppearanceIntegrationCopyResolves(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        for key in ["Ghost Text Style", "Match Original Text Size", "Bold", "Italic", "White"] {
+            let rendered = bundle.localizedString(forKey: key, value: nil, table: "Learning")
+            #expect(!rendered.isEmpty)
+            #expect(rendered != key)
+        }
+        let tableURL = try #require(bundle.url(forResource: "Learning", withExtension: "strings"))
+        let table = try #require(try PropertyListSerialization.propertyList(
+            from: Data(contentsOf: tableURL), options: 0, format: nil
+        ) as? [String: String])
+        for preset in GhostTextColorPreset.all {
+            // Some color names coincide across languages (Orange in French), so require compiled
+            // entries rather than mistaking a valid identical translation for an English fallback.
+            #expect(table[preset.name]?.isEmpty == false)
+        }
+    }
+
+    @Test(arguments: translatedLanguages)
+    func perAppSettingsResourcesResolve(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        for key in ["App Settings", "Search apps", "Enable Completions", "Mid-Line Completions",
+                    "Instructions for This App", "Collect Inputs", "Reset App Settings"] {
+            let rendered = bundle.localizedString(forKey: key, value: nil, table: "Learning")
+            #expect(!rendered.isEmpty)
+            #expect(rendered != key)
+        }
+    }
+
+    @Test(arguments: ["en"] + translatedLanguages)
+    func productBrandingResolvesFromTheForkTable(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        let locale = Locale(identifier: language)
+        let expectedName = switch language {
+        case "zh-Hans": "拾语"
+        case "zh-Hant": "拾語"
+        default: "Lingrove"
+        }
+        #expect(ProductIdentity.localizedName(bundle: bundle, locale: locale) == expectedName)
+
+        let welcome = String(localized: "Welcome to Lingrove", table: "Learning", bundle: bundle, locale: locale)
+        #expect(welcome.contains(expectedName))
+        #expect(!welcome.contains("Cotabby"))
+        let preview = String(localized: "Autocomplete. ¦Learn as you write.", table: "Learning", bundle: bundle, locale: locale)
+        #expect(preview.components(separatedBy: "¦").count == 2)
+        if language != "en" {
+            #expect(preview != "Autocomplete. ¦Learn as you write.")
+        }
+
+        let folder = "/fixture/model-folder"
+        let uninstall = String(
+            localized: "Remove Lingrove from Applications. To fully clean up model data, delete \(folder).",
+            table: "Learning", bundle: bundle, locale: locale
+        )
+        #expect(uninstall.contains(expectedName))
+        #expect(uninstall.contains(folder))
+        #expect(!uninstall.contains("%@"))
+    }
+
+    @Test(arguments: ["en"] + translatedLanguages)
+    func forkOwnedCommonCopyDoesNotLeakTheUpstreamBrand(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        let url = try #require(bundle.url(forResource: "Learning", withExtension: "strings"))
+        let table = try #require(try PropertyListSerialization.propertyList(
+            from: Data(contentsOf: url), options: 0, format: nil
+        ) as? [String: String])
+        let keys = [
+            "About",
+            "After you finish a word, shows a green replacement you can apply with your accept key.",
+            "After you press Space, replaces a misspelled word without requiring your accept key.",
+            "Help suggestions understand surrounding text using screenshots of the focused window.",
+            "Initializing the in-process llama runtime.",
+            "Loaded %@ in-process.",
+            "When Apple Intelligence doesn't support the language you're writing in, suggest with %@ instead. " +
+                "Turn off to get no suggestion in those languages."
+        ]
+        // Check actual compiled entries: an absent fork override could silently fall back to
+        // neutral English and hide the old-brand translation that appears in another locale.
+        for key in keys {
+            let value = try #require(table[key], "Missing fork-owned copy: \(key)")
+            #expect(!value.isEmpty && !value.localizedCaseInsensitiveContains("Cotabby"))
+        }
+    }
+
+    @Test(arguments: translatedLanguages)
+    func compiledInterfaceResourcesResolve(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        let locale = Locale(identifier: language)
+        let description = String(
+            localized: "Turn Cotabby off everywhere without quitting the app.",
+            bundle: bundle, locale: locale
+        )
+        #expect(!description.isEmpty)
+        #expect(description != "Turn Cotabby off everywhere without quitting the app.")
+
+        let interfaceLanguage = String(localized: "Interface Language", bundle: bundle, locale: locale)
+        let followSystem = String(localized: "Follow System", bundle: bundle, locale: locale)
+        let restartNow = String(localized: "Restart Now", bundle: bundle, locale: locale)
+        #expect(!interfaceLanguage.isEmpty)
+        #expect(interfaceLanguage != "Interface Language")
+        #expect(!followSystem.isEmpty)
+        #expect(followSystem != "Follow System")
+        #expect(!restartNow.isEmpty)
+        #expect(restartNow != "Restart Now")
+
+        let code = "xx-ZZ"
+        let unsupportedLanguage = String(
+            localized: "Existing app language: \(code)",
+            bundle: bundle,
+            locale: locale
+        )
+        #expect(unsupportedLanguage.contains(code))
+        #expect(!unsupportedLanguage.contains("%@"))
+
+        let example = String(localized: "Thanks for the¦ quick reply!", bundle: bundle, locale: locale)
+        #expect(example.components(separatedBy: "¦").count == 2)
+        #expect(example != "Thanks for the¦ quick reply!")
+
+        for count in [0, 1, 2, 5, 21] {
+            let rendered = String(localized: "\(count) entries stored", bundle: bundle, locale: locale)
+            #expect(!rendered.isEmpty)
+            #expect(!rendered.contains("%"))
+            #expect(rendered != "\(count) entries stored")
+        }
+
+        let percent = 7
+        let speed = "speed-token"
+        let eta = "eta-token"
+        let status = String(
+            localized: "Downloading \(percent)% (\(speed) · ETA \(eta))",
+            bundle: bundle, locale: locale
+        )
+        #expect(status.contains(speed))
+        #expect(status.contains(eta))
+        #expect(status.contains("%"))
+        #expect(!status.contains("%@"))
+        #expect(!status.contains("%lld"))
+    }
+    @Test
+    func generationInstructionStaysEnglishWhenTheTestHostUsesAnotherAppLanguage() {
+        let range = SuggestionWordRange(lowWords: 4, highWords: 7)
+        #expect(range.promptInstruction == "Return only the next 4 to 7 words.")
+    }
+
+    @Test(arguments: [("zh-Hans", "语块对齐"), ("zh-Hant", "語塊對齊")])
+    func chineseModelTaskNamesDescribeAlignmentInsteadOfPhraseRecognition(_ sample: (String, String)) throws {
+        let path = try #require(Bundle.main.path(forResource: sample.0, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        #expect(bundle.localizedString(forKey: "Chunk alignment", value: nil, table: "Learning") == sample.1)
+        #expect(bundle.localizedString(forKey: "Enable chunk alignment", value: nil, table: "Learning").contains(sample.1))
+        #expect(bundle.localizedString(forKey: "Chunk alignment model", value: nil, table: "Learning").contains(sample.1))
+    }
+
+    @Test(arguments: translatedLanguages)
+    func compiledLearningTableResolves(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        let locale = Locale(identifier: language)
+        let title = String(localized: "Language Learning", table: "Learning", bundle: bundle, locale: locale)
+        #expect(!title.isEmpty)
+        #expect(title != "Language Learning")
+
+        for key in ["Expression dictionary", "Copy translation", "Words in this expression"] {
+            let label = bundle.localizedString(forKey: key, value: key, table: "Learning")
+            #expect(!label.isEmpty)
+            #expect(label != key)
+        }
+
+        let lookup = "lookup-token"
+        let dictionaryForm = String(
+            localized: "Dictionary form: \(lookup)", table: "Learning", bundle: bundle, locale: locale
+        )
+        #expect(dictionaryForm.contains(lookup))
+        #expect(!dictionaryForm.contains("%@"))
+
+        let source = "source-token"
+        let target = "target-token"
+        let languageDirection = String(
+            localized: "\(source) → \(target)", table: "Learning", bundle: bundle, locale: locale
+        )
+        #expect(languageDirection.contains(source))
+        #expect(languageDirection.contains(target))
+        #expect(!languageDirection.contains("%@"))
+
+        let task = "task-token"
+        let visible = 7
+        let total = 100
+        let requestHeader = String(
+            localized: "Recent Requests · \(task) (\(visible), shared cap \(total))",
+            table: "Learning", bundle: bundle, locale: locale
+        )
+        #expect(requestHeader != "Recent Requests · \(task) (\(visible), shared cap \(total))")
+        #expect(requestHeader.contains(task))
+        #expect(requestHeader.contains(String(visible)))
+        #expect(requestHeader.contains(String(total)))
+        #expect(!requestHeader.contains("%@"))
+        #expect(!requestHeader.contains("%lld"))
+    }
+
+}

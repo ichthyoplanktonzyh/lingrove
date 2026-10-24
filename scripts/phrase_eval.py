@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan, run, and compare Cotabby's fixed local next-word benchmark.
+"""Plan, run, and compare Lingrove's fixed local next-word benchmark.
 
 Swift owns replay and scoring. This standard-library CLI only selects inputs, launches the
 app-hosted test with explicit environment settings, and compares its versioned JSON reports.
@@ -26,17 +26,17 @@ import uuid
 import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CORPUS = ROOT / "CotabbyTests/Fixtures/phrase-prediction-1337.json"
+CORPUS = ROOT / "LingroveTests/Fixtures/phrase-prediction-1337.json"
 DERIVED = ROOT / "build/DerivedData"
 BASELINES = ROOT / "benchmarks/phrase-prediction"
 CATEGORIES = ("conversation", "science", "entertainment", "work", "technology", "everyday", "travel")
 WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
 SAMPLING_FIELDS = {
-    "temperature": ("temperature", "COTABBY_PHRASE_TEMPERATURE"),
-    "repetition_penalty": ("repetitionPenalty", "COTABBY_PHRASE_REPETITION_PENALTY"),
-    "top_k": ("topK", "COTABBY_PHRASE_TOP_K"),
-    "top_p": ("topP", "COTABBY_PHRASE_TOP_P"),
-    "min_p": ("minP", "COTABBY_PHRASE_MIN_P"),
+    "temperature": ("temperature", "LINGROVE_PHRASE_TEMPERATURE"),
+    "repetition_penalty": ("repetitionPenalty", "LINGROVE_PHRASE_REPETITION_PENALTY"),
+    "top_k": ("topK", "LINGROVE_PHRASE_TOP_K"),
+    "top_p": ("topP", "LINGROVE_PHRASE_TOP_P"),
+    "min_p": ("minP", "LINGROVE_PHRASE_MIN_P"),
 }
 
 
@@ -188,7 +188,7 @@ def inject_environment(value, environment):
     """Support both legacy and TestConfigurations xctestrun layouts without moving TESTROOT."""
     count = 0
     if isinstance(value, dict):
-        if "CotabbyTests.xctest" in str(value.get("TestBundlePath", "")):
+        if "LingroveTests.xctest" in str(value.get("TestBundlePath", "")):
             value.setdefault("EnvironmentVariables", {}).update(environment)
             count += 1
         else:
@@ -311,9 +311,9 @@ def build_input_snapshot(workspace=None):
     Only canonical package lock paths may change during explicit dependency resolution. A file
     merely named Package.resolved inside app/test fixtures is still an ordinary protected input.
     """
-    roots = [(ROOT, ["Cotabby", "CotabbyTests", "Cotabby.xcodeproj", "project.yml", "CotabbyInfo.plist", "Config"])]
+    roots = [(ROOT, ["Lingrove", "LingroveTests", "Lingrove.xcodeproj", "project.yml", "LingroveInfo.plist", "Config"])]
     inputs = set((ROOT / "Config").glob("*.xcconfig"))
-    package_locks = {ROOT / "Cotabby.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"}
+    package_locks = {ROOT / "Lingrove.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"}
     if workspace:
         workspace = workspace.resolve()
         document = workspace / "contents.xcworkspacedata"
@@ -430,7 +430,7 @@ def sign_test_hosts(products, output):
         finally:
             # XCTest launches through launchd, outside xcodebuild's process group. Interrupting
             # that group alone can leave a blocked host (and its model) alive. Match only this
-            # disposable executable, never the installed Cotabby app or another replay.
+            # disposable executable, never the installed Lingrove app or another replay.
             executable = host / "Contents/MacOS/Lingrove"
             subprocess.run(["pkill", "-TERM", "-f", "^" + re.escape(str(executable)) + "( |$)"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
@@ -440,7 +440,7 @@ def retarget_test_host(value, host):
     """Preserve __TESTROOT__/__TESTHOST__ semantics while pointing XCTest at the signed copy."""
     count = 0
     if isinstance(value, dict):
-        if "CotabbyTests.xctest" in str(value.get("TestBundlePath", "")):
+        if "LingroveTests.xctest" in str(value.get("TestBundlePath", "")):
             old = value["TestHostPath"]
             value["TestHostPath"] = str(host)
             value["DependentProductPaths"] = [p.replace(old, str(host)) for p in value.get("DependentProductPaths", [])]
@@ -493,7 +493,7 @@ def run(args):
     if args.model and (not args.model.is_file() or args.model.suffix.lower() != ".gguf"):
         raise ValueError("--model must name an existing GGUF file")
     if args.workspace and not args.workspace.exists():
-        raise ValueError(f"--workspace does not exist: {args.workspace} (run scripts/prepare_cotabby_workspace.sh first)")
+        raise ValueError(f"--workspace does not exist: {args.workspace} (run scripts/prepare_lingrove_workspace.sh first)")
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output = (args.output or ROOT / "build/eval/phrases" / f"{stamp}-{uuid.uuid4().hex[:8]}").resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -513,10 +513,10 @@ def run(args):
                       "perCategory": args.per_category, "limit": args.limit},
     }
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    patch_arguments = ("diff", "HEAD", "--", "Cotabby", "CotabbyTests", "Cotabby.xcodeproj", "CotabbyInfo.plist", "Config", "project.yml", "scripts")
+    patch_arguments = ("diff", "HEAD", "--", "Lingrove", "LingroveTests", "Lingrove.xcodeproj", "LingroveInfo.plist", "Config", "project.yml", "scripts")
     (output / "working-tree.patch").write_text(git_output(*patch_arguments))
     print(f"Results: {output}", flush=True)
-    project = ["-workspace", args.workspace.resolve()] if args.workspace else ["-project", ROOT / "Cotabby.xcodeproj"]
+    project = ["-workspace", args.workspace.resolve()] if args.workspace else ["-project", ROOT / "Lingrove.xcodeproj"]
     build_marker = DERIVED / "phrase-eval-build.json"
     initial_git = {key: manifest[key] for key in ("gitCommit", "gitStatus")}
     prepared_inputs = prepare_build_inputs(args.workspace, project, output, skip_build=args.skip_build)
@@ -544,9 +544,9 @@ def run(args):
             "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) RUN_LLAMA_EVAL", "-skipPackageUpdates",
         ], output / "build.log")
     products = DERIVED / "Build/Products"
-    candidates = [p for p in products.glob("Cotabby_*.xctestrun") if "phrase-eval-" not in p.name]
+    candidates = [p for p in products.glob("Lingrove_*.xctestrun") if "phrase-eval-" not in p.name]
     if not candidates:
-        raise RuntimeError("Build produced no Cotabby xctestrun file")
+        raise RuntimeError("Build produced no Lingrove xctestrun file")
     source = max(candidates, key=lambda p: p.stat().st_mtime_ns)
     product_fingerprint = build_product_fingerprint(source)
     if args.skip_build and prior_build.get("productSHA256") != product_fingerprint:
@@ -564,26 +564,26 @@ def run(args):
     with sign_test_hosts(products, output) as host:
         configuration = plistlib.loads(source.read_bytes())
         if retarget_test_host(configuration, host) != 1:
-            raise RuntimeError("Expected exactly one app-hosted CotabbyTests target")
+            raise RuntimeError("Expected exactly one app-hosted LingroveTests target")
         if build_product_fingerprint(source) != product_fingerprint:
             raise RuntimeError("App/test binaries changed while staging the test host")
         environment = {
-            "COTABBY_PHRASE_EVAL": "1", "COTABBY_PHRASE_MODE": args.mode, "COTABBY_PHRASE_CONTEXT": args.context,
-            "COTABBY_PHRASE_OUTPUT": str(output), "COTABBY_PHRASE_LABEL": args.label,
-            "COTABBY_PHRASE_WORKERS": str(workers),
-            "COTABBY_PHRASE_PROMPT_VARIANT": getattr(args, "prompt_variant", "production"),
-            "COTABBY_PHRASE_PROFILE": getattr(args, "profile", "plain"),
-            "COTABBY_PHRASE_SPLIT": args.split, "COTABBY_PHRASE_SPLIT_SEED": str(args.split_seed),
-            "COTABBY_PHRASE_SCREEN_PER_CATEGORY": str(args.screen_per_category),
+            "LINGROVE_PHRASE_EVAL": "1", "LINGROVE_PHRASE_MODE": args.mode, "LINGROVE_PHRASE_CONTEXT": args.context,
+            "LINGROVE_PHRASE_OUTPUT": str(output), "LINGROVE_PHRASE_LABEL": args.label,
+            "LINGROVE_PHRASE_WORKERS": str(workers),
+            "LINGROVE_PHRASE_PROMPT_VARIANT": getattr(args, "prompt_variant", "production"),
+            "LINGROVE_PHRASE_PROFILE": getattr(args, "profile", "plain"),
+            "LINGROVE_PHRASE_SPLIT": args.split, "LINGROVE_PHRASE_SPLIT_SEED": str(args.split_seed),
+            "LINGROVE_PHRASE_SCREEN_PER_CATEGORY": str(args.screen_per_category),
         }
         if getattr(args, "word_count", None):
-            environment["COTABBY_PHRASE_WORD_COUNT"] = args.word_count
+            environment["LINGROVE_PHRASE_WORD_COUNT"] = args.word_count
         typing_artifact = host.parent / "typing.json"
         if getattr(args, "runtime_checks", False):
-            environment["COTABBY_TYPING_OUTPUT"] = str(typing_artifact)
+            environment["LINGROVE_TYPING_OUTPUT"] = str(typing_artifact)
             # The native integration suite prefers TEST_MODEL_PATH over EVAL_MODEL_PATH.
             # Override both, rather than inheriting an unrelated developer test selection.
-            environment["COTABBY_TEST_MODEL_PATH"] = str(args.model.resolve())
+            environment["LINGROVE_TEST_MODEL_PATH"] = str(args.model.resolve())
         if getattr(args, "corpus", None):
             # The disposable host should not need Documents access to read a custom fixture.
             # Freeze the same bytes we fingerprinted, beside the staged app, for this replay.
@@ -592,25 +592,25 @@ def run(args):
             if hashlib.sha256(corpus_bytes).hexdigest() != manifest["corpusSHA256"]:
                 raise RuntimeError("Corpus changed before staging; retry with stable inputs")
             staged_corpus.write_bytes(corpus_bytes)
-            environment["COTABBY_PHRASE_CORPUS"] = str(staged_corpus)
+            environment["LINGROVE_PHRASE_CORPUS"] = str(staged_corpus)
         for field, value in overrides.items():
-            environment["COTABBY_PHRASE_SEED" if field == "seed" else SAMPLING_FIELDS[field][1]] = str(value)
-        for key, value in (("COTABBY_PHRASE_CATEGORY", args.category), ("COTABBY_PHRASE_ID", args.phrase),
-                           ("COTABBY_PHRASE_LIMIT", args.limit), ("COTABBY_PHRASE_PER_CATEGORY", args.per_category), ("COTABBY_EVAL_MODEL_PATH", args.model)):
+            environment["LINGROVE_PHRASE_SEED" if field == "seed" else SAMPLING_FIELDS[field][1]] = str(value)
+        for key, value in (("LINGROVE_PHRASE_CATEGORY", args.category), ("LINGROVE_PHRASE_ID", args.phrase),
+                           ("LINGROVE_PHRASE_LIMIT", args.limit), ("LINGROVE_PHRASE_PER_CATEGORY", args.per_category), ("LINGROVE_EVAL_MODEL_PATH", args.model)):
             if value is not None:
                 environment[key] = str(value.resolve() if isinstance(value, pathlib.Path) else value)
         if inject_environment(configuration, environment) != 1:
-            raise RuntimeError("Expected exactly one CotabbyTests target in xctestrun")
+            raise RuntimeError("Expected exactly one LingroveTests target in xctestrun")
         # __TESTROOT__ is relative to the plist, so keep the temporary copy beside the original.
-        prepared = products / f"Cotabby_phrase-eval-{uuid.uuid4().hex}.xctestrun"
+        prepared = products / f"Lingrove_phrase-eval-{uuid.uuid4().hex}.xctestrun"
         prepared.write_bytes(plistlib.dumps(configuration))
         try:
             logged_command([
                 "xcodebuild", "test-without-building", "-xctestrun", prepared,
                 "-destination", "platform=macOS", "-derivedDataPath", DERIVED,
-                "-only-testing:CotabbyTests/PhrasePredictionEvalTests/testReplayCorpus",
-                *(["-only-testing:CotabbyTests/LlamaRuntimeCoreIntegrationTests",
-                   "-only-testing:CotabbyTests/LlamaTypingSessionEvalTests"] if getattr(args, "runtime_checks", False) else []),
+                "-only-testing:LingroveTests/PhrasePredictionEvalTests/testReplayCorpus",
+                *(["-only-testing:LingroveTests/LlamaRuntimeCoreIntegrationTests",
+                   "-only-testing:LingroveTests/LlamaTypingSessionEvalTests"] if getattr(args, "runtime_checks", False) else []),
                 "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "NO",
             ], output / "test.log", ReplayProgress(output, sum(checkpoint_counts(phrases, args.mode, args.context).values())))
         finally:
@@ -791,9 +791,9 @@ def main():
             # The app needs the pinned, patched CotabbyInference; the bare project resolves the remote
             # package, which lacks those APIs until the pending upstream change lands.
             command.add_argument("--workspace", type=pathlib.Path,
-                                 default=ROOT / "build/cotabby-dependencies/Cotabby.xcworkspace",
+                                 default=ROOT / "build/lingrove-dependencies/Lingrove.xcworkspace",
                                  help="Workspace with the matching CotabbyInference checkout "
-                                      "(default: the one scripts/prepare_cotabby_workspace.sh creates)")
+                                      "(default: the one scripts/prepare_lingrove_workspace.sh creates)")
             command.add_argument("--output", type=pathlib.Path, help="New results directory; never overwrites a previous run")
             command.add_argument("--label", default="baseline")
             command.add_argument("--runtime-checks", action="store_true", help="Also verify cache restoration, cancellation and streamed typing with the selected model")

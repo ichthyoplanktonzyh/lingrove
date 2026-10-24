@@ -213,7 +213,7 @@ async function main() {
     }
   }
 
-  const assetsRoot = path.join(repoRoot, 'Cotabby/Assets.xcassets');
+  const assetsRoot = path.join(repoRoot, 'Lingrove/Assets.xcassets');
   const logoSet = path.join(assetsRoot, 'LingroveLogo.imageset');
 
   await writeImageSetContents(logoSet, 'LingroveLogo');

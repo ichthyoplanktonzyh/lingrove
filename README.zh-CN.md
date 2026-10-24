@@ -122,8 +122,8 @@
 git clone https://github.com/ichthyoplanktonzyh/lingrove.git
 cd lingrove
 scripts/dev-setup.sh
-scripts/prepare_cotabby_workspace.sh
-open build/cotabby-dependencies/Cotabby.xcworkspace
+scripts/prepare_lingrove_workspace.sh
+open build/lingrove-dependencies/Lingrove.xcworkspace
 ```
 
 - 在 Xcode 中选择 **Lingrove Dev** Scheme 可编译 **Lingrove Dev.app**（拥有独立的偏好设置、钥匙串与日志目录，避免污染日常使用环境）；选择 **Lingrove** Scheme 则编译正式版 **Lingrove.app**。
@@ -168,6 +168,6 @@ open build/cotabby-dependencies/Cotabby.xcworkspace
 **Lingrove（拾语）** 由 [ichthyoplanktonzyh](https://github.com/ichthyoplanktonzyh) 独立维护。  
 本项目衍生自 [FuJacob/Cotabby](https://github.com/FuJacob/cotabby)（由 [FuJacob](https://github.com/FuJacob) 创建，并与 [jam-cai](https://github.com/jam-cai)、[akramj13](https://github.com/akramj13)、McHamster 等贡献者共同开发），原作著作权与贡献均予以完整保留和致谢。
 
-项目基于 [CotabbyInference](https://github.com/FuJacob/cotabbyinference)、[llama.cpp](https://github.com/ggml-org/llama.cpp)、[Sparkle](https://github.com/sparkle-project/Sparkle)、[swift-log](https://github.com/apple/swift-log)、[LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern)、[SymSpell](https://github.com/wolfgarbe/SymSpell) 及 [GitHub gemoji](https://github.com/github/gemoji) 等优秀开源组件构建。内置词典与短语数据的许可说明详见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 与 [learning-expressions.NOTICE.md](Cotabby/Resources/learning-expressions.NOTICE.md)。
+项目基于 [CotabbyInference](https://github.com/FuJacob/cotabbyinference)、[llama.cpp](https://github.com/ggml-org/llama.cpp)、[Sparkle](https://github.com/sparkle-project/Sparkle)、[swift-log](https://github.com/apple/swift-log)、[LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern)、[SymSpell](https://github.com/wolfgarbe/SymSpell) 及 [GitHub gemoji](https://github.com/github/gemoji) 等优秀开源组件构建。内置词典与短语数据的许可说明详见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 与 [learning-expressions.NOTICE.md](Lingrove/Resources/learning-expressions.NOTICE.md)。
 
 本项目遵循 [**GNU Affero General Public License v3.0 (AGPLv3)**](LICENSE) 开源协议。第三方库、词典数据与模型权重保留其各自的原始许可条款。

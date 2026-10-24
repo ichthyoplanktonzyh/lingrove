@@ -17,11 +17,11 @@ When neither `--models-dir` nor `--manifest` is supplied, candidate discovery ru
 ```sh
 python3 scripts/model_eval.py \
   --baseline build/models/Qwen3.5-0.8B-Base.i1-Q6_K.gguf \
-  --workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+  --workspace build/lingrove-dependencies/Lingrove.xcworkspace \
   --output build/eval/model-qualification/huggingface-first
 ```
 
-Prepare the pinned native workspace first using `scripts/prepare_cotabby_workspace.sh` if needed.
+Prepare the pinned native workspace first using `scripts/prepare_lingrove_workspace.sh` if needed.
 This one command searches, chooses candidates, downloads them, and runs qualification unattended.
 Add `--plan` to query metadata and inspect the shortlist without downloading weights or running Xcode.
 Pass `--discover-hf` explicitly to combine discovery with local/manifest candidates.
@@ -62,13 +62,13 @@ The API contract follows [Hugging Face Hub documentation](https://huggingface.co
 
 ## One command for a directory of candidates
 
-Prepare the pinned native workspace once using `scripts/prepare_cotabby_workspace.sh`, then run:
+Prepare the pinned native workspace once using `scripts/prepare_lingrove_workspace.sh`, then run:
 
 ```sh
 python3 scripts/model_eval.py \
   --baseline build/models/Qwen3.5-0.8B-Base.i1-Q6_K.gguf \
   --models-dir build/models/candidates \
-  --workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+  --workspace build/lingrove-dependencies/Lingrove.xcworkspace \
   --output build/eval/model-qualification/first-campaign
 ```
 

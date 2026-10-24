@@ -35,22 +35,22 @@ INSTALL_GUIDE = Path(__file__).resolve().parents[1] / "assets" / "testing" / "IN
 REQUIRED_LEGAL_FILES = (
     Path("LICENSE"),
     Path("THIRD_PARTY_LICENSES.md"),
-    Path("Cotabby/Resources/ThirdPartyLicenses"),
-    Path("Cotabby/Resources/SpellingDictionaries/NOTICE.md"),
-    Path("Cotabby/Resources/learning-expressions.NOTICE.md"),
+    Path("Lingrove/Resources/ThirdPartyLicenses"),
+    Path("Lingrove/Resources/SpellingDictionaries/NOTICE.md"),
+    Path("Lingrove/Resources/learning-expressions.NOTICE.md"),
     Path("native/tts/THIRD_PARTY_NOTICES.txt"),
     Path("native/tts/LLAMA_LICENSE.txt"),
 )
 APP_BUILD_INPUT_PATHS = (
-    "Cotabby/",
-    "Cotabby.xcodeproj/",
-    "CotabbyInfo.plist",
+    "Lingrove/",
+    "Lingrove.xcodeproj/",
+    "LingroveInfo.plist",
     "Config/Package.resolved",
     "Config/Signing.xcconfig",
     "patches/",
     "project.yml",
     "scripts/create-inference-workspace.py",
-    "scripts/prepare_cotabby_workspace.sh",
+    "scripts/prepare_lingrove_workspace.sh",
     "native/tts/",
     "scripts/prepare_tts_runtime.sh",
     "scripts/embed_tts_runtime.sh",
@@ -151,10 +151,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def locate_prepared_workspace(repo_root: Path) -> Path:
-    workspace = repo_root / "build/cotabby-dependencies/Cotabby.xcworkspace"
+    workspace = repo_root / "build/lingrove-dependencies/Lingrove.xcworkspace"
     # An existing workspace does not prove that its separate speech helper is current or
     # universal. Preparation verifies both pins and rebuilds missing slices before packaging.
-    run_command([str(repo_root / "scripts/prepare_cotabby_workspace.sh")], cwd=repo_root)
+    run_command([str(repo_root / "scripts/prepare_lingrove_workspace.sh")], cwd=repo_root)
     if not workspace.exists():
         raise PackageError(f"Prepared workspace was not created at {workspace}")
     return workspace
@@ -353,15 +353,15 @@ def copy_package_contents(repo_root: Path, app_path: Path, staging_root: Path) -
     shutil.copy2(repo_root / "LICENSE", staging_root / "LICENSE")
     shutil.copy2(repo_root / "THIRD_PARTY_LICENSES.md", staging_root / "THIRD_PARTY_LICENSES.md")
     shutil.copy2(
-        repo_root / "Cotabby/Resources/SpellingDictionaries/NOTICE.md",
+        repo_root / "Lingrove/Resources/SpellingDictionaries/NOTICE.md",
         staging_root / "SpellingDictionaries-NOTICE.md",
     )
     shutil.copy2(
-        repo_root / "Cotabby/Resources/learning-expressions.NOTICE.md",
+        repo_root / "Lingrove/Resources/learning-expressions.NOTICE.md",
         staging_root / "LearningExpressions-NOTICE.md",
     )
     shutil.copytree(
-        repo_root / "Cotabby/Resources/ThirdPartyLicenses",
+        repo_root / "Lingrove/Resources/ThirdPartyLicenses",
         staging_root / "ThirdPartyLicenses",
     )
     shutil.copy2(repo_root / "native/tts/THIRD_PARTY_NOTICES.txt",

@@ -1,4 +1,4 @@
-# Initial SwiftLint ruleset for Cotabby.
+# Initial SwiftLint ruleset for Lingrove.
 #
 # Deliberately conservative. The goal of the first ruleset is not to enforce
 # a style — it's to catch real footguns (force-unwraps in production code,
@@ -15,16 +15,16 @@
 baseline: .swiftlint-baseline.json
 
 included:
-  - Cotabby
+  - Lingrove
 
 excluded:
   - .build
   - DerivedData
-  - Cotabby.xcodeproj
-  - Cotabby/Resources
+  - Lingrove.xcodeproj
+  - Lingrove/Resources
 
 disabled_rules:
-  # Cotabby has a handful of legitimately long files (coordinators, prompt
+  # Lingrove has a handful of legitimately long files (coordinators, prompt
   # renderers). Enforcing a cap is a fight with the architecture, not a
   # stylistic win.
   - file_length

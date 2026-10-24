@@ -1,10 +1,10 @@
-# Cotabby Source Layout
+# Lingrove Source Layout
 
 This document is the canonical placement map for production and test source files. It complements
 `ARCHITECTURE.md`, which explains runtime ownership and data flow.
 
-Swift folders do not create namespaces. Every Swift file discovered under `Cotabby/` still compiles
-into the application module, and every file under `CotabbyTests/` compiles into the test module.
+Swift folders do not create namespaces. Every Swift file discovered under `Lingrove/` still compiles
+into the application module, and every file under `LingroveTests/` compiles into the test module.
 Folders exist so a maintainer can predict where a responsibility lives before searching.
 
 ## Placement Rules
@@ -15,15 +15,15 @@ Folders exist so a maintainer can predict where a responsibility lives before se
 3. Keep a small cohesive subsystem flat.
 4. Add a child folder only when at least two files form a stable responsibility with a predictable
    name. Do not create one-file folders merely to shorten a file list.
-5. Put a direct unit test under the corresponding `CotabbyTests/` responsibility. Cross-cutting
+5. Put a direct unit test under the corresponding `LingroveTests/` responsibility. Cross-cutting
    coordinator tests may remain grouped by the coordinator they exercise.
 6. Folder moves must not change Swift access control, runtime ownership, or target membership.
-   XcodeGen discovers the new paths; regenerate `Cotabby.xcodeproj` after moving files.
+   XcodeGen discovers the new paths; regenerate `Lingrove.xcodeproj` after moving files.
 
 ## Production Tree
 
 ~~~text
-Cotabby/
+Lingrove/
 ├── App/
 │   ├── Core/                         process entry, composition root, lifecycle
 │   │   └── ApplicationRelauncher.swift safe relaunch after interface localization changes
@@ -157,22 +157,22 @@ whole focus lifecycle rather than one resolution or caching technique.
 
 ## Test Tree
 
-`CotabbyTests/` mirrors the production responsibility after removing the leading `Cotabby/`. For
+`LingroveTests/` mirrors the production responsibility after removing the leading `Lingrove/`. For
 example:
 
 ~~~text
-Cotabby/Support/Suggestion/Output/SuggestionTextNormalizer.swift
-CotabbyTests/Support/Suggestion/Output/SuggestionTextNormalizerTests.swift
+Lingrove/Support/Suggestion/Output/SuggestionTextNormalizer.swift
+LingroveTests/Support/Suggestion/Output/SuggestionTextNormalizerTests.swift
 
-Cotabby/Services/Runtime/Llama/LlamaSuggestionEngine.swift
-CotabbyTests/Services/Runtime/Llama/LlamaSuggestionEngineStreamingTests.swift
+Lingrove/Services/Runtime/Llama/LlamaSuggestionEngine.swift
+LingroveTests/Services/Runtime/Llama/LlamaSuggestionEngineStreamingTests.swift
 
-Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator.swift
-CotabbyTests/App/Coordinators/Suggestion/SuggestionCoordinatorPredictionTests.swift
+Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator.swift
+LingroveTests/App/Coordinators/Suggestion/SuggestionCoordinatorPredictionTests.swift
 ~~~
 
 Tests that exercise several production values may stay at the nearest shared subsystem root. Evals
-remain under `CotabbyTests/Evals`, and shared fixtures remain under `CotabbyTests/TestSupport`.
+remain under `LingroveTests/Evals`, and shared fixtures remain under `LingroveTests/TestSupport`.
 
 ## Per-App Settings
 
@@ -182,20 +182,20 @@ remain under `CotabbyTests/Evals`, and shared fixtures remain under `CotabbyTest
   maps into `SuggestionSettingsSnapshot`.
 - `Support/Settings/PerAppSettingsResolver.swift` resolves inherited mid-line and typo behavior;
   `AppSettingsList.swift` merges configured, historical, excluded and running applications without
-  owning AppKit state. Their direct tests live under `CotabbyTests/Support/Settings/`.
+  owning AppKit state. Their direct tests live under `LingroveTests/Support/Settings/`.
 - `UI/Settings/Panes/AppsPaneView.swift` presents that list. `Panes/Apps/AppSettingsDetailView.swift`
   edits one app through the environment-owned settings and history stores;
   shortcut summaries link to the central Shortcuts pane. `PerAppShortcutRowsView.swift` is hosted
   there through `Components/Controls/AppShortcutSection.swift` and reuses the shared recorder. These views
   use the existing settings scaffold, rows and callouts. Opt-in rendering checks live under
-  `CotabbyTests/UI/Settings/`.
+  `LingroveTests/UI/Settings/`.
 - `SuggestionRequestFactory` carries app instructions separately from global notes. Both prompt
   renderers consume the same immutable request value, and the base renderer gives app notes their
-  own bounded section. `CotabbyTests/Support/Settings/PerAppInstructionsTests.swift` checks that
+  own bounded section. `LingroveTests/Support/Settings/PerAppInstructionsTests.swift` checks that
   boundary and default-prompt compatibility.
 - `TypingHistoryStore` owns app-scoped encrypted deletion and the existing full-history lifecycle.
   Its generation and write-sequence guards invalidate older imports and queries before publishing
-  a successful delete. `CotabbyTests/Services/History/PerAppHistoryDeletionTests.swift` covers races,
+  a successful delete. `LingroveTests/Services/History/PerAppHistoryDeletionTests.swift` covers races,
   write failure, quit flushing and global-deletion error isolation.
 
 ## Unfinished-Word Interaction
@@ -288,7 +288,7 @@ that owns too many responsibilities and should be split by behavior rather than 
   capacity together for planning/decode, without owning an allocation.
   `Support/LanguageLearning/LearningTranslationBudget.swift` plans complete targets with
   reference-only cropping; `Support/Prompting/ModelContextBudget.swift` supplies shared allocation
-  limits and endpoint estimates. Their direct pure tests live under `CotabbyTests/Support/Prompting`.
+  limits and endpoint estimates. Their direct pure tests live under `LingroveTests/Support/Prompting`.
 - `LearningModelController` schedules native or estimated planning away from MainActor;
   `LearningLocalRuntime` counts actual vocabulary/template tokens and owns native capacity.
   `LearningTranslationService` validates the immutable plan and output before publication.
@@ -314,14 +314,14 @@ that owns too many responsibilities and should be split by behavior rather than 
 - `Models/Settings/SettingsAttentionModel.swift` owns the window coordinator's small, deduplicated
   warning projection. `Support/Settings/SettingsAttentionEvaluator.swift` retains the pure policy;
   the model combines incoming permission, engine/configuration and availability/failure values.
-  Its direct publication tests mirror it under `CotabbyTests/Models/Settings`.
+  Its direct publication tests mirror it under `LingroveTests/Models/Settings`.
 - `SettingsContainerView` observes only that projection and its `SettingsNavigationModel`.
   Destination panes observe their own dependencies; source services passed through the container
   are ordinary strong references. Repeated category selections are deduplicated while retaining
   the detail identity workaround, existing pane scaffold and search arrival behavior.
 - `UI/Settings/Components/Structure/SettingsPaneScaffold.swift` owns the single Form scroll
   viewport and the cancellable search reveal. Its real-AppKit scrolling tests are under
-  `CotabbyTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
+  `LingroveTests/UI/Settings/Components/SettingsPaneScaffoldTests.swift`, including callouts,
   initial search arrivals and subsequent searches in both scroll directions.
 - `UI/Settings/Panes/LanguageLearningPaneView.swift` uses fixed translation/explanation/read-aloud/dictionary
   tabs and mounts one behavior form at a time; task configuration remains in `Panes/Engine/`. `SettingsNavigationModel` owns task tabs,
@@ -360,7 +360,7 @@ that owns too many responsibilities and should be split by behavior rather than 
   native Form siblings. `SettingsModelManagementSheet.swift` shares resource-window chrome while
   callers provide the existing task-owned download services and actions.
 - `UI/Settings/Components/Structure/SettingsRenderDiagnostics.swift` is the opt-in body/layout
-  probe, separate from reusable pane chrome. `CotabbyTests/UI/Settings/SettingsPerformanceTests.swift`
+  probe, separate from reusable pane chrome. `LingroveTests/UI/Settings/SettingsPerformanceTests.swift`
   measures the real container with isolated stores and verifies both background-update isolation
   and continued updates in the visible pane. Native profiling supplements the cold-window fixture.
 
@@ -390,7 +390,7 @@ The autocomplete inference package and its revision remain separate.
   selections remain explicit errors instead of triggering a synthetic copy.
 - `App/Coordinators/InlineFeatures/LearningReadingCoordinator.swift` owns reading request identity,
   cancellation, language direction and optional affordance lifetime. `InlineCommandCoordinator`
-  starts/stops it; `CotabbyAppEnvironment` shares the existing models, lexicon and speech owner.
+  starts/stops it; `LingroveAppEnvironment` shares the existing models, lexicon and speech owner.
 - `Services/Presentation/LearningSelectionIconPanel.swift` is only a nonactivating trigger.
   Reading results reuse `LearningSentencePanel` and its existing card/details with replacement
   disabled. Reading and writing yield presentation to each other without changing card structure.
@@ -416,7 +416,7 @@ The autocomplete inference package and its revision remain separate.
   it owns bounded, versioned local image/result frames. `Services/Visual/OCRRuntime.swift` owns
   one native transport thread, one active child operation, latest-only pending images, priority,
   cancellation and backoff. `OCRWorkerProcess.swift` exclusively owns child/pipes on that thread.
-  Tests mirror this under `CotabbyTests/Services/Visual/`; helper faults never ship in the app.
+  Tests mirror this under `LingroveTests/Services/Visual/`; helper faults never ship in the app.
 - `Services/Visual/DebugScreenshotWriter.swift` owns optional sampled PNG/OCR archives. Its single
   background native thread bounds pending captures and keeps encoding, writing and retention off
   MainActor and the shared executor. The environment owns shutdown; the generator only submits
@@ -501,7 +501,7 @@ strict batch shape/count validation, deterministic argument parsing and bounded 
 The CLI reads explicitly supplied image paths, transports bytes, and lets its containing bundle
 choose Dev/production identity. It never opens SQLite or calls an AI/Anki provider.
 
-`CotabbyAppEnvironment` owns one `CLIMailboxServer` actor and one `CLIInstallationModel`.
+`LingroveAppEnvironment` owns one `CLIMailboxServer` actor and one `CLIInstallationModel`.
 The server holds an exclusive lifetime lease on a private app-specific mailbox; a passive
 directory source wakes its serial drain. `VocabularyStore.executeCLI` forwards to the existing
 archive actor and applies acknowledged snapshots so open windows refresh. `VocabularyCLIPlan`

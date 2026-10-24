@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dev-setup.sh - generate Config/Signing.local.xcconfig so you can build and run Cotabby locally.
+# dev-setup.sh - generate Config/Signing.local.xcconfig so you can build and run Lingrove locally.
 #
 # Lingrove has no shared development-team default. Each developer supplies their own team id once. This script detects it from an Apple
 # Development signing certificate and writes the gitignored Config/Signing.local.xcconfig, whose
@@ -85,4 +85,4 @@ EOF
 echo "Wrote $local_xcconfig"
 echo "  DEVELOPMENT_TEAM = $team"
 echo
-echo "Next: run scripts/prepare_cotabby_workspace.sh, open build/cotabby-dependencies/Cotabby.xcworkspace, select the \"Lingrove Dev\" scheme, and run."
+echo "Next: run scripts/prepare_lingrove_workspace.sh, open build/lingrove-dependencies/Lingrove.xcworkspace, select the \"Lingrove Dev\" scheme, and run."

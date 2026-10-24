@@ -1,4 +1,4 @@
-name: Cotabby
+name: Lingrove
 options:
   bundleIdPrefix: io.ichthyoplanktonzyh.lingrove
   defaultConfig: Release
@@ -99,16 +99,16 @@ settings:
 configFiles:
   Debug: Config/Signing.xcconfig
   Release: Config/Signing.xcconfig
-# Shared application target body. `Cotabby` (prod) and `Cotabby Dev` both build the same sources
+# Shared application target body. `Lingrove` (prod) and `Lingrove Dev` both build the same sources
 # from this template and differ only in identity-bearing settings below, so the dev build can hold
 # its own Accessibility/TCC grant without ever clobbering the released app's.
 targetTemplates:
-  CotabbyApp:
+  LingroveApp:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Cotabby
+      - path: Lingrove
       - path: LICENSE
         buildPhase: resources
       - path: THIRD_PARTY_LICENSES.md
@@ -117,9 +117,9 @@ targetTemplates:
         buildPhase: resources
       - path: native/tts/LLAMA_LICENSE.txt
         buildPhase: resources
-      - path: Cotabby/Resources/DictionaryNotices/MDict-LICENSE.txt
+      - path: Lingrove/Resources/DictionaryNotices/MDict-LICENSE.txt
         buildPhase: resources
-      - path: Cotabby/Resources/DictionaryNotices/MDict-NOTICE.md
+      - path: Lingrove/Resources/DictionaryNotices/MDict-NOTICE.md
         buildPhase: resources
     dependencies:
       - package: LingroveGraphLayout
@@ -182,17 +182,16 @@ targetTemplates:
         ENABLE_PREVIEWS: YES
         ENABLE_USER_SELECTED_FILES: readonly
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: CotabbyInfo.plist
+        INFOPLIST_FILE: LingroveInfo.plist
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"
         MARKETING_VERSION: "0.5.1"
-        # Keep source/module and target names stable during the identity migration. PRODUCT_NAME
-        # owns the installed bundle, executable, and data-folder name; PRODUCT_MODULE_NAME keeps
-        # existing `@testable import Cotabby` references valid without a simultaneous source rename.
+        # First-party targets and modules use Lingrove. Bundle IDs and PRODUCT_NAME retain the
+        # installed app identity so renaming source code does not move credentials or user data.
         PRODUCT_NAME: Lingrove
-        PRODUCT_MODULE_NAME: Cotabby
+        PRODUCT_MODULE_NAME: Lingrove
         REGISTER_APP_GROUPS: YES
         STRING_CATALOG_GENERATE_SYMBOLS: YES
         SWIFT_APPROACHABLE_CONCURRENCY: YES
@@ -209,34 +208,37 @@ targets:
       - path: LingroveCLI
       # Reuse the app's source root so XcodeGen shares the same folder hierarchy.
       # Adding a leaf folder as another root gives one PBXGroup two parents.
-      - path: Cotabby
+      - path: Lingrove
         includes:
           - Models/CLI/**
           - Support/CLI/**
     settings:
       base:
         PRODUCT_NAME: lingrove
+        # Executable names are case-insensitive on the usual macOS filesystem. Give the CLI
+        # a distinct Swift module so its artifacts cannot overwrite the Lingrove app module.
+        PRODUCT_MODULE_NAME: LingroveCLI
         PRODUCT_BUNDLE_IDENTIFIER: io.ichthyoplanktonzyh.lingrove.cli
         SWIFT_VERSION: "5.0"
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
-  Cotabby:
+  Lingrove:
     # XcodeGen uses productName for product references and Scheme BuildableName. Keep it aligned
-    # with PRODUCT_NAME so opening Xcode does not restore a Cotabby.app display reference.
+    # with PRODUCT_NAME so opening Xcode does not restore a Lingrove.app display reference.
     productName: Lingrove
     templates:
-      - CotabbyApp
+      - LingroveApp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.ichthyoplanktonzyh.lingrove
   # Local development build. Distinct bundle identifier + product name means a separate, stable
   # TCC identity (Accessibility, Input Monitoring, Screen Recording survive rebuilds), the dev app
-  # icon makes it visually distinct, and the COTABBY_DEV compilation condition disables Sparkle so
+  # icon makes it visually distinct, and the LINGROVE_DEV compilation condition disables Sparkle so
   # the prod appcast never replaces it.
-  "Cotabby Dev":
+  "Lingrove Dev":
     productName: Lingrove Dev
     templates:
-      - CotabbyApp
+      - LingroveApp
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
@@ -245,20 +247,20 @@ targets:
         # LINGROVE_DEV_BUNDLE_ID in Signing.local.xcconfig; a previous Cotabby override must not
         # silently restore the upstream identity for a renamed Lingrove product.
         PRODUCT_BUNDLE_IDENTIFIER: "$(LINGROVE_DEV_BUNDLE_ID:default=io.ichthyoplanktonzyh.lingrove.dev)"
-        # Keep this under `base:` so COTABBY_DEV is defined in EVERY configuration, Release included.
+        # Keep this under `base:` so LINGROVE_DEV is defined in EVERY configuration, Release included.
         # Do not scope it to `configs: Debug:`. A Release-config dev build (the scheme's Profile and
         # Archive actions) must still compile Sparkle out; otherwise it could pull the prod appcast
         # and replace itself with the released bundle, the exact identity collapse this target exists
         # to prevent.
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: COTABBY_DEV $(inherited)
-  CotabbyTests:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: LINGROVE_DEV $(inherited)
+  LingroveTests:
     type: bundle.unit-test
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: CotabbyTests
+      - path: LingroveTests
     dependencies:
-      - target: Cotabby
+      - target: Lingrove
     settings:
       base:
         BUNDLE_LOADER: $(TEST_HOST)
@@ -271,7 +273,7 @@ targets:
           - "@executable_path/../Frameworks"
           - "@loader_path/../Frameworks"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        PRODUCT_BUNDLE_IDENTIFIER: io.ichthyoplanktonzyh.lingrove.CotabbyTests
+        PRODUCT_BUNDLE_IDENTIFIER: io.ichthyoplanktonzyh.lingrove.LingroveTests
         PRODUCT_MODULE_NAME: $(TARGET_NAME)
         PRODUCT_NAME: $(TARGET_NAME)
         SDKROOT: macosx
@@ -282,11 +284,11 @@ schemes:
   Lingrove:
     build:
       targets:
-        Cotabby: all
+        Lingrove: all
     run:
       config: Debug
       commandLineArguments:
-        -cotabby-debug: true
+        -lingrove-debug: true
     test:
       config: Debug
       # Existing search/ranking fixtures assert English titles. Resource tests select each locale
@@ -294,7 +296,7 @@ schemes:
       language: en
       gatherCoverageData: false
       targets:
-        - CotabbyTests
+        - LingroveTests
     profile:
       config: Release
     analyze:
@@ -302,18 +304,18 @@ schemes:
     archive:
       config: Release
   # Daily-driver scheme. Builds the dev-identity target so running from Xcode never touches the
-  # released app's permissions. No test action here: CotabbyTests is bound to the prod `Cotabby`
+  # released app's permissions. No test action here: LingroveTests is bound to the prod `Lingrove`
   # target (its TEST_HOST points at "Lingrove.app"), so tests continue to run from the Lingrove scheme.
   "Lingrove Dev":
     build:
       targets:
-        "Cotabby Dev": all
+        "Lingrove Dev": all
     run:
       config: Debug
       commandLineArguments:
-        -cotabby-debug: true
+        -lingrove-debug: true
     # Profile/Archive intentionally stay on Release for representative optimized timings. Versus a
-    # prod Release build the only difference is COTABBY_DEV (Sparkle compiled out), which is not on
+    # prod Release build the only difference is LINGROVE_DEV (Sparkle compiled out), which is not on
     # any hot path, so dev profiling stays representative while the artifact is never shippable.
     profile:
       config: Release

@@ -319,7 +319,7 @@ reserve. These robustness checks cannot change the frozen finalist or authorize 
 - 08:31 PDT: Registered distinct old150 and first-latency retries; original interrupted and
   failed-preflight evidence stays intact. The existing menu visibility preference can be supplied
   through Xcode's documented host launch arguments. A standalone Foundation/SwiftUI probe
-  confirms `@AppStorage` reads the icon as hidden with `-cotabbyMenuBarIconVisible NO`, with
+  confirms `@AppStorage` reads the icon as hidden with `-lingroveMenuBarIconVisible NO`, with
   no persistent-domain writes. A separate hash-bound launch wrapper is being reviewed; no
   benchmark/scorer/model/production source is changed by this operational isolation.
 - 08:31 PDT: Seed-stability diagnostic joins only existing Swift correctness flags on the same

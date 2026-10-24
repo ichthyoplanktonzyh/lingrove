@@ -8,13 +8,13 @@ The Swift package dependencies Lingrove links against (llama.cpp, CotabbyInferen
 Sparkle, swift-log, LaunchAtLogin) are credited in the in-app Acknowledgements
 (Settings → About → Acknowledgements) and in the README, each linking to its
 upstream license text. Full license texts for these packages and gemoji are also bundled in
-`Cotabby/Resources/ThirdPartyLicenses/`; provenance is recorded in its `SOURCES.md`.
+`Lingrove/Resources/ThirdPartyLicenses/`; provenance is recorded in its `SOURCES.md`.
 
 ## SymSpell
 
 The inline autocorrect feature uses a Swift port of SymSpell (Wolf Garbe's
 Symmetric Delete spelling-correction algorithm). The port lives in
-`Cotabby/Support/Spelling/SymSpell.swift`. SymSpell is distributed under the MIT License:
+`Lingrove/Support/Spelling/SymSpell.swift`. SymSpell is distributed under the MIT License:
 
 ```
 MIT License
@@ -44,7 +44,7 @@ Upstream: https://github.com/wolfgarbe/SymSpell
 
 ## Frequency dictionaries
 
-`Cotabby/Resources/frequency_dictionary_en_82_765.txt` is the English frequency
+`Lingrove/Resources/frequency_dictionary_en_82_765.txt` is the English frequency
 dictionary that ships with SymSpell. Per SymSpell, it is derived from two sources.
 
 ### Google Books Ngram data (CC BY 3.0)
@@ -90,7 +90,7 @@ intersecting Google Books Ngram frequencies with Hunspell word lists.
 The exact source notices, applicable full license texts, upstream commits, and
 file checksums are bundled with the app under:
 
-`Cotabby/Resources/SpellingDictionaries/NOTICE.md`
+`Lingrove/Resources/SpellingDictionaries/NOTICE.md`
 
 The corresponding source word-list notices were captured from
 `wooorm/dictionaries` commit
@@ -103,7 +103,7 @@ not yet provide reliable word segmentation for languages without whitespace.
 
 ## Learning expression dictionary
 
-The independent `Cotabby/Resources/learning-expressions.json` data resource is an expression
+The independent `Lingrove/Resources/learning-expressions.json` data resource is an expression
 subset of Wiktionary, extracted by Wiktextract / Kaikki and packaged by Lingrove. It is
 licensed under CC BY-SA 4.0. This data license is distinct from the extraction program's MIT
 license. Source links, attribution, transformation details and download checksums are bundled

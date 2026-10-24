@@ -5,8 +5,8 @@ description: Ship the current work to main via a squash-merged PR. Branches off 
 
 # /ship
 
-End-to-end "land this on main" workflow for Cotabby. The goal is a **single linear
-commit on main** — squash merge, never a merge commit. Cotabby's `main` ruleset
+End-to-end "land this on main" workflow for Lingrove. The goal is a **single linear
+commit on main** — squash merge, never a merge commit. Lingrove's `main` ruleset
 rejects merge commits, so squashing is what keeps history clean; `--admin` bypasses
 the required-status-check protection so the owner can merge directly.
 
@@ -32,20 +32,20 @@ the required-status-check protection so the owner can merge directly.
 3. **Validate before pushing.** Run the narrowest useful checks, broaden if shared
    behavior changed:
    ```bash
-   scripts/prepare_cotabby_workspace.sh
-   xcodebuild build-for-testing -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+   scripts/prepare_lingrove_workspace.sh
+   xcodebuild build-for-testing -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
      -scheme Lingrove -configuration Debug -destination 'platform=macOS' \
      -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO
-   xcodebuild test-without-building -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+   xcodebuild test-without-building -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
      -scheme Lingrove -configuration Debug -destination 'platform=macOS' \
      -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData \
-     -skip-testing:CotabbyTests/FoundationModelDriftEvalTests
+     -skip-testing:LingroveTests/FoundationModelDriftEvalTests
    python3 -m unittest discover -s scripts/tests
    swiftlint --strict
    ```
    Report a failed test launch as a failed verification, even if build-for-testing passed.
-   - **XcodeGen:** `project.yml` is the source of truth and `Cotabby.xcodeproj` is
-     generated. New files under `Cotabby/` and `CotabbyTests/` are auto-discovered —
+   - **XcodeGen:** `project.yml` is the source of truth and `Lingrove.xcodeproj` is
+     generated. New files under `Lingrove/` and `LingroveTests/` are auto-discovered —
      no project edit needed. Only structural changes (targets, build settings,
      packages, scheme) require editing `project.yml` then `xcodegen generate` and
      committing the regenerated project. Fix all lint/build errors before continuing.

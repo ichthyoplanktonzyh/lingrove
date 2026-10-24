@@ -147,11 +147,11 @@ def main():
     source.add_argument("--fetch", action="store_true", help="Discover current upstream data for a reviewed update")
     source.add_argument("--restore-pinned", action="store_true", help="Restore exact tracked source URLs/checksums")
     parser.add_argument("--cache", type=Path, default=Path("build/LanguageLearning/LearningUnitStudy/kaikki"))
-    parser.add_argument("--output", type=Path, default=Path("Cotabby/Resources/learning-expressions.json"))
+    parser.add_argument("--output", type=Path, default=Path("Lingrove/Resources/learning-expressions.json"))
     parser.add_argument("--version", help="New resource version, required for --fetch")
     parser.add_argument("--extraction", help="Reviewed upstream extraction/dump dates, required for --fetch")
     args = parser.parse_args()
-    pinned = json.loads(Path("Cotabby/Resources/learning-expressions.provenance.json").read_text())
+    pinned = json.loads(Path("Lingrove/Resources/learning-expressions.provenance.json").read_text())
     if args.fetch and (not args.version or not args.extraction or args.version == pinned["version"]):
         parser.error("--fetch requires a new --version and reviewed --extraction dates")
     args.cache.mkdir(parents=True, exist_ok=True)

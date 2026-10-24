@@ -68,13 +68,13 @@ if [[ -d "$INSTALLED_APP" ]]; then
   fi
 fi
 
-"$ROOT_DIR/scripts/prepare_cotabby_workspace.sh"
+"$ROOT_DIR/scripts/prepare_lingrove_workspace.sh"
 # Materialize binary package artifacts before building from a cleared DerivedData tree.
 xcodebuild -resolvePackageDependencies \
-  -workspace "$ROOT_DIR/build/cotabby-dependencies/Cotabby.xcworkspace" \
+  -workspace "$ROOT_DIR/build/lingrove-dependencies/Lingrove.xcworkspace" \
   -scheme "$SCHEME" -onlyUsePackageVersionsFromResolvedFile -derivedDataPath "$DERIVED_DATA"
 xcodebuild \
-  -workspace "$ROOT_DIR/build/cotabby-dependencies/Cotabby.xcworkspace" \
+  -workspace "$ROOT_DIR/build/lingrove-dependencies/Lingrove.xcworkspace" \
   -onlyUsePackageVersionsFromResolvedFile \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
@@ -126,7 +126,7 @@ mv "$candidate" "$APP_BUNDLE"
 codesign --verify --deep --strict "$APP_BUNDLE"
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE" --args -cotabby-debug
+  /usr/bin/open -n "$APP_BUNDLE" --args -lingrove-debug
 }
 
 wait_for_app() {
@@ -149,7 +149,7 @@ case "$MODE" in
     wait_for_app
     ;;
   --debug|debug)
-    lldb -- "$APP_BINARY" -cotabby-debug
+    lldb -- "$APP_BINARY" -lingrove-debug
     ;;
   --logs|logs)
     open_app
@@ -159,7 +159,7 @@ case "$MODE" in
   --telemetry|telemetry)
     open_app
     wait_for_app
-    /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
+    /usr/bin/log stream --info --style compact --predicate 'subsystem == "io.ichthyoplanktonzyh.lingrove"'
     ;;
   --verify|verify)
     open_app

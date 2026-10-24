@@ -43,7 +43,7 @@ context. Screenshots and OCR remain local; bounded OCR text can be included in e
 when screen context is enabled. Use the local backend for a task you want to keep on-device.
 
 Input-history recording is off by default. Enabling it stores an encrypted archive on this Mac,
-with its key in Keychain; you can clear it in Settings. Developer mode (`-cotabby-debug`) can write
+with its key in Keychain; you can clear it in Settings. Developer mode (`-lingrove-debug`) can write
 full model inputs/outputs to local diagnostic logs. Model downloads and searches use the network.
 There is no built-in hosted account requirement, analytics, or remote crash reporting.
 

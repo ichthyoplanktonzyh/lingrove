@@ -23,7 +23,7 @@ class PhraseEvalCLITests(unittest.TestCase):
         """A tiny app/native workspace with filesystem changes and a stubbed Git file listing."""
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            paths = ['Cotabby/app.swift', 'CotabbyTests/test.swift', 'Config/Signing.local.xcconfig', 'CotabbyInfo.plist',
+            paths = ['Lingrove/app.swift', 'LingroveTests/test.swift', 'Config/Signing.local.xcconfig', 'LingroveInfo.plist',
                      'native/Package.swift', 'native/source.cpp']
             for name in paths:
                 path = root / name
@@ -67,8 +67,8 @@ class PhraseEvalCLITests(unittest.TestCase):
                 self.assertNotEqual(after['sourceSHA256'], eval_cli.build_input_fingerprint(workspace))
 
     def test_resolution_rejects_app_test_native_and_config_changes(self):
-        for name in ('Cotabby/app.swift', 'CotabbyTests/test.swift', 'native/source.cpp', 'native/Package.swift',
-                     'Config/Signing.local.xcconfig', 'CotabbyInfo.plist', 'dev.xcworkspace/contents.xcworkspacedata'):
+        for name in ('Lingrove/app.swift', 'LingroveTests/test.swift', 'native/source.cpp', 'native/Package.swift',
+                     'Config/Signing.local.xcconfig', 'LingroveInfo.plist', 'dev.xcworkspace/contents.xcworkspacedata'):
             with self.subTest(name=name), self.resolution_fixture() as (root, workspace, output):
                 def resolve(command, log):
                     with (root / name).open('a') as stream:
@@ -112,10 +112,10 @@ class PhraseEvalCLITests(unittest.TestCase):
 
     def test_lock_named_fixture_is_not_exempt_from_source_guard(self):
         with self.resolution_fixture() as (root, workspace, _):
-            fixture = root / 'CotabbyTests/Package.resolved'
+            fixture = root / 'LingroveTests/Package.resolved'
             fixture.write_text('fixture content')
             def names(command, cwd):
-                return b'CotabbyTests/Package.resolved\0' if cwd == root else b'Package.swift\0source.cpp\0'
+                return b'LingroveTests/Package.resolved\0' if cwd == root else b'Package.swift\0source.cpp\0'
             with mock.patch.object(eval_cli.subprocess, 'check_output', side_effect=names):
                 before = eval_cli.build_input_snapshot(workspace)
                 fixture.write_text('edited fixture')
@@ -144,11 +144,11 @@ class PhraseEvalCLITests(unittest.TestCase):
                         binary = products / 'Release/Lingrove.app/Contents/MacOS/Lingrove'
                         binary.parent.mkdir(parents=True)
                         binary.write_bytes(b'built app')
-                        (products / 'Cotabby_test.xctestrun').write_bytes(eval_cli.plistlib.dumps(
-                            {'TestBundlePath': '__TESTHOST__/Contents/PlugIns/CotabbyTests.xctest',
+                        (products / 'Lingrove_test.xctestrun').write_bytes(eval_cli.plistlib.dumps(
+                            {'TestBundlePath': '__TESTHOST__/Contents/PlugIns/LingroveTests.xctest',
                              'TestHostPath': '__TESTROOT__/Release/Lingrove.app'}))
                         if mutate_build_input:
-                            path = root / 'Cotabby/app.swift' if mutate_build_input == 'source' else lock
+                            path = root / 'Lingrove/app.swift' if mutate_build_input == 'source' else lock
                             path.write_text('changed during compilation')
                     else:
                         self.assertEqual(arguments[1], 'test-without-building')
@@ -181,7 +181,7 @@ class PhraseEvalCLITests(unittest.TestCase):
     def test_staging_retargets_library_search_paths_as_well_as_host(self):
         host = pathlib.Path('/private/tmp/example/Lingrove.app')
         target = {'TestHostPath': '__TESTROOT__/Release/Lingrove.app',
-            'TestBundlePath': '__TESTHOST__/Contents/PlugIns/CotabbyTests.xctest',
+            'TestBundlePath': '__TESTHOST__/Contents/PlugIns/LingroveTests.xctest',
             'DependentProductPaths': ['__TESTROOT__/Release/Lingrove.app'],
             'TestingEnvironmentVariables': {
                 'DYLD_FRAMEWORK_PATH': '__TESTROOT__/Release:__TESTROOT__/Release/PackageFrameworks:__PLATFORMS__/Developer/Frameworks',
@@ -190,7 +190,7 @@ class PhraseEvalCLITests(unittest.TestCase):
         value = {'TestConfigurations': [{'TestTargets': [target]}]}
         self.assertEqual(eval_cli.retarget_test_host(value, host), 1)
         self.assertEqual(target['TestHostPath'], str(host))
-        self.assertEqual(target['TestBundlePath'], '__TESTHOST__/Contents/PlugIns/CotabbyTests.xctest')
+        self.assertEqual(target['TestBundlePath'], '__TESTHOST__/Contents/PlugIns/LingroveTests.xctest')
         for item in target['TestingEnvironmentVariables'].values():
             self.assertNotIn('__TESTROOT__/Release', item)
         self.assertIn('__PLATFORMS__/Developer/Frameworks', target['TestingEnvironmentVariables']['DYLD_FRAMEWORK_PATH'])
@@ -215,7 +215,7 @@ class PhraseEvalCLITests(unittest.TestCase):
             self.assertFalse(signed.parent.exists(), 'staged bundles must not accumulate')
             self.assertEqual(cleanup.call_args.args[0][:3], ['pkill', '-TERM', '-f'])
             pattern = cleanup.call_args.args[0][3]
-            self.assertIsNotNone(eval_cli.re.search(pattern, str(signed / 'Contents/MacOS/Lingrove') + ' -cotabby-debug'))
+            self.assertIsNotNone(eval_cli.re.search(pattern, str(signed / 'Contents/MacOS/Lingrove') + ' -lingrove-debug'))
             self.assertIsNone(eval_cli.re.search(pattern, '/Applications/Lingrove.app/Contents/MacOS/Lingrove'))
             entitlements = eval_cli.plistlib.loads((output / 'test-host.entitlements').read_bytes())
             self.assertTrue(entitlements['com.apple.security.get-task-allow'])
@@ -279,8 +279,8 @@ class PhraseEvalCLITests(unittest.TestCase):
     def test_build_fingerprint_includes_local_native_sources_and_ignores_run_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            (root / 'Cotabby').mkdir()
-            (root / 'Cotabby/app.swift').write_text('app source')
+            (root / 'Lingrove').mkdir()
+            (root / 'Lingrove/app.swift').write_text('app source')
             native = root / 'native'
             native.mkdir()
             (native / 'Package.swift').write_text('package')
@@ -289,7 +289,7 @@ class PhraseEvalCLITests(unittest.TestCase):
             workspace.mkdir()
             (workspace / 'contents.xcworkspacedata').write_text(f'<Workspace><FileRef location="absolute:{native}" /></Workspace>')
             def names(command, cwd):
-                return b'Cotabby/app.swift\0' if cwd == root else b'Package.swift\0TokenHealing.cpp\0'
+                return b'Lingrove/app.swift\0' if cwd == root else b'Package.swift\0TokenHealing.cpp\0'
             with mock.patch.object(eval_cli, 'ROOT', root), mock.patch.object(eval_cli.subprocess, 'check_output', side_effect=names):
                 first = eval_cli.build_input_fingerprint(workspace)
                 (root / 'run-output.json').write_text('does not affect build')
@@ -300,9 +300,9 @@ class PhraseEvalCLITests(unittest.TestCase):
     def test_build_product_fingerprint_rejects_replaced_test_bundle(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            source = root / 'Cotabby.xctestrun'
+            source = root / 'Lingrove.xctestrun'
             source.write_bytes(b'configuration')
-            executable = root / 'Release/Lingrove.app/Contents/PlugIns/CotabbyTests.xctest/Contents/MacOS/CotabbyTests'
+            executable = root / 'Release/Lingrove.app/Contents/PlugIns/LingroveTests.xctest/Contents/MacOS/LingroveTests'
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b'original test code')
             first = eval_cli.build_product_fingerprint(source)
@@ -496,14 +496,14 @@ print('native output retained')
                 eval_cli.read_selection(args)
 
     def test_environment_injection_preserves_existing_values_and_other_targets(self):
-        target = {'TestBundlePath': '__TESTROOT__/CotabbyTests.xctest', 'EnvironmentVariables': {'EXISTING': 'yes'}}
+        target = {'TestBundlePath': '__TESTROOT__/LingroveTests.xctest', 'EnvironmentVariables': {'EXISTING': 'yes'}}
         other = {'TestBundlePath': '__TESTROOT__/OtherTests.xctest'}
-        for document in [{'CotabbyTests': copy.deepcopy(target), 'Other': copy.deepcopy(other)},
+        for document in [{'LingroveTests': copy.deepcopy(target), 'Other': copy.deepcopy(other)},
                          {'TestConfigurations': [{'TestTargets': [copy.deepcopy(target), copy.deepcopy(other)]}]}]:
-            self.assertEqual(eval_cli.inject_environment(document, {'COTABBY_PHRASE_EVAL': '1'}), 1)
+            self.assertEqual(eval_cli.inject_environment(document, {'LINGROVE_PHRASE_EVAL': '1'}), 1)
             encoded = json.dumps(document)
             self.assertIn('EXISTING', encoded)
-            self.assertEqual(encoded.count('COTABBY_PHRASE_EVAL'), 1)
+            self.assertEqual(encoded.count('LINGROVE_PHRASE_EVAL'), 1)
 
     def test_comparison_accepts_tuning_but_rejects_different_inputs(self):
         before = self.report()

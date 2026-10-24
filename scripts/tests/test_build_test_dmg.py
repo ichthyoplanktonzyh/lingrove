@@ -172,12 +172,12 @@ class TestDMGPackageTests(unittest.TestCase):
                 packaging.validate_app(self.app, ("arm64", "x86_64"))
 
     def test_existing_workspace_still_prepares_and_verifies_native_helpers(self):
-        workspace = self.root / "build/cotabby-dependencies/Cotabby.xcworkspace"
+        workspace = self.root / "build/lingrove-dependencies/Lingrove.xcworkspace"
         workspace.mkdir(parents=True)
         with mock.patch.object(packaging, "run_command") as command:
             self.assertEqual(packaging.locate_prepared_workspace(self.root), workspace)
         command.assert_called_once_with(
-            [str(self.root / "scripts/prepare_cotabby_workspace.sh")], cwd=self.root
+            [str(self.root / "scripts/prepare_lingrove_workspace.sh")], cwd=self.root
         )
 
     def test_missing_embedded_speech_license_is_rejected(self):
@@ -276,7 +276,7 @@ class TestDMGPackageTests(unittest.TestCase):
         build_dir.mkdir()
         unrelated = build_dir / "keep.txt"
         unrelated.write_text("preserve")
-        workspace = self.root / "Cotabby.xcworkspace"
+        workspace = self.root / "Lingrove.xcworkspace"
         workspace.mkdir()
         commands = []
         derived_data = (build_dir / "DerivedData").resolve()
@@ -346,7 +346,7 @@ class TestDMGPackageTests(unittest.TestCase):
             with self.subTest(stage=failing_stage):
                 repo = self.root / failing_stage
                 (repo / "build").mkdir(parents=True)
-                workspace = repo / "Cotabby.xcworkspace"
+                workspace = repo / "Lingrove.xcworkspace"
                 workspace.mkdir()
                 derived_data = repo / "build/DerivedData"
                 output = repo / "distributions"

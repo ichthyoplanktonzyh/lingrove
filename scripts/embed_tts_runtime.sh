@@ -4,7 +4,7 @@ set -euo pipefail
 source_helper="$SRCROOT/build/tts-native/install/bin/lingrove-tts-helper"
 destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/lingrove-tts-helper"
 if [[ ! -x "$source_helper" ]]; then
-    echo 'error: Prepare the pinned TTS helper with scripts/prepare_cotabby_workspace.sh first.' >&2
+    echo 'error: Prepare the pinned TTS helper with scripts/prepare_lingrove_workspace.sh first.' >&2
     exit 1
 fi
 # Refuse a bundle whose helper cannot run on an architecture advertised by the app.

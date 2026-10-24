@@ -15,13 +15,14 @@ complements CONTRIBUTING.md, which owns the build and test instructions.
   identifiers. The name reflects learning expressions from everyday reading and writing.
 - The approved Lingrove whale mark is maintained in `assets/branding/lingrove-logo.svg`, with
   `scripts/generate_brand_assets.mjs` as its asset-generation entry point. Release installer artwork
-  remains a separate follow-up task.
+  is generated from the same master by `scripts/generate_dmg_background.mjs`.
 - The field-edge activation indicator uses a separate tail-only source at
   `assets/branding/lingrove-activation-indicator.svg`.
 - App products are `Lingrove.app` and `Lingrove Dev.app`, with Bundle IDs
   `io.ichthyoplanktonzyh.lingrove` and `io.ichthyoplanktonzyh.lingrove.dev`. The internal Xcode
-  schemes use `Lingrove` / `Lingrove Dev`. Targets, the Swift module, source folders, and inference
-  dependency keep their existing names for now; these are build/code boundaries, not the installed app identity.
+  schemes use `Lingrove` / `Lingrove Dev`. Targets, the Swift module and source folders also use Lingrove. The real upstream inference
+  dependency keeps its own name and attribution. Legacy preference keys, arguments and environment
+  variables remain readable through explicit compatibility policies.
 - Models, encrypted typing history, and logs use separate `Lingrove` / `Lingrove Dev` folders.
   Preferences and Keychain services use the new Bundle IDs. Existing Cotabby data stays untouched;
   automatic import is not implemented. Encrypted history requires its original key for any future
@@ -130,7 +131,7 @@ Validation on Xcode 26.5 / Apple Silicon, against the prepared pinned inference 
   The installed binary timestamp advanced; one dev process started successfully, with Accessibility
   and Input Monitoring still granted and the log reporting all services started.
 - An initial full run was interrupted after sampling a block in developer screenshot cleanup's
-  Desktop directory enumeration. The successful full run omitted only the `-cotabby-debug` test
+  Desktop directory enumeration. The successful full run omitted only the `-lingrove-debug` test
   launch argument, avoiding diagnostic Desktop I/O. The unchanged aria2 cancel-process test also
   timed out in the initial run and an isolated recheck, then passed with its entire suite in the
   successful complete run. No aria2 production or test code was changed for this adoption.
@@ -449,7 +450,7 @@ latency improvement; this change claims reduced background invalidation, not an 
 switching delay. AX polling, host publication probes, inference, prompting and model settings are
 unchanged. Sampling did not establish that AX polling caused the settings symptom.
 
-`-cotabby-debug -cotabby-settings-performance` enables optional body counts and handled selection to
+`-lingrove-debug -lingrove-settings-performance` enables optional body counts and handled selection to
 first nonzero AppKit layout logs. Navigation generations reject stale A → B → A layout callbacks.
 The diagnostics record no field text, mount no probe during normal launches, and do not measure
 mouse-event queueing, final stable layout or pixel presentation. Fixture wall times include explicit

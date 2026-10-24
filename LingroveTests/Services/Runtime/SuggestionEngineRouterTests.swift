@@ -1,0 +1,411 @@
+import Foundation
+import XCTest
+@testable import Lingrove
+
+/// Locks the engine routing contract: which backend serves a request for each selected engine,
+/// when the Apple Intelligence locale failure falls back to the local model, and when a finished
+/// result lands in the performance ring buffer. A routing regression silently sends every request
+/// to the wrong backend, so each path asserts which engine was actually asked.
+@MainActor
+final class SuggestionEngineRouterRoutingTests: XCTestCase {
+    /// Production classes built with the app target's default MainActor isolation crash the
+    /// app-hosted runner when deallocated (back-deploy executor shim); quarantine them for the
+    /// process lifetime instead.
+    private static var retained: [AnyObject] = []
+
+    private final class EmptyHistory: SuggestionHistoryProviding {
+        func historyExamples(for context: FocusedInputContext, engine: SuggestionEngineKind) -> [String] { [] }
+        func phraseContinuation(for request: SuggestionRequest, engine: SuggestionEngineKind) -> String? { nil }
+    }
+
+    private struct Rig {
+        let router: SuggestionEngineRouter
+        let settings: SuggestionSettingsModel
+        let foundation: ScriptedEngine
+        let llama: ScriptedEngine
+        let endpoint: ScriptedEngine
+        let metrics: PerformanceMetricsStore
+        let quality: SuggestionQualityMetricsStore
+    }
+
+    @MainActor
+    private final class ScriptedEngine: SuggestionGenerating {
+        var script: (SuggestionRequest) async throws -> SuggestionResult
+        private(set) var requests: [SuggestionRequest] = []
+        private(set) var prewarmCount = 0
+        private(set) var resetCount = 0
+        private(set) var warmupCancellationCount = 0
+
+        init(latency: TimeInterval = 0.02) {
+            script = { request in
+                SuggestionResult(generation: request.generation, rawText: " ok", text: " ok", latency: latency)
+            }
+        }
+
+        func generateSuggestion(for request: SuggestionRequest) async throws -> SuggestionResult {
+            requests.append(request)
+            return try await script(request)
+        }
+
+        func resetCachedGenerationContext() async {
+            resetCount += 1
+        }
+
+        func cancelPrewarm() { warmupCancellationCount += 1 }
+
+        func prewarm(for request: SuggestionRequest) async {
+            prewarmCount += 1
+        }
+    }
+
+    private var suiteNames: [String] = []
+
+    override func tearDown() {
+        for suiteName in suiteNames {
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        }
+        suiteNames.removeAll()
+        super.tearDown()
+    }
+
+    private func makeDefaults() -> UserDefaults {
+        let suiteName = "lingrove.test.router.\(UUID().uuidString)"
+        suiteNames.append(suiteName)
+        return UserDefaults(suiteName: suiteName)!
+    }
+
+    private func makeRig(
+        engine: SuggestionEngineKind,
+        performanceTracking: Bool = true,
+        llamaModelName: String? = "test-model.gguf"
+    ) -> Rig {
+        let defaults = makeDefaults()
+        let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        settings.selectEngine(engine)
+        settings.setPerformanceTrackingEnabled(performanceTracking)
+        let metrics = PerformanceMetricsStore(userDefaults: defaults)
+        let foundation = ScriptedEngine()
+        let llama = ScriptedEngine()
+        let endpoint = ScriptedEngine()
+        let quality = SuggestionQualityMetricsStore(userDefaults: defaults)
+        let router = SuggestionEngineRouter(
+            suggestionSettings: settings,
+            foundationModelEngine: foundation,
+            llamaEngine: llama,
+            performanceMetricsStore: metrics,
+            qualityMetricsStore: quality,
+            llamaModelNameProvider: { llamaModelName },
+            openAICompatibleEngine: endpoint,
+            endpointModelNameProvider: { "endpoint-model" }
+        )
+        Self.retained.append(contentsOf: [router, settings, metrics, quality] as [AnyObject])
+        return Rig(
+            router: router,
+            settings: settings,
+            foundation: foundation,
+            llama: llama,
+            endpoint: endpoint,
+            metrics: metrics,
+            quality: quality
+        )
+    }
+
+    func test_appleIntelligenceSelection_routesToFoundationEngineAndRecordsMetric() async throws {
+        let rig = makeRig(engine: .appleIntelligence)
+
+        let result = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(result.text, " ok")
+        XCTAssertEqual(rig.foundation.requests.count, 1)
+        XCTAssertTrue(rig.llama.requests.isEmpty)
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "Apple Intelligence")
+        XCTAssertEqual(rig.metrics.entries.first?.latencyMs, 20)
+    }
+
+    func test_endpointNeverReceivesARequestCarryingTypingHistory() async throws {
+        let rig = makeRig(engine: .openAICompatible)
+
+        let result = try await rig.router.generateSuggestion(
+            for: LingroveTestFixtures.suggestionRequest(historyExamples: ["My earlier sentence."])
+        )
+
+        XCTAssertTrue(rig.endpoint.requests.isEmpty)
+        XCTAssertEqual(result.text, "")
+        XCTAssertEqual(result.suppressionReason, "historyWithheldFromEndpoint")
+    }
+
+    func test_llamaSelection_routesToLlamaEngineAndRecordsTheModelName() async throws {
+        let rig = makeRig(engine: .llamaOpenSource)
+
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(rig.llama.requests.count, 1)
+        XCTAssertTrue(rig.foundation.requests.isEmpty)
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "test-model.gguf")
+    }
+
+    func test_llamaSelection_missingModelNameFallsBackToGenericLabel() async throws {
+        let rig = makeRig(engine: .llamaOpenSource, llamaModelName: nil)
+
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "Llama")
+    }
+
+    func test_endpointSelection_routesToEndpointAndRecordsModelName() async throws {
+        let rig = makeRig(engine: .openAICompatible)
+
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(rig.endpoint.requests.count, 1)
+        XCTAssertTrue(rig.foundation.requests.isEmpty)
+        XCTAssertTrue(rig.llama.requests.isEmpty)
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "endpoint-model")
+    }
+
+    func test_performanceTrackingOff_recordsNothing() async throws {
+        let rig = makeRig(engine: .llamaOpenSource, performanceTracking: false)
+
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertTrue(rig.metrics.entries.isEmpty, "The default user must never pay the metrics write cost")
+    }
+
+    func test_cancelledTransportIsRecordedAsCancellationAndOffTrackingStaysEmpty() async {
+        for enabled in [false, true] {
+            let rig = makeRig(engine: .openAICompatible, performanceTracking: enabled)
+            rig.endpoint.script = { _ in throw URLError(.cancelled) }
+            do { _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest()); XCTFail("Expected cancellation") }
+            catch {}
+            XCTAssertEqual(rig.metrics.entries.count, enabled ? 1 : 0)
+            if enabled { XCTAssertEqual(rig.metrics.entries[0].outcome, .cancelled) }
+        }
+    }
+
+    func test_unsupportedLocale_fallsBackToLlamaAndReturnsItsResult() async throws {
+        let rig = makeRig(engine: .appleIntelligence)
+        rig.foundation.script = { _ in
+            throw SuggestionClientError.unsupportedLanguageOrLocale("Locale not supported.")
+        }
+
+        let result = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(result.text, " ok")
+        XCTAssertEqual(rig.llama.requests.count, 1, "The locale failure must reach the local model")
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "test-model.gguf")
+    }
+
+    func test_unsupportedLocale_withFallbackOff_returnsNoSuggestionAndSkipsTheLocalModel() async throws {
+        let rig = makeRig(engine: .appleIntelligence)
+        rig.settings.setAppleLanguageFallbackEnabled(false)
+        rig.foundation.script = { _ in
+            throw SuggestionClientError.unsupportedLanguageOrLocale("Locale not supported.")
+        }
+
+        let result = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(result.text, "")
+        XCTAssertEqual(result.suppressionReason, "appleLanguageUnsupported")
+        XCTAssertTrue(rig.llama.requests.isEmpty, "With the fallback off the local model must not run")
+        // The coordinator skips results that carry a suppression reason, so the router must count
+        // this one or the Performance pane never shows it.
+        XCTAssertEqual(rig.quality.counters.generated, 1)
+        XCTAssertEqual(rig.quality.counters.suppressedByReason, ["appleLanguageUnsupported": 1])
+        XCTAssertTrue(rig.metrics.entries.isEmpty, "Nothing was generated, so there is no latency to record")
+    }
+
+    func test_fallbackSettingsDefaultToTodaysBehaviorAndPersist() {
+        let defaults = makeDefaults()
+        let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        Self.retained.append(settings)
+        XCTAssertTrue(settings.isAppleLanguageFallbackEnabled)
+        XCTAssertFalse(settings.keepsFallbackModelLoaded)
+
+        settings.setAppleLanguageFallbackEnabled(false)
+        settings.setKeepsFallbackModelLoaded(true)
+
+        let reloaded = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        Self.retained.append(reloaded)
+        XCTAssertFalse(reloaded.isAppleLanguageFallbackEnabled)
+        XCTAssertTrue(reloaded.keepsFallbackModelLoaded)
+    }
+
+    func test_unsupportedLocale_fallbackFailureComposesBothMessages() async {
+        let rig = makeRig(engine: .appleIntelligence)
+        rig.foundation.script = { _ in
+            throw SuggestionClientError.unsupportedLanguageOrLocale("Locale not supported.")
+        }
+        rig.llama.script = { _ in throw SuggestionClientError.unavailable("No model installed.") }
+
+        do {
+            _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+            XCTFail("Expected the composed unavailable error")
+        } catch let SuggestionClientError.unavailable(message) {
+            XCTAssertEqual(message, "Locale not supported. Open Source fallback also failed: No model installed.")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        XCTAssertEqual(rig.quality.counters.generated, 0, "A failed fallback produced no generation")
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "test-model.gguf")
+        XCTAssertEqual(rig.metrics.entries.first?.outcome, .failed)
+    }
+
+    /// Only the locale rejection is a fallback trigger. Any other Apple failure (model still
+    /// downloading, guardrails, cancellation) must surface unchanged without waking the llama path.
+    func test_nonLocaleAppleFailures_propagateWithoutFallback() async {
+        let rig = makeRig(engine: .appleIntelligence)
+        let failures: [SuggestionClientError] = [
+            .unavailable("Model still downloading."),
+            .generationFailed("Guardrail."),
+            .cancelled
+        ]
+
+        for failure in failures {
+            rig.foundation.script = { _ in throw failure }
+            do {
+                _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+                XCTFail("Expected \(failure) to propagate")
+            } catch let error as SuggestionClientError {
+                XCTAssertEqual(error.localizedDescription, failure.localizedDescription)
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+
+        XCTAssertTrue(rig.llama.requests.isEmpty)
+        XCTAssertEqual(rig.metrics.entries.map(\.outcome), [.failed, .failed, .cancelled])
+        XCTAssertTrue(rig.metrics.entries.allSatisfy { $0.source == .completion })
+    }
+
+    func test_qualityCounters_recordEveryFinishedGenerationEvenWithPerformanceTrackingOff() async throws {
+        let rig = makeRig(engine: .llamaOpenSource, performanceTracking: false)
+        rig.llama.script = { request in
+            SuggestionResult(
+                generation: request.generation,
+                rawText: " Hello",
+                text: "",
+                latency: 0.01,
+                suppressionReason: "echo"
+            )
+        }
+
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+        rig.llama.script = { request in
+            SuggestionResult(generation: request.generation, rawText: " ok", text: " ok", latency: 0.01)
+        }
+        _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+
+        XCTAssertEqual(rig.quality.counters.generated, 2)
+        XCTAssertEqual(rig.quality.counters.suppressedByReason, ["echo": 1])
+        XCTAssertTrue(rig.metrics.entries.isEmpty)
+    }
+
+    func test_missingEndpointEngineAndModelName_useUnavailableEngineAndGenericLabel() async throws {
+        let rig = makeRig(engine: .openAICompatible)
+        let defaults = makeDefaults()
+        let metrics = PerformanceMetricsStore(userDefaults: defaults)
+        let bareRouter = SuggestionEngineRouter(
+            suggestionSettings: rig.settings,
+            foundationModelEngine: rig.foundation,
+            llamaEngine: rig.llama,
+            performanceMetricsStore: metrics,
+            qualityMetricsStore: SuggestionQualityMetricsStore(userDefaults: defaults),
+            llamaModelNameProvider: { nil }
+        )
+        Self.retained.append(contentsOf: [bareRouter, metrics] as [AnyObject])
+
+        do {
+            _ = try await bareRouter.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+            XCTFail("Expected the placeholder endpoint engine to be unavailable")
+        } catch let SuggestionClientError.unavailable(message) {
+            XCTAssertEqual(message, "Configure a local OpenAI-compatible endpoint in Settings.")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let labelRouter = SuggestionEngineRouter(
+            suggestionSettings: rig.settings,
+            foundationModelEngine: rig.foundation,
+            llamaEngine: rig.llama,
+            performanceMetricsStore: metrics,
+            qualityMetricsStore: SuggestionQualityMetricsStore(userDefaults: defaults),
+            llamaModelNameProvider: { nil },
+            openAICompatibleEngine: rig.endpoint
+        )
+        Self.retained.append(labelRouter)
+        _ = try await labelRouter.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+        XCTAssertEqual(metrics.entries.last?.modelName, "Local Endpoint")
+        XCTAssertEqual(metrics.entries.first?.outcome, .failed)
+    }
+
+    func test_swiftCancellationThroughFallbackRetainsOutcomeAndActualModel() async {
+        let rig = makeRig(engine: .appleIntelligence)
+        rig.foundation.script = { _ in throw SuggestionClientError.unsupportedLanguageOrLocale("unsupported") }
+        rig.llama.script = { _ in throw CancellationError() }
+        do { _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest()); XCTFail("Expected cancellation") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertEqual(rig.metrics.entries.first?.outcome, .cancelled)
+        XCTAssertEqual(rig.metrics.entries.first?.modelName, "test-model.gguf")
+    }
+
+    func test_unsupportedLocale_fallbackCancellationStaysCancellation() async {
+        let rig = makeRig(engine: .appleIntelligence)
+        rig.foundation.script = { _ in
+            throw SuggestionClientError.unsupportedLanguageOrLocale("Locale not supported.")
+        }
+        rig.llama.script = { _ in throw SuggestionClientError.cancelled }
+
+        do {
+            _ = try await rig.router.generateSuggestion(for: LingroveTestFixtures.suggestionRequest())
+            XCTFail("Expected cancellation to propagate")
+        } catch SuggestionClientError.cancelled {
+            // Cancellation must never be rewrapped as unavailability: the coordinator treats it
+            // as silence, not as an error state.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func test_completionOffPreventsAllPrewarmAndShutdownReachesInactiveBackends() async {
+        for engine in SuggestionEngineKind.allCases {
+            let rig = makeRig(engine: engine)
+            rig.settings.setCompletionEnabled(false)
+            await rig.router.prewarm(for: LingroveTestFixtures.suggestionRequest())
+            XCTAssertEqual(rig.foundation.prewarmCount + rig.llama.prewarmCount + rig.endpoint.prewarmCount, 0)
+            let history = EmptyHistory()
+            let phrases = TypingHistoryPhraseEngine(wrapping: rig.router, history: history, engineKind: { engine })
+            let debug = DebugForcedSuggestionEngine(wrapping: phrases, userDefaults: makeDefaults())
+            Self.retained.append(contentsOf: [history, phrases, debug] as [AnyObject])
+            debug.cancelPrewarm()
+            XCTAssertEqual(rig.foundation.warmupCancellationCount, 1)
+            XCTAssertEqual(rig.llama.warmupCancellationCount, 1)
+            XCTAssertEqual(rig.endpoint.warmupCancellationCount, 1)
+        }
+    }
+
+    func test_prewarm_reachesOnlyTheSelectedEngine() async {
+        let appleRig = makeRig(engine: .appleIntelligence)
+        await appleRig.router.prewarm(for: LingroveTestFixtures.suggestionRequest())
+        XCTAssertEqual(appleRig.foundation.prewarmCount, 1)
+        XCTAssertEqual(appleRig.llama.prewarmCount, 0)
+
+        let llamaRig = makeRig(engine: .llamaOpenSource)
+        await llamaRig.router.prewarm(for: LingroveTestFixtures.suggestionRequest())
+        XCTAssertEqual(llamaRig.foundation.prewarmCount, 0)
+        XCTAssertEqual(llamaRig.llama.prewarmCount, 1)
+
+        let endpointRig = makeRig(engine: .openAICompatible)
+        await endpointRig.router.prewarm(for: LingroveTestFixtures.suggestionRequest())
+        XCTAssertEqual(endpointRig.endpoint.prewarmCount, 1)
+    }
+
+    func test_resetCachedGenerationContext_fansOutToAllEngines() async {
+        let rig = makeRig(engine: .appleIntelligence)
+
+        await rig.router.resetCachedGenerationContext()
+
+        XCTAssertEqual(rig.foundation.resetCount, 1)
+        XCTAssertEqual(rig.llama.resetCount, 1, "Switching engines must not leave stale state behind")
+        XCTAssertEqual(rig.endpoint.resetCount, 1)
+    }
+}

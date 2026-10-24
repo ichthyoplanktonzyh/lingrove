@@ -1,17 +1,17 @@
-# Installed Cotabby model evaluation
+# Installed Lingrove model evaluation
 
 Investigation and retained evidence: [2026-09-25 usability report](benchmarks/model-usability/2026-09-25/README.md).
 
 Run the shipping catalog against the real autocomplete pipeline, without downloading models:
 
 ```sh
-scripts/prepare_cotabby_workspace.sh
+scripts/prepare_lingrove_workspace.sh
 python3 scripts/supported_model_eval.py --output build/eval/supported-screen --plan
 python3 scripts/supported_model_eval.py --output build/eval/supported-screen
 ```
 
 The runner reads filenames and display names from `LlamaRuntimeModels.swift`. Every catalog
-file must exist in `~/Library/Application Support/Cotabby/LlamaRuntime`, or in the
+file must exist in `~/Library/Application Support/Lingrove/LlamaRuntime`, or in the
 explicit `--models-dir`. Extra GGUF files are ignored. Model loading, generation, and screen
 fixtures stay on the Mac. Dependency preparation may contact package hosts; writing is never
 sent to a hosted model. Saved app preferences and installed weights are not modified.

@@ -48,8 +48,8 @@ Clone the repo and open the project. Run the one-time signing setup first:
 git clone https://github.com/ichthyoplanktonzyh/lingrove.git
 cd lingrove
 scripts/dev-setup.sh
-scripts/prepare_cotabby_workspace.sh
-open build/cotabby-dependencies/Cotabby.xcworkspace
+scripts/prepare_lingrove_workspace.sh
+open build/lingrove-dependencies/Lingrove.xcworkspace
 ```
 
 Workspace preparation also builds `native/tts` against its separate pinned llama.cpp revision.
@@ -95,7 +95,7 @@ For everyday local work, use the **Lingrove Dev** scheme rather than `Lingrove`.
 app named **Lingrove Dev** (`io.ichthyoplanktonzyh.lingrove.dev`, its own icon, auto-update disabled), so the permissions you
 grant your dev build never collide with a released copy of Lingrove you have installed, and your
 Accessibility grant survives rebuilds. The production scheme builds **Lingrove.app** under
-`io.ichthyoplanktonzyh.lingrove`. Schemes use Lingrove names; target and Swift module names remain `Cotabby` during this migration.
+`io.ichthyoplanktonzyh.lingrove`. Schemes, targets and the Swift module use Lingrove names. The CLI executable is `lingrove`, with a distinct `LingroveCLI` module to avoid case-insensitive artifact collisions.
 
 The command-line launcher normally installs Dev under a checkout-specific directory. When moving
 to a replacement checkout, retain the existing installation by saving its 12-character directory ID
@@ -118,11 +118,11 @@ automatically. See [Run](#run).
 
 ## The Xcode Project Is Generated
 
-`Cotabby.xcodeproj` is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+`Lingrove.xcodeproj` is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 It is committed to the repo; the prepared workspace supplies the pending native APIs,
 but **`project.yml` is the source of truth**.
 
-Source files under `Cotabby/` and `CotabbyTests/` are auto-discovered by folder, so adding a new
+Source files under `Lingrove/` and `LingroveTests/` are auto-discovered by folder, so adding a new
 file (including a new test) needs no project edit — just create it and regenerate. Only structural
 changes (targets, build settings, package dependencies, scheme) require editing `project.yml`.
 
@@ -132,7 +132,7 @@ After any structural change, regenerate and commit the result:
 xcodegen generate
 ```
 
-CI runs the `XcodeGen` workflow on every PR and fails if the committed `Cotabby.xcodeproj` differs
+CI runs the `XcodeGen` workflow on every PR and fails if the committed `Lingrove.xcodeproj` differs
 from what `project.yml` produces. If that check is red, run `xcodegen generate` and commit the diff.
 Avoid hand-editing the project in Xcode without mirroring the change into `project.yml`.
 
@@ -140,16 +140,16 @@ Avoid hand-editing the project in Xcode without mirroring the change into `proje
 
 Start with these boundaries:
 
-- `Cotabby/App/`: app lifecycle, composition root, and top-level coordinators
-- `Cotabby/UI/`: SwiftUI presentation and menu/settings surfaces
-- `Cotabby/Services/`: OS integrations, async work, permissions, and runtime boundaries
-- `Cotabby/Models/`: shared value types, state snapshots, and protocol contracts
-- `Cotabby/Support/`: pure rules, prompt helpers, normalization, and low-level utilities
+- `Lingrove/App/`: app lifecycle, composition root, and top-level coordinators
+- `Lingrove/UI/`: SwiftUI presentation and menu/settings surfaces
+- `Lingrove/Services/`: OS integrations, async work, permissions, and runtime boundaries
+- `Lingrove/Models/`: shared value types, state snapshots, and protocol contracts
+- `Lingrove/Support/`: pure rules, prompt helpers, normalization, and low-level utilities
 
 Read [SOURCE_LAYOUT.md](SOURCE_LAYOUT.md) for the complete responsibility map. Swift folders do not
 create namespaces, so nested folders exist for human navigation: keep a small cohesive subsystem
 flat, and introduce a child folder only when at least two files form a stable, predictably named
-responsibility. Put a direct unit test under the matching `CotabbyTests/` responsibility whenever
+responsibility. Put a direct unit test under the matching `LingroveTests/` responsibility whenever
 possible.
 
 If you are changing behavior, prefer this order:
@@ -167,7 +167,7 @@ For a local compile check:
 
 ```sh
 xcodebuild \
-  -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+  -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
   -scheme Lingrove \
   -configuration Debug \
   -destination 'platform=macOS' \
@@ -213,13 +213,13 @@ sections in [ARCHITECTURE.md](ARCHITECTURE.md) before changing coordinator logic
 
 ## SwiftUI Card Previews
 
-Open `build/cotabby-dependencies/Cotabby.xcworkspace`, select **Lingrove Dev / My Mac**,
+Open `build/lingrove-dependencies/Lingrove.xcworkspace`, select **Lingrove Dev / My Mac**,
 then open one of these source files and enable **Editor > Canvas**:
 
-- `Cotabby/UI/InlineFeatures/LearningSentenceCard.swift`: translation preview, expanded details,
+- `Lingrove/UI/InlineFeatures/LearningSentenceCard.swift`: translation preview, expanded details,
   long text, and dark appearance.
-- `Cotabby/UI/InlineFeatures/LearningDictionaryCard.swift`: contextual meaning and dictionary tabs.
-- `Cotabby/UI/InlineFeatures/LearningExplanationView.swift`: AI explanation and long content.
+- `Lingrove/UI/InlineFeatures/LearningDictionaryCard.swift`: contextual meaning and dictionary tabs.
+- `Lingrove/UI/InlineFeatures/LearningExplanationView.swift`: AI explanation and long content.
 
 The Canvas toolbar switches between ready, loading, error, and long-text scenarios. The previews
 render the production views; edit those views and save to refresh their layout. Use the Canvas
@@ -247,7 +247,7 @@ Run the unit test suite:
 
 ```sh
 xcodebuild test \
-  -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+  -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
   -scheme Lingrove \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
@@ -303,7 +303,7 @@ First compile the opt-in suites:
 
 ```sh
 xcodebuild build-for-testing \
-  -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+  -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
   -scheme Lingrove \
   -configuration Release \
   -destination 'platform=macOS' \
@@ -315,7 +315,7 @@ xcodebuild build-for-testing \
 
 By default the suites use the model available in Lingrove's normal runtime directory. To evaluate
 a repo-local or other explicitly chosen model without changing app settings, set
-`COTABBY_EVAL_MODEL_PATH` in the generated **test process environment**. Exporting a shell variable
+`LINGROVE_EVAL_MODEL_PATH` in the generated **test process environment**. Exporting a shell variable
 before `xcodebuild` does not forward it into the app-hosted test runner. Find the generated run
 file, then substitute its exact path and your model path below:
 
@@ -326,18 +326,18 @@ rg --files build/DerivedData/Build/Products | rg '\.xctestrun$'
 eval_run_path='build/DerivedData/Build/Products/Lingrove_macosx27.0-arm64.xctestrun'
 eval_model_path='/absolute/path/to/model.gguf'
 /usr/libexec/PlistBuddy \
-  -c "Add :CotabbyTests:EnvironmentVariables:COTABBY_EVAL_MODEL_PATH string $eval_model_path" \
+  -c "Add :LingroveTests:EnvironmentVariables:LINGROVE_EVAL_MODEL_PATH string $eval_model_path" \
   "$eval_run_path"
 
 xcodebuild test-without-building \
   -xctestrun "$eval_run_path" \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
-  -only-testing:CotabbyTests/LlamaTypingSessionEvalTests
+  -only-testing:LingroveTests/LlamaTypingSessionEvalTests
 ```
 
 Use `Set` instead of `Add` when updating an existing override. The current scheme emits xctestrun
-format 1, with `CotabbyTests.EnvironmentVariables`; if using a test plan that emits format 2,
+format 1, with `LingroveTests.EnvironmentVariables`; if using a test plan that emits format 2,
 set the same variable in that target's `EnvironmentVariables` under `TestConfigurations` and
 `TestTargets`. Select `LlamaSuggestionEvalTests` instead to run the isolated-context suite. An
 explicit invalid model fails the evaluation; an absent default model skips it with a hint.
@@ -347,7 +347,7 @@ another run overwrites the same model's report, and compare the same model file,
 build configuration, settings, and hardware. The synthetic reference continuations are not
 exhaustive; inspect reported mismatches before treating a score change as a regression. The timing
 instrumentation stores no prompts or typed text. Eval reports contain their synthetic fixtures and
-generated suggestions; the existing `-cotabby-debug` LLM I/O log still records prompts/completions
+generated suggestions; the existing `-lingrove-debug` LLM I/O log still records prompts/completions
 as documented in [AGENTS.md](AGENTS.md). No new background writing-history collection is enabled.
 
 ### Paired CotabbyInference Changes
@@ -357,7 +357,7 @@ Lingrove currently uses the pinned CotabbyInference source plus
 APIs used by the app. Prepare the matching dependency and workspace before building:
 
 ```sh
-scripts/prepare_cotabby_workspace.sh
+scripts/prepare_lingrove_workspace.sh
 ```
 
 The build commands above use this workspace to resolve the patched package.
@@ -383,21 +383,21 @@ unrelated style rewrites into functional PRs.
 
 ## Debugging
 
-The shared Xcode scheme passes `-cotabby-debug` by default in Debug builds. This enables
+The shared Xcode scheme passes `-lingrove-debug` by default in Debug builds. This enables
 developer-only diagnostics:
 
 - **Focus debug overlay**: translucent panels showing caret geometry, element bounds, focus
   polling events, and visual-context pipeline status.
 - **Suggestion debug logger**: color-coded console output for each generation cycle: prompt sent,
   raw model response, and normalized output.
-- **Screenshot capture**: additionally pass `-cotabby-debug-screenshots` alongside `-cotabby-debug`
+- **Screenshot capture**: additionally pass `-lingrove-debug-screenshots` alongside `-lingrove-debug`
   to save fresh visual-context PNG/OCR pairs under
   `~/Library/Logs/<app>/screenshots/` at most once every five seconds, retaining 20 pairs per source
   application. A bounded background disk thread prevents slow storage from delaying context or
   shutdown. Identical-pixel OCR cache hits do not save another image; the old Desktop archive stays
   untouched. Normal launches omit this diagnostic writer entirely.
 
-To disable it, uncheck `-cotabby-debug` in the scheme's Run → Arguments tab.
+To disable it, uncheck `-lingrove-debug` in the scheme's Run → Arguments tab.
 
 The Performance pane aggregates the main process with its owned OCR and speech helpers only while
 the pane is visible. Background screen-context refresh stops ten seconds after the last new focus
@@ -456,7 +456,7 @@ source. Direct SwiftUI literals use native localization. Keep user text, model i
 persistence keys, HTTP fields, prompts, parsing formats, and log messages unchanged. Settings
 search uses localized titles and summaries, with the existing English keywords as aliases.
 
-`Cotabby/Resources/Localizable.xcstrings` owns the common interface and stays identical to the
+`Lingrove/Resources/Localizable.xcstrings` owns the common interface and stays identical to the
 upstream localization catalog. This fork uses a subset of its copy; preserve common keys used by
 upstream even when this fork no longer displays that row. `Learning.xcstrings` owns learning UI,
 its errors/statuses, and fork-specific integration copy such as the shared task-history extension
@@ -499,6 +499,6 @@ Compiled-resource tests explicitly check every translated locale. When checking 
 test host, select the localization and interface-language suites rather than the English fixtures.
 
 Speech diagnostics share the existing logging bootstrap: `speech` events appear in Console and in
-the main JSONL sink when `-cotabby-debug` is enabled. Filter by `source == "speech"` and join by
+the main JSONL sink when `-lingrove-debug` is enabled. Filter by `source == "speech"` and join by
 `request_id`; no text/audio/API keys are captured. Performance tracking uses the existing preference
 and history ring. Resource sampling includes the app-owned speech helper only while the pane is open.

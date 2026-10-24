@@ -7,7 +7,7 @@ mkdir -p "$output_dir"
 for architecture in arm64 x86_64; do
     xcrun swiftc -O -swift-version 5 -target "$architecture-apple-macos14.0" \
         -module-cache-path "$output_dir/ModuleCache.noindex" \
-        Cotabby/Models/Context/OCRWorkerProtocol.swift native/ocr/main.swift \
+        Lingrove/Models/Context/OCRWorkerProtocol.swift native/ocr/main.swift \
         -framework Vision -framework CoreGraphics -framework NaturalLanguage \
         -o "$output_dir/ocr-$architecture"
 done

@@ -45,7 +45,7 @@ jobs:
         run: brew install cmake ninja
 
       - name: Prepare matching inference dependency
-        run: scripts/prepare_cotabby_workspace.sh
+        run: scripts/prepare_lingrove_workspace.sh
 
       - name: Toolchain info
         run: |
@@ -57,7 +57,7 @@ jobs:
       - name: Resolve Swift package dependencies
         run: |
           xcodebuild \
-            -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+            -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
             -scheme Lingrove \
             -derivedDataPath build/DerivedData \
             -resolvePackageDependencies
@@ -69,7 +69,7 @@ jobs:
           # Sparkle must use exactVersion pinning. upToNextMajorVersion lets
           # Xcode silently upgrade the framework, which drifts the signing
           # tools hash and breaks releases.
-          sparkle_block="$(sed -n '/XCRemoteSwiftPackageReference "Sparkle" \*\/ = {/,/};/p' Cotabby.xcodeproj/project.pbxproj)"
+          sparkle_block="$(sed -n '/XCRemoteSwiftPackageReference "Sparkle" \*\/ = {/,/};/p' Lingrove.xcodeproj/project.pbxproj)"
 
           if ! echo "${sparkle_block}" | grep -q 'kind = exactVersion'; then
             echo "Sparkle must use exactVersion pinning in project.pbxproj." >&2
@@ -80,7 +80,7 @@ jobs:
           pbxproj_version="$(echo "${sparkle_block}" | grep -A1 'kind = exactVersion' | grep 'version' | sed 's/.*= //;s/;.*//' | tr -d '[:space:]')"
           resolved_version="$(python3 -c "
           import json, sys
-          resolved = json.load(open('build/cotabby-dependencies/Cotabby.xcworkspace/xcshareddata/swiftpm/Package.resolved'))
+          resolved = json.load(open('build/lingrove-dependencies/Lingrove.xcworkspace/xcshareddata/swiftpm/Package.resolved'))
           pins = {p['identity']: p for p in resolved['pins']}
           if 'sparkle' not in pins:
               print('sparkle not found in Package.resolved. Available: ' + ', '.join(sorted(pins.keys())), file=sys.stderr)
@@ -107,7 +107,7 @@ jobs:
       - name: Build
         run: |
           xcodebuild \
-            -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
+            -workspace build/lingrove-dependencies/Lingrove.xcworkspace \
             -scheme Lingrove \
             -configuration Debug \
             -destination 'platform=macOS' \

@@ -15,7 +15,7 @@ reference sentence. Facts and individual answer words can naturally occur on scr
 is the behavior being measured.
 
 These are **synthetic screen-text fixtures**, not screenshots or captured user data. They exercise
-Cotabby's production OCR cleanup, excerpt selection, request construction, prompt budgets, local
+Lingrove's production OCR cleanup, excerpt selection, request construction, prompt budgets, local
 llama generation, normalization, and final display guard. They do not exercise screenshot capture,
 Vision recognition, Accessibility, actual keyboard events, overlay rendering, or typing latency.
 
@@ -64,14 +64,14 @@ new results directory. Existing directories are rejected to protect previous run
 Omit `--model` to use the app runtime's model selection. Nothing is downloaded automatically.
 This currently evaluates the local llama backend, with a fixed sampling seed of 42 and otherwise
 product generation defaults. It requires macOS, Xcode, and the project's usual dependencies.
-By default the CLI builds `build/cotabby-dependencies/Cotabby.xcworkspace`, which
-`scripts/prepare_cotabby_workspace.sh` creates. To test a different local CotabbyInference
-checkout, pass `--workspace build/CotabbyDevelopment.xcworkspace` after creating that workspace
+By default the CLI builds `build/lingrove-dependencies/Lingrove.xcworkspace`, which
+`scripts/prepare_lingrove_workspace.sh` creates. To test a different local CotabbyInference
+checkout, pass `--workspace build/LingroveDevelopment.xcworkspace` after creating that workspace
 through the repository's existing setup tooling.
 
 The CLI builds Release with testability and `RUN_LLAMA_EVAL`, then supplies configuration through
 an `.xctestrun` file. Ordinary tests do not run inference: both the compile flag and the explicit
-`COTABBY_PHRASE_EVAL=1` test-host switch are required. All build output goes into
+`LINGROVE_PHRASE_EVAL=1` test-host switch are required. All build output goes into
 `build/DerivedData`; remove that directory after the runs finish and no other build needs it.
 Reports remain under `build/eval/phrases/`. Xcode build/launch failures are retained in the run logs.
 
@@ -84,7 +84,7 @@ conditions. Detailed run artifacts remain local; export the completed scores int
 ```sh
 python3 scripts/phrase_eval.py run \
   --model build/models/Qwen3.5-0.8B-Base.i1-Q6_K.gguf \
-  --workspace build/CotabbyDevelopment.xcworkspace \
+  --workspace build/LingroveDevelopment.xcworkspace \
   --label baseline-v1 \
   --output build/eval/phrases/baseline-v1
 
@@ -96,12 +96,12 @@ git commit -m "Record phrase prediction baseline v1"
 git push
 ```
 
-After tweaking Cotabby, run the same command with a new label and directory:
+After tweaking Lingrove, run the same command with a new label and directory:
 
 ```sh
 python3 scripts/phrase_eval.py run \
   --model build/models/Qwen3.5-0.8B-Base.i1-Q6_K.gguf \
-  --workspace build/CotabbyDevelopment.xcworkspace \
+  --workspace build/LingroveDevelopment.xcworkspace \
   --label candidate-v1 \
   --output build/eval/phrases/candidate-v1
 
@@ -270,7 +270,7 @@ The CLI supports explicit test-only overrides without changing product defaults 
 ```sh
 python3 scripts/phrase_eval.py run \
   --model build/models/Qwen3.5-0.8B-Base.i1-Q6_K.gguf \
-  --workspace build/CotabbyDevelopment.xcworkspace \
+  --workspace build/LingroveDevelopment.xcworkspace \
   --split screen --screen-per-category 20 --split-seed 1337 \
   --temperature 0 --repetition-penalty 1.0 --seed 42 --label greedy-screen
 ```
@@ -333,11 +333,11 @@ The model-free Swift tests validate scoring and pass **all 1,337 scenarios** thr
 construction to check that context reaches the prompt without the complete future answer.
 
 ```sh
-xcodebuild test -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
-  -derivedDataPath build/DerivedData -only-testing:CotabbyTests/PhrasePredictionScoringTests \
-  -only-testing:CotabbyTests/PhrasePredictionScreenContextTests CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project Lingrove.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
+  -derivedDataPath build/DerivedData -only-testing:LingroveTests/PhrasePredictionScoringTests \
+  -only-testing:LingroveTests/PhrasePredictionScreenContextTests CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s scripts/tests -p 'test_phrase_eval.py'
 ```
 
-Cotabby builds require the patched native package. Run `scripts/prepare_cotabby_workspace.sh`
-first; benchmark build commands use `build/cotabby-dependencies/Cotabby.xcworkspace` by default. The package's pinned revision and patch are shared with release packaging.
+Lingrove builds require the patched native package. Run `scripts/prepare_lingrove_workspace.sh`
+first; benchmark build commands use `build/lingrove-dependencies/Lingrove.xcworkspace` by default. The package's pinned revision and patch are shared with release packaging.

@@ -122,8 +122,8 @@ Each capability configures its model and server settings independently—using a
 git clone https://github.com/ichthyoplanktonzyh/lingrove.git
 cd lingrove
 scripts/dev-setup.sh
-scripts/prepare_cotabby_workspace.sh
-open build/cotabby-dependencies/Cotabby.xcworkspace
+scripts/prepare_lingrove_workspace.sh
+open build/lingrove-dependencies/Lingrove.xcworkspace
 ```
 
 - In Xcode, select the **Lingrove Dev** scheme to build **Lingrove Dev.app** (isolated preferences, Keychain, and logs for local development), or **Lingrove** to build **Lingrove.app**.
@@ -168,6 +168,6 @@ Lingrove requests only the macOS permissions required for the features you enabl
 **Lingrove (拾语)** is independently maintained by [ichthyoplanktonzyh](https://github.com/ichthyoplanktonzyh).  
 It derives from [FuJacob/Cotabby](https://github.com/FuJacob/cotabby), created by [FuJacob](https://github.com/FuJacob) and developed with [jam-cai](https://github.com/jam-cai), [akramj13](https://github.com/akramj13), McHamster, and other contributors. Their authorship and contributions remain credited.
 
-Built with [CotabbyInference](https://github.com/FuJacob/cotabbyinference), [llama.cpp](https://github.com/ggml-org/llama.cpp), [Sparkle](https://github.com/sparkle-project/Sparkle), [swift-log](https://github.com/apple/swift-log), [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern), [SymSpell](https://github.com/wolfgarbe/SymSpell), and [GitHub gemoji](https://github.com/github/gemoji). Bundled dictionary and expression notices are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and [learning-expressions.NOTICE.md](Cotabby/Resources/learning-expressions.NOTICE.md).
+Built with [CotabbyInference](https://github.com/FuJacob/cotabbyinference), [llama.cpp](https://github.com/ggml-org/llama.cpp), [Sparkle](https://github.com/sparkle-project/Sparkle), [swift-log](https://github.com/apple/swift-log), [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern), [SymSpell](https://github.com/wolfgarbe/SymSpell), and [GitHub gemoji](https://github.com/github/gemoji). Bundled dictionary and expression notices are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and [learning-expressions.NOTICE.md](Lingrove/Resources/learning-expressions.NOTICE.md).
 
 Licensed under the [**GNU Affero General Public License v3.0 (AGPLv3)**](LICENSE). Third-party libraries, dictionaries, and model weights retain their respective licenses.

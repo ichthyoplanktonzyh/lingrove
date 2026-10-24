@@ -4,8 +4,8 @@
 
 Lingrove (拾语) is a macOS menu bar app with two equally core capabilities: local-first inline
 autocomplete and language learning while writing. Develop both as first-class product features;
-translation and expression learning do not make autocomplete a secondary capability. Internal
-source/module names remain Cotabby during migration. The autocomplete core loop is:
+translation and expression learning do not make autocomplete a secondary capability. First-party
+source/module names use Lingrove; old identifiers are accepted only by explicit compatibility policies. The autocomplete core loop is:
 
 1. Track the currently focused editable field through Accessibility.
 2. Monitor global keyboard input without stealing focus.
@@ -47,17 +47,17 @@ When adding a `struct`, `class`, `enum`, actor, or protocol, explain:
 
 ## Repository Map
 
-- `Cotabby/App/`: app entrypoint, composition root, lifecycle wiring, and coordinators.
-- `Cotabby/UI/`: SwiftUI presentation grouped into menus, settings, onboarding, overlays, inline
+- `Lingrove/App/`: app entrypoint, composition root, lifecycle wiring, and coordinators.
+- `Lingrove/UI/`: SwiftUI presentation grouped into menus, settings, onboarding, overlays, inline
   features, and reusable components.
-- `Cotabby/Services/`: side effects and OS/runtime boundaries. AppKit panel controllers live under
+- `Lingrove/Services/`: side effects and OS/runtime boundaries. AppKit panel controllers live under
   `Presentation`; other folders own focus, input, context, insertion, visual capture, inference,
   model management, permissions, power, spelling, and updates.
-- `Cotabby/Models/`: shared values, settings snapshots, states, domain models, and contracts grouped
+- `Lingrove/Models/`: shared values, settings snapshots, states, domain models, and contracts grouped
   by subsystem.
-- `Cotabby/Support/`: deterministic policy, prompting, normalization, reconciliation, geometry,
+- `Lingrove/Support/`: deterministic policy, prompting, normalization, reconciliation, geometry,
   sanitization, logging, and low-level bridging helpers grouped by subsystem.
-- `CotabbyTests/`: unit and microbench tests that mirror the production subsystem map. Prefer
+- `LingroveTests/`: unit and microbench tests that mirror the production subsystem map. Prefer
   testing pure `Support/` and `Models/` logic when possible.
 - `CotabbyInference`: the llama.cpp wrapper, consumed as a SwiftPM package
   (`github.com/FuJacob/cotabbyinference`). The build workspace pins a revision and applies
@@ -74,18 +74,18 @@ the production responsibility wherever a direct correspondence exists.
 
 Start here when you need to understand lifecycle:
 
-1. `Cotabby/App/Core/CotabbyApp.swift`
-2. `Cotabby/App/Core/AppDelegate.swift`
-3. `Cotabby/App/Core/CotabbyAppEnvironment.swift`
+1. `Lingrove/App/Core/LingroveApp.swift`
+2. `Lingrove/App/Core/AppDelegate.swift`
+3. `Lingrove/App/Core/LingroveAppEnvironment.swift`
 
-`CotabbyAppEnvironment` builds the long-lived dependency graph once. `AppDelegate` starts, stops,
+`LingroveAppEnvironment` builds the long-lived dependency graph once. `AppDelegate` starts, stops,
 and wires cross-subsystem subscriptions. SwiftUI views should observe objects from that graph
 rather than creating services directly.
 
 `SuggestionSettingsModel` remains the individually `@Published` UI-facing compatibility surface.
 Its `domainSettings` projection groups the same durable values into general, engine, completion,
 context, correction, presentation, inline-feature, and shortcut domains. `SuggestionSettingsStore`
-keeps the existing flat UserDefaults keys stable, and `SuggestionSettingsSnapshot` is the immutable
+uses Lingrove UserDefaults keys after an early, non-destructive legacy namespace migration, and `SuggestionSettingsSnapshot` is the immutable
 behavior boundary consumed by the suggestion pipeline.
 
 This ownership rule prevents duplicate Accessibility observers, duplicate input monitors, runtime
@@ -95,11 +95,11 @@ reload races, and mismatched settings state.
 
 Read the coordinator in this order:
 
-1. `Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator.swift`
-2. `Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator+Lifecycle.swift`
-3. `Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator+Input.swift`
-4. `Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator+Prediction.swift`
-5. `Cotabby/App/Coordinators/Suggestion/SuggestionCoordinator+Acceptance.swift`
+1. `Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator.swift`
+2. `Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator+Lifecycle.swift`
+3. `Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator+Input.swift`
+4. `Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator+Prediction.swift`
+5. `Lingrove/App/Coordinators/Suggestion/SuggestionCoordinator+Acceptance.swift`
 
 The coordinator owns orchestration plus active suggestion and presentation state. It should not
 absorb every rule or state transition. Prefer:
@@ -121,7 +121,7 @@ about than coordinator mutations.
 Focus and geometry live in:
 
 - `FocusTracker`: observes focus/value/selection changes and publishes snapshots.
-- `FocusSnapshotResolver`: reduces raw AX elements into Cotabby-supported focus snapshots.
+- `FocusSnapshotResolver`: reduces raw AX elements into Lingrove-supported focus snapshots.
 - `AXTextGeometryResolver`: resolves caret and input geometry.
 - `AXHelper`: low-level Accessibility/Core Foundation helper calls.
 - `FocusModels`: pure focus values, identities, capabilities, stale-result signatures, and the
@@ -194,7 +194,7 @@ Runtime generation is split by responsibility:
 cache/decode, and shutdown work serialized while heavy generation runs away from MainActor. The
 manager should publish state; the core should own native correctness.
 
-Cotabby owns one autocomplete sequence. CotabbyInference therefore exposes one live native sequence
+Lingrove owns one autocomplete sequence. CotabbyInference therefore exposes one live native sequence
 backed by llama.cpp slot zero; a changing external sequence ID rejects stale handles after reset.
 The Swift generation loop owns the maximum output-token budget.
 
@@ -211,7 +211,7 @@ The Swift generation loop owns the maximum output-token budget.
 - `ActivationIndicatorController` owns the optional caret/field-edge indicator.
 - `FocusDebugOverlayController` is for developer visibility and should stay gated behind debug
   options, not normal user settings.
-- Settings panes (under `Cotabby/UI/Settings/Panes/`) and onboarding views should remain
+- Settings panes (under `Lingrove/UI/Settings/Panes/`) and onboarding views should remain
   presentation-focused. Push behavior into services, models, or support helpers.
 
 ## Swift And Concurrency Rules
@@ -255,28 +255,28 @@ It also creates better tests.
 
 ## Debugging & Logs
 
-Cotabby has a structured logging system built for AI-assisted debugging. During development the app
-is launched with `-cotabby-debug`, which enables on-disk JSONL sinks in addition to the always-on
+Lingrove has a structured logging system built for AI-assisted debugging. During development the app
+is launched with `-lingrove-debug`, which enables on-disk JSONL sinks in addition to the always-on
 Console.app stream.
 
-**Log file locations** (only populated when `-cotabby-debug` is set):
+**Log file locations** (only populated when `-lingrove-debug` is set):
 
-- `~/Library/Logs/Cotabby/cotabby.jsonl` — main event stream. One JSON object per line, with all
+- `~/Library/Logs/Lingrove/lingrove.jsonl` — main event stream. One JSON object per line, with all
   metadata flattened as top-level fields so it can be filtered with `jq`.
-- `~/Library/Logs/Cotabby/llm-io.jsonl` — full LLM prompts and completions, one record per
+- `~/Library/Logs/Lingrove/llm-io.jsonl` — full LLM prompts and completions, one record per
   generation. Shares `request_id` with the main log so a single suggestion can be joined across
   files.
-- `~/Desktop/cotabby-ax-dump.txt` — most recent Chrome AX tree snapshot. Overwritten on each
+- `~/Desktop/lingrove-ax-dump.txt` — most recent Chrome AX tree snapshot. Overwritten on each
   Chrome focus change (debounced by focused-element identity).
 - Rotated previous logs: `*.jsonl.1` (one-step rotation when a file exceeds 10 MB).
 - `~/Library/Logs/<app>/screenshots/` — sampled visual-context PNG/OCR text pairs. The optional
-  writer requires `-cotabby-debug-screenshots` in addition to `-cotabby-debug`; routine Dev logs
+  writer requires `-lingrove-debug-screenshots` in addition to `-lingrove-debug`; routine Dev logs
   alone do not save screenshots. The
   `DebugScreenshotWriter` owns a bounded native disk thread; context delivery and shutdown never
   wait for it. Identical-pixel cache hits skip capture writes. The old Desktop archive is untouched.
 - `~/Library/Logs/<app>/strips/` — every calibration strip the overlay captured, as PNG plus a JSON
   sidecar (caret column, size, line text), written only while
-  `defaults write <bundle> cotabbyDumpCalibrationStrips -bool YES` is set at launch. Replay one
+  `defaults write <bundle> lingroveDumpCalibrationStrips -bool YES` is set at launch. Replay one
   through `TypefaceMatcher` offline to see why a face was or was not matched.
 
 **Correlation IDs.** Every prediction gets a `request_id` like `req_a3f9k2lq`, stamped on every log
@@ -284,24 +284,24 @@ line touching that request (coordinator state transitions, router selection, eng
 I/O capture). Pull a complete history of one suggestion:
 
 ```bash
-jq 'select(.request_id == "req_a3f9k2lq")' ~/Library/Logs/Cotabby/cotabby.jsonl
-jq 'select(.request_id == "req_a3f9k2lq")' ~/Library/Logs/Cotabby/llm-io.jsonl
+jq 'select(.request_id == "req_a3f9k2lq")' ~/Library/Logs/Lingrove/lingrove.jsonl
+jq 'select(.request_id == "req_a3f9k2lq")' ~/Library/Logs/Lingrove/llm-io.jsonl
 ```
 
 **Useful `jq` recipes:**
 
 ```bash
 # Recent errors across the app
-jq 'select(.level == "error")' ~/Library/Logs/Cotabby/cotabby.jsonl
+jq 'select(.level == "error")' ~/Library/Logs/Lingrove/lingrove.jsonl
 
 # Llama generations slower than 500 ms
-jq 'select(.engine == "llama" and .latency_ms > 500)' ~/Library/Logs/Cotabby/llm-io.jsonl
+jq 'select(.engine == "llama" and .latency_ms > 500)' ~/Library/Logs/Lingrove/llm-io.jsonl
 
 # Coordinator state transitions
-jq 'select(.category == "suggestion" and .stage != null)' ~/Library/Logs/Cotabby/cotabby.jsonl
+jq 'select(.category == "suggestion" and .stage != null)' ~/Library/Logs/Lingrove/lingrove.jsonl
 
 # Runtime model load/decode events
-jq 'select(.category == "runtime")' ~/Library/Logs/Cotabby/cotabby.jsonl
+jq 'select(.category == "runtime")' ~/Library/Logs/Lingrove/lingrove.jsonl
 ```
 
 **Symptom → category map:**
@@ -311,14 +311,14 @@ jq 'select(.category == "runtime")' ~/Library/Logs/Cotabby/cotabby.jsonl
   acceptance
 - Model won't load / decode fails → `runtime` + `models`
 - Permission dialog loop → `app` (permission state transitions)
-- Chrome-specific weirdness → start with `~/Desktop/cotabby-ax-dump.txt`, then `focus`
+- Chrome-specific weirdness → start with `~/Desktop/lingrove-ax-dump.txt`, then `focus`
 - Wrong backend chosen → `suggestion` router selection log (`engine`, `fallback_engine`)
 
-**Console.app fallback** (when `-cotabby-debug` wasn't set):
+**Console.app fallback** (when `-lingrove-debug` wasn't set):
 
 ```bash
-log show --predicate 'subsystem == "com.cotabby.app"' --last 10m
-log stream --predicate 'subsystem == "com.cotabby.app"' --level debug
+log show --predicate 'subsystem == "io.ichthyoplanktonzyh.lingrove"' --last 10m
+log stream --predicate 'subsystem == "io.ichthyoplanktonzyh.lingrove"' --level debug
 ```
 
 **Rule of thumb.** When a user reports a bug, first `tail` / `jq` the relevant file with the
@@ -328,11 +328,10 @@ symptom → category map. Do not ask the user to re-explain symptoms before chec
 
 Build, run, and test with Xcode as documented in
 [`CONTRIBUTING.md`](CONTRIBUTING.md). Prepare the pinned inference workspace with
-`scripts/prepare_cotabby_workspace.sh` first. Local launches use the developer's own signing
+`scripts/prepare_lingrove_workspace.sh` first. Local launches use the developer's own signing
 team configured through `scripts/dev-setup.sh` and the isolated `Lingrove Dev` scheme, producing
 `Lingrove Dev.app` (`io.ichthyoplanktonzyh.lingrove.dev`). Production uses the `Lingrove` scheme to
-build `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Internal targets and the Swift module keep
-their existing names during migration. Sparkle remains disabled until the independent update feed
+build `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Targets, source folders, and the Swift module use Lingrove names. Sparkle remains disabled until the independent update feed
 and signing key are configured; release jobs require `LINGROVE_RELEASES_ENABLED=true`.
 Shared CI uses unsigned compile checks and
 app-hosted tests.
@@ -340,18 +339,18 @@ app-hosted tests.
 Use the narrowest meaningful validation first, then broaden if the change touches shared behavior.
 Keep DerivedData in `build/DerivedData`, avoid concurrent builds in the same checkout, and clean
 it after validation. Verify cleanup before reporting completion.
-Never move DerivedData to `~/Library/Developer/Xcode/DerivedData/Cotabby-*`.
+Never move DerivedData to `~/Library/Developer/Xcode/DerivedData/Lingrove-*`.
 
 ```bash
-xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build \
+xcodebuild -project Lingrove.xcodeproj -scheme Lingrove -destination 'platform=macOS' build \
   -derivedDataPath build/DerivedData
-xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build-for-testing \
+xcodebuild -project Lingrove.xcodeproj -scheme Lingrove -destination 'platform=macOS' build-for-testing \
   -derivedDataPath build/DerivedData
 ```
 
 Always pass `-derivedDataPath build/DerivedData` so the output lands in the repo-scoped `build/`
 directory (already gitignored) instead of accumulating under
-`~/Library/Developer/Xcode/DerivedData/Cotabby-*`, where every build leaves a fresh multi-GB module
+`~/Library/Developer/Xcode/DerivedData/Lingrove-*`, where every build leaves a fresh multi-GB module
 cache and SwiftPM checkout that nothing trims. When a task is done and the artifacts are no longer
 needed, `rm -rf build/DerivedData` before reporting completion.
 
@@ -361,8 +360,8 @@ continuations; `test_reportRecallSuite` scores whether context the user did not 
 text, screen OCR, clipboard) actually reaches the completion. Run either with:
 
 ```bash
-xcodebuild test -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
-  -only-testing:CotabbyTests/LlamaSuggestionEvalTests/test_reportRecallSuite \
+xcodebuild test -project Lingrove.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
+  -only-testing:LingroveTests/LlamaSuggestionEvalTests/test_reportRecallSuite \
   SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) RUN_LLAMA_EVAL' \
   CODE_SIGNING_ALLOWED=NO -configuration Release ENABLE_TESTABILITY=YES \
   -derivedDataPath build/DerivedData
@@ -372,13 +371,13 @@ Quote latency only from a Release build; Debug inflates per-token Swift work by 
 Any change to prompt content, context budgets, sampling, or the model should be justified with a
 before/after on both suites over identical cases.
 
-The dev app uses the separate `Cotabby Dev` target and `Lingrove Dev` scheme (product
+The dev app uses the separate `Lingrove Dev` target and `Lingrove Dev` scheme (product
 `Lingrove Dev.app`). Building the `Lingrove` scheme leaves the dev bundle stale, so build the dev
 app explicitly and confirm the binary
 timestamp moved before testing against it:
 
 ```bash
-xcodebuild -project Cotabby.xcodeproj -scheme "Lingrove Dev" -configuration Release \
+xcodebuild -project Lingrove.xcodeproj -scheme "Lingrove Dev" -configuration Release \
   -destination 'platform=macOS' build -derivedDataPath build/DerivedData
 ```
 

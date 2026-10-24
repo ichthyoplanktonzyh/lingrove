@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate a Sparkle appcast entry for a notarized Cotabby DMG.
+"""Generate a Sparkle appcast entry for a notarized Lingrove DMG.
 
-This script intentionally does not depend on Sparkle's `generate_appcast` helper because Cotabby's
+This script intentionally does not depend on Sparkle's `generate_appcast` helper because Lingrove's
 release flow is small and predictable:
-1. a notarized `Cotabby.dmg` is uploaded to GitHub Releases
+1. a notarized `Lingrove.dmg` is uploaded to GitHub Releases
 2. `sign_update` produces the EdDSA enclosure signature and archive length
 3. this script renders one `appcast.xml` from a checked-in template
 
@@ -34,10 +34,10 @@ SIGNATURE_PATTERN = re.compile(r'sparkle:edSignature="([^"]+)"\s+length="([^"]+)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate Cotabby's Sparkle appcast XML.")
+    parser = argparse.ArgumentParser(description="Generate Lingrove's Sparkle appcast XML.")
     parser.add_argument("--release-version", required=True, help="Marketing version, eg. 1.0.0")
     parser.add_argument("--build-number", required=True, help="CURRENT_PROJECT_VERSION value")
-    parser.add_argument("--archive", required=True, help="Path to the notarized Cotabby.dmg")
+    parser.add_argument("--archive", required=True, help="Path to the notarized Lingrove.dmg")
     parser.add_argument(
         "--output",
         default="build/appcast.xml",

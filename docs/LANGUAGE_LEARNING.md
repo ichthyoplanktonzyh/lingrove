@@ -76,7 +76,7 @@ Language learning can be enabled independently of inline autocomplete:
 
 - The bundled Wiktionary / Kaikki expression subset is about **11.5 MB** and contains entries for all configured target languages, with uneven coverage and English definitions.
 - Recognition uses exact headwords, recorded forms, and conservative one-word slots in explicitly recorded expression patterns; it is not a comprehensive grammatical phrase detector.
-- The data has separate [CC BY-SA attribution and provenance](../Cotabby/Resources/learning-expressions.NOTICE.md).
+- The data has separate [CC BY-SA attribution and provenance](../Lingrove/Resources/learning-expressions.NOTICE.md).
 
 ### Dictionary Sources & Priority
 
@@ -150,4 +150,4 @@ Language learning can be enabled independently of inline autocomplete:
 - **Performance Tracking:** Uses the opt-in switch in **Settings → Performance**. Its request-type picker separates autocomplete, translation, AI explanation, expression assistance, TTS, and screen OCR (retaining the most recent 100 requests across all tasks).
 - Learning rows show completed/failed/cancelled outcomes and observed load, first-output, first-usable, and panel-publication durations.
 - Live CPU, memory, and available GPU readings include the app-owned local speech process, sampled only while Performance is open.
-- **Privacy in Logs:** No text, audio, reference paths, or credentials are stored in performance metrics or normal Console/JSONL lifecycle logs. Full model inputs/outputs use only the explicit `-cotabby-debug` LLM I/O sink.
+- **Privacy in Logs:** No text, audio, reference paths, or credentials are stored in performance metrics or normal Console/JSONL lifecycle logs. Full model inputs/outputs use only the explicit `-lingrove-debug` LLM I/O sink.
