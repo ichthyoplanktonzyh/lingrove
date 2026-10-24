@@ -598,3 +598,51 @@ Automated archive and AppKit hosting checks verify their narrower contracts and 
 real native-dictionary interaction acceptance. The published `v0.5.1-test.1` package is unchanged;
 the final unlocked checks remain pending as recorded in `RELEASING.md`. Anki, contextual pointer
 disambiguation and formal distribution remain later work.
+
+## Reviewed upstream normalization fix — 2026-10-24
+
+Adopted [upstream #879](https://github.com/FuJacob/cotabby/pull/879) on
+`codex/adopt-pr-879`, starting from Lingrove `7e6b3698`. The PR targets upstream `main`, comes from
+`andkulikov/cotabby` / `fix/leading-newline-boundary`, and has no dependency on another unmerged PR.
+The captured and reviewed head is `6b2ddc7a8bf72f23a4f14055837f6bbe80c41be5`.
+All four source commits retain their original author and source SHA through `cherry-pick -x`:
+
+- `38a3dfc2c5115912ebd92a908d0e1dba79ac6328`
+- `f9d4d0c06b753372e5aae5177da9d12a3190752c`
+- `8abc675ecae6d9e9b34db2971dd5f09e47efa7c8`
+- `6b2ddc7a8bf72f23a4f14055837f6bbe80c41be5`
+
+`SuggestionTextNormalizer` now carries removed leading-newline evidence through prompt/control/
+scaffolding cleanup and restores a space only when the surviving single-line seam needs one.
+Ordinary word suffixes, punctuation, existing whitespace and recognized spaceless scripts keep
+their existing boundaries. `CaretWordContext` shares its existing script predicate with the
+normalizer, rather than maintaining a second script list. Both remain pure, stateless policy used
+by the existing backend generation paths; prompts, sampling and runtime ownership are unchanged.
+
+The integration keeps Lingrove's `PromptPrefaceEchoFilter` in the cleanup pipeline, renames the
+new fixture references to `LingroveTestFixtures`, and adds a regression covering their interaction
+in single-line and multiline output. No project regeneration is needed because no file was added.
+
+[Upstream #875](https://github.com/FuJacob/cotabby/pull/875), reviewed at
+`4212ad223fba4ea02448afb4d62e7e81d847c9e2`, is deferred at the maintainer's request. Its screen-change
+heuristic loses changed prices, status words, Chinese meeting times and short replies; its typing
+speculation can also discard a final result before host publication without restarting afterward.
+None of that PR's commits is included in this adoption.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Prepared the pinned inference/native workspace with `scripts/prepare_lingrove_workspace.sh`.
+  The unsigned Debug application test run passed all 139 targeted XCTest cases, with no skips or
+  failures. It covers normalization, caret words, spacing/seam rules, preface/control/content/
+  duplication/length filters and the Apple Intelligence, llama and endpoint engine unit suites.
+- The normalizer's 19 tests also passed in the independent pure-policy harness. This includes
+  the upstream regression tables and Lingrove's additional preface-filter interaction cases.
+- Strict SwiftLint 0.65.1 on the two changed production files passed with zero findings. The full
+  production lint run still fails on 91 existing findings, all reproduced against `main` in files
+  whose bytes are unchanged. The optional test-file lint check retains its one existing
+  `large_tuple` finding; no test lint finding was introduced. The baseline file was not changed.
+- `git diff --check` passed. Model-backed evals and live host/pixel checks were not run: this change
+  affects deterministic output cleanup, with no prompt, sampling, model or placement changes.
+- Validation logs, lint comparisons and the application xcresult remain under gitignored
+  `build/pr-879-*`. Repo-scoped DerivedData and the temporary harness build cache were removed
+  after validation, and their absence was verified.

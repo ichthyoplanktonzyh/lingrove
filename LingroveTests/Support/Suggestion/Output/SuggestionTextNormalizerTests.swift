@@ -156,7 +156,7 @@ final class SuggestionTextNormalizerTests: XCTestCase {
 
     /// Cumulative partials must retain one stable insertion boundary as the first word arrives.
     func test_normalize_leadingNewlineCumulativePartialsKeepBoundary() {
-        let request = CotabbyTestFixtures.suggestionRequest(prefixText: "Hello")
+        let request = LingroveTestFixtures.suggestionRequest(prefixText: "Hello")
         for partial in ["w", "wor", "world"] {
             XCTAssertEqual(SuggestionTextNormalizer.normalize("\n" + partial, for: request), " " + partial)
         }
@@ -184,10 +184,10 @@ final class SuggestionTextNormalizerTests: XCTestCase {
             Case(name: "prefix exposes its own boundary", precedingText: "Hello", raw: "PROMPT\nHello\nworld", expected: " world"),
             Case(name: "tab only after prompt", precedingText: "sched", raw: "PROMPT\tule", expected: "ule")
         ])
-        let request = CotabbyTestFixtures.suggestionRequest(prefixText: "Hello", prompt: "PROMPT")
+        let request = LingroveTestFixtures.suggestionRequest(prefixText: "Hello", prompt: "PROMPT")
         XCTAssertEqual(SuggestionTextNormalizer.normalize("BACKEND\nworld", for: request,
                                                          promptEchoCandidates: ["BACKEND"]), " world")
-        let multilineRequest = CotabbyTestFixtures.suggestionRequest(prefixText: "Hello", prompt: "PROMPT",
+        let multilineRequest = LingroveTestFixtures.suggestionRequest(prefixText: "Hello", prompt: "PROMPT",
                                                                      isMultiLineEnabled: true)
         XCTAssertEqual(SuggestionTextNormalizer.normalize("PROMPT\nworld", for: multilineRequest), "world")
     }
@@ -222,7 +222,7 @@ final class SuggestionTextNormalizerTests: XCTestCase {
     /// Prompt formatting may precede an indented echoed prefix; only formatting before the match is discarded.
     func test_normalize_preservesWhitespaceOwnedByEchoedPrefix() {
         for prefix in [" sched", "  sched", "\tsched", "\n sched"] {
-            let request = CotabbyTestFixtures.suggestionRequest(prefixText: prefix, prompt: "PROMPT")
+            let request = LingroveTestFixtures.suggestionRequest(prefixText: prefix, prompt: "PROMPT")
             for separator in ["\n", "\r\n", "\t\n", " \n"] {
                 for suffix in ["u", "ul", "ule"] {
                     let raw = "PROMPT" + separator + prefix + suffix
@@ -231,6 +231,20 @@ final class SuggestionTextNormalizerTests: XCTestCase {
                 }
             }
         }
+    }
+
+    /// Lingrove's preface filter must still remove echoed context before the newline seam is joined.
+    func test_normalize_leadingNewlinePreservesPrefaceEchoFiltering() {
+        assertCases([
+            Case(name: "boundary before filtered preface", precedingText: "Hello",
+                 raw: "\nworld Nearby on screen: Inbox", expected: " world"),
+            Case(name: "preface-only output", precedingText: "Hello",
+                 raw: "\nNotes the writer keeps in mind: Imperum", expected: "")
+        ])
+        assertCases([
+            Case(name: "multiline boundary before filtered preface", precedingText: "I look forward to hearing",
+                 raw: " from you\nThe user usually writes in English.", expected: " from you")
+        ], isMultiLineEnabled: true)
     }
 
     /// Control characters are trimmed at the edges (a leading tab is formatting), but an interior
