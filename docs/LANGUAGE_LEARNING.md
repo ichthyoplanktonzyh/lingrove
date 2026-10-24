@@ -37,7 +37,7 @@ Language learning can be enabled independently of inline autocomplete:
 
 ### Expression Assistance While Writing
 
-- Enable **Language Learning → AI explanation & expression → Expression assistance** separately
+- Enable **Language Learning → Explanation & expression → Expression assistance** separately
   from automatic translation. It is off by default. The output language follows the target-language
   preference; short hints follow the explanation language.
 - Type the default `??` at any caret position, including directly after a word or Chinese text. The default also
@@ -121,7 +121,7 @@ Language learning can be enabled independently of inline autocomplete:
 
 ## 5. Models, Prompting & Token Budgets
 
-- **Engine & Model** provides task tabs for Autocomplete, Translation, AI explanation & expression, and TTS, each reusing the grouped settings layout.
+- **Engine & Model** provides task tabs for Autocomplete, Translation, Explanation & expression, and TTS, each reusing the grouped settings layout.
 - Translation and explanation support in-process GGUF or separately configured OpenAI-compatible endpoints, with independent model, address, credential, and power profiles. Local execution needs no Ollama service.
 - AI explanation and expression assistance use the same saved profile, credentials, resident weights, and serialized executor. Their prompts, complete-output validation, session cancellation, and performance categories remain separate; no third model manager is created.
 - The translation catalog offers **Hy-MT2 1.8B**, **Hy-MT2 7B**, and **TranslateGemma 4B**; explanation uses general instruction models. Existing model selections and downloaded files are preserved.

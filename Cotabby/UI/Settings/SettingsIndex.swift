@@ -175,7 +175,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .openVocabularyShortcut: return String(localized: "Open vocabulary", table: "Vocabulary")
         case .ankiReview: return String(localized: "Anki review", table: "Vocabulary")
         case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
-        case .explanationModel: return String(localized: "AI explanation & expression model", table: "Learning")
+        case .explanationModel: return String(localized: "Explanation & expression model", table: "Learning")
         case .expressionAssist: return String(localized: "Expression assistance", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")

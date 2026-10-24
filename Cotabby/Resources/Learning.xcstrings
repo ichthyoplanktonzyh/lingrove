@@ -66995,190 +66995,190 @@
         }
       }
     },
-    "AI explanation & expression" : {
+    "Explanation & expression" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "شرح الذكاء الاصطناعي والتعبير"
+            "value" : "الشرح والتعبير"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "KI-Erklärung und Formulierungshilfe"
+            "value" : "Erklärung & Formulierung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI explanation & expression"
+            "value" : "Explanation & expression"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Explicación con IA y expresión"
+            "value" : "Explicación y expresión"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Explication IA et expression"
+            "value" : "Explication et expression"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI व्याख्या और अभिव्यक्ति"
+            "value" : "व्याख्या और अभिव्यक्ति"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Penjelasan AI dan ungkapan"
+            "value" : "Penjelasan & ungkapan"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spiegazione IA e aiuto espressivo"
+            "value" : "Spiegazione ed espressione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解説・表現アシスト"
+            "value" : "解説・表現"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 해설 및 표현 도우미"
+            "value" : "해설 및 표현"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Explicação com IA e expressão"
+            "value" : "Explicação e expressão"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ИИ-объяснения и формулировки"
+            "value" : "Объяснения и формулировки"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yapay zekâ açıklaması ve ifade"
+            "value" : "Açıklama ve ifade"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解释与表达辅助"
+            "value" : "解释与表达"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解釋與表達輔助"
+            "value" : "解釋與表達"
           }
         }
       }
     },
-    "AI explanation & expression model" : {
+    "Explanation & expression model" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "نموذج شرح الذكاء الاصطناعي والتعبير"
+            "value" : "نموذج الشرح والتعبير"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modell für KI-Erklärungen und Formulierungshilfe"
+            "value" : "Modell für Erklärung und Formulierung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI explanation & expression model"
+            "value" : "Explanation & expression model"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modelo de explicación con IA y ayuda de expresión"
+            "value" : "Modelo de explicación y expresión"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modèle d’explication IA et d’aide à l’expression"
+            "value" : "Modèle d’explication et d’expression"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI व्याख्या और अभिव्यक्ति मॉडल"
+            "value" : "व्याख्या और अभिव्यक्ति मॉडल"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Model penjelasan AI dan ungkapan"
+            "value" : "Model penjelasan dan ungkapan"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modello di spiegazione IA e aiuto espressivo"
+            "value" : "Modello di spiegazione ed espressione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解説・表現アシストモデル"
+            "value" : "解説・表現モデル"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 해설 및 표현 도우미 모델"
+            "value" : "해설 및 표현 모델"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modelo de explicação com IA e ajuda de expressão"
+            "value" : "Modelo de explicação e expressão"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Модель ИИ-объяснений и формулировок"
+            "value" : "Модель объяснений и формулировок"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yapay zekâ açıklama ve ifade modeli"
+            "value" : "Açıklama ve ifade modeli"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解释与表达辅助模型"
+            "value" : "解释与表达模型"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 解釋與表達輔助模型"
+            "value" : "解釋與表達模型"
           }
         }
       }
