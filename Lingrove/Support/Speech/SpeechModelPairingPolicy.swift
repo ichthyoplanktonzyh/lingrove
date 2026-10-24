@@ -9,14 +9,13 @@ nonisolated enum SpeechModelPairingPolicy {
     private struct Package: Sendable {
         let model: String
         let decoders: [String]
-        let label: String
     }
 
     private static let packages: [Package] = [
         .init(model: "Qwen3-TTS-12Hz-1.7B-Base-Q4_K_M.gguf",
-              decoders: ["mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf"], label: "1.7B"),
+              decoders: ["mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf"]),
         .init(model: "Qwen3-TTS-12Hz-0.6B-Base.Q4_K_M.gguf",
-              decoders: ["mmproj-Qwen3-TTS-12Hz-0.6B-Base-Q8_0.gguf", "Qwen3-TTS-12Hz-0.6B-Base.mmproj-Q8_0.gguf"], label: "0.6B")
+              decoders: ["mmproj-Qwen3-TTS-12Hz-0.6B-Base-Q8_0.gguf", "Qwen3-TTS-12Hz-0.6B-Base.mmproj-Q8_0.gguf"])
     ]
 
     static func decoderFilenames(for modelFilename: String) -> [String] {
@@ -35,12 +34,6 @@ nonisolated enum SpeechModelPairingPolicy {
     }
 
     static func displayName(for filename: String) -> String? {
-        if let package = packages.first(where: { $0.model == filename }) {
-            return "Qwen3-TTS \(package.label) Base · Q4_K_M"
-        }
-        if let package = packages.first(where: { $0.decoders.contains(filename) }) {
-            return "Qwen3-TTS \(package.label) audio decoder · Q8_0"
-        }
-        return nil
+        LocalModelCatalog.descriptor(for: filename).map { _ in LocalModelCatalog.displayName(for: filename) }
     }
 }

@@ -66,7 +66,8 @@ struct LearningModelResidencyTests {
         let core = FakeNative()
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         profile.localModel = "fixture.gguf"
         controller.idleReleaseDelay = .milliseconds(20)
         controller.applyResidency(.onDemand, generationAllowed: true)
@@ -98,7 +99,8 @@ struct LearningModelResidencyTests {
         let core = FakeNative(failAfterLoad: true)
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         profile.localModel = "fixture.gguf"
         controller.idleReleaseDelay = .milliseconds(20)
         controller.applyResidency(.onDemand, generationAllowed: true)
@@ -120,7 +122,8 @@ struct LearningModelResidencyTests {
         let core = FakeNative()
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         profile.localModel = "fixture.gguf"
         var eligible = true
         controller.warmupEligibility = { eligible }
@@ -140,7 +143,8 @@ struct LearningModelResidencyTests {
         let core = FakeNative()
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         profile.localModel = "fixture.gguf"
         controller.applyResidency(.warm, generationAllowed: true)
         await waitUntil { core.loadCount == 1 }

@@ -55,6 +55,7 @@ extension LearningModelConfigurationView {
                     : String(localized: "Configured · \(powerName(canonical))", table: "Learning",
                         comment: "Picker entry showing the current engine and model for this power profile."))
                     .tag(canonical)
+                    .selectionDisabled()
             }
             ForEach(options, id: \.self) { choice in Text(powerName(choice)).tag(choice) }
         } label: {
@@ -64,6 +65,10 @@ extension LearningModelConfigurationView {
                 systemImage: image)
         }
         .pickerStyle(.menu)
+        if canonical.backend == .local,
+           let issue = controller.taskIssue(for: canonical.localModel, template: selection.wrappedValue.template) {
+            Text(issue).font(.caption).foregroundStyle(.secondary)
+        }
         if selection.wrappedValue.backend == .endpoint {
             TextField(String(localized: "Endpoint model identifier", table: "Learning",
                 comment: "Placeholder for a manually entered endpoint model identifier in a power profile."),
@@ -93,7 +98,7 @@ extension LearningModelConfigurationView {
     private func powerName(_ value: LearningPowerProfile) -> String {
         switch value.backend {
         case .local:
-            value.localModel
+            LocalModelCatalog.displayName(for: value.localModel)
         case .endpoint:
             value.endpointModel.isEmpty
                 ? String(localized: "Endpoint · enter model identifier", table: "Learning",

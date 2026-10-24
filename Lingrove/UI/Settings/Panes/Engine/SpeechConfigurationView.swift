@@ -97,6 +97,10 @@ struct SpeechConfigurationView: View {
     /// Model files are configured independently of their lazy runtime. A changed selection
     /// must not inherit the previous model's Ready badge while its weights are still resident.
     var runtimeStatus: String {
+        let filename = URL(fileURLWithPath: speech.settings.localModelPath).lastPathComponent
+        if !speech.settings.localModelPath.isEmpty, !LocalModelTaskPolicy.supports(filename, task: .speech) {
+            return String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning")
+        }
         if let error = speech.configurationError { return error }
         let runtime = speech.telemetry.runtime
         if runtime.modelName != URL(fileURLWithPath: speech.settings.localModelPath).lastPathComponent

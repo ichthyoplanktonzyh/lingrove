@@ -319,13 +319,18 @@ struct MenuBarView: View {
     private var modelRow: some View {
         MenuBarPickerRow(title: String(localized: "Model")) {
             HStack(spacing: 4) {
-                if runtimeModel.availableModels.isEmpty {
+                if runtimeModel.availableModels.isEmpty && runtimeModel.selectedModelFilename == nil {
                     Text("No models found")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 } else {
                     Picker("Model", selection: selectedModelBinding) {
+                        if let filename = runtimeModel.selectedModelFilename,
+                           !runtimeModel.availableModels.contains(where: { $0.filename == filename }) {
+                            Text(LocalModelSelectionLabel.unavailable(filename, task: .completion))
+                                .tag(filename).selectionDisabled()
+                        }
                         ForEach(runtimeModel.availableModels) { model in
                             Text(model.displayName)
                                 .tag(model.filename)

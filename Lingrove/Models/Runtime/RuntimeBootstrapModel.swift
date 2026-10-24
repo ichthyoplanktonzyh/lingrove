@@ -36,8 +36,13 @@ final class RuntimeBootstrapModel: ObservableObject {
         self.userDefaults = userDefaults
         state = runtimeManager.state
         diagnostics = runtimeManager.diagnostics
-        availableModels = runtimeManager.availableModels
         let persistedFilename = userDefaults.string(forKey: Self.selectedModelDefaultsKey)
+        if let persistedFilename {
+            LocalModelTaskAssignments(defaults: userDefaults).record(persistedFilename, for: .completion)
+            runtimeManager.configureSelectedModel(filename: persistedFilename)
+            runtimeManager.refreshAvailableModels()
+        }
+        availableModels = runtimeManager.availableModels
         let initialSelection = RuntimeBootstrapModel.initialSelectedModelFilename(
             persistedFilename,
             availableModels: runtimeManager.availableModels
@@ -186,6 +191,9 @@ final class RuntimeBootstrapModel: ObservableObject {
         _ persistedFilename: String?,
         availableModels: [RuntimeModelOption]
     ) -> String? {
+        if let persistedFilename, !LocalModelTaskPolicy.supports(persistedFilename, task: .completion) {
+            return persistedFilename
+        }
         guard !availableModels.isEmpty else {
             return nil
         }
@@ -224,6 +232,8 @@ final class RuntimeBootstrapModel: ObservableObject {
         persistedSelection: String?,
         availableModels: [RuntimeModelOption]
     ) -> String? {
+        if let saved = currentSelection ?? persistedSelection,
+           !LocalModelTaskPolicy.supports(saved, task: .completion) { return saved }
         guard !availableModels.isEmpty else {
             return nil
         }

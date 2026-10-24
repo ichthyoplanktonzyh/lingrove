@@ -66,6 +66,12 @@ final class RuntimeBootstrapModelTests: XCTestCase {
 
     @MainActor
     private func makeModel(modelDirectory: URL, userDefaults: UserDefaults) -> RuntimeBootstrapModel {
+        // These tests exercise reconciliation among explicitly imported fixture models. Task
+        // admission itself is covered separately; never write fixture assignments to standard defaults.
+        let assignments = LocalModelTaskAssignments(defaults: userDefaults)
+        for url in BundledRuntimeLocator.discoverGGUFModelURLs(in: modelDirectory) {
+            assignments.record(url.lastPathComponent, for: .completion)
+        }
         // An empty preferred list keeps discovery ordering purely alphabetical, so tests can
         // reason about "the first available model" without referencing the shipping catalog.
         let configuration = LlamaRuntimeConfiguration(
@@ -77,7 +83,7 @@ final class RuntimeBootstrapModelTests: XCTestCase {
         )
         let manager = LlamaRuntimeManager(
             configuration: configuration,
-            runtimeLocator: BundledRuntimeLocator()
+            runtimeLocator: BundledRuntimeLocator(), modelTaskAssignments: assignments
         )
         let model = RuntimeBootstrapModel(runtimeManager: manager, userDefaults: userDefaults)
         Self.retainedModels.append(model)
@@ -98,6 +104,32 @@ final class RuntimeBootstrapModelTests: XCTestCase {
     }
 
     // MARK: - Initial selection
+
+    @MainActor
+    func test_startupRefreshAdoptsBothLegacyPowerModelsWithoutLoadingThem() throws {
+        let directory = try makeModelDirectory(filenames: ["manual.gguf", "battery.gguf", "ac.gguf"])
+        let defaults = makeUserDefaults()
+        let oldSettings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        oldSettings.setBatteryProfile(.llama(filename: "battery.gguf"))
+        oldSettings.setPluggedInProfile(.llama(filename: "ac.gguf"))
+        defaults.removeObject(forKey: "lingroveLocalModelTaskAssignments")
+        defaults.set("manual.gguf", forKey: Self.selectionKey)
+        let manager = LlamaRuntimeManager(configuration: .init(runtimeDirectoryPath: directory.path,
+            preferredModelNames: [], contextWindowTokens: 512, batchSize: 128, gpuLayerCount: 0),
+            runtimeLocator: BundledRuntimeLocator(), modelTaskAssignments: .init(defaults: defaults))
+        Self.retainedManagers.append(manager)
+        let bootstrap = RuntimeBootstrapModel(runtimeManager: manager, userDefaults: defaults)
+        Self.retainedModels.append(bootstrap)
+        XCTAssertEqual(bootstrap.availableModels.map(\.filename), ["manual.gguf"])
+        let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
+        bootstrap.refreshAvailableModels() // Same ordering as LingroveAppEnvironment's migration boundary.
+        XCTAssertEqual(Set(bootstrap.availableModels.map(\.filename)), ["manual.gguf", "battery.gguf", "ac.gguf"])
+        for filename in [settings.batteryModelFilename, settings.pluggedInModelFilename] {
+            bootstrap.selectModelWithoutLoading(filename)
+            XCTAssertEqual(manager.currentModelFilename, filename)
+            XCTAssertEqual(bootstrap.state, .idle)
+        }
+    }
 
     func test_init_withoutModels_clearsSelectionAndStalePersistedValue() throws {
         let directory = try makeModelDirectory(filenames: [])
@@ -165,9 +197,13 @@ final class RuntimeBootstrapModelTests: XCTestCase {
         let directory = try makeModelDirectory(filenames: ["alpha.gguf", "beta.gguf"])
         let configuration = LlamaRuntimeConfiguration(runtimeDirectoryPath: directory.path,
             preferredModelNames: [], contextWindowTokens: 512, batchSize: 128, gpuLayerCount: 0)
-        let manager = LlamaRuntimeManager(configuration: configuration, runtimeLocator: BundledRuntimeLocator())
+        let defaults = makeUserDefaults()
+        let assignments = LocalModelTaskAssignments(defaults: defaults)
+        for filename in ["alpha.gguf", "beta.gguf"] { assignments.record(filename, for: .completion) }
+        let manager = LlamaRuntimeManager(configuration: configuration, runtimeLocator: BundledRuntimeLocator(),
+            modelTaskAssignments: assignments)
         Self.retainedManagers.append(manager)
-        let model = RuntimeBootstrapModel(runtimeManager: manager, userDefaults: makeUserDefaults())
+        let model = RuntimeBootstrapModel(runtimeManager: manager, userDefaults: defaults)
         Self.retainedModels.append(model)
         model.onWillReloadModel = { [weak model] in model?.shouldLoadSelectedModel = { false } }
         await model.selectModel("beta.gguf")
@@ -185,7 +221,8 @@ final class RuntimeBootstrapModelTests: XCTestCase {
         let configuration = LlamaRuntimeConfiguration(runtimeDirectoryPath: directory.path,
             preferredModelNames: [], contextWindowTokens: 512, batchSize: 128, gpuLayerCount: 0)
         let manager = LlamaRuntimeManager(configuration: configuration, runtimeLocator: BundledRuntimeLocator(),
-            shutdownOperation: { started.fulfill(); gate.wait() })
+            shutdownOperation: { started.fulfill(); gate.wait() },
+            modelTaskAssignments: .init(defaults: makeUserDefaults()))
         Self.retainedManagers.append(manager)
         manager.stop()
         await fulfillment(of: [started], timeout: 1)
@@ -360,7 +397,10 @@ final class RuntimeBootstrapModelTests: XCTestCase {
         let model = runOnMainActor { makeModel(modelDirectory: directory, userDefaults: userDefaults) }
 
         try Data("not a real model".utf8).write(to: directory.appendingPathComponent("beta.gguf"))
-        runOnMainActor { model.refreshAvailableModels() }
+        runOnMainActor {
+            LocalModelTaskAssignments(defaults: userDefaults).record("beta.gguf", for: .completion)
+            model.refreshAvailableModels()
+        }
 
         runOnMainActor {
             XCTAssertEqual(model.availableModels.map(\.filename), ["alpha.gguf", "beta.gguf"])

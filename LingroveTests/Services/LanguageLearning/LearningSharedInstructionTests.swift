@@ -18,7 +18,8 @@ struct LearningSharedInstructionTests {
         let core = HeldNative()
         let controller = LearningModelController(profile: settings.explanation,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         defer { controller.shutdownSync() }
         let metrics = PerformanceMetricsStore(userDefaults: defaults)
         let telemetry = LearningRequestTelemetry(metrics: metrics, trackingEnabled: { true })
@@ -47,7 +48,8 @@ struct LearningSharedInstructionTests {
         let core = HeldNative()
         let controller = LearningModelController(profile: profile,
             client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)),
-            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") })
+            core: core, localModelURL: { _ in URL(fileURLWithPath: "/fixture.gguf") },
+            templateResolver: { _ in .qwen3 })
         defer { core.release(); controller.shutdownSync() }
         let first = Task { try await controller.generate(prompt: "first", maxTokens: 1) }
         for _ in 0..<200 where core.started.isEmpty { try await Task.sleep(for: .milliseconds(2)) }
