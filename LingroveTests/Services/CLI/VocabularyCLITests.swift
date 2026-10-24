@@ -72,6 +72,87 @@ struct VocabularyCLITests {
     }
     private func result(_ reply: [String: Any]) throws -> [String: Any] { try #require(reply["result"] as? [String: Any]) }
 
+    /// Fixed identities protect the published dry-run/commit contract when planning is split into helpers.
+    @Test func planningPreservesExistingIdentitySeedsAndOutcomePaths() throws {
+        let input = batch("stable-ids", [add(content: [["text": "Example content"]])])
+        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: input))
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let plan = try VocabularyCLIPlan(batch: decoded, snapshot: .init(revision: 0, document: .init()),
+            fingerprint: "fixture", prepared: [:], now: now)
+        let entry = try #require(plan.document.entries.first)
+        let sense = try #require(entry.senses.first)
+        #expect(entry.id.uuidString == "A316F899-6FA4-5BB7-A3FD-690B39CBE494")
+        #expect(sense.id.uuidString == "B1FBB4CB-D6E5-506F-9D5D-5C307D9CBEF4")
+        #expect(sense.examples.first?.id.uuidString == "6019CF31-390A-57AC-A0E9-1A85017573DE")
+        #expect(sense.content?.first?.id.uuidString == "F0F952BC-AA29-55DA-B9AD-B75FC03874B4")
+        #expect(entry.createdAt == now && sense.updatedAt == now)
+        #expect(plan.outcomes == [.object([
+            "operation": .integer(0), "entryID": .string(entry.id.uuidString),
+            "senseID": .string(sense.id.uuidString), "createdEntry": .bool(true),
+            "usageIDs": .array([.string("6019CF31-390A-57AC-A0E9-1A85017573DE")]),
+            "blockIDs": .array([.string("F0F952BC-AA29-55DA-B9AD-B75FC03874B4")])
+        ])])
+    }
+
+    /// Later operations see earlier changes, while repeated captures keep the saved usage and translations.
+    @Test func sequentialPlanningRetainsUsageIdentityAndDeduplicatesVariants() throws {
+        let seed = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("seed", [add()])))
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let initial = try VocabularyCLIPlan(batch: seed, snapshot: .init(revision: 0, document: .init()),
+            fingerprint: "fixture", prepared: [:], now: now)
+        let entry = try #require(initial.document.entries.first)
+        let sense = try #require(entry.senses.first)
+        let usage = try #require(sense.examples.first)
+        let variant: [String: Any] = [
+            "text": usage.text, "translation": "La banque est ouverte.", "translationLanguage": "fr"
+        ]
+        let input = batch("ordered", [
+            ["update": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
+                "expectedRevision": 7, "note": "After update"]],
+            ["append": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
+                "tags": ["finance", "finance"], "examples": [variant, variant, ["text": "We reached the bank."]]]]
+        ])
+        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: input))
+        let snapshot = VocabularySnapshot(revision: 7, document: initial.document)
+        let plan = try VocabularyCLIPlan(batch: decoded, snapshot: snapshot, fingerprint: "fixture", prepared: [:], now: now)
+        let updated = try #require(plan.document.entries.first?.senses.first)
+        #expect(updated.id == sense.id && updated.note == "After update")
+        #expect(updated.tags == ["finance"] && updated.examples.count == 2)
+        #expect(updated.examples[0].id == usage.id && updated.examples[0].translation == usage.translation)
+        #expect(updated.examples[0].translationVariants == [.init(text: "La banque est ouverte.", language: .french)])
+        #expect(snapshot.document.entries[0].senses[0] == sense)
+        #expect(plan.outcomes.count == 2)
+    }
+
+    @Test func addingAnotherSenseCannotStealAnExistingUsage() throws {
+        let seed = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("seed", [add()])))
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let initial = try VocabularyCLIPlan(batch: seed, snapshot: .init(revision: 0, document: .init()),
+            fingerprint: "fixture", prepared: [:], now: now)
+        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("another-sense", [add()])))
+        do {
+            _ = try VocabularyCLIPlan(batch: decoded, snapshot: .init(revision: 1, document: initial.document),
+                fingerprint: "fixture", prepared: [:], now: now)
+            Issue.record("An existing usage must remain with its current sense.")
+        } catch let error as CLIError {
+            #expect(error.code == .conflict)
+            #expect(error.message == "This usage already belongs to another sense. Append to its current owner.")
+        }
+        #expect(initial.document.entries[0].senses.count == 1)
+    }
+
+    /// Revisions beyond Double's exact integer range must keep their integer representation on the wire.
+    @Test func wireJSONPreservesIntegerRevisionsAndOtherValueKinds() throws {
+        let data = Data(#"{"revision":9007199254740993,"enabled":true,"ratio":1.5,"items":[null,"word"]}"#.utf8)
+        let expected = CLIJSON.object([
+            "revision": .integer(9_007_199_254_740_993), "enabled": .bool(true),
+            "ratio": .number(1.5), "items": .array([.null, .string("word")])
+        ])
+        let decoded = try JSONDecoder().decode(CLIJSON.self, from: data)
+        #expect(decoded == expected)
+        #expect(try JSONDecoder().decode(CLIJSON.self, from: JSONEncoder().encode(decoded)) == expected)
+    }
+
     @Test func dryRunCommitReplayAndPortableReadUseOneTransactionAndRefreshStore() async throws {
         let fixture = try await Fixture()
         do {

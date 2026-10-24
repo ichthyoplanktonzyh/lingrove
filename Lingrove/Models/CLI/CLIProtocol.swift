@@ -93,23 +93,31 @@ nonisolated enum CLIJSON: Codable, Equatable, Sendable {
     case object([String: CLIJSON]), array([CLIJSON]), string(String), integer(Int64), number(Double), bool(Bool), null
     init(from decoder: Decoder) throws {
         let value = try decoder.singleValueContainer()
-        if value.decodeNil() { self = .null }
-        else if let v = try? value.decode(Bool.self) { self = .bool(v) }
-        else if let v = try? value.decode(Int64.self) { self = .integer(v) }
-        else if let v = try? value.decode(Double.self) { self = .number(v) }
-        else if let v = try? value.decode(String.self) { self = .string(v) }
-        else if let v = try? value.decode([String: CLIJSON].self) { self = .object(v) }
-        else { self = .array(try value.decode([CLIJSON].self)) }
+        if value.decodeNil() {
+            self = .null
+        } else if let boolean = try? value.decode(Bool.self) {
+            self = .bool(boolean)
+        } else if let integer = try? value.decode(Int64.self) {
+            self = .integer(integer)
+        } else if let number = try? value.decode(Double.self) {
+            self = .number(number)
+        } else if let string = try? value.decode(String.self) {
+            self = .string(string)
+        } else if let object = try? value.decode([String: CLIJSON].self) {
+            self = .object(object)
+        } else {
+            self = .array(try value.decode([CLIJSON].self))
+        }
     }
     func encode(to encoder: Encoder) throws {
         var value = encoder.singleValueContainer()
         switch self {
-        case let .object(v): try value.encode(v)
-        case let .array(v): try value.encode(v)
-        case let .string(v): try value.encode(v)
-        case let .integer(v): try value.encode(v)
-        case let .number(v): try value.encode(v)
-        case let .bool(v): try value.encode(v)
+        case let .object(object): try value.encode(object)
+        case let .array(array): try value.encode(array)
+        case let .string(string): try value.encode(string)
+        case let .integer(integer): try value.encode(integer)
+        case let .number(number): try value.encode(number)
+        case let .bool(boolean): try value.encode(boolean)
         case .null: try value.encodeNil()
         }
     }
@@ -133,8 +141,15 @@ nonisolated struct CLIError: Error, Codable, Equatable, Sendable {
     var code: Code
     var message: String
     var exitCode: Int32 {
-        switch code { case .invalidInput: 2; case .notFound: 3; case .conflict: 4; case .busy: 5;
-        case .unavailable: 6; case .io: 7; case .timeout: 8 }
+        switch code {
+        case .invalidInput: 2
+        case .notFound: 3
+        case .conflict: 4
+        case .busy: 5
+        case .unavailable: 6
+        case .io: 7
+        case .timeout: 8
+        }
     }
     static func invalid(_ message: String) -> Self { .init(code: .invalidInput, message: message) }
 }
