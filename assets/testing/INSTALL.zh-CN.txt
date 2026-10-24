@@ -4,11 +4,12 @@ Lingrove（拾语）v0.5.1（build 2）测试预发布版
 
 适用范围
 
-此版本通过 Lingrove 自己仓库的 GitHub Releases 公开提供，供自愿参与测试的用户使用；
+此说明适用于 Lingrove 的本地验收包和公开测试包，供自愿参与测试的用户使用。
 它不是正式稳定版，也没有自动更新。包内应用使用 ad-hoc（临时）签名，尚未使用 Apple
-Developer ID 签名或公证。普通安装只需从下面的官方预发布页面下载 DMG，无需使用终端。
-本说明已附在 DMG 内，也可以单独下载：
-https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1
+Developer ID 签名或公证。构建来源和架构以安装包旁的 build-info.json 为准；本地验收包
+尚未公开发布。公开测试包请从下面的官方 Releases 页面下载 DMG，无需使用终端。
+本说明已附在 DMG 内：
+https://github.com/ichthyoplanktonzyh/lingrove/releases
 
 此应用要求 macOS 14 或更新版本。通用版本包含 Apple Silicon（arm64）和 Intel（x86_64）
 两种处理器架构。本包在 Apple Silicon 本机进行构建、包完整性检查和基础启动验证；Intel

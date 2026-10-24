@@ -29,6 +29,20 @@ are documented below.
 
 ## Current development checkpoint (not published)
 
+The namespace migration is integrated on `main` at `257cb125`. First-party source, modules,
+targets, settings keys and diagnostics use Lingrove names; legacy settings and launch interfaces
+retain explicit compatibility. Full regression passed with 2,956 XCTest cases (25 conditional
+skips) and 758 Swift Testing tests, followed by focused namespace checks, 121 Python tests and
+localization validation for 1,536 source keys. No new lint diagnostics were introduced; 91 existing
+diagnostics remain. Dev Release launch and all 83 retained preference entries were verified.
+
+The local production-target package is built with `scripts/build_test_dmg.sh --output-dir
+build/distributions/namespace-migration-257cb125`. Its `build-info.json` identifies the exact
+committed source used for the package, including any subsequent packaging-documentation changes.
+This package remains ad-hoc signed and unnotarized: this Mac has no Developer ID Application
+identity. Creating and validating this local installer does not publish a new GitHub Release or
+enable automatic updates. The historical published artifacts below remain unchanged.
+
 The local development version additionally contains independently switchable autocomplete with
 cancellable warmup/runtime admission, incremental translation previews and committed-input fixes,
 and the first vocabulary notebook. The notebook stores examples, notes, tags and dictionary
