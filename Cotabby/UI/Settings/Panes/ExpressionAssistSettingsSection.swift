@@ -24,6 +24,12 @@ struct ExpressionAssistSettingsSection: View {
             }
             if let error = ExpressionAssistPolicy.triggerError(settings.trigger) {
                 Text(error).font(.caption).foregroundStyle(.red)
+            } else {
+                // A live example turns an abstract "trigger symbols" field into the actual gesture,
+                // and updates as the user edits, so a typo in the trigger is visible immediately.
+                Text(String(localized: "Example: type \(settings.trigger) and then describe what you mean.",
+                    table: "Learning"))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Picker(String(localized: "Target language", table: "Learning"), selection: $learning.targetLanguage) {
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
