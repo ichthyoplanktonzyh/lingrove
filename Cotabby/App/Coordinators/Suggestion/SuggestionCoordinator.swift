@@ -66,6 +66,9 @@ final class SuggestionCoordinator: ObservableObject {
     /// not compete with the picker. It never consumes keys here (the listen-only observer cannot);
     /// consumption happens through `InputMonitor.emojiCaptureKeyDecider`.
     var emojiInputObserver: ((CapturedInputEvent) -> Bool)?
+    /// The app graph supplies the lifetime of an explicit writing surface. A persistent hold
+    /// gates polling, OCR callbacks, prepared tails and generation, beyond a single key event.
+    var writingInteractionHoldReason: () -> String? = { nil }
 
     static let totalTabAcceptedWordCountDefaultsKey = "cotabbyTotalAcceptedWordCount"
 

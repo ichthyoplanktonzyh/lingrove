@@ -275,7 +275,7 @@ final class LearningSentencePreviewCoordinator {
             guard let self else { return }
             do {
                 try await self.waitForPause(self.debounce)
-                guard self.requestID == identifier, !Task.isCancelled, self.enabled,
+                guard self.requestID == identifier, !Task.isCancelled, !self.isReadingActive(), self.enabled,
                     self.service.settings.languageLearning.sentencePreviewEnabled, self.availability() == nil
                 else { return }
                 let capture = try self.reader.capture()

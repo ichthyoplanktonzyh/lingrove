@@ -49,6 +49,7 @@ final class CotabbyAppEnvironment {
     let emojiPickerController: EmojiPickerController
     let macroController: MacroController
     let inlineCommandCoordinator: InlineCommandCoordinator
+    let expressionAssistCoordinator: ExpressionAssistCoordinator
     let emojiUsageStore: EmojiUsageStore
     let welcomeCoordinator: WelcomeCoordinator
     let huggingFaceSearchService: HuggingFaceSearchService
@@ -476,14 +477,39 @@ final class CotabbyAppEnvironment {
             }, sourceAvailability: { source in source != .selection || permissionManager.accessibilityGranted },
             beforePresent: { [weak sentencePreview] in sentencePreview?.availabilityChanged() }
         )
-        sentencePreview.isReadingActive = { [weak reading] in reading?.isActive == true }
+        let expressionPanel = ExpressionAssistPanelController()
+        let expressionAssist = ExpressionAssistCoordinator(settings: suggestionSettings, focus: focusModel,
+            editor: ExpressionAssistEditor(focus: focusModel, replacement: learningReader,
+                inputOwnsKeyboard: { [weak expressionPanel] in expressionPanel?.hasKeyFocus == true }),
+            service: learningModels.expressionAssist, panel: expressionPanel, availability: {
+                permissionManager.accessibilityGranted && permissionManager.inputMonitoringGranted &&
+                    learningAvailability() == nil && LearningCapturePolicy.permitsExplicitCapture(focusModel.snapshot.capability)
+            })
+        suggestionCoordinator.writingInteractionHoldReason = { [weak expressionAssist] in
+            expressionAssist?.isActive == true ? String(localized: "Expression assistance", table: "Learning") : nil
+        }
+        focusModel.captureHoldReason = { [weak expressionAssist] in
+            expressionAssist?.isEditingDescription == true ? String(localized: "Expression assistance", table: "Learning") : nil
+        }
+        expressionAssist.beforePresent = { [weak suggestionCoordinator, weak sentencePreview, weak reading] in
+            suggestionCoordinator?.reconcileWithCurrentEnvironment()
+            sentencePreview?.availabilityChanged()
+            reading?.dismiss(reason: "expression-assistance")
+        }
+        sentencePreview.isReadingActive = { [weak reading, weak expressionAssist] in
+            reading?.isActive == true || expressionAssist?.isActive == true
+        }
         Publishers.Merge(permissionManager.$accessibilityGranted, permissionManager.$inputMonitoringGranted)
-            .sink { [weak reading] _ in
-                Task { @MainActor [weak reading] in reading?.availabilityChanged() }
+            .sink { [weak reading, weak expressionAssist] _ in
+                Task { @MainActor [weak reading, weak expressionAssist] in
+                    reading?.availabilityChanged()
+                    expressionAssist?.cancel()
+                }
             }.store(in: &cancellables)
         // One tap slot arbitrates both origins. A denied reading command returns .notHandled,
         // allowing the host (and the existing autocomplete arbitration) to receive the event.
-        inputMonitor.learningKeyDecider = { [weak sentencePreview, weak reading] event in
+        inputMonitor.learningKeyDecider = { [weak sentencePreview, weak reading, weak expressionAssist] event in
+            if let decision = expressionAssist?.decide(event), decision != .notHandled { return decision }
             let mask = ShortcutModifierMask(eventFlags: event.flags)
             if let command = suggestionSettings.vocabularyShortcuts.command(key: event.keyCode, modifiers: mask),
                suggestionSettings.vocabularyShortcutConflict(command, key: event.keyCode, modifiers: mask,
@@ -505,7 +531,7 @@ final class CotabbyAppEnvironment {
             emoji: emojiPickerController,
             macro: macroController,
             inputMonitor: inputMonitor,
-            sentencePreview: sentencePreview, reading: reading
+            sentencePreview: sentencePreview, reading: reading, expression: expressionAssist
         )
         suggestionCoordinator.emojiInputObserver = { [weak inlineCommandCoordinator] event in
             inlineCommandCoordinator?.observe(event) ?? false
@@ -540,6 +566,7 @@ final class CotabbyAppEnvironment {
         self.emojiPickerController = emojiPickerController
         self.macroController = macroController
         self.inlineCommandCoordinator = inlineCommandCoordinator
+        self.expressionAssistCoordinator = expressionAssist
         self.emojiUsageStore = emojiUsageStore
         self.welcomeCoordinator = welcomeCoordinator
         self.huggingFaceSearchService = huggingFaceSearchService
@@ -570,12 +597,13 @@ final class CotabbyAppEnvironment {
         // pausing, rather than waiting for another edit or a model response to reach its guard.
         Publishers.Merge(lowPowerModeMonitor.$isLowPowerModeEnabled.map { _ in () },
             suggestionSettings.$isLowPowerModeAutoDisableEnabled.map { _ in () })
-        .sink { [weak lowPowerModeMonitor, weak suggestionSettings, weak sentencePreview, weak reading] _ in
+        .sink { [weak lowPowerModeMonitor, weak suggestionSettings, weak sentencePreview, weak reading, weak expressionAssist] _ in
                 Task { @MainActor in
                     guard lowPowerModeMonitor?.isLowPowerModeEnabled == true,
                           suggestionSettings?.isLowPowerModeAutoDisableEnabled == true else { return }
                     sentencePreview?.availabilityChanged()
                     reading?.dismiss()
+                    expressionAssist?.cancel()
                 }
             }.store(in: &cancellables)
 
@@ -630,14 +658,16 @@ final class CotabbyAppEnvironment {
         observeOpenAICompatibleSelection()
     }
 
-    /// Installs the translation tap only for the explicit feature switch. The module has a separate
-    /// interception reason so emoji/macro capture cannot tear down its shortcut handling.
+    /// Either explicit learning feature keeps its shared tap installed. The separate interception
+    /// reason prevents emoji/macro capture from tearing down learning shortcut handling.
     private func observeLanguageLearning(coordinator: LearningSentencePreviewCoordinator) {
-        suggestionSettings.languageLearning.$translationEnabled
-            .removeDuplicates()
-            .sink { [weak inputMonitor, weak coordinator] enabled in
-                inputMonitor?.setLearningInterceptionActive(enabled)
-                guard !enabled else { return }
+        Publishers.CombineLatest(suggestionSettings.languageLearning.$translationEnabled,
+            suggestionSettings.languageLearning.expressionAssist.$enabled)
+            .removeDuplicates { $0.0 == $1.0 && $0.1 == $1.1 }
+            .sink { [weak inputMonitor, weak coordinator] values in
+                let (translation, expression) = values
+                inputMonitor?.setLearningInterceptionActive(translation || expression)
+                guard !translation else { return }
                 coordinator?.availabilityChanged()
             }
             .store(in: &cancellables)

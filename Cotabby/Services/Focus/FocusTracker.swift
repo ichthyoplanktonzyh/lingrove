@@ -13,6 +13,10 @@ import Logging
 final class FocusTracker {
     var onSnapshotChange: ((FocusSnapshot) -> Void)?
     var onPoll: ((FocusPollingEvent) -> Void)?
+    /// The composition root supplies a short-lived hold while an app-owned input is editing.
+    /// Unlike per-app suppression this runs before any AX query. Publish an honest blocked state
+    /// instead of freezing a stale external field; releasing the hold resumes ordinary polling.
+    var captureHoldReason: @MainActor () -> String? = { nil }
 
     private(set) var snapshot: FocusSnapshot = .inactive {
         didSet {
@@ -221,7 +225,16 @@ final class FocusTracker {
     @discardableResult
     private func performCaptureAndPublish() -> Bool {
         pollSequence += 1
-        let capture = captureSnapshot()
+        let capture: FocusCaptureResult
+        if let reason = captureHoldReason() {
+            // This cheap local observation is an active editing mode, not an idle external field.
+            // Keep the release check responsive without doing any AX work while input is held.
+            backoff.reset()
+            capture = inactiveCapture(applicationName: NSRunningApplication.current.localizedName ?? "Lingrove",
+                bundleIdentifier: ignoredBundleIdentifier, capability: .blocked(reason))
+        } else {
+            capture = captureSnapshot()
+        }
         lastCaptureUptimeNanoseconds = DispatchTime.now().uptimeNanoseconds
 
         let snapshotChanged = capture.snapshot != snapshot

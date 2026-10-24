@@ -15,6 +15,7 @@ final class InlineCommandCoordinator {
     private let learning: LanguageLearningCoordinator?
     private let sentencePreview: LearningSentencePreviewCoordinator?
     private let reading: LearningReadingCoordinator?
+    private let expression: ExpressionAssistCoordinator?
     private let emoji: EmojiPickerController
     private let macro: MacroController
     private let inputMonitor: any EmojiInputIntercepting
@@ -25,11 +26,13 @@ final class InlineCommandCoordinator {
         inputMonitor: any EmojiInputIntercepting,
         learning: LanguageLearningCoordinator? = nil,
         sentencePreview: LearningSentencePreviewCoordinator? = nil,
-        reading: LearningReadingCoordinator? = nil
+        reading: LearningReadingCoordinator? = nil,
+        expression: ExpressionAssistCoordinator? = nil
     ) {
         self.learning = learning
         self.sentencePreview = sentencePreview
         self.reading = reading
+        self.expression = expression
         self.emoji = emoji
         self.macro = macro
         self.inputMonitor = inputMonitor
@@ -42,6 +45,7 @@ final class InlineCommandCoordinator {
             self?.decide(keyEvent) ?? .notHandled
         }
         learning?.start()
+        expression?.start()
         sentencePreview?.start()
         reading?.start()
         emoji.start()
@@ -50,6 +54,7 @@ final class InlineCommandCoordinator {
 
     func stop() {
         learning?.stop()
+        expression?.stop()
         sentencePreview?.stop()
         reading?.stop()
         emoji.stop()
@@ -62,6 +67,7 @@ final class InlineCommandCoordinator {
     /// Returns whether either feature was involved, so the suggestion coordinator can stand down.
     @discardableResult
     func observe(_ event: CapturedInputEvent) -> Bool {
+        if expression?.observe(event) == true { return true }
         let learningInvolved = learning?.observe(event) ?? false
         sentencePreview?.observe(event)
         let macroInvolved = macro.observe(event)

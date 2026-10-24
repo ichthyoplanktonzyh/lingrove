@@ -16,6 +16,9 @@ struct LearningSelectionCapture {
     let range: NSRange
     let source: String
     var usesTextMarkers: Bool = false
+    /// Literal command/insertion scopes must not be reinterpreted as a whole sentence during
+    /// revalidation. Translation captures retain their existing NLP-based scope by default.
+    var usesExplicitRange: Bool = false
     var editorSelection: NSRange?
     /// Optional explanation for a capture that cannot offer replacement. Missing AX evidence under
     /// a composition-capable input source alone does not set this; the coordinator presents a
@@ -27,7 +30,7 @@ struct LearningSelectionCapture {
     var originalSelection: NSRange { editorSelection ?? context.documentSelection }
     var supportsReplacement: Bool {
         replacementUnavailableReason == nil && inputMethodAssessment.permitsReplacement &&
-            (!usesTextMarkers || originalSelection.length > 0)
+            (!usesTextMarkers || originalSelection.length > 0 || (usesExplicitRange && range == originalSelection))
     }
 
     /// Compares write capability, not the exact AX/TIS report. Two permitted assessments remain
@@ -41,6 +44,7 @@ struct LearningSelectionCapture {
         return (assessmentsRemainWritable || assessmentsRemainEquallyRestricted) &&
             replacementUnavailableReason == other.replacementUnavailableReason &&
             usesTextMarkers == other.usesTextMarkers &&
+            usesExplicitRange == other.usesExplicitRange &&
             supportsReplacement == other.supportsReplacement
     }
 }
@@ -66,6 +70,12 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
     }
 
     func capture() throws -> LearningSelectionCapture {
+        try capture(explicitRange: nil)
+    }
+
+    /// Expression assistance supplies its exact marker, selection or zero-length insertion range.
+    /// All AX identity, composition and selected-text checks remain shared with translation.
+    func capture(explicitRange: NSRange?) throws -> LearningSelectionCapture {
         focus.refreshNow()
         guard LearningCapturePolicy.permitsExplicitCapture(focus.snapshot.capability), let context = focus.snapshot.context,
               !context.isSecure, !context.isIntegratedTerminal,
@@ -93,27 +103,42 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
         if let reason = inputMethodAssessment.previewRejectionReason {
             throw LearningFailure.message(reason)
         }
-        let replacementRange = try LearningTextScopePolicy.conversionRange(value: value, selection: range)
-        let source = try LearningTextScopePolicy.text(value: value, range: replacementRange)
+        let replacementRange = try explicitRange ?? LearningTextScopePolicy.conversionRange(value: value, selection: range)
+        let source = try captureText(value: value, range: replacementRange, explicit: explicitRange != nil)
         guard receipt.usesTextMarkers || range.length == 0 ||
                 AXHelper.stringValue(for: kAXSelectedTextAttribute as CFString, on: element) == source else {
             throw LearningFailure.message(String(localized: "The selected text does not match the field range; the original text was kept.",
                 table: "Learning", comment: "Error shown when the selected text differs from the verified range in the editor."))
         }
         return LearningSelectionCapture(element: element, context: context, value: value, range: replacementRange, source: source,
-            usesTextMarkers: receipt.usesTextMarkers, editorSelection: range,
+            usesTextMarkers: receipt.usesTextMarkers, usesExplicitRange: explicitRange != nil, editorSelection: range,
             replacementUnavailableReason: inputMethodAssessment.replacementUnavailableReason,
             inputMethodAssessment: inputMethodAssessment)
     }
 
     func isCurrent(_ saved: LearningSelectionCapture) -> Bool {
-        guard let current = try? capture() else { return false }
-        return NSWorkspace.shared.frontmostApplication?.processIdentifier == saved.context.processIdentifier &&
-            current.context.sessionIdentity == saved.context.sessionIdentity &&
-            CFEqual(current.element, saved.element) && current.value.utf16.elementsEqual(saved.value.utf16) &&
-            current.range == saved.range &&
-            current.originalSelection == saved.originalSelection &&
-            current.hasSameReplacementSafety(as: saved)
+        let current: LearningSelectionCapture
+        do { current = try capture(explicitRange: saved.usesExplicitRange ? saved.range : nil) } catch {
+            logReplacement(.debug, traceID: LearningRequestTrace.requestID ?? "untracked", status: "freshness_rejected",
+                details: ["reason": "capture_unavailable"])
+            return false
+        }
+        let checks = [
+            ("host_not_frontmost", NSWorkspace.shared.frontmostApplication?.processIdentifier == saved.context.processIdentifier),
+            ("session_changed", current.context.sessionIdentity == saved.context.sessionIdentity),
+            ("element_changed", CFEqual(current.element, saved.element)),
+            ("value_changed", current.value.utf16.elementsEqual(saved.value.utf16)),
+            ("range_changed", current.range == saved.range),
+            ("selection_changed", current.originalSelection == saved.originalSelection),
+            ("replacement_safety_changed", current.hasSameReplacementSafety(as: saved))
+        ]
+        if let failure = checks.first(where: { !$0.1 }) {
+            logReplacement(.debug, traceID: LearningRequestTrace.requestID ?? "untracked", status: "freshness_rejected",
+                details: ["reason": failure.0, "saved_sequence": String(saved.context.focusChangeSequence),
+                    "current_sequence": String(current.context.focusChangeSequence)])
+            return false
+        }
+        return true
     }
 
     func replace(_ saved: LearningSelectionCapture, with english: String) async throws {
@@ -146,7 +171,7 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
         }
         let expected = (saved.value as NSString).replacingCharacters(in: saved.range, with: english)
         let isWeb = saved.context.isWebContentField || saved.usesTextMarkers
-        if saved.originalSelection.length == 0 {
+        if saved.originalSelection != saved.range {
             try await prepareSelectionAndDispatch(saved, english: english, isWeb: isWeb, traceID: traceID)
         } else {
             try dispatchContent(saved, english: english, isWeb: isWeb, traceID: traceID)
@@ -278,13 +303,14 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
                 .map { $0.utf16.elementsEqual(saved.value.utf16) }
         }
         let sourceMatches: Bool? = if let receipt {
-            (try? LearningTextScopePolicy.text(value: receipt.value, range: saved.range)) == saved.source
+            (try? captureText(value: receipt.value, range: saved.range, explicit: saved.usesExplicitRange)) == saved.source
         } else { nil }
         let representationMatches = receipt.map { $0.usesTextMarkers == saved.usesTextMarkers }
         let replacementSafetyMatches: Bool?
-        if let receipt, let source = try? LearningTextScopePolicy.text(value: receipt.value, range: saved.range) {
+        if let receipt, let source = try? captureText(value: receipt.value, range: saved.range, explicit: saved.usesExplicitRange) {
             let live = LearningSelectionCapture(element: focusedElement ?? saved.element, context: context,
                 value: receipt.value, range: saved.range, source: source, usesTextMarkers: receipt.usesTextMarkers,
+                usesExplicitRange: saved.usesExplicitRange,
                 editorSelection: receipt.range, replacementUnavailableReason: assessment.replacementUnavailableReason,
                 inputMethodAssessment: assessment)
             replacementSafetyMatches = saved.hasSameReplacementSafety(as: live)
@@ -314,9 +340,10 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
         guard let receipt, let focusedElement else {
             return .init(decision: .rejected(reason: "acknowledgement_evidence_incomplete"), capture: nil)
         }
-        guard let range = try? LearningTextScopePolicy.conversionRange(value: receipt.value, selection: receipt.range),
+        guard let range = try? acknowledgedRange(receipt.range, value: receipt.value, explicit: saved.usesExplicitRange),
               range == saved.range,
-              let source = try? LearningTextScopePolicy.text(value: receipt.value, range: range), source == saved.source else {
+              let source = try? captureText(value: receipt.value, range: range, explicit: saved.usesExplicitRange),
+              source == saved.source else {
             return .init(decision: .rejected(reason: "confirmed_source_mismatch"), capture: nil)
         }
         guard receipt.usesTextMarkers || receipt.range.length == 0 ||
@@ -324,7 +351,8 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
             return .init(decision: .rejected(reason: "selected_text_mismatch"), capture: nil)
         }
         let selected = LearningSelectionCapture(element: focusedElement, context: context, value: receipt.value,
-            range: range, source: source, usesTextMarkers: receipt.usesTextMarkers, editorSelection: receipt.range,
+            range: range, source: source, usesTextMarkers: receipt.usesTextMarkers,
+            usesExplicitRange: saved.usesExplicitRange, editorSelection: receipt.range,
             replacementUnavailableReason: assessment.replacementUnavailableReason, inputMethodAssessment: assessment)
         guard matchesAcknowledgedCapture(selected, saved: saved) else {
             return .init(decision: .rejected(reason: "confirmed_capture_mismatch"), capture: nil)
@@ -339,6 +367,15 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
             selected.range == saved.range && selected.source == saved.source &&
             selected.originalSelection == saved.range && selected.supportsReplacement &&
             selected.hasSameReplacementSafety(as: saved)
+    }
+
+    private func captureText(value: String, range: NSRange, explicit: Bool) throws -> String {
+        try explicit ? EditorTextRangePolicy.text(value, range: range) : LearningTextScopePolicy.text(value: value, range: range)
+    }
+
+    private func acknowledgedRange(_ range: NSRange, value: String, explicit: Bool) throws -> NSRange {
+        if explicit { _ = try EditorTextRangePolicy.text(value, range: range); return range }
+        return try LearningTextScopePolicy.conversionRange(value: value, selection: range)
     }
 
     private func dispatchContent(

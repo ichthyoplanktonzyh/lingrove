@@ -1810,6 +1810,11 @@ final class SuggestionSettingsModel: ObservableObject {
     ) -> String? {
         guard keyCode != Self.disabledKeyCode else { return nil }
 
+        if languageLearning.expressionAssist.enabled, languageLearning.expressionAssist.keyCode == keyCode,
+           languageLearning.expressionAssist.modifiers == modifiers {
+            return String(localized: "Expression assistance", table: "Learning")
+        }
+
         if includingVocabularyShortcut,
            let command = vocabularyShortcuts.command(key: UInt16(clamping: keyCode), modifiers: modifiers) { return command.title }
 
@@ -1850,6 +1855,11 @@ final class SuggestionSettingsModel: ObservableObject {
         includingVocabularyShortcut: Bool = true
     ) -> String? {
         guard keyCode != Self.disabledKeyCode else { return nil }
+
+        if languageLearning.expressionAssist.enabled, languageLearning.expressionAssist.keyCode == keyCode,
+           languageLearning.expressionAssist.modifiers == modifiers {
+            return String(localized: "Expression assistance", table: "Learning")
+        }
 
         if includingVocabularyShortcut,
            let command = vocabularyShortcuts.command(key: UInt16(clamping: keyCode), modifiers: modifiers) { return command.title }

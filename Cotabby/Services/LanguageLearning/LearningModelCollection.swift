@@ -10,6 +10,7 @@ final class LearningModelCollection {
     let explanation: LearningModelController
     let explainer: LearningExplanationService
     let explanationPreview: LearningExplanationSession
+    let expressionAssist: ExpressionAssistService
     private let settings: LanguageLearningSettings
     private weak var appSettings: SuggestionSettingsModel?
     private weak var lowPower: (any SuggestionLowPowerModeProviding)?
@@ -22,6 +23,7 @@ final class LearningModelCollection {
         self.settings = settings; self.appSettings = appSettings; self.lowPower = lowPower
         translation = LearningModelController(profile: settings.translation, client: client)
         explanation = LearningModelController(profile: settings.explanation, client: client)
+        expressionAssist = ExpressionAssistService(model: explanation, telemetry: telemetry ?? LearningRequestTelemetry())
         explainer = LearningExplanationService(settings: settings, model: explanation, telemetry: telemetry ?? LearningRequestTelemetry())
         explanationPreview = LearningExplanationSession(service: explainer)
         translation.generationEligibility = { [weak self] in self?.isEnabled(.translation) == true }

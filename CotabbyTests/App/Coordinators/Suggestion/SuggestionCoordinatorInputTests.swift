@@ -7,6 +7,24 @@ import XCTest
 /// permission changes start or stop the pipeline. These paths decide whether typing feels
 /// instant or haunted, so every branch asserts the user-visible cleanup it leaves behind.
 final class SuggestionCoordinatorInputTests: SuggestionCoordinatorRigTestCase {
+    func test_explicitWritingHoldBlocksPollingAndReschedulesUntilTheSessionEnds() {
+        let rig = retained(makeCoordinatorRig())
+        startVisibleSession(in: rig)
+        var held = true
+        rig.coordinator.writingInteractionHoldReason = { held ? "Explicit writing session" : nil }
+        rig.coordinator.reconcileWithCurrentEnvironment()
+        rig.coordinator.handleFocusSnapshotChange(rig.focusProvider.snapshot)
+        rig.coordinator.schedulePrediction()
+        XCTAssertEqual(rig.coordinator.state, .disabled("Explicit writing session"))
+        XCTAssertFalse(rig.coordinator.overlayState.isVisible)
+        XCTAssertNil(rig.interactionState.activeSession)
+        XCTAssertTrue(rig.engine.requests.isEmpty)
+        held = false
+        XCTAssertNil(rig.coordinator.currentDisabledReason(focusSnapshot: rig.focusProvider.snapshot))
+        rig.coordinator.schedulePrediction()
+        XCTAssertEqual(rig.coordinator.state, .debouncing)
+    }
+
     // MARK: - Key routing
 
     func test_acceptanceEventRoutesIntoAcceptance() {

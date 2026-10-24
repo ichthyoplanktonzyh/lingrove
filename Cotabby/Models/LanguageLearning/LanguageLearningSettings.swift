@@ -8,6 +8,7 @@ final class LanguageLearningSettings: ObservableObject {
     private let defaults: UserDefaults
     let translation: LearningModelSettings
     let explanation: LearningModelSettings
+    let expressionAssist: ExpressionAssistSettings
     @Published var explanationLanguage: LearningLanguage? {
         didSet { defaults.set(explanationLanguage?.rawValue, forKey: "learningExplanationLanguage") }
     }
@@ -184,6 +185,7 @@ final class LanguageLearningSettings: ObservableObject {
 
     /// App-wide reset keeps the shortcut contract while disabling both explicit language features.
     func resetToDefaults() {
+        expressionAssist.reset()
         dictionary.reset()
         pointerTranslationEnabled = false
         screenshotTranslationEnabled = false
@@ -218,6 +220,7 @@ final class LanguageLearningSettings: ObservableObject {
         explanationCredentials: (any OpenAICompatibleCredentialStoring)? = nil
     ) {
         self.defaults = defaults
+        expressionAssist = ExpressionAssistSettings(defaults: defaults)
         explanation = LearningModelSettings(role: .explanation, defaults: defaults, credentials: explanationCredentials)
         explanationLanguage = defaults.string(forKey: "learningExplanationLanguage").flatMap(LearningLanguage.init(rawValue:))
         dictionary = LearningDictionarySettings(defaults: defaults)

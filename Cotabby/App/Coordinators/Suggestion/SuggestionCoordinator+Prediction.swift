@@ -15,6 +15,7 @@ extension SuggestionCoordinator {
     static let freshSnapshotReuseWindowMilliseconds = 30
 
     func schedulePrediction(consumedDelayMilliseconds: Int = 0) {
+        if let reason = writingInteractionHoldReason() { disablePredictions(reason: reason); return }
         if usePreparedContinuationIfPossible() { return }
         cancelPreparedContinuation()
         clearTypingPrediction()
@@ -1298,7 +1299,8 @@ extension SuggestionCoordinator {
     /// and varies only by which focus snapshot it is checking. Returns the user-facing disable reason,
     /// or nil when predictions are allowed for `focusSnapshot`.
     func currentDisabledReason(focusSnapshot: FocusSnapshot) -> String? {
-        SuggestionAvailabilityEvaluator.disabledReason(
+        if let reason = writingInteractionHoldReason() { return reason }
+        return SuggestionAvailabilityEvaluator.disabledReason(
             globallyEnabled: settingsSnapshot.isGloballyEnabled,
             completionEnabled: settingsSnapshot.isCompletionEnabled,
             temporarilyPaused: settingsSnapshot.isTemporarilyPaused,

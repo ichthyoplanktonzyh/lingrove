@@ -42,6 +42,27 @@ final class FocusTrackingModelTests: XCTestCase {
         }
     }
 
+    func test_ownedInputHoldStopsBeforeTheAXCaptureBoundaryAndReleasesForCommit() {
+        runOnMainActor {
+            var captureAttempts = 0
+            var editing = true
+            let model = FocusTrackingModel(permissionProvider: { captureAttempts += 1; return false },
+                ignoredBundleIdentifier: "test.lingrove", publishesPollingEvents: true)
+            Self.retainedModels.append(model)
+            defer { model.stop() }
+            model.captureHoldReason = { editing ? "Expression input owns editing" : nil }
+            for _ in 0..<40 { model.refreshNow() }
+            XCTAssertEqual(captureAttempts, 0, "Held captures must return before permission checks or any AX work")
+            XCTAssertNil(model.snapshot.context)
+            XCTAssertEqual(model.snapshot.capability, .blocked("Expression input owns editing"))
+            XCTAssertNil(model.latestExternalApplication)
+            editing = false
+            model.refreshNow()
+            XCTAssertEqual(captureAttempts, 1)
+            XCTAssertEqual(model.snapshot.applicationName, Self.blockedApplicationName)
+        }
+    }
+
     func test_start_publishesPermissionBlockedSnapshot() {
         runOnMainActor {
             let model = makeModel()

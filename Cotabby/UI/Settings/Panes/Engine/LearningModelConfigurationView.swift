@@ -115,7 +115,8 @@ struct LearningModelConfigurationView: View {
 
     private var taskDescription: String {
         switch profile.role {
-        case .explanation: String(localized: "Choose a general instruction model for AI explanation.", table: "Learning")
+        case .explanation: String(localized: "Choose one general instruction model shared by AI explanation and expression assistance.",
+            table: "Learning")
         case .translation: String(localized: """
             Choose a local GGUF or a separate endpoint for sentence translation. A translation-focused model is recommended.
             """,
@@ -266,7 +267,8 @@ struct LearningModelConfigurationView: View {
             privacyWarning: privacyWarning,
             transmissionNote: profile.role == .explanation
                 ? String(localized: """
-                With this endpoint, the service receives the chosen text, its captured context and the explanation language.
+                With this endpoint, the service receives the chosen text or expression description, bounded surrounding text, \
+                and the requested languages for explanation or expression assistance.
                 """,
                     table: "Learning")
                 : String(localized: """

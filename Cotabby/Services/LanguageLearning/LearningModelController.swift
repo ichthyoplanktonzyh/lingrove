@@ -18,6 +18,7 @@ final class LearningModelController: ObservableObject {
     private let client: OpenAICompatibleAPIClient
     private var task: Task<String, Error>?
     private var taskID = UUID()
+    private var instructionRequestID = UUID()
     private var subscriptions = Set<AnyCancellable>()
     private var missingSelectedFile = false
     private var preparedSnapshot: LearningModelSnapshot?
@@ -188,16 +189,35 @@ final class LearningModelController: ObservableObject {
         }
     }
 
+    /// Reserve before async metadata/prompt preparation. A slower, older explanation must not
+    /// arrive at generate later and supersede the expression request the user started after it.
+    func reserveInstructionRequest() -> UUID {
+        instructionRequestID = UUID()
+        task?.cancel()
+        return instructionRequestID
+    }
+
+    func validateInstructionRequest(_ identifier: UUID) throws {
+        try Task.checkCancellation()
+        guard instructionRequestID == identifier else { throw CancellationError() }
+    }
+
     func generate(prompt: String, maxTokens: Int, userOnly: Bool = false,
                   sampling: LearningInstructionSampling? = nil,
                   onDelta: (@MainActor (String) throws -> Void)? = nil) async throws -> String {
         guard generationAllowed, generationEligibility() else { throw CancellationError() }
+        try Task.checkCancellation()
         idleRelease?.cancel(); idleRelease = nil
         let measurement = LearningRequestTrace.measurement
         measurement?.beginGeneration(prompt: prompt)
-        task?.cancel()
+        // Explanation and expression assistance share this controller and one loaded engine.
+        // Publish the new identity before awaiting the old task: a third request may arrive while
+        // we suspend. Only the newest identity may then claim the native sequence or endpoint.
+        let previous = task
+        previous?.cancel()
         let id = UUID(), snapshot = profile.snapshot
-        let sampling = (sampling ?? (userOnly ? .hyMT : .standard)).values.applying(snapshot.samplingOverrides)
+        let request = InstructionRequest(id: id, snapshot: snapshot, prompt: prompt, maxTokens: maxTokens,
+            userOnly: userOnly, sampling: sampling)
         taskID = id
         status = snapshot.backend == .local
             ? String(localized: "Loading / generating", table: "Learning",
@@ -205,37 +225,12 @@ final class LearningModelController: ObservableObject {
             : String(localized: "Requesting", table: "Learning",
                 comment: "Model status while a learning request is being sent to its configured endpoint.")
         let work = Task { [self] in
-            switch snapshot.backend {
-            case .endpoint:
-                let configuration = try endpoint(snapshot)
-                if let onDelta {
-                    var raw = ""
-                    try await client.streamInstruction(configuration: configuration, apiKey: profile.apiKey(),
-                        prompt: prompt, options: .init(maxPredictionTokens: maxTokens, temperature: sampling.temperature,
-                            topP: sampling.topP), userOnly: userOnly) { delta in
-                        guard self.profile.snapshot == snapshot else { throw CancellationError() }
-                        measurement?.received(delta)
-                        try onDelta(delta)
-                        // Role-specific byte/eligibility checks run before this retained buffer grows.
-                        // Invalid output must not be accumulated first and rejected afterwards.
-                        raw += delta
-                    }
-                    return raw
-                }
-                let raw = try await client.generateInstruction(configuration: configuration, apiKey: profile.apiKey(),
-                    prompt: prompt, options: .init(maxPredictionTokens: maxTokens, temperature: sampling.temperature,
-                        topP: sampling.topP), userOnly: userOnly,
-                    onRawText: { measurement?.received($0) })
-                return raw
-            case .local:
-                guard !snapshot.localModel.isEmpty else {
-                    throw LearningFailure.message(String(localized: "Choose a local GGUF model for this task.",
-                        table: "Learning", comment: "Error shown when local generation starts without a selected model."))
-                }
-                let modelURL = try localModelURL(snapshot.localModel)
-                return try await runLocal(model: modelURL, snapshot: snapshot, prompt: prompt,
-                                          maxTokens: maxTokens, id: id, onDelta: onDelta)
+            if let previous { _ = await previous.result }
+            try Task.checkCancellation()
+            guard taskID == id, profile.snapshot == snapshot, generationAllowed, generationEligibility() else {
+                throw CancellationError()
             }
+            return try await generateResponse(request, onDelta: onDelta)
         }
         task = work
         do {
@@ -259,6 +254,56 @@ final class LearningModelController: ObservableObject {
             }
             if cancelled { throw CancellationError() }
             throw error
+        }
+    }
+
+    /// A frozen work item carries the shared executor's identity across its drain suspension.
+    /// It has request lifetime; the controller owns it only through the current generation task.
+    private struct InstructionRequest {
+        let id: UUID
+        let snapshot: LearningModelSnapshot
+        let prompt: String
+        let maxTokens: Int
+        let userOnly: Bool
+        let sampling: LearningInstructionSampling?
+    }
+
+    private func generateResponse(_ request: InstructionRequest,
+                                  onDelta: (@MainActor (String) throws -> Void)?) async throws -> String {
+        let snapshot = request.snapshot, prompt = request.prompt, maxTokens = request.maxTokens
+        let userOnly = request.userOnly, id = request.id
+        let sampling = (request.sampling ?? (userOnly ? .hyMT : .standard)).values.applying(snapshot.samplingOverrides)
+        let measurement = LearningRequestTrace.measurement
+        switch snapshot.backend {
+        case .endpoint:
+            let configuration = try endpoint(snapshot)
+            if let onDelta {
+                var raw = ""
+                try await client.streamInstruction(configuration: configuration, apiKey: profile.apiKey(),
+                    prompt: prompt, options: .init(maxPredictionTokens: maxTokens, temperature: sampling.temperature,
+                        topP: sampling.topP), userOnly: userOnly) { delta in
+                    guard self.profile.snapshot == snapshot else { throw CancellationError() }
+                    measurement?.received(delta)
+                    try onDelta(delta)
+                    // Role-specific byte/eligibility checks run before this retained buffer grows.
+                    // Invalid output must not be accumulated first and rejected afterwards.
+                    raw += delta
+                }
+                return raw
+            }
+            let raw = try await client.generateInstruction(configuration: configuration, apiKey: profile.apiKey(),
+                prompt: prompt, options: .init(maxPredictionTokens: maxTokens, temperature: sampling.temperature,
+                    topP: sampling.topP), userOnly: userOnly,
+                onRawText: { measurement?.received($0) })
+            return raw
+        case .local:
+            guard !snapshot.localModel.isEmpty else {
+                throw LearningFailure.message(String(localized: "Choose a local GGUF model for this task.",
+                    table: "Learning", comment: "Error shown when local generation starts without a selected model."))
+            }
+            let modelURL = try localModelURL(snapshot.localModel)
+            return try await runLocal(model: modelURL, snapshot: snapshot, prompt: prompt,
+                                      maxTokens: maxTokens, id: id, onDelta: onDelta)
         }
     }
 
@@ -298,7 +343,14 @@ final class LearningModelController: ObservableObject {
                     }
                 }
                 return try await nativeTask.value
-            } catch { nativeTask.cancel(); core.cancel(id); throw error }
+            } catch {
+                nativeTask.cancel()
+                core.cancel(id)
+                // Cancellation is cooperative. The successor must not begin until the old native
+                // worker has left its sequence, even when the stream stopped delivering first.
+                _ = await nativeTask.result
+                throw error
+            }
         } onCancel: { nativeTask.cancel(); core.cancel(id) }
     }
 

@@ -66994,6 +66994,2356 @@
           }
         }
       }
+    },
+    "AI explanation & expression" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "شرح الذكاء الاصطناعي والتعبير"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Erklärung und Formulierungshilfe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI explanation & expression"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explicación con IA y expresión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explication IA et expression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI व्याख्या और अभिव्यक्ति"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Penjelasan AI dan ungkapan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spiegazione IA e aiuto espressivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解説・表現アシスト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 해설 및 표현 도우미"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explicação com IA e expressão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ-объяснения и формулировки"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yapay zekâ açıklaması ve ifade"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解释与表达辅助"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解釋與表達輔助"
+          }
+        }
+      }
+    },
+    "AI explanation & expression model" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "نموذج شرح الذكاء الاصطناعي والتعبير"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modell für KI-Erklärungen und Formulierungshilfe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI explanation & expression model"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelo de explicación con IA y ayuda de expresión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèle d’explication IA et d’aide à l’expression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI व्याख्या और अभिव्यक्ति मॉडल"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model penjelasan AI dan ungkapan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modello di spiegazione IA e aiuto espressivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解説・表現アシストモデル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 해설 및 표현 도우미 모델"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelo de explicação com IA e ajuda de expressão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ-объяснений и формулировок"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yapay zekâ açıklama ve ifade modeli"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解释与表达辅助模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解釋與表達輔助模型"
+          }
+        }
+      }
+    },
+    "Choose a trigger that does not start with : or /; those open emoji and macros." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يجب ألا يبدأ رمز التفعيل بـ : أو /؛ فهما يفتحان الرموز التعبيرية ووحدات الماكرو."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Auslöser darf nicht mit : oder / beginnen. Diese öffnen Emojis und Makros."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a trigger that does not start with : or /; those open emoji and macros."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El activador no debe empezar por : ni /; estos abren los emojis y las macros."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le déclencheur ne doit pas commencer par : ou /, qui ouvrent les émojis et les macros."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ट्रिगर की शुरुआत : या / से नहीं होनी चाहिए; ये इमोजी और मैक्रो खोलते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pemicu tidak boleh diawali : atau /; simbol tersebut membuka emoji dan makro."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il simbolo di attivazione non deve iniziare con : o /, che aprono emoji e macro."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トリガーは : または / 以外で始めてください。これらは絵文字とマクロを開きます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "트리거는 : 또는 /로 시작할 수 없습니다. 이 기호는 이모티콘과 매크로를 엽니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O gatilho não pode começar com : ou /; esses símbolos abrem emojis e macros."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Триггер не должен начинаться с : или / — они открывают эмодзи и макросы."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tetikleyici : veya / ile başlamamalıdır; bunlar emoji ve makroları açar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "触发符号不能以 : 或 / 开头；它们用于打开表情与宏。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "觸發符號不能以 : 或 / 開頭；它們用於開啟表情與巨集。"
+          }
+        }
+      }
+    },
+    "Choose one general instruction model shared by AI explanation and expression assistance." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اختر نموذج تعليمات عامًا مشتركًا بين شرح الذكاء الاصطناعي ومساعدة التعبير."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle ein allgemeines Instruktionsmodell, das KI-Erklärungen und Formulierungshilfe gemeinsam nutzen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose one general instruction model shared by AI explanation and expression assistance."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un modelo general de instrucciones compartido por la explicación con IA y la ayuda de expresión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez un modèle général d’instructions commun aux explications IA et à l’aide à l’expression."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI व्याख्या और अभिव्यक्ति सहायता के लिए एक साझा सामान्य निर्देश मॉडल चुनें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih satu model instruksi umum yang dipakai bersama oleh penjelasan AI dan bantuan ungkapan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli un modello generale di istruzioni condiviso dalle spiegazioni IA e dall’aiuto espressivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 解説と表現アシストで共用する汎用指示モデルを選択してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 해설과 표현 도우미가 함께 사용할 범용 지시 모델을 선택하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um modelo geral de instruções compartilhado pela explicação com IA e pela ajuda de expressão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите общую инструкционную модель для ИИ-объяснений и помощи с формулировкой."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yapay zekâ açıklaması ve ifade yardımının paylaşacağı genel bir yönerge modeli seçin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个由 AI 解释与表达辅助共用的通用指令模型。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇一個由 AI 解釋與表達輔助共用的通用指令模型。"
+          }
+        }
+      }
+    },
+    "Configure an expression shortcut" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعيين اختصار لمساعدة التعبير"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzbefehl für die Formulierungshilfe festlegen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configure an expression shortcut"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar un atajo para la ayuda de expresión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer un raccourci pour l’aide à l’expression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति सहायता का शॉर्टकट सेट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atur pintasan bantuan ungkapan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura una scorciatoia per l’aiuto espressivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現アシストのショートカットを設定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현 도우미 단축키 설정"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar um atalho para a ajuda de expressão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить сочетание клавиш для формулировок"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İfade yardımı kısayolu ayarla"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置表达辅助快捷键"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定表達輔助快速鍵"
+          }
+        }
+      }
+    },
+    "Describe an expression or concept" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "صِف تعبيرًا أو مفهومًا"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausdruck oder Begriff beschreiben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe an expression or concept"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe una expresión o un concepto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décrivez une expression ou un concept"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति या अवधारणा का वर्णन करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jelaskan ungkapan atau konsep"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descrivi un’espressione o un concetto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表したい意味や概念を説明"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현하려는 의미나 개념 설명"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descreva uma expressão ou um conceito"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите выражение или понятие"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir ifadeyi veya kavramı açıklayın"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述想表达的意思或概念"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述想表達的意思或概念"
+          }
+        }
+      }
+    },
+    "Describe an expression or concept…" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "صِف تعبيرًا أو مفهومًا…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausdruck oder Begriff beschreiben…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe an expression or concept…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe una expresión o un concepto…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décrivez une expression ou un concept…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति या अवधारणा का वर्णन करें…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jelaskan ungkapan atau konsep…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descrivi un’espressione o un concetto…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表したい意味や概念を説明…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현하려는 의미나 개념 설명…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descreva uma expressão ou um conceito…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите выражение или понятие…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir ifadeyi veya kavramı açıklayın…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述想表达的意思或概念…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述想表達的意思或概念…"
+          }
+        }
+      }
+    },
+    "Describe what you mean at the caret. Confirm a candidate to insert it." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "صِف ما تقصده عند المؤشر، ثم أكّد اقتراحًا لإدراجه."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschreibe an der Einfügemarke, was du ausdrücken möchtest, und bestätige einen Vorschlag zum Einfügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe what you mean at the caret. Confirm a candidate to insert it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe lo que quieres decir en el cursor y confirma una opción para insertarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décrivez ce que vous voulez dire au niveau du curseur, puis validez une proposition pour l’insérer."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कर्सर पर अपना आशय बताएँ और डालने के लिए किसी विकल्प की पुष्टि करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jelaskan maksud Anda di posisi kursor, lalu konfirmasi pilihan untuk menyisipkannya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descrivi ciò che intendi nel punto del cursore e conferma una proposta per inserirla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カーソル位置で表したい意味を説明し、候補を確定して挿入します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "커서 위치에서 표현하려는 의미를 설명하고 후보를 확정하여 삽입하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descreva o que quer dizer no cursor e confirme uma opção para inseri-la."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите нужный смысл в позиции курсора и подтвердите вариант для вставки."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İmleç konumunda ne demek istediğinizi açıklayın ve eklemek için bir seçeneği onaylayın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在光标处描述想表达的意思，确认候选后插入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在游標處描述想表達的意思，確認候選後插入。"
+          }
+        }
+      }
+    },
+    "Esc · Cancel" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · إلغاء"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Abbrechen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Cancel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Cancelar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échap · Annuler"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · रद्द करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Batal"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Annulla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · キャンセル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · 취소"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Cancelar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · Отмена"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · İptal"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · 取消"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc · 取消"
+          }
+        }
+      }
+    },
+    "Expression assistance" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مساعدة في التعبير"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formulierungshilfe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expression assistance"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda de expresión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aide à l’expression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति सहायता"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bantuan ungkapan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aiuto espressivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現アシスト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현 도우미"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuda de expressão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощь с формулировкой"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İfade yardımı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表达辅助"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表達輔助"
+          }
+        }
+      }
+    },
+    "Fewer ↑" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أقل ↑"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weniger ↑"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fewer ↑"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menos ↑"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire ↑"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कम ↑"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lebih sedikit ↑"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meno ↑"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閉じる ↑"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "접기 ↑"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menos ↑"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть ↑"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daha az ↑"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起 ↑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收合 ↑"
+          }
+        }
+      }
+    },
+    "Find an expression or term while writing" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "العثور على تعبير أو مصطلح أثناء الكتابة"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Schreiben einen Ausdruck oder Begriff finden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find an expression or term while writing"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar una expresión o un término al escribir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trouver une expression ou un terme en écrivant"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लिखते समय अभिव्यक्ति या शब्दावली खोजें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cari ungkapan atau istilah saat menulis"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trovare un’espressione o un termine mentre scrivi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "執筆中に表現や用語を探す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "글을 쓰면서 표현이나 용어 찾기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encontrar uma expressão ou um termo ao escrever"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти выражение или термин при письме"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yazarken bir ifade veya terim bulun"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写作时查找表达或术语"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寫作時尋找表達或術語"
+          }
+        }
+      }
+    },
+    "Finding an expression…" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ البحث عن تعبير…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausdruck wird gesucht…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding an expression…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando una expresión…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche d’une expression…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति खोजी जा रही है…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mencari ungkapan…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricerca di un’espressione…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現を探しています…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현을 찾는 중…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando uma expressão…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск выражения…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İfade aranıyor…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在查找表达…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在尋找表達…"
+          }
+        }
+      }
+    },
+    "Keep the expression description and selection under 2 KB each." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يجب ألا يتجاوز وصف التعبير والنص المحدد 2 كيلوبايت لكل منهما."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschreibung und Textauswahl dürfen jeweils höchstens 2 KB umfassen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the expression description and selection under 2 KB each."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La descripción y la selección deben ocupar menos de 2 KB cada una."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La description et la sélection doivent chacune rester sous 2 Ko."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति का वर्णन और चुना गया पाठ, दोनों अलग-अलग 2 KB से कम रखें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deskripsi dan teks terpilih masing-masing harus di bawah 2 KB."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La descrizione e la selezione devono occupare meno di 2 KB ciascuna."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現の説明と選択テキストは、それぞれ 2 KB 以下にしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현 설명과 선택한 텍스트는 각각 2 KB 이하여야 합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A descrição e a seleção devem ter menos de 2 KB cada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Описание и выделенный текст не должны превышать 2 КБ каждый."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İfade açıklaması ve seçilen metin ayrı ayrı 2 KB altında olmalıdır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表达描述和所选文本各自不能超过 2 KB。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表達描述和所選文字各自不能超過 2 KB。"
+          }
+        }
+      }
+    },
+    "More ↓" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المزيد ↓"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr ↓"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More ↓"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más ↓"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus ↓"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अधिक ↓"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lainnya ↓"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altro ↓"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もっと見る ↓"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "더 보기 ↓"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais ↓"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё ↓"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daha fazla ↓"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多 ↓"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多 ↓"
+          }
+        }
+      }
+    },
+    "Open expression assistance" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح مساعدة التعبير"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formulierungshilfe öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open expression assistance"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir la ayuda de expresión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir l’aide à l’expression"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अभिव्यक्ति सहायता खोलें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka bantuan ungkapan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri l’aiuto espressivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表現アシストを開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표현 도우미 열기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir a ajuda de expressão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть помощь с формулировкой"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İfade yardımını aç"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开表达辅助"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟表達輔助"
+          }
+        }
+      }
+    },
+    "The editor text range cannot be verified. Open the preview again." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر التحقق من نطاق النص. افتح المعاينة مجددًا."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Textbereich kann nicht überprüft werden. Öffne die Vorschau erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The editor text range cannot be verified. Open the preview again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede verificar el rango de texto. Vuelve a abrir la vista previa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La plage de texte ne peut pas être vérifiée. Rouvrez l’aperçu."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पाठ की सीमा की पुष्टि नहीं हो सकती। पूर्वावलोकन फिर खोलें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rentang teks tidak dapat diverifikasi. Buka pratinjau lagi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile verificare l’intervallo di testo. Riapri l’anteprima."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編集範囲を確認できません。プレビューを開き直してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "편집 범위를 확인할 수 없습니다. 미리보기를 다시 여세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível verificar o intervalo de texto. Abra a prévia novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось проверить диапазон текста. Откройте предпросмотр снова."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metin aralığı doğrulanamıyor. Önizlemeyi yeniden açın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法验证编辑范围。请重新打开预览。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法驗證編輯範圍。請重新開啟預覽。"
+          }
+        }
+      }
+    },
+    "The insertion could not be verified. Check the editor before copying this candidate." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر التحقق من الإدراج. راجع المحرر قبل نسخ هذا الاقتراح."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Einfügen konnte nicht überprüft werden. Prüfe das Textfeld, bevor du diesen Vorschlag kopierst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The insertion could not be verified. Check the editor before copying this candidate."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido verificar la inserción. Comprueba el editor antes de copiar esta opción."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’insertion n’a pas pu être vérifiée. Vérifiez l’éditeur avant de copier cette proposition."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रविष्टि की पुष्टि नहीं हो सकी। इस विकल्प को कॉपी करने से पहले संपादक जाँचें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Penyisipan tidak dapat diverifikasi. Periksa editor sebelum menyalin pilihan ini."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile verificare l’inserimento. Controlla l’editor prima di copiare questa proposta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "挿入結果を確認できませんでした。この候補をコピーする前に、元の入力欄を確認してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삽입 결과를 확인할 수 없습니다. 이 후보를 복사하기 전에 원래 입력란을 확인하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível verificar a inserção. Confira o editor antes de copiar esta opção."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось проверить вставку. Проверьте редактор перед копированием этого варианта."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekleme doğrulanamadı. Bu seçeneği kopyalamadan önce düzenleyiciyi kontrol edin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法验证插入结果。复制此候选前，请先检查原输入框。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法驗證插入結果。複製此候選前，請先檢查原輸入框。"
+          }
+        }
+      }
+    },
+    "The model did not return usable expression candidates. Adjust the description and retry." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يُرجع النموذج اقتراحات تعبير قابلة للاستخدام. عدّل الوصف وأعد المحاولة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Modell hat keine verwendbaren Vorschläge geliefert. Passe die Beschreibung an und versuche es erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The model did not return usable expression candidates. Adjust the description and retry."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El modelo no ha devuelto opciones utilizables. Ajusta la descripción y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le modèle n’a renvoyé aucune proposition utilisable. Ajustez la description et réessayez."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मॉडल ने उपयोगी अभिव्यक्ति विकल्प नहीं दिए। वर्णन बदलें और फिर कोशिश करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model tidak mengembalikan pilihan ungkapan yang dapat digunakan. Sesuaikan deskripsi dan coba lagi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il modello non ha restituito proposte utilizzabili. Modifica la descrizione e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モデルから使用可能な表現候補が返されませんでした。説明を調整して再試行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델이 사용 가능한 표현 후보를 반환하지 않았습니다. 설명을 수정하고 다시 시도하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O modelo não retornou opções utilizáveis. Ajuste a descrição e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель не вернула подходящих вариантов. Уточните описание и повторите."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model kullanılabilir ifade seçenekleri döndürmedi. Açıklamayı düzenleyip yeniden deneyin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型未返回可用的表达候选。请调整描述后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型未傳回可用的表達候選。請調整描述後重試。"
+          }
+        }
+      }
+    },
+    "The original field or text changed. Copy the candidate or open expression assistance again." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تغيّر الحقل أو النص الأصلي. انسخ الاقتراح أو افتح مساعدة التعبير مجددًا."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ursprüngliche Feld oder der Text hat sich geändert. Kopiere den Vorschlag oder öffne die Formulierungshilfe erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The original field or text changed. Copy the candidate or open expression assistance again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El campo o el texto original ha cambiado. Copia la opción o vuelve a abrir la ayuda de expresión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le champ ou le texte d’origine a changé. Copiez la proposition ou rouvrez l’aide à l’expression."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मूल फ़ील्ड या पाठ बदल गया है। विकल्प कॉपी करें या अभिव्यक्ति सहायता फिर खोलें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kolom atau teks asli telah berubah. Salin pilihan atau buka bantuan ungkapan lagi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il campo o il testo originale è cambiato. Copia la proposta o riapri l’aiuto espressivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "元の入力欄またはテキストが変わりました。候補をコピーするか、表現アシストを開き直してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "원래 입력란이나 텍스트가 변경되었습니다. 후보를 복사하거나 표현 도우미를 다시 여세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O campo ou o texto original mudou. Copie a opção ou abra a ajuda de expressão novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исходное поле или текст изменились. Скопируйте вариант или снова откройте помощь с формулировкой."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asıl alan veya metin değişti. Seçeneği kopyalayın veya ifade yardımını yeniden açın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原输入框或文本已变化。请复制候选，或重新打开表达辅助。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原輸入框或文字已變更。請複製候選，或重新開啟表達輔助。"
+          }
+        }
+      }
+    },
+    "The request was canceled. Press Enter to retry." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أُلغي الطلب. اضغط على Return لإعادة المحاولة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anfrage wurde abgebrochen. Drücke die Eingabetaste, um es erneut zu versuchen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The request was canceled. Press Enter to retry."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La solicitud se ha cancelado. Pulsa Intro para reintentar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La demande a été annulée. Appuyez sur Entrée pour réessayer."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अनुरोध रद्द कर दिया गया। फिर कोशिश करने के लिए Return दबाएँ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permintaan dibatalkan. Tekan Return untuk mencoba lagi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La richiesta è stata annullata. Premi Invio per riprovare."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リクエストはキャンセルされました。Return キーで再試行します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "요청이 취소되었습니다. Return 키를 눌러 다시 시도하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A solicitação foi cancelada. Pressione Return para tentar novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрос отменён. Нажмите Return, чтобы повторить."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İstek iptal edildi. Yeniden denemek için Return tuşuna basın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请求已取消。按回车重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請求已取消。按 Return 重試。"
+          }
+        }
+      }
+    },
+    "Trigger symbols" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رموز التفعيل"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auslösesymbole"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger symbols"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Símbolos de activación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Symboles déclencheurs"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ट्रिगर प्रतीक"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simbol pemicu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simboli di attivazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トリガー記号"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "트리거 기호"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Símbolos de ativação"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Символы вызова"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tetikleyici simgeler"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "触发符号"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "觸發符號"
+          }
+        }
+      }
+    },
+    "Use 2–8 punctuation marks or symbols without spaces." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استخدم 2–8 علامات ترقيم أو رموز دون مسافات."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende 2–8 Satzzeichen oder Symbole ohne Leerzeichen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use 2–8 punctuation marks or symbols without spaces."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa 2–8 signos de puntuación o símbolos sin espacios."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez 2–8 signes de ponctuation ou symboles, sans espaces."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बिना स्पेस के 2–8 विराम चिह्न या प्रतीक इस्तेमाल करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gunakan 2–8 tanda baca atau simbol tanpa spasi."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa 2–8 segni di punteggiatura o simboli senza spazi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空白を含めず、句読点または記号を 2–8 個指定してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "공백 없이 문장 부호나 기호 2–8개를 사용하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use 2–8 sinais de pontuação ou símbolos, sem espaços."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте 2–8 знаков препинания или символов без пробелов."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boşluk içermeyen 2–8 noktalama işareti veya simge kullanın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入 2–8 个标点或符号，不含空格。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請輸入 2–8 個標點或符號，不含空格。"
+          }
+        }
+      }
+    },
+    "Uses the AI explanation model below. With a configured endpoint, your description, selected text and bounded neighboring text are sent to that service. Temporary descriptions stay out of the original editor." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم نموذج شرح الذكاء الاصطناعي أدناه. عند إعداد نقطة اتصال، يُرسل الوصف والنص المحدد وسياق محيط محدود إلى تلك الخدمة. لا تُكتب الأوصاف المؤقتة في المحرر الأصلي."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwendet das unten gewählte KI-Erklärungsmodell. Bei einem konfigurierten Endpunkt werden Beschreibung, Textauswahl und ein begrenzter Textkontext an diesen Dienst gesendet. Temporäre Beschreibungen werden nicht in das ursprüngliche Textfeld geschrieben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uses the AI explanation model below. With a configured endpoint, your description, selected text and bounded neighboring text are sent to that service. Temporary descriptions stay out of the original editor."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el modelo de explicación con IA de abajo. Con un punto de conexión configurado, la descripción, el texto seleccionado y un contexto cercano limitado se envían a ese servicio. Las descripciones temporales no se escriben en el editor original."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise le modèle d’explication IA ci-dessous. Avec un point d’accès configuré, la description, le texte sélectionné et un contexte voisin limité sont envoyés à ce service. Les descriptions temporaires ne sont pas écrites dans l’éditeur d’origine."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नीचे दिए गए AI व्याख्या मॉडल का उपयोग करता है। एंडपॉइंट कॉन्फ़िगर होने पर वर्णन, चुना गया पाठ और सीमित आसपास का संदर्भ उस सेवा को भेजे जाते हैं। अस्थायी वर्णन मूल संपादक में नहीं लिखे जाते।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menggunakan model penjelasan AI di bawah. Dengan endpoint yang dikonfigurasi, deskripsi, teks terpilih, dan konteks sekitar yang dibatasi dikirim ke layanan tersebut. Deskripsi sementara tidak ditulis ke editor asli."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa il modello di spiegazione IA qui sotto. Con un endpoint configurato, la descrizione, il testo selezionato e un contesto vicino limitato vengono inviati al servizio. Le descrizioni temporanee non vengono scritte nell’editor originale."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下の AI 解説モデルを使用します。エンドポイントを設定した場合、説明、選択テキスト、範囲を限定した前後の文脈がそのサービスに送信されます。一時的な説明は元の入力欄には書き込まれません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아래의 AI 해설 모델을 사용합니다. 엔드포인트가 설정되어 있으면 설명, 선택한 텍스트, 제한된 주변 문맥이 해당 서비스로 전송됩니다. 임시 설명은 원래 입력란에 기록되지 않습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa o modelo de explicação com IA abaixo. Com um endpoint configurado, a descrição, o texto selecionado e um contexto próximo limitado são enviados ao serviço. As descrições temporárias não são escritas no editor original."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используется модель ИИ-объяснений ниже. При настроенной конечной точке описание, выделенный текст и ограниченный контекст отправляются этому сервису. Временные описания не записываются в исходный редактор."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aşağıdaki yapay zekâ açıklama modelini kullanır. Bir uç nokta yapılandırıldığında açıklama, seçilen metin ve sınırlandırılmış çevre metni bu hizmete gönderilir. Geçici açıklamalar asıl düzenleyiciye yazılmaz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用下方的 AI 解释模型。使用已配置的端点时，描述、所选文本及有限的相邻上下文会发送给该服务。临时描述不会写入原输入框。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用下方的 AI 解釋模型。使用已設定的端點時，描述、所選文字及有限的相鄰上下文會傳送給該服務。暫時描述不會寫入原輸入框。"
+          }
+        }
+      }
+    },
+    "With this endpoint, the service receives the chosen text or expression description, bounded surrounding text, and the requested languages for explanation or expression assistance." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عند استخدام نقطة الاتصال هذه، تتلقى الخدمة النص المحدد أو وصف التعبير، وسياقًا محيطًا محدودًا، واللغات المطلوبة للشرح أو مساعدة التعبير."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei diesem Endpunkt erhält der Dienst den gewählten Text oder die Beschreibung, einen begrenzten Textkontext und die gewünschten Sprachen für Erklärungen oder Formulierungshilfe."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With this endpoint, the service receives the chosen text or expression description, bounded surrounding text, and the requested languages for explanation or expression assistance."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con este punto de conexión, el servicio recibe el texto elegido o la descripción, un contexto circundante limitado y los idiomas solicitados para la explicación o la ayuda de expresión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avec ce point d’accès, le service reçoit le texte choisi ou la description de l’expression, un contexte environnant limité et les langues demandées pour l’explication ou l’aide à l’expression."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इस एंडपॉइंट का उपयोग करने पर सेवा को चुना गया पाठ या अभिव्यक्ति का वर्णन, सीमित आसपास का संदर्भ और व्याख्या या अभिव्यक्ति सहायता के लिए अनुरोधित भाषाएँ मिलती हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dengan endpoint ini, layanan menerima teks terpilih atau deskripsi ungkapan, konteks sekitar yang dibatasi, serta bahasa yang diminta untuk penjelasan atau bantuan ungkapan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con questo endpoint, il servizio riceve il testo scelto o la descrizione, un contesto circostante limitato e le lingue richieste per la spiegazione o l’aiuto espressivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このエンドポイントを使用すると、選択したテキストまたは表現の説明、範囲を限定した前後の文脈、解説や表現アシストに必要な言語設定がサービスに送信されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 엔드포인트를 사용하면 선택한 텍스트 또는 표현 설명, 제한된 주변 문맥, 해설이나 표현 도우미에 필요한 언어 설정이 서비스로 전송됩니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Com este endpoint, o serviço recebe o texto escolhido ou a descrição, um contexto próximo limitado e os idiomas solicitados para a explicação ou a ajuda de expressão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При использовании этой конечной точки сервис получает выбранный текст или описание, ограниченный контекст и языки, запрошенные для объяснения или помощи с формулировкой."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu uç nokta kullanıldığında hizmet, seçilen metni veya ifade açıklamasını, sınırlandırılmış çevre metnini ve açıklama ya da ifade yardımı için istenen dilleri alır."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用此端点时，服务会收到所选文本或表达描述、有限的上下文，以及解释或表达辅助所需的语言设置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用此端點時，服務會收到所選文字或表達描述、有限的上下文，以及解釋或表達輔助所需的語言設定。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -3,9 +3,9 @@ import Foundation
 /// Request kind is independent of model/backend: one server can serve several tasks without
 /// making their durations or quality counters comparable. Performance defaults to completion.
 nonisolated enum ModelRequestSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    case completion, translation, analysis, explanation, speech, ocr
+    case completion, translation, analysis, explanation, expressionAssist, speech, ocr
     /// Historical alignment records retain their identity without making the retired task selectable.
-    static let allCases: [Self] = [.completion, .translation, .explanation, .speech, .ocr]
+    static let allCases: [Self] = [.completion, .translation, .explanation, .expressionAssist, .speech, .ocr]
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -13,6 +13,7 @@ nonisolated enum ModelRequestSource: String, Codable, CaseIterable, Identifiable
         case .translation: String(localized: "Translation", table: "Learning")
         case .analysis: String(localized: "Learning Analysis", table: "Learning")
         case .explanation: String(localized: "AI explanation", table: "Learning")
+        case .expressionAssist: String(localized: "Expression assistance", table: "Learning")
         case .ocr: String(localized: "Screen OCR", table: "Learning")
         case .speech: String(localized: "TTS", table: "Learning")
         }

@@ -17,6 +17,14 @@ final class FocusTrackingModel: ObservableObject {
     private let ignoredBundleIdentifier: String?
     private var isStarted = false
 
+    /// Forward the app graph's temporary editing hold to the OS boundary, before AX work begins.
+    /// The model keeps publishing the tracker's blocked/resumed snapshots; it never fabricates a
+    /// host receipt or weakens the focus sequence used by insertion validation.
+    var captureHoldReason: @MainActor () -> String? {
+        get { tracker.captureHoldReason }
+        set { tracker.captureHoldReason = newValue }
+    }
+
     init(
         permissionProvider: @escaping @MainActor () -> Bool,
         ignoredBundleIdentifier: String?,

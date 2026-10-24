@@ -58,6 +58,7 @@ extension SuggestionCoordinator {
     }
 
     func handleFocusSnapshotChange(_ snapshot: FocusSnapshot) {
+        if let reason = writingInteractionHoldReason() { disablePredictions(reason: reason); return }
         switch capabilityFlickerGate.evaluate(snapshot) {
         case .apply:
             break
@@ -267,7 +268,9 @@ extension SuggestionCoordinator {
     /// Transfers the interaction to an inline panel as one synchronous teardown. Keeping the
     /// hidden-work and presentation cleanup together prevents a late endpoint response from
     /// restoring a ghost even when no suggestion had reached the screen before the shortcut.
-    private func standDownForInlineFeature() {
+    /// Explicit panels can open after AX catches up, outside the original observer event. The
+    /// composition root calls this same teardown so pending completions cannot paint behind them.
+    func standDownForInlineFeature() {
         suggestionPresentationTiming.clear()
         // Cancellation clears hidden buffers too; retain their presence before cancelling so
         // the presentation receives the same teardown signal as an already visible ghost.
@@ -291,7 +294,11 @@ extension SuggestionCoordinator {
         // host-publish poll or endpoint response can display a late completion behind that panel.
         // Key consumption remains the active tap's `emojiCaptureKeyDecider` responsibility.
         if emojiInputObserver?(event) == true {
-            standDownForInlineFeature()
+            if let reason = writingInteractionHoldReason() {
+                disablePredictions(reason: reason)
+            } else {
+                standDownForInlineFeature()
+            }
             return false
         }
 

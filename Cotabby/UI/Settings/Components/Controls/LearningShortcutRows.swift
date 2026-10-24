@@ -14,6 +14,8 @@ struct LearningShortcutRows: View {
             row(replacement: false)
             ForEach(LearningReadingSource.allCases, id: \.rawValue) { readingRow($0) }
         }
+        ExpressionAssistShortcutSection(settings: settings.expressionAssist, suggestionSettings: suggestionSettings,
+            recording: recording)
     }
 
     @ViewBuilder private func readingRow(_ source: LearningReadingSource) -> some View {

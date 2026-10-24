@@ -10,7 +10,7 @@ enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .completion: String(localized: "Autocomplete")
         case .translation: String(localized: "Translation", table: "Learning")
-        case .explanation: String(localized: "AI explanation", table: "Learning")
+        case .explanation: String(localized: "AI explanation & expression", table: "Learning")
         case .speech: String(localized: "TTS", table: "Learning")
         }
     }
@@ -31,7 +31,7 @@ enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
     var label: String {
         switch self {
         case .translation: String(localized: "Translation", table: "Learning")
-        case .explanation: String(localized: "AI explanation", table: "Learning")
+        case .explanation: String(localized: "AI explanation & expression", table: "Learning")
         case .readAloud: String(localized: "Read Aloud", table: "Learning")
         case .dictionary: String(localized: "Dictionary", table: "Learning")
         case .review: String(localized: "Review", table: "Vocabulary")
@@ -180,7 +180,7 @@ final class SettingsNavigationModel: ObservableObject {
             case .readAloudSpeed: learningTask = .readAloud
             case .dictionarySources: learningTask = .dictionary
             case .ankiReview, .ankiReviewFields: learningTask = .review
-            case .explanationLanguage: learningTask = .explanation
+            case .explanationLanguage, .expressionAssist: learningTask = .explanation
             default: learningTask = .translation
             }
         }

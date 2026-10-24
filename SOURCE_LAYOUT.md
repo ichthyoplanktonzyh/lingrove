@@ -28,7 +28,7 @@ Cotabby/
 │   ├── Core/                         process entry, composition root, lifecycle
 │   │   └── ApplicationRelauncher.swift safe relaunch after interface localization changes
 │   └── Coordinators/
-│       ├── InlineFeatures/           emoji/macro capture arbitration
+│       ├── InlineFeatures/           emoji/macro capture arbitration and explicit expression sessions
 │       ├── Suggestion/               autocomplete interaction state machine
 │       ├── SettingsCoordinator.swift
 │       └── WelcomeCoordinator.swift
@@ -37,6 +37,7 @@ Cotabby/
 │   ├── ProductIdentity.swift         localized brand names and independent project destinations
 │   ├── Context/                      bounded context and visual-context values
 │   ├── Emoji/                        picker and usage values
+│   ├── ExpressionAssist/             bounded requests, candidate contracts and interaction preferences
 │   ├── Focus/                        focus snapshots and tracking state
 │   ├── History/                      typing-history records, archive, and preferences
 │   ├── Input/                        keyboard event values
@@ -56,6 +57,7 @@ Cotabby/
 ├── Services/
 │   ├── CLI/                          passive mailbox consumption and user-level executable installation
 │   ├── Context/                      live clipboard acquisition
+│   ├── ExpressionAssist/             shared general-model generation and verified editor adapter
 │   ├── Focus/
 │   │   ├── Caching/                  field-scoped focus caches
 │   │   ├── Chromium/                 Chromium AX enablement and diagnostics
@@ -86,6 +88,7 @@ Cotabby/
 │   │   ├── Catalog/                  searchable catalog and synonyms
 │   │   ├── Interaction/              query, trigger, picker, and variant rules
 │   │   └── Ranking/                  recency and popularity rules
+│   ├── ExpressionAssist/             literal triggers, bounded prompt/JSON validation and input placement
 │   ├── Focus/
 │   │   ├── Applications/             app, browser, domain, and terminal classification
 │   │   └── Capability/               supported-field capability resolution
@@ -124,7 +127,7 @@ Cotabby/
 └── UI/
     ├── Components/                   application-wide reusable views
     ├── Previews/                     Debug-only Canvas hosts and isolated card fixtures; renders the real InlineFeatures views
-    ├── InlineFeatures/               emoji picker and macro reference surfaces
+    ├── InlineFeatures/               emoji picker, macro reference and native expression candidate rows
     ├── Components/CurrentShortcutRow.swift read-only shortcut labels shared by help and setup
     ├── MenuBar/                      shared status, completion/learning quick controls, bounded popover content and precise settings routes
     ├── Onboarding/
@@ -649,3 +652,35 @@ settings/vocabulary routing and lifecycle cleanup now pass through the native co
 - `UI/Vocabulary/VocabularyGraphView.swift`: native controls/settings and the canvas adapter.
 - `UI/Vocabulary/VocabularyGraphCanvasView.swift`: AppKit drawing, input, accessibility and a bounded animation task that ends when cool.
 - `Packages/LingroveGraphLayout`: unchanged MIT-licensed Grape 1.1.0 ForceSimulation sources and a small package-local buffer adapter.
+
+## Expression Assistance
+
+`ExpressionAssistCoordinator` owns one invocation, its saved editor capture, and the latest query
+revision. The app environment owns it and the two native input/candidate windows for process
+lifetime. `ExpressionAssistPanelController` uses a real `NSTextView` for composition; its quiet
+sentence-end input reuses ghost font/baseline helpers and its non-key result window owns candidate
+interaction. Input uses explicit application activation and acknowledgment rather than treating an
+inactive nonactivating panel's `isKeyWindow` flag as proof of keyboard delivery. Explicit acceptance
+or cancellation returns the host; outside clicks never restore it. `ExpressionAssistFocusPolicy`
+permits read-only host validation during that owned round trip; writes require restored host focus.
+`ExpressionAssistLayout` keeps screen placement deterministic. The app supplies a
+session-lifetime completion hold, so polling, OCR callbacks and prepared completions cannot reopen
+normal writing UI during expression input; writing translation observes the same active session.
+`FocusTrackingModel.captureHoldReason` forwards the editing-only hold to `FocusTracker` before any
+AX call, publishing a blocked snapshot rather than retaining a stale host snapshot. Commit releases
+that hold before exact host recapture. The panel deduplicates native text/composition notifications,
+coalesces layout, and rebuilds candidate views only when visible presentation state changes.
+
+`ExpressionAssistService` receives only a bounded value request. `LearningModelCollection` injects
+the existing explanation controller, so this feature has no extra model profile or native runtime.
+The controller cancels and drains old work before beginning another instruction request; the
+explanation service and expression service retain separate prompts, parsing, sessions and metrics.
+
+`ExpressionAssistEditor` retains the original capture while the input panel is key. On confirmation
+it rechecks the original app, AX element, metadata, full value and selection, then borrows
+`LearningSelectionReplacement` for one scoped write. Returning from input requires two agreeing
+receipts in the restored focus session, including shared write-preflight reads; bounded read-only
+retries tolerate activation/AX settling without retrying an editor mutation. `EditorTextRangePolicy` validates explicit
+marker/selection/empty caret ranges without changing translation's sentence-scope policy. Tests
+mirror each boundary under `Support/ExpressionAssist`, `Models/ExpressionAssist`,
+`App/Coordinators/InlineFeatures` and `Services/LanguageLearning`.

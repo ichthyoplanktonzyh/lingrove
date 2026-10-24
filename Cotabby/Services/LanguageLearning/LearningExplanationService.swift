@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-/// The model collection owns this explicit-only task. It borrows one independent model controller
+/// The model collection owns this explicit-only task. It borrows the general model controller shared with expression assistance
 /// and the shared telemetry boundary, and caches a bounded number of complete results. Notebook
 /// persistence is supplied by the composition root, keeping model work independent of storage/UI.
 @MainActor
@@ -57,6 +57,7 @@ final class LearningExplanationService: LearningExplanationGenerating {
         }
         try Task.checkCancellation()
         guard model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
+        let lease = model.reserveInstructionRequest()
         return try await LearningRequestTrace.$requestID.withValue(requestID) {
             try await telemetry.perform(source: .explanation, profile: profile) {
                 guard self.isConfigured else {
@@ -68,6 +69,7 @@ final class LearningExplanationService: LearningExplanationGenerating {
                 let prompt = try LearningExplanationPolicy.prompt(input, language: language,
                     total: profile.contextWindowTokens, output: output)
                 @MainActor func validate() throws {
+                    try self.model.validateInstructionRequest(lease)
                     try Task.checkCancellation()
                     guard self.model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
                 }

@@ -11,6 +11,26 @@ import Testing
 @MainActor
 struct LearningSentencePreviewCoordinatorTests {
     @Test
+    func explicitInputHoldStopsADebouncedTranslationAndResumesOnTheNextEdit() async throws {
+        let pause = PauseGate(), rig = try Rig(pause: pause)
+        defer { rig.cleanup() }
+        var held = false
+        rig.coordinator.isReadingActive = { held }
+        rig.coordinator.start()
+        try rig.edit("你好")
+        await waitUntil { pause.pending.count == 1 }
+        held = true
+        pause.release(0)
+        for _ in 0..<10 { await Task.yield() }
+        #expect(rig.service.requests.isEmpty && !rig.panel.isVisible)
+        held = false
+        try rig.edit("你好，很高兴认识你")
+        await waitUntil { pause.pending.count == 2 }
+        pause.release(1)
+        await waitUntil { rig.service.requests.count == 1 }
+    }
+
+    @Test
     func translationContinuesWhileCompletionIsDisabledAndDoesNotChangeItsGate() async throws {
         let rig = try Rig()
         defer { rig.cleanup() }
