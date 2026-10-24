@@ -13,7 +13,9 @@ nonisolated enum CLIFileIO {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         var info = stat()
         guard lstat(url.path, &info) == 0, info.st_mode & S_IFMT == S_IFDIR, info.st_uid == getuid(),
-              info.st_mode & 0o077 == 0 else { throw CLIError(code: .io, message: "The CLI mailbox must be a private directory owned by this user.") }
+              info.st_mode & 0o077 == 0 else {
+            throw CLIError(code: .io, message: "The CLI mailbox must be a private directory owned by this user.")
+        }
     }
     static func read(_ url: URL, maximum: Int = CLIInputPolicy.maximumBytes) throws -> Data {
         let descriptor = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
@@ -38,6 +40,8 @@ nonisolated enum CLIFileIO {
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close(); try? FileManager.default.removeItem(at: staging) }
         try handle.write(contentsOf: data); try handle.synchronize(); try handle.close()
-        guard Darwin.link(staging.path, destination.path) == 0 else { throw CLIError(code: .io, message: "Cannot publish the CLI message.") }
+        guard Darwin.link(staging.path, destination.path) == 0 else {
+            throw CLIError(code: .io, message: "Cannot publish the CLI message.")
+        }
     }
 }

@@ -33,11 +33,15 @@ extension VocabularyArchive {
         try storageAccess(write: false) { try images.read(reference) }
     }
 
-    func commitWithImages(_ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil) throws -> VocabularySnapshot {
+    func commitWithImages(
+        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil
+    ) throws -> VocabularySnapshot {
         try storageAccess(write: true) { try stageImagesAndCommit(next, supplied: supplied, receipt: receipt) }
     }
 
-    private func stageImagesAndCommit(_ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?) throws -> VocabularySnapshot {
+    private func stageImagesAndCommit(
+        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?
+    ) throws -> VocabularySnapshot {
         // An edited sentence still carries its old explanation until commit normalizes it.
         // Validate media before staging, then let commit prune stale AI records and validate
         // the complete graph. Premature whole-document validation rejects legitimate edits.

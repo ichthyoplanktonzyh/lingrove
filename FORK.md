@@ -646,3 +646,45 @@ Validation on Xcode 26.5 / Apple Silicon:
 - Validation logs, lint comparisons and the application xcresult remain under gitignored
   `build/pr-879-*`. Repo-scoped DerivedData and the temporary harness build cache were removed
   after validation, and their absence was verified.
+
+## Strict lint cleanup — 2026-10-24
+
+Starting from Lingrove `40722f49`, the 91 active production SwiftLint findings in 15 files were
+resolved without changing `.swiftlint.yml` or `.swiftlint-baseline.json`. Formatting/naming fixes
+retain the JSON wire keys, command exit codes, optional defaults and presentation behavior.
+
+The five complex functions were split within their existing responsibility boundaries:
+
+- `CLIArguments` separates temporary argument tokenization from command interpretation and option
+  consumption. `CLIInputPolicy` validates one JSON nesting level per helper before typed decoding;
+  unknown fields, limits and error messages retain their original validation order.
+- `VocabularyCLIPlan` plans each operation through separate target, update, example-merge and
+  content helpers. Its private, immutable `OperationContext` lives only during one operation and
+  carries the existing deterministic ID seed/path and timestamp. It performs no IO and introduces
+  no new long-lived service or coordinator state.
+- `CLIMailboxServer` keeps the drain task and monitor lease on its original actor. Request handling,
+  acknowledgement and abandoned-reply cleanup are separate helpers; a failed acknowledgement still
+  leaves the claimed request for recovery, and stopping still drains the active request first.
+- `VocabularyArchive` prepares CLI images inside the existing storage-access scope, after receipt
+  replay and before pure planning. Snapshot validation, expiration checks and the atomic content/
+  media/receipt commit retain their original ordering.
+
+Regression coverage adds fixed ID/outcome fixtures, ordered multi-operation planning, cross-sense
+usage protection and integer JSON revisions above Double's exact range. A separate differential
+fixture compares 110 parser/input cases with the original implementation, including accepted
+values, error codes and exact error messages.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Full `swiftlint lint --strict --no-cache` passed with zero findings, versus 91 before the cleanup.
+  Neither the rules nor the exported legacy baseline was changed, and no suppression was added.
+- The unsigned Debug application build and 79 Swift Testing cases across ten targeted suites
+  passed without skips or failures. The suites cover the actual bundled CLI, mailbox restart and
+  timeout behavior, receipt/media rollback, SQLite reopen/locking, notebook content and affected
+  graph/menu presentation. The four new regression cases passed in that application run.
+- All 110 differential argument/input cases retained byte-identical structured results, including
+  error codes and messages. The Swift source hashes were unchanged after application validation;
+  `git diff --check` also passed. There were no file additions or project-generation changes.
+- Logs, source hashes, original/final lint output and the application xcresult remain under
+  gitignored `build/lint-cleanup/`. Repo-scoped `build/DerivedData` was removed after validation,
+  and its absence was verified. No model, prompt, sampling or ghost-placement change was made.
