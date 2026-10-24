@@ -34,10 +34,10 @@ the required-status-check protection so the owner can merge directly.
    ```bash
    scripts/prepare_cotabby_workspace.sh
    xcodebuild build-for-testing -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-     -scheme Cotabby -configuration Debug -destination 'platform=macOS' \
+     -scheme Lingrove -configuration Debug -destination 'platform=macOS' \
      -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO
    xcodebuild test-without-building -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-     -scheme Cotabby -configuration Debug -destination 'platform=macOS' \
+     -scheme Lingrove -configuration Debug -destination 'platform=macOS' \
      -onlyUsePackageVersionsFromResolvedFile -derivedDataPath build/DerivedData \
      -skip-testing:CotabbyTests/FoundationModelDriftEvalTests
    python3 -m unittest discover -s scripts/tests

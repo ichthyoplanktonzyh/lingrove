@@ -260,7 +260,7 @@ struct GeneralPaneView: View {
             Unavailable while Screen Recording is off. Grant permission to help suggestions understand surrounding text.
             """)
         }
-        return String(localized: "Help suggestions understand surrounding text using screenshots of the focused window.")
+        return String(localized: "Help suggestions understand surrounding text using screenshots of the focused window.", table: "Learning")
     }
 
     private var multiLineEnabledBinding: Binding<Bool> {

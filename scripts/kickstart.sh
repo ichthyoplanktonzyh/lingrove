@@ -197,7 +197,7 @@ sign_settings=(CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$signing_identity")
 
 xcodebuild archive \
     -workspace "$REPO_ROOT/build/cotabby-dependencies/Cotabby.xcworkspace" \
-    -scheme Cotabby \
+    -scheme Lingrove \
     -configuration Release \
     -archivePath "$archive" \
     -derivedDataPath "$OUT_DIR/DerivedData" \

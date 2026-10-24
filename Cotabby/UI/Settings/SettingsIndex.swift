@@ -503,7 +503,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .enableGlobally: return String(localized: "Turn Lingrove on or off everywhere without quitting.", table: "Learning")
         case .useScreenContext: return String(localized: """
         Help suggestions understand surrounding text using screenshots of the focused window.
-        """)
+        """, table: "Learning")
         case .openAtLogin: return String(localized: "Start Lingrove automatically when you log in.", table: "Learning")
         case .commandLineTools: return String(localized: "Install CLI", table: "Vocabulary")
         case .includeClipboardContext: return String(localized: "Let suggestions reference what you last copied.")

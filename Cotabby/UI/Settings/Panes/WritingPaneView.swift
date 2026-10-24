@@ -135,7 +135,7 @@ struct WritingPaneView: View {
                             title: String(localized: "Offer Corrections on Typo"),
                             description: String(localized: """
                             After you finish a word, shows a green replacement you can apply with your accept key.
-                            """),
+                            """, table: "Learning"),
                             systemImage: "checkmark.bubble"
                         )
                     }
@@ -146,7 +146,7 @@ struct WritingPaneView: View {
                             title: String(localized: "Automatically Fix Typos"),
                             description: String(localized: """
                             After you press Space, replaces a misspelled word without requiring your accept key.
-                            """),
+                            """, table: "Learning"),
                             systemImage: "checkmark.circle"
                         )
                     }

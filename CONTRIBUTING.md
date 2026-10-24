@@ -91,11 +91,11 @@ Accounts (a free account is enough), then re-run the script. To set the team by 
 You do not need a paid Apple Developer account to build or run Lingrove locally; a free personal
 team can sign and launch it. The paid program is only needed to distribute notarized builds.
 
-For everyday local work, use the **Cotabby Dev** scheme rather than `Cotabby`. It builds a separate
+For everyday local work, use the **Lingrove Dev** scheme rather than `Lingrove`. It builds a separate
 app named **Lingrove Dev** (`io.ichthyoplanktonzyh.lingrove.dev`, its own icon, auto-update disabled), so the permissions you
-grant your dev build never collide with a released copy of Cotabby you have installed, and your
+grant your dev build never collide with a released copy of Lingrove you have installed, and your
 Accessibility grant survives rebuilds. The production scheme builds **Lingrove.app** under
-`io.ichthyoplanktonzyh.lingrove`. Scheme and Swift module names remain `Cotabby` during this migration.
+`io.ichthyoplanktonzyh.lingrove`. Schemes use Lingrove names; target and Swift module names remain `Cotabby` during this migration.
 
 The command-line launcher normally installs Dev under a checkout-specific directory. When moving
 to a replacement checkout, retain the existing installation by saving its 12-character directory ID
@@ -168,7 +168,7 @@ For a local compile check:
 ```sh
 xcodebuild \
   -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-  -scheme Cotabby \
+  -scheme Lingrove \
   -configuration Debug \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
@@ -184,7 +184,7 @@ launch the app locally.
 
 From Xcode:
 
-1. Select the **Cotabby Dev** scheme (see [Local Setup](#local-setup) for why).
+1. Select the **Lingrove Dev** scheme (see [Local Setup](#local-setup) for why).
 2. Choose your Mac as the run destination.
 3. Build and run. The dev build is named "Lingrove Dev" and has its own menu bar icon.
 4. Complete onboarding.
@@ -213,7 +213,7 @@ sections in [ARCHITECTURE.md](ARCHITECTURE.md) before changing coordinator logic
 
 ## SwiftUI Card Previews
 
-Open `build/cotabby-dependencies/Cotabby.xcworkspace`, select **Cotabby Dev / My Mac**,
+Open `build/cotabby-dependencies/Cotabby.xcworkspace`, select **Lingrove Dev / My Mac**,
 then open one of these source files and enable **Editor > Canvas**:
 
 - `Cotabby/UI/InlineFeatures/LearningSentenceCard.swift`: translation preview, expanded details,
@@ -248,7 +248,7 @@ Run the unit test suite:
 ```sh
 xcodebuild test \
   -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-  -scheme Cotabby \
+  -scheme Lingrove \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
   CODE_SIGNING_ALLOWED=NO
@@ -304,7 +304,7 @@ First compile the opt-in suites:
 ```sh
 xcodebuild build-for-testing \
   -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-  -scheme Cotabby \
+  -scheme Lingrove \
   -configuration Release \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
@@ -323,7 +323,7 @@ file, then substitute its exact path and your model path below:
 rg --files build/DerivedData/Build/Products | rg '\.xctestrun$'
 
 # Replace the SDK/architecture filename with the one emitted by your build.
-eval_run_path='build/DerivedData/Build/Products/Cotabby_macosx27.0-arm64.xctestrun'
+eval_run_path='build/DerivedData/Build/Products/Lingrove_macosx27.0-arm64.xctestrun'
 eval_model_path='/absolute/path/to/model.gguf'
 /usr/libexec/PlistBuddy \
   -c "Add :CotabbyTests:EnvironmentVariables:COTABBY_EVAL_MODEL_PATH string $eval_model_path" \
@@ -462,6 +462,7 @@ upstream even when this fork no longer displays that row. `Learning.xcstrings` o
 its errors/statuses, and fork-specific integration copy such as the shared task-history extension
 and Lingrove branding. Branded common phrases have Lingrove counterparts in this table rather
 than editing the upstream catalog; Chinese copy uses 拾语 / 拾語 and other locales use Lingrove.
+Common English keys also use fork-owned overrides when an upstream translation names the old app.
 Lookups into it use an explicit `table` or `tableName`. The same wording can have different meanings
 in these tables, such as Word acceptance versus a dictionary word. Reuse common copy when its
 meaning is the same instead of adding a second translation.

@@ -38,7 +38,7 @@ env:
   APP_NAME: Lingrove
   DMG_NAME: Lingrove.dmg
   WORKSPACE_PATH: build/cotabby-dependencies/Cotabby.xcworkspace
-  SCHEME: Cotabby
+  SCHEME: Lingrove
   CONFIGURATION: Release
   # Optional. Without a domain, deploy to this repository's standard GitHub Pages URL.
   PAGES_CUSTOM_DOMAIN: ${{ vars.LINGROVE_UPDATES_DOMAIN }}
@@ -428,7 +428,7 @@ jobs:
       - name: Upload DMG for notarization
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: cotabby-dmg
+          name: lingrove-dmg
           path: build/${{ env.DMG_NAME }}
           # Short retention — the notarized copy is what matters long-term.
           retention-days: 1
@@ -465,7 +465,7 @@ jobs:
       - name: Download DMG artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: cotabby-dmg
+          name: lingrove-dmg
           path: build
 
       - name: Configure Apple notarization credentials
@@ -645,7 +645,7 @@ jobs:
       - name: Upload notarized DMG
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: cotabby-dmg-notarized
+          name: lingrove-dmg-notarized
           path: build/${{ env.DMG_NAME }}
           retention-days: 1
 
@@ -689,7 +689,7 @@ jobs:
       - name: Download notarized DMG
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: cotabby-dmg-notarized
+          name: lingrove-dmg-notarized
           path: build
 
       - name: Download Sparkle tools

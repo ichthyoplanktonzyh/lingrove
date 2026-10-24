@@ -6,9 +6,9 @@ installed copies discover it. App lifecycle stays in `AppUpdateManager`, packagi
 
 ## Current state
 
-- The production `Cotabby` scheme produces `Lingrove.app` with Bundle ID
-  `io.ichthyoplanktonzyh.lingrove`; `Cotabby Dev` produces `Lingrove Dev.app` with
-  `io.ichthyoplanktonzyh.lingrove.dev`. The internal scheme/module names remain unchanged.
+- The production `Lingrove` scheme produces `Lingrove.app` with Bundle ID
+  `io.ichthyoplanktonzyh.lingrove`; `Lingrove Dev` produces `Lingrove Dev.app` with
+  `io.ichthyoplanktonzyh.lingrove.dev`. The internal target/module names remain unchanged.
 - Sparkle is included but never started: `LingroveUpdatesEnabled` is false, automatic checks and
   installation are off, and there is no inherited `SUFeedURL` or `SUPublicEDKey`.
 - The manual update action opens this repository's GitHub Releases page. There is no independent

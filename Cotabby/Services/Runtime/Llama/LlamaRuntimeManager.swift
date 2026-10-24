@@ -342,7 +342,7 @@ final class LlamaRuntimeManager: ObservableObject {
 
         cachedRuntime = nil
 
-        state = .starting(String(localized: "Initializing the in-process llama runtime."))
+        state = .starting(String(localized: "Initializing the in-process llama runtime.", table: "Learning"))
         diagnostics.lastError = nil
         diagnostics.lastLoadStatus = "Starting"
         diagnostics.modelFilePath = resolvedRuntime.modelFileURL.path
@@ -440,7 +440,8 @@ final class LlamaRuntimeManager: ObservableObject {
         diagnostics.lastLoadStatus = "Loaded"
         diagnostics.lastError = nil
 
-        state = .ready(String(localized: "Loaded \(preparedRuntime.resolvedRuntime.modelDisplayName) in-process."))
+        state = .ready(String(localized: "Loaded \(preparedRuntime.resolvedRuntime.modelDisplayName) in-process.",
+            table: "Learning"))
     }
 }
 

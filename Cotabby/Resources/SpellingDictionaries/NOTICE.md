@@ -1,6 +1,6 @@
 # Bundled Spelling Dictionaries
 
-Cotabby bundles language-specific frequency dictionaries for its Swift port of
+Lingrove bundles language-specific frequency dictionaries for its Swift port of
 [SymSpell](https://github.com/wolfgarbe/SymSpell). The dictionaries remain separate at runtime;
 their corpus counts are never merged or compared across languages.
 

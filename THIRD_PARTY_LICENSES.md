@@ -1,10 +1,10 @@
 # Third-Party Licenses
 
-Cotabby is licensed under the GNU Affero General Public License v3.0 (see
+Lingrove is licensed under the GNU Affero General Public License v3.0 (see
 [`LICENSE`](LICENSE)). It bundles third-party software and data that keep their own
 licenses; the notices that ask to be reproduced are included below.
 
-The Swift package dependencies Cotabby links against (llama.cpp, CotabbyInference,
+The Swift package dependencies Lingrove links against (llama.cpp, CotabbyInference,
 Sparkle, swift-log, LaunchAtLogin) are credited in the in-app Acknowledgements
 (Settings → About → Acknowledgements) and in the README, each linking to its
 upstream license text. Full license texts for these packages and gemoji are also bundled in
@@ -82,7 +82,7 @@ full SCOWL copyright file.
 
 ### Multilingual dictionaries
 
-Cotabby also bundles the German, Spanish, French, Hebrew, Italian, and Russian
+Lingrove also bundles the German, Spanish, French, Hebrew, Italian, and Russian
 frequency dictionaries published in SymSpell's `SymSpell.FrequencyDictionary`
 folder at commit `b8b2905bde` (March 13, 2020). SymSpell generated these by
 intersecting Google Books Ngram frequencies with Hunspell word lists.
@@ -98,13 +98,13 @@ The corresponding source word-list notices were captured from
 SymSpell published the derived multilingual files.
 
 Chinese is intentionally not bundled: SymSpell's generation notes do not identify
-the source word list and license for that file, and Cotabby's current typo gate does
+the source word list and license for that file, and Lingrove's current typo gate does
 not yet provide reliable word segmentation for languages without whitespace.
 
 ## Learning expression dictionary
 
 The independent `Cotabby/Resources/learning-expressions.json` data resource is an expression
-subset of Wiktionary, extracted by Wiktextract / Kaikki and packaged by Cotabby. It is
+subset of Wiktionary, extracted by Wiktextract / Kaikki and packaged by Lingrove. It is
 licensed under CC BY-SA 4.0. This data license is distinct from the extraction program's MIT
 license. Source links, attribution, transformation details and download checksums are bundled
 in `learning-expressions.NOTICE.md` and `learning-expressions.provenance.json`; the expression

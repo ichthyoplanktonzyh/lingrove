@@ -333,7 +333,7 @@ The model-free Swift tests validate scoring and pass **all 1,337 scenarios** thr
 construction to check that context reaches the prompt without the complete future answer.
 
 ```sh
-xcodebuild test -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' \
+xcodebuild test -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData -only-testing:CotabbyTests/PhrasePredictionScoringTests \
   -only-testing:CotabbyTests/PhrasePredictionScreenContextTests CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s scripts/tests -p 'test_phrase_eval.py'

@@ -8,7 +8,7 @@ case "$MODE" in run|--debug|debug|--logs|logs|--telemetry|telemetry|--verify|ver
 esac
 case "$CONFIGURATION" in Debug|Release) ;; *) echo 'Use Debug or Release' >&2; exit 2;; esac
 APP_NAME="Lingrove Dev"
-SCHEME="Cotabby Dev"
+SCHEME="Lingrove Dev"
 BUNDLE_ID="io.ichthyoplanktonzyh.lingrove.dev"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The runnable app lives outside DerivedData; keep generated build products checkout-scoped.

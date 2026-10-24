@@ -1946,7 +1946,6 @@
 		25C4859A89B59938DB905377 /* SuggestionCoordinatorLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionCoordinatorLifecycleTests.swift; sourceTree = "<group>"; };
 		25D41CC179EC04093971A0D0 /* SpellingDictionaryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellingDictionaryCatalog.swift; sourceTree = "<group>"; };
 		25FCF459C011CB5F8E5EF290 /* VocabularySensePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySensePolicy.swift; sourceTree = "<group>"; };
-		262BE2F1E97389FE8D7A5FB9 /* Cotabby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cotabby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		264C3F355F2F82D1964DD263 /* EmojiQueryRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiQueryRun.swift; sourceTree = "<group>"; };
 		2662D520D25C0485C1533502 /* VocabularyExportSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyExportSession.swift; sourceTree = "<group>"; };
 		266C8BF167118855C56FC7F4 /* BrowserAppDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserAppDetector.swift; sourceTree = "<group>"; };
@@ -2095,7 +2094,6 @@
 		4BAB220ED646D8D2E089CF48 /* LearningGenerationProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningGenerationProfileTests.swift; sourceTree = "<group>"; };
 		4BB5841A73249EA3C1A4FA7E /* LocalRuntimeResidencyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalRuntimeResidencyPolicy.swift; sourceTree = "<group>"; };
 		4BB936B2AC10ADE01CF66A5D /* OnlineDictionaryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineDictionaryClient.swift; sourceTree = "<group>"; };
-		4BC92317837813ACA5051177 /* Cotabby Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cotabby Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4BF9A081715185297A31EB8F /* GhostCaretRefinementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostCaretRefinementTests.swift; sourceTree = "<group>"; };
 		4C23010AB7BAF4957609E0A7 /* ModelSamplingSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSamplingSection.swift; sourceTree = "<group>"; };
 		4C7350A4F178706F424689CC /* ApplicationBundlePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationBundlePicker.swift; sourceTree = "<group>"; };
@@ -2832,6 +2830,7 @@
 		F0A61DC16ED76D694A59BF14 /* SuggestionSessionTypingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionSessionTypingTests.swift; sourceTree = "<group>"; };
 		F0B13EBBC98587EEB28B37C1 /* LearningTextScopePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningTextScopePolicyTests.swift; sourceTree = "<group>"; };
 		F11282EB222D3263F529EB50 /* VocabularyContentPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyContentPolicy.swift; sourceTree = "<group>"; };
+		F12B35AACB702A8F2DF03357 /* Lingrove.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lingrove.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F155556C751FB074B31CCC64 /* WelcomeHeroDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeHeroDemo.swift; sourceTree = "<group>"; };
 		F1A4C5DEA32868F99E953D99 /* CompletionSeamGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionSeamGuard.swift; sourceTree = "<group>"; };
 		F1B95D6456663C72DE3A6AF1 /* SuggestionEngineSelectionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngineSelectionPolicyTests.swift; sourceTree = "<group>"; };
@@ -2885,6 +2884,7 @@
 		FEC5EC41F1677027D46E2B02 /* SpellingDictionaryCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellingDictionaryCatalogTests.swift; sourceTree = "<group>"; };
 		FF0945F35FE8532D09548B60 /* ModelContextBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContextBudget.swift; sourceTree = "<group>"; };
 		FF6EFEEFC67DB3334D7C95F4 /* LearningLocalRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningLocalRuntime.swift; sourceTree = "<group>"; };
+		FFEB4A4A5A1F564B2762B824 /* Lingrove Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Lingrove Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3522,9 +3522,9 @@
 		3725B1A195A06A4F014B75B1 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4BC92317837813ACA5051177 /* Cotabby Dev.app */,
-				262BE2F1E97389FE8D7A5FB9 /* Cotabby.app */,
 				ED8672B87CEC72BE3978C6BB /* CotabbyTests.xctest */,
+				FFEB4A4A5A1F564B2762B824 /* Lingrove Dev.app */,
+				F12B35AACB702A8F2DF03357 /* Lingrove.app */,
 				CC233D23EB7AD3DE89165018 /* LingroveCLI */,
 			);
 			name = Products;
@@ -5856,7 +5856,7 @@
 				E0AA9F90B83B823132880E6F /* LaunchAtLogin */,
 			);
 			productName = "Cotabby Dev";
-			productReference = 4BC92317837813ACA5051177 /* Cotabby Dev.app */;
+			productReference = FFEB4A4A5A1F564B2762B824 /* Lingrove Dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 		622CFE93F0FE48C8243E060C /* Cotabby */ = {
@@ -5887,7 +5887,7 @@
 				7B0278A63FEEE8DEDB6C50DB /* LaunchAtLogin */,
 			);
 			productName = Cotabby;
-			productReference = 262BE2F1E97389FE8D7A5FB9 /* Cotabby.app */;
+			productReference = F12B35AACB702A8F2DF03357 /* Lingrove.app */;
 			productType = "com.apple.product-type.application";
 		};
 		AB3DFA4CFA5EBC6161F02A30 /* CotabbyTests */ = {

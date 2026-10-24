@@ -329,9 +329,9 @@ symptom → category map. Do not ask the user to re-explain symptoms before chec
 Build, run, and test with Xcode as documented in
 [`CONTRIBUTING.md`](CONTRIBUTING.md). Prepare the pinned inference workspace with
 `scripts/prepare_cotabby_workspace.sh` first. Local launches use the developer's own signing
-team configured through `scripts/dev-setup.sh` and the isolated `Cotabby Dev` scheme, producing
-`Lingrove Dev.app` (`io.ichthyoplanktonzyh.lingrove.dev`). Production uses the `Cotabby` scheme to
-build `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Internal schemes and the Swift module keep
+team configured through `scripts/dev-setup.sh` and the isolated `Lingrove Dev` scheme, producing
+`Lingrove Dev.app` (`io.ichthyoplanktonzyh.lingrove.dev`). Production uses the `Lingrove` scheme to
+build `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Internal targets and the Swift module keep
 their existing names during migration. Sparkle remains disabled until the independent update feed
 and signing key are configured; release jobs require `LINGROVE_RELEASES_ENABLED=true`.
 Shared CI uses unsigned compile checks and
@@ -343,9 +343,9 @@ it after validation. Verify cleanup before reporting completion.
 Never move DerivedData to `~/Library/Developer/Xcode/DerivedData/Cotabby-*`.
 
 ```bash
-xcodebuild -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' build \
+xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build \
   -derivedDataPath build/DerivedData
-xcodebuild -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' build-for-testing \
+xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build-for-testing \
   -derivedDataPath build/DerivedData
 ```
 
@@ -361,7 +361,7 @@ continuations; `test_reportRecallSuite` scores whether context the user did not 
 text, screen OCR, clipboard) actually reaches the completion. Run either with:
 
 ```bash
-xcodebuild test -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' \
+xcodebuild test -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' \
   -only-testing:CotabbyTests/LlamaSuggestionEvalTests/test_reportRecallSuite \
   SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) RUN_LLAMA_EVAL' \
   CODE_SIGNING_ALLOWED=NO -configuration Release ENABLE_TESTABILITY=YES \
@@ -372,12 +372,13 @@ Quote latency only from a Release build; Debug inflates per-token Swift work by 
 Any change to prompt content, context budgets, sampling, or the model should be justified with a
 before/after on both suites over identical cases.
 
-The dev app is a SEPARATE target and scheme, `Cotabby Dev` (product `Lingrove Dev.app`). Building the
-`Cotabby` scheme leaves the dev bundle stale, so build the dev app explicitly and confirm the binary
+The dev app uses the separate `Cotabby Dev` target and `Lingrove Dev` scheme (product
+`Lingrove Dev.app`). Building the `Lingrove` scheme leaves the dev bundle stale, so build the dev
+app explicitly and confirm the binary
 timestamp moved before testing against it:
 
 ```bash
-xcodebuild -project Cotabby.xcodeproj -scheme "Cotabby Dev" -configuration Release \
+xcodebuild -project Cotabby.xcodeproj -scheme "Lingrove Dev" -configuration Release \
   -destination 'platform=macOS' build -derivedDataPath build/DerivedData
 ```
 

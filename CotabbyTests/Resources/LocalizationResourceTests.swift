@@ -75,6 +75,32 @@ struct LocalizationResourceTests {
         #expect(!uninstall.contains("%@"))
     }
 
+    @Test(arguments: ["en"] + translatedLanguages)
+    func forkOwnedCommonCopyDoesNotLeakTheUpstreamBrand(language: String) throws {
+        let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+        let bundle = try #require(Bundle(path: path))
+        let url = try #require(bundle.url(forResource: "Learning", withExtension: "strings"))
+        let table = try #require(try PropertyListSerialization.propertyList(
+            from: Data(contentsOf: url), options: 0, format: nil
+        ) as? [String: String])
+        let keys = [
+            "About",
+            "After you finish a word, shows a green replacement you can apply with your accept key.",
+            "After you press Space, replaces a misspelled word without requiring your accept key.",
+            "Help suggestions understand surrounding text using screenshots of the focused window.",
+            "Initializing the in-process llama runtime.",
+            "Loaded %@ in-process.",
+            "When Apple Intelligence doesn't support the language you're writing in, suggest with %@ instead. " +
+                "Turn off to get no suggestion in those languages."
+        ]
+        // Check actual compiled entries: an absent fork override could silently fall back to
+        // neutral English and hide the old-brand translation that appears in another locale.
+        for key in keys {
+            let value = try #require(table[key], "Missing fork-owned copy: \(key)")
+            #expect(!value.isEmpty && !value.localizedCaseInsensitiveContains("Cotabby"))
+        }
+    }
+
     @Test(arguments: translatedLanguages)
     func compiledInterfaceResourcesResolve(language: String) throws {
         let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))

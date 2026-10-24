@@ -36,7 +36,7 @@ extension EngineAndModelPaneView {
                     description: String(localized: """
                     When Apple Intelligence doesn't support the language you're writing in, suggest with \(fallbackModelName) instead. \
                     Turn off to get no suggestion in those languages.
-                    """),
+                    """, table: "Learning"),
                     systemImage: "arrow.triangle.branch"
                 )
             }

@@ -20,8 +20,8 @@ complements CONTRIBUTING.md, which owns the build and test instructions.
   `assets/branding/lingrove-activation-indicator.svg`.
 - App products are `Lingrove.app` and `Lingrove Dev.app`, with Bundle IDs
   `io.ichthyoplanktonzyh.lingrove` and `io.ichthyoplanktonzyh.lingrove.dev`. The internal Xcode
-  schemes (`Cotabby`, `Cotabby Dev`), Swift module, source folders, and inference dependency keep
-  their existing names for now; these are build/code boundaries, not the installed app identity.
+  schemes use `Lingrove` / `Lingrove Dev`. Targets, the Swift module, source folders, and inference
+  dependency keep their existing names for now; these are build/code boundaries, not the installed app identity.
 - Models, encrypted typing history, and logs use separate `Lingrove` / `Lingrove Dev` folders.
   Preferences and Keychain services use the new Bundle IDs. Existing Cotabby data stays untouched;
   automatic import is not implemented. Encrypted history requires its original key for any future
@@ -153,7 +153,7 @@ Validation on Xcode 26.5 / Apple Silicon, against the prepared pinned inference 
 - Publish corresponding source and required build instructions for each distributed version.
 - Validate the app's behavior, permissions, endpoint disclosure, and update flow before shipping.
 
-Until these steps are complete, use the isolated Cotabby Dev configuration described in
+Until these steps are complete, use the isolated Lingrove Dev configuration described in
 CONTRIBUTING.md for local development. No independent production release is established yet.
 
 ## Reviewed upstream appearance and CI updates — 2026-10-15

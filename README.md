@@ -126,7 +126,7 @@ scripts/prepare_cotabby_workspace.sh
 open build/cotabby-dependencies/Cotabby.xcworkspace
 ```
 
-- In Xcode, select the **Cotabby Dev** scheme to build **Lingrove Dev.app** (isolated preferences, Keychain, and logs for local development), or **Cotabby** to build **Lingrove.app**.
+- In Xcode, select the **Lingrove Dev** scheme to build **Lingrove Dev.app** (isolated preferences, Keychain, and logs for local development), or **Lingrove** to build **Lingrove.app**.
 - Local signing uses your own Apple team in the gitignored `LocalSigning.xcconfig`.
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for testing guidelines and [RELEASING.md](RELEASING.md) for the release roadmap.
 

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "2600"
-   version = "1.3">
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES">
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -14,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "622CFE93F0FE48C8243E060C"
-               BuildableName = "Lingrove.app"
-               BlueprintName = "Cotabby"
+               BlueprintIdentifier = "59F15B162977174E700D0CAA"
+               BuildableName = "Lingrove Dev.app"
+               BlueprintName = "Cotabby Dev"
                ReferencedContainer = "container:Cotabby.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -27,28 +28,17 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      language = "en">
+      onlyGenerateCoverageForSpecifiedTargets = "NO">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "622CFE93F0FE48C8243E060C"
-            BuildableName = "Lingrove.app"
-            BlueprintName = "Cotabby"
+            BlueprintIdentifier = "59F15B162977174E700D0CAA"
+            BuildableName = "Lingrove Dev.app"
+            BlueprintName = "Cotabby Dev"
             ReferencedContainer = "container:Cotabby.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "AB3DFA4CFA5EBC6161F02A30"
-               BuildableName = "CotabbyTests.xctest"
-               BlueprintName = "CotabbyTests"
-               ReferencedContainer = "container:Cotabby.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -65,9 +55,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "622CFE93F0FE48C8243E060C"
-            BuildableName = "Lingrove.app"
-            BlueprintName = "Cotabby"
+            BlueprintIdentifier = "59F15B162977174E700D0CAA"
+            BuildableName = "Lingrove Dev.app"
+            BlueprintName = "Cotabby Dev"
             ReferencedContainer = "container:Cotabby.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -88,12 +78,14 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "622CFE93F0FE48C8243E060C"
-            BuildableName = "Lingrove.app"
-            BlueprintName = "Cotabby"
+            BlueprintIdentifier = "59F15B162977174E700D0CAA"
+            BuildableName = "Lingrove Dev.app"
+            BlueprintName = "Cotabby Dev"
             ReferencedContainer = "container:Cotabby.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

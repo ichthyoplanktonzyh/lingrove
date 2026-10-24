@@ -126,7 +126,7 @@ scripts/prepare_cotabby_workspace.sh
 open build/cotabby-dependencies/Cotabby.xcworkspace
 ```
 
-- 在 Xcode 中选择 **Cotabby Dev** Scheme 可编译 **Lingrove Dev.app**（拥有独立的偏好设置、钥匙串与日志目录，避免污染日常使用环境）；选择 **Cotabby** Scheme 则编译正式版 **Lingrove.app**。
+- 在 Xcode 中选择 **Lingrove Dev** Scheme 可编译 **Lingrove Dev.app**（拥有独立的偏好设置、钥匙串与日志目录，避免污染日常使用环境）；选择 **Lingrove** Scheme 则编译正式版 **Lingrove.app**。
 - 本地开发签名使用你自己的 Apple 开发者团队配置（保存在已被 gitignore 的 `LocalSigning.xcconfig` 中）。
 - 更多构建与测试说明请参考 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [RELEASING.md](RELEASING.md)。
 

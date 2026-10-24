@@ -74,7 +74,8 @@ nonisolated final class LlamaRuntimeCore: @unchecked Sendable {
                     "model_path": .string(resolvedRuntime.modelFileURL.path)
                 ])
                 throw LlamaRuntimeError.unavailable(
-                    "Unable to load \(resolvedRuntime.modelDisplayName) with CotabbyInferenceEngine."
+                    String(localized: "Unable to load \(resolvedRuntime.modelDisplayName) with the local inference engine.",
+                        table: "Learning")
                 )
             }
             try Task.checkCancellation()

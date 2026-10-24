@@ -12,7 +12,7 @@ tools. It derives from Cotabby and is independently maintained by
 ## How do I install it?
 
 Lingrove is still in development. Build from source using [CONTRIBUTING.md](CONTRIBUTING.md), selecting
-the internal **Cotabby Dev** scheme to produce **Lingrove Dev.app**. The production **Cotabby**
+the internal **Lingrove Dev** scheme to produce **Lingrove Dev.app**. The production **Lingrove**
 scheme produces **Lingrove.app**. Watch
 [this repository's Releases](https://github.com/ichthyoplanktonzyh/lingrove/releases) for future builds.
 There is no independent Homebrew cask or production download established yet.

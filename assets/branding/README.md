@@ -38,6 +38,16 @@ available to Node's normal module resolver, run:
 node scripts/generate_brand_assets.mjs
 ```
 
+The installer background uses the same whale master, with the existing 700×504-point Finder
+layout and app/Applications icon positions. Regenerate its inspectable SVG and both PNG scales:
+
+```sh
+node scripts/generate_dmg_background.mjs
+```
+
+Both generators accept the optional `--sharp-module PATH` below. Installer rendering changes
+only `assets/release/dmg_background.svg` and its 1x/2x PNG renditions.
+
 To install it into the ignored `build/` directory when needed, then pass that module explicitly:
 
 ```sh

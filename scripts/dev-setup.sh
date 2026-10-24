@@ -85,4 +85,4 @@ EOF
 echo "Wrote $local_xcconfig"
 echo "  DEVELOPMENT_TEAM = $team"
 echo
-echo "Next: run scripts/prepare_cotabby_workspace.sh, open build/cotabby-dependencies/Cotabby.xcworkspace, select the \"Cotabby Dev\" scheme, and run."
+echo "Next: run scripts/prepare_cotabby_workspace.sh, open build/cotabby-dependencies/Cotabby.xcworkspace, select the \"Lingrove Dev\" scheme, and run."

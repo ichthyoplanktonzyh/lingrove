@@ -636,10 +636,10 @@ Swift default actor isolation is MainActor.
 Use the narrowest relevant tests first, then broaden. The standard build boundary is:
 
 ~~~bash
-xcodebuild -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' build \
+xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build \
   -derivedDataPath build/DerivedData
 
-xcodebuild -project Cotabby.xcodeproj -scheme Cotabby -destination 'platform=macOS' build-for-testing \
+xcodebuild -project Cotabby.xcodeproj -scheme Lingrove -destination 'platform=macOS' build-for-testing \
   -derivedDataPath build/DerivedData
 ~~~
 

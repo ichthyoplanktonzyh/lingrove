@@ -69908,6 +69908,766 @@
           }
         }
       }
+    },
+    "Unable to load %@ with the local inference engine." : {
+      "comment" : "Model-load failure naming the selected model without exposing an internal dependency type.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر تحميل %@ باستخدام محرك الاستدلال المحلي."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte mit der lokalen Inferenz-Engine nicht geladen werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to load %@ with the local inference engine."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede cargar %@ con el motor de inferencia local."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de charger %@ avec le moteur d’inférence local."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्थानीय इन्फरेंस इंजन से %@ लोड नहीं किया जा सका।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tidak dapat memuat %@ dengan mesin inferensi lokal."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile caricare %@ con il motore di inferenza locale."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ローカル推論エンジンで %@ を読み込めません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로컬 추론 엔진으로 %@을(를) 불러올 수 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível carregar %@ com o mecanismo de inferência local."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось загрузить %@ с помощью локального движка вывода."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ yerel çıkarım motoruyla yüklenemedi."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法使用本地推理引擎加载 %@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法使用本機推論引擎載入 %@。"
+          }
+        }
+      }
+    },
+    "About" : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حول"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "परिचय"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentang"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informazioni"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lingroveについて"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정보"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О приложении"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hakkında"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於"
+          }
+        }
+      }
+    },
+    "After you finish a word, shows a green replacement you can apply with your accept key." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بعد إكمال كلمة، يعرض استبدالًا أخضر يمكنك تطبيقه بمفتاح القبول."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Abschluss eines Wortes wird eine grüne Ersetzung angezeigt, die du mit deiner Übernahmetaste anwenden kannst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After you finish a word, shows a green replacement you can apply with your accept key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después de terminar una palabra, muestra un reemplazo verde que puedes aplicar con la tecla de aceptación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Après la fin d’un mot, affiche un remplacement vert que vous pouvez appliquer avec votre touche d’acceptation."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "शब्द पूरा करने के बाद हरा प्रतिस्थापन दिखाता है, जिसे आप अपनी स्वीकार कुंजी से लागू कर सकते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setelah Anda menyelesaikan kata, Lingrove menampilkan penggantian berwarna hijau yang dapat diterapkan dengan tombol penerimaan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dopo aver completato una parola, mostra una sostituzione verde che puoi applicare con il tasto di accettazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "単語を入力し終えると、候補挿入キーで適用できる緑色の置換候補を表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단어 입력을 마치면 수락 키로 적용할 수 있는 초록색 교정 결과를 표시합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depois que você terminar uma palavra, mostra uma substituição verde que pode ser aplicada com a tecla de aceitação."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После завершения слова показывает зелёную замену, которую можно применить клавишей принятия."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir kelimeyi bitirdiğinizde, kabul tuşunuzla uygulayabileceğiniz yeşil bir değiştirme önerir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入完一个单词后，会显示绿色替换建议，按插入键即可应用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成一個單字後顯示綠色取代文字，你可以用接受快速鍵套用。"
+          }
+        }
+      }
+    },
+    "After you press Space, replaces a misspelled word without requiring your accept key." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بعد الضغط على المسافة، يستبدل كلمة بها خطأ إملائي من دون الحاجة إلى مفتاح القبول."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach dem Drücken der Leertaste wird ein falsch geschriebenes Wort ersetzt, ohne dass du deine Übernahmetaste drücken musst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After you press Space, replaces a misspelled word without requiring your accept key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después de pulsar Espacio, reemplaza una palabra mal escrita sin necesitar la tecla de aceptación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Après avoir appuyé sur Espace, remplace un mot mal orthographié sans nécessiter votre touche d’acceptation."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space दबाने के बाद, स्वीकार कुंजी की ज़रूरत के बिना गलत वर्तनी वाले शब्द को बदलता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setelah Anda menekan Spasi, Lingrove mengganti kata yang salah eja tanpa perlu menekan tombol penerimaan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dopo aver premuto Spazio, sostituisce una parola con errori senza richiedere il tasto di accettazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スペースを押すと、候補挿入キーを使わずにスペルミスの単語を置換します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스페이스를 누르면 수락 키를 누르지 않아도 철자가 틀린 단어를 교체합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depois que você pressionar Espaço, substitui uma palavra com erro sem exigir a tecla de aceitação."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После нажатия пробела заменяет слово с ошибкой без клавиши принятия."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boşluk tuşuna bastıktan sonra, kabul tuşunuza gerek kalmadan yanlış yazılmış bir kelimeyi değiştirir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下空格后，无需按插入键即可替换拼写错误的单词。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下空白鍵後取代拼錯的單字，不需要按接受快速鍵。"
+          }
+        }
+      }
+    },
+    "Help suggestions understand surrounding text using screenshots of the focused window." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ساعد الاقتراحات على فهم النص المحيط باستخدام لقطات شاشة للنافذة النشطة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hilf Lingrove mithilfe von Screenshots des fokussierten Fensters, den umgebenden Text besser zu verstehen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help suggestions understand surrounding text using screenshots of the focused window."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda a las sugerencias a entender el texto circundante usando capturas de la ventana enfocada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permettre aux suggestions de mieux comprendre le texte environnant grâce à des captures d’écran de la fenêtre active."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फ़ोकस की गई विंडो के स्क्रीनशॉट का उपयोग करके सुझावों को आसपास का टेक्स्ट समझने में मदद करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bantu saran memahami teks di sekitar dengan mengambil tangkapan layar jendela aktif."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aiuta i suggerimenti a comprendere il testo circostante usando screenshot della finestra attiva."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォーカス中のウィンドウのスクリーンショットを使って、候補が周囲のテキストを理解できるようにします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "포커스된 윈도우의 스크린샷을 사용해 제안이 주변 텍스트를 이해하도록 합니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajude as sugestões a entender o texto ao redor usando capturas de tela da janela em foco."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помогите подсказкам понимать окружающий текст с помощью снимков окна в фокусе."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaktaki pencerenin ekran görüntülerini kullanarak önerilerin çevredeki metni anlamasına yardımcı olun."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用聚焦窗口的屏幕截图，帮助建议理解周围文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用目前聚焦視窗的截圖，協助建議理解周圍文字。"
+          }
+        }
+      }
+    },
+    "Initializing the in-process llama runtime." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ تهيئة بيئة llama داخل العملية."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Integrierte llama-Laufzeit wird initialisiert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Initializing the in-process llama runtime."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicializando el motor llama en proceso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Initialisation du runtime llama en processus."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इन-प्रोसेस llama रनटाइम शुरू हो रहा है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menginisialisasi runtime llama yang berjalan di dalam proses Lingrove."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inizializzazione del runtime llama in-process."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロセス内llamaランタイムを初期化しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "인프로세스 llama 런타임 초기화 중."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicializando o runtime llama dentro do processo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инициализация среды выполнения llama внутри процесса Lingrove."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İşlem içi llama çalışma zamanı başlatılıyor."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在初始化进程内 llama 运行时。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在初始化處理程序內的 llama 執行環境。"
+          }
+        }
+      }
+    },
+    "Loaded %@ in-process." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم تحميل %@ داخل العملية."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ im Prozess geladen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loaded %@ in-process."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ cargado en el proceso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèle %@ chargé en processus."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ इन-प्रोसेस लोड किया गया।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ dimuat dalam proses."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ caricato nel processo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@をプロセス内に読み込みました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "인프로세스에서 %@을(를) 로드했습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ carregado em processo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружено внутри процесса Lingrove: %@."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ işlem içinde yüklendi."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在进程内加载 %@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 拾語 程式內載入 %@。"
+          }
+        }
+      }
+    },
+    "When Apple Intelligence doesn't support the language you're writing in, suggest with %@ instead. Turn off to get no suggestion in those languages." : {
+      "comment" : "Fork-owned display copy; the upstream common-table translation contains the previous product brand.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استخدم %@ للاقتراحات عندما لا يدعم Apple Intelligence اللغة التي تكتب بها. أوقف هذا الخيار لعدم عرض اقتراح بتلك اللغات."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn Apple Intelligence die Sprache, in der du schreibst, nicht unterstützt, stattdessen %@ verwenden. Deaktivieren, um in diesen Sprachen keinen Vorschlag zu erhalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When Apple Intelligence doesn't support the language you're writing in, suggest with %@ instead. Turn off to get no suggestion in those languages."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando Apple Intelligence no admita el idioma en el que escribes, usa %@ para generar sugerencias en su lugar. Desactívalo para no recibir sugerencias en esos idiomas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si Apple Intelligence ne prend pas en charge la langue dans laquelle vous écrivez, Lingrove peut utiliser %@ à la place. Désactivez cette option pour ne recevoir aucune suggestion dans ces langues."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जब Apple Intelligence उस भाषा का समर्थन न करे जिसमें आप लिख रहे हैं, तो इसके बजाय %@ से सुझाव दें। उन भाषाओं में सुझाव न पाने के लिए इसे बंद करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saat Apple Intelligence tidak mendukung bahasa yang Anda gunakan untuk menulis, beri saran dengan %@. Matikan untuk tidak menerima saran dalam bahasa tersebut."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se Apple Intelligence non supporta la lingua in cui scrivi, usa %@ per i suggerimenti. Disattiva questa opzione per non ricevere suggerimenti in quelle lingue."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligenceが入力中の言語に対応していない場合は、代わりに%@で候補を表示します。オフにすると、その言語では候補を表示しません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligence가 작성 중인 언어를 지원하지 않으면 대신 %@으로 제안합니다. 끄면 해당 언어로 제안하지 않습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando o Apple Intelligence não oferecer suporte ao idioma em que você escreve, sugerir com %@. Desative para não receber sugestões nesses idiomas."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если Apple Intelligence не поддерживает язык, на котором вы пишете, используйте вместо неё %@. Выключите этот параметр, чтобы не получать подсказки на этих языках."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligence yazdığınız dili desteklemediğinde önerileri %@ ile oluşturur. Bu dillerde hiç öneri almamak için kapatın."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当 Apple Intelligence 不支持你正在使用的语言时，改用 %@ 提供建议。关闭后，这些语言不会提供建议。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligence 不支援你正在使用的語言時，改用 %@ 提供建議。關閉後，這些語言不會提供建議。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

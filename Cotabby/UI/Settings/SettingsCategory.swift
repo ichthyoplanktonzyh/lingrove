@@ -41,7 +41,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         case .apps: return String(localized: "Apps")
         case .permissions: return String(localized: "Permissions")
         case .performance: return String(localized: "Performance")
-        case .about: return String(localized: "About")
+        case .about: return String(localized: "About", table: "Learning")
         }
     }
 

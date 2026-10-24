@@ -18,7 +18,7 @@ The extraction is dated 2026-10-03, from the English Wiktionary dump dated 2026-
 `learning-expressions.provenance.json` records source downloads, checksums, transformations,
 and counts. The subset preserves headwords, explicit forms, senses, labels and source links.
 Citations, usage examples and audio/media were not copied. The derived dataset remains
-separate from Cotabby application source code.
+separate from Lingrove application source code.
 
 Upstream references:
 https://kaikki.org/dictionary/

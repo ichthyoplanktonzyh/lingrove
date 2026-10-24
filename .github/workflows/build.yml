@@ -58,7 +58,7 @@ jobs:
         run: |
           xcodebuild \
             -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-            -scheme Cotabby \
+            -scheme Lingrove \
             -derivedDataPath build/DerivedData \
             -resolvePackageDependencies
 
@@ -108,7 +108,7 @@ jobs:
         run: |
           xcodebuild \
             -workspace build/cotabby-dependencies/Cotabby.xcworkspace \
-            -scheme Cotabby \
+            -scheme Lingrove \
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath build/DerivedData \

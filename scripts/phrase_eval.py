@@ -385,7 +385,7 @@ def prepare_build_inputs(workspace, project, output, *, skip_build):
     record_path.write_text(json.dumps(record, indent=2) + "\n")
     try:
         logged_command([
-            "xcodebuild", "-resolvePackageDependencies", *project, "-scheme", "Cotabby", "-configuration", "Release",
+            "xcodebuild", "-resolvePackageDependencies", *project, "-scheme", "Lingrove", "-configuration", "Release",
             "-destination", "platform=macOS", "-derivedDataPath", DERIVED, "-skipPackageUpdates",
         ], output / "resolution.log")
         # Resolving is not complete until its resulting inputs can be captured. A concurrent
@@ -538,7 +538,7 @@ def run(args):
         raise RuntimeError("--skip-build requires a recorded successful build with unchanged source inputs; run once without it")
     if not args.skip_build:
         logged_command([
-            "xcodebuild", "build-for-testing", *project, "-scheme", "Cotabby", "-configuration", "Release",
+            "xcodebuild", "build-for-testing", *project, "-scheme", "Lingrove", "-configuration", "Release",
             "-destination", "platform=macOS", "-derivedDataPath", DERIVED,
             "CODE_SIGNING_ALLOWED=NO", "ENABLE_TESTABILITY=YES", "ONLY_ACTIVE_ARCH=YES",
             "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) RUN_LLAMA_EVAL", "-skipPackageUpdates",

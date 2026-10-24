@@ -188,7 +188,7 @@ targetTemplates:
           - $(inherited)
           - "@executable_path/../Frameworks"
         MARKETING_VERSION: "0.5.1"
-        # Keep source/module and scheme names stable during the identity migration. PRODUCT_NAME
+        # Keep source/module and target names stable during the identity migration. PRODUCT_NAME
         # owns the installed bundle, executable, and data-folder name; PRODUCT_MODULE_NAME keeps
         # existing `@testable import Cotabby` references valid without a simultaneous source rename.
         PRODUCT_NAME: Lingrove
@@ -221,6 +221,9 @@ targets:
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
   Cotabby:
+    # XcodeGen uses productName for product references and Scheme BuildableName. Keep it aligned
+    # with PRODUCT_NAME so opening Xcode does not restore a Cotabby.app display reference.
+    productName: Lingrove
     templates:
       - CotabbyApp
     settings:
@@ -231,6 +234,7 @@ targets:
   # icon makes it visually distinct, and the COTABBY_DEV compilation condition disables Sparkle so
   # the prod appcast never replaces it.
   "Cotabby Dev":
+    productName: Lingrove Dev
     templates:
       - CotabbyApp
     settings:
@@ -275,7 +279,7 @@ targets:
         SWIFT_VERSION: "5.0"
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Lingrove.app/Contents/MacOS/Lingrove
 schemes:
-  Cotabby:
+  Lingrove:
     build:
       targets:
         Cotabby: all
@@ -299,8 +303,8 @@ schemes:
       config: Release
   # Daily-driver scheme. Builds the dev-identity target so running from Xcode never touches the
   # released app's permissions. No test action here: CotabbyTests is bound to the prod `Cotabby`
-  # target (its TEST_HOST points at "Lingrove.app"), so tests continue to run from the Cotabby scheme.
-  "Cotabby Dev":
+  # target (its TEST_HOST points at "Lingrove.app"), so tests continue to run from the Lingrove scheme.
+  "Lingrove Dev":
     build:
       targets:
         "Cotabby Dev": all

@@ -179,7 +179,7 @@ def build_release_app(repo_root: Path, architectures: tuple[str, ...]) -> Path:
         "-workspace",
         str(workspace),
         "-scheme",
-        "Cotabby",
+        "Lingrove",
         "-configuration",
         "Release",
         "-destination",

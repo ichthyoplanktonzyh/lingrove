@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a styled release DMG for Cotabby.
+"""Build a styled release DMG for Lingrove.
 
 This script owns the DMG packaging policy so the GitHub Actions workflow can
 stay focused on orchestration. The workflow decides *when* to package, while
@@ -30,10 +30,10 @@ from textwrap import dedent
 
 
 # Finder window dimensions use point-sized coordinates. The committed background art is a
-# 700x424 point illustration plus 80pt of extra paper along the bottom, exported at 1x and
+# 700x424 point illustration plus 80pt of extra background along the bottom, exported at 1x and
 # @2x (assets/release/dmg_background*.png). The padding exists because Finder may show a
 # tab bar and status/path bar regardless of the settings below, and those eat content
-# height: the window opens tall enough that the cat stays visible with that chrome, and
+# height: the window opens tall enough that the whale stays visible with that chrome, and
 # without it the extra rows just show more paper instead of Finder's default white.
 # The icon locations are the centers of the two "drop zone" cards drawn in that art, so
 # re-measure them whenever the illustration changes: the icon is centered a little above
@@ -42,7 +42,7 @@ WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 504
 # dmgbuild stores window_rect as Finder's full window frame, title bar included, while the
 # background is drawn in the content area below it. Without this padding the bottom 28pt of
-# the art (where the cat sleeps) is clipped until the user resizes the window.
+# the whale illustration is clipped until the user resizes the window.
 TITLE_BAR_HEIGHT = 28
 ICON_SIZE = 72
 TEXT_SIZE = 12
@@ -54,17 +54,17 @@ def parse_args() -> argparse.Namespace:
     """Parse the small CLI contract used by local releases and CI."""
 
     parser = argparse.ArgumentParser(
-        description="Build a styled Cotabby release DMG with dmgbuild."
+        description="Build a styled Lingrove release DMG with dmgbuild."
     )
     parser.add_argument(
         "--app-path",
         required=True,
-        help="Path to the signed Cotabby.app bundle that should be packaged.",
+        help="Path to the signed Lingrove.app bundle that should be packaged.",
     )
     parser.add_argument(
         "--output-path",
         required=True,
-        help="Path where the final Cotabby.dmg should be written.",
+        help="Path where the final Lingrove.dmg should be written.",
     )
     parser.add_argument(
         "--background-path",
@@ -79,7 +79,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--volume-name",
         required=True,
-        help="Mounted volume name shown by Finder, for example Cotabby.",
+        help="Mounted volume name shown by Finder, for example Lingrove.",
     )
     return parser.parse_args()
 
@@ -297,7 +297,7 @@ def main() -> int:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix="Cotabby-dmgbuild-") as temporary_root:
+    with tempfile.TemporaryDirectory(prefix="Lingrove-dmgbuild-") as temporary_root:
         temporary_root_path = Path(temporary_root)
         staging_root = temporary_root_path / "staging-root"
         staging_root.mkdir()
