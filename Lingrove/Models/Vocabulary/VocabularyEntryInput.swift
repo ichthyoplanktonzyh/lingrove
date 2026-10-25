@@ -11,6 +11,8 @@ nonisolated struct VocabularyEntryInput: Equatable, Sendable {
     var meaningLanguage: LearningLanguage?
     var note = ""
     var tags: [String] = []
+    var example = ""
+    var exampleTranslation = ""
 }
 
 /// Import acknowledges what actually changed against the latest notebook, not a stale preview.
@@ -19,7 +21,10 @@ nonisolated struct VocabularyEntryImportResult: Equatable, Sendable {
     var addedEntries = 0
     var addedSenses = 0
     var skippedRows = 0
+    var addedExamples = 0
+    var addedTranslations = 0
     var selection: VocabularySelection?
+    var hasChanges: Bool { addedSenses > 0 || addedExamples > 0 || addedTranslations > 0 }
 }
 
 /// The source table keeps physical line numbers for useful errors even with quoted CSV newlines.
@@ -37,6 +42,7 @@ nonisolated struct VocabularyWordList: Sendable {
 
 nonisolated enum VocabularyImportField: String, CaseIterable, Sendable {
     case expression, meaning, dictionaryForm, language, kind, meaningLanguage, note, tags
+    case example, exampleTranslation
 
     var label: String {
         switch self {
@@ -48,6 +54,8 @@ nonisolated enum VocabularyImportField: String, CaseIterable, Sendable {
         case .meaningLanguage: String(localized: "Meaning language", table: "Vocabulary")
         case .note: String(localized: "Notes", table: "Vocabulary")
         case .tags: String(localized: "Tags", table: "Vocabulary")
+        case .example: String(localized: "Example sentence", table: "Vocabulary")
+        case .exampleTranslation: String(localized: "Example translation", table: "Vocabulary")
         }
     }
 }
@@ -70,6 +78,7 @@ nonisolated struct VocabularyWordListPreview: Sendable {
 nonisolated enum VocabularyWordListError: LocalizedError {
     case tooLarge, encoding, unsupportedFile, empty, mapping, invalidInput
     case malformedCSV(Int), missingExpression(Int), language(Int), kind(Int)
+    case missingExample(Int), translationWithoutExample, exampleConflict
 
     var errorDescription: String? {
         switch self {
@@ -93,6 +102,13 @@ nonisolated enum VocabularyWordListError: LocalizedError {
             String(localized: "Use a supported language code on line \(row), such as en or zh-Hans.", table: "Vocabulary")
         case .kind(let row):
             String(localized: "Use word, expression, pattern, or sentence as the type on line \(row).", table: "Vocabulary")
+        case .missingExample(let row):
+            String(localized: "An example sentence is missing on line \(row).", table: "Vocabulary")
+        case .translationWithoutExample:
+            String(localized: "Add an example sentence before its translation.", table: "Vocabulary")
+        case .exampleConflict:
+            String(localized: "This example belongs to another sense. Match its saved meaning or edit it in the notebook.",
+                table: "Vocabulary")
         }
     }
 }

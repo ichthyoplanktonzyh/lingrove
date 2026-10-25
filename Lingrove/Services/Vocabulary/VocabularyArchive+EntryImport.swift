@@ -29,7 +29,7 @@ extension VocabularyArchive {
             let snapshot = try load()
             let plan = try VocabularyEntryInputPolicy.plan(inputs, into: snapshot.document, now: Date())
             try Task.checkCancellation()
-            guard plan.result.addedSenses > 0 else { return (snapshot, plan.result) }
+            guard plan.result.hasChanges else { return (snapshot, plan.result) }
             return (try commit(plan.document), plan.result)
         }
     }

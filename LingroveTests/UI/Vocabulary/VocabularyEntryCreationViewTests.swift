@@ -17,7 +17,10 @@ struct VocabularyEntryCreationViewTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
         let csv = folder.appendingPathComponent("sample.csv")
-        try Data("expression,meaning\nserendipity,a happy discovery\nbank,river edge\nbank,financial institution".utf8).write(to: csv)
+        try Data(("expression,meaning,example,translation\n" +
+            "serendipity,a happy discovery,It was pure serendipity.,这纯属机缘巧合。\n" +
+            "bank,river edge,We sat by the bank.,我们坐在河岸边。\n" +
+            "bank,river edge,The bank is steep.,河岸很陡。").utf8).write(to: csv)
         await store.load()
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         try await paint(VocabularyNotebookView(store: store, speech: speech, preferences: defaults),
@@ -26,7 +29,7 @@ struct VocabularyEntryCreationViewTests {
             name: "create-entry", size: .init(width: 620, height: 590))
         try await paint(VocabularyWordListImportSheet(store: store,
             request: .init(url: csv, language: .english)) { _ in Issue.record("Preview must not import") },
-            name: "import-preview", size: .init(width: 740, height: 720))
+            name: "import-preview", size: .init(width: 900, height: 760))
         #expect(store.entries.isEmpty)
         #expect(try await archive.load().document.entries.isEmpty)
     }

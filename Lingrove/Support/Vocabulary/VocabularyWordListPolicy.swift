@@ -32,12 +32,23 @@ nonisolated enum VocabularyWordListPolicy {
             .kind: ["type", "kind", "类型"],
             .meaningLanguage: ["meaninglanguage", "释义语言"],
             .note: ["notes", "note", "备注", "笔记"],
-            .tags: ["tags", "tag", "标签"]
+            .tags: ["tags", "tag", "标签"],
+            .example: ["example", "sentence", "examplesentence", "例句"],
+            .exampleTranslation: ["exampletranslation", "sentencetranslation", "例句译文", "例句翻译"]
         ]
         let names = first.cells.map { $0.lowercased().filter { $0.isLetter || $0.isNumber } }
         var mapped: [VocabularyImportField: Int] = [:]
         for field in VocabularyImportField.allCases {
             if let index = names.firstIndex(where: { aliases[field, default: []].contains($0) }) { mapped[field] = index }
+        }
+        // Old two-column lists used "translation" for the word's meaning. Only an explicit
+        // example column gives that ambiguous header a sentence-translation interpretation.
+        if mapped[.example] != nil, mapped[.exampleTranslation] == nil {
+            let translations: Set<String> = ["translation", "译文", "翻译"]
+            if let index = names.firstIndex(where: { translations.contains($0) }) {
+                if mapped[.meaning] == index { mapped.removeValue(forKey: .meaning) }
+                if mapped[.exampleTranslation] == nil { mapped[.exampleTranslation] = index }
+            }
         }
         result.hasHeader = mapped[.expression] != nil
         if result.hasHeader { result.columns = mapped } else if table.columnCount > 1 { result.columns[.meaning] = 1 }
@@ -59,6 +70,7 @@ nonisolated enum VocabularyWordListPolicy {
                 return row.cells[index].trimmingCharacters(in: .whitespacesAndNewlines)
             }
             guard !cell(.expression).isEmpty else { throw VocabularyWordListError.missingExpression(row.line) }
+            if cell(.example).isEmpty, !cell(.exampleTranslation).isEmpty { throw VocabularyWordListError.missingExample(row.line) }
             let language = try Self.language(cell(.language), fallback: configuration.language, line: row.line)
             let meaningLanguage = try optionalLanguage(cell(.meaningLanguage), fallback: configuration.meaningLanguage, line: row.line)
             let kind: VocabularyEntry.Kind
@@ -68,7 +80,8 @@ nonisolated enum VocabularyWordListPolicy {
             let tags = cell(.tags).components(separatedBy: CharacterSet(charactersIn: ";；,，"))
             return try VocabularyEntryInputPolicy.validated(.init(expression: cell(.expression),
                 dictionaryForm: cell(.dictionaryForm), language: language, kind: kind, meaning: cell(.meaning),
-                meaningLanguage: meaningLanguage, note: cell(.note), tags: tags))
+                meaningLanguage: meaningLanguage, note: cell(.note), tags: tags,
+                example: cell(.example), exampleTranslation: cell(.exampleTranslation)))
         }
     }
 

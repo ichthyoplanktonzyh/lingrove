@@ -56,39 +56,46 @@ struct VocabularyWordListImportSheet: View {
                 if table.format == .csv {
                     ScrollView {
                         Form {
-                            Text(String(localized: "Only mapped columns are imported. Examples and images are not included.",
+                            Text(String(localized: "Only mapped columns are imported. Images are not included.",
                                 table: "Vocabulary")).font(.caption).foregroundStyle(.secondary)
                             Toggle(String(localized: "First row contains column names", table: "Vocabulary"),
                                 isOn: $session.configuration.hasHeader)
                             columnPicker(.expression, table: table)
                             columnPicker(.meaning, table: table)
+                            columnPicker(.example, table: table)
+                            columnPicker(.exampleTranslation, table: table)
                             DisclosureGroup(String(localized: "More columns", table: "Vocabulary")) {
-                                ForEach(VocabularyImportField.allCases.filter { $0 != .expression && $0 != .meaning }, id: \.self) {
+                                ForEach(VocabularyImportField.allCases.filter {
+                                    ![.expression, .meaning, .example, .exampleTranslation].contains($0)
+                                }, id: \.self) {
                                     columnPicker($0, table: table)
                                 }
                             }
                         }.formStyle(.grouped)
-                    }.frame(maxHeight: 240).disabled(session.saving)
+                    }.frame(maxHeight: 280).disabled(session.saving)
                 }
             }
             if session.preparing { ProgressView().frame(maxWidth: .infinity) }
             if let preview = session.preview {
-                HStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 18) {
                     Text(String(localized: "New entries: \(preview.result.addedEntries)", table: "Vocabulary"))
                     Text(String(localized: "New senses: \(preview.result.addedSenses)", table: "Vocabulary"))
                     Text(String(localized: "Duplicates skipped: \(preview.result.skippedRows)", table: "Vocabulary"))
+                    }
+                    if showsExamples {
+                        HStack(spacing: 18) {
+                            Text(String(localized: "New examples: \(preview.result.addedExamples)", table: "Vocabulary"))
+                            Text(String(localized: "New translations: \(preview.result.addedTranslations)", table: "Vocabulary"))
+                        }
+                    }
                 }.font(.caption)
-                Table(Array(preview.inputs.prefix(50).enumerated()).map { PreviewRow(id: $0.offset, input: $0.element) }) {
-                    TableColumn(String(localized: "Expression", table: "Vocabulary")) { Text($0.input.expression) }
-                    TableColumn(String(localized: "Core meaning", table: "Vocabulary")) { Text($0.input.meaning) }
-                    TableColumn(String(localized: "Language", table: "Vocabulary")) { Text($0.input.language.label) }
-                        .width(90)
-                }
-                .frame(height: CGFloat(min(8, max(2, preview.inputs.count)) + 1) * 24 + 4)
+                previewTable(preview.inputs)
+                .frame(height: CGFloat(min(showsExamples ? 4 : 8, max(2, preview.inputs.count)) + 1) * (showsExamples ? 40 : 24) + 4)
                 if preview.inputs.count > 50 {
                     Text(String(localized: "Showing the first 50 rows.", table: "Vocabulary")).font(.caption).foregroundStyle(.secondary)
                 }
-                if preview.result.addedSenses == 0 {
+                if !preview.result.hasChanges {
                     Text(String(localized: "All rows are already in the notebook.", table: "Vocabulary")).foregroundStyle(.secondary)
                 }
             }
@@ -105,11 +112,11 @@ struct VocabularyWordListImportSheet: View {
                     Task { if let result = await session.commit() { onImported(result); dismiss() } }
                 }
                 .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                .disabled(session.preparing || session.saving || (session.preview?.result.addedSenses ?? 0) == 0)
+                .disabled(session.preparing || session.saving || session.preview?.result.hasChanges != true)
                 .accessibilityIdentifier("vocabularyConfirmImport")
             }
         }
-        .padding(20).frame(width: 740, height: 720)
+        .padding(20).frame(width: 900, height: 760)
         .interactiveDismissDisabled(session.saving)
         .task { await session.load(request.url, language: request.language) }
         .onDisappear { session.cancel() }
@@ -118,6 +125,33 @@ struct VocabularyWordListImportSheet: View {
     private struct PreviewRow: Identifiable {
         let id: Int
         let input: VocabularyEntryInput
+    }
+
+    /// Column-builder conditionals require macOS 14.4. Choose between complete tables in the
+    /// ordinary ViewBuilder so the import preview still works on the app's macOS 14.0 baseline.
+    @ViewBuilder private func previewTable(_ inputs: [VocabularyEntryInput]) -> some View {
+        let rows = Array(inputs.prefix(50).enumerated()).map { PreviewRow(id: $0.offset, input: $0.element) }
+        if showsExamples {
+            Table(rows) {
+                TableColumn(String(localized: "Expression", table: "Vocabulary")) { Text($0.input.expression) }
+                TableColumn(String(localized: "Core meaning", table: "Vocabulary")) { Text($0.input.meaning) }
+                TableColumn(String(localized: "Example sentence", table: "Vocabulary")) { Text($0.input.example).lineLimit(2) }
+                TableColumn(String(localized: "Example translation", table: "Vocabulary")) {
+                    Text($0.input.exampleTranslation).lineLimit(2)
+                }
+                TableColumn(String(localized: "Language", table: "Vocabulary")) { Text($0.input.language.label) }.width(90)
+            }
+        } else {
+            Table(rows) {
+                TableColumn(String(localized: "Expression", table: "Vocabulary")) { Text($0.input.expression) }
+                TableColumn(String(localized: "Core meaning", table: "Vocabulary")) { Text($0.input.meaning) }
+                TableColumn(String(localized: "Language", table: "Vocabulary")) { Text($0.input.language.label) }.width(90)
+            }
+        }
+    }
+
+    private var showsExamples: Bool {
+        session.configuration.columns[.example] != nil || session.configuration.columns[.exampleTranslation] != nil
     }
 
     private func columnPicker(_ field: VocabularyImportField, table: VocabularyWordList) -> some View {
