@@ -14,10 +14,10 @@ import Testing
             decoder: "Qwen3-TTS-12Hz-0.6B-Base.mmproj-Q8_0.gguf"))
     }
 
-    @Test func unknownImportsKeepManualCompatibilityAndLabelsShowTheSize() {
+    @Test func unknownImportsKeepManualCompatibilityAndLabelsMatchThePackageAlias() {
         #expect(!SpeechModelPairingPolicy.isKnownMismatch(model: "custom.gguf", decoder: "decoder.gguf"))
         #expect(SpeechModelPairingPolicy.decoderFilenames(for: "custom.gguf").isEmpty)
-        #expect(SpeechModelPairingPolicy.displayName(for: "mmproj-Qwen3-TTS-12Hz-0.6B-Base-Q8_0.gguf")?.contains("0.6B") == true)
-        #expect(SpeechModelPairingPolicy.displayName(for: "mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf")?.contains("1.7B") == true)
+        #expect(SpeechModelPairingPolicy.displayName(for: "mmproj-Qwen3-TTS-12Hz-0.6B-Base-Q8_0.gguf")?.contains("Voice Mini") == true)
+        #expect(SpeechModelPairingPolicy.displayName(for: "mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf")?.contains("Voice Base") == true)
     }
 }

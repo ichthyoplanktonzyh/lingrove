@@ -97,6 +97,7 @@ nonisolated struct LearningPowerProfile: Codable, Equatable, Hashable, Sendable 
 @MainActor
 final class LearningModelSettings: ObservableObject {
     let role: LearningModelRole
+    let modelTaskAssignments: LocalModelTaskAssignments
     let contexts: ModelContextSettings
     private var parameters: ModelParameterSettings<LearningGenerationProfile>
     private var contextIdentities = ModelContextIdentityCache()
@@ -124,6 +125,7 @@ final class LearningModelSettings: ObservableObject {
     init(role: LearningModelRole, defaults: UserDefaults,
          credentials: (any OpenAICompatibleCredentialStoring)? = nil) {
         self.role = role
+        modelTaskAssignments = LocalModelTaskAssignments(defaults: defaults)
         contexts = ModelContextSettings(role: role.rawValue, defaults: defaults)
         parameters = ModelParameterSettings(key: "learning.\(role.rawValue).parameters.v1", defaults: defaults)
         self.defaults = defaults

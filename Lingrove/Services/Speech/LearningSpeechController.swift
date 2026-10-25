@@ -34,7 +34,7 @@ final class LearningSpeechController: ObservableObject {
     /// Settings alone access downloads. Opening a card never scans the speech-model directory.
     lazy var modelDownloads: ModelDownloadManager = {
         let downloads = ModelDownloadManager(runtimeDirectoryURL: modelDirectoryURL,
-            assetCatalog: [SpeechModelCatalog.model, SpeechModelCatalog.decoder])
+            assetCatalog: [SpeechModelCatalog.model, SpeechModelCatalog.decoder], taskAssignments: settings.modelTaskAssignments)
         downloads.onModelDirectoryChanged = { [weak self] in self?.refreshLocalModels() }
         downloads.protectedModelFilenames = { [weak self] in
             guard let self else { return [] }
@@ -224,7 +224,13 @@ final class LearningSpeechController: ObservableObject {
     }
 
     func refreshLocalModels() {
-        let models = modelDownloads.installedModelOptions().filter { !SpeechModelPairingPolicy.isKnownDecoder($0.filename) }
+        if !settings.localModelPath.isEmpty {
+            settings.modelTaskAssignments.record(URL(fileURLWithPath: settings.localModelPath).lastPathComponent, for: .speech)
+        }
+        let models = modelDownloads.installedModelOptions().filter {
+            LocalModelTaskPolicy.isCandidate($0.filename, task: .speech,
+                assignedTasks: settings.modelTaskAssignments.tasks(for: $0.filename))
+        }
         if availableLocalModels != models { availableLocalModels = models }
     }
 
@@ -236,6 +242,8 @@ final class LearningSpeechController: ObservableObject {
         let path = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !path.isEmpty else { settings.setLocalAssets(model: "", projection: ""); return }
         let model = URL(fileURLWithPath: path)
+        guard settings.modelTaskAssignments.record(model.lastPathComponent, for: .speech),
+              LocalModelTaskPolicy.supports(model.lastPathComponent, task: .speech) else { return }
         let filenames = SpeechModelPairingPolicy.decoderFilenames(for: model.lastPathComponent)
         guard !filenames.isEmpty else { settings.setLocalAssets(model: path, projection: settings.localProjectionPath); return }
         let directories = [model.deletingLastPathComponent(), modelDirectoryURL]

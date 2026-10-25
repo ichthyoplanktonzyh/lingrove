@@ -11,10 +11,15 @@ final class LearningModelController: ObservableObject {
     @Published private(set) var status = String(localized: "Not loaded", table: "Learning",
         comment: "Initial status shown in settings when this learning model is not resident.")
     @Published private(set) var availableModels: [RuntimeModelOption] = []
+    /// Storage discovery stays separate from task admission so files are never reclassified by
+    /// whichever settings page happened to refresh last.
+    private var installedModels: [RuntimeModelOption] = []
     let endpointConnection: OpenAICompatibleConnectionModel
     var endpointModels: [OpenAICompatibleModelOption] { endpointConnection.models }
     private let core: any LearningLocalExecuting
     private let localModelURL: (String) throws -> URL
+    private let modelOptionsProvider: () -> [RuntimeModelOption]
+    private let templateResolver: @Sendable (URL) throws -> LearningChatTemplate
     private let client: OpenAICompatibleAPIClient
     private var task: Task<String, Error>?
     private var taskID = UUID()
@@ -42,9 +47,13 @@ final class LearningModelController: ObservableObject {
          core: any LearningLocalExecuting = LearningLocalRuntime(),
          localModelURL: @escaping (String) throws -> URL = {
              try BundledRuntimeLocator().resolve(configuration: .default, selectedModelFilename: $0).modelFileURL
-         }) {
+         },
+         modelOptionsProvider: (() -> [RuntimeModelOption])? = nil,
+         templateResolver: (@Sendable (URL) throws -> LearningChatTemplate)? = nil) {
         self.core = core; self.localModelURL = localModelURL
         self.profile = profile
+        self.modelOptionsProvider = modelOptionsProvider ?? { BundledRuntimeLocator().availableModels(configuration: .default) }
+        self.templateResolver = templateResolver ?? { try LearningLocalPrompt.resolve(.automatic, modelURL: $0) }
         observedSnapshot = profile.snapshot
         self.client = client
         endpointConnection = OpenAICompatibleConnectionModel(client: client)
@@ -58,11 +67,19 @@ final class LearningModelController: ObservableObject {
     }
 
     func refreshModels() {
+        registerConfiguredModels()
         resolveModelTemplate()
-        availableModels = BundledRuntimeLocator().availableModels(configuration: .default)
+        installedModels = modelOptionsProvider()
+        updateCandidates()
         let selection = profile.snapshot
         if selection.backend == .local, !selection.localModel.isEmpty,
-           !availableModels.contains(where: { $0.filename == selection.localModel }) {
+           let issue = taskIssue(for: selection.localModel, template: selection.template) {
+            stop()
+            status = issue
+            return
+        }
+        if selection.backend == .local, !selection.localModel.isEmpty,
+           !installedModels.contains(where: { $0.filename == selection.localModel }) {
             stop()
             status = String(localized: "The configured GGUF file is unavailable. Choose a model again.",
                 table: "Learning", comment: "Status shown when a selected local model file can no longer be found.")
@@ -71,6 +88,49 @@ final class LearningModelController: ObservableObject {
             missingSelectedFile = false
             status = String(localized: "Not loaded", table: "Learning",
                 comment: "Status shown in settings when this learning model is not resident.")
+        }
+    }
+
+    private func registerConfiguredModels() {
+        // Existing manual/battery/AC references are explicit task choices. Preserve unknown
+        // imports in that task; a known incompatible catalog entry cannot acquire a new role.
+        for filename in profile.referencedLocalModels {
+            profile.modelTaskAssignments.record(filename, for: LocalModelTask(profile.role))
+        }
+    }
+
+    private func updateCandidates() {
+        let task = LocalModelTask(profile.role)
+        availableModels = installedModels.filter {
+            LocalModelTaskPolicy.isCandidate($0.filename, task: task,
+                assignedTasks: profile.modelTaskAssignments.tasks(for: $0.filename))
+        }
+    }
+
+    func taskIssue(for filename: String, template: LearningChatTemplate = .automatic) -> String? {
+        let task = LocalModelTask(profile.role)
+        guard !filename.isEmpty else { return nil }
+        guard LocalModelTaskPolicy.supports(filename, task: task),
+              LocalModelTaskPolicy.permitsTemplate(template, task: task) else {
+            return String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning")
+        }
+        return nil
+    }
+
+    private func validateTaskSelection(_ snapshot: LearningModelSnapshot) async throws {
+        guard snapshot.backend == .local else { return }
+        if let issue = taskIssue(for: snapshot.localModel, template: snapshot.template) {
+            throw LearningFailure.message(issue)
+        }
+        if profile.role == .explanation {
+            if templateWork == nil { resolveModelTemplate() }
+            await templateWork?.value
+            try Task.checkCancellation()
+            guard profile.snapshot == snapshot else { throw CancellationError() }
+            guard profile.generalInstructionsAvailable == true else {
+                throw LearningFailure.message(String(localized: "Choose a general instruction model for AI explanation.",
+                    table: "Learning"))
+            }
         }
     }
 
@@ -98,6 +158,7 @@ final class LearningModelController: ObservableObject {
     /// filtering alone cannot stop a renamed translation specialist from receiving tutor prompts.
     func validateGeneralInstructionModel() async throws {
         let initial = profile.snapshot
+        try await validateTaskSelection(initial)
         if initial.backend == .local {
             if templateWork == nil { resolveModelTemplate() }
             await templateWork?.value
@@ -109,14 +170,9 @@ final class LearningModelController: ObservableObject {
         }
     }
 
-    /// Freeze a complete translation request before transport. Native planning borrows this role's
-    /// serialized vocabulary off MainActor; endpoints use the disclosed estimate. A profile edit
-    /// invalidates the lease, preventing preparation from handing text to a newly selected server.
-    func translationPlan(
-        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
-        targetLanguage: LearningLanguage, output: Int
-    ) async throws -> LearningTranslationPrompt.Request {
-        guard generationAllowed, generationEligibility() else { throw CancellationError() }
+    /// Resolve style capabilities before freezing a translation plan. The shared metadata task
+    /// yields MainActor, so the original destination and live eligibility must still agree afterward.
+    private func resolveTranslationMetadata() async throws {
         let initial = profile.snapshot, identity = profile.contextIdentity
         if initial.backend == .local, initial.template == .automatic {
             // Background metadata is a UI convenience, not a request correctness guarantee.
@@ -128,7 +184,21 @@ final class LearningModelController: ObservableObject {
             guard profile.contextIdentity == identity, initial == profile.snapshot,
                   generationAllowed, generationEligibility() else { throw CancellationError() }
         }
+    }
+
+    /// Freeze a complete translation request before transport. Native planning borrows this role's
+    /// serialized vocabulary off MainActor; endpoints use the disclosed estimate. A profile edit
+    /// invalidates the lease, preventing preparation from handing text to a newly selected server.
+    func translationPlan(
+        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        targetLanguage: LearningLanguage, output: Int
+    ) async throws -> LearningTranslationPrompt.Request {
+        guard generationAllowed, generationEligibility() else { throw CancellationError() }
+        try await resolveTranslationMetadata()
         let snapshot = profile.snapshot
+        try await validateTaskSelection(snapshot)
+        try Task.checkCancellation()
+        guard profile.snapshot == snapshot, generationAllowed, generationEligibility() else { throw CancellationError() }
         var input = input
         // The snapshot retains saved intent for stale-result checks. Capability resolution is
         // transient: an unsupported dormant preference must not mutate that identity mid-request.
@@ -271,6 +341,11 @@ final class LearningModelController: ObservableObject {
     private func generateResponse(_ request: InstructionRequest,
                                   onDelta: (@MainActor (String) throws -> Void)?) async throws -> String {
         let snapshot = request.snapshot, prompt = request.prompt, maxTokens = request.maxTokens
+        try await validateTaskSelection(snapshot)
+        try Task.checkCancellation()
+        guard taskID == request.id, profile.snapshot == snapshot, generationAllowed, generationEligibility() else {
+            throw CancellationError()
+        }
         let userOnly = request.userOnly, id = request.id
         let sampling = (request.sampling ?? (userOnly ? .hyMT : .standard)).values.applying(snapshot.samplingOverrides)
         let measurement = LearningRequestTrace.measurement
@@ -364,9 +439,11 @@ final class LearningModelController: ObservableObject {
         templateWork?.cancel()
         let snapshot = profile.snapshot, identity = profile.contextIdentity
         guard snapshot.backend == .local, snapshot.template == .automatic || profile.role == .explanation,
+              taskIssue(for: snapshot.localModel, template: snapshot.template) == nil,
               !snapshot.localModel.isEmpty, let url = try? localModelURL(snapshot.localModel) else { return }
+        let resolver = templateResolver
         templateWork = Task { [weak self] in
-            let work = Task.detached(priority: .utility) { try LearningLocalPrompt.resolve(.automatic, modelURL: url) }
+            let work = Task.detached(priority: .utility) { try resolver(url) }
             let resolved = await withTaskCancellationHandler { try? await work.value } onCancel: { work.cancel() }
             guard !Task.isCancelled, let resolved, let self else { return }
             self.profile.setResolvedTemplate(resolved, expectedIdentity: identity)
@@ -374,6 +451,8 @@ final class LearningModelController: ObservableObject {
     }
 
     private func profileChanged() {
+        registerConfiguredModels()
+        updateCandidates()
         let next = profile.snapshot
         let previous = observedSnapshot
         observedSnapshot = next
@@ -409,8 +488,18 @@ final class LearningModelController: ObservableObject {
 
     func prepare() async {
         let snapshot = profile.snapshot
+        if let issue = taskIssue(for: snapshot.localModel, template: snapshot.template), snapshot.backend == .local {
+            status = issue
+            return
+        }
         guard !Task.isCancelled, generationAllowed, generationEligibility(), warmupEligibility(), residency == .warm, snapshot.backend == .local,
               !snapshot.localModel.isEmpty, preparedSnapshot?.usesSameRuntime(as: snapshot) != true, task == nil else { return }
+        do { try await validateTaskSelection(snapshot) } catch {
+            if profile.snapshot == snapshot { status = error.localizedDescription }
+            return
+        }
+        guard !Task.isCancelled, profile.snapshot == snapshot, generationAllowed, generationEligibility(),
+              warmupEligibility(), residency == .warm, task == nil else { return }
         idleRelease?.cancel(); idleRelease = nil
         let id = UUID(); taskID = id
         let core = self.core

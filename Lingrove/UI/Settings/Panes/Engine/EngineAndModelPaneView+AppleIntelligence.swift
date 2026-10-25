@@ -61,7 +61,7 @@ extension EngineAndModelPaneView {
             // The Open Source section is hidden while Apple Intelligence is the engine, so the
             // fallback model is chosen here. It is the same selection the Open Source engine uses:
             // the local runtime holds one model at a time.
-            if runtimeModel.availableModels.isEmpty {
+            if runtimeModel.availableModels.isEmpty && runtimeModel.selectedModelFilename == nil {
                 // Only worth a warning while the fallback is on; with it off, no model is needed.
                 if suggestionSettings.isAppleLanguageFallbackEnabled {
                     Text("""
@@ -73,6 +73,11 @@ extension EngineAndModelPaneView {
                 }
             } else {
                 Picker(selection: fallbackModelBinding) {
+                    if let filename = runtimeModel.selectedModelFilename,
+                       !runtimeModel.availableModels.contains(where: { $0.filename == filename }) {
+                        Text(LocalModelSelectionLabel.unavailable(filename, task: .completion))
+                            .tag(filename).selectionDisabled()
+                    }
                     ForEach(runtimeModel.availableModels) { model in
                         Text(model.displayName).tag(model.filename)
                     }

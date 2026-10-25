@@ -684,3 +684,33 @@ retries tolerate activation/AX settling without retrying an editor mutation. `Ed
 marker/selection/empty caret ranges without changing translation's sentence-scope policy. Tests
 mirror each boundary under `Support/ExpressionAssist`, `Models/ExpressionAssist`,
 `App/Coordinators/InlineFeatures` and `Services/LanguageLearning`.
+
+
+## Task-Specific Local Model Selection
+
+`Models/Runtime/LocalModelDescriptor.swift` owns immutable product aliases and curated task
+identities. Download catalogs retain their original filenames, URLs and checksums; UI labels are
+never persistence keys. `Support/Runtime/LocalModelTaskPolicy.swift` is the pure admission rule
+shared by candidate discovery and execution preflight, including auxiliary speech resources.
+
+`Services/ModelManagement/LocalModelTaskAssignments.swift` is a MainActor UserDefaults adapter,
+not another runtime or model store. Existing saved manual/battery/AC profiles and explicit
+import/download/assignment actions record custom-model intent. Directory discovery alone does
+not assign a file to every task. It also records successful download provenance independently
+of the catalog's expected source. Controllers and the existing download manager borrow this
+small adapter, so model files continue to share one storage location.
+
+`LearningModelController`, `LlamaRuntimeManager` and `LearningSpeechController` publish only
+candidates admitted for their own task. Known incompatible saved selections remain durable and
+visible, while preflight rejects them before native preparation. Explanation additionally awaits
+GGUF template metadata to reject renamed translation specialists. Every yielding preflight
+rechecks cancellation, settings identity and eligibility before starting work. The composition
+root refreshes completion candidates after restoring old power profiles, before subscribing to
+power-source changes.
+
+`UI/Settings/ModelManagement/LocalModelDetailsView.swift` owns the optional technical disclosure
+and the shared unavailable-selection label. `UnassignedLocalModelsSection.swift` observes the
+existing manager's cached installed list and exposes explicit task assignment, including files
+from enabled external model folders. Neither view scans files, loads metadata or owns services.
+Tests mirror these boundaries under Models/Runtime, Support/Runtime, Services/LanguageLearning
+and UI/Settings; offscreen UI captures are written only under the ignored build directory.
