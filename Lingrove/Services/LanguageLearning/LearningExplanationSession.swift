@@ -7,6 +7,11 @@ import Foundation
 @MainActor
 final class LearningExplanationSession: ObservableObject {
     @Published private(set) var input: LearningExplanationInput?
+    @Published var showsLookupDetails = false
+    @Published private(set) var lookupRecord: LearningLookupRecord?
+    private(set) var lookupInput: LearningLookupInput?
+    /// The reading coordinator lends receipt validation; no session reads AX or captures focus.
+    var isTargetCurrent: () -> Bool = { true }
     @Published private(set) var record: LearningExplanationRecord?
     @Published private(set) var isGenerating = false
     @Published private(set) var error: String?
@@ -20,13 +25,59 @@ final class LearningExplanationSession: ObservableObject {
         self.service = service
         subscription = service?.changes.sink { [weak self] in
             guard let self else { return }
-            self.cancel(); self.record = nil; self.error = nil
-            self.restoreSaved()
+            self.cancel(); self.record = nil; self.lookupRecord = nil; self.error = nil; self.showsLookupDetails = false
+            if self.lookupInput == nil { self.restoreSaved() }
         }
     }
     var isConfigured: Bool { service?.isConfigured == true }
+    var isLookup: Bool { lookupInput != nil }
+
+    /// Lookup starts with the compact pair. Legacy full records are not restored into this
+    /// mode: their details may explain an interpretation different from this new accepted pair.
+    func setLookupTarget(_ target: LearningLookupInput) {
+        cancel()
+        lookupInput = target
+        input = target.target
+        record = nil; lookupRecord = nil; error = nil; showsLookupDetails = false
+    }
+
+    func loadLookup(refresh: Bool = false) {
+        guard let service = service as? any LearningLookupGenerating, let target = lookupInput,
+              !isGenerating, refresh || lookupRecord == nil, isTargetCurrent() else { return }
+        cancel()
+        error = nil
+        let revision = revision, requestID = RequestID.generate()
+        isGenerating = true
+        work = Task { [weak self] in
+            do {
+                let result = try await service.lookup(target, requestID: requestID, refresh: refresh)
+                try Task.checkCancellation()
+                guard let self, self.revision == revision, self.lookupInput == target else { return }
+                guard self.isTargetCurrent() else { self.clear(); return }
+                // Publish the pair together. Regeneration invalidates details anchored to the old pair.
+                self.lookupRecord = result; self.record = nil; self.showsLookupDetails = false
+                self.isGenerating = false; self.work = nil
+                service.recordDisplay(requestID: requestID)
+            } catch {
+                guard let self, self.revision == revision else { return }
+                guard self.isTargetCurrent() else { self.clear(); return }
+                self.finish(error)
+            }
+        }
+    }
+
+    func toggleLookupDetails() {
+        guard lookupRecord != nil else { return }
+        showsLookupDetails.toggle()
+        if showsLookupDetails { explain() }
+    }
+
+    func regenerate() {
+        if isLookup { loadLookup(refresh: true) } else { explain(refresh: record != nil || error != nil) }
+    }
 
     func setTarget(_ input: LearningExplanationInput?, saved: LearningExplanationRecord? = nil) {
+        if lookupInput != nil { cancel(); lookupInput = nil; lookupRecord = nil; record = nil }
         let input = input.flatMap { LearningExplanationPolicy.isValid($0) ? $0 : nil }
         let candidate = saved ?? input.flatMap { service?.savedRecord(for: $0) }
         let saved = candidate.flatMap { record in
@@ -57,6 +108,7 @@ final class LearningExplanationSession: ObservableObject {
         }
     }
     func explain(refresh: Bool = false) {
+        if isLookup { explainLookup(refresh: refresh); return }
         guard let service, let input, !isGenerating, refresh || record == nil else { return }
         cancel()
         error = nil
@@ -78,11 +130,39 @@ final class LearningExplanationSession: ObservableObject {
             }
         }
     }
+    private func explainLookup(refresh: Bool) {
+        guard let service = service as? any LearningLookupGenerating, let basic = lookupRecord,
+              !isGenerating, refresh || record == nil, isTargetCurrent() else { return }
+        cancel(); error = nil
+        let revision = revision, requestID = RequestID.generate()
+        isGenerating = true
+        work = Task { [weak self] in
+            do {
+                let result = try await service.explainLookup(basic, requestID: requestID, refresh: refresh)
+                try Task.checkCancellation()
+                guard let self, self.revision == revision, self.lookupRecord == basic else { return }
+                guard self.isTargetCurrent() else { self.clear(); return }
+                self.record = result; self.isGenerating = false; self.work = nil
+                service.recordDisplay(requestID: requestID)
+            } catch {
+                guard let self, self.revision == revision else { return }
+                guard self.isTargetCurrent() else { self.clear(); return }
+                self.finish(error)
+            }
+        }
+    }
+    private func finish(_ error: any Error) {
+        isGenerating = false; work = nil
+        if !(error is CancellationError), !Task.isCancelled { self.error = error.localizedDescription }
+    }
     func cancel() {
         revision = UUID()
         lookupWork?.cancel(); lookupWork = nil
         work?.cancel(); work = nil
         isGenerating = false
     }
-    func clear() { cancel(); input = nil; record = nil; error = nil }
+    func clear() {
+        cancel(); input = nil; record = nil; lookupInput = nil; lookupRecord = nil
+        showsLookupDetails = false; error = nil; isTargetCurrent = { true }
+    }
 }

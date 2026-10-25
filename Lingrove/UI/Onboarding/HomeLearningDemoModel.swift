@@ -346,7 +346,7 @@ final class HomeLearningDemoModel: ObservableObject {
             self.stage(action)
             switch action {
             case .explain:
-                if self.lookupVisible { self.dictionary.explanation.explain(refresh: true) } else {
+                if self.lookupVisible { self.dictionary.explanation.regenerate() } else {
                     self.explanation.explain(refresh: true)
                 }
             case .favorite, .favoriteMenu: await self.demonstrateFavorite(action, revision: revision)

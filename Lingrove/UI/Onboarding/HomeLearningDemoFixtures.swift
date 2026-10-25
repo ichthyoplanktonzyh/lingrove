@@ -85,7 +85,7 @@ enum HomeLearningDemoFixtures {
 /// The real explanation session owns cancellation, loading, restore and regenerate behavior.
 /// This small provider supplies a reviewed example response without creating a model runtime.
 @MainActor
-final class HomeDemoExplainer: LearningExplanationGenerating {
+final class HomeDemoExplainer: LearningLookupGenerating {
     let changes = Empty<Void, Never>().eraseToAnyPublisher()
     let language = LearningLanguage.chinese
     let isConfigured = true
@@ -98,6 +98,20 @@ final class HomeDemoExplainer: LearningExplanationGenerating {
         return record
     }
     func savedRecord(for input: LearningExplanationInput) -> LearningExplanationRecord? { saved[input] }
+    func lookup(_ input: LearningLookupInput, requestID: String, refresh: Bool) async throws -> LearningLookupRecord {
+        let record = try await generate(input.target, requestID: requestID, refresh: refresh)
+        return .init(input: input, language: language,
+            result: .init(meaning: record.result.meaning,
+                sentenceTranslation: input.target.contextKind == .none ? ""
+                    : input.referenceTranslation.isEmpty ? HomeLearningDemoFixtures.source : input.referenceTranslation),
+            model: record.model, createdAt: record.createdAt)
+    }
+    func explainLookup(_ record: LearningLookupRecord, requestID: String, refresh: Bool) async throws -> LearningExplanationRecord {
+        let details = try await generate(record.input.target, requestID: requestID, refresh: refresh)
+        return .init(id: details.id, input: details.input, language: details.language,
+            result: .init(meaning: record.result.meaning, explanation: details.result.explanation),
+            model: details.model, createdAt: details.createdAt)
+    }
     func recordDisplay(requestID: String) { }
 }
 

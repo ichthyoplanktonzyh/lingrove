@@ -121,6 +121,9 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     /// Explicit notebook senses have a local receipt independent of text equality. Floating
     /// captures leave it nil; this identity is never included in the model's prompt.
     var generalExplanationIdentity: String?
+    /// Staged lookup already owns an interpreted pair. Legacy full-result enrichment must not
+    /// replace its meaning with an older cached interpretation while saving that sentence translation.
+    var allowsExplanationEnrichment = true
 }
 
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite

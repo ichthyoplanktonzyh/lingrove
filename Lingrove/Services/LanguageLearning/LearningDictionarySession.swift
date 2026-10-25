@@ -31,6 +31,8 @@ final class LearningDictionarySession: ObservableObject {
     private(set) var vocabularyCapture: VocabularyCapture?
     private let provider: any LearningDictionaryProviding
     private var language: LearningLanguage = .english
+    private var translationLanguage: LearningLanguage?
+    private var validateCapture: () -> Bool = { true }
     /// Target lifetime differs from dictionary request lifetime: source/tab changes keep it,
     /// while navigating to another occurrence or reopening the same spelling retires it.
     private(set) var targetIdentity = UUID()
@@ -98,7 +100,7 @@ final class LearningDictionarySession: ObservableObject {
             return try? await provider.resource(path, libraryID: libraryID, configuration: configuration)
         }
     }
-    var contextExample: VocabularyExample? { activeCapture?.example }
+    var contextExample: VocabularyExample? { displayedCapture?.example }
 
     private var activeCapture: VocabularyCapture? {
         if let referenceQuery {
@@ -117,12 +119,41 @@ final class LearningDictionarySession: ObservableObject {
     }
 
     var favoriteCapture: VocabularyCapture? {
-        activeCapture
+        // A click during the initial request must not save an empty pre-result usage that
+        // silently misses the pair published a moment later. Existing results remain saveable.
+        guard !(explanation.isLookup && explanation.isGenerating && explanation.lookupRecord == nil) else { return nil }
+        return displayedCapture
+    }
+
+    /// Presentation keeps the existing toolbar visible while its first pair is loading. The
+    /// separate favorite gate disables saving until these displayed values form a complete pair.
+    var displayedCapture: VocabularyCapture? {
+        guard var capture = activeCapture else { return nil }
+        capture.allowsExplanationEnrichment = !explanation.isLookup
+        if let basic = explanation.lookupRecord {
+            capture.meaning = basic.result.meaning
+            capture.meaningLanguage = basic.language
+            capture.example?.meaning = basic.result.meaning
+            capture.example?.meaningLanguage = basic.language
+            capture.example?.meaningOrigin = .ai
+            if let example = capture.example, !example.translation.isEmpty,
+               example.translation != basic.result.sentenceTranslation {
+                let previous = VocabularyMeaning(text: example.translation, language: example.translationLanguage)
+                if !example.translationVariants.contains(previous) { capture.example?.translationVariants.append(previous) }
+            }
+            capture.example?.translation = basic.result.sentenceTranslation
+            capture.example?.translationLanguage = basic.input.translationLanguage
+        }
+        capture.explanation = explanation.record
+        return capture
     }
 
     func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil,
-              vocabularyCapture: VocabularyCapture? = nil) {
+              vocabularyCapture: VocabularyCapture? = nil, translationLanguage: LearningLanguage? = nil,
+              validateCapture: @escaping () -> Bool = { true }) {
         close()
+        self.translationLanguage = translationLanguage
+        self.validateCapture = validateCapture
         self.unit = unit
         self.documentID = documentID
         self.language = language
@@ -174,6 +205,8 @@ final class LearningDictionarySession: ObservableObject {
         referenceQuery = nil
         speechContext = nil
         vocabularyCapture = nil
+        translationLanguage = nil
+        validateCapture = { true }
         sourceOverride = nil
         content = .loading
         cache.removeAll()
@@ -218,9 +251,17 @@ final class LearningDictionarySession: ObservableObject {
         work?.cancel(); work = nil
         content = .loading
         dictionaryRequested = false
-        explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input))
+        if explanation.service is any LearningLookupGenerating, let capture = activeCapture {
+            explanation.setLookupTarget(.init(target: LearningExplanationPolicy.input(capture),
+                translationLanguage: translationLanguage ?? capture.example?.translationLanguage
+                    ?? explanation.service?.language ?? language,
+                referenceTranslation: capture.example?.translation ?? ""))
+        } else { explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input)) }
+        explanation.isTargetCurrent = validateCapture
         page = explanation.service == nil ? .dictionary : .contextual
-        if page == .dictionary { requestDictionary() } else if explanation.isConfigured { explanation.explain() }
+        if page == .dictionary { requestDictionary() } else if explanation.isConfigured {
+            if explanation.isLookup { explanation.loadLookup() } else { explanation.explain() }
+        }
     }
 
     private func requestDictionary() {

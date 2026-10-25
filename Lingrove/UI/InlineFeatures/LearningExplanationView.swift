@@ -30,7 +30,7 @@ struct LearningExplanationView: View {
     /// inside Details until explicitly adopted, rather than silently replacing the user's text.
     private var contextualContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let text = meaning ?? session.record?.result.meaning, !text.isEmpty {
+            if let text = meaning ?? session.lookupRecord?.result.meaning ?? session.record?.result.meaning, !text.isEmpty {
                 Text(text).font(.callout.weight(.semibold)).textSelection(.enabled)
             }
             if let context {
@@ -44,31 +44,69 @@ struct LearningExplanationView: View {
                     }
                 }
             }
-            if let record = session.record {
-                DisclosureGroup(String(localized: "Details", table: "Learning"), isExpanded: Binding(get: { showsDetails }, set: {
-                    interact(); showsDetails = $0
+            if session.record != nil || session.lookupRecord != nil {
+                DisclosureGroup(String(localized: "Details", table: "Learning"), isExpanded: Binding(
+                    get: { session.isLookup ? session.showsLookupDetails : showsDetails }, set: {
+                    interact()
+                    if session.isLookup { session.showsLookupDetails = $0 } else { showsDetails = $0 }
+                    if $0, session.isLookup { session.explain() }
                 })) {
                     VStack(alignment: .leading, spacing: 8) {
-                        if let meaning, meaning != record.result.meaning {
+                        if let record = session.record, let meaning, meaning != record.result.meaning {
                             Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
                             if let adopt {
                                 Button(String(localized: "Replace contextual meaning", table: "Learning")) { interact(); adopt(record) }
                                     .buttonStyle(.link).font(.caption)
                             }
                         }
-                        Text(record.result.explanation).font(.callout).textSelection(.enabled)
+                        if let record = session.record {
+                            Text(record.result.explanation).font(.callout).textSelection(.enabled)
+                        }
+                        if session.isLookup {
+                            if let record = session.record, let adopt {
+                                Button(String(localized: "Use as contextual meaning", table: "Learning")) { interact(); adopt(record) }
+                                    .buttonStyle(.link).font(.caption)
+                            }
+                            if session.isGenerating {
+                                HStack(spacing: 8) {
+                                    ProgressView().controlSize(.small)
+                                    Text(String(localized: "Explaining…", table: "Learning")).foregroundStyle(.secondary)
+                                    Button(String(localized: "Stop", table: "Learning")) { interact(); session.cancel() }.buttonStyle(.link)
+                                }
+                            } else if let error = session.error {
+                                Text(error).foregroundStyle(.secondary)
+                                Button(String(localized: "Try again", table: "Learning")) { interact(); session.explain(refresh: true) }
+                                    .buttonStyle(.link)
+                            } else if session.record == nil {
+                                Button(String(localized: "Try again", table: "Learning")) { interact(); session.explain() }
+                                    .buttonStyle(.link)
+                            }
+                        }
                     }.padding(.top, 6)
                 }.font(.caption)
             }
-            if session.isGenerating {
-                Text(String(localized: "Explaining…", table: "Learning")).font(.caption).foregroundStyle(.secondary)
-            } else if let error = session.error {
-                Text(error).font(.caption).foregroundStyle(.secondary)
+            if session.lookupRecord == nil {
+                if session.isGenerating {
+                    Text(String(localized: "Explaining…", table: "Learning")).font(.caption).foregroundStyle(.secondary)
+                } else if let error = session.error {
+                    Text(error).font(.caption).foregroundStyle(.secondary)
+                    Button(String(localized: "Try again", table: "Learning")) { interact(); session.loadLookup(refresh: true) }
+                        .buttonStyle(.link).font(.caption)
+                } else if session.isLookup {
+                    if session.isConfigured {
+                        Button(String(localized: "Try again", table: "Learning")) { interact(); session.loadLookup() }
+                            .buttonStyle(.link).font(.caption)
+                    } else {
+                        Button(String(localized: "Configure AI explanation model", table: "Learning")) { interact(); configure() }
+                            .buttonStyle(.link).font(.caption)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: session.input) { _, _ in showsDetails = false }
         .onChange(of: showsDetails) { _, expanded in detailsChanged(expanded) }
+        .onChange(of: session.showsLookupDetails) { _, expanded in detailsChanged(expanded) }
     }
 
     private func contextualExample(_ example: VocabularyExample) -> AttributedString {
@@ -174,7 +212,7 @@ struct LearningExplanationButton: View {
             if session.isGenerating { session.cancel(); return }
             prepare()
             if session.isConfigured {
-                session.explain(refresh: session.record != nil || session.error != nil)
+                session.regenerate()
             } else { configure() }
         } label: {
             Group {
@@ -201,7 +239,7 @@ struct LearningExplanationButton: View {
         if session.isGenerating { return .blue }
         if !session.isConfigured { return hovering ? .primary : .secondary }
         if session.error != nil { return .orange }
-        if session.record != nil { return .blue }
+        if session.record != nil || session.lookupRecord != nil { return .blue }
         return hovering ? .primary : .secondary
     }
 
@@ -209,7 +247,7 @@ struct LearningExplanationButton: View {
         if session.isGenerating { return String(localized: "Stop generating explanation", table: "Learning") }
         if !session.isConfigured { return String(localized: "Configure AI explanation model", table: "Learning") }
         if session.error != nil { return String(localized: "Try again", table: "Learning") }
-        return session.record == nil ? String(localized: "AI explanation", table: "Learning")
+        return session.record == nil && session.lookupRecord == nil ? String(localized: "AI explanation", table: "Learning")
             : String(localized: "Regenerate explanation", table: "Learning")
     }
 
@@ -235,7 +273,8 @@ struct LearningCapturedExplanationView: View {
         let destination = store.explanationDestination(capture)
         LearningExplanationView(session: session, configure: configure, adopt: destination.map { destination in
             { record in Task { _ = await store.adoptExplanation(record, at: destination) } }
-        }, presentation: presentation, meaning: presentation == .contextual ? destination.flatMap(store.userMeaning) : nil,
+        }, presentation: presentation,
+            meaning: presentation == .contextual && !session.isLookup ? destination.flatMap(store.userMeaning) : nil,
             context: context, detailsChanged: detailsChanged)
     }
 }

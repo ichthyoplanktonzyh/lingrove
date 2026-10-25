@@ -9,7 +9,7 @@ import SwiftUI
 /// The window never becomes key, so showing, expanding or clicking learning content leaves typing
 /// focus in the host editor. Its position follows the existing caret/selection geometry policy.
 @MainActor
-final class LearningSentencePanel: LearningSentencePresenting {
+final class LearningSentencePanel: LearningSentencePresenting, LearningLookupPresenting {
     private let detailPanel: LearningDetailPanel
     private let speech: LearningSpeechController?
     private let vocabulary: VocabularyStore?
@@ -26,6 +26,7 @@ final class LearningSentencePanel: LearningSentencePresenting {
     private var clickMonitorsInstalled = false
 
     private var currentPresentation: LearningSentencePresentation?
+    private var standaloneLookupID: UUID?
     private var layoutRevision = UUID()
     private var measurementSequence: UInt64 = 0
     private var reservedFrame: CGRect?
@@ -121,12 +122,39 @@ final class LearningSentencePanel: LearningSentencePresenting {
     /// the sentence pair. No synthetic keyboard events are sent to the host editor.
     func dismissDetail() -> Bool {
         if detailPanel.dismissDictionary() { return true }
+        if standaloneLookupID != nil { return false }
         guard detailPanel.isVisible else { return false }
         detailPanel.hide()
         return true
     }
 
+    /// Reading opens the existing dictionary card as its primary surface. The same owner
+    /// still classifies native popovers/clicks and cancels the child session on dismissal.
+    func showLookup(_ presentation: LearningLookupPresentation, validate: @escaping () -> Bool, dismiss: @escaping () -> Void) {
+        hide()
+        standaloneLookupID = presentation.id
+        dismissAction = dismiss
+        let capture = presentation.capture
+        let ranges = capture.example?.ranges.map(\.nsRange) ?? [NSRange(location: 0, length: capture.expression.utf16.count)]
+        let unit = LearningUnit(id: 0, surface: capture.expression, query: capture.dictionaryForm,
+            kind: capture.kind == .word ? .word : .expression, ranges: ranges,
+            words: LearningUnitPolicy.words(in: capture.example?.text ?? capture.expression, language: capture.language)
+                .filter { word in ranges.contains { NSIntersectionRange($0, word.range).length > 0 } })
+        let screen = NSScreen.screens.first { $0.frame.intersects(presentation.anchor) } ?? NSScreen.main
+        detailPanel.show(unit, documentID: presentation.id, language: capture.language,
+            placement: .init(parent: presentation.anchor, caret: presentation.anchor, reserved: reservedFrame,
+                screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
+                anchorY: presentation.anchor.maxY, standalone: true),
+            speechContext: capture.example?.text, vocabularyCapture: capture, translationLanguage: presentation.translationLanguage,
+            validateCapture: validate, dismiss: dismiss)
+        isVisible = detailPanel.isVisible
+        installClickMonitors()
+    }
+
+    func toggleLookupDetails() { detailPanel.toggleDetails() }
+
     func hide() {
+        standaloneLookupID = nil
         explanation.clear()
         if let documentID = currentPresentation?.id { speech?.stop(ownerID: documentID) }
         isVisible = false

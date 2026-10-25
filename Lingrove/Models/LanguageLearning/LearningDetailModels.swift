@@ -8,4 +8,5 @@ nonisolated struct LearningDetailPlacement {
     let reserved: CGRect?
     let screen: CGRect
     let anchorY: CGFloat
+    var standalone = false
 }

@@ -78,6 +78,14 @@ Language learning can be enabled independently of inline autocomplete:
 - Recognition uses exact headwords, recorded forms, and conservative one-word slots in explicitly recorded expression patterns; it is not a comprehensive grammatical phrase detector.
 - The data has separate [CC BY-SA attribution and provenance](../Lingrove/Resources/learning-expressions.NOTICE.md).
 
+### Contextual Lookup While Reading and Writing
+
+- Selecting a word or expression while reading opens the same lookup card used by words inside a writing preview. Complete sentence selections retain the translation preview.
+- The initial general-model task returns the selected unit's contextual meaning and its captured sentence translation together. An existing writing-preview translation is supplied as reference. No separate translation-model request is made for this lookup.
+- **Details** requests usage/grammar explanations only when expanded, anchored to the accepted meaning and sentence translation. Reopening completed details reuses the result; dictionary navigation does not restart either task.
+- Missing context yields common senses with no invented sentence translation; captured fragments remain marked as fragments. Whole screen-region translation retains its existing behavior.
+- Saving retains the displayed pair and language provenance. The initial in-flight request cannot save an unfinished result; later detailed annotations remain compatible with existing notebook records.
+
 ### Dictionary Sources & Priority
 
 - **Settings → Language Learning → Dictionary** enables and orders built-in expressions, system dictionaries, imported `MDX`/`MDD` files, and optional online sources.

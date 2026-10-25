@@ -25,7 +25,7 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     let anchor: CGRect
     var source: LearningReadingSource = .selection
     var languageHint: LearningLanguage?
-    /// Bounded local context captured with the selected/pointed text; not a translation input.
+    /// Bounded context captured with the target; contextual lookup interprets it with the selected unit.
     var vocabularyContext: VocabularyExample?
 }
 
