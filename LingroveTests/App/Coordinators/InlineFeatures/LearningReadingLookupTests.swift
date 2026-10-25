@@ -35,6 +35,18 @@ struct LearningReadingLookupTests {
         #expect(rig.panel.sentence?.translation == "他坐在河岸上。")
     }
 
+    @Test(arguments: [LearningLanguage.chinese, .english])
+    func aSharedWordUsesItsSentenceWithoutALanguageHint(_ target: LearningLanguage) async throws {
+        let rig = try Rig(text: "focus", context:
+            "Listen to sentences or expressions without losing typing focus using macOS system voices.", target: target)
+        defer { rig.close() }
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await wait { rig.panel.lookup != nil }
+        #expect(rig.panel.lookup?.capture.language == .english)
+        #expect(rig.panel.lookup?.capture.expression == "focus")
+        #expect(rig.service.calls == 0 && rig.panel.sentence == nil)
+    }
+
     private func wait(_ predicate: () -> Bool) async {
         for _ in 0..<300 where !predicate() { try? await Task.sleep(for: .milliseconds(2)) }
         #expect(predicate())
@@ -72,7 +84,7 @@ struct LearningReadingLookupTests {
         init(text: String, context: String) { self.text = text; self.context = context }
         func capture() async throws -> LearningReadingSelection {
             .init(id: UUID(), text: text, processIdentifier: 1, bundleIdentifier: "lookup.fixture", anchor: .zero,
-                languageHint: .english, vocabularyContext: VocabularyPolicy.example(text: context,
+                vocabularyContext: VocabularyPolicy.example(text: context,
                     ranges: [(context as NSString).range(of: text)], language: .english))
         }
         func isCurrent(_ capture: LearningReadingSelection) -> Bool { current }

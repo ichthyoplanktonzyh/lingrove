@@ -819,3 +819,11 @@ Known empty-answer placeholders fail validation and use the existing retry UI in
 cached meanings. Reading routing retains exact captured sentence coverage, recognizes multiword
 colon-ending statements as a fallback, and keeps bare word targets trimmed independently of AX
 receipt text.
+
+`LearningReadingLanguageResolver` resolves a receipt before either reading route starts. Shared
+short words borrow the captured sentence's language before the acquisition hint or isolated-word
+result; a sufficiently complete selection keeps priority in mixed-language documents. Script
+compatibility prevents a surrounding Chinese sentence from relabelling a selected Latin word.
+Recognition remains bounded and unconstrained by the supported palette, so unknown or unsupported
+languages are never silently replaced with English or the reading target language. The coordinator
+logs only the chosen language, evidence source and input lengths.
