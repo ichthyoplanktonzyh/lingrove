@@ -112,7 +112,8 @@ struct VocabularyNotebookView: View {
             ToolbarItem(placement: .principal) {
                 Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: animatedBrowserMode) {
                     Label(String(localized: "List", table: "Vocabulary"), systemImage: "list.bullet").tag("list")
-                    Label(String(localized: "Graph", table: "Vocabulary"), systemImage: "point.3.connected.trianglepath.dotted").tag("graph")
+                    Label(String(localized: "Graph", table: "Vocabulary"), systemImage: "point.3.connected.trianglepath.dotted")
+                        .tag("graph")
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 164)

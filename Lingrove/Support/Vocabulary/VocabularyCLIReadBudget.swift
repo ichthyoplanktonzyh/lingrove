@@ -8,7 +8,9 @@ nonisolated enum VocabularyCLIReadBudget {
     static func validate(_ entry: VocabularyEntry, maximum: Int = CLIInputPolicy.maximumBytes) throws {
         var remaining = maximum
         func take(_ amount: Int) throws {
-            guard amount >= 0, amount <= remaining else { throw CLIError.invalid("Entry exceeds the CLI read budget. Use the app's export.") }
+            guard amount >= 0, amount <= remaining else {
+                throw CLIError.invalid("Entry exceeds the CLI read budget. Use the app's export.")
+            }
             remaining -= amount
         }
         func text(_ value: String) throws {
@@ -29,11 +31,16 @@ nonisolated enum VocabularyCLIReadBudget {
             try meanings(sense.standaloneMeanings); try meanings(sense.alternateMeanings); try explanations(sense.explanations)
             for block in sense.content ?? [] {
                 try take(2_048)
-                switch block.content { case let .text(value): try text(value.text); case let .image(_, caption): try text(caption) }
+                switch block.content {
+                case let .text(value): try text(value.text)
+                case let .image(_, caption): try text(caption)
+                }
             }
             for usage in sense.examples {
                 try take(2_048); try text(usage.text); try text(usage.translation); try text(usage.meaning)
-                guard usage.ranges.count <= remaining / 128 else { throw CLIError.invalid("Entry exceeds the CLI read budget. Use the app's export.") }
+                guard usage.ranges.count <= remaining / 128 else {
+                    throw CLIError.invalid("Entry exceeds the CLI read budget. Use the app's export.")
+                }
                 try take(usage.ranges.count * 128)
                 try meanings(usage.translationVariants); try explanations(usage.explanations)
             }
