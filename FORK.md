@@ -889,3 +889,35 @@ Strict SwiftLint passed; localization validated 1,598 keys in three catalogs and
 XcodeGen regeneration and git diff whitespace checks passed. Logs, xcresults, model output and
 complete-toolbar card captures are retained under build/reading-contextual-lookup. DerivedData
 is removed after validation.
+
+## Bounded browser reading context — 2026-10-25
+
+Chrome can expose selected text and Text Markers while reporting AXNumberOfCharacters as zero.
+Reading context now falls back from ordinary AX character ranges to length-checked marker sentence
+and paragraph queries. Inline DOM spans can return a range containing only the target, so those
+isolated candidates are deferred while paragraph-boundary pairs are tried. Boundary queries start
+just inside selected edges to avoid capturing adjacent paragraphs; a bounded marker window remains
+available for very long paragraphs. No clipboard fallback, browser extension, full-document read,
+new model manager or broader hosted transmission was added.
+
+The reader snapshots opaque marker identity before context acquisition and checks both marker
+endpoints afterward and at publication. Equal spelling at a later occurrence therefore retires old
+work. Pure reduction validates exact UTF-16 units and composed-character ranges, trims selection
+edge whitespace for highlighting, and enforces selection/context budgets. Multiword colon-ending
+statements use the sentence translation route; bare-word labels remain dictionary queries.
+
+Initial lookup prompts omit empty accepted-result fields. Standalone dictionary requests omit
+context-only fields and ask positively for a definition; known placeholder/empty replies fail with
+the existing retry error rather than entering caches. The existing pair-plus-on-demand-details
+contract and original lookup card tools remain intact.
+
+Validation: unsigned Debug build-for-testing and 105 regression tests passed with zero failures or
+skips, split into logic and isolated native-window suites. Optional production-controller/model
+acceptance passed six Qwen3.5 4B generations: three uses of supported in the reported README sentence,
+and three standalone dictionary queries. Chrome native AX acceptance verified the actual sentence,
+trailing whitespace across inline tags, distinct repeated-bank positions, composed Unicode text
+and a bounded long-paragraph fallback. The first standalone prompt trial produced an empty meaning;
+the final positive dictionary task passed, and that rejection remains covered by pure tests.
+SwiftLint strict, 15-locale resource validation and XcodeGen checks passed. Independent GPT-6 Luna
+max subagents wrote tests and reviewed boundaries; the primary agent wrote all production changes.
+Evidence is retained under build/reading-context-fix; DerivedData is removed after local validation.

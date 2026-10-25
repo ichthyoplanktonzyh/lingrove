@@ -794,3 +794,28 @@ surface with the same nonactivating window, popup ownership and dismissal bounda
 sentence and whole screen-region translation retain the existing translator. Pointer OCR uses
 only its bounded captured line fragment. The shared explanation view requests details only on
 expansion; the dictionary tab remains lazy and does not restart a stopped model task.
+
+## Reading Context Acquisition
+
+`Support/Accessibility/AXReadingContext.swift` owns bounded, read-only Text Marker queries for
+explicit selections. It accepts sentence/paragraph ranges only after proving their lengths and
+exact before/selected/after concatenation. Chromium's inline-node range quirks fall back to
+paragraph-boundary marker pairs, queried just inside the selected edges to avoid neighbouring
+paragraphs. Larger or unavailable structural ranges use a deadline- and step-limited marker window;
+no path reads from document start to end. Opaque marker endpoints remain in the selection reader's
+memory-only evidence so a different occurrence of the same spelling invalidates an older request.
+
+`Support/LanguageLearning/LearningReadingContextPolicy.swift` validates UTF-16 code units, composed
+character boundaries, exact selection location and crop budgets before making a vocabulary example.
+It trims selected edge whitespace only for highlighting, preserves the original receipt for
+staleness, and treats an isolated bare word as lacking surrounding context. The existing
+`LearningVocabularyContextReader` tries ordinary AX ranges first and Text Markers second, logging
+only acquisition method, completeness and length. Reader completion rechecks both selection range
+and marker identity after these cross-process context calls.
+
+Lookup keeps the original two-stage contract. Basic prompts omit empty detail-stage fields;
+standalone dictionary queries omit context-only fields and request a positive general definition.
+Known empty-answer placeholders fail validation and use the existing retry UI instead of becoming
+cached meanings. Reading routing retains exact captured sentence coverage, recognizes multiword
+colon-ending statements as a fallback, and keeps bare word targets trimmed independently of AX
+receipt text.
