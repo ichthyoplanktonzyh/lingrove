@@ -49,7 +49,7 @@ final class VocabularyWordListImportSession: ObservableObject {
     }
 
     func commit() async -> VocabularyEntryImportResult? {
-        guard !preparing, !saving, let preview, preview.result.addedSenses > 0 else { return nil }
+        guard !preparing, !saving, let preview, preview.result.hasChanges else { return nil }
         saving = true; failure = nil
         defer { saving = false }
         do { return try await store.addEntries(preview.inputs) } catch { failure = error.localizedDescription; return nil }

@@ -746,3 +746,26 @@ excluded from prompts. Saved lookup, cache identity and the existing fresh-resul
 callback therefore resolve one sense. Explicit merge rebinds only known local receipts while
 preserving record IDs, text, results and the legacy nil-receipt favorite behavior. No additional
 runtime, provider request or automatic model generation is introduced by creation or import.
+
+
+## CSV Example Import
+
+`VocabularyEntryInput` carries optional example sentence/translation text through the same
+bounded mapping, preview and commit flow. `VocabularyWordListPolicy` distinguishes the existing
+word-translation header alias from sentence translation when an example column is supplied.
+A translation with no sentence is rejected with its physical source line.
+
+`Support/Vocabulary/VocabularyImportedExamplePolicy.swift` owns pure usage append/translation
+merge rules. `VocabularyEntryInputPolicy.EntryIndex` caches per-headword sense keys and usage
+locations for one plan, avoiding a repeated scan for each CSV row. Explicit, unambiguous core
+meanings may group examples; new unclassified contexts retain independent sense identities.
+Existing usage ownership never changes through import. Different translations become variants,
+and unknown translation-language provenance stays unknown. Full sentence cells remain intact;
+existing Unicode-safe reconciliation finds highlight spans where literal matches are available.
+
+`VocabularyEntryImportResult.hasChanges` includes example/translation changes, so preview,
+confirmation gating and the archive's transaction guard do not discard an example-only batch.
+The existing store and archive remain the sole UI publication and disk transaction boundaries;
+no additional model or dictionary work is introduced. Regression tests cover sentence ownership,
+translation preservation, replay, stale preview, rollback, Unicode and reopen under
+`Services/Vocabulary/VocabularyExampleImportTests.swift`.

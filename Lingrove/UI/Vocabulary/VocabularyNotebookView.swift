@@ -223,9 +223,7 @@ struct VocabularyNotebookView: View {
                 Button(String(localized: "OK"), role: .cancel) { importResult = nil }
             } message: {
                 if let result = importResult {
-                    Text(String(localized: "New entries: \(result.addedEntries)", table: "Vocabulary") + "\n" +
-                        String(localized: "New senses: \(result.addedSenses)", table: "Vocabulary") + "\n" +
-                        String(localized: "Duplicates skipped: \(result.skippedRows)", table: "Vocabulary"))
+                    Text(importSummary(result))
                 }
             }
         .sheet(isPresented: $showingBatch) {
@@ -294,6 +292,17 @@ struct VocabularyNotebookView: View {
         browserMode = "list"; selectingSenses = false; batchSelection.removeAll()
         expandedEntries.insert(target.entryID)
         selection = target.senseID
+    }
+
+    private func importSummary(_ result: VocabularyEntryImportResult) -> String {
+        var lines = [String(localized: "New entries: \(result.addedEntries)", table: "Vocabulary"),
+            String(localized: "New senses: \(result.addedSenses)", table: "Vocabulary")]
+        if result.addedExamples > 0 { lines.append(String(localized: "New examples: \(result.addedExamples)", table: "Vocabulary")) }
+        if result.addedTranslations > 0 {
+            lines.append(String(localized: "New translations: \(result.addedTranslations)", table: "Vocabulary"))
+        }
+        lines.append(String(localized: "Duplicates skipped: \(result.skippedRows)", table: "Vocabulary"))
+        return lines.joined(separator: "\n")
     }
 
     private var graphBrowser: some View {

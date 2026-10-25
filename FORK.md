@@ -806,3 +806,52 @@ Chinese component captures from the shipped views:
 ![Create a notebook entry](.github/assets/vocabulary-entry-import/create-entry-zh-Hans.png)
 
 ![Preview CSV columns and import counts](.github/assets/vocabulary-entry-import/import-preview-zh-Hans.png)
+
+
+## CSV example sentences and translations — 2026-10-25
+
+Word-list import now maps optional `example` and `example_translation` CSV columns (also
+`sentence`, Chinese labels, and `translation` when an example column is present). Existing
+word-only CSV aliases and one-expression-per-line TXT behavior remain compatible. An orphan
+translation is rejected with its source line. Preview and completion show example/translation
+counts; example-only or translation-only changes can commit without adding a sense.
+
+The existing archive transaction still re-plans against the latest SQLite state. A new pure
+`VocabularyImportedExamplePolicy` appends usages to an unambiguous, explicitly supplied meaning,
+retains independent senses for unclassified contexts, and refuses to reassign an existing usage.
+Repeated rows skip existing content; an absent translation can be filled, while a different
+translation becomes a preserved variant. The two new columns carry no language provenance,
+so imported translation-language metadata remains unspecified. Existing notes, review bindings,
+user meanings, usage IDs and explanation records retain their owners.
+
+Sentence cells remain intact, including embedded newlines. Existing Unicode-safe reconciliation
+finds literal word/dictionary-form highlights; unmatched sentences are retained without invented
+ranges. The batch planner indexes headwords, sense keys and usage locations once per plan, and
+mutates entries directly to avoid repeatedly copying earlier examples for a repeated headword.
+The preview uses separate complete tables to preserve macOS 14.0 compatibility; conditional
+TableColumn builders would otherwise require macOS 14.4.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Prepared the pinned workspace and compiled the unsigned Debug app/tests. Final regression:
+  **122 passed, 0 failures, 0 skips** across parser, import, archive, SQLite, senses, explanations,
+  notebook sessions, content, export, CLI and review policies. Optional native-interaction methods
+  were excluded and the new one was exercised separately.
+- Actual native acceptance passed through the file picker, preview and confirmation in an
+  isolated notebook. It verified 2 entries / 2 senses / 3 examples / 3 translations, and both
+  original sentences/translations were visible under one selected bank sense. Native accessibility
+  observations and archive assertions verified the workflow using no real notebook or inference service.
+- Chinese UI hosting passed and its real import-preview capture was inspected. The regression
+  cases cover English/Chinese headers, legacy translation aliases, quoted physical line errors,
+  Unicode highlights, unmatchable inflections, preserved translation variants and Anki bindings,
+  duplicate imports without a new revision, atomic rollback, stale-preview confirmation and
+  1,000 same-headword example rows with stable IDs.
+- Strict production SwiftLint reports zero violations. Localization validation passed 1,598 keys
+  across 3 tables and 15 languages; six new keys leave all existing translations unchanged.
+  Source hashes stayed stable during final runs, XcodeGen regeneration was deterministic and
+  `git diff --check` passed. No prompts, sampling, native runtimes or database schema changed.
+- Repo-scoped DerivedData is removed after validation. Logs, manifests, xcresults and preview
+  captures remain under ignored `build/vocabulary-import-examples/`. A minimal CSV is available
+  at `docs/vocabulary-import-example.csv`.
+
+![CSV example and translation mapping](.github/assets/vocabulary-import-examples/import-preview-zh-Hans.png)
