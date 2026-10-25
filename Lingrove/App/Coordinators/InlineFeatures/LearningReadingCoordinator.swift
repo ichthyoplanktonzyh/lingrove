@@ -44,6 +44,7 @@ final class LearningReadingCoordinator {
         let sourceLanguage: LearningLanguage
         let targetLanguage: LearningLanguage
         let traceID: String
+        var isLookup = false
         var translation = ""
         var units: [LearningUnit] = []
         var unitStage: LearningUnitStage = .pending
@@ -265,13 +266,15 @@ final class LearningReadingCoordinator {
                     String(localized: "Could not identify the text language. Try a larger text region.", table: "Learning")))
             return
         }
+        let trace = traceID ?? RequestID.generate()
+        document = Document(capture: capture, sourceLanguage: source, targetLanguage: target, traceID: trace)
+        if beginLookup(capture, source: source, target: target) { return }
         guard source != target else {
+            document = nil
             showCaptureError(
                 LearningFailure.message(String(localized: "The text is already in the reading target language.", table: "Learning")))
             return
         }
-        let trace = traceID ?? RequestID.generate()
-        document = Document(capture: capture, sourceLanguage: source, targetLanguage: target, traceID: trace)
         render()
         let id = revision
         LingroveLogger.learning.info(
@@ -320,6 +323,25 @@ final class LearningReadingCoordinator {
         }
     }
 
+    /// Lookup owns its two-stage model work in the shared card session. This coordinator
+    /// retains only capture eligibility and supplies the same stale-receipt guard as translation.
+    private func beginLookup(_ capture: LearningReadingSelection, source: LearningLanguage, target: LearningLanguage) -> Bool {
+        guard let lookupPanel = panel as? any LearningLookupPresenting,
+              let targetCapture = LearningReadingLookupPolicy.capture(capture, language: source) else { return false }
+        document?.isLookup = true
+        document?.generating = false
+        work = nil
+        let id = revision
+        lookupPanel.showLookup(.init(id: capture.id, capture: targetCapture, translationLanguage: target, anchor: capture.anchor),
+            validate: { [weak self] in
+                guard let self else { return false }
+                let current = self.valid(id, capture)
+                if !current { self.retireIfCurrent(id) }
+                return current
+            }, dismiss: { [weak self] in self?.dismiss() })
+        return true
+    }
+
     private func valid(_ id: UUID, _ capture: LearningReadingSelection, verifyCapture: Bool = true) -> Bool {
         guard revision == id, enabled, sourceAvailability(capture.source),
               service.settings.languageLearning.readingEnabled(capture.source), shortcutPermissionValid else { return false }
@@ -354,6 +376,7 @@ final class LearningReadingCoordinator {
             dismiss()
             return
         }
+        if document.isLookup { (panel as? any LearningLookupPresenting)?.toggleLookupDetails(); return }
         self.document?.expanded.toggle()
         render()
     }
@@ -379,7 +402,7 @@ final class LearningReadingCoordinator {
     }
 
     private func render() {
-        guard let document, enabled else { return }
+        guard let document, enabled, !document.isLookup else { return }
         guard !document.translation.isEmpty || !document.generating else { return }
         panel.show(
             .init(

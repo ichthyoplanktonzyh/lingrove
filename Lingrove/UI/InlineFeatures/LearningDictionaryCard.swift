@@ -32,8 +32,9 @@ struct LearningDictionaryCard: View {
                 if session.explanation.service != nil {
                     LearningExplanationButton(session: session.explanation, configure: configureExplanation)
                 }
-                if let vocabulary, let capture = session.favoriteCapture {
+                if let vocabulary, let capture = session.displayedCapture {
                     VocabularyFavoriteButton(store: vocabulary, capture: capture)
+                        .disabled(session.favoriteCapture == nil)
                         .id(session.query + ":" + String(session.selectedWord?.range.location ?? -1))
                 }
                 if let speech, let request = speechRequest {
@@ -95,7 +96,7 @@ struct LearningDictionaryCard: View {
                             LearningDictionaryDefinitionView(session: session, measured: { measuredHTMLRequest = $0 })
                                 .id(session.requestIdentity)
                         }
-                        if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry {
+                        if let unit = session.unit, unit.kind != .word, !session.isRelatedEntry, !unit.words.isEmpty {
                             componentWords(unit)
                         }
                         if !showsExplanation, let example = session.contextExample { contextExample(example) }
@@ -113,12 +114,10 @@ struct LearningDictionaryCard: View {
                 .frame(height: viewport.height(for: query))
                 .id(session.query)
             }
-            Group {
-                if showsExplanation {
-                    Text(session.explanation.record?.model ?? String(localized: "AI explanation", table: "Learning"))
-                        .foregroundStyle(.secondary)
-                } else { LearningDictionaryAttribution(session: session).foregroundStyle(.secondary) }
-            }.font(.caption2).lineLimit(2).frame(height: 26, alignment: .topLeading)
+            if !showsExplanation {
+                LearningDictionaryAttribution(session: session).foregroundStyle(.secondary)
+                    .font(.caption2).lineLimit(2).frame(height: 26, alignment: .topLeading)
+            }
         }
         .padding(12).frame(width: 340, alignment: .topLeading).fixedSize(horizontal: false, vertical: true)
         .background(GeometryReader { geometry in
@@ -176,8 +175,6 @@ struct LearningDictionaryCard: View {
 
     private func componentWords(_ unit: LearningUnit) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(String(localized: "Words in this expression", table: "Learning"))
-                .font(.caption).foregroundStyle(.secondary)
             LearningTextFlowLayout(spacing: 5, rowSpacing: 5, rightToLeft: session.contentLanguage == .arabic) {
                 ForEach(Array(unit.words.enumerated()), id: \.offset) { _, word in
                     LearningDictionaryButton(word: word.text) { term, button in

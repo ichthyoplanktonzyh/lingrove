@@ -84,7 +84,7 @@ final class LearningCardPreviewModel: ObservableObject {
 /// Deliberate suspended/error responses exercise the existing session's loading, cancel and retry
 /// paths. Ready records are restored synchronously, keeping Canvas deterministic and offline.
 @MainActor
-private final class LearningPreviewExplainer: LearningExplanationGenerating {
+private final class LearningPreviewExplainer: LearningLookupGenerating {
     let changes = PassthroughSubject<Void, Never>().eraseToAnyPublisher()
     let language = LearningLanguage.chinese
     let isConfigured = true
@@ -107,6 +107,20 @@ private final class LearningPreviewExplainer: LearningExplanationGenerating {
             result: .init(meaning: original.result.meaning,
                 explanation: Array(repeating: original.result.explanation, count: 5).joined(separator: "\n\n")),
             model: original.model, createdAt: original.createdAt)
+    }
+    func lookup(_ input: LearningLookupInput, requestID: String, refresh: Bool) async throws -> LearningLookupRecord {
+        let record = try await generate(input.target, requestID: requestID, refresh: refresh)
+        return .init(input: input, language: language,
+            result: .init(meaning: record.result.meaning,
+                sentenceTranslation: input.target.contextKind == .none ? ""
+                    : input.referenceTranslation.isEmpty ? HomeLearningDemoFixtures.source : input.referenceTranslation),
+            model: record.model, createdAt: record.createdAt)
+    }
+    func explainLookup(_ record: LearningLookupRecord, requestID: String, refresh: Bool) async throws -> LearningExplanationRecord {
+        let details = try await generate(record.input.target, requestID: requestID, refresh: refresh)
+        return .init(id: details.id, input: details.input, language: details.language,
+            result: .init(meaning: record.result.meaning, explanation: details.result.explanation),
+            model: details.model, createdAt: details.createdAt)
     }
     func recordDisplay(requestID: String) { }
 }

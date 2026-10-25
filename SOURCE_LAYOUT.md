@@ -769,3 +769,28 @@ The existing store and archive remain the sole UI publication and disk transacti
 no additional model or dictionary work is introduced. Regression tests cover sentence ownership,
 translation preservation, replay, stale preview, rollback, Unicode and reopen under
 `Services/Vocabulary/VocabularyExampleImportTests.swift`.
+
+## Staged Contextual Lookup
+
+`Models/LanguageLearning/LearningLookupModels.swift` freezes an exact occurrence, its sentence
+translation language and optional existing translation. The memory-only basic record owns one
+meaning/translation pair; durable `LearningExplanationRecord` continues to require complete details.
+`Support/LanguageLearning/LearningLookupPolicy.swift` bounds and validates the two model tasks.
+The first returns only `meaning` and `sentence_translation`; details receive that accepted pair and
+return only `explanation`. Exact UTF-16 occurrence ranges distinguish repeated words. An oversized
+context fails whole rather than translating an excerpt different from the displayed sentence.
+
+The app-owned `LearningExplanationService` borrows the existing general-model controller for both
+stages. Stage-specific bounded caches include languages, profile and the accepted basic pair.
+Each `LearningExplanationSession` owns its pending work, frozen target and independently available
+basic/details records. `LearningDictionarySession` feeds this flow from both writing and reading;
+its derived vocabulary capture keeps the displayed pair and opts out of legacy explanation cache
+enrichment. Saving is unavailable during the first in-flight request, before a pair exists.
+
+`LearningReadingLookupPolicy` separates complete sentence captures from smaller targets before
+any generation. `LearningReadingCoordinator` supplies receipt validation to `LearningLookupPresenting`;
+`LearningSentencePanel` reuses its `LearningDetailPanel`/`LearningDictionaryCard` as a standalone
+surface with the same nonactivating window, popup ownership and dismissal boundary. Complete
+sentence and whole screen-region translation retain the existing translator. Pointer OCR uses
+only its bounded captured line fragment. The shared explanation view requests details only on
+expansion; the dictionary tab remains lazy and does not restart a stopped model task.

@@ -70,7 +70,7 @@ struct LearningSentencePresentation {
     var readingSource: LearningReadingSource?
     /// A nonempty streamed prefix is still incomplete and cannot be spoken or written back.
     var isTranslating = false
-    /// Optional acquisition evidence for explicit vocabulary saves, never added to model prompts.
+    /// Frozen acquisition evidence shared by vocabulary saves and explicit contextual explanation.
     var vocabularyContext: VocabularyExample?
     var vocabularyAppBundleIdentifier: String?
 

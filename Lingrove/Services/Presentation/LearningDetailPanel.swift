@@ -15,6 +15,8 @@ final class LearningDetailPanel {
     private var measurementSequence: UInt64 = 0
     private var contentSize: CGSize?
     private var parentFrame: CGRect?
+    private var standalone = false
+    private var dismissAction: (() -> Void)?
     private var caretRect = CGRect.zero
     private var reservedFrame: CGRect?
     private var screen = CGRect.zero
@@ -63,10 +65,13 @@ final class LearningDetailPanel {
 
     func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage,
               placement: LearningDetailPlacement, speechContext: String? = nil,
-              vocabularyCapture: VocabularyCapture? = nil) {
+              vocabularyCapture: VocabularyCapture? = nil, translationLanguage: LearningLanguage? = nil,
+              validateCapture: @escaping () -> Bool = { true }, dismiss: (() -> Void)? = nil) {
         stopCurrentSpeech()
+        standalone = placement.standalone
+        dismissAction = dismiss
         dictionarySession.open(unit, documentID: documentID, language: language, speechContext: speechContext,
-            vocabularyCapture: vocabularyCapture)
+            vocabularyCapture: vocabularyCapture, translationLanguage: translationLanguage, validateCapture: validateCapture)
         anchorY = placement.anchorY
         anchorOffsetFromTop = placement.parent.maxY - placement.anchorY
         layoutRevision = UUID()
@@ -74,7 +79,10 @@ final class LearningDetailPanel {
         popupWindows.reset()
         popupWindows = LearningPopupWindowRegistry()
         let revision = layoutRevision
-        let card = LearningDictionaryCard(session: dictionarySession, close: { [weak self] in self?.hide() },
+        let card = LearningDictionaryCard(session: dictionarySession, close: { [weak self] in
+            guard let self else { return }
+            if let dismiss = self.dismissAction { dismiss() } else { self.hide() }
+        },
             sizeChanged: { [weak self] in self?.scheduleLayout($0, revision: revision) },
             lookup: { [weak self] word, button in
                 self?.selectDictionaryTerm(word, from: button, unit: unit, documentID: documentID)
@@ -144,6 +152,8 @@ final class LearningDetailPanel {
         popupWindows.reset()
         stopCurrentSpeech()
         dictionarySession.close()
+        dismissAction = nil
+        standalone = false
         layoutRevision = UUID()
         parentFrame = nil
         contentSize = nil
@@ -176,6 +186,24 @@ final class LearningDetailPanel {
         }
     }
 
+    func toggleDetails() {
+        dictionarySession.explanation.toggleLookupDetails()
+    }
+
+    /// Standalone lookup uses the same caret exclusion policy as sentence previews. Resizing
+    /// first preserves its top edge, keeping the target/meaning stationary while details expand.
+    private func standaloneFrame(_ size: CGSize) -> CGRect? {
+        if let previous = placementFrame {
+            let frame = CGRect(x: previous.minX, y: previous.maxY - size.height, width: size.width, height: size.height)
+            if screen.contains(frame), !frame.intersects(caretRect.insetBy(dx: -8, dy: -8)),
+               !(reservedFrame?.intersects(frame.insetBy(dx: -8, dy: -8)) ?? false) { return frame }
+        }
+        let frame = LearningSentencePanelLayout.frame(caretRect: caretRect, contentSize: size,
+            visibleFrame: screen, reservedFrame: reservedFrame)
+        placementFrame = frame
+        return frame
+    }
+
     private func layout() {
         guard dictionarySession.unit != nil, let panel, let parentFrame, let size = contentSize else {
             stopCurrentSpeech()
@@ -184,6 +212,13 @@ final class LearningDetailPanel {
             return
         }
         let measured = CGSize(width: ceil(size.width), height: ceil(size.height))
+        if standalone {
+            guard let frame = standaloneFrame(measured) else { panel.orderOut(nil); isVisible = false; return }
+            if panel.frame != frame { panel.setFrame(frame, display: true) }
+            isVisible = true
+            if !panel.isVisible { panel.orderFrontRegardless() }
+            return
+        }
         let obstacles = [LearningDetailPanelLayout.protectedTextRect(caretRect, screen: screen)] +
             (reservedFrame.map { [$0] } ?? [])
         if placementFrame == nil {

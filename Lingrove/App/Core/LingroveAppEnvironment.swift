@@ -292,10 +292,7 @@ final class LingroveAppEnvironment {
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
             dictionarySettings: suggestionSettings.languageLearning.dictionary, review: reviewController)
         vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
-            var capture = capture
-            let input = LearningExplanationPolicy.input(capture)
-            capture.explanation = explainer?.cached(input) ?? explainer?.savedRecord(for: input)
-            return capture
+            explainer?.enrich(capture) ?? capture
         }
         learningModels.explainer.loadPersisted = { [weak vocabularyStore] input, language in
             await vocabularyStore?.load()

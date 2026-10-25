@@ -2,7 +2,7 @@ import ApplicationServices
 import Foundation
 
 /// A bounded optional read attached to an explicit selection receipt. Failure never blocks
-/// translation. The result stays local until the user saves it and is never added to a prompt.
+/// translation. Explicit contextual lookup may pass this bounded text to the configured general model.
 @MainActor
 enum LearningVocabularyContextReader {
     static func read(element: AXUIElement, range: NSRange?, expected: String, app: String) -> VocabularyExample? {

@@ -855,3 +855,37 @@ Validation on Xcode 26.5 / Apple Silicon:
   at `docs/vocabulary-import-example.csv`.
 
 ![CSV example and translation mapping](.github/assets/vocabulary-import-examples/import-preview-zh-Hans.png)
+
+## Staged contextual lookup — 2026-10-25
+
+Reading word/expression selections now open the existing dictionary card directly. The shared
+lookup session used by writing previews and reading requests a concise contextual meaning plus
+captured sentence translation in one general-model task; expanding Details requests a separate
+explanation anchored to that accepted pair. Complete sentence and whole screen-region translation
+retain the existing translator. Optional context remains bounded and its completeness is explicit.
+
+The basic record stays memory-only; existing complete explanation records remain compatible with
+notebook persistence. Stage-specific caches include model/language and the accepted meaning/translation
+anchor. Saving a basic pair opts out of older full-explanation enrichment, retains prior sentence
+translations as variants, and preserves language provenance. The original fish-tail collection,
+speech, dictionary tabs and nonactivating window ownership remain shared. While the first request
+is pending, the fish-tail stays visible but saving is disabled. Redundant expression/AI captions
+were removed from the contextual card.
+
+Validation: unsigned Debug build-for-testing succeeded; 153 targeted tests passed with zero failures
+or skips across eight separately executed groups. The groups cover the lookup prompt/parser,
+real service/controller with a native fixture, shared session cancellation/late replies, reading
+routing (including same-language lookup and one-word complete sentences), vocabulary persistence,
+existing previews, native card actions/window ownership and onboarding demonstrations. Native-window
+UI suites run in separate processes because their real event delivery can interfere when their
+windows execute together; the first combined run exposed that interference and the isolated
+runs passed. Two independent GPT-6 Luna max audits supplied session/UI tests and reviewed the seams.
+
+An additional opt-in app-hosted test ran the exact production lookup/detail prompts with the
+already-downloaded local Qwen3.5 4B Q4_K_M: river-bank and financial-bank meanings matched their
+sentence translations, and put-off produced a matching pair followed by separately requested
+details. No model was downloaded and no latency claim is made from this Debug validation.
+Strict SwiftLint passed; localization validated 1,598 keys in three catalogs and 15 languages;
+XcodeGen regeneration and git diff whitespace checks passed. Logs, xcresults, model output and
+complete-toolbar card captures are retained under build/reading-contextual-lookup. DerivedData
+is removed after validation.
