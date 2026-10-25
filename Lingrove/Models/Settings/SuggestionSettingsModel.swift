@@ -327,6 +327,12 @@ final class SuggestionSettingsModel: ObservableObject {
         pluggedInEngine = data.pluggedInEngine
         pluggedInModelFilename = data.pluggedInModelFilename
         pluggedInEndpointModelName = data.pluggedInEndpointModelName
+        // All saved completion destinations are explicit choices, including the inactive power
+        // source. Seed them before runtime discovery so an upgrade cannot hide a custom AC model.
+        let assignments = LocalModelTaskAssignments(defaults: userDefaults)
+        for filename in [data.batteryModelFilename, data.pluggedInModelFilename] where !filename.isEmpty {
+            assignments.record(filename, for: .completion)
+        }
         schedulePauseExpirationIfNeeded()
     }
 

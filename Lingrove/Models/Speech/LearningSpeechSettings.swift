@@ -6,6 +6,7 @@ import Foundation
 /// Only preferences are persisted; installed voices are discovered lazily by the controller.
 @MainActor
 final class LearningSpeechSettings: ObservableObject {
+    let modelTaskAssignments: LocalModelTaskAssignments
     static let minimumRateMultiplier = 0.5
     static let maximumRateMultiplier = 1.5
     static let defaultRateMultiplier = 1.0
@@ -33,6 +34,7 @@ final class LearningSpeechSettings: ObservableObject {
     @Published private(set) var voiceIDs: [String: String]
 
     init(defaults: UserDefaults = .standard, credentialStore: (any OpenAICompatibleCredentialStoring)? = nil) {
+        modelTaskAssignments = LocalModelTaskAssignments(defaults: defaults)
         self.defaults = defaults
         parameters = ModelParameterSettings(key: "learningSpeech.parameters.v1", defaults: defaults)
         self.credentialStore = credentialStore ?? KeychainOpenAICompatibleCredentialStore(namespace: "learning-speech-endpoint")
@@ -130,9 +132,14 @@ final class LearningSpeechSettings: ObservableObject {
     func localConfiguration() throws -> SpeechLocalConfiguration {
         let model = URL(fileURLWithPath: localModelPath)
         let projection = URL(fileURLWithPath: localProjectionPath)
+        // A decoder in the model slot is still a missing main model. Preserve that actionable
+        // error before checking whether an otherwise selectable file belongs to another task.
         guard !localModelPath.isEmpty, !localProjectionPath.isEmpty,
-              !SpeechModelPairingPolicy.isKnownDecoder(model.lastPathComponent),
-              model.pathExtension.lowercased() == "gguf", projection.pathExtension.lowercased() == "gguf",
+              !SpeechModelPairingPolicy.isKnownDecoder(model.lastPathComponent) else { throw SpeechError.missingLocalAssets }
+        guard LocalModelTaskPolicy.supports(model.lastPathComponent, task: .speech) else {
+            throw SpeechError.incompatibleLocalModel
+        }
+        guard model.pathExtension.lowercased() == "gguf", projection.pathExtension.lowercased() == "gguf",
               model.standardizedFileURL != projection.standardizedFileURL,
               FileManager.default.isReadableFile(atPath: model.path),
               FileManager.default.isReadableFile(atPath: projection.path) else { throw SpeechError.missingLocalAssets }

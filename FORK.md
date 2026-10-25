@@ -648,6 +648,103 @@ Validation on Xcode 26.5 / Apple Silicon:
   after validation, and their absence was verified.
 
 
+## Task-specific model selection — 2026-10-24
+
+Local model settings now share product aliases for completion, translation, AI explanation and
+speech. The translation catalog uses Translate Nano/Base/Pro, explanation uses Explain Mini/Base,
+and speech uses Voice Mini/Base. Chinese UI uses the corresponding 拾语 task names. Technical
+filenames, quantization and source stay available behind a shared Model details disclosure.
+Saved filename IDs, download URLs, sizes, hashes, files, prompts and generation parameters are
+unchanged. External endpoint identifiers remain user supplied.
+
+A shared pure task policy filters each controller's candidate list and rejects incompatible saved
+choices before native preparation. Known completion, translation, explanation and speech catalog
+entries cannot acquire another task through import or assignment. Explanation additionally waits
+for automatic GGUF template metadata so a renamed translation specialist cannot warm up or run
+instruction requests. Async preflights recheck cancellation, configuration and live eligibility.
+
+The new local task-assignment preference records explicit custom-model use. Existing manual,
+battery and AC references are registered in their current task; incompatible curated choices
+remain saved and visible with an actionable warning. The composition root refreshes completion
+candidates after restoring legacy power profiles. Unreferenced custom or LM Studio files can be
+added through Custom models, and already-installed HF files offer Use for this task. All tasks
+continue sharing physical model storage; assigning a file does not copy or download it again.
+Successful downloads record actual provenance; imported files do not inherit stale source claims.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Prepared the pinned inference workspace and built the unsigned Debug application/tests.
+  An independent GPT-6 Luna Max reviewer ran 127 relevant tests (48 XCTest and 79 Swift Testing),
+  followed by 28 model-value XCTest cases: all passed, with no failures or skips. The initial
+  run exposed legacy fixture admission and speech error-precedence regressions; both were repaired
+  before the final independent runs. One outer shell wrapper failed after successful execution
+  because it used zsh's reserved `status` variable; the xcresult itself records Passed.
+- Chinese UI validation passed 3 Swift Testing methods with 7 parameterized cases. Native AppKit
+  hosting captured all four task catalogs plus collapsed/expanded metadata. An independent Luna
+  Max UI review and the parent inspected the images for readability and clipping; these are
+  component captures, not live full-app interaction acceptance.
+- Source hashes were checked before/after independent tests. Localization validation passed
+  1,558 keys across 3 tables and 15 languages; the 22 new Learning keys leave all existing entries
+  unchanged. Catalog identity comparisons confirmed unchanged filenames, URLs, sizes and hashes.
+- Strict production SwiftLint reports the same 91 inherited findings and none in changed files.
+  The baseline is unchanged; the separate lint cleanup PR is not included. `git diff --check`
+  and deterministic XcodeGen regeneration passed.
+- Model-backed quality evals and live AX/ghost-placement checks were not needed: prompting,
+  sampling, selected model identities and overlay placement were not changed. No live model
+  inference or full-app model-selection interaction was exercised by these fixtures.
+- Repo-scoped DerivedData and the temporary Swift module cache are removed after validation.
+  Reproducible logs, manifests, test result bundles and all captures remain in ignored
+  `build/model-task-ux/`.
+
+Chinese translation catalog and optional model details captured from the actual shared components:
+
+![Task-specific translation catalog](.github/assets/model-task-selection/translation-zh-Hans.png)
+
+![Optional model details and retained incompatible selection](.github/assets/model-task-selection/details-zh-Hans.png)
+
+## Strict lint cleanup — 2026-10-24
+
+Starting from Lingrove `40722f49`, the 91 active production SwiftLint findings in 15 files were
+resolved without changing `.swiftlint.yml` or `.swiftlint-baseline.json`. Formatting/naming fixes
+retain the JSON wire keys, command exit codes, optional defaults and presentation behavior.
+
+The five complex functions were split within their existing responsibility boundaries:
+
+- `CLIArguments` separates temporary argument tokenization from command interpretation and option
+  consumption. `CLIInputPolicy` validates one JSON nesting level per helper before typed decoding;
+  unknown fields, limits and error messages retain their original validation order.
+- `VocabularyCLIPlan` plans each operation through separate target, update, example-merge and
+  content helpers. Its private, immutable `OperationContext` lives only during one operation and
+  carries the existing deterministic ID seed/path and timestamp. It performs no IO and introduces
+  no new long-lived service or coordinator state.
+- `CLIMailboxServer` keeps the drain task and monitor lease on its original actor. Request handling,
+  acknowledgement and abandoned-reply cleanup are separate helpers; a failed acknowledgement still
+  leaves the claimed request for recovery, and stopping still drains the active request first.
+- `VocabularyArchive` prepares CLI images inside the existing storage-access scope, after receipt
+  replay and before pure planning. Snapshot validation, expiration checks and the atomic content/
+  media/receipt commit retain their original ordering.
+
+Regression coverage adds fixed ID/outcome fixtures, ordered multi-operation planning, cross-sense
+usage protection and integer JSON revisions above Double's exact range. A separate differential
+fixture compares 110 parser/input cases with the original implementation, including accepted
+values, error codes and exact error messages.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Full `swiftlint lint --strict --no-cache` passed with zero findings, versus 91 before the cleanup.
+  Neither the rules nor the exported legacy baseline was changed, and no suppression was added.
+- The unsigned Debug application build and 79 Swift Testing cases across ten targeted suites
+  passed without skips or failures. The suites cover the actual bundled CLI, mailbox restart and
+  timeout behavior, receipt/media rollback, SQLite reopen/locking, notebook content and affected
+  graph/menu presentation. The four new regression cases passed in that application run.
+- All 110 differential argument/input cases retained byte-identical structured results, including
+  error codes and messages. The Swift source hashes were unchanged after application validation;
+  `git diff --check` also passed. There were no file additions or project-generation changes.
+- Logs, source hashes, original/final lint output and the application xcresult remain under
+  gitignored `build/lint-cleanup/`. Repo-scoped `build/DerivedData` was removed after validation,
+  and its absence was verified. No model, prompt, sampling or ghost-placement change was made.
+
+
 ## Notebook entry creation and word-list import — 2026-10-25
 
 The notebook now has explicit Add entry (Command-N) and Import word list (Shift-Command-I)

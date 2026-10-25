@@ -340,6 +340,10 @@ struct HomePaneView: View {
                 ? String(localized: "Ready on this Mac")
                 : String(localized: "Unavailable")
         case .llamaOpenSource:
+            if let filename = runtimeModel.selectedModelFilename,
+               !runtimeModel.availableModels.contains(where: { $0.filename == filename }) {
+                return LocalModelSelectionLabel.unavailable(filename, task: .completion)
+            }
             let selected = runtimeModel.availableModels
                 .first { $0.filename == runtimeModel.selectedModelFilename }
             return selected?.displayName ?? String(localized: "No model selected")

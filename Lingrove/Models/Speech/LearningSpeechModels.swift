@@ -53,7 +53,7 @@ nonisolated enum SpeechPlaybackPhase: Equatable, Sendable {
 /// text, server response bodies, credentials, or native diagnostics in the learning card.
 nonisolated enum SpeechError: LocalizedError {
     case incompleteConfiguration, missingLocalAssets, mismatchedLocalAssets, unsupportedLanguage
-    case unrecognizedLanguage, runtimeUnavailable, operationInProgress
+    case unrecognizedLanguage, runtimeUnavailable, operationInProgress, incompatibleLocalModel
     case generationFailed, invalidAudio, invalidReferenceAudio, responseTooLarge, textTooLong, endpointStatus(Int)
 
     var errorDescription: String? {
@@ -64,6 +64,8 @@ nonisolated enum SpeechError: LocalizedError {
             String(localized: "Choose both the Qwen3-TTS model and its matching audio decoder.", table: "Learning")
         case .mismatchedLocalAssets:
             String(localized: "Choose the matching audio decoder for the selected speech model.", table: "Learning")
+        case .incompatibleLocalModel:
+            String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning")
         case .unsupportedLanguage:
             String(localized: "This local speech model does not support this language.", table: "Learning")
         case .unrecognizedLanguage:

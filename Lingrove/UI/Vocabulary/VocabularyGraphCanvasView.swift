@@ -269,14 +269,14 @@ final class VocabularyGraphCanvasView: NSView {
 
         let gridPath = NSBezierPath()
         let dotRadius: CGFloat = 0.85
-        var x = startX
-        while x < bounds.width {
-            var y = startY
-            while y < bounds.height {
-                gridPath.appendOval(in: CGRect(x: x - dotRadius, y: y - dotRadius, width: dotRadius * 2, height: dotRadius * 2))
-                y += step
+        var gridX = startX
+        while gridX < bounds.width {
+            var gridY = startY
+            while gridY < bounds.height {
+                gridPath.appendOval(in: CGRect(x: gridX - dotRadius, y: gridY - dotRadius, width: dotRadius * 2, height: dotRadius * 2))
+                gridY += step
             }
-            x += step
+            gridX += step
         }
         NSColor.separatorColor.withAlphaComponent(0.28).setFill()
         gridPath.fill()

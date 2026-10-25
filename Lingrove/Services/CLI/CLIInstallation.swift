@@ -12,12 +12,15 @@ actor CLIInstallation {
 
     func isInstalled() -> Bool {
         guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: destination.path) else { return false }
-        return URL(fileURLWithPath: target, relativeTo: destination.deletingLastPathComponent()).standardizedFileURL == executable.standardizedFileURL
+        let resolvedTarget = URL(fileURLWithPath: target, relativeTo: destination.deletingLastPathComponent()).standardizedFileURL
+        return resolvedTarget == executable.standardizedFileURL
             && FileManager.default.isExecutableFile(atPath: executable.path)
     }
 
     func install() throws {
-        guard FileManager.default.isExecutableFile(atPath: executable.path) else { throw CLIError(code: .unavailable, message: "Bundled CLI executable is missing.") }
+        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+            throw CLIError(code: .unavailable, message: "Bundled CLI executable is missing.")
+        }
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         var info = stat()
         if lstat(destination.path, &info) == 0 {
@@ -55,8 +58,13 @@ actor CLIInstallation {
     func install() async {
         guard !busy else { return }; busy = true; error = nil
         defer { busy = false }
-        do { try await worker.install(); await refresh() }
-        catch let failure as CLIError { error = failure.message }
-        catch { self.error = "Cannot install the CLI link." }
+        do {
+            try await worker.install()
+            await refresh()
+        } catch let failure as CLIError {
+            error = failure.message
+        } catch {
+            self.error = "Cannot install the CLI link."
+        }
     }
 }

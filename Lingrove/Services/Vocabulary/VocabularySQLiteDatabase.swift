@@ -88,7 +88,9 @@ nonisolated final class VocabularySQLiteDatabase {
 
     func receipt(key: String) throws -> VocabularyCLIReceipt? {
         try access(write: false) {
-            guard let row = try connection.rows("SELECT fingerprint,result FROM cli_receipts WHERE key=?", [.text(key)]).first else { return nil }
+            guard let row = try connection.rows("SELECT fingerprint,result FROM cli_receipts WHERE key=?", [.text(key)]).first else {
+                return nil
+            }
             guard let fingerprint = row[0].string, let data = row[1].data else { throw VocabularyError.invalidArchive }
             return .init(key: key, fingerprint: fingerprint, result: data)
         }

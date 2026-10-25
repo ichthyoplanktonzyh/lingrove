@@ -58,7 +58,8 @@ struct WelcomeReadinessView: View {
         let downloading = catalog.first { $0.filename == model }
             .map { downloads.state(for: $0).isDownloading } ?? false
         return row(task, status: OnboardingSetupPolicy.modelStatus(selected: !model.isEmpty,
-            available: valid, downloading: downloading), detail: model,
+            available: valid, downloading: downloading),
+            detail: snapshot.backend == .local ? LocalModelCatalog.displayName(for: model) : model,
             item: task == .translation ? .translationModel : .explanationModel)
     }
 
@@ -82,7 +83,7 @@ struct WelcomeReadinessView: View {
     private var completionDetail: String {
         switch settings.selectedEngine {
         case .appleIntelligence: settings.selectedEngine.displayLabel
-        case .llamaOpenSource: completionFilename ?? ""
+        case .llamaOpenSource: completionFilename.map(LocalModelCatalog.displayName(for:)) ?? ""
         case .openAICompatible: settings.openAICompatibleModelName
         }
     }

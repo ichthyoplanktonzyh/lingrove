@@ -43,6 +43,23 @@ import Testing
         #expect(throws: OpenAICompatibleEndpointError.self) { try settings.endpointConfiguration() }
     }
 
+    @Test func rejectsOtherTasksWithoutRewritingSavedSpeechPaths() throws {
+        let name = "SpeechProviderSettingsTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = LearningSpeechSettings(defaults: defaults, credentialStore: InMemoryOpenAICompatibleCredentialStore())
+        let filename = "gemma-4-E2B.i1-Q6_K.gguf"
+        settings.setLocalModelPath("/unavailable/\(filename)")
+        settings.setLocalProjectionPath("/unavailable/mmproj.gguf")
+        do {
+            _ = try settings.localConfiguration()
+            Issue.record("A completion model must fail before speech runtime preparation")
+        } catch let failure as SpeechError {
+            #expect(failure.localizedDescription == SpeechError.incompatibleLocalModel.localizedDescription)
+        }
+        #expect(LearningSpeechSettings(defaults: defaults).localModelPath == "/unavailable/\(filename)")
+    }
+
     @Test func supportedLocalLanguagesUseNativeCodes() {
         #expect(LocalSpeechLanguage.code(for: .chinese) == "zh")
         #expect(LocalSpeechLanguage.code(for: .traditionalChinese) == "zh")

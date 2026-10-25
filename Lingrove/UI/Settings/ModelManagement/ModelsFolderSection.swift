@@ -38,10 +38,7 @@ struct ModelsFolderSection: View {
                             LM Studio's default model folder (~/.lmstudio/models) was not found, so this switch is unavailable. \
                             Only the default folder is currently supported.
                             """, comment: "Explains the missing default model folder, rather than assuming LM Studio is not installed.")
-                            : String(localized: """
-                            Add models from your LM Studio library (~/.lmstudio/models) to the picker above. Downloads still save to \
-                            Lingrove's own folder.
-                            """, table: "Learning"),
+                            : String(localized: "Choose which models to use for this task under Custom models.", table: "Learning"),
                         systemImage: "square.stack.3d.up"
                     )
                 }

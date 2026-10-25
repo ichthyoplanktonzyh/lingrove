@@ -78,6 +78,10 @@ enum ModelDownloadState: Equatable {
 @MainActor
 final class ModelDownloadManager: ObservableObject {
     @Published private(set) var modelStates: [String: ModelDownloadState] = [:]
+    @Published private(set) var importIssue: String?
+    private var importIssueTask: LocalModelTask?
+    @Published private(set) var installedModels: [RuntimeModelOption] = []
+    private let taskAssignments: LocalModelTaskAssignments
 
     var onModelDirectoryChanged: (() -> Void)?
 
@@ -106,7 +110,9 @@ final class ModelDownloadManager: ObservableObject {
     }
     private var requestedOutcomes: [String: RequestedOutcome] = [:]
 
-    init(runtimeDirectoryURL: URL? = nil, assetCatalog: [DownloadableRuntimeModel]? = nil) {
+    init(runtimeDirectoryURL: URL? = nil, assetCatalog: [DownloadableRuntimeModel]? = nil,
+         taskAssignments: LocalModelTaskAssignments? = nil) {
+        self.taskAssignments = taskAssignments ?? LocalModelTaskAssignments()
         let primaryDirectoryURL =
             runtimeDirectoryURL ?? BundledRuntimeLocator.userRuntimeDirectoryURL()
         self.runtimeDirectoryURL = primaryDirectoryURL
@@ -215,14 +221,33 @@ final class ModelDownloadManager: ObservableObject {
 
     /// Returns the active downloaded model options from the primary directory.
     func installedModelOptions() -> [RuntimeModelOption] {
-        let discovered = BundledRuntimeLocator.discoverGGUFModelURLs(in: runtimeDirectoryURL)
-        return discovered.map {
-            RuntimeModelOption(
-                filename: $0.lastPathComponent,
-                url: $0
-            )
-        }.sorted { $0.displayName < $1.displayName }
+        recomputeInstalledModelFilenames()
+        return installedModels
     }
+
+    func unassignedModels(for task: LocalModelTask) -> [RuntimeModelOption] {
+        installedModels.filter {
+            LocalModelCatalog.descriptor(for: $0.filename) == nil && LocalModelTaskPolicy.supports($0.filename, task: task)
+                && !taskAssignments.tasks(for: $0.filename).contains(task)
+        }
+    }
+
+    func assignModel(_ filename: String, for task: LocalModelTask) {
+        guard taskAssignments.record(filename, for: task) else { return }
+        objectWillChange.send()
+        onModelDirectoryChanged?()
+    }
+
+    func needsAssignment(_ filename: String, for task: LocalModelTask) -> Bool {
+        LocalModelTaskPolicy.supports(filename, task: task) && LocalModelCatalog.descriptor(for: filename) == nil
+            && !taskAssignments.tasks(for: filename).contains(task)
+    }
+
+    func sourceURL(for filename: String) -> URL? {
+        taskAssignments.source(for: filename)
+    }
+
+    func importIssue(for task: LocalModelTask) -> String? { importIssueTask == task ? importIssue : nil }
 
     /// The path shown in Settings and opened by "Open Folder". This is always Lingrove's own writable
     /// directory because that is where downloads and imports land; additive sources such as LM Studio
@@ -248,6 +273,7 @@ final class ModelDownloadManager: ObservableObject {
 
         do {
             try FileManager.default.removeItem(at: targetURL)
+            taskAssignments.clearSource(for: filename)
             refreshModelStates()
             onModelDirectoryChanged?()
         } catch {
@@ -260,7 +286,12 @@ final class ModelDownloadManager: ObservableObject {
         deleteModel(filename: model.filename)
     }
 
-    func download(_ model: DownloadableRuntimeModel) {
+    func download(_ model: DownloadableRuntimeModel, for task: LocalModelTask? = nil) {
+        if let task, !taskAssignments.record(model.filename, for: task) {
+            modelStates[model.id] = .failed(String(
+                localized: "This model is not compatible with this task. Choose another model.", table: "Learning"))
+            return
+        }
         let downloadID = model.id
         guard downloadTasks[downloadID] == nil else {
             LingroveLogger.models.debug("Download already in progress for \(model.filename)")
@@ -270,6 +301,7 @@ final class ModelDownloadManager: ObservableObject {
         if isInstalled(model: model) {
             LingroveLogger.models.debug("Model \(model.filename) already installed, skipping download")
             modelStates[downloadID] = .downloaded
+            if task != nil { onModelDirectoryChanged?() }
             return
         }
 
@@ -365,7 +397,9 @@ final class ModelDownloadManager: ObservableObject {
         NSWorkspace.shared.open(runtimeDirectoryURL)
     }
 
-    func importModel() {
+    func importModel(for task: LocalModelTask? = nil) {
+        importIssue = nil
+        importIssueTask = task
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -378,10 +412,11 @@ final class ModelDownloadManager: ObservableObject {
             return
         }
 
-        let sourceURLs = panel.urls
+        let sourceURLs = importSources(panel.urls, for: task)
         guard !sourceURLs.isEmpty else {
             return
         }
+        if task != nil { onModelDirectoryChanged?() }
 
         let destinationDirectory = runtimeDirectoryURL
 
@@ -401,39 +436,16 @@ final class ModelDownloadManager: ObservableObject {
             }
 
             var importedAnyModel = false
+            var importedFilenames: [String] = []
             for sourceURL in sourceURLs {
                 let targetURL = destinationDirectory.appendingPathComponent(
                     sourceURL.lastPathComponent,
                     isDirectory: false
                 )
                 do {
-                    // Resolve symlinks before comparing. A selected alias can otherwise point at
-                    // the installed target and make a delete-then-copy sequence delete its source.
-                    let canonicalSource = sourceURL.resolvingSymlinksInPath().standardizedFileURL
-                    let canonicalTarget = targetURL.resolvingSymlinksInPath().standardizedFileURL
-                    if canonicalSource == canonicalTarget {
-                        continue
-                    }
-
-                    // Import is intentionally non-destructive. Replacing an installed multi-GB
-                    // model without an explicit overwrite prompt risks losing a known-good file.
-                    if fileManager.fileExists(atPath: targetURL.path) {
-                        continue
-                    }
-
-                    let stagingURL = destinationDirectory.appendingPathComponent(
-                        ".import-\(UUID().uuidString)",
-                        isDirectory: false
-                    )
-                    defer { try? fileManager.removeItem(at: stagingURL) }
-                    try fileManager.copyItem(at: sourceURL, to: stagingURL)
-
-                    // Another import may have won the race while this copy was running.
-                    guard !fileManager.fileExists(atPath: targetURL.path) else {
-                        continue
-                    }
-                    try fileManager.moveItem(at: stagingURL, to: targetURL)
+                    guard try Self.copyImportIfAbsent(sourceURL, to: targetURL, using: fileManager) else { continue }
                     importedAnyModel = true
+                    importedFilenames.append(sourceURL.lastPathComponent)
                     LingroveLogger.models.info(
                         "Imported model: \(sourceURL.lastPathComponent)",
                         metadata: ["destination": .string(targetURL.path)]
@@ -452,10 +464,57 @@ final class ModelDownloadManager: ObservableObject {
             guard importedAnyModel else {
                 return
             }
+            let completedImports = importedFilenames
             await MainActor.run { [weak self] in
+                for filename in completedImports { self?.taskAssignments.clearSource(for: filename) }
                 self?.refreshModelStates()
                 self?.onModelDirectoryChanged?()
             }
+        }
+    }
+
+    /// Import through a sibling staging file so an interrupted copy never becomes an installed
+    /// model. The final existence check preserves whichever import completed first.
+    nonisolated private static func copyImportIfAbsent(
+        _ sourceURL: URL, to targetURL: URL, using fileManager: FileManager
+    ) throws -> Bool {
+        // Resolve symlinks before comparing. A selected alias can otherwise point at
+        // the installed target and make a delete-then-copy sequence delete its source.
+        let canonicalSource = sourceURL.resolvingSymlinksInPath().standardizedFileURL
+        let canonicalTarget = targetURL.resolvingSymlinksInPath().standardizedFileURL
+        if canonicalSource == canonicalTarget {
+            return false
+        }
+
+        // Import is intentionally non-destructive. Replacing an installed multi-GB
+        // model without an explicit overwrite prompt risks losing a known-good file.
+        if fileManager.fileExists(atPath: targetURL.path) {
+            return false
+        }
+
+        let stagingURL = targetURL.deletingLastPathComponent().appendingPathComponent(
+            ".import-\(UUID().uuidString)",
+            isDirectory: false
+        )
+        defer { try? fileManager.removeItem(at: stagingURL) }
+        try fileManager.copyItem(at: sourceURL, to: stagingURL)
+
+        // Another import may have won the race while this copy was running.
+        guard !fileManager.fileExists(atPath: targetURL.path) else {
+            return false
+        }
+        try fileManager.moveItem(at: stagingURL, to: targetURL)
+        return true
+    }
+
+    private func importSources(_ urls: [URL], for task: LocalModelTask?) -> [URL] {
+        urls.filter { url in
+            guard let task else { return true }
+            let accepted = taskAssignments.record(url.lastPathComponent, for: task)
+            if !accepted {
+                importIssue = String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning")
+            }
+            return accepted
         }
     }
 
@@ -495,6 +554,7 @@ final class ModelDownloadManager: ObservableObject {
             // re-`download(_:)` of the same model is recognized as installed instead of re-fetched.
             recomputeInstalledModelFilenames()
             modelStates[downloadID] = .downloaded
+            taskAssignments.recordSource(model)
             onModelDirectoryChanged?()
         } catch {
             if DownloadOutcomeClassifier.isUserPause(error) {
@@ -763,6 +823,14 @@ final class ModelDownloadManager: ObservableObject {
 
     /// Rebuilds the discovered-filename cache by recursively scanning every search directory.
     private func recomputeInstalledModelFilenames() {
+        var discovered: [String: RuntimeModelOption] = [:]
+        for directory in runtimeSearchDirectories {
+            for url in BundledRuntimeLocator.discoverGGUFModelURLs(in: directory) where discovered[url.lastPathComponent] == nil {
+                discovered[url.lastPathComponent] = .init(filename: url.lastPathComponent, url: url)
+            }
+        }
+        let options = discovered.values.sorted { $0.displayName < $1.displayName }
+        if installedModels != options { installedModels = options }
         if let assetCatalog {
             let filenames = assetCatalog.flatMap(\.allKnownFilenames)
             installedModelFilenames = Set(filenames.filter { filename in
@@ -771,12 +839,6 @@ final class ModelDownloadManager: ObservableObject {
             })
             return
         }
-        var filenames: Set<String> = []
-        for directoryURL in runtimeSearchDirectories {
-            for modelURL in BundledRuntimeLocator.discoverGGUFModelURLs(in: directoryURL) {
-                filenames.insert(modelURL.lastPathComponent)
-            }
-        }
-        installedModelFilenames = filenames
+        installedModelFilenames = Set(discovered.keys)
     }
 }

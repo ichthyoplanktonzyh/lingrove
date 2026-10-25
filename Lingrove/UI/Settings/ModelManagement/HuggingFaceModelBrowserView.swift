@@ -7,6 +7,7 @@ struct HuggingFaceModelBrowserView: View {
     @ObservedObject var searchService: HuggingFaceSearchService
     @ObservedObject var modelDownloadManager: ModelDownloadManager
     let onRefreshModels: () -> Void
+    var task: LocalModelTask = .completion
 
     @State private var isExpanded = false
     @Environment(\.settingsHighlightedItem) private var highlightedItem
@@ -145,14 +146,18 @@ struct HuggingFaceModelBrowserView: View {
                                 state: modelDownloadManager.state(for: model),
                                 isInstalled: modelDownloadManager.isModelInstalled(model),
                                 onDownload: {
-                                    modelDownloadManager.download(model)
+                                    modelDownloadManager.download(model, for: task)
                                 },
                                 onPause: {
                                     modelDownloadManager.pause(model)
                                 },
                                 onCancel: {
                                     modelDownloadManager.cancel(model)
-                                }
+                                },
+                                onUse: modelDownloadManager.needsAssignment(model.filename, for: task) ? {
+                                    modelDownloadManager.assignModel(model.filename, for: task)
+                                } : nil,
+                                taskCompatible: LocalModelTaskPolicy.supports(model.filename, task: task)
                             )
                         }
                     }
@@ -228,6 +233,8 @@ private struct HFFileRow: View {
     let onDownload: () -> Void
     let onPause: () -> Void
     let onCancel: () -> Void
+    var onUse: (() -> Void)?
+    var taskCompatible = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -261,10 +268,17 @@ private struct HFFileRow: View {
 
     @ViewBuilder
     private var actionButton: some View {
-        if isInstalled && !state.isDownloading && !state.isPaused {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .font(.system(size: 16))
+        if !taskCompatible {
+            Text(String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning"))
+                .font(.caption).foregroundStyle(.secondary)
+        } else if isInstalled && !state.isDownloading && !state.isPaused {
+            if let onUse {
+                Button(String(localized: "Use for this task", table: "Learning"), action: onUse)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 16))
+            }
         } else {
             switch state {
             case .idle:

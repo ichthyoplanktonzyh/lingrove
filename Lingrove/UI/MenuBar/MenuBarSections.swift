@@ -60,7 +60,7 @@ private struct MenuBarContentHeight: PreferenceKey {
 struct MenuBarSurfaceCard<Content: View>: View {
     var padding: CGFloat = 10
     var spacing: CGFloat = 8
-    var tint: Color? = nil
+    var tint: Color?
     let content: Content
 
     init(
@@ -111,11 +111,11 @@ struct MenuBarCardDivider: View {
 /// switches from sitting at ragged horizontal offsets after variable-length titles.
 struct MenuBarToggleRow: View {
     let title: String
-    var systemImage: String? = nil
-    var subtitle: String? = nil
+    var systemImage: String?
+    var subtitle: String?
     @Binding var isOn: Bool
     var isDisabled: Bool = false
-    var identifier: String? = nil
+    var identifier: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -202,7 +202,7 @@ struct MenuBarInteractiveRowButtonStyle: ButtonStyle {
     var horizontalPadding: CGFloat = 8
     var verticalPadding: CGFloat = 5
     var cornerRadius: CGFloat = 7
-    var tint: Color? = nil
+    var tint: Color?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
@@ -294,7 +294,7 @@ struct MenuBarActionRow: View {
     let title: String
     let systemImage: String
     var iconTint: Color = .secondary
-    var trailingText: String? = nil
+    var trailingText: String?
     var showsChevron: Bool = true
     let action: () -> Void
 
