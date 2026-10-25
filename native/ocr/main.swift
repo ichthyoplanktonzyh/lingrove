@@ -58,25 +58,31 @@ enum OCRHelper {
             if abs($0.boundingBox.minY - $1.boundingBox.minY) > 0.02 { return $0.boundingBox.minY > $1.boundingBox.minY }
             return $0.boundingBox.minX < $1.boundingBox.minX
         }
-        let lines = observations.compactMap { observation -> OCRWorkerResponse.Line? in
-            guard let candidate = observation.topCandidates(1).first else { return nil }
+        var lines: [OCRWorkerResponse.Line] = []
+        var words: [OCRWorkerResponse.Word] = []
+        for observation in observations {
+            guard let candidate = observation.topCandidates(1).first else { continue }
             let text = candidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return nil }
-            return .init(text: text, confidence: candidate.confidence, boundingBox: observation.boundingBox)
+            guard !text.isEmpty else { continue }
+            if input.capturesWordBounds { words += self.words(in: observation, lineIndex: lines.count) }
+            lines.append(.init(text: text, confidence: candidate.confidence, boundingBox: observation.boundingBox))
         }
         guard !lines.isEmpty else { return OCRWorkerResponse(id: input.id, failure: "no-text") }
-        let words = input.capturesWordBounds ? observations.flatMap(words(in:)) : []
         return OCRWorkerResponse(id: input.id, lines: lines, words: words)
     }
 
-    static func words(in observation: VNRecognizedTextObservation) -> [OCRWorkerResponse.Word] {
+    static func words(in observation: VNRecognizedTextObservation, lineIndex: Int) -> [OCRWorkerResponse.Word] {
         guard let candidate = observation.topCandidates(1).first else { return [] }
         let tokenizer = NLTokenizer(unit: .word)
         tokenizer.string = candidate.string
         var result: [OCRWorkerResponse.Word] = []
         tokenizer.enumerateTokens(in: candidate.string.startIndex..<candidate.string.endIndex) { range, _ in
             if let box = try? candidate.boundingBox(for: range) {
-                result.append(.init(text: String(candidate.string[range]), boundingBox: box.boundingBox))
+                let offset = NSRange(range, in: candidate.string)
+                let leading = candidate.string.prefix(while: \.isWhitespace).utf16.count
+                result.append(.init(text: String(candidate.string[range]), boundingBox: box.boundingBox,
+                    lineIndex: lineIndex, utf16Location: offset.location - leading,
+                    utf16Length: offset.length, confidence: candidate.confidence))
             }
             return true
         }

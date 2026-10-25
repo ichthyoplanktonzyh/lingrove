@@ -141,12 +141,14 @@ final class LearningSentencePanel: LearningSentencePresenting, LearningLookupPre
             words: LearningUnitPolicy.words(in: capture.example?.text ?? capture.expression, language: capture.language)
                 .filter { word in ranges.contains { NSIntersectionRange($0, word.range).length > 0 } })
         let screen = NSScreen.screens.first { $0.frame.intersects(presentation.anchor) } ?? NSScreen.main
-        detailPanel.show(unit, documentID: presentation.id, language: capture.language,
-            placement: .init(parent: presentation.anchor, caret: presentation.anchor, reserved: reservedFrame,
-                screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
-                anchorY: presentation.anchor.maxY, standalone: true),
-            speechContext: capture.example?.text, vocabularyCapture: capture, translationLanguage: presentation.translationLanguage,
-            validateCapture: validate, dismiss: dismiss)
+        LearningRequestTrace.$requestID.withValue(presentation.traceID) {
+            detailPanel.show(unit, documentID: presentation.id, language: capture.language,
+                placement: .init(parent: presentation.anchor, caret: presentation.anchor, reserved: reservedFrame,
+                    screen: screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 800, height: 600),
+                    anchorY: presentation.anchor.maxY, standalone: true),
+                speechContext: capture.example?.text, vocabularyCapture: capture, translationLanguage: presentation.translationLanguage,
+                validateCapture: validate, dismiss: dismiss)
+        }
         isVisible = detailPanel.isVisible
         installClickMonitors()
     }

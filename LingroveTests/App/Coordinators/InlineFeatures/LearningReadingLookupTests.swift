@@ -84,8 +84,9 @@ struct LearningReadingLookupTests {
         init(text: String, context: String) { self.text = text; self.context = context }
         func capture() async throws -> LearningReadingSelection {
             .init(id: UUID(), text: text, processIdentifier: 1, bundleIdentifier: "lookup.fixture", anchor: .zero,
-                vocabularyContext: VocabularyPolicy.example(text: context,
-                    ranges: [(context as NSString).range(of: text)], language: .english))
+                context: LearningReadingContextPolicy.resolve(.init(text: context,
+                    target: (context as NSString).range(of: text), left: .container, right: .container,
+                    method: .characters), expected: text))
         }
         func isCurrent(_ capture: LearningReadingSelection) -> Bool { current }
         func forget() {}

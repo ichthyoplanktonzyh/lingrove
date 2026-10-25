@@ -27,12 +27,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         let text: String
         let anchor: CGRect
         let hint: LearningLanguage?
-        let context: VocabularyExample?
+        let context: LearningReadingContext?
     }
     private struct RecognizedText {
         let text: String
         let hint: LearningLanguage?
-        let context: VocabularyExample?
+        let context: LearningReadingContext?
     }
     private var pointerEvidence: PointerEvidence?
     var isSelectingRegion: Bool { picker.isSelecting }
@@ -56,6 +56,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     func capture() async throws -> LearningReadingSelection { try await capture(source: .selection) }
 
     func capture(source: LearningReadingSource) async throws -> LearningReadingSelection {
+        try await LearningRequestTrace.$requestID.withValue(LearningRequestTrace.requestID ?? RequestID.generate()) {
+            try await captureSource(source)
+        }
+    }
+
+    private func captureSource(_ source: LearningReadingSource) async throws -> LearningReadingSelection {
         forget()
         guard source != .selection else { return try await selection.capture() }
         guard let app = NSWorkspace.shared.frontmostApplication, let bundle = app.bundleIdentifier,
@@ -67,12 +73,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         var anchor = CGRect(origin: point, size: CGSize(width: 1, height: 18))
         let text: String
         var languageHint: LearningLanguage?
-        var vocabularyContext: VocabularyExample?
+        var readingContext: LearningReadingContext?
         if source == .pointer, AXIsProcessTrusted(), let hit = try pointedText(at: point, pid: app.processIdentifier) {
             text = hit.text
             anchor = hit.anchor
             languageHint = hit.hint
-            vocabularyContext = hit.context
+            readingContext = hit.context
         } else {
             guard CGPreflightScreenCaptureAccess() else {
                 throw LearningFailure.message(
@@ -99,7 +105,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 region: region, pointer: source == .pointer ? point : nil, trace: trace)
             text = recognized.text
             languageHint = recognized.hint
-            vocabularyContext = recognized.context
+            readingContext = recognized.context
             anchor = source == .screenshot ? region : anchor
         }
         try Task.checkCancellation()
@@ -110,7 +116,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         let result = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
             bundleIdentifier: bundle, anchor: anchor, source: source, languageHint: languageHint,
-            vocabularyContext: vocabularyContext)
+            context: readingContext, traceID: trace)
         receipt = result
         window = originWindow
         return result
@@ -123,7 +129,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         if let evidence = pointerEvidence {
             return AXHelper.parameterizedStringValue(
                 for: kAXStringForRangeParameterizedAttribute as CFString,
-                range: evidence.range, on: evidence.element) == evidence.text
+                range: evidence.range, on: evidence.element)?.utf16.elementsEqual(evidence.text.utf16) == true
         }
         return true
     }
@@ -203,9 +209,8 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                                 if anchor.insetBy(dx: -2, dy: -2).contains(point) {
                                     pointerEvidence = PointerEvidence(element: element, range: target, text: word.text)
                                     let language = LearningLanguage.detect(in: text)
-                                    let context = VocabularyPolicy.example(text: text, ranges: [word.range], language: language ?? .english,
-                                        startsAtBoundary: start == 0, endsAtBoundary: start + range.length == count,
-                                        app: NSRunningApplication(processIdentifier: pid)?.bundleIdentifier)
+                                    let context = LearningVocabularyContextReader.read(element: element,
+                                        range: target, expected: word.text, selection: false)
                                     return PointedText(text: word.text, anchor: anchor, hint: language, context: context)
                                 }
                             }
@@ -257,7 +262,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             let extraction = try await extractor.extractText(from: image)
             try Task.checkCancellation()
             let text: String
-            var context: VocabularyExample?
+            var context: LearningReadingContext?
             if let pointer {
                 let unit = CGPoint(
                     x: (pointer.x - region.minX) / region.width, y: (pointer.y - region.minY) / region.height)
@@ -268,16 +273,15 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                         String(localized: "No word was found under the pointer.", table: "Learning"))
                 }
                 text = word.text
-                if let line = extraction.lines.first(where: { $0.boundingBox?.contains(unit) == true }),
-                   let range = line.text.range(of: word.text),
-                   line.text.range(of: word.text, range: range.upperBound..<line.text.endIndex) == nil {
-                    context = VocabularyPolicy.example(text: line.text, ranges: [NSRange(range, in: line.text)],
-                        language: LearningLanguage.detect(in: line.text) ?? .english,
-                        startsAtBoundary: false, endsAtBoundary: false)
-                }
+                context = LearningReadingOCRPolicy.context(word: word, lines: extraction.lines,
+                    imageSize: CGSize(width: image.width, height: image.height))
             } else {
                 text = try LearningReadingTextPolicy.text(from: extraction.lines)
+                context = LearningReadingContextPolicy.resolve(.init(text: text,
+                    target: NSRange(location: 0, length: text.utf16.count), left: .crop, right: .crop, method: .ocr,
+                    confidence: extraction.lines.map(\.confidence).min()), expected: text)
             }
+            LearningVocabularyContextReader.log(context)
             outcome = .completed
             let hint = pointer.flatMap { point in
                 let unit = CGPoint(

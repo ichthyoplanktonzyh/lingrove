@@ -57,6 +57,11 @@ struct ReadingOCRIntegrationTests {
         #expect(target.contains("This is a second complete line."))
         let word = try #require(result.words.first { $0.text == "posted" })
         #expect(word.boundingBox.width > 0 && word.boundingBox.height > 0)
+        let lineIndex = try #require(word.lineIndex)
+        let location = try #require(word.utf16Location), length = try #require(word.utf16Length)
+        #expect((result.lines[lineIndex].text as NSString).substring(with: NSRange(location: location, length: length)) == "posted")
+        #expect(word.confidence != nil)
+        #expect(LearningReadingOCRPolicy.context(word: word, lines: result.lines) != nil)
         #expect(
             result.lines.contains {
                 $0.boundingBox?.contains(CGPoint(x: word.boundingBox.midX, y: word.boundingBox.midY))

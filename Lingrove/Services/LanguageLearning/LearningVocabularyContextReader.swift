@@ -2,44 +2,52 @@ import ApplicationServices
 import Foundation
 import Logging
 
-/// A bounded optional read attached to an explicit selection receipt. Failure never blocks
-/// translation. Explicit contextual lookup may pass this bounded text to the configured general model.
+/// Acquires competing bounded windows, then lets the shared pure policy choose evidence.
+/// One deadline covers all paths. A partial ordinary range cannot suppress a better marker range.
 @MainActor
 enum LearningVocabularyContextReader {
-    static func read(element: AXUIElement, range: NSRange?, expected: String, app: String) -> VocabularyExample? {
-        let deadline = ContinuousClock.now.advanced(by: .milliseconds(180))
-        if let example = ordinary(element: element, range: range, expected: expected, app: app) {
-            log("character-range", example: example)
-            return example
+    static func read(element: AXUIElement, range: NSRange?, expected: String,
+                     selection: Bool = true) -> LearningReadingContext? {
+        let started = ContinuousClock.now
+        let deadline = started.advanced(by: .milliseconds(180))
+        var windows: [LearningReadingWindow] = []
+        if let window = ordinary(element: element, range: range) { windows.append(window) }
+        if LearningReadingContextPolicy.best(windows, expected: expected)?.isComplete != true {
+            windows += AXReadingContext.read(on: element, expected: expected, deadline: deadline,
+                explicitRange: selection ? nil : range)
         }
-        if let window = AXReadingContext.read(on: element, expected: expected, deadline: deadline),
-           let example = LearningReadingContextPolicy.example(text: window.text, range: window.range, expected: expected,
-               startsAtBoundary: window.complete, endsAtBoundary: window.complete, app: app) {
-            log(window.method, example: example)
-            return example
-        }
-        log("unavailable", example: nil)
-        return nil
+        let result = LearningReadingContextPolicy.best(windows, expected: expected)
+        log(result, candidates: windows.count, exhausted: ContinuousClock.now >= deadline)
+        return result
     }
 
-    private static func ordinary(element: AXUIElement, range: NSRange?, expected: String, app: String) -> VocabularyExample? {
-        guard let range, range.location >= 0, range.length > 0, range.length <= 3_072,
-              let count = AXHelper.intValue(for: kAXNumberOfCharactersAttribute as CFString, on: element),
-              range.location <= count, range.length <= count - range.location else { return nil }
-        let start = max(0, range.location - 512)
-        let end = NSMaxRange(range) + min(512, count - NSMaxRange(range))
-        let window = NSRange(location: start, length: end - start)
-        guard let text = AXHelper.parameterizedStringValue(for: kAXStringForRangeParameterizedAttribute as CFString,
-            range: window, on: element) else { return nil }
-        let local = NSRange(location: range.location - start, length: range.length)
-        guard VocabularyPolicy.valid(local, in: text) else { return nil }
-        return LearningReadingContextPolicy.example(text: text, range: local, expected: expected,
-            startsAtBoundary: start == 0, endsAtBoundary: end == count, app: app)
+    private static func ordinary(element: AXUIElement, range: NSRange?) -> LearningReadingWindow? {
+        guard let range, let count = AXHelper.intValue(for: kAXNumberOfCharactersAttribute as CFString, on: element),
+              let window = LearningReadingContextPolicy.windowRange(target: range, count: count),
+              let text = AXHelper.parameterizedStringValue(for: kAXStringForRangeParameterizedAttribute as CFString,
+                  range: window, on: element), text.utf16.count == window.length else { return nil }
+        // Static-text ends only prove a node edge. Actual editable containers/paragraphs carry
+        // structural evidence; a browser's inline span must remain unproven even at index zero.
+        let role = AXHelper.stringValue(for: kAXRoleAttribute as CFString, on: element) ?? ""
+        let structural = ["AXTextArea", "AXTextField", "AXParagraph", "AXHeading", "AXListItem", "AXCell"].contains(role)
+        return .init(text: text, target: NSRange(location: range.location - window.location, length: range.length),
+            left: window.location == 0 ? (structural ? .container : .unknown) : .crop,
+            right: NSMaxRange(window) == count ? (structural ? .container : .unknown) : .crop, method: .characters)
     }
-    private static func log(_ method: String, example: VocabularyExample?) {
+
+    static func log(_ context: LearningReadingContext?, candidates: Int = 1, exhausted: Bool = false) {
         LingroveLogger.learning.debug("Reading context captured", metadata: [
-            "method": .string(method), "scope": .string(example?.completeness.rawValue ?? "none"),
-            "context_utf16": .stringConvertible(example?.text.utf16.count ?? 0)
+            "request_id": .string(LearningRequestTrace.requestID ?? "unscoped"),
+            "method": .string(context?.window.method.rawValue ?? "unavailable"),
+            "scope": .string(context.map { $0.isComplete ? "complete" : "fragment" } ?? "none"),
+            "left_boundary": .string(context?.left.rawValue ?? "unknown"),
+            "right_boundary": .string(context?.right.rawValue ?? "unknown"),
+            "context_utf16": .stringConvertible(context?.text.utf16.count ?? 0),
+            "window_utf16": .stringConvertible(context?.window.text.utf16.count ?? 0),
+            "candidate_count": .stringConvertible(candidates), "deadline_exhausted": .stringConvertible(exhausted),
+            "target_offset": .stringConvertible(context?.target.location ?? -1),
+            "sentence_count": .stringConvertible(context?.sentenceCount ?? 0),
+            "ocr_confidence": .string(context?.window.confidence.map(String.init(describing:)) ?? "unavailable")
         ])
     }
 }

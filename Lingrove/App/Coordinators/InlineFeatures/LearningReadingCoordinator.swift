@@ -260,15 +260,17 @@ final class LearningReadingCoordinator {
         icon.hide()
         beforePresent()
         let target = service.settings.languageLearning.readingTargetLanguage
-        let trace = traceID ?? RequestID.generate()
+        let trace = traceID ?? capture.traceID ?? RequestID.generate()
         let resolution = LearningReadingLanguageResolver.resolve(text: capture.text,
-            context: capture.vocabularyContext?.text, hint: capture.languageHint)
+            context: capture.context?.text, hint: capture.context?.languageHint ?? capture.languageHint)
         LingroveLogger.learning.debug("Reading source language resolved", metadata: [
             "request_id": .string(trace), "origin": .string(capture.source.rawValue),
             "source_language": .string(resolution.language?.rawValue ?? "und"),
             "language_evidence": .string(resolution.evidence.rawValue),
             "selection_utf16": .stringConvertible(capture.text.utf16.count),
-            "context_utf16": .stringConvertible(capture.vocabularyContext?.text.utf16.count ?? 0)
+            "context_utf16": .stringConvertible(capture.context?.text.utf16.count ?? 0),
+            "context_method": .string(capture.context?.window.method.rawValue ?? "unavailable"),
+            "context_complete": .stringConvertible(capture.context?.isComplete ?? false)
         ])
         guard let source = resolution.language else {
             showCaptureError(
@@ -341,7 +343,8 @@ final class LearningReadingCoordinator {
         document?.generating = false
         work = nil
         let id = revision
-        lookupPanel.showLookup(.init(id: capture.id, capture: targetCapture, translationLanguage: target, anchor: capture.anchor),
+        lookupPanel.showLookup(.init(id: capture.id, capture: targetCapture, translationLanguage: target,
+            anchor: capture.anchor, traceID: document?.traceID),
             validate: { [weak self] in
                 guard let self else { return false }
                 let current = self.valid(id, capture)

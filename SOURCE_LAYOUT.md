@@ -794,7 +794,7 @@ any generation. `LearningReadingCoordinator` supplies receipt validation to `Lea
 `LearningSentencePanel` reuses its `LearningDetailPanel`/`LearningDictionaryCard` as a standalone
 surface with the same nonactivating window, popup ownership and dismissal boundary. Complete
 sentence and whole screen-region translation retain the existing translator. Pointer OCR uses
-only its bounded captured line fragment. The shared explanation view requests details only on
+a bounded block of adjacent aligned lines, retaining uncertain outer boundaries. The shared explanation view requests details only on
 expansion; the dictionary tab remains lazy and does not restart a stopped model task.
 
 ## Reading Context Acquisition
@@ -829,3 +829,44 @@ compatibility prevents a surrounding Chinese sentence from relabelling a selecte
 Recognition remains bounded and unconstrained by the supported palette, so unknown or unsupported
 languages are never silently replaced with English or the reading target language. The coordinator
 logs only the chosen language, evidence source and input lengths.
+
+## Reading Evidence And Block Reconstruction
+
+`Models/LanguageLearning/LearningReadingContext.swift` separates the ephemeral acquisition window
+from the sentence(s) used by the model/card. It records an exact target, independent left/right
+boundary evidence, source method and optional OCR confidence. Complete multi-sentence selections
+retain their sentence count instead of being confused with cropped sentences. Only the consumer
+converts this value into a `VocabularyExample`; the receipt ID keeps that example stable during
+rendering. Writing preview/notebook archive formats remain independent of acquisition internals.
+
+`LearningReadingContextPolicy` validates UTF-16 identity, trims artificial AX crop-edge graphemes,
+segments with the captured language (without an English fallback), and ranks candidate coverage.
+It preserves a total 1,024-unit surrounding budget, reallocating unused capacity near field edges.
+Internal sentence punctuation can establish a boundary; leading whitespace or a trailing period
+at an artificial crop edge cannot establish completeness on their own.
+
+`LearningReadingBlockPolicy` distinguishes vertically separate block frames from inline overlap.
+`AXReadingContext` combines that evidence with semantic AX roles and bounded ancestor ranges.
+Chromium can expose both p and span as AXGroup; layout is recorded only as an expansion hint, never as proof of sentence completeness.
+The adapter continues through parent groups, so a soft-wrapped inline span cannot stop expansion. Clipped/offscreen frames retain unknown boundaries. Large containers use a
+marker walk confined to the ancestor range, never a flattened web-area string. This avoids
+concatenating headings/paragraphs without separators. The 180 ms context deadline is checked
+between calls, not a preemptive cancellation guarantee for a synchronous AX IPC.
+
+`LearningReadingOCRPolicy` joins only adjacent aligned OCR lines around an exact word hit, with
+alternating expansion and the same total text budget. Worker word records carry their emitted
+line index, UTF-16 range and confidence; repeated spellings never use first-match text search.
+The helper/extractor retain this provenance locally; images and geometry do not enter prompts.
+Screen-region capture continues to translate the explicit region and preserves low-confidence
+recognized text. OCR edge evidence remains cropped unless interior sentence boundaries prove more.
+
+Every capture, including the passive selection icon, gets a trace before acquisition. The first
+lookup uses that trace; later details/refresh logs link their new request IDs through
+`context_request_id`. Context diagnostics include method, both boundaries, target offset, length,
+confidence and deadline status, without logging the captured text.
+
+`LingroveTests/Fixtures/Reading/context.html` provides repeatable Chrome cases for linked history,
+inline styles, repeated words, combining characters, full selections and large paragraphs. Serve
+this directory on loopback, use its selection controls (or double-click a word), and inspect the
+reading-context diagnostics. Pure evidence tests and the real Vision integration suite verify
+routing, provenance and fragment handling independently of a model.

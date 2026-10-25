@@ -51,7 +51,12 @@ struct LearningLookupPolicyTests {
     @Test func capturedSentenceCoverageWinsOverPunctuationAndFragmentsStayLookups() throws {
         func selection(_ text: String, context: VocabularyExample?, source: LearningReadingSource = .selection) -> LearningReadingSelection {
             .init(id: UUID(), text: text, processIdentifier: 1, bundleIdentifier: "fixture", anchor: .zero,
-                source: source, vocabularyContext: context)
+                source: source, context: context.flatMap { example in
+                    guard let range = example.ranges.first?.nsRange else { return nil }
+                    return LearningReadingContextPolicy.resolve(.init(text: example.text, target: range,
+                        left: example.completeness == .sentence ? .container : .crop,
+                        right: example.completeness == .sentence ? .container : .crop, method: .characters), expected: text)
+                })
         }
         let sentence = "Please keep me posted"
         let full = VocabularyPolicy.example(text: sentence, ranges: [NSRange(location: 0, length: sentence.utf16.count)],

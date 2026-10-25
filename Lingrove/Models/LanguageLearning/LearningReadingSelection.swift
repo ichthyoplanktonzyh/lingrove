@@ -26,7 +26,10 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     var source: LearningReadingSource = .selection
     var languageHint: LearningLanguage?
     /// Bounded context captured with the target; contextual lookup interprets it with the selected unit.
-    var vocabularyContext: VocabularyExample?
+    var context: LearningReadingContext?
+    var traceID: String?
+    var capturedAt = Date()
+    var vocabularyContext: VocabularyExample? { context?.example(app: bundleIdentifier, id: id, createdAt: capturedAt) }
 }
 
 /// The app environment owns one reader. This narrow seam lets lifecycle tests change a selection

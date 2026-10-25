@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import Logging
 
 /// A card/window owns one lightweight session. The app-owned service executes and caches work;
 /// this object owns only the selected immutable target and its latest-wins presentation state.
@@ -19,6 +20,8 @@ final class LearningExplanationSession: ObservableObject {
     private var work: Task<Void, Never>?
     private var lookupWork: Task<Void, Never>?
     private var revision = UUID()
+    private var initialLookupRequestID: String?
+    private var lookupCaptureRequestID: String?
     private var subscription: AnyCancellable?
 
     init(service: (any LearningExplanationGenerating)? = nil) {
@@ -34,8 +37,10 @@ final class LearningExplanationSession: ObservableObject {
 
     /// Lookup starts with the compact pair. Legacy full records are not restored into this
     /// mode: their details may explain an interpretation different from this new accepted pair.
-    func setLookupTarget(_ target: LearningLookupInput) {
+    func setLookupTarget(_ target: LearningLookupInput, requestID: String? = nil) {
         cancel()
+        lookupCaptureRequestID = requestID
+        initialLookupRequestID = requestID
         lookupInput = target
         input = target.target
         record = nil; lookupRecord = nil; error = nil; showsLookupDetails = false
@@ -46,7 +51,9 @@ final class LearningExplanationSession: ObservableObject {
               !isGenerating, refresh || lookupRecord == nil, isTargetCurrent() else { return }
         cancel()
         error = nil
-        let revision = revision, requestID = RequestID.generate()
+        let revision = revision, requestID = initialLookupRequestID ?? RequestID.generate()
+        initialLookupRequestID = nil
+        logLookup(requestID, stage: "basic")
         isGenerating = true
         work = Task { [weak self] in
             do {
@@ -64,6 +71,13 @@ final class LearningExplanationSession: ObservableObject {
                 self.finish(error)
             }
         }
+    }
+
+    private func logLookup(_ requestID: String, stage: String) {
+        guard let parent = lookupCaptureRequestID else { return }
+        LingroveLogger.learning.debug("Reading lookup stage requested", metadata: [
+            "request_id": .string(requestID), "context_request_id": .string(parent), "stage": .string(stage)
+        ])
     }
 
     func toggleLookupDetails() {
@@ -135,6 +149,7 @@ final class LearningExplanationSession: ObservableObject {
               !isGenerating, refresh || record == nil, isTargetCurrent() else { return }
         cancel(); error = nil
         let revision = revision, requestID = RequestID.generate()
+        logLookup(requestID, stage: "details")
         isGenerating = true
         work = Task { [weak self] in
             do {
@@ -164,5 +179,6 @@ final class LearningExplanationSession: ObservableObject {
     func clear() {
         cancel(); input = nil; record = nil; lookupInput = nil; lookupRecord = nil
         showsLookupDetails = false; error = nil; isTargetCurrent = { true }
+        initialLookupRequestID = nil; lookupCaptureRequestID = nil
     }
 }

@@ -30,6 +30,12 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
     }
 
     func capture() async throws -> LearningReadingSelection {
+        try LearningRequestTrace.$requestID.withValue(LearningRequestTrace.requestID ?? RequestID.generate()) {
+            try captureSelection()
+        }
+    }
+
+    private func captureSelection() throws -> LearningReadingSelection {
         forget()
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication,
             let bundle = app.bundleIdentifier, app.processIdentifier != ProcessInfo.processInfo.processIdentifier
@@ -99,6 +105,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
             !CFEqual(window, focused) {
             throw CancellationError()
         }
+        let focusedElement = AXHelper.focusedElement(forApplicationPID: app.processIdentifier)
         let range = AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: element)
         let markers = AXReadingContext.selection(on: element)
         let bounds = range.flatMap {
@@ -111,7 +118,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
                 else { return nil }
                 return AXHelper.cocoaRect(fromAccessibilityRect: value)
             } ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
-        let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text, app: bundle)
+        let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text)
         // Context queries are cross-process reads too. Recheck the original range/marker pair
         // before freezing it; equal spelling at a different occurrence is a different receipt.
         guard AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: element) == range,
@@ -119,11 +126,12 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
               AXHelper.selectedReadingText(on: element)?.utf16.elementsEqual(text.utf16) == true else { throw CancellationError() }
         let receipt = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
-            bundleIdentifier: bundle, anchor: rect, vocabularyContext: context)
+            bundleIdentifier: bundle, anchor: rect, context: context, traceID: LearningRequestTrace.requestID)
         evidence = Evidence(
             receipt: receipt, element: element, window: window,
             range: range, markers: markers,
-            focusedElement: AXHelper.focusedElement(forApplicationPID: app.processIdentifier))
+            focusedElement: focusedElement)
+        guard isCurrent(receipt) else { forget(); throw CancellationError() }
         observeSelection(element, pid: app.processIdentifier)
         return receipt
     }

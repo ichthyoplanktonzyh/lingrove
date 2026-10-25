@@ -43,6 +43,7 @@ struct LearningLookupPresentation {
     let capture: VocabularyCapture
     let translationLanguage: LearningLanguage
     let anchor: CGRect
+    var traceID: String?
 }
 
 /// Both writing and reading borrow this presentation capability. The reader supplies receipt
