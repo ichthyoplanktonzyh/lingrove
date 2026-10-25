@@ -29,6 +29,10 @@ struct VocabularyNotebookView: View {
     @State private var showingBatch = false
     @State private var exporting: VocabularyExportRequest?
     @State private var reviewError: String?
+    @State private var creatingEntry = false
+    @State private var choosingWordList = false
+    @State private var importingWordList: VocabularyWordListImportRequest?
+    @State private var importResult: VocabularyEntryImportResult?
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
          learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
@@ -84,7 +88,9 @@ struct VocabularyNotebookView: View {
 
     var body: some View {
         ZStack {
-            if browserMode == "graph" {
+            if store.isLoaded && store.entries.isEmpty {
+                emptyNotebookContent
+            } else if browserMode == "graph" {
                 graphBrowser
                     .transition(
                         reduceMotion
@@ -119,6 +125,20 @@ struct VocabularyNotebookView: View {
                 .frame(width: 164)
             }
             ToolbarItemGroup {
+                Button { creatingEntry = true } label: {
+                    Label(String(localized: "Add entry", table: "Vocabulary"), systemImage: "plus")
+                }
+                .help(String(localized: "Add entry", table: "Vocabulary"))
+                .accessibilityIdentifier("vocabularyAddEntry")
+                .keyboardShortcut("n", modifiers: .command)
+                .disabled(!store.isLoaded)
+                Button { choosingWordList = true } label: {
+                    Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
+                }
+                .help(String(localized: "Import CSV or TXT word list", table: "Vocabulary"))
+                .accessibilityIdentifier("vocabularyImportWordList")
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(!store.isLoaded)
                 Button {
                     withAnimation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.94)) {
                         selectingSenses.toggle()
@@ -182,6 +202,32 @@ struct VocabularyNotebookView: View {
         .onChange(of: selectedTag) { _, _ in reconcileGraphSelection() }
         .onChange(of: language) { _, _ in reconcileGraphSelection() }
         .sheet(item: $exporting) { request in VocabularyExportSheet(store: store, request: request) }
+        .sheet(isPresented: $creatingEntry) {
+            VocabularyEntryCreationSheet(store: store, language: language ?? .english, onSaved: revealAddedEntries)
+        }
+        .fileImporter(isPresented: $choosingWordList, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+            switch result {
+            case .success(let url): importingWordList = .init(url: url, language: language ?? .english)
+            case .failure(let error):
+                if (error as NSError).code != NSUserCancelledError { store.errorMessage = error.localizedDescription }
+            }
+        }
+        .sheet(item: $importingWordList) { request in
+            VocabularyWordListImportSheet(store: store, request: request) { result in
+                revealAddedEntries(result)
+                importResult = result
+            }
+        }
+        .alert(String(localized: "Import complete", table: "Vocabulary"), isPresented: Binding(
+            get: { importResult != nil && importingWordList == nil }, set: { if !$0 { importResult = nil } })) {
+                Button(String(localized: "OK"), role: .cancel) { importResult = nil }
+            } message: {
+                if let result = importResult {
+                    Text(String(localized: "New entries: \(result.addedEntries)", table: "Vocabulary") + "\n" +
+                        String(localized: "New senses: \(result.addedSenses)", table: "Vocabulary") + "\n" +
+                        String(localized: "Duplicates skipped: \(result.skippedRows)", table: "Vocabulary"))
+                }
+            }
         .sheet(isPresented: $showingBatch) {
             if let review {
                 VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
@@ -223,6 +269,31 @@ struct VocabularyNotebookView: View {
             self.selection = nil
             graph.clearFocus()
         }
+    }
+
+    private var emptyNotebookContent: some View {
+        ContentUnavailableView {
+            Label(String(localized: "No saved expressions", table: "Vocabulary"), systemImage: "books.vertical")
+        } description: {
+            Text(String(localized: "Add an entry yourself or import a CSV or TXT word list.", table: "Vocabulary"))
+        } actions: {
+            HStack {
+                Button(String(localized: "Add entry", table: "Vocabulary")) { creatingEntry = true }
+                    .accessibilityIdentifier("vocabularyEmptyAddEntry")
+                Button(String(localized: "Import word list", table: "Vocabulary")) { choosingWordList = true }
+                    .accessibilityIdentifier("vocabularyEmptyImportWordList")
+            }.buttonStyle(.bordered)
+        }
+    }
+
+    /// A successful addition must be visible even when the user was searching another language,
+    /// tag or graph node. Selection uses a sense ID; entry IDs only expand the owning sidebar row.
+    private func revealAddedEntries(_ result: VocabularyEntryImportResult) {
+        guard let target = result.selection else { return }
+        query = ""; language = nil; selectedTag = ""; newestFirst = true
+        browserMode = "list"; selectingSenses = false; batchSelection.removeAll()
+        expandedEntries.insert(target.entryID)
+        selection = target.senseID
     }
 
     private var graphBrowser: some View {
@@ -925,16 +996,16 @@ struct VocabularyEntryDetail: View {
     @ViewBuilder
     private var coreMeaningSection: some View {
         let otherMeanings = sense.standaloneMeanings.filter { !$0.text.isEmpty && $0.language != sense.meaningLanguage }
-        if sense.isSavedWithoutContext || !sense.meaning.isEmpty || !otherMeanings.isEmpty || !sense.alternateMeanings.isEmpty {
+        if sense.supportsGeneralExplanation || !sense.meaning.isEmpty || !otherMeanings.isEmpty || !sense.alternateMeanings.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                if !sense.isSavedWithoutContext, !sense.meaning.isEmpty {
+                if !sense.supportsGeneralExplanation, !sense.meaning.isEmpty {
                     Text(sense.meaning)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if sense.isSavedWithoutContext {
+                if sense.supportsGeneralExplanation {
                     if let learning {
                         VocabularyExplanationSection(entry: entry, sense: sense, store: store, learning: learning)
                     } else if !sense.meaning.isEmpty {

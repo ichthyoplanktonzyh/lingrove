@@ -47,6 +47,10 @@ nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     var content: [VocabularyContentBlock]?
     let createdAt: Date
     var updatedAt: Date
+    /// Manual/imported meanings need general explanations without claiming the single
+    /// context-free favorite slot. Optional keeps existing v3 payloads backward compatible.
+    var createdWithoutContext: Bool?
+    var supportsGeneralExplanation: Bool { isSavedWithoutContext || createdWithoutContext == true }
 }
 
 /// Window navigation and durable destinations use both levels. Sense IDs stay independent of
@@ -114,6 +118,9 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
     var explanation: LearningExplanationRecord?
     /// Supplied only by an explicit notebook destination, never by model-generated text.
     var senseID: UUID?
+    /// Explicit notebook senses have a local receipt independent of text equality. Floating
+    /// captures leave it nil; this identity is never included in the model's prompt.
+    var generalExplanationIdentity: String?
 }
 
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite

@@ -35,7 +35,7 @@ final class VocabularyNotebookSession: ObservableObject {
         self.senseID = selectedSense?.id
         guard let entry, let sense = selectedSense else { return }
         var next: [String: LearningExplanationSession] = [:]
-        let examples: [VocabularyExample?] = (sense.isSavedWithoutContext ? [nil] : []) + sense.examples.map(Optional.some)
+        let examples: [VocabularyExample?] = (sense.supportsGeneralExplanation ? [nil] : []) + sense.examples.map(Optional.some)
         for example in examples {
             let key = Self.key(example)
             let session = explanations[key] ?? LearningExplanationSession(service: service)

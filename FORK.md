@@ -743,3 +743,66 @@ Validation on Xcode 26.5 / Apple Silicon:
 - Logs, source hashes, original/final lint output and the application xcresult remain under
   gitignored `build/lint-cleanup/`. Repo-scoped `build/DerivedData` was removed after validation,
   and its absence was verified. No model, prompt, sampling or ghost-placement change was made.
+
+
+## Notebook entry creation and word-list import — 2026-10-25
+
+The notebook now has explicit Add entry (Command-N) and Import word list (Shift-Command-I)
+actions in its toolbar and empty state. Creation owns an unsaved draft with language, kind,
+expression, optional dictionary form, meaning, annotation language, notes and tags; Cancel does
+not write a placeholder. Successful creation/import clears browsing filters and reveals the
+acknowledged sense in the list.
+
+CSV imports support explicit column mapping, optional headers, quoted delimiters/escaped quotes
+and multiline fields. TXT contains one expression per line. Inputs accept UTF-8 (optional BOM)
+or BOM-marked UTF-16, limited to 4 MB and 10,000 data rows; language/type defaults are visible
+outside the scrolling mapping section. The preview names new entries, new senses and duplicates,
+shows the first 50 rows, and explicitly discloses that examples/images and unmapped columns are
+not imported. Full backup/restore remains a separate operation.
+
+The existing archive actor performs bounded file reads and pure preview planning away from
+MainActor. Confirmation holds the existing SQLite write lock over a fresh snapshot, duplicate
+recognition and one commit. Existing notes, usages and review/Anki bindings are preserved.
+Primary, standalone and merged meanings participate in exact-content deduplication. Different
+content is appended as a separate sense; repeating the same list creates no new records.
+
+Manual/imported senses carry the optional `createdWithoutContext` flag without claiming the
+unique legacy favorite slot. Their existing explanation input carries a local `sense:<UUID>`
+receipt, excluded from prompts, to keep cache/persistence ownership distinct for equal words.
+The original fresh-result callback persists answers; browsing/cache restoration adds no writes.
+Explicit sense merge rebinds the local receipt while preserving record IDs, text and results.
+The optional field keeps existing v3 payloads readable; no database schema migration is added.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Prepared the pinned inference workspace and compiled the unsigned Debug application/tests.
+  Final regression covered 21 vocabulary, SQLite, CLI, review, export, explanation and graph suites:
+  **177 passed, 0 failed, 7 skipped**. The skipped tests require the existing optional live Anki,
+  native review or downloaded-model environments. Three native-interaction tests were explicitly
+  excluded from that automated run.
+- The isolated native create/import acceptance test passed separately after actual UI interaction:
+  typed and cancelled a draft, confirmed the notebook stayed empty, created `serendipity`, chose
+  a CSV through the native file picker, observed 1 new entry / 2 senses / 1 duplicate, confirmed
+  import, and verified the final 2 entries / 3 senses plus the general-meaning action. No real
+  notebook was used. An initial attempt while locked/filtering the wrong Swift Testing method
+  selected zero tests; only the subsequent 1-test execution counts as acceptance.
+- Chinese UI hosting passed and produced real empty/create/import component captures. The parent
+  inspected English/Chinese captures; an independent GPT-6 Luna Max UI reviewer checked English
+  layout and confirmed the default-control visibility fix. Both Luna Max code reviewers reported
+  no remaining P1/P2. Their final independent test attempt hit an account usage limit, so the
+  final automated runs and native interaction were executed by the parent agent.
+- Regression cases cover quoting/Unicode/UTF-16, line-specific errors and resource limits,
+  duplicate meanings, batch rollback/cancellation, stale-preview re-planning, concurrent archive
+  access, unchanged existing content, and explanation identity across merge and reopen.
+- Localization validation passed 1,570 keys across 3 tables and 15 languages. The 34 new Vocabulary
+  keys leave all existing translations unchanged. Strict production SwiftLint reports exactly
+  the inherited 91 findings, with no new findings and no baseline edit. Deterministic XcodeGen,
+  source hashes across final runs and `git diff --check` passed.
+- Repo-scoped `build/DerivedData` was removed and its absence verified. Logs, manifests, xcresults
+  and all component captures remain in ignored `build/vocabulary-entry-import/`.
+
+Chinese component captures from the shipped views:
+
+![Create a notebook entry](.github/assets/vocabulary-entry-import/create-entry-zh-Hans.png)
+
+![Preview CSV columns and import counts](.github/assets/vocabulary-entry-import/import-preview-zh-Hans.png)

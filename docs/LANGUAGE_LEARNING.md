@@ -94,7 +94,10 @@ Language learning can be enabled independently of inline autocomplete:
 
 - Click an empty **fish tail** button on a Lingrove preview or expression card to save its displayed content. For words and expressions, available sentence context is retained as an example; saving does not start another model request.
 - A blue fish tail opens actions to view the entry or remove that saved usage.
-- **Vocabulary** in the menu bar opens the searchable notebook, where meanings, notes, tags, and examples can be edited and the collection exported as JSON.
+- **Vocabulary** in the menu bar opens the searchable notebook, where meanings, notes, tags, and examples can be edited and the collection exported as TXT, CSV or JSON.
+- **Add entry** (⌘N) creates a word or expression directly. Choose its language and type, then optionally add a dictionary form, meaning, notes and tags. Cancel discards the draft. Existing headwords keep their content; new annotations become a separate sense, and identical content is skipped.
+- **Import word list** (⇧⌘I) reads a CSV or TXT file. TXT uses one expression per line; CSV supports quoted cells, embedded newlines and explicit column mappings, with or without headers. Choose defaults for blank language/type cells and inspect the counts before confirming. Imported fields are expression, meaning, dictionary form, language, type, meaning language, notes and tags; examples/images and other unmapped fields are not imported. Use a full notebook backup to retain the entire notebook.
+- Word lists accept UTF-8 (optional BOM) or UTF-16 with BOM, up to 4 MB and 10,000 data rows. CSV language columns use supported codes such as `en` and `zh-Hans`; types use `word`, `expression`, `pattern` or `sentence`. Exact content is skipped; the current notebook is never replaced by a word-list import. New entries are revealed after search/language/tag filters are cleared.
 - Expressions group stable senses, and each sense owns its usages and notes. Merge senses or move a usage explicitly; regenerating an explanation never changes its identity.
 - Its two optional shortcuts are configured only in **Settings → Shortcuts** and are initially unset.
 

@@ -111,7 +111,7 @@ final class VocabularyStore: ObservableObject {
             edited.senses[owner].examples[index].meaningOrigin = .user
         } else {
             guard let owner = VocabularySensePolicy.index(destination.senseID, in: original),
-                  original.senses[owner].isSavedWithoutContext,
+                  original.senses[owner].supportsGeneralExplanation,
                   LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, sense: original.senses[owner],
                     example: nil)) == record.input else { return false }
             edited.senses[owner].meaning = record.result.meaning
@@ -138,6 +138,22 @@ final class VocabularyStore: ObservableObject {
     func createSense(entryID: UUID) async -> UUID? {
         let id = UUID()
         do { apply(try await archive.createSense(entryID: entryID, senseID: id)); return id } catch { report(error); return nil }
+    }
+
+    /// Manual creation and imports share one append-only transaction. Failures stay in the
+    /// requesting sheet; publication happens only after durable SQLite acknowledgement.
+    func addEntries(_ inputs: [VocabularyEntryInput]) async throws -> VocabularyEntryImportResult {
+        let (snapshot, result) = try await archive.addEntries(inputs)
+        apply(snapshot)
+        return result
+    }
+
+    func readWordList(at source: URL) async throws -> VocabularyWordList { try await archive.readWordList(at: source) }
+
+    func previewWordList(
+        _ table: VocabularyWordList, configuration: VocabularyWordListConfiguration
+    ) async throws -> VocabularyWordListPreview {
+        try await archive.previewWordList(table, configuration: configuration)
     }
 
     func removeSense(entryID: UUID, senseID: UUID) async -> Bool {

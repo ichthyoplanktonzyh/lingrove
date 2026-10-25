@@ -158,7 +158,7 @@ nonisolated enum VocabularyPolicy {
     /// The owner is resolved from current data at commit time rather than a captured sense index.
     static func accepts(_ record: LearningExplanationRecord, entry: VocabularyEntry) -> Bool {
         entry.senses.contains { sense in
-            sense.isSavedWithoutContext && LearningExplanationPolicy.input(
+            sense.supportsGeneralExplanation && LearningExplanationPolicy.input(
                 LearningExplanationPolicy.capture(entry, sense: sense, example: nil)) == record.input ||
                 sense.examples.contains { LearningExplanationPolicy.input(
                     LearningExplanationPolicy.capture(entry, sense: sense, example: $0)) == record.input }
@@ -169,16 +169,9 @@ nonisolated enum VocabularyPolicy {
         guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result) else { return }
         for index in entry.senses.indices {
             let sense = entry.senses[index]
-            if sense.isSavedWithoutContext, LearningExplanationPolicy.input(
+            if sense.supportsGeneralExplanation, LearningExplanationPolicy.input(
                 LearningExplanationPolicy.capture(entry, sense: sense, example: nil)) == record.input {
-                append(record, to: &entry.senses[index].explanations)
-                // A first general result can fill an empty summary. Later regeneration belongs
-                // to the saved explanation; it cannot silently redefine the stable core meaning.
-                if sense.meaning.isEmpty, sense.meaningOrigin != .user {
-                    entry.senses[index].meaning = record.result.meaning
-                    entry.senses[index].meaningLanguage = record.language
-                    entry.senses[index].meaningOrigin = .ai
-                }
+                storeGeneralExplanation(record, in: &entry.senses[index])
             }
             for usage in sense.examples.indices {
                 guard LearningExplanationPolicy.input(
@@ -191,6 +184,18 @@ nonisolated enum VocabularyPolicy {
                     entry.senses[index].examples[usage].meaningOrigin = .ai
                 }
             }
+        }
+    }
+
+    /// The caller has already resolved and checked this exact sense's input. A definition
+    /// supplied by the user remains authoritative; only an empty, unowned summary can be filled.
+    static func storeGeneralExplanation(_ record: LearningExplanationRecord, in sense: inout VocabularySense) {
+        guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result) else { return }
+        append(record, to: &sense.explanations)
+        if sense.meaning.isEmpty, sense.meaningOrigin != .user {
+            sense.meaning = record.result.meaning
+            sense.meaningLanguage = record.language
+            sense.meaningOrigin = .ai
         }
     }
 
