@@ -266,7 +266,7 @@ actor VocabularyArchive {
                 let value = entry.senses[sense]
                 let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: value, example: nil))
                 next.entries[index].senses[sense].explanations = value.explanations.filter {
-                    value.isSavedWithoutContext && $0.input == generalInput
+                    value.supportsGeneralExplanation && $0.input == generalInput
                 }
                 for usage in value.examples.indices {
                     let input = LearningExplanationPolicy.input(

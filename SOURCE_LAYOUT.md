@@ -684,3 +684,35 @@ retries tolerate activation/AX settling without retrying an editor mutation. `Ed
 marker/selection/empty caret ranges without changing translation's sentence-scope policy. Tests
 mirror each boundary under `Support/ExpressionAssist`, `Models/ExpressionAssist`,
 `App/Coordinators/InlineFeatures` and `Services/LanguageLearning`.
+
+
+## Vocabulary Entry Creation And Word-List Import
+
+`Models/Vocabulary/VocabularyEntryInput.swift` defines unsaved user input, bounded source rows,
+column mappings, previews and acknowledged counts. Inputs have no durable IDs. The pure
+`Support/Vocabulary/VocabularyWordListPolicy.swift` parses CSV/TXT and applies explicit mappings;
+its transient CSV reader owns quoting/newline state separately from field interpretation.
+`VocabularyEntryInputPolicy.swift` normalizes inputs, groups existing headword identities and
+plans append-only changes. Exact content is skipped; distinct content becomes a new sense.
+Primary, preserved standalone and merged meanings participate in duplicate recognition.
+
+`Services/Vocabulary/VocabularyArchive+EntryImport.swift` performs bounded, permission-scoped
+file reads on the existing archive actor. Preview is read-only. Confirmation holds the existing
+SQLite write lock across the latest snapshot, re-planning and one atomic commit. The app-owned
+`VocabularyStore` publishes only acknowledged results. `VocabularyWordListImportSession` lives
+for one sheet, cancels old previews immediately when mappings/defaults change, and never retains
+an obsolete document to commit later.
+
+`UI/Vocabulary/VocabularyEntryCreationSheet.swift` owns a draft until Save. Its annotation-language
+picker is shared with the import sheet. `VocabularyWordListImportSheet.swift` owns the preview
+session and displays mappings, defaults, counts and a bounded table. The notebook owns sheet/file
+selection state and reveals acknowledged sense IDs after clearing filters. Its empty state and
+toolbar expose both entry creation and word-list import; whole-notebook restore remains separate.
+
+A new optional `VocabularySense.createdWithoutContext` flag enables general explanations for
+manual/imported senses without claiming the unique legacy favorite slot. Their existing
+`LearningExplanationInput.occurrenceIdentity` carries a local `sense:<UUID>` receipt, which is
+excluded from prompts. Saved lookup, cache identity and the existing fresh-result persistence
+callback therefore resolve one sense. Explicit merge rebinds only known local receipts while
+preserving record IDs, text, results and the legacy nil-receipt favorite behavior. No additional
+runtime, provider request or automatic model generation is introduced by creation or import.

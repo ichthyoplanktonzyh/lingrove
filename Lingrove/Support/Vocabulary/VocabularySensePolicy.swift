@@ -100,14 +100,37 @@ nonisolated enum VocabularySensePolicy {
         merged.examples += original.examples
         merged.standaloneMeanings += original.standaloneMeanings.filter { !merged.standaloneMeanings.contains($0) }
         merged.isSavedWithoutContext = merged.isSavedWithoutContext || original.isSavedWithoutContext
+        if original.createdWithoutContext == true { merged.createdWithoutContext = true }
         merged.explanations += original.explanations.filter { record in !merged.explanations.contains { $0.id == record.id } }
         merged.mergedFrom += [original.id] + original.mergedFrom
+        merged.explanations = reboundGeneralExplanations(merged.explanations, entry: entry, sense: merged)
         merged.reviewCards = (merged.reviewCards ?? []) + (original.reviewCards ?? [])
         merged.review = AnkiReviewPolicy.merged(merged.review, original.review)
         merged.updatedAt = now
         entry.senses[to] = merged
         entry.senses.remove(at: from)
         entry.updatedAt = now
+    }
+
+    /// Explicit merge transfers ownership. Rebind only a known local general-meaning receipt;
+    /// model input text, record UUID, timestamps and answers stay intact. A legacy favorite
+    /// retains its nil receipt so future floating captures still reach that unique slot.
+    private static func reboundGeneralExplanations(
+        _ records: [LearningExplanationRecord], entry: VocabularyEntry, sense: VocabularySense
+    ) -> [LearningExplanationRecord] {
+        let expected = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: nil))
+        let aliases = Set(([sense.id] + sense.mergedFrom).map { "sense:" + $0.uuidString })
+        return records.map { record in
+            guard record.input.contextKind == .none,
+                  record.input.occurrenceIdentity == nil || aliases.contains(record.input.occurrenceIdentity ?? "") else { return record }
+            let old = record.input
+            let input = LearningExplanationInput(target: old.target, dictionaryForm: old.dictionaryForm,
+                language: old.language, kind: old.kind, context: old.context, ranges: old.ranges,
+                contextKind: old.contextKind, occurrenceIdentity: expected.occurrenceIdentity)
+            guard input == expected else { return record }
+            return .init(id: record.id, input: input, language: record.language, result: record.result,
+                model: record.model, createdAt: record.createdAt)
+        }
     }
 
     static func move(exampleID: UUID, from source: UUID, to target: UUID?, in entry: inout VocabularyEntry, now: Date) throws -> UUID {

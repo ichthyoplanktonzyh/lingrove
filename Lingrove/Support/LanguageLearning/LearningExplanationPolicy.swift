@@ -8,7 +8,7 @@ nonisolated enum LearningExplanationPolicy {
             language: capture.language, kind: capture.kind, context: capture.example?.text ?? capture.expression,
             ranges: capture.example?.ranges ?? [VocabularyTextRange(NSRange(location: 0, length: capture.expression.utf16.count))],
             contextKind: capture.example.map { $0.completeness == .sentence ? .sentence : .fragment } ?? .none,
-            occurrenceIdentity: capture.example.map { VocabularyPolicy.exampleKey($0) })
+            occurrenceIdentity: capture.example.map { VocabularyPolicy.exampleKey($0) } ?? capture.generalExplanationIdentity)
     }
 
     static func capture(_ entry: VocabularyEntry, sense: VocabularySense? = nil, example: VocabularyExample?) -> VocabularyCapture {
@@ -16,9 +16,13 @@ nonisolated enum LearningExplanationPolicy {
             if let example { return candidate.examples.contains { $0.id == example.id } }
             return candidate.isSavedWithoutContext
         }
+        let identity = owner.flatMap {
+            $0.createdWithoutContext == true && !$0.isSavedWithoutContext ? "sense:" + $0.id.uuidString : nil
+        }
         return .init(expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
             kind: entry.kind, meaning: example?.meaning ?? owner?.meaning ?? "",
-            meaningLanguage: example?.meaningLanguage ?? owner?.meaningLanguage, example: example, senseID: owner?.id)
+            meaningLanguage: example?.meaningLanguage ?? owner?.meaningLanguage, example: example, senseID: owner?.id,
+            generalExplanationIdentity: identity)
     }
 
     static func input(_ presentation: LearningSentencePresentation) -> LearningExplanationInput? {
