@@ -660,7 +660,9 @@ revision. The app environment owns it and the two native input/candidate windows
 lifetime. `ExpressionAssistPanelController` uses a real `NSTextView` for composition; its quiet
 sentence-end input reuses ghost font/baseline helpers and its non-key result window owns candidate
 interaction. Input uses explicit application activation and acknowledgment rather than treating an
-inactive nonactivating panel's `isKeyWindow` flag as proof of keyboard delivery. Explicit acceptance
+inactive nonactivating panel's `isKeyWindow` flag as proof of keyboard delivery. Before activation,
+the input takes both main and key roles so the system does not also raise a previously opened
+Settings or Notebook window; readiness acknowledges both roles and the native text responder. Explicit acceptance
 or cancellation returns the host; outside clicks never restore it. `ExpressionAssistFocusPolicy`
 permits read-only host validation during that owned round trip; writes require restored host focus.
 `ExpressionAssistLayout` keeps screen placement deterministic. The app supplies a
