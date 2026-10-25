@@ -57,7 +57,9 @@ enum AXReadingContext {
         for block in blocks {
             if let window = boundedWindow(block, selection: receipt, expected: expected, on: element, deadline: deadline) {
                 windows.append(window)
-                return verified(windows, receipt: receipt, on: element, selectionOnly: explicitRange == nil)
+                if LearningReadingContextPolicy.resolve(window, expected: expected) != nil {
+                    return verified(windows, receipt: receipt, on: element, selectionOnly: explicitRange == nil)
+                }
             }
         }
         let queries: [((String, String?), LearningReadingWindow.Method)] = [
@@ -156,12 +158,14 @@ enum AXReadingContext {
               let beforeCount = length(prefix, on: element), beforeCount <= total - expected.utf16.count,
               let afterCount = length(suffix, on: element),
               afterCount == total - expected.utf16.count - beforeCount else { return nil }
+        // Marker equality is not guaranteed at equivalent node-edge positions. Cap movement
+        // by measured distance to the ancestor edge as well as by the global context budget.
         let walkDeadline = deadline.advanced(by: .milliseconds(-20))
-        let after = walk(.init(start: selected.end, stop: bounds.end, limit: 512), forward: true,
+        let after = walk(.init(start: selected.end, stop: bounds.end, limit: min(512, afterCount)), forward: true,
             on: element, deadline: walkDeadline)
         guard let afterRange = markerRange(selected.end, after, on: element),
               let afterLength = length(afterRange, on: element), afterLength <= 1_024 else { return nil }
-        let before = walk(.init(start: selected.start, stop: bounds.start, limit: 1_024 - afterLength), forward: false,
+        let before = walk(.init(start: selected.start, stop: bounds.start, limit: min(1_024 - afterLength, beforeCount)), forward: false,
             on: element, deadline: walkDeadline)
         guard let range = markerRange(before, after, on: element),
               let window = candidateWindow(.init(range: range, method: .markerWalk, boundary: .crop),
