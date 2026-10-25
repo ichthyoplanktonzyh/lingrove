@@ -14,9 +14,8 @@ struct InstalledRuntimeModelRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title ?? model.displayName)
-                if (title ?? model.displayName) != model.actualModelName {
-                    Text(model.actualModelName).font(.caption).foregroundStyle(.secondary)
-                }
+                LocalModelDetailsView(filename: model.filename, location: model.url,
+                    source: downloads.sourceURL(for: model.filename))
             }
             Spacer(minLength: 0)
             if selected {

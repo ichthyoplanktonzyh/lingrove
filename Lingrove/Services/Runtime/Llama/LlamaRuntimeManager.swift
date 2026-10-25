@@ -38,6 +38,7 @@ final class LlamaRuntimeManager: ObservableObject {
     var contextWindowTokensProvider: (() -> Int?)?
     private var cachedRuntime: PreparedLlamaRuntime?
     private var selectedModelFilename: String?
+    private let modelTaskAssignments: LocalModelTaskAssignments
 
     /// Read-only view of the model currently selected for autocomplete generation. Used by
     /// downstream observers (the performance metrics recorder) that want to label a recorded
@@ -58,10 +59,12 @@ final class LlamaRuntimeManager: ObservableObject {
         configuration: LlamaRuntimeConfiguration,
         runtimeLocator: BundledRuntimeLocator,
         shutdownOperation: (@Sendable () -> Void)? = nil,
-        cacheResetOperation: (@Sendable () -> Void)? = nil
+        cacheResetOperation: (@Sendable () -> Void)? = nil,
+        modelTaskAssignments: LocalModelTaskAssignments? = nil
     ) {
         self.configuration = configuration
         self.runtimeLocator = runtimeLocator
+        self.modelTaskAssignments = modelTaskAssignments ?? LocalModelTaskAssignments()
         let runtimeCore = LlamaRuntimeCore()
         core = runtimeCore
         self.shutdownOperation = shutdownOperation ?? { runtimeCore.shutdown() }
@@ -73,7 +76,13 @@ final class LlamaRuntimeManager: ObservableObject {
     /// This is called after model downloads so selection UI updates without app restart.
     func refreshAvailableModels() {
         availableModels = runtimeLocator.availableModels(configuration: configuration)
-            .filter { LearningRuntimeCatalog.isCompletionCandidate(filename: $0.filename) }
+            .filter {
+                var tasks = modelTaskAssignments.tasks(for: $0.filename)
+                // An explicitly supplied runtime configuration is also an opt-in (used by
+                // embedded/test runtimes); ordinary discovery has only the curated preferences.
+                if configuration.preferredModelNames.contains($0.filename) { tasks.insert(.completion) }
+                return LocalModelTaskPolicy.isCandidate($0.filename, task: .completion, assignedTasks: tasks)
+            }
         selectedModelFilename = normalizedModelFilename(selectedModelFilename)
         LingroveLogger.runtime.info("Discovered \(self.availableModels.count) model(s)")
     }
@@ -81,6 +90,10 @@ final class LlamaRuntimeManager: ObservableObject {
     /// Records which discovered model should be loaded when preparation starts.
     /// This keeps persisted UI state separate from the runtime loading lifecycle.
     func configureSelectedModel(filename: String?) {
+        if let filename, modelTaskAssignments.record(filename, for: .completion),
+           !availableModels.contains(where: { $0.filename == filename }) {
+            refreshAvailableModels()
+        }
         selectedModelFilename = normalizedModelFilename(filename)
         LingroveLogger.runtime.info("Configured selected model: \(self.selectedModelFilename ?? "none")")
     }
@@ -93,6 +106,10 @@ final class LlamaRuntimeManager: ObservableObject {
     /// Reloads the runtime in place with a newly selected local model.
     /// The manager instance stays alive; only the loaded model changes.
     func selectModel(filename: String) async throws {
+        guard LocalModelTaskPolicy.supports(filename, task: .completion) else {
+            throw LlamaRuntimeError.unavailable(String(
+                localized: "This model is not compatible with this task. Choose another model.", table: "Learning"))
+        }
         LingroveLogger.runtime.info("Selecting model: \(filename)")
         guard let normalizedFilename = normalizedModelFilename(filename) else {
             let error = LlamaRuntimeError.unavailable(
@@ -365,6 +382,10 @@ final class LlamaRuntimeManager: ObservableObject {
 
     /// Resolves either the explicitly selected model or the default preferred model order.
     private func resolveSelectedRuntime() throws -> ResolvedLlamaRuntime {
+        if let selectedModelFilename, !LocalModelTaskPolicy.supports(selectedModelFilename, task: .completion) {
+            throw LlamaRuntimeError.unavailable(String(
+                localized: "This model is not compatible with this task. Choose another model.", table: "Learning"))
+        }
         do {
             guard let selectedModelFilename else {
                 throw LlamaRuntimeError.unavailable("No autocomplete GGUF model is available.")
@@ -385,6 +406,9 @@ final class LlamaRuntimeManager: ObservableObject {
     /// Validates the chosen filename against discovered local models and falls back to the first
     /// available option when the caller passes `nil` or a missing filename.
     private func normalizedModelFilename(_ filename: String?) -> String? {
+        if let filename, !filename.isEmpty, !LocalModelTaskPolicy.supports(filename, task: .completion) {
+            return filename
+        }
         guard !availableModels.isEmpty else {
             return nil
         }

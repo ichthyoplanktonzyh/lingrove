@@ -6,6 +6,11 @@ extension EngineAndModelPaneView {
     var openSourceSections: some View {
         Section(String(localized: "Model")) {
             Picker(selection: selectedModelBinding) {
+                if let filename = runtimeModel.selectedModelFilename,
+                   !runtimeModel.availableModels.contains(where: { $0.filename == filename }) {
+                    Text(LocalModelSelectionLabel.unavailable(filename, task: .completion))
+                        .tag(filename).selectionDisabled()
+                }
                 if runtimeModel.availableModels.isEmpty { Text(String(localized: "Choose a model", table: "Learning")).tag("") }
                 ForEach(runtimeModel.availableModels) { Text($0.displayName).tag($0.filename) }
             } label: {
@@ -26,6 +31,13 @@ extension EngineAndModelPaneView {
     }
 
     private var completionRuntimeStatus: String {
+        if let filename = runtimeModel.selectedModelFilename, !LocalModelTaskPolicy.supports(filename, task: .completion) {
+            return String(localized: "This model is not compatible with this task. Choose another model.", table: "Learning")
+        }
+        return completionStatus
+    }
+
+    private var completionStatus: String {
         switch runtimeModel.state {
         case .idle:
             if runtimeModel.selectedModelFilename == nil {
@@ -52,6 +64,7 @@ extension EngineAndModelPaneView {
                         }, delete: { pendingDeletionModel = model })
                 }
             }
+            UnassignedLocalModelsSection(downloads: modelDownloadManager, task: .completion)
             Section(String(localized: "Get models", table: "Learning")) {
                 DownloadableModelCatalogView(modelDownloadManager: modelDownloadManager, onRefreshModels: refreshModels)
                     .settingsItem(.downloadModels)

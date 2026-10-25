@@ -79,6 +79,9 @@ final class LingroveAppEnvironment {
             configuration: configuration,
             endpointCredentialStore: endpointCredentialStore
         )
+        // Settings registers both legacy power-profile custom models. Bootstrap's first scan
+        // precedes that migration, so refresh before power subscriptions can replay a profile.
+        runtimeModel.refreshAvailableModels()
         let interfaceLanguageSettings = InterfaceLanguageSettingsModel()
         let openAICompatibleClient = OpenAICompatibleAPIClient()
         let openAICompatibleConnectionModel = OpenAICompatibleConnectionModel(

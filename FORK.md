@@ -646,3 +646,58 @@ Validation on Xcode 26.5 / Apple Silicon:
 - Validation logs, lint comparisons and the application xcresult remain under gitignored
   `build/pr-879-*`. Repo-scoped DerivedData and the temporary harness build cache were removed
   after validation, and their absence was verified.
+
+
+## Task-specific model selection — 2026-10-24
+
+Local model settings now share product aliases for completion, translation, AI explanation and
+speech. The translation catalog uses Translate Nano/Base/Pro, explanation uses Explain Mini/Base,
+and speech uses Voice Mini/Base. Chinese UI uses the corresponding 拾语 task names. Technical
+filenames, quantization and source stay available behind a shared Model details disclosure.
+Saved filename IDs, download URLs, sizes, hashes, files, prompts and generation parameters are
+unchanged. External endpoint identifiers remain user supplied.
+
+A shared pure task policy filters each controller's candidate list and rejects incompatible saved
+choices before native preparation. Known completion, translation, explanation and speech catalog
+entries cannot acquire another task through import or assignment. Explanation additionally waits
+for automatic GGUF template metadata so a renamed translation specialist cannot warm up or run
+instruction requests. Async preflights recheck cancellation, configuration and live eligibility.
+
+The new local task-assignment preference records explicit custom-model use. Existing manual,
+battery and AC references are registered in their current task; incompatible curated choices
+remain saved and visible with an actionable warning. The composition root refreshes completion
+candidates after restoring legacy power profiles. Unreferenced custom or LM Studio files can be
+added through Custom models, and already-installed HF files offer Use for this task. All tasks
+continue sharing physical model storage; assigning a file does not copy or download it again.
+Successful downloads record actual provenance; imported files do not inherit stale source claims.
+
+Validation on Xcode 26.5 / Apple Silicon:
+
+- Prepared the pinned inference workspace and built the unsigned Debug application/tests.
+  An independent GPT-6 Luna Max reviewer ran 127 relevant tests (48 XCTest and 79 Swift Testing),
+  followed by 28 model-value XCTest cases: all passed, with no failures or skips. The initial
+  run exposed legacy fixture admission and speech error-precedence regressions; both were repaired
+  before the final independent runs. One outer shell wrapper failed after successful execution
+  because it used zsh's reserved `status` variable; the xcresult itself records Passed.
+- Chinese UI validation passed 3 Swift Testing methods with 7 parameterized cases. Native AppKit
+  hosting captured all four task catalogs plus collapsed/expanded metadata. An independent Luna
+  Max UI review and the parent inspected the images for readability and clipping; these are
+  component captures, not live full-app interaction acceptance.
+- Source hashes were checked before/after independent tests. Localization validation passed
+  1,558 keys across 3 tables and 15 languages; the 22 new Learning keys leave all existing entries
+  unchanged. Catalog identity comparisons confirmed unchanged filenames, URLs, sizes and hashes.
+- Strict production SwiftLint reports the same 91 inherited findings and none in changed files.
+  The baseline is unchanged; the separate lint cleanup PR is not included. `git diff --check`
+  and deterministic XcodeGen regeneration passed.
+- Model-backed quality evals and live AX/ghost-placement checks were not needed: prompting,
+  sampling, selected model identities and overlay placement were not changed. No live model
+  inference or full-app model-selection interaction was exercised by these fixtures.
+- Repo-scoped DerivedData and the temporary Swift module cache are removed after validation.
+  Reproducible logs, manifests, test result bundles and all captures remain in ignored
+  `build/model-task-ux/`.
+
+Chinese translation catalog and optional model details captured from the actual shared components:
+
+![Task-specific translation catalog](.github/assets/model-task-selection/translation-zh-Hans.png)
+
+![Optional model details and retained incompatible selection](.github/assets/model-task-selection/details-zh-Hans.png)

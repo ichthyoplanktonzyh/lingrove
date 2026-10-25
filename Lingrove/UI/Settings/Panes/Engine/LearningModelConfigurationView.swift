@@ -151,6 +151,7 @@ struct LearningModelConfigurationView: View {
     /// A saved choice does not mean the task has loaded native weights. Loading is intentionally
     /// deferred until a real request; the status makes that lifecycle visible without starting it.
     private var localStatus: String {
+        if let issue = controller.taskIssue(for: profile.snapshot.localModel, template: profile.snapshot.template) { return issue }
         if controller.status == String(localized: "Not loaded", table: "Learning"),
            controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {
             return String(localized: "Configured · loads on first use", table: "Learning")
@@ -164,13 +165,12 @@ struct LearningModelConfigurationView: View {
                 Text(String(localized: "Choose a model", table: "Learning")).tag("")
                 if !profile.snapshot.localModel.isEmpty,
                    !controller.availableModels.contains(where: { $0.filename == profile.snapshot.localModel }) {
-                    Text(String(localized: "\(profile.snapshot.localModel) (file unavailable)", table: "Learning"))
+                    Text(unavailableModelName(profile.snapshot.localModel))
                         .tag(profile.snapshot.localModel)
+                        .selectionDisabled()
                 }
                 ForEach(controller.availableModels) {
                     Text($0.displayName).tag($0.filename)
-                        .selectionDisabled(profile.role == .explanation && !LearningExplanationPolicy.supportsGeneralInstructions(
-                            model: $0.filename, template: .automatic))
                 }
             } label: {
                 SettingsRowLabel(title: String(localized: "Selected model", table: "Learning"),
@@ -180,6 +180,14 @@ struct LearningModelConfigurationView: View {
             .pickerStyle(.menu).disabled(profile.powerSwitchingEnabled).settingsItem(modelItem)
             LabeledContent(String(localized: "Model status", table: "Learning"), value: localStatus)
         }
+    }
+
+    func unavailableModelName(_ filename: String) -> String {
+        let name = LocalModelCatalog.displayName(for: filename)
+        if controller.taskIssue(for: filename) != nil {
+            return String(localized: "\(name) · not compatible with this task", table: "Learning")
+        }
+        return String(localized: "\(name) (file unavailable)", table: "Learning")
     }
 
     private var instructionTemplateSection: some View {
@@ -209,13 +217,16 @@ struct LearningModelConfigurationView: View {
                     }
                 }
             }
+            UnassignedLocalModelsSection(downloads: downloads, task: LocalModelTask(profile.role))
             Section(String(localized: "Get models", table: "Learning")) {
+                Text(String(localized: "Only models for this task are shown here.", table: "Learning"))
+                    .font(.caption).foregroundStyle(.secondary)
                 DownloadableModelCatalogView(modelDownloadManager: downloads, onRefreshModels: refreshModels,
                     catalog: profile.role == .translation ? LearningRuntimeCatalog.translationModels :
-                        LearningRuntimeCatalog.explanationModels)
+                        LearningRuntimeCatalog.explanationModels, task: LocalModelTask(profile.role))
                 if let searchService {
                     HuggingFaceModelBrowserView(searchService: searchService,
-                        modelDownloadManager: downloads, onRefreshModels: refreshModels)
+                        modelDownloadManager: downloads, onRefreshModels: refreshModels, task: LocalModelTask(profile.role))
                 }
             }
             ModelsFolderSection(downloads: downloads, refresh: refreshModels)

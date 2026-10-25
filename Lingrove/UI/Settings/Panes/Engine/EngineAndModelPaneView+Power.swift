@@ -60,6 +60,11 @@ extension EngineAndModelPaneView {
         selection: Binding<PowerProfile>
     ) -> some View {
         Picker(selection: selection) {
+            if case let .llama(filename) = selection.wrappedValue,
+               !filename.isEmpty, !runtimeModel.availableModels.contains(where: { $0.filename == filename }) {
+                Text(LocalModelSelectionLabel.unavailable(filename, task: .completion))
+                    .tag(selection.wrappedValue).selectionDisabled()
+            }
             if foundationModelAvailabilityService.isAvailable {
                 Text("Apple Intelligence").tag(PowerProfile.appleIntelligence)
             }

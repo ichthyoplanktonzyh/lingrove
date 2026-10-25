@@ -14,6 +14,7 @@ struct DownloadableModelCatalogView: View {
     var catalog: [DownloadableRuntimeModel]?
     var allowsImport = true
     var showsImportHint = true
+    var task: LocalModelTask = .completion
 
     var body: some View {
         VStack(spacing: 8) {
@@ -28,7 +29,7 @@ struct DownloadableModelCatalogView: View {
                 DownloadableModelRow(
                     model: model,
                     state: modelDownloadManager.state(for: model),
-                    onDownload: { modelDownloadManager.download(model) },
+                    onDownload: { modelDownloadManager.download(model, for: task) },
                     onPause: { modelDownloadManager.pause(model) },
                     onCancel: { modelDownloadManager.cancel(model) }
                 )
@@ -37,7 +38,7 @@ struct DownloadableModelCatalogView: View {
             HStack(spacing: 12) {
                 if allowsImport {
                     Button {
-                        modelDownloadManager.importModel()
+                        modelDownloadManager.importModel(for: task)
                         onRefreshModels()
                     } label: {
                         Label("Add Your Own", systemImage: "folder.badge.plus")
@@ -59,10 +60,13 @@ struct DownloadableModelCatalogView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if allowsImport && showsImportHint {
-                Text("Import any .gguf model from your computer.")
+                Text(String(localized: "Imported models are used only for this task.", table: "Learning"))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let issue = modelDownloadManager.importIssue(for: task) {
+                Text(issue).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -85,10 +89,6 @@ private struct DownloadableModelRow: View {
                     Text(model.displayName)
                         .font(.system(size: 13, weight: .medium))
 
-                    Text("(\(model.actualModelName))")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
                     if let recommendation = model.recommendation {
                         Text(recommendation)
                             .font(.system(size: 11))
@@ -99,6 +99,7 @@ private struct DownloadableModelRow: View {
                     Text(metadataText)
                         .font(.system(size: 11))
                         .foregroundStyle(statusColor)
+                    LocalModelDetailsView(filename: model.filename, source: model.downloadURL)
                 }
 
                 Spacer(minLength: 0)

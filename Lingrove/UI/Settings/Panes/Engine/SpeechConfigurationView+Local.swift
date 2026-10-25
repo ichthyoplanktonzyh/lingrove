@@ -14,8 +14,10 @@ extension SpeechConfigurationView {
                     if !speech.settings.localModelPath.isEmpty,
                        !SpeechModelPairingPolicy.isKnownDecoder(URL(fileURLWithPath: speech.settings.localModelPath).lastPathComponent),
                        !speech.availableLocalModels.contains(where: { $0.url.path == speech.settings.localModelPath }) {
-                        Text(URL(fileURLWithPath: speech.settings.localModelPath).lastPathComponent)
+                        Text(LocalModelSelectionLabel.unavailable(
+                            URL(fileURLWithPath: speech.settings.localModelPath).lastPathComponent, task: .speech))
                             .tag(speech.settings.localModelPath)
+                            .selectionDisabled()
                     }
                     ForEach(speech.availableLocalModels) { Text(SpeechModelCatalog.displayName(for: $0.filename)).tag($0.url.path) }
                 } label: {
@@ -52,9 +54,10 @@ extension SpeechConfigurationView {
                     }
                 }
             }
+            UnassignedLocalModelsSection(downloads: speech.modelDownloads, task: .speech)
             Section(String(localized: "Get models", table: "Learning")) {
                 DownloadableModelCatalogView(modelDownloadManager: speech.modelDownloads, onRefreshModels: refreshLocalModels,
-                    showsImportHint: false)
+                    showsImportHint: false, task: .speech)
             }
             ModelsFolderSection(downloads: speech.modelDownloads, refresh: speech.refreshLocalModels, allowsAdditionalSources: false)
         }
