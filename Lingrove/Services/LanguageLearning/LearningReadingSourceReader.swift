@@ -163,8 +163,15 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         guard capture.source == .selection else { return capture }
         try Task.checkCancellation()
         guard selection.isCurrent(capture), receipt?.id == capture.id else { throw CancellationError() }
-        guard capture.context?.isComplete != true, let bounds = capture.selectionBounds,
-              LearningReadingSelectionOCRPolicy.valid(bounds), CGPreflightScreenCaptureAccess() else { return capture }
+        guard capture.context?.isComplete != true else {
+            LearningReadingLog.emit(.selectionOCR, "complete-ax-context", requestID: capture.traceID); return capture
+        }
+        guard let bounds = capture.selectionBounds, LearningReadingSelectionOCRPolicy.valid(bounds) else {
+            LearningReadingLog.emit(.selectionOCR, "geometry-unavailable", requestID: capture.traceID); return capture
+        }
+        guard CGPreflightScreenCaptureAccess() else {
+            LearningReadingLog.emit(.selectionOCR, "screen-permission-missing", requestID: capture.traceID); return capture
+        }
         let id = revision, deadline = ProcessInfo.processInfo.systemUptime + 12
         do {
             let point = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -177,6 +184,9 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             var enriched = capture
             enriched.context = LearningReadingSelectionOCRPolicy.preferred(ax: capture.context,
                 visual: result?.context, expected: capture.text)
+            LearningReadingLog.emit(.selectionOCR,
+                enriched.context != capture.context ? "adopted" : result == nil ? "no-visual-context" : "retained-ax-context",
+                requestID: capture.traceID)
             receipt = enriched
             visualRegion = enriched.context != capture.context ? region : nil
             LingroveLogger.learning.info("Reading selection context resolved", metadata: [
@@ -187,6 +197,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             LearningVocabularyContextReader.log(enriched.context)
             return enriched
         } catch {
+            LearningReadingLog.emit(.selectionOCR, LearningReadingLog.failure(error), requestID: capture.traceID)
             try Task.checkCancellation()
             guard !(error is CancellationError), revision == id, selection.isCurrent(capture) else { throw CancellationError() }
             // OCR is optional enrichment. Missing pixels, ambiguous matches and native failures
@@ -230,6 +241,8 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 return PointedText(text: result.text, anchor: result.anchor, hint: result.context?.languageHint,
                     context: result.context, capturedAt: result.capturedAt, visualRegion: region)
             }
+        } else {
+            LearningReadingLog.emit(.pointerOCR, "screen-permission-missing", requestID: trace)
         }
         do {
             return try await Self.capturePointer(visual: visual, fallback: {
@@ -262,6 +275,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 guard validate() else { throw CancellationError() }
                 return result
             } catch {
+                LearningReadingLog.emit(.pointerOCR, LearningReadingLog.failure(error))
                 try Task.checkCancellation()
                 guard !(error is CancellationError), validate() else { throw CancellationError() }
                 failure = error

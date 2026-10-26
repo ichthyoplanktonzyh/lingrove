@@ -291,7 +291,12 @@ final class LearningReadingCoordinator {
         // ambiguous short words and technical labels must reach both lookup and translation.
         let source = resolution.language
         document = Document(capture: capture, sourceLanguage: source, targetLanguage: target, traceID: trace)
-        if beginLookup(capture, source: source, target: target) { return }
+        let decision = LearningReadingLookupPolicy.decision(capture, language: source)
+        LearningReadingLog.emit(.routing, decision.reason.rawValue, details: [
+            "reading_route": decision.capture == nil ? "translation" : "lookup",
+            "origin": capture.source.rawValue
+        ], requestID: trace)
+        if beginLookup(capture, targetCapture: decision.capture, target: target) { return }
         guard source != target else {
             document = nil
             showCaptureError(
@@ -348,9 +353,9 @@ final class LearningReadingCoordinator {
 
     /// Lookup owns its two-stage model work in the shared card session. This coordinator
     /// retains only capture eligibility and supplies the same stale-receipt guard as translation.
-    private func beginLookup(_ capture: LearningReadingSelection, source: LearningLanguage?, target: LearningLanguage) -> Bool {
+    private func beginLookup(_ capture: LearningReadingSelection, targetCapture: VocabularyCapture?, target: LearningLanguage) -> Bool {
         guard let lookupPanel = panel as? any LearningLookupPresenting,
-              let targetCapture = LearningReadingLookupPolicy.capture(capture, language: source) else { return false }
+              let targetCapture else { return false }
         document?.isLookup = true
         document?.generating = false
         work = nil

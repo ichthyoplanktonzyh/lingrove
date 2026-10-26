@@ -10,7 +10,8 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
         let bounds: CGRect
         let targetBounds: CGRect
     }
-    enum Alignment { case matched(Match), ambiguous, unavailable }
+    enum Unavailable: String { case invalidGeometry, budgetExceeded, noSpatialWords, noContextBlock, noAlignedOccurrence }
+    enum Alignment { case matched(Match), ambiguous, unavailable(Unavailable) }
 
     private struct Candidate {
         let match: Match
@@ -25,17 +26,23 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
 
     static func alignment(_ selection: LearningReadingSelection, extraction: ExtractedScreenText,
                           region: CGRect, pixels: CGSize) -> Alignment {
-        guard let bounds = selection.selectionBounds, valid(bounds), region.contains(bounds),
-              selection.text.utf16.count <= LearningReadingContextPolicy.maximumSelectionUTF16,
-              extraction.words.count <= 16_384 else { return .unavailable }
+        guard let bounds = selection.selectionBounds, valid(bounds), region.contains(bounds) else { return .unavailable(.invalidGeometry) }
+        guard selection.text.utf16.count <= LearningReadingContextPolicy.maximumSelectionUTF16,
+              extraction.words.count <= 16_384 else { return .unavailable(.budgetExceeded) }
         var occurrences: [String: Match] = [:], visited = Set<Int>()
+        var blockCount = 0
         let seeds = extraction.words.filter {
             LearningReadingVisualPolicy.screenRect($0.boundingBox, in: region).intersects(bounds)
         }
-        for word in seeds.prefix(64) {
+        guard !seeds.isEmpty else { return .unavailable(.noSpatialWords) }
+        // Silently truncating seeds could hide a second plausible occurrence. Keep the work
+        // bounded, but reject the alignment if we cannot inspect all spatial candidates.
+        guard seeds.count <= 64 else { return .unavailable(.budgetExceeded) }
+        for word in seeds {
             guard let index = word.lineIndex, visited.insert(index).inserted,
                   let block = LearningReadingOCRPolicy.block(word: word, lines: extraction.lines, imageSize: pixels),
                   let window = block.context?.window, (window.confidence ?? 1) >= 0.5 else { continue }
+            blockCount += 1
             for candidate in candidates(selection, block: block, window: window, extraction: extraction, region: region) {
                 let previous = occurrences[candidate.occurrence]
                 if previous == nil || candidate.match.context.text.utf16.count > (previous?.context.text.utf16.count ?? 0) {
@@ -44,7 +51,9 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
             }
         }
         if occurrences.count > 1 { return .ambiguous }
-        guard let match = occurrences.values.first else { return .unavailable }
+        guard let match = occurrences.values.first else {
+            return .unavailable(blockCount == 0 ? .noContextBlock : .noAlignedOccurrence)
+        }
         return .matched(match)
     }
 
@@ -71,7 +80,7 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
         let exact = canonical.occurrences(of: target).compactMap { range in
             candidate(selection, range: range, block: block, extraction: extraction, region: region)
         }
-        guard exact.isEmpty, selection.text.utf16.count <= 64, selection.text.allSatisfy(\.isLetter),
+        guard exact.isEmpty, target.utf16.count <= 64, target.allSatisfy(\.isLetter),
               let ax = selection.context, validTarget(ax, expected: selection.text), hasNeighbourEvidence(ax) else { return exact }
         // Highlight colours can corrupt the OCR spelling of precisely the word AX already
         // supplies. Recover only a spatially verified word with matching AX text on its sides;
@@ -106,7 +115,9 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
         let text = (window.text as NSString).replacingCharacters(in: range, with: selection.text)
         let aligned = LearningReadingWindow(text: text,
             target: NSRange(location: range.location, length: selection.text.utf16.count),
-            left: window.left, right: window.right, method: .selectionOCR, confidence: window.confidence)
+            left: window.left, right: window.right, method: .selectionOCR, confidence: window.confidence,
+            targetIntroducesLineBreaks: LearningReadingTargetPolicy.introducesLineBreaks(
+                (window.text as NSString).substring(with: range), selection.text))
         guard let context = LearningReadingContextPolicy.resolve(aligned, expected: selection.text) else { return nil }
         if requiresQuote {
             guard agrees(box, selectionBounds), let ax = selection.context, compatible(ax, context) else { return nil }

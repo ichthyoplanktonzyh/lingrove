@@ -41,6 +41,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication,
             let bundle = app.bundleIdentifier, app.processIdentifier != ProcessInfo.processInfo.processIdentifier
         else {
+            LearningReadingLog.emit(.axSelection, AXIsProcessTrusted() ? "app-unavailable" : "accessibility-permission-missing")
             throw LearningFailure.message(String(localized: "Selection is unavailable in this app.", table: "Learning"))
         }
         let roots = [
@@ -55,6 +56,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
                     AXHelper.owningApplication(of: element)?.processIdentifier == app.processIdentifier
                 else { break }
                 guard !sensitive(element) else {
+                    LearningReadingLog.emit(.axSelection, "sensitive-field")
                     throw LearningFailure.message(String(localized: "Sensitive fields cannot be translated.", table: "Learning"))
                 }
                 if let text = AXHelper.selectedReadingText(on: element), !text.isEmpty {
@@ -65,6 +67,8 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         }
         // No copy fallback: a fresh pasteboard count cannot prove ownership when the user or
         // another app copies concurrently. An unavailable AX selection remains unavailable.
+        LearningReadingLog.emit(.axSelection, ContinuousClock.now >= deadline ? "deadline-exhausted" : "selected-text-unavailable",
+            details: ["root_count": String(roots.count)])
         throw LearningFailure.message(String(localized: "This app did not provide selected text.", table: "Learning"))
     }
 
@@ -116,6 +120,9 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         let markers = AXReadingContext.selection(on: element)
         let bounds = AXHelper.readingSelectionBounds(on: element, range: range, markers: markers, expected: text)
             .flatMap { LearningReadingSelectionOCRPolicy.valid($0) ? $0 : nil }
+        LearningReadingLog.emit(.selectionGeometry, bounds == nil ? "geometry-unavailable" : "matched", details: [
+            "has_range": String(range != nil), "has_markers": String(markers != nil)
+        ])
         let rect = bounds ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
         let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text)
         // Context queries are cross-process reads too. Recheck the original range/marker pair

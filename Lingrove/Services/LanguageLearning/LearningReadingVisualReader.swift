@@ -25,6 +25,7 @@ struct LearningReadingVisualReader {
     private let capture: (CGRect, TimeInterval) async throws -> CGImage
     private let extract: (CGImage, TimeInterval) async throws -> ExtractedScreenText
     private let now: () -> TimeInterval
+    private let diagnose: (LearningReadingLog.Stage, String, [String: String]) -> Void
 
     init(runtime: OCRRuntime, capture: @escaping (CGRect, TimeInterval) async throws -> CGImage = {
         try await WindowScreenshotService().captureRegion($0, deadline: $1)
@@ -44,8 +45,12 @@ struct LearningReadingVisualReader {
 
     init(capture: @escaping (CGRect, TimeInterval) async throws -> CGImage,
          extract: @escaping (CGImage, TimeInterval) async throws -> ExtractedScreenText,
-         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+         diagnose: @escaping (LearningReadingLog.Stage, String, [String: String]) -> Void = {
+             LearningReadingLog.emit($0, $1, details: $2)
+         }) {
         self.capture = capture; self.extract = extract; self.now = now
+        self.diagnose = diagnose
     }
 
     func read(at point: CGPoint, bounds: CGRect, deadline suppliedDeadline: TimeInterval? = nil,
@@ -63,6 +68,7 @@ struct LearningReadingVisualReader {
         for region in regions {
             try checkCurrent(validate)
             guard now() < deadline else {
+                diagnose(.pointerOCR, "deadline-exhausted", ["ocr_passes": String(passes)])
                 if accepted != nil { break }
                 throw OCRRuntimeFailure.timedOut
             }
@@ -75,8 +81,11 @@ struct LearningReadingVisualReader {
                 if let candidate = candidate(extraction, point: point, region: crop.screen, pixels: crop.pixels.size) {
                     accepted = preferred(candidate, over: accepted)
                     if !candidate.needsExpansion { break }
+                } else {
+                    diagnose(.pointerOCR, "no-spatial-target", ["ocr_pass": String(passes)])
                 }
             } catch {
+                diagnose(.pointerOCR, LearningReadingLog.failure(error), ["ocr_pass": String(passes)])
                 try checkCurrent(validate)
                 if try canRetry(error, hasCandidate: accepted != nil) { continue }
                 break
@@ -94,7 +103,7 @@ struct LearningReadingVisualReader {
                        validate: () -> Bool) async throws -> Result? {
         try checkCurrent(validate)
         guard let selected = selection.selectionBounds, LearningReadingSelectionOCRPolicy.valid(selected), bounds.contains(selected)
-        else { return nil }
+        else { diagnose(.selectionOCR, "invalid-geometry", [:]); return nil }
         let image = try await capture(bounds, deadline)
         let capturedAt = Date()
         try checkCurrent(validate)
@@ -105,7 +114,9 @@ struct LearningReadingVisualReader {
         var accepted: LearningReadingSelectionOCRPolicy.Match?, passes = 0
         for region in first == bounds ? [first] : [first, bounds] {
             try checkCurrent(validate)
-            guard now() < deadline else { break }
+            guard now() < deadline else {
+                diagnose(.selectionOCR, "deadline-exhausted", ["ocr_passes": String(passes)]); break
+            }
             let crop = LearningReadingVisualPolicy.crop(region, frame: bounds, pixels: size)
             guard let pixels = image.cropping(to: crop.pixels) else { throw Failure.invalidFrame }
             passes += 1
@@ -114,13 +125,19 @@ struct LearningReadingVisualReader {
                 try checkCurrent(validate)
                 let alignment = LearningReadingSelectionOCRPolicy.alignment(selection, extraction: extraction,
                     region: crop.screen, pixels: crop.pixels.size)
-                if case .ambiguous = alignment { return nil }
+                logAlignment(alignment, extraction: extraction, pass: passes)
+                if case .ambiguous = alignment {
+                    return nil
+                }
                 if case .matched(let match) = alignment {
-                    if let previous = accepted, !sameSelectionOccurrence(previous.targetBounds, match.targetBounds) { return nil }
+                    if let previous = accepted, !sameSelectionOccurrence(previous.targetBounds, match.targetBounds) {
+                        diagnose(.selectionOCR, "occurrence-changed", ["ocr_pass": String(passes)]); return nil
+                    }
                     accepted = preferredSelection(match, over: accepted)
                     if match.context.isComplete || crop.screen.insetBy(dx: 28, dy: 28).contains(match.bounds) { break }
                 }
             } catch {
+                diagnose(.selectionOCR, LearningReadingLog.failure(error), ["ocr_pass": String(passes)])
                 try checkCurrent(validate)
                 if try canRetry(error, hasCandidate: accepted != nil) { continue }
                 break
@@ -129,6 +146,18 @@ struct LearningReadingVisualReader {
         try checkCurrent(validate)
         return accepted.map { Result(text: selection.text, anchor: selection.anchor,
             context: $0.context, capturedAt: capturedAt, passes: passes) }
+    }
+
+    private func logAlignment(_ alignment: LearningReadingSelectionOCRPolicy.Alignment,
+                              extraction: ExtractedScreenText, pass: Int) {
+        let reason: String
+        switch alignment {
+        case .matched: reason = "matched"
+        case .ambiguous: reason = "ambiguous-occurrence"
+        case .unavailable(let unavailable): reason = unavailable.rawValue
+        }
+        diagnose(.selectionOCR, reason, ["ocr_pass": String(pass),
+            "line_count": String(extraction.lines.count), "word_count": String(extraction.words.count)])
     }
 
     private func sameSelectionOccurrence(_ first: CGRect, _ second: CGRect) -> Bool {

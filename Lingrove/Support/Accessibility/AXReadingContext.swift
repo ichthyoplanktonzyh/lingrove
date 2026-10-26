@@ -17,6 +17,15 @@ enum AXReadingContext {
         value("AXSelectedTextMarkerRange", on: element)
     }
 
+    /// Browser selections often belong to the web area. A marker may still locate their leaf
+    /// even when paragraph/string-range queries fail; never substitute the current mouse hit.
+    static func selectedElement(on element: AXUIElement) -> AXUIElement? {
+        guard let receipt = selection(on: element), let endpoints = AXHelper.textMarkerEndpoints(from: receipt),
+              let result = parameter("AXUIElementForTextMarker", endpoints.start, on: element),
+              CFGetTypeID(result) == AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(result, to: AXUIElement.self)
+    }
+
     static func matches(_ saved: CFTypeRef, on element: AXUIElement) -> Bool {
         guard let current = selection(on: element),
               let left = AXHelper.textMarkerEndpoints(from: saved),
@@ -32,7 +41,10 @@ enum AXReadingContext {
             (explicitRange == nil ? selection(on: element) : nil)
         guard ContinuousClock.now < deadline, let receipt,
               let selected = AXHelper.textMarkerEndpoints(from: receipt),
-              expected.utf16.count <= LearningReadingContextPolicy.maximumSelectionUTF16 else { return [] }
+              expected.utf16.count <= LearningReadingContextPolicy.maximumSelectionUTF16 else {
+            LearningReadingLog.emit(.axMarkers, ContinuousClock.now >= deadline ? "deadline-exhausted" : "markers-unavailable")
+            return []
+        }
         var windows: [LearningReadingWindow] = []
         func append(_ candidate: CFTypeRef?, method: LearningReadingWindow.Method,
                     boundary: LearningReadingWindow.Boundary = .unknown) -> Bool {
@@ -77,7 +89,12 @@ enum AXReadingContext {
 
     private static func verified(_ windows: [LearningReadingWindow], receipt: CFTypeRef,
                                  on element: AXUIElement, selectionOnly: Bool) -> [LearningReadingWindow] {
-        selectionOnly && !matches(receipt, on: element) ? [] : windows
+        if selectionOnly && !matches(receipt, on: element) {
+            LearningReadingLog.emit(.axMarkers, "selection-changed"); return []
+        }
+        LearningReadingLog.emit(.axMarkers, windows.isEmpty ? "no-marker-candidates" : "candidates",
+            details: ["candidate_count": String(windows.count)])
+        return windows
     }
 
     private static func characterMarkers(_ range: NSRange, on element: AXUIElement) -> CFTypeRef? {
@@ -154,10 +171,12 @@ enum AXReadingContext {
               let selected = AXHelper.textMarkerEndpoints(from: selection),
               let prefix = markerRange(bounds.start, selected.start, on: element),
               let suffix = markerRange(selected.end, bounds.end, on: element),
-              let total = length(block.range, on: element), total >= expected.utf16.count,
-              let beforeCount = length(prefix, on: element), beforeCount <= total - expected.utf16.count,
+              let selectedLength = length(selection, on: element), selectedLength > 0,
+              selectedLength <= LearningReadingContextPolicy.maximumSelectionUTF16,
+              let total = length(block.range, on: element), total >= selectedLength,
+              let beforeCount = length(prefix, on: element), beforeCount <= total - selectedLength,
               let afterCount = length(suffix, on: element),
-              afterCount == total - expected.utf16.count - beforeCount else { return nil }
+              afterCount == total - selectedLength - beforeCount else { return nil }
         // Marker equality is not guaranteed at equivalent node-edge positions. Cap movement
         // by measured distance to the ancestor edge as well as by the global context budget.
         let walkDeadline = deadline.advanced(by: .milliseconds(-20))
@@ -172,7 +191,8 @@ enum AXReadingContext {
                 selection: selection, expected: expected, on: element, deadline: deadline) else { return nil }
         return .init(text: window.text, target: window.target,
             left: CFEqual(before, bounds.start) ? block.boundary : .crop,
-            right: CFEqual(after, bounds.end) ? block.boundary : .crop, method: .markerWalk)
+            right: CFEqual(after, bounds.end) ? block.boundary : .crop, method: .markerWalk,
+            targetIntroducesLineBreaks: window.targetIntroducesLineBreaks)
     }
 
     /// Chromium can confine a direct sentence query to an inline span. Boundary-marker pairs
@@ -198,18 +218,31 @@ enum AXReadingContext {
               let beforeLength = length(beforeRange, on: element), let afterLength = length(afterRange, on: element),
               beforeLength <= 1_024, afterLength <= 1_024, beforeLength + afterLength <= 1_024,
               let total = length(candidate.range, on: element),
-              total == beforeLength + expected.utf16.count + afterLength,
+              let selectedLength = length(selection, on: element), selectedLength > 0,
+              selectedLength <= LearningReadingContextPolicy.maximumSelectionUTF16,
+              total == beforeLength + selectedLength + afterLength,
               total <= LearningReadingContextPolicy.maximumSelectionUTF16 + 1_024,
-              ContinuousClock.now < deadline,
-              let before = string(beforeRange, maximum: 1_024, on: element),
+              ContinuousClock.now < deadline else {
+            LearningReadingLog.emit(.axMarkers, ContinuousClock.now >= deadline ? "deadline-exhausted" : "range-unverified",
+                details: ["method": candidate.method.rawValue])
+            return nil
+        }
+        guard let before = string(beforeRange, maximum: 1_024, on: element),
               ContinuousClock.now < deadline,
               let target = string(selection, maximum: LearningReadingContextPolicy.maximumSelectionUTF16, on: element),
               ContinuousClock.now < deadline, let after = string(afterRange, maximum: 1_024, on: element),
-              target.utf16.elementsEqual(expected.utf16), ContinuousClock.now < deadline,
+              ContinuousClock.now < deadline,
               let whole = string(candidate.range, maximum: total, on: element),
-              whole.utf16.elementsEqual((before + target + after).utf16) else { return nil }
-        return .init(text: whole, target: NSRange(location: before.utf16.count, length: target.utf16.count),
+              whole.utf16.elementsEqual((before + target + after).utf16) else {
+            LearningReadingLog.emit(.axMarkers, ContinuousClock.now >= deadline ? "deadline-exhausted" : "text-partition-mismatch",
+                details: ["method": candidate.method.rawValue])
+            return nil
+        }
+        let window = LearningReadingWindow(text: whole, target: NSRange(location: before.utf16.count, length: target.utf16.count),
             left: candidate.boundary, right: candidate.boundary, method: candidate.method)
+        let aligned = LearningReadingTargetPolicy.aligned(window, expected: expected)
+        LearningReadingLog.emit(.axMarkers, aligned == nil ? "target-mismatch" : "matched", details: ["method": candidate.method.rawValue])
+        return aligned
     }
 
     /// Each walk is restricted to an ancestor range, a call count, a character budget and a

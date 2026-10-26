@@ -141,6 +141,35 @@ struct LearningReadingSelectionOCRPolicyTests {
         #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
     }
 
+    @Test func highlightedWordWithSelectedWhitespaceKeepsExactTargetAndNeighbours() throws {
+        let extraction = fixture(["Earlier sentence. Keep your review hivory safely. Next sentence."])
+        let mistaken = try selected("hivory", from: extraction)
+        let selectedText = "history \n"
+        let quote = "your review history \n safely."
+        let selection = LearningReadingSelection(id: UUID(), text: selectedText, processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: mistaken.anchor,
+            context: LearningReadingContextPolicy.resolve(.init(text: quote,
+                target: (quote as NSString).range(of: selectedText), left: .crop, right: .crop, method: .markerWindow),
+                expected: selectedText), selectionBounds: mistaken.selectionBounds)
+        let match = try #require(LearningReadingSelectionOCRPolicy.match(selection,
+            extraction: extraction, region: region, pixels: pixels))
+        let context = match.context
+        #expect((context.window.text as NSString).substring(with: context.window.target).utf16.elementsEqual(selectedText.utf16))
+        #expect((context.text as NSString).substring(with: context.target) == "history")
+        #expect(context.text.contains("Keep your review") && context.text.contains("safely."))
+    }
+
+    @Test func unavailableAlignmentHasAContentFreeReason() throws {
+        let extraction = fixture(["Keep your history safe."])
+        var selection = try selected("history", from: extraction)
+        selection.selectionBounds = nil
+        if case .unavailable(.invalidGeometry) = LearningReadingSelectionOCRPolicy.alignment(selection,
+            extraction: extraction, region: region, pixels: pixels) {} else { Issue.record("Expected geometry reason") }
+        selection.selectionBounds = CGRect(x: region.minX + 850, y: region.minY + 100, width: 80, height: 24)
+        if case .unavailable(.noSpatialWords) = LearningReadingSelectionOCRPolicy.alignment(selection,
+            extraction: extraction, region: region, pixels: pixels) {} else { Issue.record("Expected hit-test reason") }
+    }
+
     @Test func quotedMisspelledWordsStillRejectAmbiguousOverlappingOccurrences() throws {
         let raw = fixture(["Keep your review hivory safely. Keep your review hivory safely."])
         let sameBox = try #require(raw.words.first { $0.text == "hivory" }?.boundingBox)

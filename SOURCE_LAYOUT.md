@@ -963,6 +963,28 @@ neither spelling similarity nor text elsewhere on the page establishes a match.
 Complete AX context wins; OCR may extend a compatible fragment without contradicting its known
 neighbours. Missing geometry, pixels or a reliable match retain the original AX receipt.
 
+`LearningReadingTargetPolicy` reconciles whitespace/NFC variants only inside an already anchored
+AX range. It copies authoritative selected code units and recomputes the range length before the
+strict context validator runs; it never searches for a replacement occurrence. If that copy adds
+line breaks absent from the range, `LearningReadingWindow.targetIntroducesLineBreaks` masks only
+those target line breaks for sentence tokenization with identical UTF-16 widths. Stored originals
+and actual paragraph breaks remain intact. The same rule covers AX/OCR alignment, including
+selected trailing whitespace around a highlighted word.
+
+`AXReadingSelectedBlock` is a bounded whole-material fallback when range/marker context is absent
+or an entire selection still has unverified block boundaries.
+It verifies the complete text of a nearby semantic heading/cell/paragraph, with a shared deadline,
+node/character limits and a size check before reading any value. Unknown sizes, failed children,
+inline-only wrappers and partial selections supply no block proof. It retains unverified sentence
+completeness while permitting the existing translation route for a whole multiword block.
+`LearningReadingLookupPolicy.Decision` separates that routing evidence from linguistic completeness.
+
+`LearningReadingLog` correlates content-free acquisition and routing reasons with `request_id`:
+AX capabilities/ranges/partitions, selection geometry, OCR permission/timeout/match ambiguity and
+the final lookup/translation choice. Native errors are mapped to fixed codes, never localized
+strings or captured text. The visual reader accepts a diagnostic closure for regression assertions;
+the app uses the ordinary structured logger. No additional settings or card UI is involved.
+
 `LearningSelectionAffordancePresenting` is the coordinator's narrow presentation seam. The existing
 nonactivating selection button shows progress during explicit preparation, and cancellation retires
 both it and the pending receipt. Context is chosen before the existing single basic lookup or
