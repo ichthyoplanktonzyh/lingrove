@@ -16,6 +16,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         let range: NSRange?
         let markers: CFTypeRef?
         let focusedElement: AXUIElement?
+        let windowFrame: CGRect?
     }
     private var evidence: Evidence?
     private var observer: AXObserver?
@@ -84,12 +85,17 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
                 let focused = AXHelper.elementValue(
                     for: kAXFocusedWindowAttribute as CFString,
                     on: AXUIElementCreateApplication(capture.processIdentifier)),
-                CFEqual(previous, focused)
+                CFEqual(previous, focused), AXHelper.accessibilityFrame(of: previous) == evidence.windowFrame
             else { return false }
         }
         let range = AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: evidence.element)
         guard range == evidence.range else { return false }
         if let markers = evidence.markers, !AXReadingContext.matches(markers, on: evidence.element) { return false }
+        if let bounds = evidence.receipt.selectionBounds,
+           AXHelper.readingSelectionBounds(on: evidence.element, range: range,
+               markers: evidence.markers, expected: capture.text) != bounds {
+            return false
+        }
         if let text = AXHelper.selectedReadingText(on: evidence.element) { return text.utf16.elementsEqual(capture.text.utf16) }
         return false
     }
@@ -108,16 +114,9 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         let focusedElement = AXHelper.focusedElement(forApplicationPID: app.processIdentifier)
         let range = AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: element)
         let markers = AXReadingContext.selection(on: element)
-        let bounds = range.flatMap {
-            AXHelper.parameterizedRectValue(for: kAXBoundsForRangeParameterizedAttribute as CFString, range: $0, on: element)
-        }
-        let rect =
-            bounds.flatMap { value -> CGRect? in
-                guard value.width.isFinite, value.height.isFinite, value.minX.isFinite, value.minY.isFinite,
-                    value.height > 0, value.width > 0
-                else { return nil }
-                return AXHelper.cocoaRect(fromAccessibilityRect: value)
-            } ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
+        let bounds = AXHelper.readingSelectionBounds(on: element, range: range, markers: markers, expected: text)
+            .flatMap { LearningReadingSelectionOCRPolicy.valid($0) ? $0 : nil }
+        let rect = bounds ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
         let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text)
         // Context queries are cross-process reads too. Recheck the original range/marker pair
         // before freezing it; equal spelling at a different occurrence is a different receipt.
@@ -126,11 +125,12 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
               AXHelper.selectedReadingText(on: element)?.utf16.elementsEqual(text.utf16) == true else { throw CancellationError() }
         let receipt = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
-            bundleIdentifier: bundle, anchor: rect, context: context, traceID: LearningRequestTrace.requestID)
+            bundleIdentifier: bundle, anchor: rect, context: context, traceID: LearningRequestTrace.requestID,
+            selectionBounds: bounds)
         evidence = Evidence(
             receipt: receipt, element: element, window: window,
             range: range, markers: markers,
-            focusedElement: focusedElement)
+            focusedElement: focusedElement, windowFrame: window.flatMap { AXHelper.accessibilityFrame(of: $0) })
         guard isCurrent(receipt) else { forget(); throw CancellationError() }
         observeSelection(element, pid: app.processIdentifier)
         return receipt

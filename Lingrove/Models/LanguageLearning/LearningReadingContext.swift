@@ -9,7 +9,7 @@ nonisolated struct LearningReadingWindow: Equatable, Sendable {
         var isComplete: Bool { self == .container || self == .sentence }
     }
     enum Method: String, Sendable {
-        case characters, block, paragraph, sentence, markerWindow, markerWalk, ocr
+        case characters, block, paragraph, sentence, markerWindow, markerWalk, ocr, selectionOCR
     }
     let text: String
     let target: NSRange

@@ -10,6 +10,82 @@ struct LearningReadingVisualReaderTests {
     private let bounds = CGRect(x: -1000, y: 900, width: 1000, height: 600)
     private let pointer = CGPoint(x: -500, y: 1200)
 
+    @Test func selectionEnrichmentUsesOneFrameAndKeepsTheOriginalTarget() async throws {
+        var captures = 0, passes = 0
+        let selected = CGRect(x: pointer.x - 20, y: pointer.y - 10, width: 40, height: 20)
+        let selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: selected, selectionBounds: selected)
+        let reader = LearningReadingVisualReader(capture: { _, _ in captures += 1; return try image() }, extract: { image, _ in
+            passes += 1
+            return extraction(expanded: passes == 2, size: CGSize(width: image.width, height: image.height))
+        })
+        let result = try #require(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }))
+        #expect(captures == 1 && passes == 2 && result.text == selection.text && result.anchor == selection.anchor)
+        #expect(result.context?.text.trimmingCharacters(in: .whitespacesAndNewlines) == "We preserve your history.")
+    }
+
+    @Test func missingSelectionGeometryDoesNotCaptureAndStaleEnrichmentDoesNotPublish() async throws {
+        var calls = 0, current = true
+        var selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: CGRect(origin: pointer, size: CGSize(width: 1, height: 18)))
+        let reader = LearningReadingVisualReader(capture: { _, _ in calls += 1; return try image() }, extract: { image, _ in
+            current = false
+            return extraction(expanded: true, size: CGSize(width: image.width, height: image.height))
+        })
+        #expect(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }) == nil)
+        #expect(calls == 0)
+        selection.selectionBounds = CGRect(x: pointer.x - 20, y: pointer.y - 10, width: 40, height: 20)
+        await #expect(throws: CancellationError.self) {
+            try await reader.readSelection(selection, bounds: bounds,
+                deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { current })
+        }
+        #expect(calls == 1)
+    }
+
+    @Test func anAmbiguousExpandedSelectionCannotKeepTheEarlierCandidate() async throws {
+        var calls = 0
+        let selected = CGRect(x: pointer.x - 20, y: pointer.y - 10, width: 40, height: 20)
+        let selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: selected, selectionBounds: selected)
+        let reader = LearningReadingVisualReader(capture: { _, _ in try image() }, extract: { image, _ in
+            calls += 1
+            let size = CGSize(width: image.width, height: image.height)
+            let box = CGRect(x: 0.5 - 20 / size.width, y: 0.5 - 10 / size.height, width: 40 / size.width, height: 20 / size.height)
+            let text = "history history remains."
+            let words = (calls == 1 ? [0] : [0, 8]).map { offset in
+                ScreenTextWord(text: "history", boundingBox: box, lineIndex: 0,
+                    utf16Location: offset, utf16Length: 7, confidence: 1)
+            }
+            return ExtractedScreenText(text: text, lineCount: 1,
+                lines: [.init(text: text, confidence: 1, boundingBox: CGRect(x: 0, y: 0.48, width: 1, height: 0.04))], words: words)
+        })
+        #expect(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }) == nil)
+        #expect(calls == 2)
+    }
+
+    @Test func twoIndividuallyPlausibleCropsMustAgreeOnTheSameScreenOccurrence() async throws {
+        var calls = 0
+        let box = CGRect(x: pointer.x - 20, y: pointer.y - 10, width: 40, height: 20)
+        let selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: box, selectionBounds: box)
+        let reader = LearningReadingVisualReader(capture: { _, _ in try image() }, extract: { image, _ in
+            calls += 1
+            let size = CGSize(width: image.width, height: image.height)
+            let data = extraction(expanded: calls == 2, size: size)
+            let words = data.words.map { word in
+                ScreenTextWord(text: word.text, boundingBox: word.boundingBox.offsetBy(dx: calls == 2 ? 13 / size.width : 0, dy: 0),
+                    lineIndex: word.lineIndex, utf16Location: word.utf16Location, utf16Length: word.utf16Length, confidence: 1)
+            }
+            return ExtractedScreenText(text: data.text, lineCount: data.lineCount, lines: data.lines, words: words)
+        })
+        #expect(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }) == nil)
+        #expect(calls == 2)
+    }
+
     @Test func pointerRoutePrefersOCRAndRetainsAXWhenCaptureIsUnavailableOrFails() async throws {
         let hit = LearningReadingSourceReader.PointedText(text: "history", anchor: .zero, hint: nil, context: nil)
         var axCalls = 0

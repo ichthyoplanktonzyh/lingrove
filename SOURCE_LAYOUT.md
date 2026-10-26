@@ -928,7 +928,27 @@ explicit region reading, it does not disable user-triggered pixel capture. Missi
 permission still allows available AX lookup. Host scroll/typing/app-switch cancellation and reader
 revisions prevent a retired OCR request from launching an AX fallback. The pointer is frozen at
 trigger time; moving it towards the card does not cancel the request. Dynamic content is interpreted
-as the captured frame, not a continuously tracked video/text session. Selection remains AX-first.
+as the captured frame, not a continuously tracked video/text session.
+
+Explicit selections keep AX text, range/marker identity and verified geometry in
+`LearningReadingSelection`. Passive selection capture remains fast; only a shortcut or selection
+button action calls `LearningReadingSelecting.enrich`. `LearningReadingSourceReader` asks the same
+visual reader for optional context when AX context is incomplete and Screen Recording is already
+available. `LearningReadingSelectionOCRPolicy` aligns the exact selection with OCR source offsets
+and screen geometry, normalizing whitespace/NFC only for comparison. The selected UTF-16 text is
+copied from AX. A coarse Chromium inline-run rectangle requires matching adjacent AX text and one
+unique OCR occurrence; a page/field frame or a mouse anchor cannot establish that match. Independent
+crops must agree on the target's glyph location, and ambiguity discards the visual candidate.
+If selection highlighting corrupts a single OCR word, a precise glyph hit and exact known AX
+neighbours may align it to the AX original. A coarse run rectangle cannot use this recovery path;
+neither spelling similarity nor text elsewhere on the page establishes a match.
+Complete AX context wins; OCR may extend a compatible fragment without contradicting its known
+neighbours. Missing geometry, pixels or a reliable match retain the original AX receipt.
+
+`LearningSelectionAffordancePresenting` is the coordinator's narrow presentation seam. The existing
+nonactivating selection button shows progress during explicit preparation, and cancellation retires
+both it and the pending receipt. Context is chosen before the existing single basic lookup or
+translation request; detailed explanation remains a separate user-triggered request.
 
 `LingroveTests/Fixtures/Reading/ocr.html?case=history` is the browser pixel-replay fixture, with
 supported/table/columns/repeated/small/mixed/cropped cases. Save viewport PNGs and a `manifest.json`
@@ -937,3 +957,7 @@ array containing `name,width,height,x,y,target` (CSS viewport size and target ce
 `ReadingOCRScreenshotTests`. Controlled native-rendering fixtures and callback/queue/lifecycle
 tests run normally. Pixel replay covers OCR/layout, not ScreenCaptureKit window selection; inspect
 the `reading_route`, `ocr_passes` and context trace in a live Dev acceptance as well.
+Selection replay also covers multiline and deeply nested link cases. Its manifest adds
+`selectionWidth,selectionHeight` to the target centre, measured independently from the browser's
+selected range. Set `LINGROVE_SELECTION_OCR_SCREENSHOTS` and
+`TEST_RUNNER_LINGROVE_SELECTION_OCR_SCREENSHOTS` to its directory to exercise highlighted screenshots.

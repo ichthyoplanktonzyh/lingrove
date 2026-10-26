@@ -5,6 +5,7 @@ section{display:none}section.active{display:block}p{max-width:760px}a{color:#1c6
 .columns{display:grid;grid-template-columns:400px 400px;gap:80px}.small{font-size:11px;max-width:500px}
 table{border-collapse:collapse}td{border:1px solid #aaa;padding:22px 30px;min-width:220px}
 .clip{height:34px;overflow:hidden}.clip p{margin:0;transform:translateY(-30px)}
+button{display:block;margin-top:56px;padding:10px;font:14px system-ui}
 </style>
 <main><h1>Reading fixture</h1>
 <section id="history"><p>Preview recognition and cloze/gap cards, attach generated TTS audio, and send or batch-update notes directly to Anki Desktop via <a href="#history">AnkiConnect</a> while preserving your review <span data-target>history</span>.</p></section>
@@ -15,8 +16,15 @@ table{border-collapse:collapse}td{border:1px solid #aaa;padding:22px 30px;min-wi
 <section id="small"><p class="small">Earlier sentence. Keep your review <span data-target>history</span> safe when transferring cards to another device. Another sentence follows.</p></section>
 <section id="mixed"><p>我们正在学习英文。Keep your review <span data-target>history</span> safe. 下一句。</p></section>
 <section id="cropped"><div class="clip"><p>The hidden main clause is outside this visible region,<br>while preserving your review <span data-target>history</span>.</p></div></section>
+<section id="multiline"><p style="width:360px">Earlier sentence. We preserve <span data-target>your review history</span> when transferring cards between devices. Another sentence follows.</p></section>
+<section id="deep-history"><p>Preview recognition and cloze/gap cards, attach generated TTS audio, and send or batch-update notes directly to Anki Desktop via <a href="#deep-history">AnkiConnect</a><span id="nested-context"></span></p></section>
+<button id="select-target">Select target</button>
 </main>
 <script>
+let nested=document.getElementById('nested-context');
+for(let i=0;i<12;i++){const group=document.createElement('span');group.setAttribute('role','group');nested.append(group);nested=group;}
+nested.append(' while preserving your review ');const word=document.createElement('span');word.dataset.target='';word.textContent='history';nested.append(word,'.');
 const name=new URLSearchParams(location.search).get('case')||'history';
 (document.getElementById(name)||document.getElementById('history')).classList.add('active');
+document.getElementById('select-target').onclick=()=>{const range=document.createRange();range.selectNodeContents(document.querySelector('section.active [data-target]'));const selected=getSelection();selected.removeAllRanges();selected.addRange(range);};
 </script></html>
