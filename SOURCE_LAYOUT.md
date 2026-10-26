@@ -433,7 +433,7 @@ The autocomplete inference package and its revision remain separate.
 ## Vocabulary notebook
 
 `Models/Vocabulary` owns durable expressions, stable senses, examples with UTF-16 spans, meaning ownership,
-and schema-v3 portable snapshots. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
+and versioned portable snapshots. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
 `Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
 `VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
@@ -530,8 +530,8 @@ are never sent to the model. The prompt permits uncertainty and general senses w
 `Services/LanguageLearning/LearningExplanationService.swift` borrows the independent explanation
 controller from `LearningModelCollection`, shares request telemetry and bounds its completed cache.
 Each card or saved usage owns a lightweight `LearningExplanationSession` for cancellation and stale
-replies. An explicit non-sentence lookup opens the contextual page and starts one explanation;
-the dictionary page is lazy, and tabs/source changes never restart stopped AI work. Whole-sentence
+replies. An explicit non-sentence lookup opens the contextual page and starts one explanation when
+AI is configured; otherwise it opens the dictionary directly. Tabs/source changes never restart stopped AI work. Whole-sentence
 explanations and notebook generation remain explicit, with no typing observer or background queue.
 
 `UI/InlineFeatures/LearningExplanationView.swift` presents the same result/actions in dictionary,
@@ -795,7 +795,7 @@ any generation. `LearningReadingCoordinator` supplies receipt validation to `Lea
 surface with the same nonactivating window, popup ownership and dismissal boundary. Complete
 sentence and whole screen-region translation retain the existing translator. Pointer OCR uses
 a bounded block of adjacent aligned lines, retaining uncertain outer boundaries. The shared explanation view requests details only on
-expansion; the dictionary tab remains lazy and does not restart a stopped model task.
+expansion; the dictionary tab remains lazy when AI is configured and does not restart a stopped model task.
 
 ## Reading Context Acquisition
 
@@ -829,6 +829,28 @@ compatibility prevents a surrounding Chinese sentence from relabelling a selecte
 Recognition remains bounded and unconstrained by the supported palette, so unknown or unsupported
 languages are never silently replaced with English or the reading target language. The coordinator
 logs only the chosen language, evidence source and input lengths.
+
+Source recognition is advisory for explicit reading. `LearningExplanationInput.language`, reading
+presentations and vocabulary captures carry an optional source; response and translation languages
+remain concrete. Unknown sources reach the existing model with the selected text, verified context
+and target language, omitting the source-language field. Generic and TranslateGemma adapters use
+target-only instructions; the known-source templates remain unchanged. Automatic writing eligibility
+still requires a configured source language, so this does not broaden background generation.
+
+`LearningDictionarySession` opens the dictionary directly when no AI is configured and keeps it
+available during or after failed AI work. Unknown-source lookup searches enabled local dictionaries
+without an entry-language filter. Online sources remain explicitly selectable, but are not added to
+automatic lookup for an unknown source; only the query reaches an explicitly selected online source.
+Cache keys distinguish unknown source (`und`) from every concrete language. Speech resolves its own
+optional hint; a voice-resolution failure does not block the dictionary or model result.
+
+Saving an unknown-source capture keeps its language absent in JSON and uses `und` only in SQL
+identity/index columns and CSV/TXT interchange. Known-only notebook snapshots remain version 3;
+snapshots containing unknown-source entries use version 4. The SQLite table schema is unchanged.
+Portable learning exports similarly retain version 1 for known-only data and use version 2 when
+source language is absent. CSV import recognizes explicit `und` without applying the default language.
+The existing archive remains the sole persistence boundary, and removing the last unknown entry
+restores the known-only snapshot version.
 
 ## Reading Evidence And Block Reconstruction
 

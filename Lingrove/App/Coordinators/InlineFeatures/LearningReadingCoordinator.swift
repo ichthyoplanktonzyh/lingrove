@@ -41,7 +41,7 @@ final class LearningReadingCoordinator {
     /// a late translation task from mixing languages or results from different selections.
     private struct Document {
         let capture: LearningReadingSelection
-        let sourceLanguage: LearningLanguage
+        let sourceLanguage: LearningLanguage?
         let targetLanguage: LearningLanguage
         let traceID: String
         var isLookup = false
@@ -272,12 +272,9 @@ final class LearningReadingCoordinator {
             "context_method": .string(capture.context?.window.method.rawValue ?? "unavailable"),
             "context_complete": .stringConvertible(capture.context?.isComplete ?? false)
         ])
-        guard let source = resolution.language else {
-            showCaptureError(
-                LearningFailure.message(
-                    String(localized: "Could not identify the text language. Try a larger text region.", table: "Learning")))
-            return
-        }
+        // Source detection is advisory. Exact capture validation still gates the request, but
+        // ambiguous short words and technical labels must reach both lookup and translation.
+        let source = resolution.language
         document = Document(capture: capture, sourceLanguage: source, targetLanguage: target, traceID: trace)
         if beginLookup(capture, source: source, target: target) { return }
         guard source != target else {
@@ -336,7 +333,7 @@ final class LearningReadingCoordinator {
 
     /// Lookup owns its two-stage model work in the shared card session. This coordinator
     /// retains only capture eligibility and supplies the same stale-receipt guard as translation.
-    private func beginLookup(_ capture: LearningReadingSelection, source: LearningLanguage, target: LearningLanguage) -> Bool {
+    private func beginLookup(_ capture: LearningReadingSelection, source: LearningLanguage?, target: LearningLanguage) -> Bool {
         guard let lookupPanel = panel as? any LearningLookupPresenting,
               let targetCapture = LearningReadingLookupPolicy.capture(capture, language: source) else { return false }
         document?.isLookup = true
@@ -437,7 +434,7 @@ final class LearningReadingCoordinator {
         work = nil
         panel.show(
             .init(
-                id: UUID(), source: "", translation: "", sourceLanguage: .english,
+                id: UUID(), source: "", translation: "", sourceLanguage: nil,
                 targetLanguage: service.settings.languageLearning.readingTargetLanguage,
                 caret: CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18)),
                 isExpanded: false, isGenerating: false, message: error.localizedDescription, previousTranslation: nil,

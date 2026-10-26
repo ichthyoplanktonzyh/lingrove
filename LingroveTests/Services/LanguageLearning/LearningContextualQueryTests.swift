@@ -51,17 +51,15 @@ struct LearningContextualQueryTests {
         let unit = LearningUnit(id: 0, surface: "know", query: "know", kind: .word,
             ranges: [NSRange(location: 0, length: 4)], words: [])
         session.open(unit, documentID: UUID(), language: .english)
-        #expect(session.page == .contextual && !session.explanation.isGenerating && explainer.pending.isEmpty)
-        session.selectPage(.dictionary)
+        #expect(session.page == .dictionary && !session.explanation.isGenerating && explainer.pending.isEmpty)
         await settle { session.content != .loading }
         #expect(await provider.calls == 1)
     }
 
     @Test func queuedTabNavigationCannotAffectAReopenedIdenticalQuery() async {
         let provider = QueryDictionary(), explainer = QueryExplainer()
-        explainer.isConfigured = false
         let session = LearningDictionarySession(provider: provider, explanationService: explainer)
-        defer { session.close() }
+        defer { session.close(); explainer.finishAll() }
         let unit = LearningUnit(id: 0, surface: "know", query: "know", kind: .word,
             ranges: [NSRange(location: 0, length: 4)], words: [])
         let documentID = UUID()
@@ -91,7 +89,7 @@ struct LearningContextualQueryTests {
 
 private actor QueryDictionary: LearningDictionaryProviding {
     var calls = 0
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls += 1
         return .systemText("Live dictionary result")

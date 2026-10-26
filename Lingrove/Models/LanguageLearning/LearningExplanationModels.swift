@@ -11,7 +11,8 @@ nonisolated enum LearningExplanationContext: String, Codable, Hashable, Sendable
 nonisolated struct LearningExplanationInput: Codable, Equatable, Hashable, Sendable {
     let target: String
     let dictionaryForm: String
-    let language: LearningLanguage
+    /// A hint about the study material, never a prerequisite or the response language.
+    let language: LearningLanguage?
     let kind: VocabularyEntry.Kind
     let context: String
     let ranges: [VocabularyTextRange]
@@ -20,7 +21,7 @@ nonisolated struct LearningExplanationInput: Codable, Equatable, Hashable, Senda
     /// This receipt stays local and is never included in the model prompt.
     let occurrenceIdentity: String?
 
-    init(target: String, dictionaryForm: String, language: LearningLanguage, kind: VocabularyEntry.Kind,
+    init(target: String, dictionaryForm: String, language: LearningLanguage?, kind: VocabularyEntry.Kind,
          context: String, ranges: [VocabularyTextRange], contextKind: LearningExplanationContext = .fragment,
          occurrenceIdentity: String? = nil) {
         self.target = target; self.dictionaryForm = dictionaryForm; self.language = language; self.kind = kind

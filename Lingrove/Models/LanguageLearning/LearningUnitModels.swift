@@ -65,7 +65,7 @@ nonisolated protocol LearningUnitRecognizing: Sendable {
 }
 
 nonisolated protocol LearningDictionaryProviding: Sendable {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult
     func resource(_ path: String, libraryID: UUID, configuration: LearningDictionaryConfiguration) async throws -> DictionaryResource?
 }

@@ -7,7 +7,8 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     var expression: String
     var dictionaryForm: String
-    let language: LearningLanguage
+    /// Unknown source metadata stays nil; saving must never relabel a homograph as English.
+    let language: LearningLanguage?
     let kind: Kind
     var senses: [VocabularySense]
     let createdAt: Date
@@ -110,7 +111,8 @@ nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
 nonisolated struct VocabularyCapture: Equatable, Sendable {
     let expression: String
     let dictionaryForm: String
-    let language: LearningLanguage
+    /// Unknown source metadata stays nil; saving must never relabel a homograph as English.
+    let language: LearningLanguage?
     let kind: VocabularyEntry.Kind
     var meaning = ""
     var meaningLanguage: LearningLanguage?
@@ -129,9 +131,15 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
 /// stores its entities separately; this version describes the portable representation only.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    var schemaVersion = 3
-    var entries: [VocabularyEntry] = []
+    var schemaVersion: Int
+    var entries: [VocabularyEntry]
     var reviewTemplates: [ReviewLayoutTemplate]?
+
+    init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil) {
+        self.schemaVersion = schemaVersion ?? (entries.contains { $0.language == nil } ? 4 : 3)
+        self.entries = entries
+        self.reviewTemplates = reviewTemplates
+    }
 }
 
 nonisolated struct VocabularySnapshot: Sendable {

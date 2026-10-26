@@ -13,7 +13,7 @@ actor LearningDictionaryRouter: LearningDictionaryProviding {
         self.mdict = mdict
     }
 
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         try Task.checkCancellation()
         guard DictionaryContentPolicy.validQuery(query), configuration.sources(for: language).contains(source) else { return .notFound }
@@ -26,7 +26,7 @@ actor LearningDictionaryRouter: LearningDictionaryProviding {
             guard let library = configuration.libraries.first(where: { $0.source == source }) else { return .notFound }
             return try await mdict.lookup(query, library: library)
         case .online:
-            guard language == .english else { return .notFound }
+            guard language == nil || language == .english else { return .notFound }
             return try await online.lookup(query)
         case .website:
             guard let website = configuration.websites.first(where: { $0.source == source }),
@@ -35,7 +35,7 @@ actor LearningDictionaryRouter: LearningDictionaryProviding {
         }
     }
 
-    private func systemLookup(_ query: String, language: LearningLanguage, expression: Bool,
+    private func systemLookup(_ query: String, language: LearningLanguage?, expression: Bool,
                               configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         if var article = try? await system.lookup(query, language: language,
                                                   definitionLanguage: configuration.preferredDefinitionLanguage) {

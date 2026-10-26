@@ -129,7 +129,7 @@ private final class LearningPreviewExplainer: LearningLookupGenerating {
 /// no system DCS helper, website, downloaded dictionary or endpoint is queried from Canvas.
 private nonisolated struct LearningPreviewDictionary: LearningDictionaryProviding {
     let state: LearningCardPreviewState
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         if state == .loading { try await Task.sleep(for: .seconds(3_600)) }
         try Task.checkCancellation()

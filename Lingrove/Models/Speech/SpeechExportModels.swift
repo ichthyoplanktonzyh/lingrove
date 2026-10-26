@@ -5,7 +5,7 @@ import Foundation
 @MainActor
 protocol SpeechExporting: AnyObject {
     var exportConfigurationID: String { get }
-    func exportRequest(text: String, language: LearningLanguage, context: String?) throws -> SpeechExportRequest
+    func exportRequest(text: String, language: LearningLanguage?, context: String?) throws -> SpeechExportRequest
     func exportAudio(_ request: SpeechExportRequest) async throws -> SpeechExportAudio
     func audition(_ audio: SpeechExportAudio, ownerID: UUID, language: LearningLanguage) throws
     func stop(ownerID: UUID)

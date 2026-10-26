@@ -135,7 +135,7 @@ struct DictionarySourceInteractionTests {
 }
 
 private actor SourceInteractionDictionary: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool, source: LearningDictionarySource,
                 configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .systemText("Fixture definition.")
     }

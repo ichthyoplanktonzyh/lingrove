@@ -133,7 +133,8 @@ struct LearningSentenceCard: View {
                 comment: "Header for an explicit preview capture error.")
         }
         if presentation.isExpanded {
-            return String(localized: "\(presentation.sourceLanguage.compactLabel) → \(presentation.targetLanguage.compactLabel)",
+            guard let source = presentation.sourceLanguage?.compactLabel else { return presentation.targetLanguage.compactLabel }
+            return String(localized: "\(source) → \(presentation.targetLanguage.compactLabel)",
                 table: "Learning", comment: "Source-to-target language direction in the expanded sentence card.")
         }
         return presentation.targetLanguage.compactLabel

@@ -28,7 +28,8 @@ struct VocabularyEntryCreationSheet: View {
                     TextField(String(localized: "Expression", table: "Vocabulary"), text: $input.expression)
                         .focused($expressionFocused).accessibilityIdentifier("vocabularyNewExpression")
                     Picker(String(localized: "Language", table: "Vocabulary"), selection: $input.language) {
-                        ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
+                        Text(String(localized: "Unspecified", table: "Learning")).tag(LearningLanguage?.none)
+                        ForEach(LearningLanguage.allCases) { Text($0.label).tag(Optional($0)) }
                     }
                     Picker(String(localized: "Entry type", table: "Vocabulary"), selection: $input.kind) {
                         ForEach(VocabularyEntry.Kind.allCases, id: \.self) { Text($0.label).tag($0) }

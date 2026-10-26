@@ -10,10 +10,11 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningStagedLookupViewTests {
-    @Test func lookupShowsTheBasicPairAndLoadsDetailsOnlyWhenExpanded() async throws {
+    @Test(arguments: [LearningLanguage?.some(.english), nil])
+    func lookupShowsTheBasicPairAndLoadsDetailsOnlyWhenExpanded(_ sourceLanguage: LearningLanguage?) async throws {
         let service = StagedLookupViewService()
         let session = LearningDictionarySession(provider: StagedLookupViewDictionary(), explanationService: service)
-        let capture = makeCapture()
+        let capture = makeCapture(language: sourceLanguage)
         let unit = unit(for: capture)
         let defaultsSuite = "StagedLookupView-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: defaultsSuite))
@@ -33,7 +34,7 @@ struct LearningStagedLookupViewTests {
         defer { speech.stop(); session.close(); window.close() }
 
         window.orderFrontRegardless()
-        session.open(unit, documentID: UUID(), language: .english,
+        session.open(unit, documentID: UUID(), language: sourceLanguage,
             vocabularyCapture: capture, translationLanguage: .chinese)
         await wait { session.explanation.lookupRecord != nil }
         try await settle(host, window)
@@ -48,6 +49,7 @@ struct LearningStagedLookupViewTests {
         try clickHeaderAction(trailingOffset: 81, in: host, window: window)
         await wait { vocabulary.contains(capture) }
         #expect(vocabulary.entries.count == 1, "Activating the fish-tail action should save this captured usage")
+        #expect(vocabulary.entries.first?.language == sourceLanguage)
 
         try clickHeaderAction(trailingOffset: 53, in: host, window: window)
         await wait { !silentSpeech.spokenTexts.isEmpty }
@@ -106,13 +108,13 @@ struct LearningStagedLookupViewTests {
         #expect(!panel.isVisible && dismissals == 1)
     }
 
-    private func makeCapture() -> VocabularyCapture {
+    private func makeCapture(language: LearningLanguage? = .english) -> VocabularyCapture {
         let sentence = "Please keep me posted on the progress."
         let range = (sentence as NSString).range(of: "keep me posted")
-        var example = VocabularyPolicy.example(text: sentence, ranges: [range], language: .english)
+        var example = VocabularyPolicy.example(text: sentence, ranges: [range], language: language)
         example?.translation = "原来的翻译不应覆盖本次查词结果。"
         example?.translationLanguage = .chinese
-        return .init(expression: "keep me posted", dictionaryForm: "keep me posted", language: .english,
+        return .init(expression: "keep me posted", dictionaryForm: "keep me posted", language: language,
             kind: .expression, example: example)
     }
 
@@ -250,7 +252,7 @@ private final class StagedLookupViewService: LearningLookupGenerating {
 }
 
 private actor StagedLookupViewDictionary: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }

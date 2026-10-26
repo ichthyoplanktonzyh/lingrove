@@ -88,7 +88,7 @@ nonisolated struct VocabularyExportDocument: Codable, Sendable {
         let id: UUID
         let expression: String
         let dictionaryForm: String
-        let language: LearningLanguage
+        let language: LearningLanguage?
         let kind: VocabularyEntry.Kind
         let senses: [Sense]
     }

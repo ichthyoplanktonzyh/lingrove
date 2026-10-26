@@ -5,7 +5,7 @@ import Foundation
 nonisolated struct VocabularyEntryInput: Equatable, Sendable {
     var expression = ""
     var dictionaryForm = ""
-    var language: LearningLanguage = .english
+    var language: LearningLanguage? = .english
     var kind: VocabularyEntry.Kind = .word
     var meaning = ""
     var meaningLanguage: LearningLanguage?

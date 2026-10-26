@@ -85,13 +85,13 @@ nonisolated enum LearningExplanationPolicy {
                     "do not claim one specific contextual meaning."
             }
             nonisolated struct Payload: Encodable {
-                let target: String; let dictionaryForm: String; let targetLanguage: String; let kind: String
+                let target: String; let dictionaryForm: String; let targetLanguage: String?; let kind: String
                 let occurrenceQuotes: [String]; let referenceContext: String
                 let contextCompleteness: String
                 let task: String
             }
             let payload = Payload(target: input.target, dictionaryForm: input.dictionaryForm,
-                targetLanguage: input.language.rawValue, kind: input.kind.rawValue,
+                targetLanguage: input.language?.rawValue, kind: input.kind.rawValue,
                 occurrenceQuotes: quotes, referenceContext: context, contextCompleteness: scope.rawValue,
                 task: scope == .none ? "define_target" : "explain_in_context")
             guard let text = String(data: try JSONEncoder().encode(payload), encoding: .utf8) else { throw VocabularyError.invalidContent }

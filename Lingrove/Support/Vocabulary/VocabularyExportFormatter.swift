@@ -44,10 +44,12 @@ nonisolated enum VocabularyExportFormatter {
             try Task.checkCancellation()
             if list {
                 let expression = VocabularyPolicy.normalized(entry.expression)
-                if seen.insert(entry.language.rawValue + "\0" + expression).inserted { try append(expression + "\n", to: &data) }
+                if seen.insert((entry.language?.rawValue ?? "und") + "\0" + expression).inserted {
+                    try append(expression + "\n", to: &data)
+                }
                 continue
             }
-            try append(entry.expression + " [" + entry.language.rawValue + "]\n", to: &data)
+            try append(entry.expression + " [" + (entry.language?.rawValue ?? "und") + "]\n", to: &data)
             if entry.dictionaryForm != entry.expression {
                 try append(String(localized: "Dictionary form", table: "Vocabulary") + ": " + entry.dictionaryForm + "\n", to: &data)
             }
@@ -121,7 +123,7 @@ nonisolated enum VocabularyExportFormatter {
     private static func csvValues(
         entry: Document.Entry, sense: Document.Sense, usage: Document.Usage?, options: VocabularyExportConfiguration
     ) -> [String] {
-        var values = [entry.id.uuidString, entry.expression, entry.dictionaryForm, entry.language.rawValue, entry.kind.rawValue,
+        var values = [entry.id.uuidString, entry.expression, entry.dictionaryForm, (entry.language?.rawValue ?? "und"), entry.kind.rawValue,
             sense.id.uuidString, sense.createdAt.formatted(.iso8601)]
         if options.meanings { values += [sense.meaning ?? "", sense.meaningLanguage?.rawValue ?? "",
             meaningsText(sense.otherMeanings ?? [])] }

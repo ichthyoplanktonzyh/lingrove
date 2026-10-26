@@ -21,7 +21,7 @@ nonisolated enum LearningTranslationBudget {
     }
 
     static func prompt(
-        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
         targetLanguage: LearningLanguage, family: LearningTranslationPrompt.Family,
         total: Int, output: Int, estimated: Bool, maximumInputTokens: Int = .max,
         count: (String) throws -> Int
@@ -36,7 +36,7 @@ nonisolated enum LearningTranslationBudget {
     /// Keeps only the best fitting payload. The final binary-search probe can be oversized, so
     /// caching the most recently measured tokens would pair the returned prompt with wrong IDs.
     static func plan<Payload>(
-        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
         targetLanguage: LearningLanguage, limits: Limits,
         measure: (String) throws -> (count: Int, payload: Payload)
     ) throws -> Plan<Payload> {

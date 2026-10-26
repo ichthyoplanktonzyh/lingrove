@@ -37,6 +37,22 @@ struct LearningExpressionServiceTests {
         #expect(json["stream"] as? Bool == true)
     }
 
+    @Test func unknownReadingSourceUsesTargetOnlyAndDoesNotBorrowWritingEligibility() async throws {
+        let harness = try makeHarness(translationEnabled: true, sourceLanguages: [.japanese],
+            targetLanguage: .japanese, reply: instructionResponse("兼容 OpenAI 的聊天端点"))
+        defer { harness.cleanUp() }
+        harness.settings.languageLearning.readingTargetLanguage = .chinese
+        setReadingSource(.selection, enabled: true, in: harness.settings.languageLearning)
+        let result = try await harness.service.translateReadingSelection(source: "OpenAI-compatible chat endpoint",
+            sourceLanguage: nil, targetLanguage: .chinese)
+        #expect(result == "兼容 OpenAI 的聊天端点" && harness.exchange.requestCount == 1)
+        await #expect(throws: (any Error).self) {
+            _ = try await harness.service.translateSentence(source: "OpenAI-compatible chat endpoint",
+                sourceLanguage: nil, targetLanguage: .japanese)
+        }
+        #expect(harness.exchange.requestCount == 1)
+    }
+
     @Test(arguments: LearningReadingSource.allCases)
     func eachReadingSourceNeedsOnlyOneTranslationRequest(_ source: LearningReadingSource) async throws {
         let harness = try makeHarness(translationEnabled: true, legacyAlignmentEnabled: true,

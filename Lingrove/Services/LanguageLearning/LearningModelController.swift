@@ -190,7 +190,7 @@ final class LearningModelController: ObservableObject {
     /// serialized vocabulary off MainActor; endpoints use the disclosed estimate. A profile edit
     /// invalidates the lease, preventing preparation from handing text to a newly selected server.
     func translationPlan(
-        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
         targetLanguage: LearningLanguage, output: Int
     ) async throws -> LearningTranslationPrompt.Request {
         guard generationAllowed, generationEligibility() else { throw CancellationError() }

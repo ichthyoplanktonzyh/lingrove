@@ -10,11 +10,11 @@ nonisolated enum VocabularyPolicy {
     }
 
     static func entryKey(_ capture: VocabularyCapture) -> String {
-        key([capture.language.rawValue, capture.kind.rawValue, normalized(capture.expression)])
+        key([(capture.language?.rawValue ?? "und"), capture.kind.rawValue, normalized(capture.expression)])
     }
 
     static func entryKey(_ entry: VocabularyEntry) -> String {
-        key([entry.language.rawValue, entry.kind.rawValue, normalized(entry.expression)])
+        key([(entry.language?.rawValue ?? "und"), entry.kind.rawValue, normalized(entry.expression)])
     }
 
     static func exampleKey(_ example: VocabularyExample?) -> String {
@@ -84,7 +84,7 @@ nonisolated enum VocabularyPolicy {
 
     /// The window's two completeness flags describe acquisition boundaries, not punctuation.
     /// A sentence touching an artificial AX/OCR crop edge stays explicitly a fragment.
-    static func example(text: String, ranges: [NSRange], language: LearningLanguage,
+    static func example(text: String, ranges: [NSRange], language: LearningLanguage?,
                         startsAtBoundary: Bool = true, endsAtBoundary: Bool = true,
                         app: String? = nil) -> VocabularyExample? {
         guard !text.isEmpty, text.utf8.count <= 262_144, !ranges.isEmpty,
@@ -92,7 +92,7 @@ nonisolated enum VocabularyPolicy {
         let lower = ranges.map(\.location).min() ?? 0
         let upper = ranges.map(NSMaxRange).max() ?? 0
         let tokenizer = NLTokenizer(unit: .sentence)
-        tokenizer.setLanguage(language.naturalLanguage)
+        if let language { tokenizer.setLanguage(language.naturalLanguage) }
         tokenizer.string = text
         var sentence: NSRange?
         tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { range, _ in
@@ -108,7 +108,7 @@ nonisolated enum VocabularyPolicy {
             completeness: complete ? .sentence : .fragment, meaning: "", appBundleIdentifier: app, createdAt: Date())
     }
 
-    static func context(value: String, range: NSRange, language: LearningLanguage, app: String?) -> VocabularyExample? {
+    static func context(value: String, range: NSRange, language: LearningLanguage?, app: String?) -> VocabularyExample? {
         guard valid(range, in: value), range.length <= 3_072 else { return nil }
         let text = value as NSString
         let start = max(0, range.location - 512), end = min(text.length, NSMaxRange(range) + 512)
@@ -120,6 +120,7 @@ nonisolated enum VocabularyPolicy {
 
     static func save(_ capture: VocabularyCapture, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         try validate(capture)
+        if capture.language == nil, document.schemaVersion == 3 { document.schemaVersion = 4 }
         var capture = capture
         if let example = capture.example, document.entries.contains(where: {
             entryKey($0) != entryKey(capture) && $0.examples.contains { $0.id == example.id }

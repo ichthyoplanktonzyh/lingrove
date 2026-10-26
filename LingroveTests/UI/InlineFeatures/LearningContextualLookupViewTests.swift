@@ -180,7 +180,7 @@ struct LearningContextualLookupViewTests {
 
 private actor LookupViewDictionary: LearningDictionaryProviding {
     var calls = 0
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls += 1
         return .systemText(source == .system ? "LIVE DICTIONARY SYSTEM" : "LIVE DICTIONARY BUILTIN")

@@ -23,17 +23,17 @@ extension VocabularyArchive {
         case .list:
             let limit = request.limit ?? 50, offset = request.offset ?? 0
             guard (1...200).contains(limit), offset >= 0, (request.query?.utf8.count ?? 0) <= 4_096,
-                  request.language == nil || LearningLanguage(rawValue: request.language ?? "") != nil else {
+                  request.language == nil || request.language == "und" || LearningLanguage(rawValue: request.language ?? "") != nil else {
                 throw CLIError.invalid("Use a supported language, a limit of 1–200 and a nonnegative offset.")
             }
             let values = snapshot.document.entries.filter {
-                (request.language == nil || $0.language.rawValue == request.language)
+                (request.language == nil || ($0.language?.rawValue ?? "und") == request.language)
                     && VocabularyPolicy.matches($0, query: request.query ?? "")
             }
             let page = values.dropFirst(min(offset, values.count)).prefix(limit).map { entry in
                 CLIJSON.object(["entryID": .string(entry.id.uuidString), "expression": .string(Self.cliSummary(entry.expression)),
                     "expressionTruncated": .bool(entry.expression.unicodeScalars.prefix(201).count > 200),
-                    "language": .string(entry.language.rawValue), "kind": .string(entry.kind.rawValue),
+                    "language": .string(entry.language?.rawValue ?? "und"), "kind": .string(entry.kind.rawValue),
                     "senseCount": .integer(Int64(entry.senses.count)),
                     "senses": .array(entry.senses.prefix(50).map { .object(["senseID": .string($0.id.uuidString),
                         "meaning": .string(Self.cliSummary($0.meaning)),

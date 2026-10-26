@@ -43,7 +43,7 @@ nonisolated enum LearningTranslationPrompt {
     }
 
     static func render(
-        input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
         targetLanguage: LearningLanguage, family: Family
     ) throws -> Request {
         let target = try render(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage,
@@ -60,7 +60,7 @@ nonisolated enum LearningTranslationPrompt {
         return .init(prompt: guide + target.prompt, userOnly: target.userOnly, sampling: target.sampling)
     }
 
-    static func render(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    static func render(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                        family: Family, style: LearningTranslationStyle = .init()) throws -> Request {
         if style.instruction != nil, !family.supportsStyleInstructions {
             throw LearningFailure.message(String(localized: "This model does not support translation style instructions.",
@@ -90,7 +90,17 @@ nonisolated enum LearningTranslationPrompt {
                 "Note that you should only output the translated result without any additional explanation:\n" + source,
                 userOnly: true, sampling: .hyMT)
         case .translateGemma:
-            let from = translateGemmaLanguage(sourceLanguage), to = translateGemmaLanguage(targetLanguage)
+            let to = translateGemmaLanguage(targetLanguage)
+            guard let sourceLanguage else {
+                // The fixed language-code guide cannot truthfully name an unknown source. Our
+                // plaintext adapter keeps Gemma's user-only framing and target, without inventing
+                // a source code or adding another model request just for language detection.
+                return .init(prompt: "You are a professional translator. Translate the following text into " +
+                    "\(to.name) (\(to.code)). Infer the source language from the text. " +
+                    "Preserve meaning, names and numbers. Produce only the translation:\n\n\n" + source,
+                    userOnly: true, sampling: .translateGemma)
+            }
+            let from = translateGemmaLanguage(sourceLanguage)
             // Ollama publishes this plaintext translation guide. Google's HF processor instead
             // accepts structured language-code content; a server requiring that processor needs
             // its own adapter. Two blank lines separate this instruction from the literal source.

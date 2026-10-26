@@ -101,8 +101,9 @@ nonisolated enum VocabularyWordListPolicy {
         return rows
     }
 
-    private static func language(_ text: String, fallback: LearningLanguage, line: Int) throws -> LearningLanguage {
-        try optionalLanguage(text, fallback: fallback, line: line) ?? fallback
+    private static func language(_ text: String, fallback: LearningLanguage, line: Int) throws -> LearningLanguage? {
+        if text.lowercased() == "und" { return nil }
+        return try optionalLanguage(text, fallback: fallback, line: line) ?? fallback
     }
 
     private static func optionalLanguage(_ text: String, fallback: LearningLanguage?, line: Int) throws -> LearningLanguage? {

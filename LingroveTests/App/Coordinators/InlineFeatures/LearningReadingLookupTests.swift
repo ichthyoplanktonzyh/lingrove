@@ -47,6 +47,26 @@ struct LearningReadingLookupTests {
         #expect(rig.service.calls == 0 && rig.panel.sentence == nil)
     }
 
+    @Test func ambiguousTechnicalWordStillOpensLookupWithItsCapturedContext() async throws {
+        let rig = try Rig(text: "compatible", context: "OpenAI-compatible chat endpoint")
+        defer { rig.close() }
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await wait { rig.panel.lookup != nil }
+        let capture = try #require(rig.panel.lookup?.capture)
+        #expect(capture.expression == "compatible")
+        #expect(capture.example?.text == "OpenAI-compatible chat endpoint")
+        #expect(rig.service.calls == 0)
+    }
+
+    @Test func wholeTechnicalCellStillReachesTranslationWhenItsLanguageIsUncertain() async throws {
+        let text = "OpenAI-compatible chat endpoint"
+        let rig = try Rig(text: text, context: text)
+        defer { rig.close() }
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await wait { rig.panel.sentence?.translation.isEmpty == false }
+        #expect(rig.service.calls == 1 && rig.panel.lookup == nil)
+    }
+
     private func wait(_ predicate: () -> Bool) async {
         for _ in 0..<300 where !predicate() { try? await Task.sleep(for: .milliseconds(2)) }
         #expect(predicate())
@@ -95,7 +115,7 @@ struct LearningReadingLookupTests {
         let settings: SuggestionSettingsModel
         var calls = 0
         init(settings: SuggestionSettingsModel) { self.settings = settings }
-        func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String {
+        func translateSentence(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage) async throws -> String {
             calls += 1; return "他坐在河岸上。"
         }
         func recordDisplay(source: ModelRequestSource, requestID: String) {}

@@ -8,10 +8,10 @@ nonisolated enum SpeechLanguageResolver {
     private static let maximumSampleLength = 600
 
     /// The actual phrase wins when there is enough evidence. Short words borrow their own
-    /// sentence's language before falling back to the card hint. nil means a confidently detected
-    /// language outside Lingrove's language palette, not an uncertain guess or provider fallback.
+    /// sentence's language before falling back to the optional card hint. nil means the language
+    /// is unsupported or remains unknown; voice selection must not invent a provider fallback.
     static func resolve(
-        text: String, hint: LearningLanguage, context: String? = nil,
+        text: String, hint: LearningLanguage?, context: String? = nil,
         recognize: (String) -> [NLLanguage: Double] = hypotheses
     ) -> LearningLanguage? {
         if let language = confidentLanguage(in: text, recognize: recognize) {

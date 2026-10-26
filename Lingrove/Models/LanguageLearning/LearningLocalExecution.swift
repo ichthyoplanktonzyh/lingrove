@@ -20,7 +20,7 @@ nonisolated protocol LearningLocalExecuting: AnyObject, Sendable {
     ) throws -> String
     func translationPlan(
         configuration: LearningLocalModelConfiguration, input: LearningTranslationInput,
-        sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage, output: Int,
+        sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage, output: Int,
         operationID: UUID, trace: LearningRequestContext?
     ) throws -> LearningTranslationPrompt.Request
 }
@@ -42,7 +42,7 @@ extension LearningLocalExecuting {
     }
     func translationPlan(
         configuration: LearningLocalModelConfiguration, input: LearningTranslationInput,
-        sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage, output: Int,
+        sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage, output: Int,
         operationID: UUID, trace: LearningRequestContext?
     ) throws -> LearningTranslationPrompt.Request {
         try LearningTranslationBudget.prompt(

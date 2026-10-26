@@ -57,7 +57,7 @@ struct VocabularyNotebookSessionTests {
 
 private actor NotebookDictionaryProbe: LearningDictionaryProviding {
     var calls: [LearningDictionarySource] = []
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls.append(source)
         return .systemText(source == .system ? "System live entry" : "Built-in live entry")

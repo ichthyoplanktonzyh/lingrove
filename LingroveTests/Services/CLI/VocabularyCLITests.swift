@@ -72,6 +72,21 @@ struct VocabularyCLITests {
     }
     private func result(_ reply: [String: Any]) throws -> [String: Any] { try #require(reply["result"] as? [String: Any]) }
 
+    @Test func listCanFilterTheUnknownLanguageCodeItExports() async throws {
+        let fixture = try await Fixture()
+        do {
+            _ = try await fixture.archive.save(.init(expression: "compatible", dictionaryForm: "compatible", language: nil, kind: .word))
+            let (status, reply) = try await fixture.call(["vocab", "list", "--language", "und"])
+            #expect(status == 0)
+            let rows = try #require(try result(reply)["entries"] as? [[String: Any]])
+            #expect(rows.count == 1 && rows[0]["language"] as? String == "und")
+            await fixture.close()
+        } catch {
+            await fixture.close()
+            throw error
+        }
+    }
+
     /// Fixed identities protect the published dry-run/commit contract when planning is split into helpers.
     @Test func planningPreservesExistingIdentitySeedsAndOutcomePaths() throws {
         let input = batch("stable-ids", [add(content: [["text": "Example content"]])])

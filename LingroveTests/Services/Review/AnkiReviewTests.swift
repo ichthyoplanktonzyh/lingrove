@@ -609,8 +609,9 @@ final class ReviewFakeSpeechExporter: SpeechExporting {
     var exports = 0
     var delay: Duration = .zero
     var exportConfigurationID: String { "fixture" }
-    func exportRequest(text: String, language: LearningLanguage, context: String?) throws -> SpeechExportRequest {
-        .init(text: text, language: language, fingerprint: SpeechExportPolicy.digest(Data(text.utf8)), source: .system(voiceID: "fixture"))
+    func exportRequest(text: String, language: LearningLanguage?, context: String?) throws -> SpeechExportRequest {
+        guard let language else { throw SpeechError.unrecognizedLanguage }
+        return .init(text: text, language: language, fingerprint: SpeechExportPolicy.digest(Data(text.utf8)), source: .system(voiceID: "fixture"))
     }
     func exportAudio(_ request: SpeechExportRequest) async throws -> SpeechExportAudio {
         try Task.checkCancellation(); exports += 1

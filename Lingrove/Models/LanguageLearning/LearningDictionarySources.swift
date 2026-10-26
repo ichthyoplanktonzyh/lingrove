@@ -108,14 +108,17 @@ nonisolated struct LearningDictionaryConfiguration: Equatable, Sendable {
         case .website: websites.first { $0.source == source }?.languages
         }
     }
-    func sources(for language: LearningLanguage) -> [LearningDictionarySource] {
+    func sources(for language: LearningLanguage?) -> [LearningDictionarySource] {
         activeSources.filter { languages(for: $0)?.supports(language) ?? true }
     }
-    func automaticSources(for language: LearningLanguage) -> [LearningDictionarySource] {
+    func automaticSources(for language: LearningLanguage?) -> [LearningDictionarySource] {
         // Priority remains stable within each gloss tier. A different definition language may
         // be a useful fallback; a different headword language is never a valid fallback.
         let candidates = sources(for: language).filter { source in
             guard source.kind != .website else { return false }
+            // An uncertain language may search enabled local books. Online dictionaries remain
+            // explicitly selectable, but auto-search must not widen their previous language scope.
+            if language == nil, source.kind == .online { return false }
             if source.kind == .mdict {
                 // Unknown books stay manually selectable. Guessing their index language from
                 // an encoding or a homograph would silently attach the wrong definition.

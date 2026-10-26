@@ -118,7 +118,7 @@ final class HomeDemoExplainer: LearningLookupGenerating {
 /// Source switching uses the production dictionary session and picker. Both sample sources
 /// return local material, leaving import, HTTP and system-dictionary process ownership untouched.
 nonisolated struct HomeDemoDictionary: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         try await Task.sleep(for: .milliseconds(250))
         let gloss = HomeLearningDemoFixtures.gloss(query)

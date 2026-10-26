@@ -14,13 +14,14 @@ nonisolated enum LearningLookupPolicy {
                 : context == target.context ? target.contextKind : .fragment
             var material: [String: Any] = [
                 "target": target.target, "dictionary_form": target.dictionaryForm, "kind": target.kind.rawValue,
-                "source_language": target.language.rawValue, "context": context,
+                "context": context,
                 "context_completeness": scope.rawValue,
                 "occurrence_quotes": target.ranges.map {
                     (target.context as NSString).substring(with: $0.nsRange)
                 }.joined(separator: " | "),
                 "occurrence_ranges": target.ranges.map { ["location": $0.location, "length": $0.length] }
             ]
+            if let source = target.language { material["source_language"] = source.rawValue }
             if scope == .none {
                 material.removeValue(forKey: "context_completeness")
                 material.removeValue(forKey: "context")
@@ -41,6 +42,7 @@ nonisolated enum LearningLookupPolicy {
             case .fragment: "Only a fragment is available. Do not invent missing context; retain ambiguity when necessary."
             case .none: "This is a standalone dictionary query."
             }
+            let sourceHint = target.language.map { " from " + $0.name } ?? ""
             let task: String
             if basic != nil {
                 task = """
@@ -51,7 +53,7 @@ nonisolated enum LearningLookupPolicy {
                 """
             } else if scope == .none {
                 task = """
-                Define the target word or expression from \(target.language.name) in \(language.name).
+                Define the target word or expression\(sourceHint) in \(language.name).
                 Give a concise general meaning or common senses, including the base form for an inflected word.
                 The meaning field must contain a nonempty dictionary definition of the target.
                 Return ONLY one JSON object with exactly two fields: meaning (the definition), sentence_translation (an empty string).

@@ -139,13 +139,17 @@ struct VocabularyWordListImportSheet: View {
                 TableColumn(String(localized: "Example translation", table: "Vocabulary")) {
                     Text($0.input.exampleTranslation).lineLimit(2)
                 }
-                TableColumn(String(localized: "Language", table: "Vocabulary")) { Text($0.input.language.label) }.width(90)
+                TableColumn(String(localized: "Language", table: "Vocabulary")) {
+                    Text($0.input.language?.label ?? String(localized: "Unspecified", table: "Learning"))
+                }.width(90)
             }
         } else {
             Table(rows) {
                 TableColumn(String(localized: "Expression", table: "Vocabulary")) { Text($0.input.expression) }
                 TableColumn(String(localized: "Core meaning", table: "Vocabulary")) { Text($0.input.meaning) }
-                TableColumn(String(localized: "Language", table: "Vocabulary")) { Text($0.input.language.label) }.width(90)
+                TableColumn(String(localized: "Language", table: "Vocabulary")) {
+                    Text($0.input.language?.label ?? String(localized: "Unspecified", table: "Learning"))
+                }.width(90)
             }
         }
     }

@@ -30,7 +30,7 @@ final class LearningDictionarySession: ObservableObject {
     private(set) var speechContext: String?
     private(set) var vocabularyCapture: VocabularyCapture?
     private let provider: any LearningDictionaryProviding
-    private var language: LearningLanguage = .english
+    private var language: LearningLanguage?
     private var translationLanguage: LearningLanguage?
     private var validateCapture: () -> Bool = { true }
     /// Target lifetime differs from dictionary request lifetime: source/tab changes keep it,
@@ -75,7 +75,7 @@ final class LearningDictionarySession: ObservableObject {
 
     /// The opening language is captured with the active unit. The card uses it for the component
     /// words' visual reading order without inferring direction from the UI locale or term text.
-    var contentLanguage: LearningLanguage { language }
+    var contentLanguage: LearningLanguage? { language }
     var availableSources: [LearningDictionarySource] { configuration.sources(for: language) }
     func name(for source: LearningDictionarySource) -> String { configuration.name(for: source) }
     func languageLabel(for source: LearningDictionarySource) -> String? {
@@ -148,7 +148,7 @@ final class LearningDictionarySession: ObservableObject {
         return capture
     }
 
-    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage, speechContext: String? = nil,
+    func open(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage?, speechContext: String? = nil,
               vocabularyCapture: VocabularyCapture? = nil, translationLanguage: LearningLanguage? = nil,
               validateCapture: @escaping () -> Bool = { true }) {
         close()
@@ -217,15 +217,15 @@ final class LearningDictionarySession: ObservableObject {
         !Task.isCancelled && revision == id && unit != nil
     }
 
-    private func lookup(_ text: String, language: LearningLanguage, expression: Bool,
+    private func lookup(_ text: String, language: LearningLanguage?, expression: Bool,
                         source: LearningDictionarySource,
                         requestID: UUID) async throws -> LearningDictionaryResult {
-        let key = source.rawValue + ":" + language.rawValue + ":" + String(expression) + ":" + text
+        let key = source.rawValue + ":" + (language?.rawValue ?? "und") + ":" + String(expression) + ":" + text
         if let cached = cache[key] { return cached }
         LingroveLogger.learning.debug("Dictionary lookup", metadata: [
             "stage": "dictionary-lookup", "request_id": .string(requestID.uuidString),
             "dictionary_source": .string(source.rawValue), "query_characters": .stringConvertible(text.count),
-            "entry_language": .string(language.rawValue),
+            "entry_language": .string((language?.rawValue ?? "und")),
             "preferred_definition_language": .string(configuration.preferredDefinitionLanguage.rawValue)
         ])
         let result = try await provider.lookup(text, language: language, expression: expression,
@@ -251,14 +251,14 @@ final class LearningDictionarySession: ObservableObject {
         work?.cancel(); work = nil
         content = .loading
         dictionaryRequested = false
-        if explanation.service is any LearningLookupGenerating, let capture = activeCapture {
+        if let service = explanation.service as? any LearningLookupGenerating, let capture = activeCapture {
             explanation.setLookupTarget(.init(target: LearningExplanationPolicy.input(capture),
                 translationLanguage: translationLanguage ?? capture.example?.translationLanguage
-                    ?? explanation.service?.language ?? language,
+                    ?? service.language,
                 referenceTranslation: capture.example?.translation ?? ""), requestID: LearningRequestTrace.requestID)
         } else { explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input)) }
         explanation.isTargetCurrent = validateCapture
-        page = explanation.service == nil ? .dictionary : .contextual
+        page = explanation.isConfigured ? .contextual : .dictionary
         if page == .dictionary { requestDictionary() } else if explanation.isConfigured {
             if explanation.isLookup { explanation.loadLookup() } else { explanation.explain() }
         }

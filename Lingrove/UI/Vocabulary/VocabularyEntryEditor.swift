@@ -127,7 +127,7 @@ struct VocabularyEntryEditor: View {
                     .font(.headline)
                     .lineLimit(1)
                 HStack(spacing: 6) {
-                    Text(draft.language.label)
+                    Text((draft.language?.label ?? String(localized: "Unspecified", table: "Learning")))
                     Text("·")
                     Text(draft.kind.label)
                 }

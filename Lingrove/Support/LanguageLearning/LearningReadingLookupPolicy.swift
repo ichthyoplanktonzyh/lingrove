@@ -3,7 +3,7 @@ import Foundation
 /// Routes frozen reading evidence before any model work. Sentence coverage comes from the
 /// captured occurrence, not punctuation alone; a punctuation-free full selection remains valid.
 nonisolated enum LearningReadingLookupPolicy {
-    static func capture(_ selection: LearningReadingSelection, language: LearningLanguage) -> VocabularyCapture? {
+    static func capture(_ selection: LearningReadingSelection, language: LearningLanguage?) -> VocabularyCapture? {
         if selection.source == .screenshot { return nil }
         let text = selection.text
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
