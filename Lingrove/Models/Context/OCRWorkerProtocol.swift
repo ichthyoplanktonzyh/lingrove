@@ -35,6 +35,9 @@ nonisolated struct OCRRequestOptions: Sendable {
     var minimumTextHeight: Float = 0.008
     var detectsLanguageAutomatically = false
     var purpose = OCRRequestPurpose.visualContext
+    /// One user operation can perform several crops. Its absolute uptime deadline includes
+    /// queueing and earlier passes, rather than granting each crop a new full timeout.
+    var deadline: TimeInterval?
 }
 
 /// Transient request metadata; only the helper validates and consumes it. The size check precedes

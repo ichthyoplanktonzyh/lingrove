@@ -399,8 +399,8 @@ The autocomplete inference package and its revision remain separate.
   editor. Unknown apps pass the selection chord through to the host.
 
 - `Services/LanguageLearning/LearningReadingSourceReader.swift` adapts explicit selection, pointer
-  and screen-region sources into the same immutable receipt. Pointer lookup tries bounded AX and
-  falls back to local Vision word boxes; region capture requires Screen Recording independently
+  and screen-region sources into the same immutable receipt. Pointer lookup prefers local Vision
+  and retains bounded AX fallback; region capture requires Screen Recording independently
   of AX. Images stay within acquisition and never enter a model request or a persisted artifact.
 - `Services/Presentation/LearningRegionSelectionPanel.swift` owns disposable nonactivating panels
   and one cancellable region-selection continuation. It has no translation or screenshot behavior.
@@ -875,7 +875,8 @@ marker walk confined to the ancestor range, never a flattened web-area string. T
 concatenating headings/paragraphs without separators. The 180 ms context deadline is checked
 between calls, not a preemptive cancellation guarantee for a synchronous AX IPC.
 
-`LearningReadingOCRPolicy` joins only adjacent aligned OCR lines around an exact word hit, with
+`LearningReadingOCRLayout` first joins nearby same-baseline fragments while retaining their original
+UTF-16 source offsets. `LearningReadingOCRPolicy` then joins adjacent aligned rows around an exact hit, with
 alternating expansion and the same total text budget. Worker word records carry their emitted
 line index, UTF-16 range and confidence; repeated spellings never use first-match text search.
 The helper/extractor retain this provenance locally; images and geometry do not enter prompts.
@@ -892,3 +893,47 @@ inline styles, repeated words, combining characters, full selections and large p
 this directory on loopback, use its selection controls (or double-click a word), and inspect the
 reading-context diagnostics. Pure evidence tests and the real Vision integration suite verify
 routing, provenance and fragment handling independently of a model.
+
+## OCR Primary Pointer Reading
+
+`LearningReadingVisualReader` owns one explicit visual acquisition operation, borrowing the app's
+existing `OCRRuntime`. It freezes one image, recognizes a 720×240-point local crop, and may expand
+once within that same image when target/context touches a crop edge or the first crop has no hit.
+It never combines text from separate recognition passes. Exact target spelling and overlapping
+word geometry must agree before replacement; complete context wins over a longer fragment.
+The same 12-second deadline reaches capture callbacks, OCR queueing and both native passes.
+An unsuccessful expansion can retain the first verified fragment; cancellation always retires it.
+
+`WindowScreenshotService.pointerCaptureRegion` matches Window Server front-to-back ordering to
+ScreenCaptureKit window IDs, independently of AX availability. Cursor surfaces and Dock animation
+shields are excluded from window hit testing; ordinary application panels still count as occluders.
+Only the pointed window's visible
+intersection with its display may supply the bounded frame (up to 1600×1200 points and 16M pixels).
+Its memory-only window ID/frame receipt is rechecked around OCR and before model result delivery;
+Lingrove's own cards are excluded. There is no screen-wide expansion when window identity is absent.
+`ScreenCaptureReply` arbitrates SDK callback, timeout and cancellation once, discarding late replies.
+It releases the caller without claiming to cancel ScreenCaptureKit's underlying native operation.
+
+`LearningReadingVisualPolicy` owns pixel/point conversion, small pointer tolerance and hit ambiguity.
+When Vision returns one identical box for the subtokens of a hyphenated unit, it returns that whole
+printed unit rather than guessing a subword; whitespace-separated overlaps remain ambiguous.
+`LearningReadingOCRLayout` retains source maps, preserves visible hyphens and CJK spacing, and
+separates distant cells/columns. Row walking rejects heading-sized gaps and distinguishes hanging
+list continuations from new unindented blocks. Complex tightly spaced table cells still need more
+layout evidence; geometry alone cannot always distinguish them from inline text fragments.
+
+`LearningReadingSourceReader.capturePointer` owns OCR-first/AX-fallback ordering. Known sensitive
+AX fields remain blocked before capture. Missing AX metadata is not a safety proof; as with existing
+explicit region reading, it does not disable user-triggered pixel capture. Missing Screen Recording
+permission still allows available AX lookup. Host scroll/typing/app-switch cancellation and reader
+revisions prevent a retired OCR request from launching an AX fallback. The pointer is frozen at
+trigger time; moving it towards the card does not cancel the request. Dynamic content is interpreted
+as the captured frame, not a continuously tracked video/text session. Selection remains AX-first.
+
+`LingroveTests/Fixtures/Reading/ocr.html?case=history` is the browser pixel-replay fixture, with
+supported/table/columns/repeated/small/mixed/cropped cases. Save viewport PNGs and a `manifest.json`
+array containing `name,width,height,x,y,target` (CSS viewport size and target centre), then set
+`LINGROVE_OCR_SCREENSHOTS` and `TEST_RUNNER_LINGROVE_OCR_SCREENSHOTS` to that directory to run
+`ReadingOCRScreenshotTests`. Controlled native-rendering fixtures and callback/queue/lifecycle
+tests run normally. Pixel replay covers OCR/layout, not ScreenCaptureKit window selection; inspect
+the `reading_route`, `ocr_passes` and context trace in a live Dev acceptance as well.

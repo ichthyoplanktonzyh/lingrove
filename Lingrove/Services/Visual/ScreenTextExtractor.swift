@@ -58,6 +58,7 @@ struct ScreenTextExtractor: ScreenTextExtracting {
     var logsTextPreview = true
     var detectsLanguageAutomatically = false
     var purpose = OCRRequestPurpose.visualContext
+    var deadline: TimeInterval?
 
     init(runtime: OCRRuntime,
          maxImageDimension: Int = VisualContextConfiguration.default.maxImageDimension,
@@ -73,7 +74,8 @@ struct ScreenTextExtractor: ScreenTextExtracting {
         LingroveDebugOptions.log("ocr-start input=\(image.width)x\(image.height)")
         let options = OCRRequestOptions(maxImageDimension: maxImageDimension,
             maxRecognizedCharacters: maxRecognizedCharacters, capturesWordBounds: capturesWordBounds,
-            minimumTextHeight: minimumTextHeight, detectsLanguageAutomatically: detectsLanguageAutomatically, purpose: purpose)
+            minimumTextHeight: minimumTextHeight, detectsLanguageAutomatically: detectsLanguageAutomatically,
+            purpose: purpose, deadline: deadline)
         let response: OCRWorkerResponse
         do {
             response = try await runtime.recognize(image, options: options)

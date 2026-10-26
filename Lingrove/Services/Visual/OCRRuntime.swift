@@ -41,6 +41,14 @@ nonisolated final class OCRRuntime: @unchecked Sendable {
 
     func recognize(_ image: CGImage, options: OCRRequestOptions) async throws -> OCRWorkerResponse {
         let work = OCRWork(image: image, options: options)
+        let expiry = options.deadline.map { deadline in
+            Task { [self, work] in
+                do { try await Task.sleep(for: .seconds(max(0, deadline - ProcessInfo.processInfo.systemUptime))) } catch { return }
+                work.finish(.failure(OCRRuntimeFailure.timedOut))
+                discardPending(work)
+            }
+        }
+        defer { expiry?.cancel() }
         let result: OCRWorkerResponse = try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
@@ -158,10 +166,17 @@ nonisolated final class OCRRuntime: @unchecked Sendable {
     private func execute(_ work: OCRWork, worker: OCRWorkerProcess) -> OCRRuntimeFailure? {
         let started = ProcessInfo.processInfo.systemUptime
         let timeout = work.options.purpose == .reading ? configuration.readingTimeout : configuration.contextTimeout
+        let deadline = min(started + timeout, work.options.deadline ?? .infinity)
+        guard deadline > started else {
+            // An expired queued crop never touched the child or its pipe. Keep the healthy
+            // worker available instead of treating this caller's budget as a native failure.
+            work.finish(.failure(OCRRuntimeFailure.timedOut))
+            return nil
+        }
         events("OCR request started", ["request_id": work.id, "origin": String(describing: work.options.purpose), "phase": "started"])
         do {
             let result = try worker.recognize(image: work.image, options: work.options, id: work.id,
-                deadline: started + timeout, isShuttingDown: { self.isClosed }, isCancelled: { work.isCancelled })
+                deadline: deadline, isShuttingDown: { self.isClosed }, isCancelled: { work.isCancelled })
             condition.lock(); failures = 0; condition.unlock()
             // A logical cancel releases the caller immediately, but this work retains the native
             // execution slot until its response arrives or its helper has been retired.
