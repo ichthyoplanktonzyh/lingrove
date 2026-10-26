@@ -10,9 +10,15 @@ nonisolated enum LearningReadingLookupPolicy {
         let words = LearningUnitPolicy.words(in: text, language: language)
         let oneWord = words.count <= 1
         if selection.source != .pointer {
-            if let context = selection.context, context.isComplete || context.hasBlockCoverage, context.selectionCoversContext,
-               !oneWord || trimmed.last.map({ ".!?。！？".contains($0) }) == true {
-                return nil
+            if let context = selection.context, context.selectionCoversContext {
+                if context.isComplete, !oneWord || translationHint(context.text, words: words.count, source: selection.source) {
+                    return nil
+                }
+                // Explicitly selecting the entire available material expresses translation
+                // intent even when the host cannot certify its outer boundaries. Known crops
+                // and a word/phrase inside a larger sentence still belong to contextual lookup.
+                if context.completeness == .unknown, !oneWord,
+                   context.hasBlockCoverage || translationHint(context.text, words: words.count, source: selection.source) { return nil }
             }
             // An incomplete captured example is stronger evidence than terminal punctuation.
             // Without surrounding evidence, punctuation/screen regions are positive hints only.
@@ -24,8 +30,8 @@ nonisolated enum LearningReadingLookupPolicy {
 
     private static func translationHint(_ text: String, words: Int, source: LearningReadingSource) -> Bool {
         if source == .screenshot { return true }
-        guard let last = text.last else { return false }
-        if ".!?。！？".contains(last) { return true }
+        if LearningReadingContextPolicy.hasTerminator(text) { return true }
+        guard let last = text.trimmingCharacters(in: .whitespacesAndNewlines).last else { return false }
         // A colon can introduce a complete statement's list, while a one-word label such as
         // "bank:" remains a dictionary target when no wider selection evidence is available.
         return words > 1 && ":：".contains(last)

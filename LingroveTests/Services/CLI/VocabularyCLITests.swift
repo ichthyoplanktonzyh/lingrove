@@ -8,6 +8,21 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func unknownContextPlansAndWritesTheRequiredEnvelopeVersion() async throws {
+        let fixture = try await Fixture()
+        do {
+            let input = batch("unknown-context", [["add": ["expression": "report", "language": "en", "kind": "word",
+                "meaning": "报告", "examples": [["text": "The report is ready.", "completeness": "unknown",
+                    "ranges": [["location": 4, "length": 6]]]]]]])
+            #expect(try await fixture.apply(input, dry: true).0 == 0)
+            #expect(try await fixture.archive.load().document.entries.isEmpty)
+            #expect(try await fixture.apply(input).0 == 0)
+            let saved = try await fixture.archive.load()
+            #expect(saved.document.schemaVersion == 5 && saved.document.entries[0].examples[0].completeness == .unknown)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @MainActor private struct Fixture {
         let directory: URL
         let app: URL

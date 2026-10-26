@@ -27,6 +27,7 @@ nonisolated struct VocabularyCLIPlan {
             let context = OperationContext(index: index, batchKey: batch.idempotencyKey, fingerprint: fingerprint, now: now)
             try apply(change, context: context, revision: snapshot.revision, prepared: prepared)
         }
+        document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
     }
 
     /// A batch operation owns this immutable value only while planning. It carries the original

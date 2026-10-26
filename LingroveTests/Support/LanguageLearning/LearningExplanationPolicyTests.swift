@@ -10,13 +10,13 @@ nonisolated struct LearningExplanationPolicyTests {
             ranges: (ranges ?? [(context as NSString).range(of: target)]).map(VocabularyTextRange.init))
     }
 
-    @Test(arguments: [LearningExplanationContext.sentence, .fragment, .none])
+    @Test(arguments: [LearningExplanationContext.sentence, .fragment, .unknown, .none])
     func evidenceScopeControlsTheTaskWithoutForcingOneSense(_ scope: LearningExplanationContext) throws {
         let context = scope == .none ? "bat" : "I saw a bat near the window."
         var capture = VocabularyCapture(expression: "bat", dictionaryForm: "bat", language: .english, kind: .word)
         if scope != .none {
             capture.example = VocabularyPolicy.example(text: context, ranges: [(context as NSString).range(of: "bat")], language: .english)
-            capture.example?.completeness = scope == .sentence ? .sentence : .fragment
+            capture.example?.completeness = VocabularyExample.Completeness(rawValue: scope.rawValue) ?? .unknown
         }
         let input = LearningExplanationPolicy.input(capture)
         #expect(input.contextKind == scope)
@@ -27,6 +27,8 @@ nonisolated struct LearningExplanationPolicyTests {
             #expect(prompt.contains("general definition or common senses") && prompt.contains("define_target"))
         } else if scope == .fragment {
             #expect(prompt.contains("multiple possible senses"))
+        } else if scope == .unknown {
+            #expect(prompt.contains("boundaries are unverified") && !prompt.contains("Only a context fragment"))
         } else { #expect(prompt.contains("acknowledge ambiguity")) }
         if let receipt = input.occurrenceIdentity { #expect(!prompt.contains(receipt)) }
         let ambiguous = "{\"meaning\":\"可能是蝙蝠，也可能指球棒\",\"explanation\":\"片段不足以唯一确定词义。\"}"

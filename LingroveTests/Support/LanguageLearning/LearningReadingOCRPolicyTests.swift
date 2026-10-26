@@ -6,6 +6,18 @@ import Testing
 
 @Suite
 struct LearningReadingOCRPolicyTests {
+    @Test func interiorImageTextHasUnknownEdgesWhileActualImageCutsRemainFragments() throws {
+        let text = "The report is ready."
+        let target = (text as NSString).range(of: "report")
+        for (box, expected) in [(CGRect(x: 0.1, y: 0.5, width: 0.6, height: 0.05), VocabularyExample.Completeness.unknown),
+                                (CGRect(x: 0, y: 0.5, width: 0.6, height: 0.05), .fragment)] {
+            let word = ScreenTextWord(text: "report", boundingBox: box, lineIndex: 0,
+                utf16Location: target.location, utf16Length: target.length)
+            let context = try #require(LearningReadingOCRPolicy.context(word: word,
+                lines: [.init(text: text, confidence: 1, boundingBox: box)], imageSize: CGSize(width: 1000, height: 400)))
+            #expect(context.completeness == expected)
+        }
+    }
     @Test func repeatedWordKeepsItsExactOccurrence() throws {
         let line = "The bank was beside another bank."
         let range = (line as NSString).range(of: "bank", options: .backwards)

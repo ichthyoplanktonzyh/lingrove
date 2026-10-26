@@ -58,11 +58,26 @@ nonisolated enum LearningReadingOCRPolicy {
             sources += self.sources(rows[current], at: text.utf16.count)
             text += lines[current].text
         }
+        let edges = boundaries(included.compactMap { lines[$0].boundingBox }, imageSize: imageSize)
         let window = LearningReadingWindow(text: text,
-            target: NSRange(location: targetOffset, length: length), left: .crop, right: .crop, method: .ocr,
+            target: NSRange(location: targetOffset, length: length), left: edges.left, right: edges.right, method: .ocr,
             confidence: included.map { lines[$0].confidence }.min())
         let bounds = included.compactMap { lines[$0].boundingBox }.reduce(CGRect.null) { $0.union($1) }
         return Block(context: LearningReadingContextPolicy.resolve(window, expected: word.text), bounds: bounds, sources: sources)
+    }
+
+    /// An interior OCR block has unverified outer boundaries, not proven missing words. Keep
+    /// a crop warning only where text reaches the image edge (or the separate character-budget
+    /// path actually clips a row). Whitespace inside the image alone cannot certify a sentence.
+    private static func boundaries(_ rows: [CGRect], imageSize: CGSize)
+        -> (left: LearningReadingWindow.Boundary, right: LearningReadingWindow.Boundary) {
+        guard imageSize.width >= 4, imageSize.height >= 4, let first = rows.first, let last = rows.last else {
+            return (.unknown, .unknown)
+        }
+        let xMargin = 3 / imageSize.width, yMargin = 3 / imageSize.height
+        let horizontalCrop = rows.contains { $0.minX <= xMargin || $0.maxX >= 1 - xMargin }
+        return (horizontalCrop || first.maxY >= 1 - yMargin ? .crop : .unknown,
+                horizontalCrop || last.minY <= yMargin ? .crop : .unknown)
     }
 
     private static func sources(_ row: LearningReadingOCRLayout.Row, at offset: Int, clipping: NSRange? = nil) -> [Source] {

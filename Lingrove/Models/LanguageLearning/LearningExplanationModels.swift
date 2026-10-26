@@ -3,7 +3,7 @@ import Foundation
 
 /// Acquisition completeness describes what evidence the model actually receives. It is separate
 /// from target granularity: a word or a sentence can both be studied with incomplete context.
-nonisolated enum LearningExplanationContext: String, Codable, Hashable, Sendable { case sentence, fragment, none }
+nonisolated enum LearningExplanationContext: String, Codable, Hashable, Sendable { case sentence, fragment, unknown, none }
 
 /// A frozen explanation target contains only the text the user chose and its captured usage.
 /// It survives card navigation and can be saved with a vocabulary item without retaining AX

@@ -19,8 +19,9 @@ nonisolated enum VocabularyPolicy {
 
     static func exampleKey(_ example: VocabularyExample?) -> String {
         guard let example else { return "no-context" }
-        // The encountered text and exact spans are the usage identity. Annotation/translation
-        // language is mutable content and cannot split a sense or turn an existing fish tail off.
+        // Preserve the legacy key, including classification, so existing deliberately distinct
+        // examples remain valid. Sense reconciliation separately handles a unique unknown-state
+        // observation. Annotation/translation languages are mutable content, not identity.
         return key([example.text, example.ranges.map { "\($0.location):\($0.length)" }.joined(separator: ","),
             example.completeness.rawValue])
     }
@@ -133,6 +134,7 @@ nonisolated enum VocabularyPolicy {
             index = document.entries.count - 1
         }
         try VocabularySensePolicy.save(capture, in: &document.entries[index], now: now)
+        document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
         return document.entries[index].id
     }
 
