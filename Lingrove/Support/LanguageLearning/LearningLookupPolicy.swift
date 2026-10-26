@@ -37,11 +37,7 @@ nonisolated enum LearningLookupPolicy {
             }
             let data = try JSONSerialization.data(withJSONObject: material, options: [.sortedKeys])
             guard let text = String(data: data, encoding: .utf8) else { throw VocabularyError.invalidContent }
-            let evidence = switch scope {
-            case .sentence: "Explain this exact occurrence in the complete original sentence."
-            case .fragment: "Only a fragment is available. Do not invent missing context; retain ambiguity when necessary."
-            case .none: "This is a standalone dictionary query."
-            }
+            let evidence = contextEvidence(scope)
             let sourceHint = target.language.map { " from " + $0.name } ?? ""
             let task: String
             if basic != nil {
@@ -87,6 +83,15 @@ nonisolated enum LearningLookupPolicy {
             throw LearningFailure.message(String(localized: "The chosen text exceeds this model’s context budget.", table: "Learning"))
         }
         return complete
+    }
+
+    private static func contextEvidence(_ scope: LearningExplanationContext) -> String {
+        switch scope {
+        case .sentence: "Explain this exact occurrence in the complete original sentence."
+        case .fragment: "Only a fragment is available. Do not invent missing context; retain ambiguity when necessary."
+        case .unknown: "The context boundaries are unverified. Use the supplied text without assuming that words are missing."
+        case .none: "This is a standalone dictionary query."
+        }
     }
 
     static func parse(_ raw: String, input: LearningLookupInput) throws -> LearningLookupResult {

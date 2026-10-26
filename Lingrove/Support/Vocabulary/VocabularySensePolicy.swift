@@ -8,28 +8,47 @@ nonisolated enum VocabularySensePolicy {
     }
 
     static func destination(_ capture: VocabularyCapture, in entry: VocabularyEntry) -> VocabularyExplanationDestination? {
+        if let example = capture.example {
+            let matches = usageDestinations(example, senseID: capture.senseID, in: entry)
+            return matches.count == 1 ? matches.first : nil
+        }
         let candidates = entry.senses.filter { sense in
             if let id = capture.senseID, sense.id != id && !sense.mergedFrom.contains(id) { return false }
-            if let example = capture.example {
-                return sense.examples.contains { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example) }
-            }
             return sense.isSavedWithoutContext
         }
         // Ambiguous explicit duplicates stay separate. Never choose a sense by ordering or by
         // similarity of its label; a notebook operation can supply an exact destination instead.
         guard candidates.count == 1, let sense = candidates.first else { return nil }
-        let usage = capture.example.flatMap { example in
-            sense.examples.first { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example) }
+        return .init(entryID: entry.id, senseID: sense.id, exampleID: nil)
+    }
+
+    /// Keep legacy identity keys intact, including explicitly distinct old examples. An unknown
+    /// observation may reuse one exact text/range occurrence without splitting its sense merely
+    /// because the old reader called it a fragment. Ambiguous legacy duplicates need a destination.
+    private static func usageDestinations(_ example: VocabularyExample, senseID: UUID?, in entry: VocabularyEntry)
+        -> [VocabularyExplanationDestination] {
+        var exact: [VocabularyExplanationDestination] = [], compatible: [VocabularyExplanationDestination] = []
+        for sense in entry.senses where senseID == nil || sense.id == senseID || sense.mergedFrom.contains(where: { $0 == senseID }) {
+            for saved in sense.examples {
+                let destination = VocabularyExplanationDestination(entryID: entry.id, senseID: sense.id, exampleID: saved.id)
+                if VocabularyPolicy.exampleKey(saved) == VocabularyPolicy.exampleKey(example) {
+                    exact.append(destination)
+                } else if saved.completeness == .unknown || example.completeness == .unknown,
+                          saved.text.utf16.elementsEqual(example.text.utf16), saved.ranges == example.ranges {
+                    compatible.append(destination)
+                }
+            }
         }
-        return .init(entryID: entry.id, senseID: sense.id, exampleID: usage?.id)
+        return exact.isEmpty ? compatible : exact
     }
 
     static func save(_ capture: VocabularyCapture, in entry: inout VocabularyEntry, now: Date) throws {
+        let prior = try savingDestination(capture, in: entry)
         let senseIndex: Int
         if let id = capture.senseID {
             guard let found = index(id, in: entry) else { throw VocabularyError.invalidContent }
             senseIndex = found
-        } else if let destination = destination(capture, in: entry), let found = index(destination.senseID, in: entry) {
+        } else if let prior, let found = index(prior.senseID, in: entry) {
             senseIndex = found
         } else {
             // A new context is not evidence that its sense equals any existing one. Create a
@@ -43,10 +62,9 @@ nonisolated enum VocabularySensePolicy {
                 index != senseIndex && sense.examples.contains { VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example) }
             }) else { throw VocabularyError.editConflict }
             if let existing = entry.senses[senseIndex].examples.firstIndex(where: {
-                VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example)
+                $0.id == prior?.exampleID || VocabularyPolicy.exampleKey($0) == VocabularyPolicy.exampleKey(example)
             }) {
-                addTranslation(example.translation, language: example.translationLanguage,
-                    to: &entry.senses[senseIndex].examples[existing])
+                mergeUsage(example, into: &entry.senses[senseIndex].examples[existing])
             } else {
                 if entry.examples.contains(where: { $0.id == example.id }) {
                     // One component receipt can yield several repeated-word occurrences. Only
@@ -69,6 +87,20 @@ nonisolated enum VocabularySensePolicy {
         entry.senses[senseIndex].updatedAt = now
         entry.updatedAt = now
         if let record = capture.explanation { VocabularyPolicy.storeExplanation(record, in: &entry) }
+    }
+
+    private static func savingDestination(_ capture: VocabularyCapture, in entry: VocabularyEntry)
+        throws -> VocabularyExplanationDestination? {
+        let prior = destination(capture, in: entry)
+        if let example = capture.example, prior == nil,
+           usageDestinations(example, senseID: capture.senseID, in: entry).count > 1 { throw VocabularyError.editConflict }
+        return prior
+    }
+
+    private static func mergeUsage(_ captured: VocabularyExample, into saved: inout VocabularyExample) {
+        // An uncertain new capture cannot overwrite an existing explicit classification.
+        if saved.completeness == .unknown { saved.completeness = captured.completeness }
+        addTranslation(captured.translation, language: captured.translationLanguage, to: &saved)
     }
 
     static func merge(source: UUID, into target: UUID, in entry: inout VocabularyEntry, now: Date) throws {

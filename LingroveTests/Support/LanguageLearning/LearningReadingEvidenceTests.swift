@@ -14,7 +14,7 @@ struct LearningReadingEvidenceTests {
         let context = try #require(LearningReadingContextPolicy.resolve(candidate, expected: "history"))
         #expect(!context.isComplete)
         #expect(context.left == .unknown)
-        #expect(context.example(app: "fixture").completeness == .fragment)
+        #expect(context.example(app: "fixture").completeness == .unknown)
     }
 
     @Test func completeBlockWinsRegardlessOfCandidateOrder() throws {
@@ -48,7 +48,7 @@ struct LearningReadingEvidenceTests {
 
     @Test func selectedTailRemainsLookupDespiteFinalPeriod() throws {
         let text = "while preserving your review history."
-        let context = try #require(LearningReadingContextPolicy.resolve(window(text, target: text), expected: text))
+        let context = try #require(LearningReadingContextPolicy.resolve(window(text, target: text, left: .crop, right: .sentence, method: .ocr), expected: text))
         let receipt = LearningReadingSelection(id: UUID(), text: text, processIdentifier: 1,
             bundleIdentifier: "fixture", anchor: .zero, context: context)
         #expect(LearningReadingLookupPolicy.capture(receipt, language: .english)?.kind == .expression)
@@ -116,7 +116,7 @@ struct LearningReadingEvidenceTests {
         #expect(LearningReadingContextPolicy.resolve(narrow, expected: "styled")?.isComplete == false)
         let best = try #require(LearningReadingContextPolicy.best([narrow, wide], expected: "styled"))
         #expect(best.text == full && !best.isComplete)
-        #expect(best.example(app: "fixture").completeness == .fragment)
+        #expect(best.example(app: "fixture").completeness == .unknown)
     }
 
     @Test func selectingTheWholeLayoutBlockCanTranslateWithoutClaimingSentenceCertainty() throws {

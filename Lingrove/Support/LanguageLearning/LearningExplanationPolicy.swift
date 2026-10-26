@@ -7,7 +7,13 @@ nonisolated enum LearningExplanationPolicy {
         .init(target: capture.expression, dictionaryForm: capture.dictionaryForm,
             language: capture.language, kind: capture.kind, context: capture.example?.text ?? capture.expression,
             ranges: capture.example?.ranges ?? [VocabularyTextRange(NSRange(location: 0, length: capture.expression.utf16.count))],
-            contextKind: capture.example.map { $0.completeness == .sentence ? .sentence : .fragment } ?? .none,
+            contextKind: capture.example.map {
+                switch $0.completeness {
+                case .sentence: .sentence
+                case .fragment: .fragment
+                case .unknown: .unknown
+                }
+            } ?? .none,
             occurrenceIdentity: capture.example.map { VocabularyPolicy.exampleKey($0) } ?? capture.generalExplanationIdentity)
     }
 
@@ -80,6 +86,9 @@ nonisolated enum LearningExplanationPolicy {
             case .fragment:
                 "Only a context fragment is available. Use it cautiously; retain multiple possible senses " +
                     "when it cannot disambiguate the target."
+            case .unknown:
+                "The context boundaries are unverified. Use the supplied text without assuming that words are missing. " +
+                    "Acknowledge ambiguity only when the text leaves it unresolved."
             case .none:
                 "No surrounding context is available. Give a general definition or common senses; " +
                     "do not claim one specific contextual meaning."

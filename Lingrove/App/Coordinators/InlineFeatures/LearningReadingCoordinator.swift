@@ -284,7 +284,8 @@ final class LearningReadingCoordinator {
             "selection_utf16": .stringConvertible(capture.text.utf16.count),
             "context_utf16": .stringConvertible(capture.context?.text.utf16.count ?? 0),
             "context_method": .string(capture.context?.window.method.rawValue ?? "unavailable"),
-            "context_complete": .stringConvertible(capture.context?.isComplete ?? false)
+            "context_complete": .stringConvertible(capture.context?.isComplete ?? false),
+            "context_completeness": .string(capture.context?.completeness.rawValue ?? "none")
         ])
         // Source detection is advisory. Exact capture validation still gates the request, but
         // ambiguous short words and technical labels must reach both lookup and translation.

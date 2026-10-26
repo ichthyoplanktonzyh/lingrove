@@ -82,6 +82,17 @@ nonisolated enum LearningReadingContextPolicy {
         text.range(of: #"[.!?。！？…][\"'”’»）」』】\]\)]*\s*$"#, options: .regularExpression) != nil
     }
 
+    /// Compare the actual occurrence, not a second string search. A user often leaves the
+    /// final period/closing quote unselected. Those decorations do not turn a sentence into a
+    /// phrase; omitted words, commas or an opening clause do. The original text is never changed.
+    static func selectionCoversContext(_ text: String, target: NSRange) -> Bool {
+        guard VocabularyPolicy.valid(target, in: text) else { return false }
+        let raw = text as NSString
+        guard raw.substring(to: target.location).allSatisfy(\.isWhitespace) else { return false }
+        let suffix = raw.substring(from: NSMaxRange(target)).trimmingCharacters(in: .whitespacesAndNewlines)
+        return suffix.isEmpty || suffix.range(of: #"^[.!?。！？…]*[\"'”’»）」』】\]\)]*$"#, options: .regularExpression) != nil
+    }
+
     /// AX windows are requested in UTF-16 units. A cropped outer grapheme can be a detached
     /// combining mark or half of a surrogate pair after bridging. Discard that outer cluster,
     /// only outside the target, rather than sending potentially damaged context to the model.

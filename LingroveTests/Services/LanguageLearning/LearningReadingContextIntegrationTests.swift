@@ -29,7 +29,9 @@ struct LearningReadingContextIntegrationTests {
         let service = LearningExplanationService(settings: settings, model: controller, telemetry: LearningRequestTelemetry())
         let sentence = "Lingrove is built around two equally core capabilities that work together in any supported macOS text field:"
         var results: [[String: String]] = []
-        for contextKind in [LearningExplanationContext.sentence, .none] {
+        // The same material compares the former fragment instruction with unknown boundary
+        // evidence, alongside the existing complete-context and bare-word baselines.
+        for contextKind in [LearningExplanationContext.sentence, .fragment, .unknown, .none] {
             let context = contextKind == .none ? "supported" : sentence
             let input = LearningLookupInput(target: .init(target: "supported", dictionaryForm: "supported", language: .english,
                 kind: .word, context: context, ranges: [.init((context as NSString).range(of: "supported"))],

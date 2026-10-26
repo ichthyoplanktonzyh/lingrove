@@ -845,12 +845,20 @@ Cache keys distinguish unknown source (`und`) from every concrete language. Spee
 optional hint; a voice-resolution failure does not block the dictionary or model result.
 
 Saving an unknown-source capture keeps its language absent in JSON and uses `und` only in SQL
-identity/index columns and CSV/TXT interchange. Known-only notebook snapshots remain version 3;
-snapshots containing unknown-source entries use version 4. The SQLite table schema is unchanged.
+identity/index columns and CSV/TXT interchange. When context classification is known, notebook
+snapshots remain version 3 for known-source entries and use version 4 for unknown-source entries.
+The SQLite table schema is unchanged.
 Portable learning exports similarly retain version 1 for known-only data and use version 2 when
 source language is absent. CSV import recognizes explicit `und` without applying the default language.
-The existing archive remains the sole persistence boundary, and removing the last unknown entry
-restores the known-only snapshot version.
+The existing archive remains the sole persistence boundary; the canonical envelope version follows
+the features present in the current snapshot.
+
+Unknown context boundaries use a separate `unknown` completeness value, preserved in notebook
+version 5 and portable learning export version 3. Older sentence/fragment documents remain readable;
+the SQL schema is unchanged. Known-language/known-context documents retain their older envelope
+versions. Exact legacy usage keys remain valid. When only completeness evidence differs and one
+side is unknown, a unique text/range occurrence can reuse its saved usage ID; conflicting legacy
+duplicates require an explicit destination. An unknown capture cannot overwrite a known saved label.
 
 ## Reading Evidence And Block Reconstruction
 
@@ -860,6 +868,15 @@ boundary evidence, source method and optional OCR confidence. Complete multi-sen
 retain their sentence count instead of being confused with cropped sentences. Only the consumer
 converts this value into a `VocabularyExample`; the receipt ID keeps that example stable during
 rendering. Writing preview/notebook archive formats remain independent of acquisition internals.
+Completeness is three-state: proven boundaries are complete, known crop/deadline edges are fragments,
+and unverified node/layout edges are unknown. Unknown remains contextual material in both prompt
+stages without claiming missing words; the inline card shows no fragment caption for it.
+
+Selection coverage is independent of completeness. The exact occurrence may omit only trailing
+sentence punctuation, closing quotes and whitespace while still covering its containing sentence.
+Explicit selection of a whole multiword material with terminal punctuation can request translation
+even with unknown edges; known cropped tails and partial selections still use contextual lookup.
+This decision preserves the selected text and does not promote unknown acquisition to certainty.
 
 `LearningReadingContextPolicy` validates UTF-16 identity, trims artificial AX crop-edge graphemes,
 segments with the captured language (without an English fallback), and ranks candidate coverage.
@@ -881,7 +898,8 @@ alternating expansion and the same total text budget. Worker word records carry 
 line index, UTF-16 range and confidence; repeated spellings never use first-match text search.
 The helper/extractor retain this provenance locally; images and geometry do not enter prompts.
 Screen-region capture continues to translate the explicit region and preserves low-confidence
-recognized text. OCR edge evidence remains cropped unless interior sentence boundaries prove more.
+recognized text. OCR text touching the image edge, or clipped by the character budget, retains crop
+evidence. Interior block edges remain unknown until sentence/structural evidence proves more.
 
 Every capture, including the passive selection icon, gets a trace before acquisition. The first
 lookup uses that trace; later details/refresh logs link their new request IDs through

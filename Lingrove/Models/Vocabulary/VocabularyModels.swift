@@ -76,7 +76,9 @@ nonisolated struct VocabularyMeaning: Codable, Equatable, Identifiable, Sendable
 /// One encountered usage, including its exact UTF-16 spans. A pattern may have separated fixed
 /// parts, so a list of ranges preserves more information than searching for the first word match.
 nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable {
-    enum Completeness: String, Codable, Sendable { case sentence, fragment }
+    /// Unknown boundaries are not evidence of missing text. Keep that distinction when a
+    /// reading receipt becomes a saved usage; existing sentence/fragment archives retain their meaning.
+    enum Completeness: String, Codable, Sendable { case sentence, fragment, unknown }
     let id: UUID
     var text: String
     var translation: String
@@ -136,9 +138,16 @@ nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var reviewTemplates: [ReviewLayoutTemplate]?
 
     init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil) {
-        self.schemaVersion = schemaVersion ?? (entries.contains { $0.language == nil } ? 4 : 3)
+        self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
         self.entries = entries
         self.reviewTemplates = reviewTemplates
+    }
+
+    /// Version five adds unknown context evidence; four adds optional source languages.
+    /// Entity storage keeps its existing SQL schema. Only envelopes needing the new value advance.
+    static func requiredVersion(for entries: [VocabularyEntry]) -> Int {
+        if entries.contains(where: { $0.examples.contains { $0.completeness == .unknown } }) { return 5 }
+        return entries.contains { $0.language == nil } ? 4 : 3
     }
 }
 

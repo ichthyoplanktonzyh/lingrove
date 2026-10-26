@@ -81,6 +81,8 @@ struct VocabularyEntryEditor: View {
                                     .tag(VocabularyExample.Completeness.sentence)
                                 Text(String(localized: "Context fragment", table: "Vocabulary"))
                                     .tag(VocabularyExample.Completeness.fragment)
+                                Text(String(localized: "Unspecified", table: "Learning"))
+                                    .tag(VocabularyExample.Completeness.unknown)
                             }
                             HStack {
                                 Spacer()

@@ -1174,15 +1174,21 @@ private struct VocabularyExampleCard: View {
     let move: (UUID?) -> Void
     @State private var hovering = false
 
+    private var contextTitle: String {
+        switch example.completeness {
+        case .sentence: String(localized: "Example sentence", table: "Vocabulary")
+        case .fragment: String(localized: "Context fragment", table: "Vocabulary")
+        case .unknown: String(localized: "Context")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .center, spacing: 6) {
                 Image(systemName: example.completeness == .sentence ? "quote.opening" : "text.quote")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(LingroveBrand.accent)
-                Text(example.completeness == .sentence
-                    ? String(localized: "Example sentence", table: "Vocabulary")
-                    : String(localized: "Context fragment", table: "Vocabulary"))
+                Text(contextTitle)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()

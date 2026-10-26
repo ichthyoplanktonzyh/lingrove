@@ -33,22 +33,28 @@ nonisolated struct LearningReadingContext: Equatable, Sendable {
     let languageHint: LearningLanguage?
 
     var text: String { (window.text as NSString).substring(with: scope) }
-    var isComplete: Bool { left.isComplete && right.isComplete }
+    /// Completeness describes acquisition evidence, independently of the user's selection size.
+    /// A crop/deadline proves omitted context; an unknown node boundary does not.
+    var completeness: VocabularyExample.Completeness {
+        if left.isComplete && right.isComplete { return .sentence }
+        if [left, right].contains(where: { $0 == .crop || $0 == .deadline }) { return .fragment }
+        return .unknown
+    }
+    var isComplete: Bool { completeness == .sentence }
     /// A layout block helps choose translation vs lookup when the user selected the whole
     /// material. It does not certify linguistic completeness for the model's context field.
     var hasBlockCoverage: Bool {
         window.method == .block && window.left == .layoutBlock && window.right == .layoutBlock
     }
     var selectionCoversContext: Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines) ==
-            (text as NSString).substring(with: target).trimmingCharacters(in: .whitespacesAndNewlines)
+        LearningReadingContextPolicy.selectionCoversContext(text, target: target)
     }
 
     /// Persistence and the shared card still consume their established example type. Keeping
     /// this conversion at the consumer seam prevents acquisition evidence leaking into archives.
     func example(app: String, id: UUID = UUID(), createdAt: Date = Date()) -> VocabularyExample {
         VocabularyExample(id: id, text: text, translation: "", ranges: [VocabularyTextRange(target)],
-            completeness: isComplete && sentenceCount == 1 ? .sentence : .fragment,
+            completeness: completeness,
             meaning: "", appBundleIdentifier: app, createdAt: createdAt)
     }
 }

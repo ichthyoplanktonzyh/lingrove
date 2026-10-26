@@ -3,6 +3,57 @@ import Testing
 @testable import Lingrove
 
 nonisolated struct VocabularyArchiveTests {
+    @Test func unknownContextSurvivesStorageAndUsesAVersionedExport() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("notebook.sqlite")
+        var input = capture()
+        input.example?.completeness = .unknown
+        let saved = try await VocabularyArchive(url: url).save(input)
+        #expect(saved.document.schemaVersion == 5)
+        let reopened = try await VocabularyArchive(url: url).load()
+        #expect(reopened.document == saved.document)
+        #expect(reopened.document.entries.first?.examples.first?.completeness == .unknown)
+        let decoded = try JSONDecoder().decode(VocabularyDocument.self, from: JSONEncoder().encode(reopened.document))
+        #expect(decoded == reopened.document)
+        let exported = VocabularyExportPolicy.document(decoded.entries, configuration: .init(format: .json))
+        #expect(exported.version == 3)
+        let object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(exported)) as? [String: Any])
+        #expect(object["version"] as? Int == 3)
+    }
+
+    @Test func newUncertainEvidenceReusesOneSavedUsageWithoutChangingItsExplicitClassification() async throws {
+        let archive = VocabularyArchive(url: nil)
+        var input = capture()
+        input.example?.completeness = .fragment
+        let first = try await archive.save(input)
+        input.example?.completeness = .unknown
+        let repeated = try await archive.save(input)
+        #expect(repeated.document.entries[0].senses.count == 1 && repeated.document.entries[0].examples.count == 1)
+        #expect(first.document.entries[0].examples[0].id == repeated.document.entries[0].examples[0].id)
+        #expect(repeated.document.entries[0].examples[0].completeness == .fragment)
+        #expect(repeated.document.schemaVersion == 3)
+
+        let other = VocabularyArchive(url: nil)
+        let uncertain = try await other.save(input)
+        input.example?.completeness = .sentence
+        let confirmed = try await other.save(input)
+        #expect(confirmed.document.entries[0].examples.count == 1)
+        #expect(confirmed.document.entries[0].examples[0].id == uncertain.document.entries[0].examples[0].id)
+        #expect(confirmed.document.entries[0].examples[0].completeness == .sentence && confirmed.document.schemaVersion == 3)
+    }
+
+    @Test func uncertainEvidenceDoesNotMergeAmbiguousLegacyUsages() throws {
+        var document = VocabularyDocument(), input = capture()
+        input.example?.completeness = .fragment
+        _ = try VocabularyPolicy.save(input, in: &document, now: Date())
+        input.example?.completeness = .sentence
+        _ = try VocabularyPolicy.save(input, in: &document, now: Date())
+        input.example?.completeness = .unknown
+        #expect(throws: VocabularyError.editConflict) { try VocabularyPolicy.save(input, in: &document, now: Date()) }
+        #expect(document.entries[0].senses.count == 2 && document.entries[0].examples.count == 2)
+    }
+
     @Test func exportsOnlyLearningContentInSchemaThree() async throws {
         let archive = VocabularyArchive(url: nil)
         let snapshot = try await archive.save(capture())

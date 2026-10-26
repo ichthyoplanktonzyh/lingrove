@@ -10,12 +10,12 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningContextualLookupViewTests {
-    @Test(arguments: [LearningExplanationContext.sentence, .fragment, .none])
+    @Test(arguments: [LearningExplanationContext.sentence, .fragment, .unknown, .none])
     func queriedUnitShowsTheAppropriateSenseBeforeAnyDictionaryRequest(_ scope: LearningExplanationContext) async throws {
         let provider = LookupViewDictionary(), service = LookupViewExplainer()
         let session = LearningDictionarySession(provider: provider, explanationService: service)
         var capture = capture()
-        if scope == .none { capture.example = nil } else if scope == .fragment { capture.example?.completeness = .fragment }
+        if scope == .none { capture.example = nil } else { capture.example?.completeness = VocabularyExample.Completeness(rawValue: scope.rawValue) ?? .unknown }
         let ranges = capture.example?.ranges.map(\.nsRange) ?? [NSRange(location: 0, length: capture.expression.utf16.count)]
         let unit = LearningUnit(id: 0, surface: capture.expression, query: capture.dictionaryForm, kind: .pattern,
             ranges: ranges, words: [])
@@ -33,6 +33,7 @@ struct LearningContextualLookupViewTests {
         #expect(session.page == .contextual && session.explanation.record?.result.meaning == "Keep someone informed")
         #expect(text.contains("Keep someone informed"))
         #expect(session.explanation.input?.contextKind == scope)
+        if scope == .unknown { #expect(!text.contains(String(localized: "Context fragment", table: "Vocabulary"))) }
         if scope == .none {
             #expect(!text.contains("Please keep me posted"))
             #expect(!text.contains(String(localized: "Contextual meaning", table: "Learning")))

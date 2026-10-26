@@ -257,6 +257,7 @@ actor VocabularyArchive {
         // Fixtures/restores may commit before browsing has loaded the notebook. Establish the
         // same baseline and durable revision that ordinary card/editor operations use.
         let baseline = try transactionBaseline()
+        guard [3, 4, 5].contains(document.schemaVersion) else { throw VocabularyError.unsupportedVersion }
         var next = document
         // Explanation snapshots remain attached to their exact current input. A moved usage
         // retains them intact; editing its text cannot relabel an old answer as a current one.
@@ -277,10 +278,10 @@ actor VocabularyArchive {
                 }
             }
         }
+        next.schemaVersion = VocabularyDocument.requiredVersion(for: next.entries)
         try validate(next)
         // SQL stores entity rows, not a document-version row. Keep the cached envelope canonical
         // with reconstruction, including after the last unknown-language entry is removed.
-        next.schemaVersion = next.entries.contains { $0.language == nil } ? 4 : 3
         let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision, receipt: receipt)
         let previousImages = Self.imageReferences(self.document ?? VocabularyDocument())
         let retained = Set(Self.imageReferences(next).map(\.filename))
@@ -293,8 +294,8 @@ actor VocabularyArchive {
     /// Validate the whole ownership graph on load and every write. UUID uniqueness includes
     /// retired aliases, preventing a later merge or edit from giving one identity two owners.
     func validate(_ document: VocabularyDocument) throws {
-        guard [3, 4].contains(document.schemaVersion),
-              document.schemaVersion == 4 || document.entries.allSatisfy({ $0.language != nil }),
+        guard [3, 4, 5].contains(document.schemaVersion),
+              document.schemaVersion >= VocabularyDocument.requiredVersion(for: document.entries),
               Set(document.entries.map(VocabularyPolicy.entryKey)).count == document.entries.count else {
             throw VocabularyError.invalidArchive
         }

@@ -39,7 +39,7 @@ enum LearningVocabularyContextReader {
         LingroveLogger.learning.debug("Reading context captured", metadata: [
             "request_id": .string(LearningRequestTrace.requestID ?? "unscoped"),
             "method": .string(context?.window.method.rawValue ?? "unavailable"),
-            "scope": .string(context.map { $0.isComplete ? "complete" : "fragment" } ?? "none"),
+            "scope": .string(context.map { $0.isComplete ? "complete" : $0.completeness.rawValue } ?? "none"),
             "left_boundary": .string(context?.left.rawValue ?? "unknown"),
             "right_boundary": .string(context?.right.rawValue ?? "unknown"),
             "context_utf16": .stringConvertible(context?.text.utf16.count ?? 0),

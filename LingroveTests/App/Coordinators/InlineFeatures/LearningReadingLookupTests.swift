@@ -35,6 +35,18 @@ struct LearningReadingLookupTests {
         #expect(rig.panel.sentence?.translation == "他坐在河岸上。")
     }
 
+    @Test(arguments: [true, false])
+    func reportedWholeSelectionUsesTranslationWithUnknownEdges(_ includesPeriod: Bool) async throws {
+        let sentence = "For more experimental results and analysis, please refer to our report."
+        let selected = includesPeriod ? sentence : String(sentence.dropLast())
+        let rig = try Rig(text: selected, context: sentence)
+        defer { rig.close() }
+        rig.reader.boundary = .unknown
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await wait { rig.panel.sentence?.translation.isEmpty == false }
+        #expect(rig.service.calls == 1 && rig.panel.lookupCalls == 0)
+    }
+
     @Test func enrichmentReachesTheExistingLookupOnceBeforeAnyTranslation() async throws {
         let rig = try Rig(text: "history", context: "your review history.")
         defer { rig.close() }
@@ -112,6 +124,7 @@ struct LearningReadingLookupTests {
     }
     private final class Reader: LearningReadingSelecting {
         var current = true
+        var boundary: LearningReadingWindow.Boundary = .container
         var enrichedContext: String?
         var enrichments = 0
         let text: String, context: String
@@ -119,7 +132,7 @@ struct LearningReadingLookupTests {
         func capture() async throws -> LearningReadingSelection {
             .init(id: UUID(), text: text, processIdentifier: 1, bundleIdentifier: "lookup.fixture", anchor: .zero,
                 context: LearningReadingContextPolicy.resolve(.init(text: context,
-                    target: (context as NSString).range(of: text), left: .container, right: .container,
+                    target: (context as NSString).range(of: text), left: boundary, right: boundary,
                     method: .characters), expected: text))
         }
         func isCurrent(_ capture: LearningReadingSelection) -> Bool { current }
