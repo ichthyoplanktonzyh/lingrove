@@ -8,6 +8,45 @@ import Testing
 @MainActor
 struct ExpressionAssistPanelTests {
     @Test
+    func openingInputTakesTheMainRoleFromAnExistingSettingsWindow() async throws {
+        let settings = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 500, height: 350),
+            styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        settings.isReleasedWhenClosed = false
+        settings.title = "Expression activation regression fixture"
+        let panel = ExpressionAssistPanelController()
+        defer { panel.hide(restoringHost: false); settings.close() }
+        NSApp.activate(ignoringOtherApps: true)
+        for _ in 0..<15 where !NSApp.isActive { try await Task.sleep(for: .milliseconds(20)) }
+        settings.makeKeyAndOrderFront(nil)
+        settings.makeMain()
+        for _ in 0..<15 where NSApp.mainWindow !== settings { try await Task.sleep(for: .milliseconds(20)) }
+        try #require(NSApp.mainWindow === settings)
+        let originalFrame = settings.frame
+        // Reproduce a Settings window left behind another app. Merely asserting the final main
+        // role misses a transient promotion of Settings during application activation.
+        NSApp.deactivate()
+        for _ in 0..<15 where NSApp.isActive { try await Task.sleep(for: .milliseconds(20)) }
+        let capture = try context()
+        await confirmation("Settings must not become main while assistance activates", expectedCount: 0) { promoted in
+            let observer = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeMainNotification,
+                object: settings, queue: nil) { _ in promoted() }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            await panel.show(context: capture, trigger: "??", initialQuery: "")
+        }
+        let input = try inputWindow()
+        #expect(panel.hasKeyFocus && input.isKeyWindow)
+        #expect(NSApp.mainWindow === input, "Activation must target the input, not the previously opened Settings window")
+        #expect(!settings.isMainWindow && !settings.isKeyWindow)
+        #expect(settings.isVisible && settings.frame == originalFrame, "Opening assistance must preserve the existing window")
+        let editor = try #require(input.firstResponder as? NSTextView)
+        editor.setMarkedText("zhong", selectedRange: NSRange(location: 5, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(editor.hasMarkedText())
+        editor.insertText("中文", replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(editor.string == "中文" && !editor.hasMarkedText())
+    }
+
+    @Test
     func quietInputKeepsNativeCompositionAndConfirmsOnlyAReadyChoice() async throws {
         let panel = ExpressionAssistPanelController()
         defer { panel.hide(restoringHost: false) }

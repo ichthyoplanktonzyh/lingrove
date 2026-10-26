@@ -120,27 +120,29 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         lastQuery = initialQuery
         lastComposing = false
         guard layoutInput() else { hide(restoringHost: false); return }
-        // isKeyWindow on an inactive nonactivating panel did not prove that WindowServer routed
-        // real typing or the input method to it. Establish normal application activation instead,
-        // then wait for the system acknowledgment before reporting this session as ready.
+        // Normal activation is required for reliable keyboard/IME delivery. It brings the app's
+        // main and key windows forward, so give this input both roles BEFORE requesting activation.
+        // Activating first would promote a previously opened Settings/Notebook window as well.
         input.initialFirstResponder = view
         input.makeFirstResponder(view)
-        NSApp.activate(ignoringOtherApps: true)
         input.makeKeyAndOrderFront(nil)
+        input.makeMain()
+        NSApp.activate(ignoringOtherApps: true)
         for _ in 0..<15 {
             guard inputPanel === input, !Task.isCancelled else { return }
-            if hasKeyFocus && input.firstResponder === view { break }
+            if hasKeyFocus && input.isMainWindow && input.firstResponder === view { break }
             try? await Task.sleep(for: .milliseconds(20))
         }
         guard inputPanel === input else { return }
         LingroveLogger.learning.info("Expression keyboard ownership", metadata: [
             "app_active": .stringConvertible(NSApp.isActive),
             "is_key": .stringConvertible(input.isKeyWindow),
+            "is_main": .stringConvertible(input.isMainWindow),
             "input_is_first_responder": .stringConvertible(input.firstResponder === view),
             "frontmost_is_input_owner": .stringConvertible(
                 NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier)
         ])
-        guard hasKeyFocus, input.firstResponder === view, !Task.isCancelled else {
+        guard hasKeyFocus, input.isMainWindow, input.firstResponder === view, !Task.isCancelled else {
             hide(restoringHost: true)
             return
         }
@@ -619,11 +621,11 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
 
 }
 
-/// A borderless input needs an explicit key-window override. Normal application activation gives
-/// NSTextView the same keyboard/IME dispatch as a regular editor without adding visible chrome.
+/// The temporary editor owns both main and key roles during its explicit activation round trip.
+/// A key-only panel would leave Settings as the main window, which activation also brings forward.
 private final class ExpressionAssistInputPanel: NSPanel {
     override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeMain: Bool { true }
 }
 
 private final class ExpressionAssistResultPanel: NSPanel {
