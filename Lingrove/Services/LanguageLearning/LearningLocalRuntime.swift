@@ -146,7 +146,7 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
 
     func translationPlan(
         configuration: LearningLocalModelConfiguration, input: LearningTranslationInput,
-        sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage, output: Int,
+        sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage, output: Int,
         operationID: UUID, trace: LearningRequestContext?
     ) throws -> LearningTranslationPrompt.Request {
         let modelURL = configuration.modelURL

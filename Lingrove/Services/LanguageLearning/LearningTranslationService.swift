@@ -30,12 +30,12 @@ final class LearningTranslationService {
         guard snapshot.translationEnabled, settings.isGloballyEnabled, !settings.isTemporarilyPaused else {
             throw CancellationError()
         }
-        let sourceLanguage: LearningLanguage
+        let sourceLanguage: LearningLanguage?
         switch task {
         case .translation(let language, let target):
             let allowed = input.origin == .reading
                 ? settings.languageLearning.readingEnabled(input.readingSource) && settings.languageLearning.readingTargetLanguage == target
-                : snapshot.sourceLanguages.contains(language) && snapshot.targetLanguage == target
+                : (language.map { snapshot.sourceLanguages.contains($0) } ?? false) && snapshot.targetLanguage == target
             guard allowed, language != target else {
                 throw LearningFailure.message(String(localized: """
                 The source language is not enabled or matches the target. Check the translation settings.

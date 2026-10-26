@@ -22,7 +22,7 @@ nonisolated enum VocabularyExportPolicy {
 
     static func document(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration) -> VocabularyExportDocument {
         let options = configuration
-        return .init(entries: entries.map { entry in
+        return .init(version: entries.contains { $0.language == nil } ? 2 : 1, entries: entries.map { entry in
             .init(id: entry.id, expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
                 kind: entry.kind, senses: entry.senses.map { sense in
                     .init(id: sense.id, createdAt: sense.createdAt, meaning: options.meanings ? sense.meaning : nil,

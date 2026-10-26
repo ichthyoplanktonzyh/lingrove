@@ -502,7 +502,7 @@ struct LearningReadingCoordinatorTests {
         // A transport-owned row keeps the direction and acquisition source of one request.
         // swiftlint:disable:next nesting
         struct Call {
-            let source: LearningLanguage
+            let source: LearningLanguage?
             let target: LearningLanguage
             let readingSource: LearningReadingSource
         }
@@ -511,21 +511,21 @@ struct LearningReadingCoordinatorTests {
         var partials: [(String) -> Void] = []
         var pending: [Int: CheckedContinuation<String, any Error>] = [:]
         init(settings: SuggestionSettingsModel) { self.settings = settings }
-        func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+        func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                        readingSource: LearningReadingSource,
                                        onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
             partials.append(onPartial)
             return try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
                 targetLanguage: targetLanguage, readingSource: readingSource)
         }
-        func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+        func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                        readingSource: LearningReadingSource) async throws
             -> String {
             let index = calls.count
             calls.append(.init(source: sourceLanguage, target: targetLanguage, readingSource: readingSource))
             return try await withCheckedThrowingContinuation { pending[index] = $0 }
         }
-        func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String {
+        func translateSentence(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage) async throws -> String {
             Issue.record("Reading must use the reading service contract")
             throw CancellationError()
         }

@@ -128,7 +128,7 @@ nonisolated enum SpeechLanguageMode: Equatable, Sendable { case automatic, fixed
 nonisolated struct SpeechRequest: Equatable, Sendable {
     let target: SpeechTarget
     let text: String
-    let language: LearningLanguage
+    let language: LearningLanguage?
     var context: String?
     var languageMode: SpeechLanguageMode = .automatic
 }

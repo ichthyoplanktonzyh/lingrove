@@ -63,7 +63,7 @@ final class LearningDetailPanel {
         return true
     }
 
-    func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage,
+    func show(_ unit: LearningUnit, documentID: UUID, language: LearningLanguage?,
               placement: LearningDetailPlacement, speechContext: String? = nil,
               vocabularyCapture: VocabularyCapture? = nil, translationLanguage: LearningLanguage? = nil,
               validateCapture: @escaping () -> Bool = { true }, dismiss: (() -> Void)? = nil) {

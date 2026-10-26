@@ -6,36 +6,38 @@ import Foundation
 @MainActor
 protocol LearningSentenceGenerating: LearningDisplayReporting {
     var settings: SuggestionSettingsModel { get }
-    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource) async throws -> String
-    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource,
                                    onPartial: @escaping @MainActor (String) -> Void) async throws -> String
-    func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String
-    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
+    func translateSentence(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage) async throws -> String
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
+                           targetLanguage: LearningLanguage) async throws
         -> String
     /// Prefixes are display-only snapshots. Only the returned, validated value may be cached,
     /// spoken or used to replace the saved source range.
-    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                            onPartial: @escaping @MainActor (String) -> Void) async throws -> String
 }
 
 extension LearningSentenceGenerating {
-    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource,
                                    onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
         try await translateReadingSelection(source: source, sourceLanguage: sourceLanguage,
             targetLanguage: targetLanguage, readingSource: readingSource)
     }
-    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                            onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
         try await translateSentence(input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
     }
-    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage,
+    func translateReadingSelection(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage,
                                    readingSource: LearningReadingSource = .selection) async throws -> String {
         try await translateSentence(source: source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
     }
-    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws
+    func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
+                           targetLanguage: LearningLanguage) async throws
         -> String {
         try await translateSentence(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
     }
@@ -48,7 +50,7 @@ struct LearningSentencePresentation {
     let id: UUID
     let source: String
     let translation: String
-    let sourceLanguage: LearningLanguage
+    let sourceLanguage: LearningLanguage?
     let targetLanguage: LearningLanguage
     let caret: CGRect
     let isExpanded: Bool

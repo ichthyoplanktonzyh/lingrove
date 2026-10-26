@@ -8,8 +8,8 @@ nonisolated struct DictionaryLanguagePair: Codable, Equatable, Sendable {
     var definition: LearningLanguage?
     var multilingual: Bool?
 
-    func supports(_ language: LearningLanguage) -> Bool {
-        guard let entry else { return true }
+    func supports(_ language: LearningLanguage?) -> Bool {
+        guard let entry, let language else { return true }
         return Self.family(entry) == Self.family(language)
     }
 

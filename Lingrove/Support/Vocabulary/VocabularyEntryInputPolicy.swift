@@ -90,6 +90,7 @@ nonisolated enum VocabularyEntryInputPolicy {
             if let found = indices[key] { index = found } else {
                 index = plan.document.entries.count
                 indices[key] = index
+                if value.language == nil, plan.document.schemaVersion == 3 { plan.document.schemaVersion = 4 }
                 plan.document.entries.append(VocabularyEntry(id: UUID(), expression: value.expression,
                     dictionaryForm: value.dictionaryForm, language: value.language, kind: value.kind,
                     senses: [], createdAt: now, updatedAt: now))

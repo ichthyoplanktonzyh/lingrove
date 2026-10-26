@@ -129,7 +129,7 @@ final class LearningSpeechController: ObservableObject {
             setError(String(localized: "There is no text to read aloud.", table: "Learning"), for: request.target)
             return
         }
-        guard let request = resolvedRequest(request, text: text) else { return }
+        guard let request = resolvedRequest(request, text: text), let language = request.language else { return }
         if settings.selectedProvider != .system {
             startGeneratedAudio(text, request: request)
             return
@@ -143,8 +143,8 @@ final class LearningSpeechController: ObservableObject {
         }
         guard let voice = SpeechVoicePolicy.select(
             from: voiceCatalog,
-            language: request.language,
-            preferredVoiceID: settings.voiceID(for: request.language)
+            language: language,
+            preferredVoiceID: settings.voiceID(for: language)
         ) else {
             setError(String(
                 localized: "No speech voice is available for this language.",
@@ -154,7 +154,7 @@ final class LearningSpeechController: ObservableObject {
         }
 
         let token = SpeechPlaybackToken()
-        telemetry.begin(token, model: voice.name, engine: "system_speech", language: request.language)
+        telemetry.begin(token, model: voice.name, engine: "system_speech", language: language)
         activeToken = token
         activeRequest = request
         activeTarget = request.target
@@ -254,24 +254,25 @@ final class LearningSpeechController: ObservableObject {
     }
 
     private func startGeneratedAudio(_ text: String, request: SpeechRequest) {
+        guard let language = request.language else { return }
         let source: SpeechAudioSource
         do {
-            guard let configured = try generatedSource(for: request.language) else { return }
+            guard let configured = try generatedSource(for: language) else { return }
             source = configured
         } catch { setError(error.localizedDescription, for: request.target); return }
         let token = SpeechPlaybackToken()
         switch source {
         case .local(let configuration):
-            telemetry.begin(token, model: configuration.modelURL.lastPathComponent, engine: "llama", language: request.language)
+            telemetry.begin(token, model: configuration.modelURL.lastPathComponent, engine: "llama", language: language)
         case .endpoint(let configuration, _):
-            telemetry.begin(token, model: configuration.endpoint.modelName, engine: "openai_compatible", language: request.language)
+            telemetry.begin(token, model: configuration.endpoint.modelName, engine: "openai_compatible", language: language)
         }
         let rate = settings.rateMultiplier
         activeToken = token
         activeTarget = request.target
         activeRequest = request
         phase = .preparing
-        let audioRequest = SpeechAudioRequest(token: token, text: text, language: request.language, source: source,
+        let audioRequest = SpeechAudioRequest(token: token, text: text, language: language, source: source,
             sampling: settings.generationProfile.sampling)
         let isLocal: Bool
         if case .local = source { isLocal = true } else { isLocal = false }

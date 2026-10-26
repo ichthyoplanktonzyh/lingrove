@@ -12,7 +12,7 @@ nonisolated enum VocabularyDatabaseProjection {
             let parent = entry.id.uuidString
             var header = entry; header.senses = []
             rows.append(.init(table: .entries, id: parent, parentID: nil, position: position, payload: .entry(header),
-                extra: [VocabularyPolicy.entryKey(entry), entry.language.rawValue, entry.expression]))
+                extra: [VocabularyPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
             for (index, sense) in entry.senses.enumerated() { append(sense, parent: parent, position: index, to: &rows) }
         }
         for (position, template) in (document.reviewTemplates ?? []).enumerated() {

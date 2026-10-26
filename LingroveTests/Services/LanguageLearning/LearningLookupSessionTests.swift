@@ -194,6 +194,39 @@ struct LearningLookupSessionTests {
         service.finishLookup(1)
     }
 
+    @Test func unknownSourceAndUnconfiguredAIStillStartDictionaryAndAllowSaving() async throws {
+        let service = LookupSessionService()
+        service.isConfigured = false
+        let session = LearningDictionarySession(provider: LookupSessionDictionary(), explanationService: service)
+        defer { session.close() }
+        let capture = VocabularyCapture(expression: "compatible", dictionaryForm: "compatible", language: nil, kind: .word)
+        let unit = LearningUnit(id: 0, surface: "compatible", query: "compatible", kind: .word,
+            ranges: [NSRange(location: 0, length: 10)], words: [])
+        session.open(unit, documentID: UUID(), language: nil, vocabularyCapture: capture, translationLanguage: .chinese)
+        await wait { session.content == .result(.notFound) }
+        #expect(session.page == .dictionary && service.lookupCalls.isEmpty)
+        #expect(!session.availableSources.isEmpty)
+        let favorite = try #require(session.favoriteCapture)
+        #expect(favorite.language == nil && favorite.expression == "compatible")
+    }
+
+    @Test func failedUnknownSourceAIRequestDoesNotDisableDictionaryNavigation() async throws {
+        let service = LookupSessionService()
+        let session = LearningDictionarySession(provider: LookupSessionDictionary(), explanationService: service)
+        defer { session.close() }
+        let capture = VocabularyCapture(expression: "compatible", dictionaryForm: "compatible", language: nil, kind: .word)
+        let unit = LearningUnit(id: 0, surface: "compatible", query: "compatible", kind: .word,
+            ranges: [NSRange(location: 0, length: 10)], words: [])
+        session.open(unit, documentID: UUID(), language: nil, vocabularyCapture: capture, translationLanguage: .chinese)
+        await wait { service.lookupCalls.count == 1 }
+        #expect(service.lookupCalls[0].target.language == nil)
+        service.failLookup(0)
+        await wait { session.explanation.error != nil }
+        session.selectPage(.dictionary)
+        await wait { session.content == .result(.notFound) }
+        #expect(session.page == .dictionary)
+    }
+
     private func capture(expression: String = "keep me posted", translationLanguage: LearningLanguage) -> VocabularyCapture {
         let sentence = expression == "look forward to" ? "We look forward to seeing you." : "Please keep me posted on progress."
         let phrase = (sentence as NSString).range(of: expression)
@@ -297,7 +330,7 @@ private final class LookupSessionService: LearningLookupGenerating {
 }
 
 private actor LookupSessionDictionary: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }

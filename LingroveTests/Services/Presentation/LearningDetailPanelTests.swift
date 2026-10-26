@@ -256,7 +256,7 @@ private actor LayoutDictionaryProbe: LearningDictionaryProviding {
         self.html = html
     }
     private var pending: [CheckedContinuation<LearningDictionaryResult, Never>] = []
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool, source: LearningDictionarySource,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool, source: LearningDictionarySource,
                 configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         if source == .system {
             if let html { return .article(.init(html: html, text: "A local dictionary article.", sourceName: "Fixture")) }
@@ -278,7 +278,7 @@ private actor LayoutDictionaryProbe: LearningDictionaryProviding {
 }
 
 private actor ExpressionDictionaryProbe: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }

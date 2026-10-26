@@ -154,7 +154,7 @@ private enum LearningEvalFailure: LocalizedError {
 
 private struct LearningTranslationEvalCase {
     let category: String
-    let sourceLanguage: LearningLanguage
+    let sourceLanguage: LearningLanguage?
     let targetLanguage: LearningLanguage
     let source: String
 }
@@ -177,7 +177,7 @@ private struct LearningEvalGenerationOptions: Encodable {
 
 private struct LearningTranslationEvalResult: Encodable {
     let category: String
-    let sourceLanguage: LearningLanguage
+    let sourceLanguage: LearningLanguage?
     let targetLanguage: LearningLanguage
     let source: String
     let prompt: String

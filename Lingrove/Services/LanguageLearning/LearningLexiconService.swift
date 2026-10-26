@@ -20,7 +20,7 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
         return units
     }
 
-    func lookup(_ query: String, language: LearningLanguage, expression: Bool,
+    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
                 source: LearningDictionarySource = .bundled,
                 configuration: LearningDictionaryConfiguration = .init()) async throws -> LearningDictionaryResult {
         try Task.checkCancellation()
@@ -48,8 +48,8 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
         return .systemText(text)
     }
 
-    private func index(for language: LearningLanguage) throws -> LearningUnitRecognizer {
-        let code = language == .chinese || language == .traditionalChinese ? "zh" : language.rawValue
+    private func index(for language: LearningLanguage?) throws -> LearningUnitRecognizer {
+        let code = language == .chinese || language == .traditionalChinese ? "zh" : (language?.rawValue ?? "und")
         if let index = indices[code] { return index }
         if resource == nil {
             guard let resourceURL else {
@@ -74,7 +74,7 @@ actor LearningLexiconService: LearningUnitRecognizing, LearningDictionaryProvidi
                     table: "Learning", comment: "Error shown when the bundled expression dictionary cannot be read or decoded."))
             }
         }
-        let index = LearningUnitRecognizer(entries: resource!.entries.filter { $0.language == code })
+        let index = LearningUnitRecognizer(entries: resource!.entries.filter { language == nil || $0.language == code })
         indices[code] = index
         return index
     }

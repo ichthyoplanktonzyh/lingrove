@@ -37,7 +37,7 @@ nonisolated enum LearningLanguage: String, Codable, CaseIterable, Identifiable, 
 /// An operation captures its languages before awaiting the model so later setting edits cannot
 /// relabel or commit an old reply.
 nonisolated enum LearningExpressionTask: Equatable, Sendable {
-    case translation(source: LearningLanguage, target: LearningLanguage)
+    case translation(source: LearningLanguage?, target: LearningLanguage)
 
     var target: LearningLanguage {
         switch self {

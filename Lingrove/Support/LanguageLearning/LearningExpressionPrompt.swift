@@ -6,11 +6,11 @@ import Foundation
 nonisolated enum LearningExpressionPrompt {
     static func translation(
         source: String,
-        sourceLanguage: LearningLanguage = .chinese, targetLanguage: LearningLanguage = .english
+        sourceLanguage: LearningLanguage? = .chinese, targetLanguage: LearningLanguage = .english
     ) throws -> String {
-        let sourceName = sourceLanguage == .chinese ? "Chinese" : sourceLanguage.name
+        let sourceName = sourceLanguage.map { $0 == .chinese ? "Chinese " : $0.name + " " } ?? ""
         return try render(source: source,
-            instruction: "Translate the following \(sourceName) text into natural \(targetLanguage.name). " +
+            instruction: "Translate the following \(sourceName)text into natural \(targetLanguage.name). " +
                 "Preserve all meaning and tone, including negation and numbers. Return only the entire translation.")
     }
 

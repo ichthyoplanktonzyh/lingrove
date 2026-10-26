@@ -133,8 +133,9 @@ struct LearningDictionaryCard: View {
     }
 
     private var explanationLanguageLabel: String {
-        let source = session.contentLanguage.compactLabel
-        guard let language = session.explanation.service?.language, language != session.contentLanguage else { return source }
+        let language = session.explanation.service?.language
+        guard let source = session.contentLanguage?.compactLabel else { return language?.compactLabel ?? "" }
+        guard let language, language != session.contentLanguage else { return source }
         return String(localized: "\(source) → \(language.compactLabel)", table: "Learning")
     }
 

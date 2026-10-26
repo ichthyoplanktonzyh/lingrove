@@ -9,10 +9,10 @@ nonisolated enum LearningUnitPolicy {
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    static func words(in text: String, language: LearningLanguage) -> [LearningDictionaryWord] {
+    static func words(in text: String, language: LearningLanguage?) -> [LearningDictionaryWord] {
         let tokenizer = NLTokenizer(unit: .word)
         tokenizer.string = text
-        tokenizer.setLanguage(language.naturalLanguage)
+        if let language { tokenizer.setLanguage(language.naturalLanguage) }
         var result: [LearningDictionaryWord] = []
         tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { range, _ in
             let word = String(text[range])
@@ -24,7 +24,7 @@ nonisolated enum LearningUnitPolicy {
         return result
     }
 
-    static func fallback(in text: String, language: LearningLanguage) -> [LearningUnit] {
+    static func fallback(in text: String, language: LearningLanguage?) -> [LearningUnit] {
         words(in: text, language: language).map(LearningUnit.word)
     }
 

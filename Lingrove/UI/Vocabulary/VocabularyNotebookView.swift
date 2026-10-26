@@ -901,7 +901,7 @@ struct VocabularyEntryDetail: View {
             }
 
             HStack(spacing: 6) {
-                metadataBadge(entry.language.label, tint: LingroveBrand.accent)
+                metadataBadge((entry.language?.label ?? String(localized: "Unspecified", table: "Learning")), tint: LingroveBrand.accent)
                 metadataBadge(entry.kind.label, tint: .secondary)
                 if entry.dictionaryForm != entry.expression {
                     HStack(spacing: 4) {
@@ -1154,7 +1154,7 @@ struct VocabularyEntryDetail: View {
         Task { _ = await store.moveExample(entryID: entry.id, exampleID: example.id, source: sense.id, target: target) }
     }
 
-    private func speaker(text: String, item: String, language: LearningLanguage) -> some View {
+    private func speaker(text: String, item: String, language: LearningLanguage?) -> some View {
         LearningSpeechButton(speech: speech, request: SpeechRequest(target: SpeechTarget(ownerID: sense.id, itemID: "vocabulary." + item),
             text: text, language: language), playLabel: String(localized: "Read aloud", table: "Vocabulary"),
             stopLabel: String(localized: "Stop reading", table: "Vocabulary"))
@@ -1266,7 +1266,7 @@ private struct VocabularyExampleCard: View {
         .onHover { hovering = $0 }
     }
 
-    private func speaker(text: String, item: String, language: LearningLanguage) -> some View {
+    private func speaker(text: String, item: String, language: LearningLanguage?) -> some View {
         LearningSpeechButton(speech: speech, request: SpeechRequest(target: SpeechTarget(ownerID: sense.id, itemID: "vocabulary." + item),
             text: text, language: language), playLabel: String(localized: "Read aloud", table: "Vocabulary"),
             stopLabel: String(localized: "Stop reading", table: "Vocabulary"))
@@ -1379,7 +1379,7 @@ private struct VocabularySingleEntryRow: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
-                Text(entry.language.compactLabel)
+                Text((entry.language?.compactLabel ?? String(localized: "Unspecified", table: "Learning")))
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 5)
@@ -1426,7 +1426,7 @@ private struct VocabularyMultiSenseHeaderRow: View {
                     .foregroundStyle(isSelected ? LingroveBrand.accent : .primary)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(entry.language.compactLabel)
+                Text((entry.language?.compactLabel ?? String(localized: "Unspecified", table: "Learning")))
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 5)

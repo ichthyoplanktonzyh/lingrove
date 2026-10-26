@@ -6,7 +6,7 @@ import SwiftUI
 /// double-clicks carry only a word occurrence and native anchor to the panel's existing dictionary.
 struct LearningSentenceDictionaryText: NSViewRepresentable {
     let text: String
-    let language: LearningLanguage
+    let language: LearningLanguage?
     let lookup: (LearningDictionaryTextAnchor, NSTextView) -> Void
     var units: [LearningUnit] = []
     var source = false
@@ -64,7 +64,7 @@ final class LearningDictionaryTextView: NSTextView {
     /// create TextKit 2 when init receives nil; then layoutManager is nil and both our size and
     /// exact glyph-hit calculations become unavailable. This view deliberately uses TextKit 1.
     private var ownedTextStorage: NSTextStorage?
-    var language: LearningLanguage = .english
+    var language: LearningLanguage? = .english
     var lookup: (LearningDictionaryTextAnchor, NSTextView) -> Void = { _, _ in }
     var lookupUnit: ((LearningUnitTextAnchor, NSTextView) -> Void)?
     var units: [LearningUnit] = []
@@ -139,7 +139,7 @@ final class LearningDictionaryTextView: NSTextView {
               layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer).contains(local) else { return }
         let location = layoutManager.characterIndexForGlyph(at: glyph)
         guard let word = LearningDictionaryWordPolicy.word(atUTF16Location: location,
-            in: string, language: language.naturalLanguage) else { return }
+            in: string, language: language?.naturalLanguage) else { return }
         let unit = LearningUnitPolicy.unit(at: location, units: units) ?? .word(word)
         var lineRange = NSRange()
         _ = layoutManager.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: &lineRange)

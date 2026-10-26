@@ -891,17 +891,17 @@ struct LearningSentencePreviewCoordinatorTests {
                 }
             }
         }
-        func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
                                targetLanguage: LearningLanguage, onPartial: @escaping @MainActor (String) -> Void) async throws -> String {
             translationCallbacks.append(onPartial)
             return try await translateSentence(input: input, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
         }
-        func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage,
+        func translateSentence(input: LearningTranslationInput, sourceLanguage: LearningLanguage?,
                                targetLanguage: LearningLanguage) async throws -> String {
             inputs.append(input)
             return try await translateSentence(source: input.source, sourceLanguage: sourceLanguage, targetLanguage: targetLanguage)
         }
-        func translateSentence(source: String, sourceLanguage: LearningLanguage, targetLanguage: LearningLanguage) async throws -> String {
+        func translateSentence(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage) async throws -> String {
             let index = requests.count
             requests.append(.init(source: source))
             return try await wait(index: index)

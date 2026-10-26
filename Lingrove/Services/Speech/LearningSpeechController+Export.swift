@@ -13,7 +13,7 @@ extension LearningSpeechController: SpeechExporting {
 
     /// Called only after a user enables review audio or requests an audition. Detect language
     /// locally, then freeze the selected provider and voice once; context never leaves this seam.
-    func exportRequest(text: String, language: LearningLanguage, context: String? = nil) throws -> SpeechExportRequest {
+    func exportRequest(text: String, language: LearningLanguage?, context: String? = nil) throws -> SpeechExportRequest {
         guard text.utf8.count <= 4_096, text.count <= SpeechTextPolicy.maximumLength else { throw SpeechError.textTooLong }
         guard let cleaned = SpeechTextPolicy.sanitizedText(text),
               let resolved = SpeechLanguageResolver.resolve(text: cleaned, hint: language, context: context) else {
