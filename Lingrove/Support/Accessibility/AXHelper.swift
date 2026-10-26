@@ -846,16 +846,18 @@ enum AXHelper {
 
     /// Query only the already bounded selected range. An ordinary range and a marker range may
     /// refer to different host representations, so each geometry query must first reproduce the
-    /// exact selected UTF-16 text. CF values remain owned by this synchronous call.
+    /// equivalent selected text at that same range. Only reading accepts whitespace/NFC variants;
+    /// editing receipts below remain byte-exact. CF values stay owned by this synchronous call.
     static func readingSelectionBounds(on element: AXUIElement, range: NSRange?, markers: CFTypeRef?,
                                        expected: String) -> CGRect? {
-        if let markers, stringForMarkerRange(markers, on: element)?.utf16.elementsEqual(expected.utf16) == true,
+        if let markers, let text = stringForMarkerRange(markers, on: element),
+           LearningReadingTargetPolicy.equivalent(text, expected),
            let rect = markerRangeRect(markers, on: element, requiresWidth: true) {
             return cocoaRect(fromAccessibilityRect: rect)
         }
-        guard let range, range.length == expected.utf16.count,
-              parameterizedStringValue(for: kAXStringForRangeParameterizedAttribute as CFString, range: range,
-                  on: element)?.utf16.elementsEqual(expected.utf16) == true,
+        guard let range, range.length > 0, range.length <= LearningReadingContextPolicy.maximumSelectionUTF16,
+              let text = parameterizedStringValue(for: kAXStringForRangeParameterizedAttribute as CFString, range: range, on: element),
+              text.utf16.count == range.length, LearningReadingTargetPolicy.equivalent(text, expected),
               let rect = parameterizedRectValue(for: kAXBoundsForRangeParameterizedAttribute as CFString, range: range, on: element),
               rectHasFiniteComponents(rect), rect.width > 0, rect.height > 0 else { return nil }
         return cocoaRect(fromAccessibilityRect: rect)

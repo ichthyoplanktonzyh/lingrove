@@ -29,10 +29,11 @@ nonisolated enum LearningReadingContextPolicy {
         let hint = LearningLanguage.detect(in: window.text)
         let tokenizer = NLTokenizer(unit: .sentence)
         if let hint { tokenizer.setLanguage(hint.naturalLanguage) }
-        tokenizer.string = window.text
+        let sentenceText = tokenizationText(window)
+        tokenizer.string = sentenceText
         var sentences: [NSRange] = []
-        tokenizer.enumerateTokens(in: window.text.startIndex..<window.text.endIndex) { token, _ in
-            let token = NSRange(token, in: window.text)
+        tokenizer.enumerateTokens(in: sentenceText.startIndex..<sentenceText.endIndex) { token, _ in
+            let token = NSRange(token, in: sentenceText)
             if NSIntersectionRange(token, target).length > 0 { sentences.append(token) }
             return true
         }
@@ -82,6 +83,18 @@ nonisolated enum LearningReadingContextPolicy {
         text.range(of: #"[.!?。！？…][\"'”’»）」』】\]\)]*\s*$"#, options: .regularExpression) != nil
     }
 
+    /// Only line breaks introduced while reconciling the target are masked for tokenization.
+    /// Keep identical UTF-16 widths (including CRLF) so offsets still address the stored original;
+    /// actual paragraph breaks outside the selection continue to delimit context normally.
+    private static func tokenizationText(_ window: LearningReadingWindow) -> String {
+        guard window.targetIntroducesLineBreaks else { return window.text }
+        let raw = window.text as NSString
+        let target = raw.substring(with: window.target).map { character in
+            character.isNewline ? String(repeating: " ", count: String(character).utf16.count) : String(character)
+        }.joined()
+        return raw.replacingCharacters(in: window.target, with: target)
+    }
+
     /// Compare the actual occurrence, not a second string search. A user often leaves the
     /// final period/closing quote unselected. Those decorations do not turn a sentence into a
     /// phrase; omitted words, commas or an opening clause do. The original text is never changed.
@@ -112,6 +125,7 @@ nonisolated enum LearningReadingContextPolicy {
         }
         return .init(text: text.substring(with: NSRange(location: lower, length: upper - lower)),
             target: NSRange(location: window.target.location - lower, length: window.target.length),
-            left: window.left, right: window.right, method: window.method, confidence: window.confidence)
+            left: window.left, right: window.right, method: window.method, confidence: window.confidence,
+            targetIntroducesLineBreaks: window.targetIntroducesLineBreaks)
     }
 }

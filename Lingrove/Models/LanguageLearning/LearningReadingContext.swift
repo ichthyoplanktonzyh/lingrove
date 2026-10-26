@@ -18,6 +18,9 @@ nonisolated struct LearningReadingWindow: Equatable, Sendable {
     let method: Method
     /// OCR confidence is diagnostic evidence, not a comparable score for exact AX text.
     var confidence: Float?
+    /// Selected-text APIs sometimes add a line break that the anchored range did not contain.
+    /// Keep those exact selected code units, but do not let them create a new sentence boundary.
+    var targetIntroducesLineBreaks = false
 }
 
 /// One validated occurrence and its enclosing sentence(s). The acquisition window is retained

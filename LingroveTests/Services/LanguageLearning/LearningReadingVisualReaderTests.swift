@@ -10,6 +10,35 @@ struct LearningReadingVisualReaderTests {
     private let bounds = CGRect(x: -1000, y: 900, width: 1000, height: 600)
     private let pointer = CGPoint(x: -500, y: 1200)
 
+    @Test func selectionDiagnosticsDistinguishMissingGeometryNoTextAndNativeDeadline() async throws {
+        var events: [String] = []
+        var selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: CGRect(origin: pointer, size: CGSize(width: 40, height: 20)))
+        let reader = LearningReadingVisualReader(capture: { _, _ in try image() },
+            extract: { _, _ in throw ScreenTextExtractionError.noRecognizedText },
+            diagnose: { stage, reason, _ in events.append(stage.rawValue + ":" + reason) })
+        #expect(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }) == nil)
+        #expect(events == ["selectionOCR:invalid-geometry"])
+        selection.selectionBounds = selection.anchor
+        events = []
+        #expect(try await reader.readSelection(selection, bounds: bounds,
+            deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true }) == nil)
+        #expect(events == ["selectionOCR:ocr-no-text", "selectionOCR:ocr-no-text"])
+        let timedOut = LearningReadingVisualReader(capture: { _, _ in try image() },
+            extract: { _, _ in throw OCRRuntimeFailure.timedOut },
+            diagnose: { _, reason, _ in events.append(reason) })
+        events = []
+        await #expect(throws: OCRRuntimeFailure.timedOut) {
+            try await timedOut.readSelection(selection, bounds: bounds,
+                deadline: ProcessInfo.processInfo.systemUptime + 12, validate: { true })
+        }
+        #expect(events == ["ocr-timedOut"])
+        #expect(LearningReadingLog.failure(ScreenTextExtractionError.ocrFailed("private text")) == "ocr-failed")
+        #expect(LearningReadingLog.failure(WindowScreenshotError.captureFailed("private text")) == "capture-failed")
+        #expect(LearningReadingLog.failure(CancellationError()) == "cancelled")
+    }
+
     @Test func selectionEnrichmentUsesOneFrameAndKeepsTheOriginalTarget() async throws {
         var captures = 0, passes = 0
         let selected = CGRect(x: pointer.x - 20, y: pointer.y - 10, width: 40, height: 20)
