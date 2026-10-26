@@ -22,6 +22,11 @@ nonisolated struct ExtractedScreenText: Sendable {
 nonisolated struct ScreenTextWord: Sendable {
     let text: String
     let boundingBox: CGRect
+    /// Exact offset into the emitted line, preserving repeated words without string search.
+    var lineIndex: Int?
+    var utf16Location: Int?
+    var utf16Length: Int?
+    var confidence: Float?
 }
 
 /// Keeps context hygiene tests independent of Vision, Screen Recording, and real pixels.
@@ -102,6 +107,7 @@ struct ScreenTextExtractor: ScreenTextExtracting {
         let preview = logsTextPreview ? String(text.replacingOccurrences(of: "\n", with: " ").prefix(80)) : "<omitted>"
         LingroveDebugOptions.log("ocr-success elapsed_ms=\(elapsed) lines=\(lines.count) chars=\(text.count) preview=\(preview)")
         return ExtractedScreenText(text: text, lineCount: lines.count, lines: lines,
-            words: response.words.map { ScreenTextWord(text: $0.text, boundingBox: $0.boundingBox) })
+            words: response.words.map { ScreenTextWord(text: $0.text, boundingBox: $0.boundingBox, lineIndex: $0.lineIndex,
+                utf16Location: $0.utf16Location, utf16Length: $0.utf16Length, confidence: $0.confidence) })
     }
 }

@@ -255,7 +255,7 @@ final class LearningDictionarySession: ObservableObject {
             explanation.setLookupTarget(.init(target: LearningExplanationPolicy.input(capture),
                 translationLanguage: translationLanguage ?? capture.example?.translationLanguage
                     ?? explanation.service?.language ?? language,
-                referenceTranslation: capture.example?.translation ?? ""))
+                referenceTranslation: capture.example?.translation ?? ""), requestID: LearningRequestTrace.requestID)
         } else { explanation.setTarget(activeCapture.map(LearningExplanationPolicy.input)) }
         explanation.isTargetCurrent = validateCapture
         page = explanation.service == nil ? .dictionary : .contextual

@@ -176,6 +176,24 @@ struct LearningLookupSessionTests {
         #expect(session.explanation.error == nil)
     }
 
+    @Test func readingCaptureTraceReachesTheInitialModelRequest() async throws {
+        let service = LookupSessionService()
+        let session = LearningDictionarySession(provider: LookupSessionDictionary(), explanationService: service)
+        defer { session.close() }
+        let capture = capture(translationLanguage: .chinese)
+        LearningRequestTrace.$requestID.withValue("reading-fixture-trace") {
+            session.open(unit(for: capture), documentID: UUID(), language: .english, vocabularyCapture: capture)
+        }
+        await wait { service.lookupCalls.count == 1 }
+        #expect(service.lookupRequestIDs == ["reading-fixture-trace"])
+        service.finishLookup(0)
+        await wait { session.explanation.lookupRecord != nil }
+        session.explanation.loadLookup(refresh: true)
+        await wait { service.lookupCalls.count == 2 }
+        #expect(service.lookupRequestIDs[1] != service.lookupRequestIDs[0])
+        service.finishLookup(1)
+    }
+
     private func capture(expression: String = "keep me posted", translationLanguage: LearningLanguage) -> VocabularyCapture {
         let sentence = expression == "look forward to" ? "We look forward to seeing you." : "Please keep me posted on progress."
         let phrase = (sentence as NSString).range(of: expression)
@@ -221,6 +239,7 @@ private final class LookupSessionService: LearningLookupGenerating {
     var language: LearningLanguage { .chinese }
     var isConfigured = true
     private(set) var lookupCalls: [LearningLookupInput] = []
+    private(set) var lookupRequestIDs: [String] = []
     private(set) var detailCalls: [LearningLookupRecord] = []
     private(set) var legacyCalls = 0
     private(set) var displays = 0
@@ -230,6 +249,7 @@ private final class LookupSessionService: LearningLookupGenerating {
 
     func lookup(_ input: LearningLookupInput, requestID: String, refresh: Bool) async throws -> LearningLookupRecord {
         lookupCalls.append(input)
+        lookupRequestIDs.append(requestID)
         let index = lookupCalls.count - 1
         return try await withCheckedThrowingContinuation { pendingLookups[index] = .init(input: input, continuation: $0) }
     }

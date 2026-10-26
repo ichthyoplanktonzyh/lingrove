@@ -4,19 +4,19 @@ import Foundation
 /// captured occurrence, not punctuation alone; a punctuation-free full selection remains valid.
 nonisolated enum LearningReadingLookupPolicy {
     static func capture(_ selection: LearningReadingSelection, language: LearningLanguage) -> VocabularyCapture? {
+        if selection.source == .screenshot { return nil }
         let text = selection.text
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = LearningUnitPolicy.words(in: text, language: language)
         let oneWord = words.count <= 1
         if selection.source != .pointer {
-            if let example = selection.vocabularyContext, example.completeness == .sentence,
-               example.text.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed,
+            if let context = selection.context, context.isComplete || context.hasBlockCoverage, context.selectionCoversContext,
                !oneWord || trimmed.last.map({ ".!?。！？".contains($0) }) == true {
                 return nil
             }
             // An incomplete captured example is stronger evidence than terminal punctuation.
             // Without surrounding evidence, punctuation/screen regions are positive hints only.
-            if selection.vocabularyContext == nil, translationHint(trimmed, words: words.count, source: selection.source) { return nil }
+            if selection.context == nil, translationHint(trimmed, words: words.count, source: selection.source) { return nil }
         }
         return VocabularyCapture(expression: trimmed, dictionaryForm: trimmed, language: language,
             kind: oneWord ? .word : .expression, example: selection.vocabularyContext)

@@ -76,6 +76,11 @@ nonisolated struct OCRWorkerResponse: Codable, Sendable {
     nonisolated struct Word: Codable, Sendable {
         let text: String
         let boundingBox: CGRect
+        /// Exact offset into the emitted line, preserving repeated words without string search.
+        var lineIndex: Int?
+        var utf16Location: Int?
+        var utf16Length: Int?
+        var confidence: Float?
     }
 }
 
