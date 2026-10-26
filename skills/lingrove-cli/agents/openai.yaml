@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lingrove CLI"
+  short_description: "Read and save vocabulary in the local Lingrove notebook"
+  default_prompt: "Use $lingrove-cli to save the expressions from this conversation to my Lingrove notebook."

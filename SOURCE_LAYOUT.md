@@ -518,6 +518,12 @@ without overwriting unrelated commands or editing shell configuration. `CLI.md` 
 usage contract; tests under `Services/CLI` launch the actual bundled executable against an isolated
 mailbox/store/SQLite notebook and never send requests to a real user library.
 
+`skills/lingrove-cli/` is the portable agent-facing workflow, separate from compiled app code.
+`SKILL.md` owns discovery, notebook selection, operation choice and retry behavior;
+`references/batches.md` supplies payload examples and material constraints only when preparing a
+write. `agents/openai.yaml` supplies skill-picker metadata. Agents pass JSON through the installed
+CLI into the same app-owned archive boundary; the skill has no database or runtime dependency.
+
 ## Contextual AI explanation
 
 `Models/LanguageLearning/LearningExplanationModels.swift` freezes the chosen text and exact

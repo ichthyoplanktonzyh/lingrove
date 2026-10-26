@@ -134,3 +134,28 @@ retires abandoned reply files after a day. Durable idempotency receipts are not 
 | 6 | `unavailable` | App cannot be found/launched |
 | 7 | `io` | Local file/storage failure |
 | 8 | `timeout` | Completion uncertain; retry the same key |
+
+## Agent skill
+
+The portable [lingrove-cli skill](skills/lingrove-cli/SKILL.md) teaches agents to search before
+saving, choose add/append/update, preview batches, and recover uncertain writes without duplicates.
+Its [batch reference](skills/lingrove-cli/references/batches.md) travels with it; agents can use the
+skill without access to this repository or the app source. The installed CLI's `schema` and
+`status` remain the authority for the available input format and language/kind values.
+
+For Codex, install from the repository root (the symlink keeps local edits in sync):
+
+```sh
+lingrove_skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
+mkdir -p "$lingrove_skill_root"
+ln -s "$PWD/skills/lingrove-cli" "$lingrove_skill_root/lingrove-cli"
+```
+
+This intentionally fails if that destination already exists; inspect it rather than overwriting
+another skill. To install independently of the checkout, copy the complete `skills/lingrove-cli`
+directory into your agent's skill directory instead. CLI installation is a separate step, described
+at the top of this document.
+
+Invoke with `$lingrove-cli`, for example: “把这次对话里的表达和例句保存到拾语。” The skill can also be
+selected automatically for Lingrove notebook requests. It uses the normal notebook by default;
+explicitly name `lingrove-dev` when the Dev notebook is intended.
