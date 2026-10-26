@@ -68,27 +68,61 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
         let canonical = Canonical(window.text)
         let target = Canonical(selection.text).text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !target.isEmpty, let selectionBounds = selection.selectionBounds else { return [] }
-        return canonical.occurrences(of: target).compactMap { range in
-            let words = overlappingWords(range, sources: block.sources, extraction: extraction)
-            let box = words.map { LearningReadingVisualPolicy.screenRect($0.boundingBox, in: region) }
-                .reduce(CGRect.null) { $0.union($1) }
-            let text = (window.text as NSString).replacingCharacters(in: range, with: selection.text)
-            let aligned = LearningReadingWindow(text: text,
-                target: NSRange(location: range.location, length: selection.text.utf16.count),
-                left: window.left, right: window.right, method: .selectionOCR, confidence: window.confidence)
-            guard let context = LearningReadingContextPolicy.resolve(aligned, expected: selection.text) else { return nil }
+        let exact = canonical.occurrences(of: target).compactMap { range in
+            candidate(selection, range: range, block: block, extraction: extraction, region: region)
+        }
+        guard exact.isEmpty, selection.text.utf16.count <= 64, selection.text.allSatisfy(\.isLetter),
+              let ax = selection.context, validTarget(ax, expected: selection.text), hasNeighbourEvidence(ax) else { return exact }
+        // Highlight colours can corrupt the OCR spelling of precisely the word AX already
+        // supplies. Recover only a spatially verified word with matching AX text on its sides;
+        // this is occurrence alignment, never a spelling guess or a fuzzy page-wide search.
+        return extraction.words.compactMap { word in
+            guard agrees(LearningReadingVisualPolicy.screenRect(word.boundingBox, in: region), selectionBounds),
+                  word.text.allSatisfy({ $0.isLetter || $0.isNumber }),
+                  let line = word.lineIndex, let offset = word.utf16Location, let length = word.utf16Length,
+                  extraction.lines.indices.contains(line), length > 0, length <= 64,
+                  VocabularyPolicy.valid(NSRange(location: offset, length: length), in: extraction.lines[line].text),
+                  (extraction.lines[line].text as NSString).substring(with: NSRange(location: offset, length: length))
+                    .utf16.elementsEqual(word.text.utf16),
+                  let source = block.sources.first(where: {
+                      $0.lineIndex == line && offset >= $0.sourceRange.location && offset + length <= NSMaxRange($0.sourceRange)
+                  }) else { return nil }
+            let range = NSRange(location: source.windowRange.location + offset - source.sourceRange.location, length: length)
+            guard VocabularyPolicy.valid(range, in: window.text),
+                  (window.text as NSString).substring(with: range).utf16.elementsEqual(word.text.utf16) else { return nil }
+            return candidate(selection, range: range, block: block, extraction: extraction,
+                region: region, requiresQuote: true)
+        }
+    }
+
+    private static func candidate(_ selection: LearningReadingSelection, range: NSRange,
+                                  block: LearningReadingOCRPolicy.Block,
+                                  extraction: ExtractedScreenText, region: CGRect, requiresQuote: Bool = false) -> Candidate? {
+        guard let window = block.context?.window, let selectionBounds = selection.selectionBounds,
+              VocabularyPolicy.valid(range, in: window.text) else { return nil }
+        let words = overlappingWords(range, sources: block.sources, extraction: extraction)
+        let box = words.map { LearningReadingVisualPolicy.screenRect($0.boundingBox, in: region) }
+            .reduce(CGRect.null) { $0.union($1) }
+        let text = (window.text as NSString).replacingCharacters(in: range, with: selection.text)
+        let aligned = LearningReadingWindow(text: text,
+            target: NSRange(location: range.location, length: selection.text.utf16.count),
+            left: window.left, right: window.right, method: .selectionOCR, confidence: window.confidence)
+        guard let context = LearningReadingContextPolicy.resolve(aligned, expected: selection.text) else { return nil }
+        if requiresQuote {
+            guard agrees(box, selectionBounds), let ax = selection.context, compatible(ax, context) else { return nil }
+        } else {
             guard agrees(box, selectionBounds) || corroboratedRun(box, selectionBounds, selection: selection, context: context)
             else { return nil }
-            let identity = block.sources.compactMap { source -> String? in
-                let overlap = NSIntersectionRange(source.windowRange, range)
-                guard overlap.length > 0 else { return nil }
-                let offset = source.sourceRange.location + overlap.location - source.windowRange.location
-                return "\(source.lineIndex):\(offset):\(overlap.length)"
-            }.sorted().joined(separator: "|")
-            guard !identity.isEmpty else { return nil }
-            return Candidate(match: Match(context: context,
-                bounds: LearningReadingVisualPolicy.screenRect(block.bounds, in: region), targetBounds: box), occurrence: identity)
         }
+        let identity = block.sources.compactMap { source -> String? in
+            let overlap = NSIntersectionRange(source.windowRange, range)
+            guard overlap.length > 0 else { return nil }
+            let offset = source.sourceRange.location + overlap.location - source.windowRange.location
+            return "\(source.lineIndex):\(offset):\(overlap.length)"
+        }.sorted().joined(separator: "|")
+        guard !identity.isEmpty else { return nil }
+        return Candidate(match: Match(context: context,
+            bounds: LearningReadingVisualPolicy.screenRect(block.bounds, in: region), targetBounds: box), occurrence: identity)
     }
 
     private static func overlappingWords(_ range: NSRange, sources: [LearningReadingOCRPolicy.Source],
@@ -124,12 +158,21 @@ nonisolated enum LearningReadingSelectionOCRPolicy {
     /// unique OCR occurrence evidence; a whole field/page frame cannot substitute for a row.
     private static func corroboratedRun(_ text: CGRect, _ bounds: CGRect,
                                         selection: LearningReadingSelection, context: LearningReadingContext) -> Bool {
+        // Vision's glyph envelope changes slightly with crop size, especially on highlighted
+        // descenders. A fixed 3pt vertical pad can reject the same word by a fraction of a point.
+        // Keep the pad bounded and still require exact neighbouring text and uniqueness.
+        let verticalPadding = min(8, max(3, min(text.height, bounds.height) * 0.25))
         guard valid(text), let ax = selection.context, validTarget(ax, expected: selection.text), compatible(ax, context),
-              bounds.insetBy(dx: -3, dy: -3).contains(text),
+              bounds.insetBy(dx: -3, dy: -verticalPadding).contains(text),
+              text.height <= bounds.height * 1.5 + 8,
               bounds.height <= text.height * 1.5 + 8 else { return false }
-        let raw = ax.text as NSString
-        let neighbours = String(raw.substring(to: ax.target.location).suffix(32)) +
-            String(raw.substring(from: NSMaxRange(ax.target)).prefix(32))
+        return hasNeighbourEvidence(ax)
+    }
+
+    private static func hasNeighbourEvidence(_ context: LearningReadingContext) -> Bool {
+        let raw = context.text as NSString
+        let neighbours = String(raw.substring(to: context.target.location).suffix(32)) +
+            String(raw.substring(from: NSMaxRange(context.target)).prefix(32))
         return neighbours.filter { !$0.isWhitespace }.count >= 8 && neighbours.contains(where: \.isLetter)
     }
 

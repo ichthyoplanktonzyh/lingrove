@@ -43,8 +43,9 @@ struct LearningReadingSelectionOCRPolicyTests {
         #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
     }
 
-    @Test func horizontalFragmentsRetainTheSecondRepeatedWordsSourceOffset() throws {
-        let raw = fixture(["Earlier sentence. A bank", "financed another bank by the river. Next sentence."])
+    @Test(arguments: ["bank", "b4nk"])
+    func horizontalFragmentsRetainTheSecondRepeatedWordsSourceOffset(_ recognized: String) throws {
+        let raw = fixture(["Earlier sentence. A bank", "financed another \(recognized) by the river. Next sentence."])
         let boxes = [CGRect(x: 0.1, y: 0.55, width: 0.35, height: 0.04),
                      CGRect(x: 0.46, y: 0.55, width: 0.44, height: 0.04)]
         let lines = raw.lines.enumerated().map { index, line in
@@ -58,7 +59,12 @@ struct LearningReadingSelectionOCRPolicyTests {
                 utf16Location: offset, utf16Length: length, confidence: 1)
         }
         let extraction = ExtractedScreenText(text: raw.text, lineCount: 2, lines: lines, words: words)
-        let selection = try selected("bank", from: extraction, last: true)
+        let hit = try selected(recognized, from: extraction, last: true)
+        let quote = "another bank by the river."
+        let selection = LearningReadingSelection(id: UUID(), text: "bank", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: hit.anchor,
+            context: LearningReadingContextPolicy.resolve(.init(text: quote, target: (quote as NSString).range(of: "bank"),
+                left: .crop, right: .crop, method: .markerWindow), expected: "bank"), selectionBounds: hit.selectionBounds)
         let context = try #require(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels)?.context)
         #expect(context.text.contains("A bank financed another bank by the river."))
         #expect(context.target == (context.text as NSString).range(of: "bank", options: .backwards))
@@ -75,6 +81,13 @@ struct LearningReadingSelectionOCRPolicyTests {
             target: (fragment as NSString).range(of: "history"), left: .crop, right: .crop, method: .markerWindow), expected: "history")
         let matched = try #require(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels))
         #expect(matched.context.text.contains("Keep your review history safely."))
+        let run = try #require(selection.selectionBounds)
+        selection.selectionBounds = run.offsetBy(dx: 0, dy: 3.1)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) != nil,
+            "The same highlighted word can have a slightly different vertical envelope in a wider Vision crop")
+        selection.selectionBounds = run.offsetBy(dx: 0, dy: 30)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
+        selection.selectionBounds = run
         let distant = "unrelated" + String(repeating: " ", count: 40) + "history safely."
         selection.context = LearningReadingContextPolicy.resolve(.init(text: distant,
             target: (distant as NSString).range(of: "history"), left: .crop, right: .crop, method: .markerWindow), expected: "history")
@@ -103,6 +116,65 @@ struct LearningReadingSelectionOCRPolicyTests {
             bundleIdentifier: "fixture", anchor: accentSelection.anchor, selectionBounds: accentSelection.selectionBounds)
         let accent = try #require(LearningReadingSelectionOCRPolicy.match(accentSelection, extraction: accents, region: region, pixels: pixels)?.context)
         #expect((accent.window.text as NSString).substring(with: accent.window.target).utf16.elementsEqual("cafe\u{301}".utf16))
+    }
+
+    @Test func highlightedOCRSpellingCanUseAPreciseWordBoxAndExactAXNeighbours() throws {
+        let extraction = fixture(["Earlier sentence. Keep your review hivory safely. Next sentence."])
+        let mistaken = try selected("hivory", from: extraction)
+        let quote = "your review history safely."
+        var selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: mistaken.anchor, selectionBounds: mistaken.selectionBounds)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
+        selection.context = LearningReadingContextPolicy.resolve(.init(text: quote,
+            target: (quote as NSString).range(of: "history"), left: .crop, right: .crop, method: .markerWindow), expected: "history")
+        let context = try #require(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels)?.context)
+        #expect(context.text.contains("Keep your review history safely."))
+        #expect((context.window.text as NSString).substring(with: context.window.target) == "history")
+        let precise = try #require(selection.selectionBounds)
+        selection.selectionBounds = CGRect(x: region.minX + 100, y: precise.minY, width: 800, height: precise.height)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil,
+            "Misspelled OCR cannot be recovered from a coarse run rectangle")
+        selection.selectionBounds = precise
+        let conflict = "the search history today."
+        selection.context = LearningReadingContextPolicy.resolve(.init(text: conflict,
+            target: (conflict as NSString).range(of: "history"), left: .crop, right: .crop, method: .markerWindow), expected: "history")
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
+    }
+
+    @Test func quotedMisspelledWordsStillRejectAmbiguousOverlappingOccurrences() throws {
+        let raw = fixture(["Keep your review hivory safely. Keep your review hivory safely."])
+        let sameBox = try #require(raw.words.first { $0.text == "hivory" }?.boundingBox)
+        let words = raw.words.map { word in
+            word.text == "hivory" ? ScreenTextWord(text: word.text, boundingBox: sameBox, lineIndex: word.lineIndex,
+                utf16Location: word.utf16Location, utf16Length: word.utf16Length, confidence: 1) : word
+        }
+        let extraction = ExtractedScreenText(text: raw.text, lineCount: 1, lines: raw.lines, words: words)
+        let quote = "your review history safely."
+        let bounds = LearningReadingVisualPolicy.screenRect(sameBox, in: region)
+        let selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: bounds,
+            context: LearningReadingContextPolicy.resolve(.init(text: quote, target: (quote as NSString).range(of: "history"),
+                left: .crop, right: .crop, method: .markerWindow), expected: "history"), selectionBounds: bounds)
+        if case .ambiguous = LearningReadingSelectionOCRPolicy.alignment(selection, extraction: extraction, region: region, pixels: pixels) {} else {
+            Issue.record("Two matching quotes and overlapping glyph boxes cannot establish a unique occurrence")
+        }
+    }
+
+    @Test func spellingRecoveryCannotConsumePunctuationOutsideTheAXWord() throws {
+        let raw = fixture(["Keep your review hivory. Next sentence."])
+        let words = raw.words.map { word in
+            word.text == "hivory" ? ScreenTextWord(text: "hivory.", boundingBox: word.boundingBox, lineIndex: word.lineIndex,
+                utf16Location: word.utf16Location, utf16Length: (word.utf16Length ?? 0) + 1, confidence: 1) : word
+        }
+        let extraction = ExtractedScreenText(text: raw.text, lineCount: 1, lines: raw.lines, words: words)
+        let bounds = try selected("hivory", from: raw).anchor
+        // This AX node ends at the selection, so it supplies no right-side punctuation proof.
+        let quote = "your review history"
+        let selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: bounds,
+            context: LearningReadingContextPolicy.resolve(.init(text: quote, target: (quote as NSString).range(of: "history"),
+                left: .crop, right: .crop, method: .markerWindow), expected: "history"), selectionBounds: bounds)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
     }
 
     @Test func sharedCompoundBoxCanAlignAnExplicitSubwordWithoutGuessing() throws {

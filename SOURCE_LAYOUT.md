@@ -939,6 +939,9 @@ and screen geometry, normalizing whitespace/NFC only for comparison. The selecte
 copied from AX. A coarse Chromium inline-run rectangle requires matching adjacent AX text and one
 unique OCR occurrence; a page/field frame or a mouse anchor cannot establish that match. Independent
 crops must agree on the target's glyph location, and ambiguity discards the visual candidate.
+If selection highlighting corrupts a single OCR word, a precise glyph hit and exact known AX
+neighbours may align it to the AX original. A coarse run rectangle cannot use this recovery path;
+neither spelling similarity nor text elsewhere on the page establishes a match.
 Complete AX context wins; OCR may extend a compatible fragment without contradicting its known
 neighbours. Missing geometry, pixels or a reliable match retain the original AX receipt.
 
