@@ -74,13 +74,19 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
 
     private func captureSource(_ source: LearningReadingSource) async throws -> LearningReadingSelection {
         forget()
-        guard source != .selection else { return try await selection.capture() }
+        let id = revision
+        if source == .selection {
+            let capture = try await selection.capture()
+            try Task.checkCancellation()
+            guard revision == id else { throw CancellationError() }
+            receipt = capture
+            return capture
+        }
         guard let app = NSWorkspace.shared.frontmostApplication, let bundle = app.bundleIdentifier,
             app.processIdentifier != ProcessInfo.processInfo.processIdentifier
         else { throw CancellationError() }
         let originWindow = focusedWindow(app.processIdentifier)
         let originFrame = frame(of: originWindow)
-        let id = revision
         let validate = { self.revision == id && self.isOriginCurrent(pid: app.processIdentifier, window: originWindow) &&
             self.frame(of: originWindow) == originFrame }
         let point = NSEvent.mouseLocation
@@ -136,7 +142,10 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     }
 
     func isCurrent(_ capture: LearningReadingSelection) -> Bool {
-        if capture.source == .selection { return selection.isCurrent(capture) }
+        if capture.source == .selection {
+            guard selection.isCurrent(capture) else { return false }
+            return receipt?.id != capture.id || (visualRegion.map { screenshots.isCurrent($0) } ?? true)
+        }
         guard receipt?.id == capture.id, isOriginCurrent(pid: capture.processIdentifier, window: window), frame(of: window) == windowFrame
         else { return false }
         if let visualRegion, !screenshots.isCurrent(visualRegion) { return false }
@@ -146,6 +155,44 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 range: evidence.range, on: evidence.element)?.utf16.elementsEqual(evidence.text.utf16) == true
         }
         return true
+    }
+
+    /// Capture stays fast for the passive icon. Only an explicit trigger asks for missing visual
+    /// context, and the original AX range/markers remain the source of target identity throughout.
+    func enrich(_ capture: LearningReadingSelection) async throws -> LearningReadingSelection {
+        guard capture.source == .selection else { return capture }
+        try Task.checkCancellation()
+        guard selection.isCurrent(capture), receipt?.id == capture.id else { throw CancellationError() }
+        guard capture.context?.isComplete != true, let bounds = capture.selectionBounds,
+              LearningReadingSelectionOCRPolicy.valid(bounds), CGPreflightScreenCaptureAccess() else { return capture }
+        let id = revision, deadline = ProcessInfo.processInfo.systemUptime + 12
+        do {
+            let point = CGPoint(x: bounds.midX, y: bounds.midY)
+            let region = try await screenshots.pointerCaptureRegion(at: point, pid: capture.processIdentifier, deadline: deadline)
+            let result = try await visualReader.readSelection(capture, bounds: region.bounds, deadline: deadline) {
+                self.revision == id && self.selection.isCurrent(capture) && self.screenshots.isCurrent(region)
+            }
+            try Task.checkCancellation()
+            guard revision == id, selection.isCurrent(capture), screenshots.isCurrent(region) else { throw CancellationError() }
+            var enriched = capture
+            enriched.context = LearningReadingSelectionOCRPolicy.preferred(ax: capture.context,
+                visual: result?.context, expected: capture.text)
+            receipt = enriched
+            visualRegion = enriched.context != capture.context ? region : nil
+            LingroveLogger.learning.info("Reading selection context resolved", metadata: [
+                "request_id": .string(capture.traceID ?? "unscoped"), "stage": "selection-context",
+                "reading_route": .string(visualRegion == nil ? "ax" : "ax-ocr"),
+                "ocr_passes": .stringConvertible(result?.passes ?? 0)
+            ])
+            LearningVocabularyContextReader.log(enriched.context)
+            return enriched
+        } catch {
+            try Task.checkCancellation()
+            guard !(error is CancellationError), revision == id, selection.isCurrent(capture) else { throw CancellationError() }
+            // OCR is optional enrichment. Missing pixels, ambiguous matches and native failures
+            // leave the exact AX selection usable by both the dictionary and the existing model.
+            return capture
+        }
     }
 
     private func focusedWindow(_ pid: Int32) -> AXUIElement? {

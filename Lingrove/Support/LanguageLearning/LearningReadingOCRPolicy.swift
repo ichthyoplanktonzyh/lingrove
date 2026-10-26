@@ -8,6 +8,15 @@ nonisolated enum LearningReadingOCRPolicy {
     struct Block {
         let context: LearningReadingContext?
         let bounds: CGRect
+        let sources: [Source]
+    }
+
+    /// Maps the bounded reconstructed window back to its emitted OCR lines. Explicit selection
+    /// alignment uses this provenance to distinguish repeated strings without searching a page.
+    struct Source {
+        let lineIndex: Int
+        let sourceRange: NSRange
+        let windowRange: NSRange
     }
 
     static func context(word: ScreenTextWord, lines: [OCRTextHygiene.OCRLine],
@@ -38,20 +47,33 @@ nonisolated enum LearningReadingOCRPolicy {
             let window = LearningReadingWindow(text: (lines[index].text as NSString).substring(with: crop),
                 target: NSRange(location: range.location - crop.location, length: range.length),
                 left: .crop, right: .crop, method: .ocr, confidence: lines[index].confidence)
-            return Block(context: LearningReadingContextPolicy.resolve(window, expected: word.text), bounds: box)
+            return Block(context: LearningReadingContextPolicy.resolve(window, expected: word.text), bounds: box,
+                sources: sources(rows[index], at: 0, clipping: crop))
         }
         let included = connectedIndices(lines, index: index, budget: budget, imageSize: imageSize)
-        var text = "", targetOffset = 0
+        var text = "", targetOffset = 0, sources: [Source] = []
         for current in included {
             text += LearningReadingOCRLayout.separator(text, lines[current].text)
             if current == index { targetOffset = text.utf16.count + range.location }
+            sources += self.sources(rows[current], at: text.utf16.count)
             text += lines[current].text
         }
         let window = LearningReadingWindow(text: text,
             target: NSRange(location: targetOffset, length: length), left: .crop, right: .crop, method: .ocr,
             confidence: included.map { lines[$0].confidence }.min())
         let bounds = included.compactMap { lines[$0].boundingBox }.reduce(CGRect.null) { $0.union($1) }
-        return Block(context: LearningReadingContextPolicy.resolve(window, expected: word.text), bounds: bounds)
+        return Block(context: LearningReadingContextPolicy.resolve(window, expected: word.text), bounds: bounds, sources: sources)
+    }
+
+    private static func sources(_ row: LearningReadingOCRLayout.Row, at offset: Int, clipping: NSRange? = nil) -> [Source] {
+        let clip = clipping ?? NSRange(location: 0, length: row.line.text.utf16.count)
+        return row.sources.compactMap { index, range in
+            let visible = NSIntersectionRange(range, clip)
+            guard visible.length > 0 else { return nil }
+            return Source(lineIndex: index,
+                sourceRange: NSRange(location: visible.location - range.location, length: visible.length),
+                windowRange: NSRange(location: offset + visible.location - clip.location, length: visible.length))
+        }
     }
 
     private static func boundedRange(in text: String, target: NSRange) -> NSRange? {

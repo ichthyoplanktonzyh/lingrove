@@ -88,6 +88,68 @@ struct LearningReadingVisualReader {
             capturedAt: capturedAt, passes: passes)
     }
 
+    /// An explicit selection has its own geometry and exact text, so pointer hit testing is
+    /// inappropriate here. Both crops align independently; no OCR text becomes the target.
+    func readSelection(_ selection: LearningReadingSelection, bounds: CGRect, deadline: TimeInterval,
+                       validate: () -> Bool) async throws -> Result? {
+        try checkCurrent(validate)
+        guard let selected = selection.selectionBounds, LearningReadingSelectionOCRPolicy.valid(selected), bounds.contains(selected)
+        else { return nil }
+        let image = try await capture(bounds, deadline)
+        let capturedAt = Date()
+        try checkCurrent(validate)
+        let size = CGSize(width: image.width, height: image.height)
+        let point = CGPoint(x: selected.midX, y: selected.midY)
+        let first = LearningReadingVisualPolicy.centered(at: point,
+            size: CGSize(width: max(720, selected.width + 56), height: max(240, selected.height + 56)), within: bounds)
+        var accepted: LearningReadingSelectionOCRPolicy.Match?, passes = 0
+        for region in first == bounds ? [first] : [first, bounds] {
+            try checkCurrent(validate)
+            guard now() < deadline else { break }
+            let crop = LearningReadingVisualPolicy.crop(region, frame: bounds, pixels: size)
+            guard let pixels = image.cropping(to: crop.pixels) else { throw Failure.invalidFrame }
+            passes += 1
+            do {
+                let extraction = try await extract(pixels, deadline)
+                try checkCurrent(validate)
+                let alignment = LearningReadingSelectionOCRPolicy.alignment(selection, extraction: extraction,
+                    region: crop.screen, pixels: crop.pixels.size)
+                if case .ambiguous = alignment { return nil }
+                if case .matched(let match) = alignment {
+                    if let previous = accepted, !sameSelectionOccurrence(previous.targetBounds, match.targetBounds) { return nil }
+                    accepted = preferredSelection(match, over: accepted)
+                    if match.context.isComplete || crop.screen.insetBy(dx: 28, dy: 28).contains(match.bounds) { break }
+                }
+            } catch {
+                try checkCurrent(validate)
+                if try canRetry(error, hasCandidate: accepted != nil) { continue }
+                break
+            }
+        }
+        try checkCurrent(validate)
+        return accepted.map { Result(text: selection.text, anchor: selection.anchor,
+            context: $0.context, capturedAt: capturedAt, passes: passes) }
+    }
+
+    private func sameSelectionOccurrence(_ first: CGRect, _ second: CGRect) -> Bool {
+        let overlap = first.intersection(second)
+        let area = min(first.width * first.height, second.width * second.height)
+        let distance = hypot(first.midX - second.midX, first.midY - second.midY)
+        return !overlap.isNull && overlap.width * overlap.height >= area * 0.8 &&
+            distance <= max(4, min(first.width, second.width) * 0.35)
+    }
+
+    private func preferredSelection(_ candidate: LearningReadingSelectionOCRPolicy.Match,
+                                    over previous: LearningReadingSelectionOCRPolicy.Match?) -> LearningReadingSelectionOCRPolicy.Match {
+        guard let previous else { return candidate }
+        // Both are independently aligned OCR candidates. The exact AX-neighbour compatibility
+        // check belongs at the final AX/OCR seam, not between two fallible OCR passes.
+        if candidate.context.isComplete != previous.context.isComplete {
+            return candidate.context.isComplete ? candidate : previous
+        }
+        return candidate.context.text.utf16.count >= previous.context.text.utf16.count ? candidate : previous
+    }
+
     private func candidate(_ extraction: ExtractedScreenText, point: CGPoint, region: CGRect, pixels: CGSize) -> Candidate? {
         let unit = CGPoint(x: (point.x - region.minX) / region.width, y: (point.y - region.minY) / region.height)
         guard let word = LearningReadingVisualPolicy.hit(at: unit, in: extraction, pixels: pixels) else { return nil }

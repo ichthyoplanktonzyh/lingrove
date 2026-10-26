@@ -29,6 +29,9 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     var context: LearningReadingContext?
     var traceID: String?
     var capturedAt = Date()
+    /// Real AX text geometry only. The card's mouse-position fallback anchor is presentation,
+    /// not evidence that an OCR occurrence belongs to this explicit selection.
+    var selectionBounds: CGRect?
     var vocabularyContext: VocabularyExample? { context?.example(app: bundleIdentifier, id: id, createdAt: capturedAt) }
 }
 
@@ -38,6 +41,7 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
 protocol LearningReadingSelecting: AnyObject {
     func capture() async throws -> LearningReadingSelection
     func capture(source: LearningReadingSource) async throws -> LearningReadingSelection
+    func enrich(_ capture: LearningReadingSelection) async throws -> LearningReadingSelection
     var isSelectingRegion: Bool { get }
     func isCurrent(_ capture: LearningReadingSelection) -> Bool
     func forget()
@@ -45,6 +49,7 @@ protocol LearningReadingSelecting: AnyObject {
 }
 
 extension LearningReadingSelecting {
+    func enrich(_ capture: LearningReadingSelection) async throws -> LearningReadingSelection { capture }
     var isSelectingRegion: Bool { false }
     func capture(source: LearningReadingSource) async throws -> LearningReadingSelection {
         guard source == .selection else { throw CancellationError() }

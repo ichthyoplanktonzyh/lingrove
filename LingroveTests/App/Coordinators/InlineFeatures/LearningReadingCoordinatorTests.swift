@@ -10,6 +10,39 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 @MainActor
 struct LearningReadingCoordinatorTests {
+    @Test func passiveIconAppearsBeforeOCRAndClickStartsOnlyOneRequest() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.settings.languageLearning.selectionIconEnabled = true
+        rig.reader.blockEnrichment = true
+        await settle()
+        rig.coordinator.handlePointerEvent(type: .leftMouseUp, at: CGPoint(x: 500, y: 500), clickCount: 2)
+        for _ in 0..<100 where rig.icon.action == nil { try await Task.sleep(for: .milliseconds(5)) }
+        let click = try #require(rig.icon.action)
+        #expect(rig.reader.enrichCalls == 0 && rig.service.calls.isEmpty)
+        click(); click()
+        await until { rig.reader.pendingEnrichment != nil }
+        #expect(rig.reader.enrichCalls == 1 && rig.service.calls.isEmpty)
+        #expect(rig.icon.preparing)
+        rig.reader.finishEnrichment()
+        await until { rig.service.calls.count == 1 }
+        #expect(rig.service.calls.count == 1 && rig.reader.enrichCalls == 1)
+    }
+
+    @Test func changingSelectionDuringOCRRetiresItBeforeAnyModelRequest() async {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.reader.blockEnrichment = true
+        await settle()
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await until { rig.reader.pendingEnrichment != nil }
+        rig.reader.current = false
+        rig.reader.invalidation?()
+        await settle()
+        #expect(rig.reader.pendingEnrichment == nil && rig.service.calls.isEmpty && !rig.coordinator.isActive)
+    }
     @Test func hostScrollCancelsPointerOCRBeforeAnyModelRequest() async {
         let rig = Rig()
         defer { rig.cleanup() }
@@ -429,13 +462,13 @@ struct LearningReadingCoordinatorTests {
         let name = "test.reading.\(UUID())"
         let defaults: UserDefaults
         let settings: SuggestionSettingsModel
-        let reader = Reader(), panel = Panel()
+        let reader = Reader(), panel = Panel(), icon = Icon()
         let service: Service
         var frontmost: String? = "test.allowed"
         var available = true
         var axAvailable = true
         lazy var coordinator = LearningReadingCoordinator(
-            service: service, reader: reader, panel: panel,
+            service: service, reader: reader, panel: panel, icon: icon,
             frontmostBundle: { [weak self] in self?.frontmost }, availability: { [weak self] in self?.available == true },
             sourceAvailability: { [weak self] source in source != .selection || self?.axAvailable == true },
             observesSystemEvents: false)
@@ -487,6 +520,22 @@ struct LearningReadingCoordinatorTests {
         var currentChecks = 0
         var lastSource = LearningReadingSource.selection
         var blockCapture = false
+        var blockEnrichment = false, enrichCalls = 0
+        var invalidation: (() -> Void)?
+        var pendingEnrichment: CheckedContinuation<LearningReadingSelection, any Error>?
+        var enrichmentCapture: LearningReadingSelection?
+        func setInvalidationHandler(_ handler: (@MainActor () -> Void)?) { invalidation = handler }
+        func enrich(_ capture: LearningReadingSelection) async throws -> LearningReadingSelection {
+            enrichCalls += 1
+            guard blockEnrichment else { return capture }
+            enrichmentCapture = capture
+            return try await withCheckedThrowingContinuation { pendingEnrichment = $0 }
+        }
+        func finishEnrichment() {
+            guard let capture = enrichmentCapture else { return }
+            let pending = pendingEnrichment; pendingEnrichment = nil; enrichmentCapture = nil
+            pending?.resume(returning: capture)
+        }
         var isSelectingRegion: Bool { lastSource == .screenshot && pendingCapture != nil }
         var pendingCapture: CheckedContinuation<LearningReadingSelection, any Error>?
         func capture(source: LearningReadingSource) async throws -> LearningReadingSelection {
@@ -511,7 +560,17 @@ struct LearningReadingCoordinatorTests {
             let continuation = pendingCapture
             pendingCapture = nil
             continuation?.resume(throwing: CancellationError())
+            let enrichment = pendingEnrichment
+            pendingEnrichment = nil; enrichmentCapture = nil
+            enrichment?.resume(throwing: CancellationError())
         }
+    }
+    private final class Icon: LearningSelectionAffordancePresenting {
+        var action: (() -> Void)?
+        var preparing = false
+        func show(anchor: CGRect, action: @escaping () -> Void) { self.action = action; preparing = false }
+        func showProgress(anchor: CGRect) { action = nil; preparing = true }
+        func hide() { action = nil; preparing = false }
     }
     private final class Service: LearningSentenceGenerating {
         // A transport-owned row keeps the direction and acquisition source of one request.

@@ -11,7 +11,7 @@ final class LearningReadingCoordinator {
     private let service: any LearningSentenceGenerating
     private let reader: any LearningReadingSelecting
     private let panel: any LearningSentencePresenting
-    private let icon: LearningSelectionIconPanel
+    private let icon: any LearningSelectionAffordancePresenting
     private let recognizer: (any LearningUnitRecognizing)?
     private let frontmostBundle: () -> String?
     private let availability: () -> Bool
@@ -31,6 +31,7 @@ final class LearningReadingCoordinator {
     private var requestSource = LearningReadingSource.selection
     private var document: Document?
     private var pendingSelection: LearningReadingSelection?
+    private var preparingSelection: LearningReadingSelection?
     private var running = false
     private var lastPointerDown: CGPoint?
     /// A native lookup drag/click belongs to learning UI through mouse-up, even if released outside.
@@ -57,7 +58,8 @@ final class LearningReadingCoordinator {
 
     init(
         service: any LearningSentenceGenerating, reader: any LearningReadingSelecting,
-        panel: any LearningSentencePresenting, recognizer: (any LearningUnitRecognizing)? = nil,
+        panel: any LearningSentencePresenting, icon: (any LearningSelectionAffordancePresenting)? = nil,
+        recognizer: (any LearningUnitRecognizing)? = nil,
         frontmostBundle: @escaping () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier },
         availability: @escaping () -> Bool = { true },
         sourceAvailability: @escaping (LearningReadingSource) -> Bool = { _ in true }, beforePresent: @escaping () -> Void = {},
@@ -72,7 +74,7 @@ final class LearningReadingCoordinator {
         self.sourceAvailability = sourceAvailability
         self.beforePresent = beforePresent
         self.observesSystemEvents = observesSystemEvents
-        icon = LearningSelectionIconPanel()
+        self.icon = icon ?? LearningSelectionIconPanel()
     }
 
     func start() {
@@ -80,7 +82,8 @@ final class LearningReadingCoordinator {
         running = true
         reader.setInvalidationHandler { [weak self] in
             guard let self else { return }
-            if let capture = self.document?.capture ?? self.pendingSelection, !self.reader.isCurrent(capture) { self.dismiss() }
+            if let capture = self.document?.capture ?? self.preparingSelection ?? self.pendingSelection,
+               !self.reader.isCurrent(capture) { self.dismiss() }
         }
         let settings = service.settings
         Publishers.MergeMany([
@@ -198,6 +201,7 @@ final class LearningReadingCoordinator {
         affordanceWork = nil
         document = nil
         pendingSelection = nil
+        preparingSelection = nil
         requestBundle = nil
         requiresShortcutPermission = false
         affordanceRevision = UUID()
@@ -226,20 +230,29 @@ final class LearningReadingCoordinator {
         requiresShortcutPermission = true
         work = Task { [weak self] in
             guard let self else { return }
-            defer { if self.revision == id, self.document == nil { self.work = nil } }
+            defer {
+                if self.revision == id, self.document == nil {
+                    self.work = nil; self.preparingSelection = nil; self.icon.hide()
+                }
+            }
             do {
                 guard self.revision == id, self.enabled, self.sourceAvailability(source), self.frontmostBundle() == bundle,
                     self.service.settings.readingTranslationAllowed(source, in: bundle)
                 else { return }
                 let capture = try await LearningRequestTrace.$requestID.withValue(trace) {
-                    try await self.reader.capture(source: source)
+                    let original = try await self.reader.capture(source: source)
+                    try Task.checkCancellation()
+                    guard self.revision == id, self.reader.isCurrent(original) else { throw CancellationError() }
+                    self.preparingSelection = original
+                    if source == .selection { self.icon.showProgress(anchor: original.anchor) }
+                    return try await self.reader.enrich(original)
                 }
                 try Task.checkCancellation()
                 guard self.revision == id, self.enabled, self.sourceAvailability(source), self.frontmostBundle() == bundle,
                     capture.bundleIdentifier == bundle, self.service.settings.readingTranslationAllowed(source, in: bundle)
                 else { return }
                 self.begin(capture, fromShortcut: true, traceID: trace)
-            } catch is CancellationError {} catch {
+            } catch is CancellationError { self.retireIfCurrent(id) } catch {
                 guard self.revision == id, self.enabled, self.frontmostBundle() == bundle else { return }
                 self.showCaptureError(error)
             }
@@ -257,6 +270,7 @@ final class LearningReadingCoordinator {
         requestSource = capture.source
         requiresShortcutPermission = fromShortcut
         pendingSelection = nil
+        preparingSelection = nil
         icon.hide()
         beforePresent()
         let target = service.settings.languageLearning.readingTargetLanguage
@@ -432,6 +446,8 @@ final class LearningReadingCoordinator {
     private func showCaptureError(_ error: Error) {
         beforePresent()
         work = nil
+        preparingSelection = nil
+        icon.hide()
         panel.show(
             .init(
                 id: UUID(), source: "", translation: "", sourceLanguage: nil,
@@ -502,9 +518,40 @@ final class LearningReadingCoordinator {
                 self.affordanceWork = nil
                 self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
                     guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
-                    self.begin(pending, fromShortcut: false)
+                    self.activate(pending)
                 }
             } catch { /* Unsupported selections have no passive affordance and send no request. */  }
+        }
+    }
+
+    /// The passive icon consumes its receipt once. Enrichment finishes before the first basic
+    /// lookup/translation request; an OCR completion can never start a second model request.
+    private func activate(_ capture: LearningReadingSelection) {
+        guard pendingSelection?.id == capture.id, enabled, reader.isCurrent(capture) else { return }
+        pendingSelection = nil
+        preparingSelection = capture
+        icon.showProgress(anchor: capture.anchor)
+        let id = revision
+        let trace = capture.traceID ?? RequestID.generate()
+        requestBundle = capture.bundleIdentifier
+        requestSource = .selection
+        requiresShortcutPermission = false
+        work = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if self.revision == id, self.document == nil {
+                    self.work = nil; self.preparingSelection = nil; self.icon.hide()
+                }
+            }
+            do {
+                let enriched = try await LearningRequestTrace.$requestID.withValue(trace) { try await self.reader.enrich(capture) }
+                try Task.checkCancellation()
+                guard self.revision == id, self.enabled, self.frontmostBundle() == capture.bundleIdentifier else { return }
+                self.begin(enriched, fromShortcut: false, traceID: trace)
+            } catch is CancellationError { self.retireIfCurrent(id) } catch {
+                guard self.revision == id, self.enabled, self.frontmostBundle() == capture.bundleIdentifier else { return }
+                self.showCaptureError(error)
+            }
         }
     }
 }

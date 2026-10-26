@@ -35,6 +35,18 @@ struct LearningReadingLookupTests {
         #expect(rig.panel.sentence?.translation == "他坐在河岸上。")
     }
 
+    @Test func enrichmentReachesTheExistingLookupOnceBeforeAnyTranslation() async throws {
+        let rig = try Rig(text: "history", context: "your review history.")
+        defer { rig.close() }
+        rig.reader.enrichedContext = "Preview cards and send notes to Anki Desktop while preserving your review history."
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await wait { rig.panel.lookup != nil }
+        #expect(rig.reader.enrichments == 1 && rig.panel.lookupCalls == 1)
+        #expect(rig.panel.lookup?.capture.expression == "history")
+        #expect(rig.panel.lookup?.capture.example?.text == rig.reader.enrichedContext)
+        #expect(rig.service.calls == 0 && rig.panel.sentence == nil)
+    }
+
     @Test(arguments: [LearningLanguage.chinese, .english])
     func aSharedWordUsesItsSentenceWithoutALanguageHint(_ target: LearningLanguage) async throws {
         let rig = try Rig(text: "focus", context:
@@ -100,6 +112,8 @@ struct LearningReadingLookupTests {
     }
     private final class Reader: LearningReadingSelecting {
         var current = true
+        var enrichedContext: String?
+        var enrichments = 0
         let text: String, context: String
         init(text: String, context: String) { self.text = text; self.context = context }
         func capture() async throws -> LearningReadingSelection {
@@ -109,6 +123,15 @@ struct LearningReadingLookupTests {
                     method: .characters), expected: text))
         }
         func isCurrent(_ capture: LearningReadingSelection) -> Bool { current }
+        func enrich(_ capture: LearningReadingSelection) async throws -> LearningReadingSelection {
+            enrichments += 1
+            guard let enrichedContext else { return capture }
+            var enriched = capture
+            enriched.context = LearningReadingContextPolicy.resolve(.init(text: enrichedContext,
+                target: (enrichedContext as NSString).range(of: text), left: .crop, right: .crop,
+                method: .selectionOCR), expected: text)
+            return enriched
+        }
         func forget() {}
     }
     private final class SentenceService: LearningSentenceGenerating {
@@ -123,10 +146,11 @@ struct LearningReadingLookupTests {
     private final class LookupPanel: LearningSentencePresenting, LearningLookupPresenting {
         var isVisible = false, inside = false
         var lookup: LearningLookupPresentation?
+        var lookupCalls = 0
         var sentence: LearningSentencePresentation?
         var validate: (() -> Bool)?
         func showLookup(_ presentation: LearningLookupPresentation, validate: @escaping () -> Bool, dismiss: @escaping () -> Void) {
-            lookup = presentation; self.validate = validate; isVisible = true
+            lookupCalls += 1; lookup = presentation; self.validate = validate; isVisible = true
         }
         func toggleLookupDetails() {}
         func containsGlobalInteraction(at point: CGPoint) -> Bool { inside }

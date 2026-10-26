@@ -844,6 +844,23 @@ enum AXHelper {
         return stringForMarkerRange(markers, on: element)
     }
 
+    /// Query only the already bounded selected range. An ordinary range and a marker range may
+    /// refer to different host representations, so each geometry query must first reproduce the
+    /// exact selected UTF-16 text. CF values remain owned by this synchronous call.
+    static func readingSelectionBounds(on element: AXUIElement, range: NSRange?, markers: CFTypeRef?,
+                                       expected: String) -> CGRect? {
+        if let markers, stringForMarkerRange(markers, on: element)?.utf16.elementsEqual(expected.utf16) == true,
+           let rect = markerRangeRect(markers, on: element, requiresWidth: true) {
+            return cocoaRect(fromAccessibilityRect: rect)
+        }
+        guard let range, range.length == expected.utf16.count,
+              parameterizedStringValue(for: kAXStringForRangeParameterizedAttribute as CFString, range: range,
+                  on: element)?.utf16.elementsEqual(expected.utf16) == true,
+              let rect = parameterizedRectValue(for: kAXBoundsForRangeParameterizedAttribute as CFString, range: range, on: element),
+              rectHasFiniteComponents(rect), rect.width > 0, rect.height > 0 else { return nil }
+        return cocoaRect(fromAccessibilityRect: rect)
+    }
+
     /// Exact editing evidence, separate from the best-effort prompt window above. Marker objects
     /// are borrowed only within this synchronous read and released before any model await. Every
     /// fragment must resolve and agree with the full field; missing selected/after text is failure,
