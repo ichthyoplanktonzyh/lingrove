@@ -73,6 +73,8 @@
 
 ### 2. 边写边学语言 (Language Learning While Writing)
 
+- **表达辅助：** 想好意思却想不起表达或术语时，在光标处输入 `??`（也支持 `？？`），描述你的意思，选择候选后按 Enter 或 Tab 插入。与 AI 解释共用模型，可独立于翻译开启。
+
 - **行内即时翻译与一键替换：** 用母语或外语写作时稍作停顿，光标旁即会浮现不抢焦点的目标语言预览卡片。按 `Control+Option+T` 可直接用译文替换原句，按 `Option+T` 展开双语详情。
 - **离线短语识别与多源词典：** 内置 11.5 MB Wiktionary/Kaikki 离线短语词库，无需额外请求大模型即可自动为固定搭配和习语标注下划线。双击任意单词或短语，即可联查**内置短语库**、**macOS 系统词典**、**导入的 `MDX`/`MDD` 词典**，或发起结合当前句子的 **AI 语境释义**。
 - **无打扰语音朗读 (TTS)：** 点击卡片上的小喇叭即可朗读句子或词条（不抢占打字焦点）。支持 **macOS 系统语音**、基于 `llama.cpp` 的本地 **Qwen3-TTS Base 模型**（支持参考音频音色克隆与流式 PCM 播放），或兼容 `/audio/speech` 的远程接口。
@@ -91,13 +93,15 @@
 
 ## 引擎与模型支持
 
+首次引导中的 **使用推荐配置** 会补齐缺少的本地模型配置并下载模型，同时开启补全、写作与选区翻译、表达辅助。解释和表达辅助共用模型，新用户使用系统朗读。已有模型、语言和快捷键会保留；也可以选择 **手动配置**。系统权限仍需按 macOS 提示授权。
+
 每项能力均可**独立配置**本地模型或远程服务——为翻译配置远程 API 绝不会将你的自动补全按键发送到云端，反之亦然。
 
 | 任务类型 | 本地设备端方案 (On-Device) | 自定义远程接口 (Endpoint) |
 | :--- | :--- | :--- |
 | **自动补全** | • 内置 `llama.cpp`（基座 GGUF 模型）<br>• Apple Intelligence *（需受支持的 Mac 及 macOS 26+）* | 兼容 OpenAI 的 `/v1/completions` 或 `/v1/chat/completions` |
 | **句子翻译** | • 内置 `llama.cpp`（支持 `Hy-MT2 1.8B / 7B`、`TranslateGemma 4B`） | 兼容 OpenAI 的 Chat 接口 |
-| **AI 语境解析** | • 内置 `llama.cpp`（通用指令微调 GGUF 模型） | 兼容 OpenAI 的 Chat 接口 |
+| **AI 解释与表达辅助** | • 内置 `llama.cpp`（通用指令微调 GGUF 模型） | 兼容 OpenAI 的 Chat 接口 |
 | **语音朗读 (TTS)** | • Apple macOS 系统语音<br>• 本地 `Qwen3-TTS Base`（`llama.cpp`，约 1.48 GB，支持参考音频） | 兼容 OpenAI 的 `/audio/speech` 接口 |
 | **短语识别与 OCR** | • 始终在本地运行（Wiktionary/Kaikki 离线词库 + macOS Vision OCR） | — |
 

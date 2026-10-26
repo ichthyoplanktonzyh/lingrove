@@ -72,9 +72,14 @@ final class LlamaRuntimeManager: ObservableObject {
         refreshAvailableModels()
     }
 
+    private var isRefreshingModels = false
+
     /// Re-scans local runtime directories for GGUF files and republishes discovered options.
     /// This is called after model downloads so selection UI updates without app restart.
     func refreshAvailableModels() {
+        guard !isRefreshingModels else { return }
+        isRefreshingModels = true
+        defer { isRefreshingModels = false }
         availableModels = runtimeLocator.availableModels(configuration: configuration)
             .filter {
                 var tasks = modelTaskAssignments.tasks(for: $0.filename)
@@ -90,6 +95,14 @@ final class LlamaRuntimeManager: ObservableObject {
     /// Records which discovered model should be loaded when preparation starts.
     /// This keeps persisted UI state separate from the runtime loading lifecycle.
     func configureSelectedModel(filename: String?) {
+        // @Published sends the new list before storing it. RuntimeBootstrapModel reconciles its
+        // choice synchronously inside that notification. Record the choice now, then let the
+        // enclosing refresh normalize it against the committed list; rescanning here recurses
+        // forever when the very first downloaded model was absent from the old list.
+        if isRefreshingModels {
+            selectedModelFilename = filename
+            return
+        }
         if let filename, modelTaskAssignments.record(filename, for: .completion),
            !availableModels.contains(where: { $0.filename == filename }) {
             refreshAvailableModels()

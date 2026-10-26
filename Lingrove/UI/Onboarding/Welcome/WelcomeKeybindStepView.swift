@@ -25,6 +25,7 @@ struct WelcomeKeybindStepView: View {
                         }
                     row(.toggleLingrove, key: suggestionSettings.globalToggleKeyCode, label: suggestionSettings.globalToggleKeyLabel)
                 } else {
+                    ExpressionAssistIntroduction(settings: learning.expressionAssist, allowsEnabling: true, open: open)
                     row(.replacementTranslationShortcut, key: learning.replacementKeyCode, label: learning.replacementKeyLabel)
                     row(.translationDetailsShortcut, key: learning.keyCode, label: learning.keyLabel)
                     ForEach(LearningReadingSource.allCases, id: \.rawValue) { source in

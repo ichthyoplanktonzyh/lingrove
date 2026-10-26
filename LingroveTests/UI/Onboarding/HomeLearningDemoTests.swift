@@ -7,6 +7,18 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct HomeLearningDemoTests {
+    @Test func expressionAssistanceUsesItsOwnBoundedSceneAndNeverChangesTheExampleDocument() {
+        let model = HomeLearningDemoModel()
+        defer { model.stop() }
+        let original = model.editorText
+        model.select(.expression)
+        #expect(model.action == .expressionTrigger)
+        #expect(model.scene.steps == [.expressionTrigger, .expressionDescribe, .expressionChoose, .expressionInsert])
+        model.go(to: 3)
+        #expect(model.action == .expressionInsert)
+        #expect(model.editorText == original)
+    }
+
     @Test func phraseAndComponentRangesKeepTheirOriginalSentence() throws {
         let fixture = HomeLearningDemoFixtures.capture
         let unit = HomeLearningDemoFixtures.unit

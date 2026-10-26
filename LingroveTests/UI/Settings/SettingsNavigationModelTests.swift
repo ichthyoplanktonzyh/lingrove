@@ -33,7 +33,8 @@ final class SettingsNavigationModelTests: XCTestCase {
             XCTAssertEqual(model.learningTask, task)
             XCTAssertEqual(model.revealedItem, item)
         }
-        for item in [SettingsItem.pointerTranslationShortcut, .replacementTranslationShortcut, .translationDetailsShortcut,
+        for item in [SettingsItem.expressionAssistShortcut, .pointerTranslationShortcut,
+                     .replacementTranslationShortcut, .translationDetailsShortcut,
                      .saveVocabularyShortcut, .openVocabularyShortcut] {
             model.showsUsageGuide = true
             model.openUsageGuideDestination(item)

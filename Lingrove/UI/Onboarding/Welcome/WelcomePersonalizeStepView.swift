@@ -26,7 +26,8 @@ struct WelcomePersonalizeStepView: View {
                     LanguageTagsEditor(suggestionSettings: suggestionSettings, showsTitleHeader: false, collapsesSuggestions: true)
                 }
                 personalizeCard(icon: "character.bubble", title: String(localized: "Language Learning", table: "Learning"), index: 2) {
-                    languagePicker(String(localized: "Writing translation", table: "Learning"), selection: $learning.targetLanguage)
+                    languagePicker(String(localized: "Translation & expression language", table: "Learning"),
+                        selection: $learning.targetLanguage)
                     languagePicker(String(localized: "Reading target language", table: "Learning"),
                         selection: $learning.readingTargetLanguage)
                     Picker(String(localized: "Explanation language", table: "Learning"), selection: $learning.explanationLanguage) {

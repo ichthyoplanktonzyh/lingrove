@@ -73,6 +73,8 @@ Lingrove is built around two equally core capabilities that work together in any
 
 ### 2. Language Learning While Writing
 
+- **Expression Assistance:** Type `??` at the caret and describe a missing expression or term, then press Enter or Tab to insert a candidate. It shares the AI explanation model and can be enabled independently of translation.
+
 - **Write & Translate in Place:** Type in your native or target language and pause briefly to see a non-intrusive translation preview beside the cursor. Press `Control+Option+T` to replace the sentence in place, or `Option+T` to expand details.
 - **Expression Recognition & Deep Lookup:** An offline 11.5 MB Wiktionary/Kaikki lexicon automatically underlines reusable idioms and phrases without extra LLM calls. Double-click any word or expression to inspect definitions across **built-in expressions**, **macOS system dictionaries**, **imported `MDX`/`MDD` books**, or **contextual AI explanations**.
 - **Read Aloud (TTS):** Listen to sentences or expressions without losing typing focus using **macOS system voices**, an in-process **Qwen3-TTS Base (`llama.cpp`)** model with optional voice cloning, or a `/audio/speech` endpoint.
@@ -91,13 +93,15 @@ Lingrove is built around two equally core capabilities that work together in any
 
 ## Engines & Models
 
+Choose **Use recommended setup** during onboarding to configure missing local models, download them, and enable autocomplete, writing/selection translation, and expression assistance. Explanation and expression assistance share a model; new setups use system speech. Existing models, languages, and shortcuts are kept. **Configure manually** remains available, and macOS permissions are granted separately.
+
 Each capability configures its model and server settings independently—using an endpoint for translation never routes your autocomplete keystrokes off-device unless you explicitly configure both.
 
 | Task | On-Device Local Options | Custom Endpoint Option |
 | :--- | :--- | :--- |
 | **Autocomplete** | • In-process `llama.cpp` (base GGUF models)<br>• Apple Intelligence *(macOS 26+ on supported Macs)* | OpenAI-compatible `/v1/completions` or `/v1/chat/completions` |
 | **Translation** | • In-process `llama.cpp` (`Hy-MT2 1.8B / 7B`, `TranslateGemma 4B`) | OpenAI-compatible chat endpoint |
-| **AI Explanation** | • In-process `llama.cpp` (general instruction GGUF models) | OpenAI-compatible chat endpoint |
+| **AI Explanation & Expression Assistance** | • In-process `llama.cpp` (general instruction GGUF models) | OpenAI-compatible chat endpoint |
 | **Read Aloud (TTS)** | • Apple macOS System Speech<br>• Local `Qwen3-TTS Base` via `llama.cpp` (~1.48 GB, PCM streaming) | OpenAI-compatible `/audio/speech` endpoint |
 | **Lexicon & OCR** | • Always on-device (Wiktionary/Kaikki subset + macOS Vision OCR) | — |
 

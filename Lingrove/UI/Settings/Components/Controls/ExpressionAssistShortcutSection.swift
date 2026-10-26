@@ -25,6 +25,7 @@ struct ExpressionAssistShortcutSection: View {
                         suggestionSettings.expressionAssistShortcutConflict(keyCode: code, modifiers: modifiers)
                     })
             }
+            .settingsItem(.expressionAssistShortcut)
             if let conflict = suggestionSettings.expressionAssistShortcutConflict(
                 keyCode: CGKeyCode(settings.keyCode), modifiers: settings.modifiers) {
                 Text(String(localized: "This shortcut conflicts with \(conflict). Choose a different key combination.", table: "Learning"))

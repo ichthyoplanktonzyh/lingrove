@@ -26,6 +26,7 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
     private let speech: LearningSpeechController
     private let endpointConnection: OpenAICompatibleConnectionModel
     private let searchService: HuggingFaceSearchService
+    private let recommendedSetup: RecommendedSetupController
     /// Installed once by the composition root after both window owners exist. Weak captures in
     /// those callbacks keep the windows as siblings rather than making a coordinator retain cycle.
     var openSettings: (SettingsItem) -> Void = { _ in }
@@ -87,6 +88,8 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
         self.endpointConnection = endpointConnection
         self.searchService = searchService
         self.userDefaults = userDefaults
+        recommendedSetup = RecommendedSetupController(settings: suggestionSettings, downloads: modelDownloadManager,
+            runtime: runtimeModel, speech: speech.settings, foundation: foundationModelAvailabilityService, defaults: userDefaults)
     }
 
     /// Any completed version is sufficient. Product updates remain available through the manual
@@ -150,6 +153,7 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
                     self?.completeOnboarding()
                 },
                 initialStepIndex: resumeStepIndex,
+                recommendedSetup: recommendedSetup,
                 isReturningUser: isOnboardingCompleted,
                 modelConfiguration: { [weak self] navigation in self?.configuration(navigation) ?? AnyView(EmptyView()) },
                 readiness: { [weak self] filename in self?.readiness(filename) ?? AnyView(EmptyView()) },
@@ -211,7 +215,8 @@ final class WelcomeCoordinator: NSObject, NSWindowDelegate {
             translation: learningModels.translation.profile, explanation: learningModels.explanation.profile,
             speech: speech.settings, translationController: learningModels.translation,
             explanationController: learningModels.explanation, speechController: speech,
-            pendingCompletionModel: filename, open: { [weak self] in self?.openSettings($0) }))
+            pendingCompletionModel: filename ?? recommendedSetup.pendingCompletionFilename,
+            open: { [weak self] in self?.openSettings($0) }))
     }
 
     func windowWillClose(_ notification: Notification) {

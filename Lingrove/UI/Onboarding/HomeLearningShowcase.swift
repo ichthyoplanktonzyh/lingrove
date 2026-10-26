@@ -11,10 +11,10 @@ struct HomeLearningShowcase: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Picker(String(localized: "Language Learning", table: "Learning"), selection: Binding(
-                get: { model.scene }, set: { model.select($0) })) {
-                ForEach(HomeLearningScene.allCases) { Text($0.title).tag($0) }
-            }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("homeLearningScenePicker")
+            ViewThatFits(in: .horizontal) {
+                scenePicker.pickerStyle(.segmented).fixedSize(horizontal: true, vertical: false)
+                scenePicker.pickerStyle(.menu)
+            }.accessibilityIdentifier("homeLearningScenePicker")
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(String(localized: "Interactive demo · sample content", table: "Learning"))
@@ -66,6 +66,13 @@ struct HomeLearningShowcase: View {
         .accessibilityIdentifier("homeLearningWalkthrough")
     }
 
+    private var scenePicker: some View {
+        Picker(String(localized: "Language Learning", table: "Learning"), selection: Binding(
+            get: { model.scene }, set: { model.select($0) })) {
+            ForEach(HomeLearningScene.allCases) { Text($0.title).tag($0) }
+        }.labelsHidden()
+    }
+
     private var playerControls: some View {
         HStack(spacing: 10) {
             Text(model.action.title).font(.headline).lineLimit(1).help(model.action.title)
@@ -99,6 +106,11 @@ struct HomeLearningShowcase: View {
 
     @ViewBuilder private var scene: some View {
         switch model.scene {
+        case .expression:
+            ExpressionAssistDemoScene(action: model.action,
+                settings: (readingSettings ?? model.readingSettings).expressionAssist) {
+                model.go(to: 3)
+            }
         case .vocabulary: HomeLearningNotebookScene(model: model, store: model.store)
         case .anki: HomeLearningAnkiScene(model: model)
         default:

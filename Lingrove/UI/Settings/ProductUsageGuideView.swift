@@ -40,6 +40,9 @@ struct ProductUsageGuideView: View {
                                 Text(instruction).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                             }
                         }
+                        if topic == .expression {
+                            ExpressionAssistIntroduction(settings: settings.languageLearning.expressionAssist, open: open)
+                        }
                         UsageGuideShortcuts(topic: topic, settings: settings, learning: settings.languageLearning,
                             vocabulary: settings.vocabularyShortcuts, open: open)
                         Divider()
@@ -70,11 +73,12 @@ struct ProductUsageGuideView: View {
 /// A small navigation value keeps each topic's instructions, settings destinations and existing
 /// example together. It lives with the guide, owns no session, and never changes a feature.
 private enum UsageGuideTopic: String, CaseIterable, Identifiable {
-    case completion, writing, reading, lookup, speech, vocabulary, review
+    case completion, writing, expression, reading, lookup, speech, vocabulary, review
     var id: String { rawValue }
     var scene: HomeLearningScene? {
         switch self {
         case .completion: nil
+        case .expression: .expression
         case .writing: .writing
         case .reading: .reading
         case .lookup: .lookup
@@ -86,6 +90,7 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .completion: String(localized: "Autocomplete")
+        case .expression: String(localized: "Expression assistance", table: "Learning")
         case .writing: String(localized: "Writing translation", table: "Learning")
         case .reading: String(localized: "Reading translation", table: "Learning")
         case .lookup: String(localized: "Dictionary", table: "Learning") + " · " + String(localized: "AI explanation", table: "Learning")
@@ -97,6 +102,7 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .completion: "text.cursor"
+        case .expression: "text.magnifyingglass"
         case .writing: "character.bubble"
         case .reading: "text.viewfinder"
         case .lookup: "book.closed"
@@ -108,6 +114,7 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
     var destinations: [SettingsItem] {
         switch self {
         case .completion: [.completionEnabled, .engine, .disabledApps, .emojiPicker, .inlineMacros, .accessibility, .inputMonitoring]
+        case .expression: [.expressionAssist, .explanationModel, .expressionAssistShortcut]
         case .writing: [.translationEnabled, .translationModel, .sentencePreview, .translationTargetLanguage, .translationReferenceMode]
         case .reading: [.selectionTranslation, .pointerTranslation, .screenshotTranslation, .selectionTranslationApps, .screenRecording]
         case .lookup: [.explanationModel, .explanationLanguage, .dictionarySources]
@@ -122,6 +129,8 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
             [String(localized: "Start typing in an editable field, then pause to see a suggestion.", table: "Learning"),
              String(localized: "Insert the next word or the entire suggestion with your configured shortcuts.", table: "Learning"),
              String(localized: "Choose which apps use autocomplete in App settings.", table: "Learning")]
+        case .expression:
+            instructions([.expressionTrigger, .expressionDescribe, .expressionInsert])
         case .writing:
             instructions([.preview, .expand, .replace]) + [String(localized:
                 "Selections take priority. Reference context never expands the replacement range.", table: "Learning")]

@@ -4,6 +4,12 @@ This document covers the detailed interaction rules, dictionary architecture, mo
 
 ---
 
+## Recommended Setup
+
+The model step offers **Use recommended setup** before the existing manual task forms. It fills unconfigured local task profiles using the pinned catalog, chooses Apple Intelligence for unconfigured autocomplete when available (otherwise a lightweight completion model below 16 GB of memory and the balanced completion model on larger Macs), and uses Hy-MT2 1.8B for translation and Qwen3.5 4B for both explanation and expression assistance. New setups retain the default system speech provider. Existing models, endpoint choices, power profiles, languages, shortcuts and context preferences are preserved.
+
+The explicit action enables autocomplete, writing sentence previews, selection translation and expression assistance. Download status, pause and retry use the shared downloader. A pending autocomplete choice survives relaunch but is discarded if the user switches to manual configuration or changes their model/engine. Installed/configured status does not claim a successful inference or granted system permission. Merely opening setup performs no downloads or preference changes.
+
 ## 1. Translation & Interaction Workflow
 
 Language learning can be enabled independently of inline autocomplete:

@@ -4,10 +4,11 @@ import SwiftUI
 /// These are product journeys, not providers. Home owns the selected journey and its local
 /// timeline; guide/onboarding navigation never depends on these transient values.
 enum HomeLearningScene: String, CaseIterable, Identifiable {
-    case writing, reading, lookup, speech, vocabulary, anki
+    case writing, expression, reading, lookup, speech, vocabulary, anki
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .expression: String(localized: "Expression assistance", table: "Learning")
         case .writing: String(localized: "Writing")
         case .reading: String(localized: "Reading", table: "Learning")
         case .lookup: String(localized: "Dictionary", table: "Learning")
@@ -18,6 +19,7 @@ enum HomeLearningScene: String, CaseIterable, Identifiable {
     }
     var steps: [HomeLearningDemoAction] {
         switch self {
+        case .expression: [.expressionTrigger, .expressionDescribe, .expressionChoose, .expressionInsert]
         case .writing: [.preview, .expand, .explain, .favorite, .favoriteMenu, .collapse, .speak, .replace, .dismiss]
         case .reading: [.select, .preview, .pointer, .preview, .capture, .preview, .expand]
         case .lookup: [.lookup, .explain, .dictionary, .sources, .favorite, .favoriteMenu]
@@ -31,6 +33,7 @@ enum HomeLearningScene: String, CaseIterable, Identifiable {
 /// One meaningful step highlights one real control and explains its purpose outside the card.
 /// Copy and action identity stay together so automatic playback and manual stepping cannot drift.
 enum HomeLearningDemoAction: String {
+    case expressionTrigger, expressionDescribe, expressionChoose, expressionInsert
     case preview, expand, collapse, explain, favorite, favoriteMenu, speak, replace, dismiss
     case lookup, dictionary, sources, select, pointer, capture, list, graph, headword, sense, layout, layoutBack, addAnki, reviewAnki
     var emphasis: LearningCardAction? {
@@ -47,6 +50,10 @@ enum HomeLearningDemoAction: String {
     }
     var title: String {
         switch self {
+        case .expressionTrigger: String(localized: "Trigger symbols", table: "Learning")
+        case .expressionDescribe: String(localized: "Describe what you mean", table: "Learning")
+        case .expressionChoose: String(localized: "Select", table: "Learning")
+        case .expressionInsert: String(localized: "Insert", table: "Learning")
         case .preview: String(localized: "Translation", table: "Learning")
         case .expand: String(localized: "Expand", table: "Learning")
         case .collapse: String(localized: "Collapse", table: "Learning")
@@ -74,6 +81,12 @@ enum HomeLearningDemoAction: String {
     }
     var explanation: String {
         switch self {
+        case .expressionTrigger: String(localized: "Type your trigger symbols or use the expression shortcut at the caret.",
+            table: "Learning")
+        case .expressionDescribe: String(localized: "Describe the expression or term in the temporary input, then pause.",
+            table: "Learning")
+        case .expressionChoose: String(localized: "Use arrow keys to compare candidates and their hints.", table: "Learning")
+        case .expressionInsert: String(localized: "Press Enter or Tab to insert the selected candidate; Escape cancels.", table: "Learning")
         case .preview: String(localized: "Pause after typing to see a sentence preview.", table: "Learning")
         case .expand, .collapse: String(localized: "Expand the card to compare the original and translation.", table: "Learning")
         case .explain: String(localized: "Use AI to explain the current sentence or expression.", table: "Learning")

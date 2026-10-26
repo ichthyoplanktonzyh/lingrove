@@ -82,7 +82,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case ankiReview, ankiReviewFields
     case translationModel
     case explanationModel, explanationLanguage, explanationParameters
-    case expressionAssist
+    case expressionAssist, expressionAssistShortcut
     // Context
     case extendedContext
     case typingHistory
@@ -177,6 +177,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .ankiReviewFields: return String(localized: "Card templates", table: "Vocabulary")
         case .explanationModel: return String(localized: "Explanation & expression model", table: "Learning")
         case .expressionAssist: return String(localized: "Expression assistance", table: "Learning")
+        case .expressionAssistShortcut: return String(localized: "Open expression assistance", table: "Learning")
         case .explanationLanguage: return String(localized: "Explanation language", table: "Learning")
         case .explanationParameters: return String(localized: "AI explanation parameters", table: "Learning")
         case .pointerTranslation: return String(localized: "Enable pointer translation", table: "Learning")
@@ -304,6 +305,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .expressionAssist: return "text.magnifyingglass"
+        case .expressionAssistShortcut: return "keyboard"
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
             return "command"
         case .ankiReview: return "rectangle.stack"
@@ -422,6 +424,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var category: SettingsCategory {
         switch self {
         case .expressionAssist: return .languageLearning
+        case .expressionAssistShortcut: return .shortcuts
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
             return .shortcuts
         case .ankiReview, .ankiReviewFields: return .languageLearning
@@ -480,6 +483,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var summary: String {
         switch self {
         case .expressionAssist: return String(localized: "Find an expression or term while writing", table: "Learning")
+        case .expressionAssistShortcut: return String(localized: "Configure an expression shortcut", table: "Learning")
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
             return title
         case .ankiReview: return String(localized: "Anki connection and card defaults", table: "Vocabulary")
@@ -628,6 +632,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var keywords: [String] {
         switch self {
         case .expressionAssist: return ["expression", "term", "concept", "trigger", "??", "表达", "术语", "概念", "触发符号"]
+        case .expressionAssistShortcut: return ["expression shortcut", "表达快捷键"]
         case .replacementTranslationShortcut: return ["replace translation", "shortcut", "替换译文", "翻译快捷键"]
         case .translationDetailsShortcut: return ["translation details", "shortcut", "展开翻译", "详情快捷键"]
         case .saveVocabularyShortcut: return ["save vocabulary", "favorite shortcut", "收藏快捷键", "保存生词"]

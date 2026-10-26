@@ -18,14 +18,15 @@ import SwiftUI
 ///   2. Each middle step shows a progress indicator so the flow reads as finite and "where am I"
 ///      stays answerable.
 ///
-/// Only explicitly picking a completion template applies a curated bundle and starts its download
-/// in the background, so it can finish while the user fills out the remaining steps.
+/// Recommended setup and manual completion templates apply only after an explicit click. The
+/// app-owned setup controller keeps downloads alive while the user fills out remaining steps.
 struct WelcomeView: View {
     @ObservedObject var permissionManager: PermissionManager
     @ObservedObject var runtimeModel: RuntimeBootstrapModel
     @ObservedObject var modelDownloadManager: ModelDownloadManager
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     @ObservedObject var foundationModelAvailabilityService: FoundationModelAvailabilityService
+    @ObservedObject var recommendedSetup: RecommendedSetupController
 
     let permissionGuidanceController: PermissionGuidanceController
     let onPreferredWindowSizeChange: (NSSize) -> Void
@@ -41,6 +42,7 @@ struct WelcomeView: View {
     let deferPermissions: () -> Void
     @StateObject private var modelNavigation = SettingsNavigationModel()
     @State private var configuresCompletion = false
+    @State private var showsManualModels = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -71,6 +73,7 @@ struct WelcomeView: View {
         onPreferredWindowSizeChange: @escaping (NSSize) -> Void,
         onDismiss: @escaping () -> Void,
         initialStepIndex: Int = 0,
+        recommendedSetup: RecommendedSetupController,
         isReturningUser: Bool = false,
         modelConfiguration: @escaping (SettingsNavigationModel) -> AnyView,
         readiness: @escaping (String?) -> AnyView,
@@ -81,6 +84,7 @@ struct WelcomeView: View {
         onStepChange: @escaping (Int) -> Void = { _ in }
     ) {
         _configuresCompletion = State(initialValue: isReturningUser || suggestionSettings.selectedEngine == .openAICompatible)
+        _recommendedSetup = ObservedObject(wrappedValue: recommendedSetup)
         self.modelConfiguration = modelConfiguration
         self.readiness = readiness
         self.openSettings = openSettings
@@ -203,12 +207,23 @@ extension WelcomeView {
             donePage
         case .template:
             VStack(spacing: 0) {
-                WelcomeModelStepView(navigation: modelNavigation, configuresCompletion: $configuresCompletion,
-                    configuration: modelConfiguration) {
-                    WelcomeTemplateStepView(modelDownloadManager: modelDownloadManager,
-                        foundationModelAvailabilityService: foundationModelAvailabilityService,
-                        hardware: hardware, selectedEngine: selectedEngine, selectedTemplate: $selectedTemplate,
-                        showsHeader: false, onSelectEngine: selectEngine, onSelect: applyTemplate)
+                if !showsManualModels {
+                    RecommendedSetupView(setup: recommendedSetup) {
+                        recommendedSetup.useManualConfiguration()
+                        showsManualModels = true
+                    }
+                } else {
+                    Button(String(localized: "Recommended setup", table: "Learning")) {
+                        selectedTemplate = nil
+                        showsManualModels = false
+                    }.padding(.top, 12)
+                    WelcomeModelStepView(navigation: modelNavigation, configuresCompletion: $configuresCompletion,
+                        configuration: modelConfiguration) {
+                        WelcomeTemplateStepView(modelDownloadManager: modelDownloadManager,
+                            foundationModelAvailabilityService: foundationModelAvailabilityService,
+                            hardware: hardware, selectedEngine: selectedEngine, selectedTemplate: $selectedTemplate,
+                            showsHeader: false, onSelectEngine: selectEngine, onSelect: applyTemplate)
+                    }
                 }
                 stepFooter.padding(.horizontal, OnboardingLayout.horizontalPadding).padding(.vertical, 20)
             }
@@ -266,7 +281,8 @@ extension WelcomeView {
             )
         case .template:
             WelcomeNavigation(canGoBack: true,
-                continueTitle: modelNavigation.engineTask == .completion && !configuresCompletion && selectedTemplate == nil
+                continueTitle: !recommendedSetup.applied && modelNavigation.engineTask == .completion
+                    && !configuresCompletion && selectedTemplate == nil
                     ? String(localized: "Set up later") : String(localized: "Continue"),
                 onBack: { go(to: .permissions) }, onContinue: { go(to: .personalize) })
         case .personalize:
