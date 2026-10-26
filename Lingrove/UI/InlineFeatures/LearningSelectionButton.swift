@@ -9,7 +9,10 @@ struct LearningSelectionButton: View {
         Button(action: action) {
             Group {
                 if isPreparing { ProgressView().controlSize(.small) } else {
-                    Image(systemName: "character.bubble").font(.system(size: 16, weight: .medium))
+                    // The catalog owns the light/dark palettes. Original rendering preserves
+                    // the whale's eyes and belly instead of tinting the whole silhouette.
+                    Image("ReadingSelectionWhale").renderingMode(.original).resizable().scaledToFit()
+                        .frame(width: 24, height: 24).accessibilityHidden(true)
                 }
             }.frame(width: 30, height: 30)
         }.disabled(isPreparing).buttonStyle(.plain).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
