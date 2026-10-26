@@ -52,7 +52,7 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
     /// Explicit reading capture is a display crop, independent of editable focus and completion's
     /// visual-context preference. Excluding our process keeps picker/card pixels out of OCR.
     @MainActor
-    func captureRegion(_ cocoaRect: CGRect) async throws -> CGImage {
+    func captureRegion(_ cocoaRect: CGRect, deadline: TimeInterval? = nil) async throws -> CGImage {
         guard CGPreflightScreenCaptureAccess() else {
             throw LearningFailure.message(String(
                 localized: "Allow Screen Recording for Lingrove in System Settings to translate screen text.",
@@ -62,7 +62,7 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
               let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
             throw LearningFailure.message(String(localized: "Select a region within one display.", table: "Learning"))
         }
-        let content = try await currentShareableContent()
+        let content = try await currentShareableContent(deadline: deadline)
         try Task.checkCancellation()
         guard let display = content.displays.first(where: { $0.displayID == number.uint32Value }) else { throw CancellationError() }
         let rect = LearningReadingTextPolicy.displayCrop(cocoaRect, in: screen.frame)
@@ -79,9 +79,66 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
         configuration.width = max(1, Int((rect.width * scale).rounded(.up)))
         configuration.height = max(1, Int((rect.height * scale).rounded(.up)))
         configuration.showsCursor = false
-        let image = try await captureImage(filter: filter, configuration: configuration)
+        let image = try await captureImage(filter: filter, configuration: configuration, deadline: deadline)
         try Task.checkCancellation()
         return image
+    }
+
+    /// This receipt keeps Window Server identity even when the app exposes no AX window. It
+    /// outlives the screenshot only as geometry, allowing a moved/replaced window to retire OCR.
+    struct ReadingRegion: Sendable {
+        let windowID: CGWindowID
+        let windowFrame: CGRect
+        let bounds: CGRect
+        let point: CGPoint
+        let pid: Int32
+    }
+
+    /// Resolve the actual topmost non-Lingrove window first. An uncapturable covering window
+    /// must not be skipped in favour of text underneath it. Only the matched window may expand.
+    @MainActor
+    func pointerCaptureRegion(at point: CGPoint, pid: Int32, deadline: TimeInterval) async throws -> ReadingRegion {
+        let content = try await currentShareableContent(deadline: deadline)
+        try Task.checkCancellation()
+        let window = try windowAtPoint(point, pid: pid)
+        guard content.windows.contains(where: { $0.windowID == window.id && $0.owningApplication?.processID == pid }),
+              let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }),
+              let bounds = LearningReadingVisualPolicy.snapshotBounds(at: point, screen: screen.frame,
+                window: window.frame, scale: screen.backingScaleFactor)
+        else { throw WindowScreenshotError.noVisibleWindowForProcess(pid) }
+        return ReadingRegion(windowID: window.id, windowFrame: window.frame, bounds: bounds, point: point, pid: pid)
+    }
+
+    @MainActor
+    func isCurrent(_ region: ReadingRegion) -> Bool {
+        guard let window = try? windowAtPoint(region.point, pid: region.pid) else { return false }
+        return window.id == region.windowID && window.frame == region.windowFrame
+    }
+
+    @MainActor
+    private func windowAtPoint(_ point: CGPoint, pid: Int32) throws -> (id: CGWindowID, frame: CGRect) {
+        guard let ordered = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] else { throw CancellationError() }
+        for info in ordered {
+            // Cursor surfaces and Dock animation shields can report full-display alpha=1
+            // frames while their pixels are transparent. They are compositor overlays, not
+            // reading windows. Ordinary application panels still participate in occlusion.
+            guard let owner = (info[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+                  owner != ProcessInfo.processInfo.processIdentifier,
+                  let layer = (info[kCGWindowLayer as String] as? NSNumber)?.intValue,
+                  layer < Int(CGWindowLevelForKey(.screenSaverWindow)),
+                  NSRunningApplication(processIdentifier: owner)?.bundleIdentifier != "com.apple.dock",
+                  let identifier = (info[kCGWindowNumber as String] as? NSNumber)?.uint32Value,
+                  let dictionary = info[kCGWindowBounds as String] as? [String: Any],
+                  let rawFrame = CGRect(dictionaryRepresentation: dictionary as CFDictionary),
+                  AXHelper.rectHasFiniteComponents(rawFrame),
+                  (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue != 0 else { continue }
+            let frame = AXHelper.cocoaRect(fromAccessibilityRect: rawFrame)
+            guard frame.contains(point) else { continue }
+            guard owner == pid else { throw CancellationError() }
+            return (identifier, frame)
+        }
+        throw WindowScreenshotError.noVisibleWindowForProcess(pid)
     }
 
     private enum CaptureMetrics {
@@ -241,20 +298,20 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
     }
 
     /// Wraps ScreenCaptureKit's callback API so the rest of the app can use structured concurrency.
-    private func currentShareableContent() async throws -> SCShareableContent {
-        try await withCheckedThrowingContinuation { continuation in
+    private func currentShareableContent(deadline: TimeInterval? = nil) async throws -> SCShareableContent {
+        try await ScreenCaptureReply<SCShareableContent>().wait(deadline: deadline ?? ProcessInfo.processInfo.systemUptime + 12) { reply in
             SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: true) { content, error in
                 if let error {
-                    continuation.resume(throwing: WindowScreenshotError.captureFailed(error.localizedDescription))
+                    reply(.failure(WindowScreenshotError.captureFailed(error.localizedDescription)))
                     return
                 }
 
                 guard let content else {
-                    continuation.resume(throwing: WindowScreenshotError.captureFailed("Shareable content was unavailable."))
+                    reply(.failure(WindowScreenshotError.captureFailed("Shareable content was unavailable.")))
                     return
                 }
 
-                continuation.resume(returning: content)
+                reply(.success(content))
             }
         }
     }
@@ -262,21 +319,22 @@ struct WindowScreenshotService: WindowScreenshotCapturing {
     /// Captures one CGImage for the chosen window filter.
     private func captureImage(
         filter: SCContentFilter,
-        configuration: SCStreamConfiguration
+        configuration: SCStreamConfiguration,
+        deadline: TimeInterval? = nil
     ) async throws -> CGImage {
-        try await withCheckedThrowingContinuation { continuation in
+        try await ScreenCaptureReply<CGImage>().wait(deadline: deadline ?? ProcessInfo.processInfo.systemUptime + 12) { reply in
             SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration) { image, error in
                 if let error {
-                    continuation.resume(throwing: WindowScreenshotError.captureFailed(error.localizedDescription))
+                    reply(.failure(WindowScreenshotError.captureFailed(error.localizedDescription)))
                     return
                 }
 
                 guard let image else {
-                    continuation.resume(throwing: WindowScreenshotError.captureFailed("ScreenCaptureKit returned no image."))
+                    reply(.failure(WindowScreenshotError.captureFailed("ScreenCaptureKit returned no image.")))
                     return
                 }
 
-                continuation.resume(returning: image)
+                reply(.success(image))
             }
         }
     }

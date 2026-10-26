@@ -99,6 +99,77 @@ struct LearningReadingOCRPolicyTests {
             #expect(LearningReadingOCRPolicy.context(word: word, lines: [line]) == nil)
         }
     }
+
+    @Test func sameRowLinkFragmentsPreserveExactSourceOffsets() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "Earlier sentence. Keep your", confidence: 0.95,
+                boundingBox: CGRect(x: 0.05, y: 0.50, width: 0.40, height: 0.05)),
+            .init(text: "history", confidence: 0.85,
+                boundingBox: CGRect(x: 0.455, y: 0.50, width: 0.10, height: 0.05)),
+            .init(text: "safe. Next sentence.", confidence: 0.9,
+                boundingBox: CGRect(x: 0.56, y: 0.50, width: 0.30, height: 0.05))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: lines[1].boundingBox!,
+            lineIndex: 1, utf16Location: 0, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(context.text.trimmingCharacters(in: .whitespacesAndNewlines) == "Keep your history safe.")
+        #expect((context.text as NSString).substring(with: context.target) == "history")
+        #expect(context.isComplete && context.window.confidence == 0.85)
+    }
+
+    @Test func separateListItemsAndDistantSameRowCellsStaySeparate() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "• Unrelated first item", confidence: 1,
+                boundingBox: CGRect(x: 0.1, y: 0.56, width: 0.3, height: 0.04)),
+            .init(text: "• Your history remains.", confidence: 1,
+                boundingBox: CGRect(x: 0.1, y: 0.50, width: 0.3, height: 0.04)),
+            .init(text: "Unrelated table cell", confidence: 1,
+                boundingBox: CGRect(x: 0.5, y: 0.50, width: 0.3, height: 0.04))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.2, y: 0.5, width: 0.1, height: 0.04),
+            lineIndex: 1, utf16Location: 7, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(!context.window.text.contains("Unrelated"))
+        #expect(!context.isComplete)
+    }
+
+    @Test func oversizedRowKeepsABoundedWindowAroundTheExactTarget() throws {
+        let text = String(repeating: "👩🏽‍💻 before ", count: 150) + "history " + String(repeating: "after é ", count: 150)
+        let range = (text as NSString).range(of: "history")
+        let word = ScreenTextWord(text: "history", boundingBox: .unit,
+            lineIndex: 0, utf16Location: range.location, utf16Length: range.length)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word,
+            lines: [.init(text: text, confidence: 1, boundingBox: .unit)]))
+        #expect(context.window.text.utf16.count <= 1024 + range.length)
+        #expect((context.text as NSString).substring(with: context.target) == "history")
+        #expect(!context.window.text.contains("\u{FFFD}"))
+        #expect(!context.isComplete)
+    }
+
+    @Test func headingAndUnindentedParagraphAfterAListAreSeparateBlocks() throws {
+        for upper in [OCRTextHygiene.OCRLine(text: "Reading fixture", confidence: 1,
+                         boundingBox: CGRect(x: 0.1, y: 0.62, width: 0.35, height: 0.06)),
+                      OCRTextHygiene.OCRLine(text: "• Unrelated label", confidence: 1,
+                         boundingBox: CGRect(x: 0.1, y: 0.56, width: 0.35, height: 0.04))] {
+            let lines = [upper, OCRTextHygiene.OCRLine(text: "Your history remains.", confidence: 1,
+                boundingBox: CGRect(x: 0.1, y: 0.50, width: 0.35, height: 0.04))]
+            let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.2, y: 0.50, width: 0.1, height: 0.04),
+                lineIndex: 1, utf16Location: 5, utf16Length: 7)
+            let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines,
+                imageSize: CGSize(width: 1000, height: 400)))
+            #expect(context.window.text == "Your history remains.")
+        }
+    }
+
+    @Test func hangingListContinuationRetainsItsOwnFirstLine() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "• Keep your review", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.56, width: 0.35, height: 0.04)),
+            .init(text: "history safe.", confidence: 1, boundingBox: CGRect(x: 0.11, y: 0.50, width: 0.3, height: 0.04))]
+        let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.11, y: 0.5, width: 0.1, height: 0.04),
+            lineIndex: 1, utf16Location: 0, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(context.text.contains("Keep your review history safe."))
+    }
 }
 
 private extension CGRect {

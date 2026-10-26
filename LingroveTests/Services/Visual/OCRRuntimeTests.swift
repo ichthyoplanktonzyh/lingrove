@@ -10,6 +10,33 @@ import CryptoKit
 @MainActor
 @Suite(.serialized, .timeLimit(.minutes(1)))
 struct OCRRuntimeTests {
+    @Test func queuedCropExpiresWhileTheExistingNativeOperationRemainsActive() async throws {
+        let fixture = try OCRRuntimeFixture(timeout: 5)
+        defer { fixture.close() }
+        let active = Task { try await fixture.recognize(903) }
+        try await waitUntil { fixture.requests == [903] }
+        let pid = fixture.pid
+        await #expect(throws: OCRRuntimeFailure.timedOut) {
+            try await fixture.recognize(400, purpose: .reading, deadline: ProcessInfo.processInfo.systemUptime + 0.03)
+        }
+        #expect(fixture.requests == [903] && fixture.pid == pid && fixture.events.count("retired") == 0)
+        try fixture.release()
+        _ = try await active.value
+        #expect(try await fixture.recognize(902).lines.first?.text == "902")
+        #expect(fixture.requests == [903, 902])
+    }
+    @Test func expiredCropDoesNotStartOrRetireAHealthyWorker() async throws {
+        let fixture = try OCRRuntimeFixture()
+        defer { fixture.close() }
+        _ = try await fixture.recognize(902)
+        let pid = fixture.pid
+        await #expect(throws: OCRRuntimeFailure.timedOut) {
+            try await fixture.recognize(400, purpose: .reading, deadline: ProcessInfo.processInfo.systemUptime - 1)
+        }
+        _ = try await fixture.recognize(902)
+        #expect(fixture.requests == [902, 902])
+        #expect(fixture.pid == pid && fixture.events.count("retired") == 0)
+    }
     @Test func stalledWorkerTimesOutIsReapedAndNextRequestRecovers() async throws {
         let fixture = try OCRRuntimeFixture()
         defer { fixture.close() }
@@ -236,8 +263,9 @@ final class OCRRuntimeFixture {
         return text.split(separator: "\n").compactMap { Int($0) }
     }
 
-    func recognize(_ marker: Int, purpose: OCRRequestPurpose = .visualContext) async throws -> OCRWorkerResponse {
-        let options = OCRRequestOptions(maxImageDimension: 16, maxRecognizedCharacters: marker, purpose: purpose)
+    func recognize(_ marker: Int, purpose: OCRRequestPurpose = .visualContext,
+                   deadline: TimeInterval? = nil) async throws -> OCRWorkerResponse {
+        let options = OCRRequestOptions(maxImageDimension: 16, maxRecognizedCharacters: marker, purpose: purpose, deadline: deadline)
         return try await runtime.recognize(image, options: options)
     }
 

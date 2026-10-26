@@ -648,7 +648,7 @@ enum AXHelper {
 
     /// An element's frame from its position and size, in Accessibility (top-left origin) coordinates;
     /// nil when either is missing or the size is empty.
-    private static func accessibilityFrame(of element: AXUIElement) -> CGRect? {
+    static func accessibilityFrame(of element: AXUIElement) -> CGRect? {
         var positionRef: CFTypeRef?
         var sizeRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionRef) == .success,

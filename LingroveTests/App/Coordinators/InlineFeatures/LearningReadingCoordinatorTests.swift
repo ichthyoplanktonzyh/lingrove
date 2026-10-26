@@ -10,6 +10,21 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 @MainActor
 struct LearningReadingCoordinatorTests {
+    @Test func hostScrollCancelsPointerOCRBeforeAnyModelRequest() async {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.pointer)
+        rig.reader.blockCapture = true
+        await settle()
+        #expect(rig.coordinator.decide(rig.shortcut(for: .pointer)) == .consume)
+        await until { rig.reader.pendingCapture != nil }
+        let forgets = rig.reader.forgets
+        rig.coordinator.handlePointerEvent(type: .scrollWheel, at: CGPoint(x: 500, y: 500), clickCount: 0)
+        await settle()
+        #expect(rig.reader.pendingCapture == nil && rig.reader.forgets > forgets)
+        #expect(rig.service.calls.isEmpty && !rig.panel.isVisible)
+    }
+
     @Test
     func nativeLookupGestureDoesNotDismissOrCreateANewSelectionRequest() async throws {
         let rig = Rig()
@@ -472,7 +487,7 @@ struct LearningReadingCoordinatorTests {
         var currentChecks = 0
         var lastSource = LearningReadingSource.selection
         var blockCapture = false
-        var isSelectingRegion: Bool { pendingCapture != nil }
+        var isSelectingRegion: Bool { lastSource == .screenshot && pendingCapture != nil }
         var pendingCapture: CheckedContinuation<LearningReadingSelection, any Error>?
         func capture(source: LearningReadingSource) async throws -> LearningReadingSelection {
             lastSource = source
