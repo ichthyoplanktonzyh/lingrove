@@ -57,7 +57,8 @@ struct LearningLookupPolicyTests {
         let full = VocabularyPolicy.example(text: sentence, ranges: [NSRange(location: 0, length: sentence.utf16.count)],
             language: .english, startsAtBoundary: true, endsAtBoundary: true)
         #expect(LearningReadingLookupPolicy.capture(selection(sentence, context: full), language: .english) == nil)
-        for text in ["No.", "Run!", "Thanks.", " Thanks. "] {
+        for text in ["No.", "Run!", "Thanks.", " Thanks. ",
+                     "Lingrove is built around two equally core capabilities that work together in any supported macOS text field:"] {
             let example = VocabularyPolicy.example(text: text, ranges: [NSRange(location: 0, length: text.utf16.count)],
                 language: .english, startsAtBoundary: true, endsAtBoundary: true)
             #expect(LearningReadingLookupPolicy.capture(selection(text, context: example), language: .english) == nil)
@@ -69,5 +70,12 @@ struct LearningLookupPolicyTests {
         fragment.completeness = .fragment
         #expect(LearningReadingLookupPolicy.capture(selection("me posted.", context: fragment), language: .english)?.kind == .expression)
         #expect(LearningReadingLookupPolicy.capture(selection("bank", context: nil, source: .pointer), language: .english)?.kind == .word)
+        #expect(LearningReadingLookupPolicy.capture(selection(" supported ", context: nil), language: .english)?.expression == "supported")
+        #expect(LearningReadingLookupPolicy.capture(selection("bank:", context: nil), language: .english)?.kind == .word)
+        let actual = "Lingrove is built around two equally core capabilities that work together in any supported macOS text field:"
+        let context = VocabularyPolicy.example(text: actual,
+            ranges: [(actual as NSString).range(of: "supported ")], language: .english)
+        let result = LearningReadingLookupPolicy.capture(selection("supported ", context: context), language: .english)
+        #expect(result?.kind == .word && result?.example?.text == actual)
     }
 }

@@ -10,15 +10,24 @@ nonisolated enum LearningReadingLookupPolicy {
         let oneWord = words.count <= 1
         if selection.source != .pointer {
             if let example = selection.vocabularyContext, example.completeness == .sentence,
-               example.text.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed {
+               example.text.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed,
+               !oneWord || trimmed.last.map({ ".!?。！？".contains($0) }) == true {
                 return nil
             }
             // An incomplete captured example is stronger evidence than terminal punctuation.
             // Without surrounding evidence, punctuation/screen regions are positive hints only.
-            if selection.vocabularyContext == nil,
-               selection.source == .screenshot || trimmed.last.map({ ".!?。！？".contains($0) }) == true { return nil }
+            if selection.vocabularyContext == nil, translationHint(trimmed, words: words.count, source: selection.source) { return nil }
         }
-        return VocabularyCapture(expression: text, dictionaryForm: text, language: language,
+        return VocabularyCapture(expression: trimmed, dictionaryForm: trimmed, language: language,
             kind: oneWord ? .word : .expression, example: selection.vocabularyContext)
+    }
+
+    private static func translationHint(_ text: String, words: Int, source: LearningReadingSource) -> Bool {
+        if source == .screenshot { return true }
+        guard let last = text.last else { return false }
+        if ".!?。！？".contains(last) { return true }
+        // A colon can introduce a complete statement's list, while a one-word label such as
+        // "bank:" remains a dictionary target when no wider selection evidence is available.
+        return words > 1 && ":：".contains(last)
     }
 }

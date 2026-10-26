@@ -14,6 +14,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         let element: AXUIElement
         let window: AXUIElement?
         let range: NSRange?
+        let markers: CFTypeRef?
         let focusedElement: AXUIElement?
     }
     private var evidence: Evidence?
@@ -82,7 +83,8 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
         }
         let range = AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: evidence.element)
         guard range == evidence.range else { return false }
-        if let text = AXHelper.selectedReadingText(on: evidence.element) { return text == capture.text }
+        if let markers = evidence.markers, !AXReadingContext.matches(markers, on: evidence.element) { return false }
+        if let text = AXHelper.selectedReadingText(on: evidence.element) { return text.utf16.elementsEqual(capture.text.utf16) }
         return false
     }
 
@@ -98,6 +100,7 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
             throw CancellationError()
         }
         let range = AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: element)
+        let markers = AXReadingContext.selection(on: element)
         let bounds = range.flatMap {
             AXHelper.parameterizedRectValue(for: kAXBoundsForRangeParameterizedAttribute as CFString, range: $0, on: element)
         }
@@ -109,12 +112,18 @@ final class LearningReadingSelectionReader: LearningReadingSelecting {
                 return AXHelper.cocoaRect(fromAccessibilityRect: value)
             } ?? CGRect(origin: NSEvent.mouseLocation, size: CGSize(width: 1, height: 18))
         let context = LearningVocabularyContextReader.read(element: element, range: range, expected: text, app: bundle)
+        // Context queries are cross-process reads too. Recheck the original range/marker pair
+        // before freezing it; equal spelling at a different occurrence is a different receipt.
+        guard AXHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: element) == range,
+              markers.map({ AXReadingContext.matches($0, on: element) }) ?? true,
+              AXHelper.selectedReadingText(on: element)?.utf16.elementsEqual(text.utf16) == true else { throw CancellationError() }
         let receipt = LearningReadingSelection(
             id: UUID(), text: text, processIdentifier: app.processIdentifier,
             bundleIdentifier: bundle, anchor: rect, vocabularyContext: context)
         evidence = Evidence(
             receipt: receipt, element: element, window: window,
-            range: range, focusedElement: AXHelper.focusedElement(forApplicationPID: app.processIdentifier))
+            range: range, markers: markers,
+            focusedElement: AXHelper.focusedElement(forApplicationPID: app.processIdentifier))
         observeSelection(element, pid: app.processIdentifier)
         return receipt
     }
