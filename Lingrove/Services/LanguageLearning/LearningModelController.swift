@@ -274,6 +274,7 @@ final class LearningModelController: ObservableObject {
 
     func generate(prompt: String, maxTokens: Int, userOnly: Bool = false,
                   sampling: LearningInstructionSampling? = nil,
+                  localGrammar: String? = nil,
                   onDelta: (@MainActor (String) throws -> Void)? = nil) async throws -> String {
         guard generationAllowed, generationEligibility() else { throw CancellationError() }
         try Task.checkCancellation()
@@ -287,7 +288,7 @@ final class LearningModelController: ObservableObject {
         previous?.cancel()
         let id = UUID(), snapshot = profile.snapshot
         let request = InstructionRequest(id: id, snapshot: snapshot, prompt: prompt, maxTokens: maxTokens,
-            userOnly: userOnly, sampling: sampling)
+            userOnly: userOnly, sampling: sampling, localGrammar: localGrammar)
         taskID = id
         status = snapshot.backend == .local
             ? String(localized: "Loading / generating", table: "Learning",
@@ -336,6 +337,9 @@ final class LearningModelController: ObservableObject {
         let maxTokens: Int
         let userOnly: Bool
         let sampling: LearningInstructionSampling?
+        // Compatible endpoints retain their existing prompt/parser contract; their schema
+        // capabilities are not negotiated. Only the in-process executor consumes this grammar.
+        let localGrammar: String?
     }
 
     private func generateResponse(_ request: InstructionRequest,
@@ -378,12 +382,13 @@ final class LearningModelController: ObservableObject {
             }
             let modelURL = try localModelURL(snapshot.localModel)
             return try await runLocal(model: modelURL, snapshot: snapshot, prompt: prompt,
-                                      maxTokens: maxTokens, id: id, onDelta: onDelta)
+                                      maxTokens: maxTokens, id: id, grammar: request.localGrammar, onDelta: onDelta)
         }
     }
 
     private func runLocal(model: URL, snapshot: LearningModelSnapshot, prompt: String, maxTokens: Int,
-                          id: UUID, onDelta: (@MainActor (String) throws -> Void)?) async throws -> String {
+                          id: UUID, grammar: String? = nil,
+                          onDelta: (@MainActor (String) throws -> Void)?) async throws -> String {
         let core = self.core
         try Task.checkCancellation()
         core.claim(id)
@@ -395,7 +400,8 @@ final class LearningModelController: ObservableObject {
         let nativeTask = Task.detached(priority: profile.role == .translation ? .userInitiated : .utility) {
             do {
                 let text = try core.generate(configuration: .init(modelURL: model, template: snapshot.template,
-                    contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides), prompt: prompt,
+                    contextWindowTokens: snapshot.contextWindowTokens, samplingOverrides: snapshot.samplingOverrides,
+                    outputGrammar: grammar), prompt: prompt,
                     maxTokens: maxTokens, operationID: id, trace: trace,
                     onLoad: { pair.continuation.yield(.loaded($0)) }) { pair.continuation.yield(.text($0)) }
                 pair.continuation.finish()

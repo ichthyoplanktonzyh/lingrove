@@ -8,4 +8,7 @@ nonisolated struct LearningLocalModelConfiguration: Equatable, Sendable {
     let template: LearningChatTemplate
     let contextWindowTokens: Int
     var samplingOverrides = ModelSamplingOverrides()
+    /// Request-only output syntax. It never becomes part of the loaded-model identity, and
+    /// nil preserves ordinary text sampling for translation and expression assistance.
+    var outputGrammar: String?
 }

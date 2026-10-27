@@ -37,7 +37,7 @@ struct LearningLookupReplyRegressionTests {
         #expect(prompt.contains(
             "Define the target word or expression from \(LearningLanguage.english.name) in \(LearningLanguage.chinese.name)"))
         #expect(prompt.contains("common senses"))
-        #expect(prompt.contains("sentence_translation (an empty string)"))
+        #expect(prompt.contains(#""sentence_translation":"""#))
         #expect(prompt.contains("\"target\":\"bank\""))
         #expect(!prompt.contains("\"context\""))
         #expect(!prompt.contains("\"context_completeness\""))
@@ -95,14 +95,31 @@ struct LearningLookupReplyRegressionTests {
 
         #expect(detailsPrompt.contains("\"accepted_meaning\":\"支持\""))
         #expect(detailsPrompt.contains("\"accepted_sentence_translation\":\"我们今天支持这个方案。\""))
-        #expect(detailsPrompt.contains("Do not silently revise them"))
-        #expect(detailsPrompt.contains("Return ONLY {\"explanation\""))
-        #expect(try LearningLookupPolicy.parseDetails(#"{"explanation":"support 在这里表示赞成。"}"#)
+        #expect(detailsPrompt.contains("original target") && detailsPrompt.contains("plain text, without JSON"))
+        #expect(try LearningLookupPolicy.parseDetails("support 在这里表示赞成。")
             == "support 在这里表示赞成。")
-        #expect(throws: (any Error).self) {
-            try LearningLookupPolicy.parseDetails(
-                #"{"explanation":"改写释义","meaning":"反对"}"#)
-        }
+    }
+
+    @Test
+    func detailsPreserveQuotedWordsAndParagraphsWithoutModelAuthoredJSONEscaping() throws {
+        let prose = "在原句中，\"Hello\" 是问候语。\n\n引号、路径 C:\\notes 和 😀 都是正文。"
+        #expect(try LearningLookupPolicy.parseDetails(" \n" + prose + "\n ") == prose)
+    }
+
+    @Test
+    func detailsReceiveOneAcceptedTranslationAndDoNotRereadTheEarlierReference() throws {
+        let input = makeInput(context: .sentence, referenceTranslation: "过期的参考译文")
+        let basic = LearningLookupResult(meaning: "支持", sentenceTranslation: "已选定的译文")
+        let prompt = try LearningLookupPolicy.prompt(input, language: .chinese, total: 4_096, output: 1_024, basic: basic)
+        #expect(prompt.contains("已选定的译文"))
+        #expect(!prompt.contains("过期的参考译文") && !prompt.contains("reference_translation"))
+    }
+
+    @Test
+    func matchingMeaningAndTranslationRemainValidWithoutSemanticAcceptanceRules() throws {
+        let input = makeInput(context: .sentence)
+        let reply = try basicReply(meaning: "支持", sentenceTranslation: "支持")
+        #expect(try LearningLookupPolicy.parse(reply, input: input).meaning == "支持")
     }
 
     private func makeInput(context: LearningExplanationContext, target: String = "support",

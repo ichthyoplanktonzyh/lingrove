@@ -6,6 +6,57 @@ import Testing
 
 @Suite
 struct LearningReadingOCRPolicyTests {
+    @Test func inflatedVisionRowEnvelopeCanRetainAnAlignedWrappedSentence() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "Earlier sentence. Keep your review", confidence: 1,
+                boundingBox: CGRect(x: 0.046, y: 0.58, width: 0.375, height: 0.083)),
+            .init(text: "history safe. Another sentence.", confidence: 1,
+                boundingBox: CGRect(x: 0.042, y: 0.432, width: 0.376, height: 0.136))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.042, y: 0.432, width: 0.084, height: 0.136),
+            lineIndex: 1, utf16Location: 0, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 241)))
+        #expect(context.text.trimmingCharacters(in: .whitespacesAndNewlines) == "Keep your review history safe.")
+    }
+
+    @Test func corroboratedNarrowColumnsNeverBecomeOneSentence() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "Earlier sentence. Keep your", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.56, width: 0.3, height: 0.05)),
+            .init(text: "Unrelated right column starts", confidence: 1, boundingBox: CGRect(x: 0.412, y: 0.56, width: 0.3, height: 0.05)),
+            .init(text: "history safe. Next sentence.", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.50, width: 0.3, height: 0.05)),
+            .init(text: "Unrelated right column ends.", confidence: 1, boundingBox: CGRect(x: 0.412, y: 0.50, width: 0.3, height: 0.05))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.08, height: 0.05),
+            lineIndex: 2, utf16Location: 0, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(context.text.trimmingCharacters(in: .whitespacesAndNewlines) == "Keep your history safe.")
+        #expect(!context.window.text.contains("Unrelated"))
+    }
+
+    @Test func tallerInlineEmphasisRetainsItsSourceOffsetAndSentence() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "Earlier sentence. Keep your", confidence: 1, boundingBox: CGRect(x: 0.05, y: 0.5, width: 0.4, height: 0.05)),
+            .init(text: "history", confidence: 1, boundingBox: CGRect(x: 0.455, y: 0.5, width: 0.1, height: 0.08)),
+            .init(text: "safe. Next sentence.", confidence: 1, boundingBox: CGRect(x: 0.56, y: 0.5, width: 0.3, height: 0.05))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: lines[1].boundingBox!, lineIndex: 1, utf16Location: 0, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(context.text.trimmingCharacters(in: .whitespacesAndNewlines) == "Keep your history safe.")
+        #expect((context.text as NSString).substring(with: context.target) == "history")
+    }
+
+    @Test func anInterveningIncompatibleRowStopsExpansionInsteadOfBeingSkipped() throws {
+        let lines: [OCRTextHygiene.OCRLine] = [
+            .init(text: "Unrelated preceding prose", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.56, width: 0.5, height: 0.04)),
+            .init(text: "Small separate heading", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.536, width: 0.3, height: 0.02)),
+            .init(text: "Keep your history safe.", confidence: 1, boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.5, height: 0.04))
+        ]
+        let word = ScreenTextWord(text: "history", boundingBox: CGRect(x: 0.25, y: 0.5, width: 0.1, height: 0.04),
+            lineIndex: 2, utf16Location: 10, utf16Length: 7)
+        let context = try #require(LearningReadingOCRPolicy.context(word: word, lines: lines, imageSize: CGSize(width: 1000, height: 400)))
+        #expect(context.window.text == "Keep your history safe.")
+    }
+
     @Test func interiorImageTextHasUnknownEdgesWhileActualImageCutsRemainFragments() throws {
         let text = "The report is ready."
         let target = (text as NSString).range(of: "report")

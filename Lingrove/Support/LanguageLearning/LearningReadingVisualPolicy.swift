@@ -29,6 +29,22 @@ nonisolated enum LearningReadingVisualPolicy {
             y: min(max(point.y - height / 2, bounds.minY), bounds.maxY - height), width: width, height: height)
     }
 
+    /// Expand along the axis reached by the text block. OCR may drop a clipped leading word,
+    /// leaving false whitespace at the opposite edge, so preserve a side only with a proven
+    /// sentence boundary. The untouched axis stays local; no second frame is captured.
+    static func expanded(_ region: CGRect, toward text: CGRect?, context: LearningReadingContext? = nil,
+                         within bounds: CGRect) -> CGRect {
+        guard let text else { return bounds }
+        let inner = region.insetBy(dx: 28, dy: 28)
+        let horizontal = text.minX <= inner.minX || text.maxX >= inner.maxX
+        let vertical = text.minY <= inner.minY || text.maxY >= inner.maxY
+        let left = horizontal && context?.left.isComplete != true ? bounds.minX : region.minX
+        let right = horizontal && context?.right.isComplete != true ? bounds.maxX : region.maxX
+        let bottom = vertical && context?.right.isComplete != true ? bounds.minY : region.minY
+        let top = vertical && context?.left.isComplete != true ? bounds.maxY : region.maxY
+        return CGRect(x: left, y: bottom, width: right - left, height: top - bottom).intersection(bounds)
+    }
+
     /// CGImage cropping uses top-left pixel coordinates. Expand to whole pixels and return the
     /// corresponding screen rectangle too, so rounding never silently moves the hit-test origin.
     static func crop(_ region: CGRect, frame: CGRect, pixels: CGSize) -> (pixels: CGRect, screen: CGRect) {

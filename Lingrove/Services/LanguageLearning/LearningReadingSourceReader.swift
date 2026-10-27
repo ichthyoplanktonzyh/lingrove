@@ -163,22 +163,28 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
         guard capture.source == .selection else { return capture }
         try Task.checkCancellation()
         guard selection.isCurrent(capture), receipt?.id == capture.id else { throw CancellationError() }
+        var resolved = capture, reason = "complete-ax-context", passes = 0
+        defer { logSelectionContext(resolved, reason: reason, passes: passes) }
         guard capture.context?.isComplete != true else {
             LearningReadingLog.emit(.selectionOCR, "complete-ax-context", requestID: capture.traceID); return capture
         }
-        guard let bounds = capture.selectionBounds, LearningReadingSelectionOCRPolicy.valid(bounds) else {
-            LearningReadingLog.emit(.selectionOCR, "geometry-unavailable", requestID: capture.traceID); return capture
+        guard let bounds = LearningReadingGesturePolicy.searchBounds(capture, now: Date()) else {
+            reason = capture.gesture == nil ? "geometry-unavailable" : "gesture-unavailable-or-expired"
+            LearningReadingLog.emit(.selectionOCR, reason, requestID: capture.traceID); return capture
         }
         guard CGPreflightScreenCaptureAccess() else {
+            reason = "screen-permission-missing"
             LearningReadingLog.emit(.selectionOCR, "screen-permission-missing", requestID: capture.traceID); return capture
         }
         let id = revision, deadline = ProcessInfo.processInfo.systemUptime + 12
         do {
             let point = CGPoint(x: bounds.midX, y: bounds.midY)
             let region = try await screenshots.pointerCaptureRegion(at: point, pid: capture.processIdentifier, deadline: deadline)
-            let result = try await visualReader.readSelection(capture, bounds: region.bounds, deadline: deadline) {
+            let resolution = try await visualReader.resolveSelection(capture, bounds: region.bounds, deadline: deadline) {
                 self.revision == id && self.selection.isCurrent(capture) && self.screenshots.isCurrent(region)
             }
+            let result = resolution.result
+            passes = resolution.passes
             try Task.checkCancellation()
             guard revision == id, selection.isCurrent(capture), screenshots.isCurrent(region) else { throw CancellationError() }
             var enriched = capture
@@ -189,14 +195,12 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                 requestID: capture.traceID)
             receipt = enriched
             visualRegion = enriched.context != capture.context ? region : nil
-            LingroveLogger.learning.info("Reading selection context resolved", metadata: [
-                "request_id": .string(capture.traceID ?? "unscoped"), "stage": "selection-context",
-                "reading_route": .string(visualRegion == nil ? "ax" : "ax-ocr"),
-                "ocr_passes": .stringConvertible(result?.passes ?? 0)
-            ])
+            resolved = enriched
+            reason = enriched.context != capture.context ? "adopted" : result == nil ? resolution.reason : "retained-ax-context"
             LearningVocabularyContextReader.log(enriched.context)
             return enriched
         } catch {
+            reason = LearningReadingLog.failure(error)
             LearningReadingLog.emit(.selectionOCR, LearningReadingLog.failure(error), requestID: capture.traceID)
             try Task.checkCancellation()
             guard !(error is CancellationError), revision == id, selection.isCurrent(capture) else { throw CancellationError() }
@@ -204,6 +208,23 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
             // leave the exact AX selection usable by both the dictionary and the existing model.
             return capture
         }
+    }
+
+    /// One content-free terminal event joins all acquisition stages, including early exits.
+    /// Consumers can distinguish missing location, failed alignment and merely unknown boundaries
+    /// without opening prompts or confusing a successful bare-word lookup with complete context.
+    private func logSelectionContext(_ capture: LearningReadingSelection, reason: String, passes: Int) {
+        let location = LearningReadingGesturePolicy.searchBounds(capture, now: Date())
+        let evidence = location == nil ? "none" : location == capture.selectionBounds ? "ax" : "gesture"
+        LingroveLogger.learning.info("Reading selection context resolved", metadata: [
+            "request_id": .string(capture.traceID ?? "unscoped"), "stage": "selection-context",
+            "reading_route": .string(capture.context?.window.method == .selectionOCR ? "ax-ocr" : "ax"),
+            "location_evidence": .string(evidence),
+            "reason": .string(reason), "ocr_passes": .stringConvertible(passes),
+            "target_utf16": .stringConvertible(capture.text.utf16.count),
+            "context_utf16": .stringConvertible(capture.context?.text.utf16.count ?? 0),
+            "context_completeness": .string(capture.context?.completeness.rawValue ?? "none")
+        ])
     }
 
     private func focusedWindow(_ pid: Int32) -> AXUIElement? {

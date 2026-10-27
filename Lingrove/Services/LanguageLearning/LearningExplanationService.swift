@@ -94,7 +94,8 @@ final class LearningExplanationService: LearningLookupGenerating {
                 }
                 try validate()
                 var bytes = 0
-                let raw = try await self.model.generate(prompt: prompt, maxTokens: output) { delta in
+                let raw = try await self.model.generate(prompt: prompt, maxTokens: output,
+                    localGrammar: LearningOutputGrammar.explanation) { delta in
                     try validate()
                     bytes += delta.utf8.count
                     guard bytes <= 24_000 else { throw VocabularyError.invalidContent }
@@ -169,7 +170,11 @@ final class LearningExplanationService: LearningLookupGenerating {
                 }
                 try validate()
                 var bytes = 0
-                let raw = try await self.model.generate(prompt: prompt, maxTokens: output) { delta in
+                // Only the basic pair has a machine-readable envelope. Detail prose stays text;
+                // this service attaches it to the immutable accepted pair after validation.
+                let grammar = basic == nil
+                    ? LearningOutputGrammar.lookup(hasContext: input.target.contextKind != .none) : nil
+                let raw = try await self.model.generate(prompt: prompt, maxTokens: output, localGrammar: grammar) { delta in
                     try validate()
                     bytes += delta.utf8.count
                     guard bytes <= 24_000 else { throw VocabularyError.invalidContent }

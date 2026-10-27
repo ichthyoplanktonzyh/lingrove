@@ -10,6 +10,70 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 @MainActor
 struct LearningReadingCoordinatorTests {
+    @Test func immediateRepeatedShortcutJoinsThePendingMouseUpCapture() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.settings.languageLearning.selectionIconEnabled = false
+        rig.reader.blockEnrichment = true
+        await settle()
+        let start = CGPoint(x: 500, y: 500), end = CGPoint(x: 400, y: 500)
+        rig.coordinator.handlePointerEvent(type: .leftMouseDown, at: start, clickCount: 1)
+        rig.coordinator.handlePointerEvent(type: .leftMouseUp, at: end, clickCount: 1)
+        let checks = rig.reader.currentChecks
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        #expect(rig.reader.currentChecks == checks && rig.reader.calls == 0)
+        for _ in 0..<100 where rig.reader.pendingEnrichment == nil { try await Task.sleep(for: .milliseconds(5)) }
+        let capture = try #require(rig.reader.enrichmentCapture)
+        #expect(capture.gesture?.selectionID == capture.id && capture.gesture?.start == start && capture.gesture?.end == end)
+        #expect(rig.reader.calls == 1 && rig.reader.enrichCalls == 1 && rig.service.calls.isEmpty)
+        rig.reader.finishEnrichment()
+        await until { rig.service.calls.count == 1 }
+    }
+
+    @Test(arguments: [false, true])
+    func shortcutReusesTheGestureReceiptEvenWhenTheIconIsDisabled(_ backward: Bool) async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.settings.languageLearning.selectionIconEnabled = false
+        rig.reader.blockEnrichment = true
+        await settle()
+        let left = CGPoint(x: 400, y: 500), right = CGPoint(x: 500, y: 500)
+        rig.coordinator.handlePointerEvent(type: .leftMouseDown, at: backward ? right : left, clickCount: 1)
+        rig.coordinator.handlePointerEvent(type: .leftMouseUp, at: backward ? left : right, clickCount: 1)
+        for _ in 0..<100 where rig.reader.calls == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(rig.reader.calls == 1 && rig.icon.action == nil && rig.service.calls.isEmpty)
+        let checks = rig.reader.currentChecks
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        #expect(rig.reader.currentChecks == checks, "The consuming shortcut callback must not perform AX checks")
+        await until { rig.reader.pendingEnrichment != nil }
+        let capture = try #require(rig.reader.enrichmentCapture)
+        let gesture = try #require(capture.gesture)
+        #expect(gesture.selectionID == capture.id && gesture.start == (backward ? right : left))
+        #expect(gesture.end == (backward ? left : right) && rig.reader.calls == 1)
+        rig.reader.finishEnrichment()
+        await until { rig.service.calls.count == 1 }
+    }
+
+    @Test func scrollingRetiresTheHiddenGestureBeforeAShortcutCanReuseIt() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.enableOnly(.selection)
+        rig.settings.languageLearning.selectionIconEnabled = false
+        rig.reader.blockEnrichment = true
+        await settle()
+        rig.coordinator.handlePointerEvent(type: .leftMouseDown, at: CGPoint(x: 400, y: 500), clickCount: 1)
+        rig.coordinator.handlePointerEvent(type: .leftMouseUp, at: CGPoint(x: 500, y: 500), clickCount: 1)
+        for _ in 0..<100 where rig.reader.calls == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        rig.coordinator.handlePointerEvent(type: .scrollWheel, at: CGPoint(x: 500, y: 500), clickCount: 0)
+        #expect(!rig.coordinator.isActive)
+        #expect(rig.coordinator.decide(rig.shortcut) == .consume)
+        await until { rig.reader.pendingEnrichment != nil }
+        #expect(rig.reader.calls == 2 && rig.reader.enrichmentCapture?.gesture == nil)
+    }
+
     @Test func passiveIconAppearsBeforeOCRAndClickStartsOnlyOneRequest() async throws {
         let rig = Rig()
         defer { rig.cleanup() }

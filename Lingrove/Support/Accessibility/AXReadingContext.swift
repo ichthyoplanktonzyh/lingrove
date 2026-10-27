@@ -20,7 +20,9 @@ enum AXReadingContext {
     /// Browser selections often belong to the web area. A marker may still locate their leaf
     /// even when paragraph/string-range queries fail; never substitute the current mouse hit.
     static func selectedElement(on element: AXUIElement) -> AXUIElement? {
-        guard let receipt = selection(on: element), let endpoints = AXHelper.textMarkerEndpoints(from: receipt),
+        guard let receipt = selection(on: element),
+              let ordered = AXHelper.orderedReadingTextMarkerRange(receipt, on: element),
+              let endpoints = AXHelper.textMarkerEndpoints(from: ordered),
               let result = parameter("AXUIElementForTextMarker", endpoints.start, on: element),
               CFGetTypeID(result) == AXUIElementGetTypeID() else { return nil }
         return unsafeBitCast(result, to: AXUIElement.self)
@@ -40,16 +42,23 @@ enum AXReadingContext {
         let receipt = explicitRange.flatMap { characterMarkers($0, on: element) } ??
             (explicitRange == nil ? selection(on: element) : nil)
         guard ContinuousClock.now < deadline, let receipt,
-              let selected = AXHelper.textMarkerEndpoints(from: receipt),
+              let ordered = AXHelper.orderedReadingTextMarkerRange(receipt, on: element),
+              let selected = AXHelper.textMarkerEndpoints(from: ordered),
               expected.utf16.count <= LearningReadingContextPolicy.maximumSelectionUTF16 else {
             LearningReadingLog.emit(.axMarkers, ContinuousClock.now >= deadline ? "deadline-exhausted" : "markers-unavailable")
             return []
+        }
+        // Keep `receipt` directed for the final identity check. Every text partition and marker
+        // walk below uses the ordered copy so a backward drag addresses the same occurrence.
+        if let original = AXHelper.textMarkerEndpoints(from: receipt),
+           CFEqual(original.start, selected.end), !CFEqual(original.start, selected.start) {
+            LearningReadingLog.emit(.axMarkers, "selection-reordered")
         }
         var windows: [LearningReadingWindow] = []
         func append(_ candidate: CFTypeRef?, method: LearningReadingWindow.Method,
                     boundary: LearningReadingWindow.Boundary = .unknown) -> Bool {
             guard let candidate, let window = candidateWindow(.init(range: candidate, method: method, boundary: boundary),
-                selection: receipt, expected: expected, on: element, deadline: deadline) else { return false }
+                selection: ordered, expected: expected, on: element, deadline: deadline) else { return false }
             windows.append(window)
             return LearningReadingContextPolicy.resolve(window, expected: expected)?.isComplete == true
         }
@@ -67,7 +76,7 @@ enum AXReadingContext {
         // Large paragraphs are walked locally and never escape their enclosing range. Reading
         // a web-area string would concatenate headings, links and paragraphs without separators.
         for block in blocks {
-            if let window = boundedWindow(block, selection: receipt, expected: expected, on: element, deadline: deadline) {
+            if let window = boundedWindow(block, selection: ordered, expected: expected, on: element, deadline: deadline) {
                 windows.append(window)
                 if LearningReadingContextPolicy.resolve(window, expected: expected) != nil {
                     return verified(windows, receipt: receipt, on: element, selectionOnly: explicitRange == nil)

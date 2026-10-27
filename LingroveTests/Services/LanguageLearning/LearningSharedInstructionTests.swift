@@ -109,7 +109,7 @@ struct LearningSharedInstructionTests {
             let output: String
             if prompt.contains("fill ONE") {
                 output = "{\"candidates\":[{\"text\":\"rule out caching\",\"hint\":\"排除缓存\"}]}"
-            } else if prompt.contains("You are a language-learning tutor") {
+            } else if prompt.contains("Return ONLY one JSON object") {
                 output = "{\"meaning\":\"告知\",\"explanation\":\"让某人知道。\"}"
             } else { output = prompt }
             onLoad?(0)

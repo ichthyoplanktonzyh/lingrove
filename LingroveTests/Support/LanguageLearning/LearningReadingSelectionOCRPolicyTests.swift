@@ -238,6 +238,64 @@ struct LearningReadingSelectionOCRPolicyTests {
         #expect(LearningReadingSelectionOCRPolicy.preferred(ax: partial, visual: visual, expected: "bank") == visual)
     }
 
+    @Test(arguments: [false, true])
+    func boundDragFindsTheSelectedRepeatedWordWithoutAXBounds(_ backward: Bool) throws {
+        let extraction = fixture(["The bank approved a loan. We sat on the bank of the river. Next sentence."])
+        var selection = try selected("bank", from: extraction, last: true)
+        let box = try #require(selection.selectionBounds)
+        selection.selectionBounds = nil
+        let left = CGPoint(x: box.minX, y: box.midY), right = CGPoint(x: box.maxX, y: box.midY)
+        selection.gesture = .init(selectionID: selection.id, start: backward ? right : left,
+            end: backward ? left : right, kind: .drag, completedAt: selection.capturedAt)
+        let context = try #require(LearningReadingSelectionOCRPolicy.match(selection,
+            extraction: extraction, region: region, pixels: pixels)?.context)
+        #expect(context.text.trimmingCharacters(in: .whitespacesAndNewlines) == "We sat on the bank of the river.")
+        #expect((context.text as NSString).substring(with: context.target) == "bank")
+        selection.selectionBounds = region
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction,
+            region: region, pixels: pixels)?.context == context, "A page-sized AX box must not suppress bound gesture evidence")
+        selection.selectionBounds = nil
+        selection.gesture = .init(selectionID: UUID(), start: left, end: right, kind: .drag, completedAt: selection.capturedAt)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: extraction, region: region, pixels: pixels) == nil)
+    }
+
+    @Test func boundMultilineDragKeepsTheOriginalPhraseAndBothEndpoints() throws {
+        let extraction = fixture(["Earlier sentence. We preserve your review", "history safely. Another sentence."])
+        let first = try #require(extraction.words.first { $0.text == "your" })
+        let last = try #require(extraction.words.first { $0.text == "history" })
+        let firstBox = LearningReadingVisualPolicy.screenRect(first.boundingBox, in: region)
+        let lastBox = LearningReadingVisualPolicy.screenRect(last.boundingBox, in: region)
+        var selection = LearningReadingSelection(id: UUID(), text: "your review\nhistory", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: firstBox)
+        selection.gesture = .init(selectionID: selection.id, start: CGPoint(x: lastBox.maxX, y: lastBox.midY),
+            end: CGPoint(x: firstBox.minX, y: firstBox.midY), kind: .drag, completedAt: selection.capturedAt)
+        let context = try #require(LearningReadingSelectionOCRPolicy.match(selection,
+            extraction: extraction, region: region, pixels: pixels)?.context)
+        #expect(context.text.contains("We preserve your review\nhistory safely."))
+        #expect((context.window.text as NSString).substring(with: context.window.target) == selection.text)
+    }
+
+    @Test func doubleClickRejectsTwoPlausibleOccurrencesAndCannotRepairOCRSpelling() throws {
+        let raw = fixture(["Keep history safe. Keep history elsewhere."])
+        let hit = try #require(raw.words.first { $0.text == "history" })
+        let box = LearningReadingVisualPolicy.screenRect(hit.boundingBox, in: region)
+        var selection = LearningReadingSelection(id: UUID(), text: "history", processIdentifier: 1,
+            bundleIdentifier: "fixture", anchor: box)
+        let point = CGPoint(x: box.midX, y: box.midY)
+        selection.gesture = .init(selectionID: selection.id, start: point, end: point,
+            kind: .doubleClick, completedAt: selection.capturedAt)
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: raw, region: region, pixels: pixels) != nil)
+        let words = raw.words.map { word in
+            ScreenTextWord(text: word.text, boundingBox: word.text == "history" ? hit.boundingBox : word.boundingBox,
+                lineIndex: word.lineIndex, utf16Location: word.utf16Location, utf16Length: word.utf16Length, confidence: 1)
+        }
+        let ambiguous = ExtractedScreenText(text: raw.text, lineCount: 1, lines: raw.lines, words: words)
+        if case .ambiguous = LearningReadingSelectionOCRPolicy.alignment(selection, extraction: ambiguous,
+            region: region, pixels: pixels) {} else { Issue.record("Repeated occurrences must remain ambiguous") }
+        #expect(LearningReadingSelectionOCRPolicy.match(selection, extraction: fixture(["Keep hivory safe."]),
+            region: region, pixels: pixels) == nil)
+    }
+
     private func selected(_ text: String, from extraction: ExtractedScreenText, last: Bool = false) throws -> LearningReadingSelection {
         let words = extraction.words.filter { $0.text == text }
         let word = try #require(last ? words.last : words.first)

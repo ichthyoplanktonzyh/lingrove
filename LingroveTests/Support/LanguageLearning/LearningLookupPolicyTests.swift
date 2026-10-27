@@ -15,15 +15,15 @@ struct LearningLookupPolicyTests {
     @Test func firstTaskReturnsOnlyTheConsistentPairAndDetailsAreSeparatelyAnchored() throws {
         let input = input()
         let prompt = try LearningLookupPolicy.prompt(input, language: .japanese, total: 4_096, output: 512)
-        #expect(prompt.contains("sentence_translation") && prompt.contains("In ONE interpretation"))
+        #expect(prompt.contains("sentence_translation") && prompt.contains("Define only the original target"))
         #expect(prompt.contains("occurrence_ranges") && prompt.contains("\"location\":14"))
         #expect(prompt.contains(LearningLanguage.chinese.name) && prompt.contains(LearningLanguage.japanese.name))
         let basic = try LearningLookupPolicy.parse("{\"meaning\":\"河岸\",\"sentence_translation\":\"他坐在河岸上。\"}", input: input)
         #expect(basic.meaning == "河岸")
         let details = try LearningLookupPolicy.prompt(input, language: .chinese, total: 4_096, output: 1_024, basic: basic)
         #expect(details.contains("accepted_meaning") && details.contains("河岸") && details.contains("他坐在河岸上。"))
-        #expect(details.contains("Do not silently revise"))
-        #expect(try LearningLookupPolicy.parseDetails("{\"explanation\":\"bank 是名词。\"}") == "bank 是名词。")
+        #expect(details.contains("plain text, without JSON"))
+        #expect(try LearningLookupPolicy.parseDetails("bank 是名词。") == "bank 是名词。")
     }
 
     @Test func incompleteOrExtraFieldsNeverBecomeBasicResults() {
@@ -32,8 +32,10 @@ struct LearningLookupPolicyTests {
                     "{\"meaning\":\"河岸\",\"sentence_translation\":\"译文\",\"explanation\":\"隐藏详解\"}"] {
             #expect(throws: (any Error).self) { try LearningLookupPolicy.parse(raw, input: input) }
         }
-        #expect(throws: (any Error).self) { try LearningLookupPolicy.parseDetails("{\"explanation\":\"\"}") }
-        #expect(throws: (any Error).self) { try LearningLookupPolicy.parseDetails("{\"explanation\":\"详解\",\"meaning\":\"改写\"}") }
+        for raw in ["", " \n ", "bad\u{0000}text", String(repeating: "x", count: 16_001),
+                    String(repeating: " ", count: 24_001) + "text"] {
+            #expect(throws: (any Error).self) { try LearningLookupPolicy.parseDetails(raw) }
+        }
     }
 
     @Test func noContextDoesNotInventASentenceTranslationAndOversizedPairsFailWhole() throws {
@@ -49,7 +51,8 @@ struct LearningLookupPolicyTests {
     }
 
     @Test func capturedSentenceCoverageWinsOverPunctuationAndFragmentsStayLookups() throws {
-        func selection(_ text: String, context: VocabularyExample?, source: LearningReadingSource = .selection) -> LearningReadingSelection {
+        func selection(_ text: String, context: VocabularyExample?,
+                       source: LearningReadingSource = .selection) -> LearningReadingSelection {
             .init(id: UUID(), text: text, processIdentifier: 1, bundleIdentifier: "fixture", anchor: .zero,
                 source: source, context: context.flatMap { example in
                     guard let range = example.ranges.first?.nsRange else { return nil }
