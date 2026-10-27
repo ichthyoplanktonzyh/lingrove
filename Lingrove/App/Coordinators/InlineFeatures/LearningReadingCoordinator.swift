@@ -34,6 +34,7 @@ final class LearningReadingCoordinator {
     private var preparingSelection: LearningReadingSelection?
     private var running = false
     private var lastPointerDown: CGPoint?
+    private var pointerDownBundle: String?
     /// A native lookup drag/click belongs to learning UI through mouse-up, even if released outside.
     private var pointerDownInsideLearningUI = false
     var isActive: Bool { document != nil || pendingSelection != nil || work != nil || panel.isVisible || affordanceWork != nil }
@@ -193,6 +194,8 @@ final class LearningReadingCoordinator {
         }
         revision = UUID()
         pointerDownInsideLearningUI = false
+        lastPointerDown = nil
+        pointerDownBundle = nil
         work?.cancel()
         work = nil
         unitWork?.cancel()
@@ -221,6 +224,36 @@ final class LearningReadingCoordinator {
     }
 
     private func requestSelection(source: LearningReadingSource) {
+        // Reuse the receipt captured at mouse-up, including its gesture. Recapturing here would
+        // detach the old drag from its native selection identity, especially when the icon is off.
+        if source == .selection, pendingSelection != nil || affordanceWork != nil {
+            let id = revision
+            let captureWork = affordanceWork
+            let bundle = frontmostBundle()
+            requestBundle = bundle
+            requestSource = source
+            requiresShortcutPermission = true
+            work?.cancel()
+            // decide() runs in the consuming key callback. Native receipt checks belong to the
+            // scheduled task, just like fresh AX capture, so shortcut arbitration never blocks.
+            work = Task { [weak self] in
+                // Mouse-up deliberately waits for AX to settle. An immediate shortcut must join
+                // that capture rather than cancel it and silently lose its bound gesture.
+                await captureWork?.value
+                guard !Task.isCancelled, let self, self.revision == id else { return }
+                guard self.enabled, self.sourceAvailability(.selection), self.frontmostBundle() == bundle,
+                      self.service.settings.readingTranslationAllowed(.selection, in: bundle)
+                else { self.retireIfCurrent(id); return }
+                if let pending = self.pendingSelection, pending.bundleIdentifier == bundle, self.reader.isCurrent(pending) {
+                    self.activate(pending, fromShortcut: true)
+                } else { self.requestFreshSelection(source: source) }
+            }
+            return
+        }
+        requestFreshSelection(source: source)
+    }
+
+    private func requestFreshSelection(source: LearningReadingSource) {
         dismiss()
         let id = revision
         let trace = RequestID.generate()
@@ -391,6 +424,10 @@ final class LearningReadingCoordinator {
         }
         let bundle = pendingSelection?.bundleIdentifier ?? frontmostBundle()
         guard !service.settings.selectionIconAllowed(in: bundle) else { return }
+        icon.hide()
+        // A hidden receipt still serves an explicitly permitted shortcut. Turning off the icon
+        // changes presentation, not the source evidence frozen at the preceding selection gesture.
+        guard !service.settings.readingTranslationAllowed(.selection, in: bundle) else { return }
         affordanceRevision = UUID()
         affordanceWork?.cancel()
         affordanceWork = nil
@@ -478,6 +515,7 @@ final class LearningReadingCoordinator {
             if pointerDownInsideLearningUI { lastPointerDown = nil; return }
             dismiss(reason: "external-pointer-down")
             lastPointerDown = point
+            pointerDownBundle = frontmostBundle()
         } else if type == .rightMouseDown || type == .scrollWheel {
             guard !panel.containsGlobalInteraction(at: point) else { return }
             dismiss(reason: "external-pointer-or-scroll")
@@ -495,11 +533,15 @@ final class LearningReadingCoordinator {
             return
         }
         guard !panel.containsGlobalInteraction(at: point) else { lastPointerDown = nil; return }
-        let dragged = lastPointerDown.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        let start = lastPointerDown
+        let sameApp = pointerDownBundle == frontmostBundle()
+        let dragged = start.map { hypot($0.x - point.x, $0.y - point.y) > 3 } ?? false
+        let completedAt = Date()
         lastPointerDown = nil
+        pointerDownBundle = nil
         guard sourceAvailability(.selection), service.settings.languageLearning.selectionTranslationEnabled,
             dragged || clickCount >= 2,
-            service.settings.selectionIconAllowed(in: frontmostBundle())
+            canCaptureSelection(in: frontmostBundle())
         else { return }
         let id = revision
         let iconID = affordanceRevision
@@ -512,16 +554,21 @@ final class LearningReadingCoordinator {
                 try await Task.sleep(for: .milliseconds(150))
                 guard let self, self.revision == id, self.affordanceRevision == iconID,
                     self.enabled, self.frontmostBundle() == bundle,
-                    self.service.settings.selectionIconAllowed(in: bundle)
+                    self.canCaptureSelection(in: bundle)
                 else { return }
-                let capture = try await self.reader.capture()
+                var capture = try await self.reader.capture()
                 try Task.checkCancellation()
                 guard self.revision == id, self.affordanceRevision == iconID, self.reader.isCurrent(capture), self.enabled,
                     capture.bundleIdentifier == bundle,
-                    self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier)
+                    self.canCaptureSelection(in: capture.bundleIdentifier)
                 else { return }
+                if let start, sameApp, dragged || clickCount == 2 {
+                    capture.gesture = LearningReadingGesture(selectionID: capture.id, start: start, end: point,
+                        kind: dragged ? .drag : .doubleClick, completedAt: completedAt)
+                }
                 self.pendingSelection = capture
                 self.affordanceWork = nil
+                guard self.service.settings.selectionIconAllowed(in: capture.bundleIdentifier) else { return }
                 self.icon.show(anchor: capture.anchor) { [weak self, selectionID = capture.id] in
                     guard let self, let pending = self.pendingSelection, pending.id == selectionID else { return }
                     self.activate(pending)
@@ -530,9 +577,13 @@ final class LearningReadingCoordinator {
         }
     }
 
+    private func canCaptureSelection(in bundle: String?) -> Bool {
+        service.settings.selectionIconAllowed(in: bundle) || service.settings.readingTranslationAllowed(.selection, in: bundle)
+    }
+
     /// The passive icon consumes its receipt once. Enrichment finishes before the first basic
     /// lookup/translation request; an OCR completion can never start a second model request.
-    private func activate(_ capture: LearningReadingSelection) {
+    private func activate(_ capture: LearningReadingSelection, fromShortcut: Bool = false) {
         guard pendingSelection?.id == capture.id, enabled, reader.isCurrent(capture) else { return }
         pendingSelection = nil
         preparingSelection = capture
@@ -541,7 +592,7 @@ final class LearningReadingCoordinator {
         let trace = capture.traceID ?? RequestID.generate()
         requestBundle = capture.bundleIdentifier
         requestSource = .selection
-        requiresShortcutPermission = false
+        requiresShortcutPermission = fromShortcut
         work = Task { [weak self] in
             guard let self else { return }
             defer {
@@ -553,7 +604,7 @@ final class LearningReadingCoordinator {
                 let enriched = try await LearningRequestTrace.$requestID.withValue(trace) { try await self.reader.enrich(capture) }
                 try Task.checkCancellation()
                 guard self.revision == id, self.enabled, self.frontmostBundle() == capture.bundleIdentifier else { return }
-                self.begin(enriched, fromShortcut: false, traceID: trace)
+                self.begin(enriched, fromShortcut: fromShortcut, traceID: trace)
             } catch is CancellationError { self.retireIfCurrent(id) } catch {
                 guard self.revision == id, self.enabled, self.frontmostBundle() == capture.bundleIdentifier else { return }
                 self.showCaptureError(error)

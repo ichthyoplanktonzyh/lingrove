@@ -26,10 +26,10 @@ nonisolated struct LearningExplanationPolicyTests {
         if scope == .none {
             #expect(prompt.contains("general definition or common senses") && prompt.contains("define_target"))
         } else if scope == .fragment {
-            #expect(prompt.contains("multiple possible senses"))
+            #expect(prompt.contains("possible senses"))
         } else if scope == .unknown {
             #expect(prompt.contains("boundaries are unverified") && !prompt.contains("Only a context fragment"))
-        } else { #expect(prompt.contains("acknowledge ambiguity")) }
+        } else { #expect(prompt.contains("complete original sentence")) }
         if let receipt = input.occurrenceIdentity { #expect(!prompt.contains(receipt)) }
         let ambiguous = "{\"meaning\":\"可能是蝙蝠，也可能指球棒\",\"explanation\":\"片段不足以唯一确定词义。\"}"
         #expect(try LearningExplanationPolicy.parse(ambiguous).meaning.contains("可能"))
@@ -96,6 +96,6 @@ nonisolated struct LearningExplanationPolicyTests {
         let prompt = try LearningExplanationPolicy.prompt(input(), language: language, total: 8_192, output: 1_024)
         #expect(prompt.contains("\"targetLanguage\":\"en\""))
         #expect(prompt.contains("meaning AND explanation"))
-        #expect(prompt.hasSuffix("Required language for BOTH meaning and explanation: \(language.name) (\(language.rawValue))."))
+        #expect(prompt.contains("Write meaning AND explanation in \(language.name)"))
     }
 }

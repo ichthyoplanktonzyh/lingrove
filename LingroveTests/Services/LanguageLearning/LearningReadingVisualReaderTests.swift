@@ -152,7 +152,7 @@ struct LearningReadingVisualReaderTests {
         }, now: { 100 })
         let result = try await reader.read(at: pointer, bounds: bounds, validate: { true })
         #expect(captures == 1 && result.passes == 2)
-        #expect(sizes == [CGSize(width: 720, height: 240), CGSize(width: 1000, height: 600)])
+        #expect(sizes == [CGSize(width: 720, height: 240), CGSize(width: 1000, height: 240)])
         #expect(deadlines == [112, 112])
         #expect(result.text == "history" && result.context?.text.trimmingCharacters(in: .whitespacesAndNewlines) == "We preserve your history.")
         #expect(result.context?.isComplete == true)

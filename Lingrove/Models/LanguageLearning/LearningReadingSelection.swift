@@ -32,7 +32,23 @@ nonisolated struct LearningReadingSelection: Equatable, Sendable {
     /// Real AX text geometry only. The card's mouse-position fallback anchor is presentation,
     /// not evidence that an OCR occurrence belongs to this explicit selection.
     var selectionBounds: CGRect?
+    /// An external selection gesture frozen with this exact AX receipt. It can locate OCR when
+    /// range geometry is unavailable; the presentation anchor is never promoted into evidence.
+    var gesture: LearningReadingGesture?
     var vocabularyContext: VocabularyExample? { context?.example(app: bundleIdentifier, id: id, createdAt: capturedAt) }
+}
+
+/// Memory-only pointer evidence attached by the reading coordinator immediately after capture.
+/// The receipt ID prevents reusing an old drag for a later selection with identical spelling.
+/// The source reader validates it before capture; OCR uses its endpoints only for occurrence
+/// alignment. It owns no event monitor, image or native handle and expires with the receipt.
+nonisolated struct LearningReadingGesture: Equatable, Sendable {
+    enum Kind: Equatable, Sendable { case drag, doubleClick }
+    let selectionID: UUID
+    let start: CGPoint
+    let end: CGPoint
+    let kind: Kind
+    let completedAt: Date
 }
 
 /// The app environment owns one reader. This narrow seam lets lifecycle tests change a selection

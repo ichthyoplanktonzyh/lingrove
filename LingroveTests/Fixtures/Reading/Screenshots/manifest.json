@@ -1,0 +1,128 @@
+[
+  {
+    "name": "history",
+    "width": 1200,
+    "height": 2029,
+    "x": 748.3359375,
+    "y": 149.78125,
+    "selectionWidth": 53.421875,
+    "selectionHeight": 21,
+    "target": "history"
+  },
+  {
+    "name": "supported",
+    "width": 1200,
+    "height": 2029,
+    "x": 718.6953125,
+    "y": 120.09375,
+    "selectionWidth": 89.546875,
+    "selectionHeight": 21,
+    "target": "supported"
+  },
+  {
+    "name": "table",
+    "width": 1200,
+    "height": 2029,
+    "x": 472.3828125,
+    "y": 141.171875,
+    "selectionWidth": 89.296875,
+    "selectionHeight": 21,
+    "target": "compatible"
+  },
+  {
+    "name": "columns",
+    "width": 1200,
+    "height": 2029,
+    "x": 355.4296875,
+    "y": 136.171875,
+    "selectionWidth": 54.734375,
+    "selectionHeight": 21,
+    "target": "history"
+  },
+  {
+    "name": "repeated",
+    "width": 1200,
+    "height": 2029,
+    "x": 398.7578125,
+    "y": 120.09375,
+    "selectionWidth": 39.328125,
+    "selectionHeight": 21,
+    "target": "bank"
+  },
+  {
+    "name": "small",
+    "width": 1200,
+    "height": 2029,
+    "x": 249.9453125,
+    "y": 112.171875,
+    "selectionWidth": 35.984375,
+    "selectionHeight": 13,
+    "target": "history"
+  },
+  {
+    "name": "mixed",
+    "width": 1200,
+    "height": 2029,
+    "x": 379.4296875,
+    "y": 120.09375,
+    "selectionWidth": 54.734375,
+    "selectionHeight": 21,
+    "target": "history"
+  },
+  {
+    "name": "cropped",
+    "width": 1200,
+    "height": 2029,
+    "x": 307.2578125,
+    "y": 117.859375,
+    "selectionWidth": 53.421875,
+    "selectionHeight": 21,
+    "target": "history"
+  },
+  {
+    "name": "multiline",
+    "width": 1200,
+    "height": 2029,
+    "x": 215.7109375,
+    "y": 134.9375,
+    "selectionWidth": 335.421875,
+    "selectionHeight": 50.6875,
+    "target": "your review history"
+  },
+  {
+    "name": "narrow-columns",
+    "width": 1200,
+    "height": 2029,
+    "x": 85.9296875,
+    "y": 151.171875,
+    "selectionWidth": 75.859375,
+    "selectionHeight": 21,
+    "target": "history",
+    "dragStart": {
+      "x": 123.859375,
+      "y": 151.171875
+    },
+    "dragEnd": {
+      "x": 48,
+      "y": 151.171875
+    }
+  },
+  {
+    "name": "tall-emphasis",
+    "width": 1200,
+    "height": 2029,
+    "x": 323.65625,
+    "y": 131.59375,
+    "selectionWidth": 104.625,
+    "selectionHeight": 38,
+    "target": "history",
+    "dragStart": {
+      "x": 375.96875,
+      "y": 131.59375
+    },
+    "dragEnd": {
+      "x": 271.34375,
+      "y": 131.59375
+    }
+  }
+]

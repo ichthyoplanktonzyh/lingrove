@@ -4,6 +4,20 @@ import Testing
 @testable import Lingrove
 
 struct LearningReadingVisualPolicyTests {
+    @Test func expansionFollowsOnlyTheClippedSidesOfTheSameFrame() {
+        let frame = CGRect(x: -1000, y: 900, width: 1000, height: 600)
+        let crop = CGRect(x: -860, y: 1080, width: 720, height: 240)
+        let right = CGRect(x: -200, y: 1150, width: 60, height: 20)
+        #expect(LearningReadingVisualPolicy.expanded(crop, toward: right, within: frame) ==
+            CGRect(x: -1000, y: 1080, width: 1000, height: 240))
+        let top = CGRect(x: -700, y: 1300, width: 100, height: 20)
+        #expect(LearningReadingVisualPolicy.expanded(crop, toward: top, within: frame) ==
+            CGRect(x: -860, y: 900, width: 720, height: 600))
+        #expect(LearningReadingVisualPolicy.expanded(crop, toward: nil, within: frame) == frame)
+        #expect(LearningReadingVisualPolicy.expanded(crop,
+            toward: CGRect(x: -700, y: 1150, width: 100, height: 20), within: frame) == crop)
+    }
+
     @Test func snapshotStaysOnThePointedDisplayAndInsideTheVisibleWindow() throws {
         let screen = CGRect(x: -1600, y: 900, width: 1600, height: 1000)
         let window = CGRect(x: -1700, y: 1000, width: 1100, height: 1100)

@@ -32,10 +32,12 @@ struct LearningLookupServiceTests {
         let basic = try await service.lookup(input, requestID: "basic", refresh: false)
         #expect(basic.result.meaning == "河岸" && native.prompts.count == 1 && saved.isEmpty)
         #expect(native.budgets == [512])
+        #expect(native.grammars == [LearningOutputGrammar.lookup(hasContext: true)])
         #expect(try await service.lookup(input, requestID: "cached", refresh: false) == basic)
         #expect(native.prompts.count == 1)
         let details = try await service.explainLookup(basic, requestID: "details", refresh: false)
         #expect(native.prompts.count == 2 && native.budgets == [512, 768])
+        #expect(native.grammars[1] == nil, "A single prose detail must not receive a JSON grammar")
         #expect(details.result.meaning == basic.result.meaning && saved.count == 1)
         #expect(native.prompts[1].contains("accepted_sentence_translation") && native.prompts[1].contains("他坐在河岸上。"))
         #expect(try await service.explainLookup(basic, requestID: "detailsCached", refresh: false) == details)
@@ -57,6 +59,7 @@ struct LearningLookupServiceTests {
             meaning: basic.result.meaning, meaningLanguage: .chinese, example: example, allowsExplanationEnrichment: false)
         let legacyInput = LearningExplanationPolicy.input(capture)
         _ = try await service.generate(legacyInput, requestID: "oldFullResult", refresh: true)
+        #expect(native.grammars.last == LearningOutputGrammar.explanation)
         #expect(service.cached(legacyInput)?.result.meaning == "旧释义")
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         store.enrichCapture = service.enrich
@@ -71,11 +74,21 @@ private nonisolated final class LookupNative: LearningLocalExecuting, @unchecked
     private let lock = NSLock()
     private var recordedPrompts: [String] = []
     private var recordedBudgets: [Int] = []
+    private var recordedGrammars: [String?] = []
     var prompts: [String] { lock.withLock { recordedPrompts } }
     var budgets: [Int] { lock.withLock { recordedBudgets } }
+    var grammars: [String?] { lock.withLock { recordedGrammars } }
     func claim(_ operation: UUID) {}
     func invalidate() -> UUID { UUID() }
     func prepare(modelURL: URL, operationID: UUID, trace: LearningRequestContext?) throws {}
+    // swiftlint:disable:next function_parameter_count
+    func generate(configuration: LearningLocalModelConfiguration, prompt: String, maxTokens: Int,
+                  operationID: UUID, trace: LearningRequestContext?, onLoad: (@Sendable (Int) -> Void)?,
+                  onDelta: @Sendable (String) -> Void) throws -> String {
+        lock.withLock { recordedGrammars.append(configuration.outputGrammar) }
+        return try generate(modelURL: configuration.modelURL, template: configuration.template,
+            prompt: prompt, maxTokens: maxTokens, operationID: operationID, trace: trace, onLoad: onLoad, onDelta: onDelta)
+    }
     // swiftlint:disable:next function_parameter_count
     func generate(modelURL: URL, template: LearningChatTemplate, prompt: String, maxTokens: Int,
                   operationID: UUID, trace: LearningRequestContext?, onLoad: (@Sendable (Int) -> Void)?,
@@ -83,8 +96,8 @@ private nonisolated final class LookupNative: LearningLocalExecuting, @unchecked
         lock.withLock { recordedPrompts.append(prompt); recordedBudgets.append(maxTokens) }
         let raw = prompt.contains("Return ONLY one JSON object")
             ? "{\"meaning\":\"旧释义\",\"explanation\":\"旧解释\"}"
-            : prompt.contains("Return ONLY {\"explanation\"")
-            ? "{\"explanation\":\"bank 在这里是名词，指河流边缘的陆地。\"}"
+            : prompt.contains("plain text, without JSON")
+            ? "bank 在这里是名词，指河流边缘的陆地。"
             : "{\"meaning\":\"河岸\",\"sentence_translation\":\"他坐在河岸上。\"}"
         onLoad?(0); onDelta(raw)
         return raw

@@ -533,6 +533,12 @@ bounds only surrounding reference context, excludes translation specialists and 
 The input marks complete-sentence, fragment or absent context; clipped references downgrade to a
 fragment. Local occurrence receipts separate equal sentences saved with different translations and
 are never sent to the model. The prompt permits uncertainty and general senses without context.
+`Support/LanguageLearning/LearningLookupPolicy.swift` keeps basic lookup as a JSON meaning/translation
+pair and requests detail prose as plain text. The service wraps that text in the existing durable
+record. `LearningOutputGrammar.swift` supplies fixed local JSON grammars for multi-field outputs;
+the request carries one into a sequence-owned native grammar, separate from prompt history and
+ordinary sampling. Compatible endpoints keep their existing prompt/parser contract. Validation
+checks syntax, completeness and size, without judging definition accuracy or retrying word senses.
 `Services/LanguageLearning/LearningExplanationService.swift` borrows the independent explanation
 controller from `LearningModelCollection`, shares request telemetry and bounds its completed cache.
 Each card or saved usage owns a lightweight `LearningExplanationSession` for cancellation and stale
@@ -906,6 +912,34 @@ The helper/extractor retain this provenance locally; images and geometry do not 
 Screen-region capture continues to translate the explicit region and preserves low-confidence
 recognized text. OCR text touching the image edge, or clipped by the character budget, retains crop
 evidence. Interior block edges remain unknown until sentence/structural evidence proves more.
+
+`LearningReadingGesture` is memory-only evidence frozen by the coordinator with one selection ID.
+`LearningReadingGesturePolicy` verifies capture timing, frame containment and both drag endpoints;
+it never turns the presentation anchor into an OCR location. Mouse-up captures can remain hidden
+when an app permits the reading shortcut with its icon disabled. A shortcut reuses that same
+current receipt, awaiting the scheduled capture when triggered immediately after mouse-up;
+ordinary input, scroll, app changes and AX invalidation retire it. Gesture-only
+OCR starts within eight seconds and requires a unique exact textual/spatial occurrence, while
+precise AX geometry retains its existing quoted spelling-recovery path.
+
+OCR layout is prepared once per selection frame. Repeated narrow gutters corroborated on distinct
+rows stop same-line column joins; baseline-aligned emphasis fragments keep their original offsets.
+`LearningReadingOCRColumns` also separates engine-merged rows when repeated three-word labels
+corroborate the same horizontal boundary on nearby distinct baselines with different preceding
+text. Gutters stay within that local vertical band, leaving distant full-width prose intact.
+Each fragment retains both its
+original line range and its reconstructed row range; a same-spelled target in the right fragment
+cannot inherit the left fragment's offset. Missing spatial corroboration leaves the line intact.
+Vertical expansion inspects the nearest related row before accepting continuity, so it cannot skip
+an intervening heading or list item. Local baseline pitch distinguishes paragraph gaps from soft
+wraps. The second OCR crop expands along the reached axis; an opposite side remains local only
+when its sentence boundary is proven, since OCR can omit a clipped word and leave false whitespace.
+It stays within the same image and deadline. One terminal selection-context log includes the
+location source, reason, pass count and final context completeness, including early exits.
+
+`LingroveTests/Fixtures/Reading/Screenshots` contains fixed browser pixels and DOM-measured target
+positions for model-free replay. `ReadingOCRFixtureTests` runs the real Vision worker across AX
+and forward/reverse gesture routes, checking target identity, local context and block exclusion.
 
 Every capture, including the passive selection icon, gets a trace before acquisition. The first
 lookup uses that trace; later details/refresh logs link their new request IDs through

@@ -836,6 +836,29 @@ enum AXHelper {
         return (AXTextMarkerRangeCopyStartMarker(range), AXTextMarkerRangeCopyEndMarker(range))
     }
 
+    /// Reading needs document order, while a Chromium selection preserves anchor/focus order.
+    /// Ask the host to order its opaque markers; their bytes and leaf-local offsets cannot be
+    /// compared here. This temporary copy never replaces the reader's original stale-result receipt
+    /// or changes the endpoint semantics used by autocomplete and editable selections.
+    static func orderedReadingTextMarkerRange(_ value: CFTypeRef, on element: AXUIElement) -> CFTypeRef? {
+        orderedReadingTextMarkerRange(value) {
+            copyOpaqueParameterized(markerRangeForMarkersAttribute, parameter: $0, on: element)
+        }
+    }
+
+    /// The injected host operation keeps the CF boundary testable without a trusted browser.
+    /// Only the host may interpret marker payloads. Reject unsupported/malformed replies instead
+    /// of constructing a locally sorted range whose document order we cannot prove.
+    static func orderedReadingTextMarkerRange(
+        _ value: CFTypeRef, makeRange: (CFArray) -> CFTypeRef?
+    ) -> CFTypeRef? {
+        guard let endpoints = textMarkerEndpoints(from: value) else { return nil }
+        if CFEqual(endpoints.start, endpoints.end) { return value }
+        guard let ordered = makeRange([endpoints.start, endpoints.end] as CFArray),
+              textMarkerEndpoints(from: ordered) != nil else { return nil }
+        return ordered
+    }
+
     /// Reading deliberately asks for the selection alone. Unlike editable receipts this never
     /// reads the field value, the page, or marker ranges before/after the selected text.
     static func selectedReadingText(on element: AXUIElement) -> String? {
@@ -850,7 +873,10 @@ enum AXHelper {
     /// editing receipts below remain byte-exact. CF values stay owned by this synchronous call.
     static func readingSelectionBounds(on element: AXUIElement, range: NSRange?, markers: CFTypeRef?,
                                        expected: String) -> CGRect? {
-        if let markers, let text = stringForMarkerRange(markers, on: element),
+        // Some hosts already accept directed ranges for geometry. Preserve that path when they
+        // cannot order markers; Chromium needs the ordered copy to avoid an empty reverse box.
+        let readingMarkers = markers.map { orderedReadingTextMarkerRange($0, on: element) ?? $0 }
+        if let markers = readingMarkers, let text = stringForMarkerRange(markers, on: element),
            LearningReadingTargetPolicy.equivalent(text, expected),
            let rect = markerRangeRect(markers, on: element, requiresWidth: true) {
             return cocoaRect(fromAccessibilityRect: rect)

@@ -79,7 +79,11 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
             let sampling = SamplingConfig(temperature: Float(parameters.temperature), top_k: Int32(parameters.topK),
                 top_p: Float(parameters.topP), min_p: 0, repetition_penalty: Float(parameters.repetitionPenalty),
                 seed: parameters.seed, single_line: false)
-            let sequence = native.engine.createSequence(sampling)
+            // withCString lends a null-terminated buffer only for this synchronous bridge call.
+            // The native sequence compiles and owns its grammar; it retains no Swift pointer.
+            let sequence = configuration.outputGrammar.map { grammar in
+                grammar.withCString { native.engine.createSequenceWithGrammar(sampling, $0) }
+            } ?? native.engine.createSequence(sampling)
             guard sequence >= 0 else {
                 throw LearningFailure.message(String(localized: "Could not create a model generation sequence.",
                     table: "Learning", comment: "Error shown when the local runtime cannot create a generation sequence."))
@@ -95,7 +99,7 @@ nonisolated final class LearningLocalRuntime: LearningLocalExecuting, @unchecked
                 "prompt_tokens": String(tokens.count), "tokenization_reused": String(cachedTokens != nil),
                 "temperature": String(parameters.temperature), "top_p": String(parameters.topP),
                 "top_k": String(parameters.topK), "repetition_penalty": String(parameters.repetitionPenalty),
-                "seed": String(parameters.seed)]) }
+                "seed": String(parameters.seed), "grammar_enabled": String(configuration.outputGrammar != nil)]) }
             let decoded = tokens.withUnsafeMutableBufferPointer {
                 native.engine.decodePrompt(sequence, $0.baseAddress, Int32($0.count), 0)
             }

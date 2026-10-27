@@ -1,7 +1,8 @@
 import Foundation
 
-/// Pure two-stage prompts and strict parsing. Initial lookup cannot generate hidden details;
-/// details receive the accepted pair as quoted evidence and cannot replace its meaning/translation.
+/// Pure two-stage prompts and output validation. Basic lookup returns a JSON pair; details
+/// return prose that the service attaches to that pair. These rules validate format and bounds,
+/// not whether a model's definition is accurate.
 nonisolated enum LearningLookupPolicy {
     static func prompt(_ input: LearningLookupInput, language: LearningLanguage, total: Int, output: Int,
                        basic: LearningLookupResult? = nil) throws -> String {
@@ -30,7 +31,9 @@ nonisolated enum LearningLookupPolicy {
             }
             // Basic lookup has no accepted interpretation yet. Empty detail-stage slots can
             // distract small models into describing missing data instead of defining the target.
-            if !input.referenceTranslation.isEmpty { material["reference_translation"] = input.referenceTranslation }
+            if basic == nil, !input.referenceTranslation.isEmpty {
+                material["reference_translation"] = input.referenceTranslation
+            }
             if let basic {
                 material["accepted_meaning"] = basic.meaning
                 material["accepted_sentence_translation"] = basic.sentenceTranslation
@@ -39,29 +42,34 @@ nonisolated enum LearningLookupPolicy {
             guard let text = String(data: data, encoding: .utf8) else { throw VocabularyError.invalidContent }
             let evidence = contextEvidence(scope)
             let sourceHint = target.language.map { " from " + $0.name } ?? ""
+            let grain = switch target.kind {
+            case .word: "one word"
+            case .expression, .pattern: "an expression or pattern"
+            case .sentence: "a sentence"
+            }
+            let referenceHint = input.referenceTranslation.isEmpty ? ""
+                : "reference_translation is only a reference translation of the context."
             let task: String
             if basic != nil {
                 task = """
-                Explain the target's grammar, construction and usage in \(language.name).
-                Anchor the explanation to accepted_meaning and accepted_sentence_translation. Do not silently revise them.
-                If that interpretation needs correction, explicitly explain the discrepancy in the explanation.
-                Return ONLY {"explanation":"detailed usage explanation"}. Do not return a new meaning or translation.
+                Explain the original target\(sourceHint) in \(language.name).
+                Describe its grammar and usage in context, using accepted_meaning as the chosen sense.
+                accepted_sentence_translation is a translation of the context.
+                Return only a short explanation as plain text, without JSON.
                 """
             } else if scope == .none {
                 task = """
                 Define the target word or expression\(sourceHint) in \(language.name).
                 Give a concise general meaning or common senses, including the base form for an inflected word.
-                The meaning field must contain a nonempty dictionary definition of the target.
-                Return ONLY one JSON object with exactly two fields: meaning (the definition), sentence_translation (an empty string).
+                Return ONLY {"meaning":"brief definition","sentence_translation":""}.
                 """
             } else {
                 task = """
-                In ONE interpretation, give the target's concise meaning in \(language.name), and translate the entire
-                supplied context into \(input.translationLanguage.name). Keep the two outputs semantically consistent.
-                For a word explain that word, for an expression explain the whole expression, never substitute the
-                sentence's meaning for the target's meaning. Use reference_translation as evidence when provided.
-                Keep meaning brief. Do not generate grammar analysis, teaching details, or additional fields.
-                Return ONLY {"meaning":"concise contextual meaning","sentence_translation":"translation of the supplied context"}.
+                Define only the original target\(sourceHint) in \(language.name), using its context.
+                The target is \(grain).
+                Translate the whole context into \(input.translationLanguage.name).
+                \(referenceHint)
+                Return ONLY {"meaning":"brief meaning of target","sentence_translation":"translation of whole context"}.
                 """
             }
             return """
@@ -109,11 +117,10 @@ nonisolated enum LearningLookupPolicy {
     }
 
     static func parseDetails(_ raw: String) throws -> String {
-        struct Result: Decodable { let explanation: String }
-        let data = try json(raw)
-        guard let fields = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              Set(fields.keys) == ["explanation"] else { throw VocabularyError.invalidContent }
-        let text = try JSONDecoder().decode(Result.self, from: data).explanation.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A single prose value needs no model-authored JSON envelope. Quotes, backslashes and
+        // paragraph breaks are ordinary content; Swift owns serialization when saving the record.
+        guard raw.utf8.count <= 24_000 else { throw VocabularyError.invalidContent }
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard safe(text, limit: 16_000) else { throw VocabularyError.invalidContent }
         return text
     }

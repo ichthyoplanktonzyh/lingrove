@@ -328,6 +328,70 @@ final class AXHelperTests: XCTestCase {
         XCTAssertNil(AXHelper.textMarkerEndpoints(from: "not a marker range" as CFString))
     }
 
+    func test_orderedReadingMarkers_keepTheSameContextAndOccurrenceInBothDirections() throws {
+        let sentence = "Lingrove is built around two equally core capabilities that work together in any supported macOS text field:"
+        for word in ["core", "supported", "work together"] {
+            let target = (sentence as NSString).range(of: word)
+            // Marker bytes deliberately do not sort like document positions. Only this fake host
+            // knows which endpoint comes first, just as only Chromium knows its serialized nodes.
+            let start = readingMarker(200), end = readingMarker(3)
+            for backward in [false, true] {
+                let first = backward ? end : start, last = backward ? start : end
+                let receipt = AXTextMarkerRangeCreate(nil, first, last)
+                var calls = 0
+                let ordered = try XCTUnwrap(AXHelper.orderedReadingTextMarkerRange(receipt) { supplied in
+                    calls += 1
+                    let supplied = supplied as NSArray
+                    XCTAssertEqual(supplied.count, 2)
+                    XCTAssertTrue(CFEqual(supplied[0] as CFTypeRef, first))
+                    XCTAssertTrue(CFEqual(supplied[1] as CFTypeRef, last))
+                    return AXTextMarkerRangeCreate(nil, start, end)
+                })
+                let endpoints = try XCTUnwrap(AXHelper.textMarkerEndpoints(from: ordered))
+                // Reproduce the production before + selected + after partition proof. The old
+                // reverse endpoints counted the selected word twice in the surrounding ranges.
+                let before = CFEqual(endpoints.start, start) ? target.location : NSMaxRange(target)
+                let after = sentence.utf16.count - (CFEqual(endpoints.end, end) ? NSMaxRange(target) : target.location)
+                XCTAssertEqual(before + word.utf16.count + after, sentence.utf16.count)
+                let window = LearningReadingWindow(text: sentence,
+                    target: NSRange(location: before, length: word.utf16.count),
+                    left: .container, right: .container, method: .block)
+                let context = try XCTUnwrap(LearningReadingContextPolicy.resolve(window, expected: word))
+                XCTAssertEqual(context.text, sentence)
+                XCTAssertEqual(context.target, target)
+                XCTAssertTrue(context.isComplete)
+                XCTAssertEqual(calls, 1)
+                let original = try XCTUnwrap(AXHelper.textMarkerEndpoints(from: receipt))
+                XCTAssertTrue(CFEqual(original.start, first))
+                XCTAssertTrue(CFEqual(original.end, last))
+            }
+        }
+    }
+
+    func test_orderedReadingMarkers_rejectUnavailableOrMalformedHostOrdering() {
+        let receipt = AXTextMarkerRangeCreate(nil, readingMarker(7), readingMarker(2))
+        XCTAssertNil(AXHelper.orderedReadingTextMarkerRange(receipt) { _ in nil })
+        XCTAssertNil(AXHelper.orderedReadingTextMarkerRange(receipt) { _ in "wrong type" as CFString })
+        XCTAssertNil(AXHelper.orderedReadingTextMarkerRange("wrong type" as CFString) { _ in
+            XCTFail("Malformed input must not reach the host")
+            return receipt
+        })
+    }
+
+    func test_orderedReadingMarkers_preserveCollapsedRangesWithoutHostOrdering() throws {
+        let marker = readingMarker(4)
+        let receipt = AXTextMarkerRangeCreate(nil, marker, marker)
+        let ordered = try XCTUnwrap(AXHelper.orderedReadingTextMarkerRange(receipt) { _ in
+            XCTFail("A collapsed range has no selection direction")
+            return nil
+        })
+        XCTAssertTrue(CFEqual(receipt, ordered))
+    }
+
+    private func readingMarker(_ value: UInt8) -> AXTextMarker {
+        [value].withUnsafeBufferPointer { AXTextMarkerCreate(nil, $0.baseAddress!, $0.count) }
+    }
+
     // MARK: - Coordinate conversion (pure over live screen geometry)
 
     func test_rectHasFiniteComponents_rejectsNaNAndInfinity() {
