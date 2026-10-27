@@ -197,11 +197,11 @@ final class ExpressionAssistCoordinator {
                     request = .init(query: request.query, leftContext: request.leftContext, rightContext: request.rightContext,
                         selectedText: "", targetLanguage: request.targetLanguage, explanationLanguage: request.explanationLanguage)
                 }
-                self.panel.update(result: nil, message: nil, loading: true)
+                self.panel.update(result: nil, message: nil, loading: true, request: request)
                 let result = try await self.service.generate(request, requestID: trace)
                 guard self.revision == id, !Task.isCancelled else { return }
                 guard self.editor.isUnchanged(saved) else { self.cancel(reason: "host-receipt-changed"); return }
-                self.panel.update(result: result, message: result.clarification, loading: false)
+                self.panel.update(result: result, message: result.clarification, loading: false, request: request)
                 self.service.recordDisplay(requestID: trace)
                 self.work = nil
             } catch {

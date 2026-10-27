@@ -4,7 +4,7 @@ import SwiftUI
 /// A small design-workbench toolbar surrounds the real card. The toolbar belongs only to Canvas;
 /// product controls and view layout remain in the existing InlineFeatures files being edited.
 struct LearningCardPreview: View {
-    enum Kind: Equatable { case sentence, dictionary, explanation }
+    enum Kind: Equatable { case sentence, dictionary, explanation, expressionAssist }
     let kind: Kind
     let dictionaryPage: Bool
     @State private var state: LearningCardPreviewState
@@ -89,6 +89,13 @@ private struct LearningCardPreviewSurface: View {
                     }
                     .frame(width: 340, height: state == .longText ? 440 : 280)
                     .padding(12).learningCardChrome(cornerRadius: 12)
+                case .expressionAssist:
+                    ExpressionAssistDemoScene(
+                        action: .expressionChoose,
+                        settings: ExpressionAssistSettings(defaults: UserDefaults.standard),
+                        insert: { status = "已插入表达候选" }
+                    )
+                    .frame(width: 480)
                 }
             } else {
                 Button("重新显示卡片") {

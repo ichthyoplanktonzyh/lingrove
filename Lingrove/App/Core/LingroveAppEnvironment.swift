@@ -478,6 +478,8 @@ final class LingroveAppEnvironment {
             beforePresent: { [weak sentencePreview] in sentencePreview?.availabilityChanged() }
         )
         let expressionPanel = ExpressionAssistPanelController()
+        expressionPanel.speech = speechController
+        expressionPanel.vocabulary = vocabularyStore
         let expressionAssist = ExpressionAssistCoordinator(settings: suggestionSettings, focus: focusModel,
             editor: ExpressionAssistEditor(focus: focusModel, replacement: learningReader,
                 inputOwnsKeyboard: { [weak expressionPanel] in expressionPanel?.hasKeyFocus == true }),
@@ -514,8 +516,8 @@ final class LingroveAppEnvironment {
             if let command = suggestionSettings.vocabularyShortcuts.command(key: event.keyCode, modifiers: mask),
                suggestionSettings.vocabularyShortcutConflict(command, key: event.keyCode, modifiers: mask,
                 bundle: NSWorkspace.shared.frontmostApplication?.bundleIdentifier) == nil {
-                let capture = readingPanel.favoriteCapture ?? writingPanel.favoriteCapture
-                if command == .open || capture != nil || readingPanel.isVisible || writingPanel.isVisible {
+                let capture = readingPanel.favoriteCapture ?? writingPanel.favoriteCapture ?? expressionPanel.favoriteCapture
+                if command == .open || capture != nil || readingPanel.isVisible || writingPanel.isVisible || expressionPanel.isVisible {
                     if !event.isAutorepeat {
                         Task { @MainActor in
                             if command == .open { vocabularyWindow.show() } else if let capture { await vocabularyStore.save(capture) }

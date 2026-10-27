@@ -40,10 +40,17 @@ struct MenuBarLearningControls: View {
                         isDisabled: !settings.translationEnabled,
                         identifier: "menuSentencePreview"
                     )
+                    .opacity(settings.translationEnabled ? 1.0 : 0.55)
 
-                    languageRow(selection: $settings.targetLanguage, identifier: "menuWritingTarget")
+                    MenuBarExpressionAssistRow(settings: settings.expressionAssist)
+
+                    languageRow(
+                        selection: $settings.targetLanguage,
+                        isDisabled: !settings.translationEnabled && !settings.expressionAssist.enabled,
+                        identifier: "menuWritingTarget"
+                    )
+                    .opacity(settings.translationEnabled || settings.expressionAssist.enabled ? 1.0 : 0.55)
                 }
-                .opacity(settings.translationEnabled ? 1.0 : 0.55)
 
                 MenuBarCardDivider()
 
@@ -209,16 +216,35 @@ struct MenuBarLearningControls: View {
         .accessibilityAddTraits(.isHeader)
     }
 
-    private func languageRow(selection: Binding<LearningLanguage>, identifier: String) -> some View {
-        MenuBarPickerRow(title: String(localized: "Target language", table: "Learning")) {
+    private func languageRow(
+        selection: Binding<LearningLanguage>,
+        isDisabled: Bool? = nil,
+        identifier: String
+    ) -> some View {
+        let disabled = isDisabled ?? !settings.translationEnabled
+        return MenuBarPickerRow(title: String(localized: "Target language", table: "Learning")) {
             Picker(String(localized: "Target language", table: "Learning"), selection: selection) {
                 ForEach(LearningLanguage.allCases) { Text($0.label).tag($0) }
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .disabled(!settings.translationEnabled)
+            .disabled(disabled)
             .accessibilityIdentifier(identifier)
         }
+    }
+}
+
+/// Observes `ExpressionAssistSettings` directly so toggling expression assistance or changing its
+/// trigger symbols in Settings immediately updates the Writing section of the menu-bar popover.
+private struct MenuBarExpressionAssistRow: View {
+    @ObservedObject var settings: ExpressionAssistSettings
+
+    var body: some View {
+        MenuBarToggleRow(
+            title: String(localized: "Expression assistance", table: "Learning"),
+            isOn: $settings.enabled,
+            identifier: "menuExpressionAssist"
+        )
     }
 }
 

@@ -10,6 +10,7 @@ struct LanguageLearningSection: View {
     var configureModel: (LearningModelRole) -> Void = { _ in }
     var openShortcuts: () -> Void = {}
     var openApps: () -> Void = {}
+    var openExpressionAssist: (() -> Void)?
     @State private var sourceLanguagesExpanded = false
     @Environment(\.settingsHighlightedItem) private var highlightedItem
     @Environment(\.settingsRevealSequence) private var revealSequence
@@ -88,6 +89,18 @@ struct LanguageLearningSection: View {
                     ),
                     systemImage: "keyboard"
                 )
+            }
+            if let openExpressionAssist {
+                LabeledContent {
+                    Button(String(localized: "Expression assistance", table: "Learning"), action: openExpressionAssist)
+                } label: {
+                    SettingsRowLabel(
+                        title: String(localized: "Find an expression or term while writing", table: "Learning"),
+                        description: String(localized: "Example: type \(settings.expressionAssist.trigger) and then describe what you mean.",
+                            table: "Learning"),
+                        systemImage: "text.magnifyingglass"
+                    )
+                }
             }
         }
     }

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Logging
 
 /// Owns one key-capable input panel and a separate non-key candidate panel. Typing belongs to a
@@ -14,16 +15,18 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
     var onAccept: ((ExpressionAssistCandidate) -> Void)?
     var onCancel: (() -> Void)?
     var onDismissed: (() -> Void)?
+    var speech: LearningSpeechController?
+    var vocabulary: VocabularyStore?
     private var inputPanel: ExpressionAssistInputPanel?
     private var candidatePanel: ExpressionAssistResultPanel?
     private var queryView: ExpressionAssistQueryView?
     private var queryScroll: NSScrollView?
     private var context: FocusedInputSnapshot?
+    private var request: ExpressionAssistRequest?
     private var result: ExpressionAssistResult?
     private var message: String?
     private var loading = false
     private var selected = 0
-    private var expanded = false
     private var quiet = true
     private var closing = false
     private var localMouse: Any?
@@ -39,28 +42,39 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
     private var lineHeight: CGFloat = 0
     private var hostBaseline: CGFloat = 0
     private var nativeBaseline: CGFloat = 0
+    private var sessionID = UUID()
+    private var toolSubscriptions = Set<AnyCancellable>()
     /// Content-free work counters let native regression tests enforce coalescing and view reuse.
     private(set) var inputLayoutPasses = 0
     private(set) var candidateBuilds = 0
 
     /// A window-lifetime rendering receipt, independent of query text. Composition changes only
-    /// visibility; only different content or display mode rebuilds the candidate views.
+    /// visibility; only different content or action state rebuilds the candidate views.
     private struct CandidateState: Equatable {
         let result: ExpressionAssistResult?
         let message: String?
         let loading: Bool
         let selected: Int
-        let expanded: Bool
         let quiet: Bool
+        let speakingIndex: Int?
+        let savedIndices: Set<Int>
+        let savingIndices: Set<Int>
     }
     var isVisible: Bool { inputPanel?.isVisible == true }
     var hasKeyFocus: Bool { isVisible && NSApp.isActive && inputPanel?.isKeyWindow == true }
 
+    /// Exposes the currently selected candidate as a vocabulary capture so the global vocabulary
+    /// shortcut can collect an expression directly while the candidate list is open.
+    var favoriteCapture: VocabularyCapture? {
+        guard isVisible, let candidates = result?.candidates, candidates.indices.contains(selected) else { return nil }
+        return capture(for: candidates[selected])
+    }
+
     func show(context: FocusedInputSnapshot, trigger: String, initialQuery: String) async {
         hide(restoringHost: false)
         self.context = context
+        sessionID = UUID()
         closing = false
-        expanded = false
         let renderer: GhostBaselinePolicy.HostRenderer = context.isWebContentField ? .webEngine : .textKit
         font = GhostFontResolver.resolve(.init(style: context.resolvedFieldStyle, hostMetrics: context.hostTextMetrics,
             caretBoxHeight: context.caretRect.height, renderer: renderer)).font
@@ -83,8 +97,9 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         let view = ExpressionAssistQueryView(frame: .zero)
         view.delegate = self
         view.font = font
-        view.typingAttributes = [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
-        view.textColor = .secondaryLabelColor
+        let inputColor = quiet ? NSColor.labelColor.withAlphaComponent(0.82) : NSColor.labelColor
+        view.typingAttributes = [.font: font, .foregroundColor: inputColor]
+        view.textColor = inputColor
         view.insertionPointColor = .controlAccentColor
         view.drawsBackground = false
         view.isEditable = true
@@ -100,6 +115,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         view.setAccessibilityIdentifier("lingrove.expression-assist.query")
         view.setAccessibilityLabel(String(localized: "Describe an expression or concept", table: "Learning"))
         view.onCommand = { [weak self] key in self?.handle(key) ?? false }
+        view.onSelectIndex = { [weak self] index in self?.handleIndexSelection(index) ?? false }
         view.onCompositionChange = { [weak self] in self?.queryChanged() }
         let content = ExpressionAssistInputBackground()
         // A long description scrolls inside the temporary surface instead of covering the screen.
@@ -113,12 +129,14 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         input.contentView = content
         queryView = view
         inputPanel = input
+        request = nil
         result = nil
         failedText = ""
         message = nil
         loading = false
         lastQuery = initialQuery
         lastComposing = false
+        observeLearningTools()
         guard layoutInput() else { hide(restoringHost: false); return }
         // Normal activation is required for reliable keyboard/IME delivery. It brings the app's
         // main and key windows forward, so give this input both roles BEFORE requesting activation.
@@ -152,12 +170,16 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
     }
 
     func update(result: ExpressionAssistResult?, message: String?, loading: Bool) {
+        update(result: result, message: message, loading: loading, request: nil)
+    }
+
+    func update(result: ExpressionAssistResult?, message: String?, loading: Bool, request: ExpressionAssistRequest?) {
+        if let request { self.request = request }
         guard self.result != result || self.message != message || self.loading != loading else { return }
         self.result = result
         self.message = message
         self.loading = loading
         selected = 0
-        expanded = false
         showResults()
     }
 
@@ -170,6 +192,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         closing = true
         layoutTask?.cancel()
         layoutTask = nil
+        toolSubscriptions.removeAll()
         if let localMouse { NSEvent.removeMonitor(localMouse); self.localMouse = nil }
         if let globalMouse { NSEvent.removeMonitor(globalMouse); self.globalMouse = nil }
         inputPanel?.orderOut(nil)
@@ -181,6 +204,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         inputPanel = nil
         candidatePanel = nil
         context = nil
+        request = nil
         result = nil
         failedText = ""
         lastQuery = nil
@@ -213,7 +237,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         label.textColor = .secondaryLabelColor
         label.preferredMaxLayoutWidth = textWidth
         let candidate = NSTextField(wrappingLabelWithString: text)
-        candidate.font = .systemFont(ofSize: 14)
+        candidate.font = .systemFont(ofSize: 14, weight: .medium)
         candidate.isSelectable = true
         candidate.preferredMaxLayoutWidth = textWidth
         let copy = NSButton(title: String(localized: "Copy"), target: self, action: #selector(copyFailure))
@@ -234,12 +258,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         stack.setCustomSpacing(Metrics.failureSpacing + 4, after: candidate)
         stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: inset, right: inset)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        let content = ExpressionAssistFlippedView()
-        content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        content.layer?.cornerRadius = Metrics.cornerRadius
-        content.layer?.borderWidth = 0.5
-        content.layer?.borderColor = NSColor.separatorColor.cgColor
+        let content = ExpressionAssistGlassView()
         content.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
@@ -326,11 +345,19 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         case 125, 126:
             guard !candidates.isEmpty else { return false }
             selected = (selected + (key == 125 ? 1 : -1) + candidates.count) % candidates.count
-            expanded = true
             showResults()
             return true
         default: return false
         }
+    }
+
+    private func handleIndexSelection(_ index: Int) -> Bool {
+        guard queryView?.hasMarkedText() == false,
+              candidatePanel?.isVisible == true,
+              let candidates = result?.candidates,
+              candidates.indices.contains(index) else { return false }
+        onAccept?(candidates[index])
+        return true
     }
 
     @discardableResult
@@ -347,7 +374,9 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         if query.textContainer?.containerSize != containerSize { query.textContainer?.containerSize = containerSize }
         query.layoutManager?.ensureLayout(for: query.textContainer ?? NSTextContainer())
         let used = query.textContainer.flatMap { query.layoutManager?.usedRect(for: $0) } ?? .zero
-        if quiet && used.height > lineHeight * 1.5 { quiet = false; return layoutInput() }
+        // Keep quiet input anchored at the caret baseline even when a description wraps onto a
+        // second line; jumping to a framed box below the caret mid-sentence breaks typing flow.
+        let wrapsMultiLine = quiet && used.height > lineHeight * 1.45
         let textHeight = max(lineHeight, used.height) + 2
         let height = min(textHeight, max(Metrics.minInputHeight, min(Metrics.maxInputHeight, screenFrame.height / 3))) + padding * 2
         let scrollFrame = CGRect(x: padding, y: padding, width: width - padding * 2, height: height - padding * 2)
@@ -357,20 +386,34 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
             screen: screenFrame, inline: quiet)
         else { return false }
         // Leave the user's literal trigger visible and start after it. Quiet input is entirely
-        // transparent; guessing a host background to erase its marker would paint over real text.
-        return applyInputFrames(input: frame, scrollFrame: scrollFrame, queryFrame: queryFrame)
+        // transparent on the first line, with a subtle IME-like preedit underline.
+        return applyInputFrames(
+            input: frame,
+            scrollFrame: scrollFrame,
+            queryFrame: queryFrame,
+            activeUnderlineWidth: min(width, max(44, ceil(used.width) + 6)),
+            wrapsMultiLine: wrapsMultiLine
+        )
     }
 
     /// Measurement above uses TextKit once. Applying it must not invalidate unchanged containers
     /// or flush a window redraw for every character; native text drawing already invalidates glyphs.
-    private func applyInputFrames(input: CGRect, scrollFrame: CGRect, queryFrame: CGRect) -> Bool {
+    private func applyInputFrames(
+        input: CGRect,
+        scrollFrame: CGRect,
+        queryFrame: CGRect,
+        activeUnderlineWidth: CGFloat,
+        wrapsMultiLine: Bool
+    ) -> Bool {
         guard let panel = inputPanel, let query = queryView, let scroll = queryScroll,
               let background = panel.contentView as? ExpressionAssistInputBackground else { return false }
         let sizeChanged = scroll.frame != scrollFrame || query.frame != queryFrame
         if scroll.frame != scrollFrame { scroll.frame = scrollFrame }
         if query.frame != queryFrame { query.frame = queryFrame }
         if sizeChanged { query.scrollRangeToVisible(query.selectedRange()) }
-        if background.quiet != quiet { background.quiet = quiet; background.needsDisplay = true }
+        if background.updateStyle(quiet: quiet, wrapsMultiLine: wrapsMultiLine, underlineWidth: activeUnderlineWidth) {
+            background.needsDisplay = true
+        }
         if panel.hasShadow == quiet { panel.hasShadow = !quiet }
         if panel.frame != input { panel.setFrame(input, display: false) }
         return true
@@ -378,16 +421,20 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
 
     private func showResults() {
         guard let input = inputPanel, isVisible else { return }
-        let state = CandidateState(result: result, message: message, loading: loading,
-            selected: selected, expanded: expanded, quiet: quiet)
+        let candidates = result?.candidates ?? []
+        let state = currentCandidateState(candidates: candidates)
         guard needsCandidateRebuild(state) else { return }
         candidateBuilds += 1
-        let candidates = result?.candidates ?? []
-        let canExpand = candidates.count > 1 || candidates.contains { !$0.hint.isEmpty || $0.dictionaryForm != nil }
+        // Do not flash an empty footer bar while the user is still typing during the 450ms
+        // debounce window. The candidate card appears only once work starts or results arrive.
+        let hasVisibleContent = loading || message != nil || !candidates.isEmpty
+        guard hasVisibleContent else {
+            candidatePanel?.orderOut(nil)
+            return
+        }
         let content = ExpressionAssistFlippedView()
         let width = Metrics.panelWidth(screen: screenFrame)
-        let compact = quiet && !expanded
-        var offset: CGFloat = compact ? 0 : Metrics.contentInset
+        var offset: CGFloat = Metrics.contentInset
         // A clarification arrives *with* a result (possibly alongside candidates); an error or
         // cancellation arrives without one. Rendering them differently tells the user whether to
         // keep describing or to retry.
@@ -399,10 +446,19 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         } else if let message {
             offset += addStatus(to: content, kind: .failure, text: message, y: offset, width: width)
         }
-        let indices = compact ? [selected] : Array(candidates.indices)
-        for index in indices where candidates.indices.contains(index) {
-            let row = ExpressionAssistCandidateRow(candidate: candidates[index], selected: index == selected,
-                expanded: !compact)
+        for index in candidates.indices {
+            let candidate = candidates[index]
+            let row = ExpressionAssistCandidateRow(
+                candidate: candidate,
+                index: index,
+                selected: index == selected,
+                expanded: true,
+                isSpeaking: state.speakingIndex == index,
+                onSpeak: speech == nil ? nil : { [weak self] in self?.toggleSpeech(for: candidate, index: index) },
+                isSaved: state.savedIndices.contains(index),
+                isSaving: state.savingIndices.contains(index),
+                onToggleFavorite: vocabulary == nil ? nil : { [weak self] in self?.toggleFavorite(for: candidate) }
+            )
             row.tag = index
             row.target = self
             row.action = #selector(selectCandidate(_:))
@@ -412,15 +468,8 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
             content.addSubview(row)
             offset += height + Metrics.rowSpacing
         }
-        offset += addFooter(to: content, candidateCount: candidates.count, canExpand: canExpand, y: offset, width: width)
+        offset += addFooter(to: content, candidateCount: candidates.count, y: offset, width: width)
         content.frame = CGRect(x: 0, y: 0, width: width, height: offset)
-        content.wantsLayer = true
-        if !compact {
-            content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-            content.layer?.cornerRadius = Metrics.cornerRadius
-            content.layer?.borderWidth = 0.5
-            content.layer?.borderColor = NSColor.separatorColor.cgColor
-        }
         // Bounded model output can still be taller than a small screen. Keep every choice
         // reachable in a native scroll view rather than silently losing the entire result panel.
         let room = max(input.frame.minY - screenFrame.minY, screenFrame.maxY - input.frame.maxY) - 8
@@ -439,11 +488,14 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         scroll.hasVerticalScroller = content.frame.height > height
         scroll.autohidesScrollers = true
         scroll.documentView = content
+        scroll.autoresizingMask = [.width, .height]
+        let glass = ExpressionAssistGlassView(frame: CGRect(origin: .zero, size: frame.size))
+        glass.addSubview(scroll)
         let panel = candidatePanel ?? ExpressionAssistResultPanel(contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         configure(panel)
-        panel.hasShadow = !quiet || expanded
-        panel.contentView = scroll
+        panel.hasShadow = true
+        panel.contentView = glass
         panel.setFrame(frame, display: true)
         candidatePanel = panel
         panel.orderFrontRegardless()
@@ -457,7 +509,10 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
             return false
         }
         if state == renderedCandidates {
-            if positionCandidates(), candidatePanel?.isVisible == false { candidatePanel?.orderFrontRegardless() }
+            let hasVisibleContent = state.loading || state.message != nil || !(state.result?.candidates.isEmpty ?? true)
+            if hasVisibleContent, positionCandidates(), candidatePanel?.isVisible == false {
+                candidatePanel?.orderFrontRegardless()
+            }
             return false
         }
         renderedCandidates = state
@@ -473,6 +528,95 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         }
         if frame != panel.frame { panel.setFrame(frame, display: false) }
         return true
+    }
+
+    // MARK: Speech & Vocabulary Integration
+
+    private func observeLearningTools() {
+        toolSubscriptions.removeAll()
+        if let speech {
+            speech.objectWillChange
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.showResults() }
+                .store(in: &toolSubscriptions)
+        }
+        if let vocabulary {
+            vocabulary.loadIfNeeded()
+            vocabulary.objectWillChange
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.showResults() }
+                .store(in: &toolSubscriptions)
+        }
+    }
+
+    private func currentCandidateState(candidates: [ExpressionAssistCandidate]) -> CandidateState {
+        var speakingIndex: Int?
+        var savedIndices = Set<Int>()
+        var savingIndices = Set<Int>()
+        if speech != nil || vocabulary != nil {
+            for index in candidates.indices {
+                let candidate = candidates[index]
+                if let speech {
+                    let target = speechTarget(for: index)
+                    if speech.isPlaying(target) || speech.isPreparing(target) {
+                        speakingIndex = index
+                    }
+                }
+                if let vocabulary, let itemCapture = capture(for: candidate) {
+                    if vocabulary.contains(itemCapture) { savedIndices.insert(index) }
+                    if vocabulary.isPending(itemCapture) { savingIndices.insert(index) }
+                }
+            }
+        }
+        return CandidateState(
+            result: result,
+            message: message,
+            loading: loading,
+            selected: selected,
+            quiet: quiet,
+            speakingIndex: speakingIndex,
+            savedIndices: savedIndices,
+            savingIndices: savingIndices
+        )
+    }
+
+    private func speechTarget(for index: Int) -> SpeechTarget {
+        SpeechTarget(ownerID: sessionID, itemID: "expression.candidate.\(index)")
+    }
+
+    private func toggleSpeech(for candidate: ExpressionAssistCandidate, index: Int) {
+        guard let speech else { return }
+        let text = candidate.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let language = request.flatMap { LearningLanguage(rawValue: $0.targetLanguage) }
+        speech.toggle(SpeechRequest(target: speechTarget(for: index), text: text, language: language))
+    }
+
+    private func toggleFavorite(for candidate: ExpressionAssistCandidate) {
+        guard let vocabulary, let itemCapture = capture(for: candidate) else { return }
+        Task { @MainActor in
+            if vocabulary.contains(itemCapture) {
+                await vocabulary.remove(itemCapture)
+            } else {
+                await vocabulary.save(itemCapture)
+            }
+        }
+    }
+
+    private func capture(for candidate: ExpressionAssistCandidate) -> VocabularyCapture? {
+        let effectiveRequest = request ?? ExpressionAssistRequest(
+            query: lastQuery ?? "",
+            leftContext: context?.precedingText ?? "",
+            rightContext: context?.trailingText ?? "",
+            selectedText: "",
+            targetLanguage: LearningLanguage.english.rawValue,
+            explanationLanguage: LearningLanguage.chinese.rawValue
+        )
+        return VocabularyCaptureFactory.expressionAssist(
+            candidate: candidate,
+            request: effectiveRequest,
+            appBundleIdentifier: context?.bundleIdentifier
+        )
     }
 
     private enum StatusKind { case loading, clarification, failure }
@@ -524,22 +668,17 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         return height
     }
 
-    /// Keyboard hint bar plus an optional More/Fewer toggle. The hint text depends on what Return
-    /// does right now (search vs insert) and whether arrows have anything to move between.
-    private func addFooter(to content: NSView, candidateCount: Int, canExpand: Bool, y top: CGFloat, width: CGFloat) -> CGFloat {
+    /// Keyboard hint bar at the bottom of the candidate card. The hint text depends on what Return
+    /// does right now (search vs insert) and whether arrows have multiple candidates to move between.
+    private func addFooter(to content: NSView, candidateCount: Int, y top: CGFloat, width: CGFloat) -> CGFloat {
         let inset = Metrics.contentInset
-        var trailing = width - inset
-        if canExpand {
-            let more = NSButton(title: expanded ? String(localized: "Fewer ↑", table: "Learning") :
-                String(localized: "More ↓", table: "Learning"), target: self, action: #selector(toggleExpanded))
-            more.isBordered = false
-            more.font = .systemFont(ofSize: 11)
-            more.contentTintColor = .controlAccentColor
-            more.sizeToFit()
-            let buttonWidth = ceil(more.frame.width) + 4
-            more.frame = CGRect(x: trailing - buttonWidth, y: top, width: buttonWidth, height: Metrics.footerHeight)
-            content.addSubview(more)
-            trailing = more.frame.minX - 6
+        var currentTop = top
+        if candidateCount > 0 {
+            let divider = NSView(frame: CGRect(x: inset, y: currentTop + 2, width: width - inset * 2, height: 0.5))
+            divider.wantsLayer = true
+            divider.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.4).cgColor
+            content.addSubview(divider)
+            currentTop += 5
         }
         var keys: [(String, String)] = []
         if candidateCount > 1 { keys.append(("↑↓", String(localized: "Select", table: "Learning"))) }
@@ -551,10 +690,10 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         hints.lineBreakMode = .byTruncatingTail
         hints.setAccessibilityLabel(keys.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
         let hintsHeight = ceil(hints.intrinsicContentSize.height)
-        hints.frame = CGRect(x: inset, y: top + (Metrics.footerHeight - hintsHeight) / 2,
-            width: max(0, trailing - inset), height: hintsHeight)
+        hints.frame = CGRect(x: inset, y: currentTop + (Metrics.footerHeight - hintsHeight) / 2,
+            width: max(0, width - inset * 2), height: hintsHeight)
         content.addSubview(hints)
-        return Metrics.footerHeight + 2
+        return (currentTop - top) + Metrics.footerHeight + 2
     }
 
     /// Keys render emphasized, their actions muted, so the eye scans keys first.
@@ -581,7 +720,6 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         guard let candidates = result?.candidates, candidates.indices.contains(sender.tag) else { return }
         onAccept?(candidates[sender.tag])
     }
-    @objc private func toggleExpanded() { expanded.toggle(); showResults() }
 
     private func configure(_ panel: NSPanel) {
         panel.isReleasedWhenClosed = false
@@ -618,7 +756,6 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
             if !inside { self.onDismissed?() }
         }
     }
-
 }
 
 /// The temporary editor owns both main and key roles during its explicit activation round trip.
@@ -637,15 +774,77 @@ private final class ExpressionAssistFlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
+/// Adaptive frosted-glass backdrop matching `LearningCardChrome` for the AppKit candidate and
+/// failure panels, keeping text legible over multi-line editors without heavy opaque chrome.
+private final class ExpressionAssistGlassView: NSVisualEffectView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        material = .popover
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = ExpressionAssistLayout.Metrics.cornerRadius
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+        layer?.borderWidth = 0.75
+        layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.55).cgColor
+    }
+
+    required init?(coder: NSCoder) { nil }
+}
+
+/// Renders either the quiet inline preedit anchor (a subtle accent underline on a single line, or
+/// a soft pill when wrapping) or a frosted-glass input card when invoked mid-sentence.
 private final class ExpressionAssistInputBackground: NSView {
-    var quiet = true
+    private(set) var quiet = true
+    private var wrapsMultiLine = false
+    private var underlineWidth: CGFloat = 60
+    private let effectView = NSVisualEffectView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        effectView.material = .popover
+        effectView.blendingMode = .withinWindow
+        effectView.state = .active
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = ExpressionAssistLayout.Metrics.cornerRadius
+        effectView.layer?.cornerCurve = .continuous
+        effectView.layer?.masksToBounds = true
+        effectView.isHidden = true
+        addSubview(effectView, positioned: .below, relativeTo: nil)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func layout() {
+        super.layout()
+        effectView.frame = bounds
+    }
+
+    func updateStyle(quiet: Bool, wrapsMultiLine: Bool, underlineWidth: CGFloat) -> Bool {
+        let changed = self.quiet != quiet || self.wrapsMultiLine != wrapsMultiLine ||
+            abs(self.underlineWidth - underlineWidth) > 1
+        self.quiet = quiet
+        self.wrapsMultiLine = wrapsMultiLine
+        self.underlineWidth = underlineWidth
+        effectView.isHidden = quiet && !wrapsMultiLine
+        return changed
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        if !quiet {
-            NSColor.windowBackgroundColor.setFill()
-            let radius = ExpressionAssistLayout.Metrics.cornerRadius
-            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
-            NSColor.separatorColor.setStroke()
-            NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius).stroke()
+        let radius = ExpressionAssistLayout.Metrics.cornerRadius
+        if !quiet || wrapsMultiLine {
+            NSColor.separatorColor.withAlphaComponent(0.55).setStroke()
+            let border = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+            border.lineWidth = 0.75
+            border.stroke()
+        } else {
+            // Draw a delicate IME-like preedit underline along the active inline slot so the user
+            // immediately distinguishes expression input from passive autocomplete ghost text.
+            let lineWidth = min(bounds.width, max(36, underlineWidth))
+            let underlineRect = NSRect(x: 0, y: 0.5, width: lineWidth, height: 1.5)
+            NSColor.controlAccentColor.withAlphaComponent(0.45).setFill()
+            NSBezierPath(roundedRect: underlineRect, xRadius: 0.75, yRadius: 0.75).fill()
         }
     }
 }
@@ -654,11 +853,20 @@ private final class ExpressionAssistInputBackground: NSView {
 /// the global event tap must pass these keys through to this text input client unchanged.
 private final class ExpressionAssistQueryView: NSTextView {
     var onCommand: ((UInt16) -> Bool)?
+    var onSelectIndex: ((Int) -> Bool)?
     var onCompositionChange: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        if !hasMarkedText(), !event.modifierFlags.contains(.command), !event.modifierFlags.contains(.control),
-           !event.modifierFlags.contains(.option), !event.modifierFlags.contains(.shift), onCommand?(event.keyCode) == true { return }
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if !hasMarkedText() {
+            if modifiers.isEmpty, onCommand?(event.keyCode) == true { return }
+            if modifiers == [.command],
+               let chars = event.charactersIgnoringModifiers,
+               let digit = Int(chars), (1...9).contains(digit),
+               onSelectIndex?(digit - 1) == true {
+                return
+            }
+        }
         super.keyDown(with: event)
     }
 
@@ -678,7 +886,9 @@ private final class ExpressionAssistQueryView: NSTextView {
         super.draw(dirtyRect)
         guard string.isEmpty, !hasMarkedText() else { return }
         let text = String(localized: "Describe an expression or concept…", table: "Learning")
+        // Render the placeholder in tertiary color so an empty inline slot never looks like an
+        // already generated autocomplete continuation.
         (text as NSString).draw(at: .zero, withAttributes: [.font: font ?? NSFont.systemFont(ofSize: 14),
-            .foregroundColor: NSColor.secondaryLabelColor])
+            .foregroundColor: NSColor.tertiaryLabelColor])
     }
 }

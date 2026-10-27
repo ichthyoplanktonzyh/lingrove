@@ -19,7 +19,7 @@ nonisolated enum ExpressionAssistLayout {
         /// Distance kept from the visible screen edges when clamping a panel width.
         static let screenMargin: CGFloat = 10
         /// Inline (quiet) input falls back to the framed style below this much room to the right.
-        static let minInlineRoom: CGFloat = 140
+        static let minInlineRoom: CGFloat = 100
         static let minInputWidth: CGFloat = 160
         /// Inner padding of the framed input; the quiet input has none so text sits on the host line.
         static let inputPadding: CGFloat = 8
@@ -30,16 +30,19 @@ nonisolated enum ExpressionAssistLayout {
         /// Gap between the input window and the candidate window.
         static let panelGap: CGFloat = 4
         static let maxCandidateHeight: CGFloat = 320
-        static let cornerRadius: CGFloat = 8
+        static let cornerRadius: CGFloat = 10
         /// Horizontal/vertical inset of candidate-panel content from its rounded edge.
         static let contentInset: CGFloat = 8
-        static let rowInset: CGFloat = 4
+        static let rowInset: CGFloat = 5
         static let rowSpacing: CGFloat = 3
-        static let rowCornerRadius: CGFloat = 5
-        static let rowVerticalPadding: CGFloat = 5
-        /// Column reserved on the left of each row for the ↵ selection marker.
-        static let rowLeading: CGFloat = 21
-        static let rowTrailing: CGFloat = 7
+        static let rowCornerRadius: CGFloat = 6
+        static let rowVerticalPadding: CGFloat = 6
+        /// Column reserved on the left of each row for the ↵ selection marker or index.
+        static let rowLeading: CGFloat = 22
+        static let rowTrailing: CGFloat = 8
+        /// Square hit target for inline speech and vocabulary action icons on a candidate row.
+        static let rowActionSize: CGFloat = 20
+        static let rowActionSpacing: CGFloat = 4
         static let footerHeight: CGFloat = 24
         static let statusIconSize: CGFloat = 14
         static let failureSpacing: CGFloat = 8

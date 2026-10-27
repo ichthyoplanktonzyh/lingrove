@@ -96,4 +96,38 @@ nonisolated enum VocabularyCaptureFactory {
         return VocabularyCapture(expression: word.text, dictionaryForm: word.text, language: capture.language,
             kind: .word, example: example)
     }
+
+    /// Turns an expression-assistance candidate and its bounded request context into a durable
+    /// vocabulary capture. When the model provides a reusable base form (such as "keep someone
+    /// posted" for an inflected slot "kept me posted"), the entry is indexed under that canonical
+    /// form while the example sentence highlights the exact inflected surface in context.
+    static func expressionAssist(candidate: ExpressionAssistCandidate, request: ExpressionAssistRequest,
+                                 appBundleIdentifier: String? = nil) -> VocabularyCapture? {
+        let surface = candidate.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !surface.isEmpty else { return nil }
+        let base = candidate.dictionaryForm?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let canonical = base.isEmpty ? surface : base
+        let targetLanguage = LearningLanguage(rawValue: request.targetLanguage)
+        let meaningLanguage = LearningLanguage(rawValue: request.explanationLanguage)
+        let meaning = candidate.hint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = LearningUnitPolicy.words(in: canonical, language: targetLanguage)
+        let kind: VocabularyEntry.Kind = words.count <= 1 ? .word : .expression
+        let hasContext = !request.leftContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !request.rightContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        var example: VocabularyExample?
+        if hasContext {
+            let full = request.leftContext + candidate.text + request.rightContext
+            let surfaceOffset = (candidate.text as NSString).range(of: surface)
+            if surfaceOffset.location != NSNotFound {
+                let occurrence = NSRange(location: request.leftContext.utf16.count + surfaceOffset.location,
+                    length: surfaceOffset.length)
+                example = VocabularyPolicy.example(text: full, ranges: [occurrence],
+                    language: targetLanguage, app: appBundleIdentifier)
+                example?.meaning = meaning
+                example?.meaningLanguage = meaning.isEmpty ? nil : meaningLanguage
+            }
+        }
+        return VocabularyCapture(expression: canonical, dictionaryForm: canonical, language: targetLanguage,
+            kind: kind, meaning: meaning, meaningLanguage: meaning.isEmpty ? nil : meaningLanguage, example: example)
+    }
 }

@@ -48,8 +48,15 @@ protocol ExpressionAssistPresenting: AnyObject {
     /// Presentation completes only after the application and the native text client own input.
     func show(context: FocusedInputSnapshot, trigger: String, initialQuery: String) async
     func update(result: ExpressionAssistResult?, message: String?, loading: Bool)
+    func update(result: ExpressionAssistResult?, message: String?, loading: Bool, request: ExpressionAssistRequest?)
     func hide(restoringHost: Bool)
     func showFailure(context: FocusedInputSnapshot, text: String, message: String)
+}
+
+extension ExpressionAssistPresenting {
+    func update(result: ExpressionAssistResult?, message: String?, loading: Bool, request: ExpressionAssistRequest?) {
+        update(result: result, message: message, loading: loading)
+    }
 }
 
 /// The coordinator owns one saved capture per invocation. The production adapter retains its AX

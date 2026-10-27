@@ -128,6 +128,53 @@ struct ExpressionAssistPanelTests {
         #expect(panel.candidateBuilds == afterCommit)
     }
 
+    @Test
+    func candidatePanelStaysHiddenDuringIdleTypingAndExposesVocabularyCaptureWhenReady() async throws {
+        let panel = ExpressionAssistPanelController()
+        defer { panel.hide(restoringHost: false) }
+        var accepted: [String] = []
+        panel.onAccept = { accepted.append($0.text) }
+        await panel.show(context: try context(), trigger: "??", initialQuery: "")
+        let window = try inputWindow()
+        let input = try #require(window.firstResponder as? NSTextView)
+        #expect(panel.favoriteCapture == nil)
+        let request = ExpressionAssistRequest(
+            query: "排除缓存",
+            leftContext: "We still can't ",
+            rightContext: " yet.",
+            selectedText: "",
+            targetLanguage: LearningLanguage.english.rawValue,
+            explanationLanguage: LearningLanguage.chinese.rawValue
+        )
+        panel.update(
+            result: .init(candidates: [
+                .init(text: "ruled out caching", hint: "排除缓存", dictionaryForm: "rule out"),
+                .init(text: "excluded caching", hint: "把缓存排除在外", dictionaryForm: nil)
+            ]),
+            message: nil,
+            loading: false,
+            request: request
+        )
+        let capture = try #require(panel.favoriteCapture)
+        #expect(capture.expression == "rule out")
+        #expect(capture.meaning == "排除缓存")
+        #expect(capture.example?.text == "We still can't ruled out caching yet.")
+        let cmd2 = try #require(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber,
+            context: nil,
+            characters: "2",
+            charactersIgnoringModifiers: "2",
+            isARepeat: false,
+            keyCode: 19
+        ))
+        input.keyDown(with: cmd2)
+        #expect(accepted == ["excluded caching"])
+    }
+
     private func context(trailing: String = "") throws -> FocusedInputSnapshot {
         let screen = try #require(NSScreen.main).visibleFrame
         return LingroveTestFixtures.focusedInputSnapshot(

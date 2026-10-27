@@ -32,7 +32,8 @@ struct LanguageLearningPaneView: View {
                     if let review { LearningReviewSettingsSection(controller: review) }
                 case .translation:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .translation,
-                        configureModel: configureModel, openShortcuts: openShortcuts, openApps: openApps)
+                        configureModel: configureModel, openShortcuts: openShortcuts, openApps: openApps,
+                        openExpressionAssist: { navigation.reveal(.expressionAssist) })
                 case .explanation:
                     LanguageLearningSection(settings: suggestionSettings.languageLearning, role: .explanation,
                         configureModel: configureModel, openShortcuts: openShortcuts)

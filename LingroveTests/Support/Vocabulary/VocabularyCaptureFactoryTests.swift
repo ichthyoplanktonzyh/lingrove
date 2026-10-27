@@ -92,6 +92,38 @@ struct VocabularyCaptureFactoryTests {
         #expect(capture.example?.ranges.count == 2)
     }
 
+    @Test func expressionAssistCandidateSavesBaseFormWithConstructedSentenceContext() throws {
+        let candidate = ExpressionAssistCandidate(
+            text: "kept me posted",
+            hint: "让我随时了解最新情况",
+            dictionaryForm: "keep someone posted"
+        )
+        let request = ExpressionAssistRequest(
+            query: "随时了解情况",
+            leftContext: "Thanks, she ",
+            rightContext: " throughout the week.",
+            selectedText: "",
+            targetLanguage: LearningLanguage.english.rawValue,
+            explanationLanguage: LearningLanguage.chinese.rawValue
+        )
+        let capture = try #require(VocabularyCaptureFactory.expressionAssist(
+            candidate: candidate,
+            request: request,
+            appBundleIdentifier: "com.apple.TextEdit"
+        ))
+        #expect(capture.expression == "keep someone posted")
+        #expect(capture.dictionaryForm == "keep someone posted")
+        #expect(capture.kind == .expression)
+        #expect(capture.language == .english)
+        #expect(capture.meaning == "让我随时了解最新情况")
+        #expect(capture.meaningLanguage == .chinese)
+        let example = try #require(capture.example)
+        #expect(example.text == "Thanks, she kept me posted throughout the week.")
+        #expect(example.meaning == "让我随时了解最新情况")
+        let range = try #require(example.ranges.first?.nsRange)
+        #expect((example.text as NSString).substring(with: range) == "kept me posted")
+    }
+
     private func presentation() -> LearningSentencePresentation {
         LearningSentencePresentation(id: UUID(), source: "请随时告诉我最新进展。", translation: "Please keep me posted.",
             sourceLanguage: .chinese, targetLanguage: .english, caret: .zero, isExpanded: false, isGenerating: false,
