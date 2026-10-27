@@ -25,55 +25,46 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 
 See the features in use below. The five Lingrove language-learning recordings use the Chinese interface.
 
-### Autocomplete
+<table align="center">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="gifs/imessage.gif"><img src="gifs/imessage.gif" width="400" alt="Upstream Cotabby recording showing inline autocomplete in Messages" /></a>
+      <br />
+      <sub><b>Autocomplete</b> — Ghost text at the caret; press Tab to accept.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/writing-translation.gif"><img src=".github/assets/readme/writing-translation.gif" width="400" alt="Lingrove translating a Chinese greeting into English beside the caret" /></a>
+      <br />
+      <sub><b>Writing translation</b> — Pause after typing to preview a translation.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/expression-assistance.gif"><img src=".github/assets/readme/expression-assistance.gif" width="400" alt="Describing a concept in Chinese and inserting confirmation bias into an English sentence" /></a>
+      <br />
+      <sub><b>Expression assistance</b> — Describe what you mean, then insert a candidate.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/double-click-lookup.gif"><img src=".github/assets/readme/double-click-lookup.gif" width="400" alt="Double-clicking a word in a translation preview and switching between contextual and dictionary meanings" /></a>
+      <br />
+      <sub><b>Double-click lookup</b> — Double-click to compare contextual and dictionary meanings.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/reading-translation.gif"><img src=".github/assets/readme/reading-translation.gif" width="400" alt="Selecting an English sentence on a web page to translate it, then looking up a selected word" /></a>
+      <br />
+      <sub><b>Reading translation</b> — Select text on a page to translate or look it up.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/save-to-vocabulary.gif"><img src=".github/assets/readme/save-to-vocabulary.gif" width="400" alt="Saving a translation with the fish-tail button and opening the saved entry in Vocabulary" /></a>
+      <br />
+      <sub><b>Save and open Vocabulary</b> — Save with the fish-tail button and open the saved entry.</sub>
+    </td>
+  </tr>
+</table>
 
-Keep writing in your editor, pause for a ghost-text suggestion, and press Tab to accept it.
-
-<p align="center">
-  <img src="gifs/imessage.gif" width="677" alt="Upstream Cotabby recording showing inline autocomplete in Messages" />
-</p>
-
-Autocomplete footage is from [upstream Cotabby](https://github.com/FuJacob/Cotabby#demo); the remaining recordings show Lingrove.
-
-### Writing translation
-
-Pause after typing to see a translation beside the caret.
-
-<p align="center">
-  <img src=".github/assets/readme/writing-translation.gif" width="860" alt="Lingrove translating a Chinese greeting into English beside the caret" />
-</p>
-
-### Expression assistance
-
-Describe a missing expression or term, then choose a candidate to insert at the caret.
-
-<p align="center">
-  <img src=".github/assets/readme/expression-assistance.gif" width="860" alt="Describing a concept in Chinese and inserting confirmation bias into an English sentence" />
-</p>
-
-### Double-click lookup
-
-Double-click a word in a Lingrove translation card to compare its contextual meaning and dictionary definitions.
-
-<p align="center">
-  <img src=".github/assets/readme/double-click-lookup.gif" width="860" alt="Double-clicking a word in a translation preview and switching between contextual and dictionary meanings" />
-</p>
-
-### Reading translation
-
-Select text on a page to translate it, or select a word to look up its meaning in context.
-
-<p align="center">
-  <img src=".github/assets/readme/reading-translation.gif" width="860" alt="Selecting an English sentence on a web page to translate it, then looking up a selected word" />
-</p>
-
-### Save and open Vocabulary
-
-Click the fish-tail button to save the current text, then open its entry from the saved-item menu.
-
-<p align="center">
-  <img src=".github/assets/readme/save-to-vocabulary.gif" width="860" alt="Saving a translation with the fish-tail button and opening the saved entry in Vocabulary" />
-</p>
+Click a GIF to view it full size. Autocomplete footage is from [upstream Cotabby](https://github.com/FuJacob/Cotabby#demo); the remaining recordings show Lingrove.
 
 ---
 

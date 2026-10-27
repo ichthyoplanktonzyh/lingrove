@@ -25,55 +25,46 @@
 
 以下为功能操作演示。拾语的五段语言学习演示使用中文界面。
 
-### 自动补全
+<table align="center">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="gifs/imessage.gif"><img src="gifs/imessage.gif" width="400" alt="上游 Cotabby 在信息应用中展示行内自动补全" /></a>
+      <br />
+      <sub><b>自动补全</b> — 光标旁显示灰字，按 Tab 接受。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/writing-translation.gif"><img src=".github/assets/readme/writing-translation.gif" width="400" alt="拾语在光标旁将中文问候语翻译为英语" /></a>
+      <br />
+      <sub><b>写作翻译</b> — 输入后稍作停顿，即可查看译文。</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/expression-assistance.gif"><img src=".github/assets/readme/expression-assistance.gif" width="400" alt="用中文描述概念，将 confirmation bias 插入英文句子" /></a>
+      <br />
+      <sub><b>表达辅助</b> — 描述想表达的意思，选择候选并插入。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/double-click-lookup.gif"><img src=".github/assets/readme/double-click-lookup.gif" width="400" alt="双击译文中的单词，在语境释义和词典释义之间切换" /></a>
+      <br />
+      <sub><b>双击查词</b> — 双击单词，查看语境释义与词典释义。</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/reading-translation.gif"><img src=".github/assets/readme/reading-translation.gif" width="400" alt="选中网页中的英文句子查看中文译文，再查询所选单词" /></a>
+      <br />
+      <sub><b>阅读翻译</b> — 选中网页文字，查看译文或查询含义。</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href=".github/assets/readme/save-to-vocabulary.gif"><img src=".github/assets/readme/save-to-vocabulary.gif" width="400" alt="通过鱼尾图标收藏译文，并在生词本中打开对应条目" /></a>
+      <br />
+      <sub><b>收藏并打开生词本</b> — 点击鱼尾收藏，再打开对应的生词本条目。</sub>
+    </td>
+  </tr>
+</table>
 
-在输入框中继续写作，稍作停顿查看灰字建议，按 Tab 接受。
-
-<p align="center">
-  <img src="gifs/imessage.gif" width="677" alt="上游 Cotabby 在信息应用中展示行内自动补全" />
-</p>
-
-补全素材沿用自 [Cotabby 上游项目](https://github.com/FuJacob/Cotabby#demo)；其余演示为拾语实录。
-
-### 写作翻译
-
-输入后稍作停顿，在光标旁查看译文。
-
-<p align="center">
-  <img src=".github/assets/readme/writing-translation.gif" width="860" alt="拾语在光标旁将中文问候语翻译为英语" />
-</p>
-
-### 表达辅助
-
-描述想表达的意思或想不起的术语，选择候选后插入光标处。
-
-<p align="center">
-  <img src=".github/assets/readme/expression-assistance.gif" width="860" alt="用中文描述概念，将 confirmation bias 插入英文句子" />
-</p>
-
-### 双击查词
-
-双击拾语翻译卡片中的单词，查看语境释义并切换到词典释义。
-
-<p align="center">
-  <img src=".github/assets/readme/double-click-lookup.gif" width="860" alt="双击译文中的单词，在语境释义和词典释义之间切换" />
-</p>
-
-### 阅读翻译
-
-选中网页中的文字查看译文，也可以选中单词查询它在当前语境中的含义。
-
-<p align="center">
-  <img src=".github/assets/readme/reading-translation.gif" width="860" alt="选中网页中的英文句子查看中文译文，再查询所选单词" />
-</p>
-
-### 收藏并打开生词本
-
-点击鱼尾图标收藏当前内容，再通过收藏菜单打开生词本中的对应条目。
-
-<p align="center">
-  <img src=".github/assets/readme/save-to-vocabulary.gif" width="860" alt="通过鱼尾图标收藏译文，并在生词本中打开对应条目" />
-</p>
+点击动图可查看大图。补全素材来自 [Cotabby 上游项目](https://github.com/FuJacob/Cotabby#demo)，其余为拾语实录。
 
 ---
 
