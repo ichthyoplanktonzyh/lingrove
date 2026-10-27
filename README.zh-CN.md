@@ -5,7 +5,7 @@
 # 拾语 · Lingrove
 
 **macOS 本地优先的行内自动补全与伴随式语言学习工具。**  
-在任意输入框的光标旁获取续写建议、即时翻译句子、查询地道表达与词典，并将生词一键同步至 Anki——全程无需离开你正在写作的应用。
+在任意输入框的光标旁获取续写建议、即时翻译句子、描述意思寻找表达、查询词典，并将生词一键同步至 Anki——全程无需离开你正在写作的应用。
 
 [**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**版本发布 (Releases)**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**常见问题 (FAQ)**](FAQ.md) · [**语言学习机制详解**](docs/LANGUAGE_LEARNING.md) · [**问题反馈**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
 
@@ -23,41 +23,57 @@
 
 ## 界面预览
 
-<!-- 将主宣传动图或截图放置在 .github/assets/readme/hero-demo.gif -->
-<div align="center">
-  <img src=".github/assets/readme/hero-demo.gif" width="860" alt="Lingrove 拾语演示 — 行内自动补全与伴随式语言学习" />
-</div>
+以下为功能操作演示。拾语的五段语言学习演示使用中文界面。
 
-<table align="center">
-  <tr>
-    <td width="50%" align="center">
-      <!-- 将补全截图放置在 .github/assets/readme/autocomplete-demo.png -->
-      <img src=".github/assets/readme/autocomplete-demo.png" alt="行内幽灵文字自动补全" />
-      <br />
-      <sub><b>行内自动补全</b> — 光标旁低延迟幽灵文字续写，按 Tab 逐词或整句采纳</sub>
-    </td>
-    <td width="50%" align="center">
-      <!-- 将翻译截图放置在 .github/assets/readme/translation-demo.png -->
-      <img src=".github/assets/readme/translation-demo.png" alt="行内翻译与地道表达下划线识别" />
-      <br />
-      <sub><b>伴随式翻译</b> — 输入停顿即预览译文，支持快捷键一键替换原文或展开地道表达</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <!-- 将词典与朗读截图放置在 .github/assets/readme/dictionary-tts-demo.png -->
-      <img src=".github/assets/readme/dictionary-tts-demo.png" alt="多源词典查询、AI 语境解析与本地语音朗读" />
-      <br />
-      <sub><b>多源词典与朗读</b> — 内置短语库、macOS 系统词典、导入 MDX 词典与本地 Qwen3-TTS 发音</sub>
-    </td>
-    <td width="50%" align="center">
-      <!-- 将生词本与 Anki 截图放置在 .github/assets/readme/vocabulary-anki-demo.png -->
-      <img src=".github/assets/readme/vocabulary-anki-demo.png" alt="生词本管理与 Anki 制卡同步" />
-      <br />
-      <sub><b>生词本与 Anki 复习</b> — 点击“鱼尾”连同上下文例句收藏，通过 AnkiConnect 批量制卡并附带音频</sub>
-    </td>
-  </tr>
-</table>
+### 自动补全
+
+在输入框中继续写作，稍作停顿查看灰字建议，按 Tab 接受。
+
+<p align="center">
+  <img src="gifs/imessage.gif" width="677" alt="上游 Cotabby 在信息应用中展示行内自动补全" />
+</p>
+
+补全素材沿用自 [Cotabby 上游项目](https://github.com/FuJacob/Cotabby#demo)；其余演示为拾语实录。
+
+### 写作翻译
+
+输入后稍作停顿，在光标旁查看译文。
+
+<p align="center">
+  <img src=".github/assets/readme/writing-translation.gif" width="860" alt="拾语在光标旁将中文问候语翻译为英语" />
+</p>
+
+### 表达辅助
+
+描述想表达的意思或想不起的术语，选择候选后插入光标处。
+
+<p align="center">
+  <img src=".github/assets/readme/expression-assistance.gif" width="860" alt="用中文描述概念，将 confirmation bias 插入英文句子" />
+</p>
+
+### 双击查词
+
+双击拾语翻译卡片中的单词，查看语境释义并切换到词典释义。
+
+<p align="center">
+  <img src=".github/assets/readme/double-click-lookup.gif" width="860" alt="双击译文中的单词，在语境释义和词典释义之间切换" />
+</p>
+
+### 阅读翻译
+
+选中网页中的文字查看译文，也可以选中单词查询它在当前语境中的含义。
+
+<p align="center">
+  <img src=".github/assets/readme/reading-translation.gif" width="860" alt="选中网页中的英文句子查看中文译文，再查询所选单词" />
+</p>
+
+### 收藏并打开生词本
+
+点击鱼尾图标收藏当前内容，再通过收藏菜单打开生词本中的对应条目。
+
+<p align="center">
+  <img src=".github/assets/readme/save-to-vocabulary.gif" width="860" alt="通过鱼尾图标收藏译文，并在生词本中打开对应条目" />
+</p>
 
 ---
 
@@ -74,7 +90,6 @@
 ### 2. 边写边学语言 (Language Learning While Writing)
 
 - **表达辅助：** 想好意思却想不起表达或术语时，在光标处输入 `??`（也支持 `？？`），描述你的意思，选择候选后按 Enter 或 Tab 插入。与 AI 解释共用模型，可独立于翻译开启。
-
 - **行内即时翻译与一键替换：** 用母语或外语写作时稍作停顿，光标旁即会浮现不抢焦点的目标语言预览卡片。按 `Control+Option+T` 可直接用译文替换原句，按 `Option+T` 展开双语详情。
 - **离线短语识别与多源词典：** 内置 11.5 MB Wiktionary/Kaikki 离线短语词库，无需额外请求大模型即可自动为固定搭配和习语标注下划线。双击任意单词或短语，即可联查**内置短语库**、**macOS 系统词典**、**导入的 `MDX`/`MDD` 词典**，或发起结合当前句子的 **AI 语境释义**。
 - **无打扰语音朗读 (TTS)：** 点击卡片上的小喇叭即可朗读句子或词条（不抢占打字焦点）。支持 **macOS 系统语音**、基于 `llama.cpp` 的本地 **Qwen3-TTS Base 模型**（支持参考音频音色克隆与流式 PCM 播放），或兼容 `/audio/speech` 的远程接口。
@@ -134,6 +149,23 @@ open build/lingrove-dependencies/Lingrove.xcworkspace
 - 在 Xcode 中选择 **Lingrove Dev** Scheme 可编译 **Lingrove Dev.app**（拥有独立的偏好设置、钥匙串与日志目录，避免污染日常使用环境）；选择 **Lingrove** Scheme 则编译正式版 **Lingrove.app**。
 - 本地开发签名使用你自己的 Apple 开发者团队配置（保存在已被 gitignore 的 `LocalSigning.xcconfig` 中）。
 - 更多构建与测试说明请参考 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [RELEASING.md](RELEASING.md)。
+
+---
+
+## 快速体验
+
+首次引导中选择 **使用推荐配置**，即可补齐缺少的模型配置并开启推荐功能。等待所需模型下载完成，并授予辅助功能和输入监控权限；也可在 **设置 → 引擎与模型** 中按任务手动配置。
+
+| 想体验的功能 | 操作方法 |
+| :--- | :--- |
+| **自动补全** | 在受支持的编辑器中输入并稍作停顿，看到灰字后按 `Tab` 接受下一部分建议。 |
+| **写作翻译** | 在 **语言学习 → 翻译** 中启用翻译、选择目标语言并开启句子预览。输入一句话后稍作停顿；点击卡片的替换按钮，或按默认的 `Control+Option+T` 将译文写回原文位置。 |
+| **表达辅助** | 在 **语言学习 → 解释与表达** 中开启表达辅助，目标语言选择英语。在光标处输入 `??`，在临时输入区描述“只关注支持自己看法的证据，忽略反对证据的心理倾向”。选择候选后按 `Enter` / `Tab` 插入，按 `Esc` 取消。 |
+| **双击查词** | 双击拾语翻译卡片中的单词或带下划线的表达，在查询窗口中切换 **语境释义** 与 **词典释义**。 |
+| **阅读翻译** | 在 **语言学习 → 翻译** 中开启选区翻译和翻译图标，并允许需要取词的应用。选中网页中的文字，点击翻译图标或使用已配置的选区翻译快捷键。 |
+| **生词本** | 点击卡片上的鱼尾图标收藏内容，再次点击已收藏图标，选择 **在生词本中查看**；也可从菜单栏直接打开生词本。 |
+
+目标语言和解释语言在 **语言学习** 中设置，快捷键可在 **设置 → 快捷键** 中调整。更完整的交互说明见 [语言学习机制与模型详解](docs/LANGUAGE_LEARNING.md)。
 
 ---
 

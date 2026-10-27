@@ -5,7 +5,7 @@
 # Lingrove · 拾语
 
 **Local-first inline autocomplete and language learning while you write on macOS.**  
-Get ghost-text continuations beside your cursor, translate sentences in place, look up expressions, and build your Anki vocabulary—without leaving your editor.
+Get ghost-text continuations beside your cursor, translate sentences in place, find expressions from a description, look up words, and build your Anki vocabulary—without leaving your editor.
 
 [**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**Releases**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**FAQ**](FAQ.md) · [**Learning Docs**](docs/LANGUAGE_LEARNING.md) · [**Feedback**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
 
@@ -23,41 +23,57 @@ Get ghost-text continuations beside your cursor, translate sentences in place, l
 
 ## Preview
 
-<!-- Drop your hero screenshot or GIF at .github/assets/readme/hero-demo.gif -->
-<div align="center">
-  <img src=".github/assets/readme/hero-demo.gif" width="860" alt="Lingrove Hero Demo — Inline Autocomplete and Language Learning" />
-</div>
+See the features in use below. The five Lingrove language-learning recordings use the Chinese interface.
 
-<table align="center">
-  <tr>
-    <td width="50%" align="center">
-      <!-- Drop screenshot at .github/assets/readme/autocomplete-demo.png -->
-      <img src=".github/assets/readme/autocomplete-demo.png" alt="Inline Ghost-Text Autocomplete" />
-      <br />
-      <sub><b>Inline Autocomplete</b> — Low-latency ghost text beside your caret</sub>
-    </td>
-    <td width="50%" align="center">
-      <!-- Drop screenshot at .github/assets/readme/translation-demo.png -->
-      <img src=".github/assets/readme/translation-demo.png" alt="Inline Translation and Expression Underlining" />
-      <br />
-      <sub><b>Inline Translation</b> — Pause to preview, replace in one shortcut, or inspect expressions</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <!-- Drop screenshot at .github/assets/readme/dictionary-tts-demo.png -->
-      <img src=".github/assets/readme/dictionary-tts-demo.png" alt="Dictionary Lookup, AI Explanation, and Read Aloud" />
-      <br />
-      <sub><b>Multi-Source Dictionary & TTS</b> — Offline lexicon, system/MDX dictionaries, and local neural speech</sub>
-    </td>
-    <td width="50%" align="center">
-      <!-- Drop screenshot at .github/assets/readme/vocabulary-anki-demo.png -->
-      <img src=".github/assets/readme/vocabulary-anki-demo.png" alt="Vocabulary Notebook and Anki Sync" />
-      <br />
-      <sub><b>Vocabulary & Anki Review</b> — Save usages with context and sync cards via AnkiConnect</sub>
-    </td>
-  </tr>
-</table>
+### Autocomplete
+
+Keep writing in your editor, pause for a ghost-text suggestion, and press Tab to accept it.
+
+<p align="center">
+  <img src="gifs/imessage.gif" width="677" alt="Upstream Cotabby recording showing inline autocomplete in Messages" />
+</p>
+
+Autocomplete footage is from [upstream Cotabby](https://github.com/FuJacob/Cotabby#demo); the remaining recordings show Lingrove.
+
+### Writing translation
+
+Pause after typing to see a translation beside the caret.
+
+<p align="center">
+  <img src=".github/assets/readme/writing-translation.gif" width="860" alt="Lingrove translating a Chinese greeting into English beside the caret" />
+</p>
+
+### Expression assistance
+
+Describe a missing expression or term, then choose a candidate to insert at the caret.
+
+<p align="center">
+  <img src=".github/assets/readme/expression-assistance.gif" width="860" alt="Describing a concept in Chinese and inserting confirmation bias into an English sentence" />
+</p>
+
+### Double-click lookup
+
+Double-click a word in a Lingrove translation card to compare its contextual meaning and dictionary definitions.
+
+<p align="center">
+  <img src=".github/assets/readme/double-click-lookup.gif" width="860" alt="Double-clicking a word in a translation preview and switching between contextual and dictionary meanings" />
+</p>
+
+### Reading translation
+
+Select text on a page to translate it, or select a word to look up its meaning in context.
+
+<p align="center">
+  <img src=".github/assets/readme/reading-translation.gif" width="860" alt="Selecting an English sentence on a web page to translate it, then looking up a selected word" />
+</p>
+
+### Save and open Vocabulary
+
+Click the fish-tail button to save the current text, then open its entry from the saved-item menu.
+
+<p align="center">
+  <img src=".github/assets/readme/save-to-vocabulary.gif" width="860" alt="Saving a translation with the fish-tail button and opening the saved entry in Vocabulary" />
+</p>
 
 ---
 
@@ -74,7 +90,6 @@ Lingrove is built around two equally core capabilities that work together in any
 ### 2. Language Learning While Writing
 
 - **Expression Assistance:** Type `??` at the caret and describe a missing expression or term, then press Enter or Tab to insert a candidate. It shares the AI explanation model and can be enabled independently of translation.
-
 - **Write & Translate in Place:** Type in your native or target language and pause briefly to see a non-intrusive translation preview beside the cursor. Press `Control+Option+T` to replace the sentence in place, or `Option+T` to expand details.
 - **Expression Recognition & Deep Lookup:** An offline 11.5 MB Wiktionary/Kaikki lexicon automatically underlines reusable idioms and phrases without extra LLM calls. Double-click any word or expression to inspect definitions across **built-in expressions**, **macOS system dictionaries**, **imported `MDX`/`MDD` books**, or **contextual AI explanations**.
 - **Read Aloud (TTS):** Listen to sentences or expressions without losing typing focus using **macOS system voices**, an in-process **Qwen3-TTS Base (`llama.cpp`)** model with optional voice cloning, or a `/audio/speech` endpoint.
@@ -134,6 +149,23 @@ open build/lingrove-dependencies/Lingrove.xcworkspace
 - In Xcode, select the **Lingrove Dev** scheme to build **Lingrove Dev.app** (isolated preferences, Keychain, and logs for local development), or **Lingrove** to build **Lingrove.app**.
 - Local signing uses your own Apple team in the gitignored `LocalSigning.xcconfig`.
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for testing guidelines and [RELEASING.md](RELEASING.md) for the release roadmap.
+
+---
+
+## Quick start
+
+In first-run setup, choose **Use recommended setup** to configure missing models and enable the recommended features. Wait for the required downloads to finish and grant Accessibility and Input Monitoring permissions. You can also configure each task manually in **Settings → Engine & Model**.
+
+| Try | What to do |
+| :--- | :--- |
+| **Autocomplete** | Type in a supported editor and pause. Press `Tab` to accept the next part of the suggestion. |
+| **Writing translation** | Enable **Language Learning → Translation**, choose a target language, and turn on sentence previews. Type a sentence and pause; use the card's Replace action or the default `Control+Option+T` to insert its translation. |
+| **Expression assistance** | Enable **Language Learning → Explanation & expression → Expression assistance**. Set the target language to English, type `??` at the caret, and describe “only noticing evidence that supports your existing beliefs.” Choose a candidate, then press `Enter` / `Tab` to insert or `Esc` to cancel. |
+| **Double-click lookup** | Double-click a word or underlined expression inside a Lingrove translation card. Switch between **Contextual meaning** and **Dictionary** in the lookup window. |
+| **Reading translation** | Enable selection translation and its icon in **Language Learning → Translation**, and allow the app you want to read in. Select text on a page, then click the translation icon or use your configured selection-translation shortcut. |
+| **Vocabulary** | Click the fish-tail button on a card to save it. Click the saved button again and choose **View in Vocabulary**, or open Vocabulary from the menu bar. |
+
+Target and explanation languages are configured in **Language Learning**; shortcuts can be changed in **Settings → Shortcuts**. See [Language Learning Behavior & Model Details](docs/LANGUAGE_LEARNING.md) for the full interaction rules.
 
 ---
 
