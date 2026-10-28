@@ -118,8 +118,9 @@ nonisolated struct VocabularyCueTarget: Codable, Equatable, Identifiable, Sendab
     var provenance = VocabularySemanticProvenance()
 }
 
-/// Evidence and verification are independent: an AI score is not confirmation. Source details
-/// stay local with the assertion; captured example IDs preserve the actual occurrence evidence.
+/// Authorship and adoption are independent: confirmed means usable in the notebook, not
+/// necessarily reviewed by a human. Authorized agent writes retain model origin and are adopted
+/// by default; explicit uncertainty and invalidated evidence can still produce proposed claims.
 nonisolated struct VocabularySemanticProvenance: Codable, Equatable, Sendable {
     enum Origin: String, Codable, CaseIterable, Sendable { case user, imported, model }
     enum Status: String, Codable, CaseIterable, Sendable { case confirmed, proposed }

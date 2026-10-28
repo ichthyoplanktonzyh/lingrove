@@ -20,6 +20,20 @@ chooses another installation explicitly. `--no-launch` requires an already runni
 `--timeout SECONDS` accepts 1–120 seconds; the default is 30. No network port is opened.
 Learning material stays on the Mac; none of these commands requests AI inference or sends to Anki.
 
+## Task-shaped capture
+
+Use `lingrove schema capture` and `lingrove vocab capture --file capture.json --dry-run`, then
+repeat without `--dry-run`. A capture task supplies version 1, an idempotencyKey, optional defaults,
+meaning declarations with local refs, entries with senses/examples/associations and optional relations.
+The app creates stable IDs, canonical evidence, personal membership and graph links atomically.
+No caller UUID is needed for new records. A successful reply returns counts and resolved IDs;
+full-table readback is optional. See the [complete capture example](skills/lingrove-cli/references/capture.md).
+
+Capture is additive: exact lexical headers are reused, each new sense is distinct, and existing
+sense/node IDs can be referenced without replacing user material. Expected revision is optional;
+when supplied it is checked. Explicit resource edits continue requiring a revision. Authorized
+agent assertions retain model authorship and are active by default; proposed claims remain explicit.
+
 ## Atomic batches
 
 The executable publishes the version 1/2 input JSON Schema with `lingrove schema`. `status` lists
@@ -135,7 +149,7 @@ occurrence. At most one accepted interpretation is allowed per occurrence.
 
 The external agent performs classification. Lingrove validates relationships and persists
 its changes; no internal classification service, vector matching or automatic model request is
-introduced. New agent assertions default to model/proposed provenance. See the complete
+introduced. New agent assertions default to model/confirmed provenance (adopted for use, without claiming human review). See the complete
 [resource organization guide](skills/lingrove-cli/references/organization.md) for payloads,
 candidate resolution, membership, corrections and deletion.
 

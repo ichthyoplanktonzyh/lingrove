@@ -8,6 +8,88 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func captureTaskBuildsActiveMeaningGraphWithStableIDsAndReplay() async throws {
+        let fixture = try await Fixture()
+        do {
+            let input: [String: Any] = ["version": 1, "idempotencyKey": "capture-bank",
+                "defaults": ["language": "en", "meaningLanguage": "zh-Hans"],
+                "meanings": [
+                    ["ref": "finance", "title": "金融机构", "aliases": [["text": "banking", "language": "en"]], "cues": ["存钱的地方"]],
+                    ["ref": "water", "title": "水岸边缘"],
+                    ["ref": "request", "title": "礼貌请求", "kind": "function"]
+                ],
+                "entries": [
+                    ["expression": "bank", "senses": [
+                        ["meaning": "银行", "note": "Keep this personal note", "tags": ["finance"],
+                            "examples": [["text": "🏦 The bank is open.", "translation": "银行开门了。"]],
+                            "associations": [["meaning": "finance", "usage": "the bank"]]],
+                        ["meaning": "河岸", "examples": [["text": "We sat on the bank.", "translation": "我们坐在河岸上。"]],
+                            "associations": [["meaning": "water"]]]
+                    ]],
+                    ["expression": "Could you", "kind": "pattern", "senses": [
+                        ["meaning": "委婉请求", "examples": [["text": "Could you help me?", "translation": "你能帮我吗？"]],
+                            "associations": [["meaning": "request", "usage": "Could you + verb?", "formality": "neutral"]]]
+                    ]]
+                ], "relations": [["from": "finance", "to": "water", "kind": "related", "note": "同形词，不是同义关系"]]]
+            func capture(_ value: [String: Any], dry: Bool = false) async throws -> (Int32, [String: Any]) {
+                try await fixture.call(["vocab", "capture", "--stdin"] + (dry ? ["--dry-run"] : []),
+                    stdin: JSONSerialization.data(withJSONObject: value))
+            }
+            let preview = try await capture(input, dry: true)
+            #expect(preview.0 == 0)
+            #expect(try await fixture.archive.load().document.catalog.isEmpty)
+            let committed = try await capture(input)
+            #expect(committed.0 == 0)
+            let planned = try result(preview.1)["operations"] as? [[String: Any]]
+            let saved = try result(committed.1)["operations"] as? [[String: Any]]
+            #expect(try JSONSerialization.data(withJSONObject: #require(planned), options: .sortedKeys) ==
+                JSONSerialization.data(withJSONObject: #require(saved), options: .sortedKeys))
+            let snapshot = try await fixture.archive.load()
+            let document = snapshot.document
+            #expect(document.collectedEntries.count == 2 && document.collections.count == 3)
+            #expect(document.sources.count == 3 && document.occurrences.count == 3 && document.interpretations.count == 3)
+            #expect(document.sources.allSatisfy { $0.kind == .generated })
+            #expect(document.semantics.mappings.allSatisfy { $0.provenance.origin == .model && $0.provenance.status == .confirmed })
+            #expect(document.semantics.patterns.allSatisfy { $0.provenance.status == .confirmed })
+            #expect(document.semantics.mappings.last?.relation == .realizesFunction)
+            #expect(document.occurrences.first?.ranges.first?.location == 7) // Emoji uses two UTF-16 code units.
+            let matches = VocabularyMeaningBrowserProjection.items(index: document.semantics,
+                entries: document.collectedEntries, query: "存钱的地方")
+            #expect(matches.count == 1 && matches[0].selections.count == 1)
+            #expect(try result(try await capture(input).1)["replayed"] as? Bool == true)
+            var changed = input; changed["relations"] = []
+            #expect(try await capture(changed).0 == 4)
+            var invalid = input; invalid["idempotencyKey"] = "invalid-reference"
+            invalid["entries"] = [["expression": "fresh", "senses": [["meaning": "新的"]]]]
+            invalid["relations"] = [["from": "finance", "to": "missing", "kind": "related"]]
+            #expect(try await capture(invalid).0 == 2)
+            #expect(try await fixture.archive.load().revision == snapshot.revision)
+            #expect(try await fixture.archive.load().document == snapshot.document)
+            let first = try #require(document.collectedEntries.first { $0.expression == "bank" })
+            let sense = try #require(first.senses.first { $0.meaning == "银行" })
+            let node = try #require(document.semantics.nodes.first { $0.title == "金融机构" })
+            let append: [String: Any] = ["version": 1, "idempotencyKey": "capture-existing", "expectedRevision": snapshot.revision,
+                "defaults": ["language": "en", "meaningLanguage": "zh-Hans"],
+                "meanings": [["ref": "finance", "id": node.id.uuidString]],
+                "entries": [["expression": "bank", "senses": [["id": sense.id.uuidString, "tags": ["new"],
+                    "examples": [["text": "The bank closes at five.", "translation": "银行五点关门。"]],
+                    "associations": [["meaning": "finance"]]]]]]]
+            #expect(try await capture(append).0 == 0)
+            let updated = try await fixture.archive.load().document
+            #expect(updated.catalog.count == 2 && updated.catalog.flatMap(\.senses).count == 3)
+            #expect(updated.semantics.nodes.count == 3)
+            #expect(updated.collectedEntries.first { $0.id == first.id }?.senses.first { $0.id == sense.id }?.note == sense.note)
+            var stale = append; stale["idempotencyKey"] = "capture-stale"
+            #expect(try await capture(stale).0 == 4)
+            let schema = try await Self.run(Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove"),
+                arguments: ["schema", "capture"], stdin: nil)
+            #expect(schema.0 == 0)
+            #expect(try #require(JSONSerialization.jsonObject(with: schema.1) as? [String: Any])["title"] as? String ==
+                "Lingrove capture task v1")
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func externalAgentCanOrganizeUncollectedMaterialThenCollectAndUncollectIt() async throws {
         let fixture = try await Fixture()
         do {
@@ -69,6 +151,9 @@ struct VocabularyCLITests {
             let retained = try await fixture.archive.load()
             #expect(retained.document.sources.count == 1 && retained.document.interpretations.count == 2)
             #expect(retained.document.semantics.mappings[0].evidenceIDs.map(\.uuidString) == [accepted])
+            #expect(retained.document.semantics.nodes[0].provenance == .init(origin: .model, status: .confirmed))
+            #expect(retained.document.semantics.mappings[0].provenance.status == .confirmed)
+            #expect(retained.document.semantics.cueTargets[0].provenance.status == .confirmed)
             #expect(try await fixture.call(["data", "get", "sources", source]).0 == 0)
             let traditional = batch("legacy-recollect", [["update": ["entryID": entry, "senseID": sense,
                 "expectedRevision": 3, "note": "Collected through the traditional CLI"]]])

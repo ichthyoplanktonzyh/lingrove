@@ -39,9 +39,14 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateOperationShape(_ value: Any, path: String) throws {
-        let operation = try object(value, keys: ["add", "append", "update", "put", "delete"], at: path)
+        let operation = try object(value, keys: ["add", "append", "update", "put", "delete", "capture"], at: path)
         guard operation.count == 1, let kind = operation.keys.first, let payload = operation[kind] else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if kind == "capture" {
+            let bytes = try JSONSerialization.data(withJSONObject: payload)
+            _ = try CLICaptureContract.shape.normalized(JSONDecoder().decode(CLIJSON.self, from: bytes))
+            return
         }
         if kind == "put" || kind == "delete" {
             _ = try object(payload, keys: kind == "put" ? ["resource", "value"] : ["resource", "id"], at: path)
@@ -102,10 +107,13 @@ nonisolated enum CLIInputPolicy {
         var images = 0, blocks = 0, examples = 0, imageBytes = 0
         for operation in batch.operations {
             guard [operation.add != nil, operation.append != nil, operation.update != nil,
-                   operation.put != nil, operation.delete != nil].filter({ $0 }).count == 1 else {
+                   operation.put != nil, operation.delete != nil, operation.capture != nil].filter({ $0 }).count == 1 else {
                 throw CLIError.invalid("Each operation needs exactly one action.")
             }
             try validateResourceOperation(operation, batch: batch)
+            if let capture = operation.capture {
+                examples += try captureExampleCount(capture, version: batch.version)
+            }
             let content = operation.add?.content ?? operation.append?.content ?? []
             let usages = operation.add?.examples ?? operation.append?.examples ?? []
             guard content.count <= 64, usages.count <= 100 else {
@@ -126,6 +134,12 @@ nonisolated enum CLIInputPolicy {
         guard images <= 64, blocks <= 512, examples <= 1_000, imageBytes <= 16 * 1_024 * 1_024 else {
             throw CLIError.invalid("Batch exceeds 64 images, 16 MiB image bytes, 512 blocks or 1000 examples.")
         }
+    }
+
+    private static func captureExampleCount(_ capture: CLICapture, version: Int) throws -> Int {
+        guard version == 2 else { throw CLIError.invalid("Capture operations require batch version 2.") }
+        try CLICaptureContract.validate(capture)
+        return capture.entries.flatMap(\.senses).reduce(0) { $0 + ($1.examples?.count ?? 0) }
     }
 
     private static func validateResourceOperation(_ operation: CLIChange, batch: CLIBatch) throws {

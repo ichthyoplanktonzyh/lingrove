@@ -3,11 +3,12 @@ import Foundation
 /// A small deterministic parser is shared with app-hosted tests. It rejects duplicate/irrelevant
 /// flags instead of accepting a write that differs from an agent's intent; IO belongs to the CLI.
 nonisolated struct CLIArguments {
-    enum Mode { case help, version, schema, request }
+    enum Mode { case help, version, schema, captureSchema, request }
     var mode: Mode
     var request = CLIRequest(command: .status)
     var appPath: String?
     var inputPath: String?
+    var captureInput = false
     var launch = true
     var timeout: TimeInterval = 30
 
@@ -33,6 +34,7 @@ nonisolated struct CLIArguments {
         case [], ["--help"], ["help"]: .help
         case ["--version"]: .version
         case ["schema"]: .schema
+        case ["schema", "capture"]: .captureSchema
         default: nil
         }
     }
@@ -56,7 +58,8 @@ nonisolated struct CLIArguments {
             request.language = parsed.options.removeValue(forKey: "--language")
             request.limit = try parsed.integerOption("--limit")
             request.offset = try parsed.integerOption("--offset")
-        case ["vocab", "apply"]:
+        case ["vocab", "apply"], ["vocab", "capture"]:
+            captureInput = parsed.words[1] == "capture"
             try configureApplyRequest(from: &parsed)
         default:
             if parsed.words.first == "data" {
@@ -148,11 +151,14 @@ nonisolated struct CLIArguments {
       vocab list [--query TEXT] [--language CODE] [--limit N] [--offset N]
       vocab get ENTRY_UUID                       Portable entry and current revision
       vocab apply (--file PATH | --stdin) [--dry-run]
+      vocab capture (--file PATH | --stdin) [--dry-run]  Task-shaped material and meaning organization
       data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N]
       data get RESOURCE UUID                     Full record and current revision
-      schema                                     Batch JSON Schema (versions 1 and 2)
+      schema [capture]                           Batch or capture-task JSON Schema
       --version | --help
 
+    Capture generates IDs, locates unique example spans and collects senses atomically.
+    Model organization is active by default; explicit proposed claims remain suggestions.
     Images use explicit local paths, relative to the input file (stdin: current directory).
     Writes are atomic. Retry an uncertain write with the SAME idempotencyKey and content.
     New meanings create distinct senses; append uses exact IDs; update needs expectedRevision.

@@ -35,6 +35,12 @@ A claim that a particular sense, optionally restricted to one usage pattern, exp
 concept or realizes a communicative function. Conditions, nuances, confirmation and evidence belong
 to the association. Removing an association does not remove the expression.
 
+**Adoption / 采用状态**:
+Whether a language assertion participates in notebook navigation and retrieval. Authorized agent
+organization is adopted by default while retaining model authorship. The persisted `confirmed`
+status means adopted for use, not necessarily human-reviewed. Explicit tentative claims remain
+`proposed`; changing evidence can invalidate an assertion independently of its author.
+
 **Search cue / 检索线索**:
 A paraphrase, familiar expression or personal wording that may lead to several meaning nodes.
 _Avoid_: treating an ambiguous cue as a strict synonym or an automatically confirmed meaning.

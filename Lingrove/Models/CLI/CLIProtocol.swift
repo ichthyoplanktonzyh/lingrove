@@ -36,6 +36,7 @@ nonisolated struct CLIChange: Codable, Sendable {
     var update: CLIUpdate?
     var put: CLIResourcePut?
     var delete: CLIResourceDelete?
+    var capture: CLICapture?
 }
 
 /// Resource writes name stable caller-supplied UUIDs, so a single batch can create linked

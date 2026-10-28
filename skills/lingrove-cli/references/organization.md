@@ -35,6 +35,11 @@ only for interpretations: `candidate`, `accepted`, `rejected`. Reads do not perf
 | `relations` | Explicit node-to-node relation: `narrower`, `opposite`, `related`. Narrower points to the broader node. |
 | `cues` / `cueTargets` | Ambiguous personal/paraphrase query wording and its explicit targets. |
 
+Keep optional learning copy specific and nonredundant. Pattern notes describe syntax/register;
+mapping nuances distinguish expression choices, and conditions name actual applicability limits.
+Do not duplicate a pattern note in mapping nuance or fill conditions with generic "only this
+example/sense/usage" text. An empty optional field is better than boilerplate.
+
 Resource reads omit private Anki bindings and review configuration. Use existing traditional
 add/append actions for rich text or image content; resource writes cannot replace those fields.
 
@@ -109,8 +114,9 @@ Sources and occurrences may be saved alone. Interpretations default to `candidat
 sense required; an accepted interpretation requires an existing sense. At most one interpretation
 per occurrence may be accepted. Keep alternative candidates rather than inventing certainty.
 Interpretation status records which reading is adopted; provenance records who proposed it and
-whether the assertion was confirmed. New agent graph assertions and interpretations default to
-`origin: model`, `status: proposed`; do not mark them user-confirmed without evidence.
+whether the assertion is adopted for use. New agent graph assertions and interpretations default to
+`origin: model`, `status: confirmed`; adoption does not claim human review. Set `proposed` explicitly
+for uncertain assertions. Existing proposed records are preserved until explicitly adopted.
 
 ## Manage membership and corrections
 

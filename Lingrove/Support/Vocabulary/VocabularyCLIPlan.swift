@@ -68,8 +68,15 @@ nonisolated struct VocabularyCLIPlan {
         _ change: CLIChange, context: OperationContext, revision: UInt64, prepared: [String: VocabularyPreparedImage]
     ) throws {
         guard [change.add != nil, change.append != nil, change.update != nil,
-               change.put != nil, change.delete != nil].filter({ $0 }).count == 1 else {
+               change.put != nil, change.delete != nil, change.capture != nil].filter({ $0 }).count == 1 else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if let capture = change.capture {
+            let plan = try VocabularyCLICapturePlan(capture, document: document, now: context.now, id: context.id)
+            document = plan.document
+            outcomes.append(.object(["operation": .integer(Int64(context.index)), "action": .string("capture"),
+                "entries": .array(plan.entries), "meanings": .array(plan.meanings), "summary": plan.summary]))
+            return
         }
         if let put = change.put {
             let id = try VocabularyCLIResources.put(put, in: &document, now: context.now)
@@ -247,18 +254,18 @@ nonisolated struct VocabularyCLIPlan {
         return blockIDs
     }
 
-    private static func text(_ value: String, limit: Int, nonempty: Bool = false) throws -> String {
+    static func text(_ value: String, limit: Int, nonempty: Bool = false) throws -> String {
         guard value.utf8.count <= limit, !nonempty || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw CLIError.invalid("Text is empty or exceeds its field limit.")
         }
         return value
     }
-    private static func language(_ value: String?) throws -> LearningLanguage? {
+    static func language(_ value: String?) throws -> LearningLanguage? {
         guard let value else { return nil }
         guard let language = LearningLanguage(rawValue: value) else { throw CLIError.invalid("Unknown language code.") }
         return language
     }
-    private static func tags(_ values: [String]) throws -> [String] {
+    static func tags(_ values: [String]) throws -> [String] {
         guard values.count <= 100 else { throw CLIError.invalid("At most 100 tags are allowed.") }
         var result: [String] = []
         for value in values {
@@ -267,7 +274,7 @@ nonisolated struct VocabularyCLIPlan {
         }
         return result
     }
-    private static func example(_ input: CLIExample, expression: String, id: UUID, now: Date) throws -> VocabularyExample {
+    static func example(_ input: CLIExample, expression: String, id: UUID, now: Date) throws -> VocabularyExample {
         let text = try text(input.text, limit: 262_144, nonempty: true)
         let ranges: [VocabularyTextRange]
         if let supplied = input.ranges {

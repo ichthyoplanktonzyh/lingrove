@@ -1089,3 +1089,11 @@ Selection replay also covers multiline and deeply nested link cases. Its manifes
 `selectionWidth,selectionHeight` to the target centre, measured independently from the browser's
 selected range. Set `LINGROVE_SELECTION_OCR_SCREENSHOTS` and
 `TEST_RUNNER_LINGROVE_SELECTION_OCR_SCREENSHOTS` to its directory to exercise highlighted screenshots.
+
+## CLI capture tasks
+
+`Models/CLI/CLICaptureModels.swift` carries task-shaped material; `CLICaptureContract.swift`
+shares its closed schema and validation between the executable and app. `CLIArguments` chooses
+capture input, and `VocabularyCLICapturePlan` under `Support/Vocabulary/` translates a task into
+canonical entries, evidence, personal collections and meaning links. The existing archive owns
+commit/replay and persistence; capture creates no new service or database owner.

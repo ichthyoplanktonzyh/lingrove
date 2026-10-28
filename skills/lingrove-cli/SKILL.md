@@ -33,13 +33,30 @@ lingrove_cli="$HOME/.local/bin/lingrove"
 
 Read `status` for supported `languages`, `kinds`, and the notebook `revision`. Read `schema`
 before preparing a batch; it emits the installed client's JSON Schema without launching the app.
-Run `schema`, `--help`, and `--version` alone, without request flags. Prefer the installed
+Run `schema` or `schema capture`, `--help`, and `--version` alone, without request flags. Prefer the installed
 contract over remembered enums. If the requested material needs an unsupported capability,
 explain the limit instead of inventing commands or fields.
 
 Requests start the containing app in the background if needed. `--no-launch` requires a running
 app. `--timeout SECONDS` accepts 1–120 (default 30); allow the outer tool enough time to receive
 the CLI's final JSON response.
+
+## Capture material with a small task interface
+
+Prefer `vocab capture` when adding entries, examples and meaning groups together. Read
+`schema capture` and [references/capture.md](references/capture.md): it accepts batch defaults,
+short meaning refs and nested senses. The app generates IDs, evidence and personal membership,
+locates unique spans and returns a complete saved summary. Read existing material before deciding
+whether to create a new sense or extend an exact existing sense ID. New definitions never merge
+by similarity. Use resource operations for fine-grained replacement/deletion or independent claims.
+
+Authorized agent organization is adopted by default and keeps model authorship. `confirmed` means
+active in the notebook, not reviewed by a human; do not relabel model authorship as user authorship.
+Use explicit proposed/candidate states only for uncertain material or requested alternatives.
+Populate optional fields only when they add information. A usage note describes syntax or register;
+an association nuance describes a meaningful distinction from alternatives. Keep each fact in
+one appropriate place. Conditions must state a concrete applicability restriction; omit boilerplate
+such as "only this sense/example/usage", which adds no restriction beyond the existing links.
 
 ## Read before choosing a write
 
@@ -88,11 +105,11 @@ classifier. Do not create a graph merely because the user asks to save an expres
 ## Preview, commit, and report
 
 1. A request to save or edit authorizes that write. General discussion alone does not.
-2. Create one JSON batch file with `version: 1` for traditional actions, or `version: 2` and a
+2. For capture, create a version 1 task file as documented above. For traditional/resource writes, create one JSON batch file with `version: 1` for traditional actions, or `version: 2` and a
    current `expectedRevision` for resource actions, plus a fresh `idempotencyKey` for this intended
    change (for example a UUID), and 1–100 operations. Use a JSON serializer or a quoted heredoc
    to keep quotes, newlines, backticks, and shell substitutions in learning text intact.
-3. Preview with `vocab apply --file /absolute/path/material.json --dry-run`. Inspect the exit
+3. Preview with `vocab capture --file /absolute/path/material.json --dry-run` for capture tasks, or `vocab apply` for batches. Inspect the exit
    status and reply. Resolve any validation or ownership error before committing.
 4. For an authorized write, run the same command without `--dry-run`, using the same file, key,
    images, and destination. Preview success alone does not mean anything was saved.
@@ -101,8 +118,9 @@ classifier. Do not create a graph merely because the user asks to save an expres
 
 Dry runs validate images and domain rules without writing material, media, or a receipt. Planned
 new IDs stay stable for the same batch, but the notebook can change before commit. All operations
-commit atomically or the batch fails. Operations cannot refer to prior outcomes symbolically;
-use actual UUIDs, or commit and read before preparing dependent follow-up material.
+commit atomically or the batch fails. Capture meaning refs are local names resolved inside the task.
+Resource operations cannot refer to prior outcomes symbolically; use actual UUIDs, or commit and
+read before preparing dependent follow-up material.
 
 ## Handle replies and uncertain writes
 

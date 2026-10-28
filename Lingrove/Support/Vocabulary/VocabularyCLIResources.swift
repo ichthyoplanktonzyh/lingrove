@@ -43,7 +43,7 @@ nonisolated enum VocabularyCLIResources {
     // swiftlint:disable:next cyclomatic_complexity
     static func put(_ input: CLIResourcePut, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         let id = try identifier(input.value, resource: input.resource)
-        let proposed = VocabularySemanticProvenance(origin: .model, status: .proposed)
+        let adopted = VocabularySemanticProvenance(origin: .model, status: .confirmed)
         // Required fields are checked against the submitted object only on creation. On update,
         // omitted fields retain their current value; null clears an optional field and arrays replace.
         switch input.resource {
@@ -78,33 +78,33 @@ nonisolated enum VocabularyCLIResources {
             upsert(value, in: &document.occurrences)
         case "interpretations":
             upsert(try updated(input, values: document.interpretations, id: id,
-                fallback: VocabularyInterpretation(id: id, occurrenceID: id, meaningOrigin: .ai, provenance: proposed, createdAt: now)),
+                fallback: VocabularyInterpretation(id: id, occurrenceID: id, meaningOrigin: .ai, provenance: adopted, createdAt: now)),
                 in: &document.interpretations)
         case "collections":
             upsert(try updated(input, values: document.collections, id: id,
                 fallback: VocabularyCollectionItem(senseID: id, savedAt: now)), in: &document.collections)
         case "nodes":
             upsert(try updated(input, values: document.semantics.nodes, id: id,
-                fallback: VocabularyMeaningNode(id: id, labels: [], provenance: proposed, createdAt: now, updatedAt: now)),
+                fallback: VocabularyMeaningNode(id: id, labels: [], provenance: adopted, createdAt: now, updatedAt: now)),
                 in: &document.semantics.nodes)
         case "patterns":
             upsert(try updated(input, values: document.semantics.patterns, id: id,
-                fallback: VocabularyUsagePattern(id: id, senseID: id, template: "", provenance: proposed)),
+                fallback: VocabularyUsagePattern(id: id, senseID: id, template: "", provenance: adopted)),
                 in: &document.semantics.patterns)
         case "mappings":
             upsert(try updated(input, values: document.semantics.mappings, id: id,
-                fallback: VocabularyMeaningMapping(id: id, nodeID: id, senseID: id, provenance: proposed)),
+                fallback: VocabularyMeaningMapping(id: id, nodeID: id, senseID: id, provenance: adopted)),
                 in: &document.semantics.mappings)
         case "relations":
             upsert(try updated(input, values: document.semantics.relations, id: id,
-                fallback: VocabularyMeaningRelation(id: id, sourceID: id, targetID: id, provenance: proposed)),
+                fallback: VocabularyMeaningRelation(id: id, sourceID: id, targetID: id, provenance: adopted)),
                 in: &document.semantics.relations)
         case "cues":
             upsert(try updated(input, values: document.semantics.cues, id: id,
                 fallback: VocabularyRetrievalCue(id: id, text: "")), in: &document.semantics.cues)
         case "cueTargets":
             upsert(try updated(input, values: document.semantics.cueTargets, id: id,
-                fallback: VocabularyCueTarget(id: id, cueID: id, nodeID: id, provenance: proposed)),
+                fallback: VocabularyCueTarget(id: id, cueID: id, nodeID: id, provenance: adopted)),
                 in: &document.semantics.cueTargets)
         default: _ = try CLIResourceContract.shape(input.resource)
         }

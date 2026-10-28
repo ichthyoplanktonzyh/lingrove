@@ -15,6 +15,8 @@ enum CLIInputSchema {
             var operations = properties["operations"] as? [String: Any] ?? [:]
             var items = operations["items"] as? [String: Any] ?? [:]
             var alternatives = items["oneOf"] as? [[String: Any]] ?? []
+            alternatives.append(["type": "object", "additionalProperties": false, "required": ["capture"],
+                "properties": ["capture": CLICaptureContract.shape.schema]])
             alternatives += try CLIResourceContract.names.map { name in
                 var shape = try CLIResourceContract.shape(name).schema
                 shape["x-requiredOnCreate"] = shape["required"]
@@ -31,6 +33,10 @@ enum CLIInputSchema {
             root["allOf"] = [["if": ["properties": ["operations": ["contains": ["anyOf": [
                 ["required": ["put"]], ["required": ["delete"]]]]]]],
                 "then": ["required": ["expectedRevision"], "properties": ["version": ["const": 2]]]]]
+            var rules = root["allOf"] as? [[String: Any]] ?? []
+            rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"]]]]],
+                "then": ["properties": ["version": ["const": 2]]]])
+            root["allOf"] = rules
             var definitions = root["$defs"] as? [String: Any] ?? [:]
             var example = definitions["example"] as? [String: Any] ?? [:]
             var fields = example["properties"] as? [String: Any] ?? [:]

@@ -19,8 +19,11 @@ struct LingroveCLI {
             let arguments = try CLIArguments(Array(CommandLine.arguments.dropFirst()))
             switch arguments.mode {
             case .help: print(CLIArguments.help); return 0
-            case .version: print("lingrove CLI 2 (protocol 1, batch 1/2)"); return 0
+            case .version: print("lingrove CLI 3 (protocol 1, batch 1/2, capture 1)"); return 0
             case .schema: print(CLIInputSchema.json); return 0
+            case .captureSchema:
+                let data = try JSONSerialization.data(withJSONObject: CLICaptureContract.schema, options: [.prettyPrinted, .sortedKeys])
+                try write(data); return 0
             case .request: break
             }
             let appURL = try application(arguments.appPath)
@@ -40,7 +43,7 @@ struct LingroveCLI {
                     }
                     bytes = data
                 } else { bytes = try CLIFileIO.read(url) }
-                var batch = try CLIInputPolicy.decode(bytes)
+                var batch = try arguments.captureInput ? CLICaptureContract.decode(bytes) : CLIInputPolicy.decode(bytes)
                 let base = input == "-" ? URL(fileURLWithPath: FileManager.default.currentDirectoryPath) : url.deletingLastPathComponent()
                 try attachImages(&batch, relativeTo: base)
                 request.batch = batch
