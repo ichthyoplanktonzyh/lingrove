@@ -54,7 +54,7 @@ struct VocabularyGraphView: View {
                             .fill(Color.primary.opacity(0.72))
                             .frame(width: 8, height: 8)
                         Text(meanings == nil ? String(localized: "Headwords", table: "Vocabulary")
-                             : String(localized: "Meanings", table: "Vocabulary"))
+                             : String(localized: "Meaning groups", table: "Vocabulary"))
                     }
                     HStack(spacing: 6) {
                         Circle()
@@ -102,7 +102,16 @@ struct VocabularyGraphView: View {
             }
             .overlay {
                 if snapshot.nodes.isEmpty {
-                    ContentUnavailableView(String(localized: "No matching expressions", table: "Vocabulary"), systemImage: "network")
+                    if meanings != nil && query.isEmpty {
+                        ContentUnavailableView {
+                            Label(String(localized: "Browse by meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
+                        } description: {
+                            Text(String(localized: "Select a meaning in the sidebar to compare expressions, or create a new meaning.",
+                                table: "Vocabulary"))
+                        }
+                    } else {
+                        ContentUnavailableView(String(localized: "No matching expressions", table: "Vocabulary"), systemImage: "network")
+                    }
                 }
             }
     }

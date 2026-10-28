@@ -510,68 +510,78 @@ struct VocabularyUnclassifiedDetail: View {
     }
 
     private func unclassifiedCard(_ item: ResolvedItem) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 8) {
-                Button {
-                    openSense(item.selection)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.entry.expression)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.primary)
-                        VocabularySenseSummary(sense: item.sense)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                openSense(item.selection)
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.entry.expression)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    VocabularySenseSummary(sense: item.sense)
                 }
-                .buttonStyle(.plain)
-
-                HStack(spacing: 6) {
-                    if let speech {
-                        LearningSpeechButton(
-                            speech: speech,
-                            request: SpeechRequest(
-                                target: SpeechTarget(ownerID: item.sense.id, itemID: "unclassified.expression"),
-                                text: item.entry.expression,
-                                language: item.entry.language
-                            ),
-                            playLabel: String(localized: "Read aloud", table: "Vocabulary"),
-                            stopLabel: String(localized: "Stop reading", table: "Vocabulary")
-                        )
-                    }
-                    VocabularyExpressionLanguageBadge(language: item.entry.language)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            HStack(spacing: 8) {
-                if !store.semantics.nodes.isEmpty {
+            HStack(spacing: 6) {
+                if let speech {
+                    LearningSpeechButton(
+                        speech: speech,
+                        request: SpeechRequest(
+                            target: SpeechTarget(ownerID: item.sense.id, itemID: "unclassified.expression"),
+                            text: item.entry.expression,
+                            language: item.entry.language
+                        ),
+                        playLabel: String(localized: "Read aloud", table: "Vocabulary"),
+                        stopLabel: String(localized: "Stop reading", table: "Vocabulary")
+                    )
+                }
+                VocabularyExpressionLanguageBadge(language: item.entry.language)
+                if store.semantics.nodes.isEmpty {
                     Button {
-                        groupingSenseID = item.sense.id
+                        creatingMeaningFor = item.selection
                     } label: {
-                        Label(String(localized: "Group by meaning", table: "Vocabulary"), systemImage: "folder.badge.plus")
-                            .font(.caption.weight(.medium))
+                        Image(systemName: "folder.badge.plus")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, height: 22)
+                            .contentShape(Rectangle())
                     }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .help(String(localized: "New meaning", table: "Vocabulary"))
+                } else {
+                    Menu {
+                        Button {
+                            groupingSenseID = item.sense.id
+                        } label: {
+                            Label(String(localized: "Group by meaning", table: "Vocabulary"), systemImage: "folder.badge.plus")
+                        }
+                        Button {
+                            creatingMeaningFor = item.selection
+                        } label: {
+                            Label(String(localized: "New meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
+                        }
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(String(localized: "Group by meaning", table: "Vocabulary"))
                 }
-                Button {
-                    creatingMeaningFor = item.selection
-                } label: {
-                    Label(String(localized: "New meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
-                        .font(.caption.weight(.medium))
-                }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
-                Spacer()
                 Button {
                     openSense(item.selection)
                 } label: {
-                    HStack(spacing: 3) {
-                        Text(String(localized: "Show in vocabulary", table: "Vocabulary"))
-                        Image(systemName: "chevron.right")
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 16, height: 22)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

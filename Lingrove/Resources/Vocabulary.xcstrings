@@ -30466,13 +30466,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有意义"
+            "value": "全部语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有意義"
+            "value": "全部語義項"
           }
         }
       }
@@ -30656,13 +30656,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关联已有意义"
+            "value": "关联已有语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關聯既有意義"
+            "value": "關聯已有語義項"
           }
         }
       }
@@ -30846,13 +30846,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关联意义"
+            "value": "关联语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關聯意義"
+            "value": "關聯語義項"
           }
         }
       }
@@ -30941,13 +30941,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关联意义"
+            "value": "关联语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關聯意義"
+            "value": "關聯語義項"
           }
         }
       }
@@ -31036,13 +31036,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按意义浏览"
+            "value": "按语义浏览"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "依意義瀏覽"
+            "value": "按語義瀏覽"
           }
         }
       }
@@ -31131,13 +31131,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择意义"
+            "value": "选择语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "選擇意義"
+            "value": "選擇語義項"
           }
         }
       }
@@ -31505,13 +31505,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "交际功能"
+            "value": "表达意图"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "交際功能"
+            "value": "表達意圖"
           }
         }
       }
@@ -31790,13 +31790,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "内容概念"
+            "value": "概念主题"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "內容概念"
+            "value": "概念主題"
           }
         }
       }
@@ -31980,13 +31980,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除意义"
+            "value": "删除语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "刪除意義"
+            "value": "刪除語義項"
           }
         }
       }
@@ -32170,13 +32170,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除此意义？已收藏的表达将保留。"
+            "value": "删除此语义项？生词本中的词条仍会保留。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "刪除此意義？已收藏的表達將保留。"
+            "value": "刪除此語義項？生詞本中的詞條仍會保留。"
           }
         }
       }
@@ -32550,13 +32550,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "编辑意义"
+            "value": "编辑语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "編輯意義"
+            "value": "編輯語義項"
           }
         }
       }
@@ -33215,13 +33215,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "意义边界"
+            "value": "语义边界"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "意義邊界"
+            "value": "語義邊界"
           }
         }
       }
@@ -33310,13 +33310,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "意义"
+            "value": "语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "意義"
+            "value": "語義項"
           }
         }
       }
@@ -33405,13 +33405,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "意义"
+            "value": "语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "意義"
+            "value": "語義項"
           }
         }
       }
@@ -33595,13 +33595,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "意义类型"
+            "value": "语义类型"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "意義類型"
+            "value": "語義類型"
           }
         }
       }
@@ -34444,13 +34444,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新建意义"
+            "value": "新建语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "新增意義"
+            "value": "新增語義項"
           }
         }
       }
@@ -35394,13 +35394,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "相关意义"
+            "value": "相关语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "相關意義"
+            "value": "相關語義項"
           }
         }
       }
@@ -37590,13 +37590,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按词条"
+            "value": "词条"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "按詞條"
+            "value": "詞條"
           }
         },
         "ja": {
@@ -37685,13 +37685,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按意思"
+            "value": "语义"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "按意思"
+            "value": "語義"
           }
         },
         "ja": {
@@ -37970,13 +37970,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按意思归类"
+            "value": "归入语义项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "按意思歸類"
+            "value": "歸入語義項"
           }
         },
         "ja": {
@@ -38160,13 +38160,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "其他表达"
+            "value": "未归类词条"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "其他表達"
+            "value": "未歸類詞條"
           }
         },
         "ja": {
@@ -39379,6 +39379,101 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ne ifade etmek istiyorsunuz?"
+          }
+        }
+      }
+    },
+    "Select a meaning in the sidebar to compare expressions, or create a new meaning.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a meaning in the sidebar to compare expressions, or create a new meaning."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在左侧选择一个语义项以对比不同表达，或新建一个语义项。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在左側選擇一個語義項以對比不同表達，或新增一個語義項。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーで意味を選択して表現を比較するか、新しい意味を作成してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사이드바에서 의미를 선택하여 표현을 비교하거나 새 의미를 만드세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez un sens dans la barre latérale pour comparer les expressions, ou créez un nouveau sens."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle eine Bedeutung in der Seitenleiste aus, um Ausdrücke zu vergleichen, oder erstelle eine neue Bedeutung."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona un significado en la barra lateral para comparar expresiones o crea uno nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione um significado na barra lateral para comparar expressões ou crie um novo significado."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona un significato nella barra laterale per confrontare le espressioni oppure creane uno nuovo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите значение на боковой панели, чтобы сравнить выражения, или создайте новое значение."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر معنى من الشريط الجانبي لمقارنة التعبيرات، أو أنشئ معنى جديدًا."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अभिव्यक्तियों की तुलना करने के लिए साइडबार में कोई अर्थ चुनें, या नया अर्थ बनाएँ।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih makna di bilah samping untuk membandingkan ungkapan, atau buat makna baru."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İfadeleri karşılaştırmak için kenar çubuğundan bir anlam seçin veya yeni bir anlam oluşturun."
           }
         }
       }

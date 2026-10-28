@@ -80,7 +80,7 @@ struct VocabularyMeaningMappingEditor: View {
 
                 if fixedNodeID == nil {
                     VStack(alignment: .leading, spacing: 4) {
-                        Picker(String(localized: "Meaning", table: "Vocabulary"), selection: $nodeID) {
+                        Picker(String(localized: "Meaning group", table: "Vocabulary"), selection: $nodeID) {
                             Text(String(localized: "Choose a meaning", table: "Vocabulary")).tag(UUID?.none)
                             ForEach(store.semantics.nodes) { Text($0.title(in: meaningLanguages)).tag(Optional($0.id)) }
                         }

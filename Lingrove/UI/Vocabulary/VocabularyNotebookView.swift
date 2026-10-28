@@ -152,11 +152,6 @@ struct VocabularyNotebookView: View {
             : String(localized: "Search vocabulary", table: "Vocabulary"))
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 12) {
-                    Picker(String(localized: "Organize vocabulary", table: "Vocabulary"), selection: $organization) {
-                        Text(String(localized: "By entry", table: "Vocabulary")).tag("entry")
-                        Text(String(localized: "By meaning", table: "Vocabulary")).tag("meaning")
-                    }.pickerStyle(.segmented).frame(width: 150).accessibilityIdentifier("vocabularyOrganization")
                 Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: animatedBrowserMode) {
                     Label(String(localized: "List", table: "Vocabulary"), systemImage: "list.bullet").tag("list")
                     Label(String(localized: "Graph", table: "Vocabulary"), systemImage: "point.3.connected.trianglepath.dotted")
@@ -164,7 +159,6 @@ struct VocabularyNotebookView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 164)
-                }
             }
             ToolbarItemGroup {
                 Button { creatingEntry = true } label: {
@@ -174,12 +168,6 @@ struct VocabularyNotebookView: View {
                 .accessibilityIdentifier("vocabularyAddEntry")
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(!store.isLoaded)
-                if organization == "meaning" {
-                    Button { creatingMeaning = true } label: {
-                        Label(String(localized: "New meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
-                    }.help(String(localized: "New meaning", table: "Vocabulary"))
-                        .accessibilityIdentifier("vocabularyNewMeaning").disabled(!store.isLoaded)
-                }
                 Button { choosingWordList = true } label: {
                     Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
                 }
@@ -632,17 +620,27 @@ struct VocabularyNotebookView: View {
     /// the window toolbar.
     private var graphFilterHUD: some View {
         HStack(spacing: 6) {
-            filterMenus
-            if organization == "meaning" {
-                Button(String(localized: "Other expressions", table: "Vocabulary") + " (\(unclassified.count))") {
-                    browserMode = "list"; meaningDestination = .unclassified
-                }.buttonStyle(.borderless).font(.caption)
-            }
+            organizationSwitchPill
+            filterMenus(compact: false)
             Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
+            if organization == "meaning" {
+                Button {
+                    creatingMeaning = true
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(String(localized: "New meaning", table: "Vocabulary"))
+                .disabled(!store.isLoaded)
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -652,8 +650,49 @@ struct VocabularyNotebookView: View {
         .padding(14)
     }
 
+    /// Compact two-segment capsule toggle that switches the notebook between lexical entries
+    /// ("By entry") and semantic groups ("By meaning") without adding a second top-toolbar picker.
+    private var organizationSwitchPill: some View {
+        HStack(spacing: 2) {
+            organizationSegment(title: String(localized: "By entry", table: "Vocabulary"), value: "entry")
+            organizationSegment(title: String(localized: "By meaning", table: "Vocabulary"), value: "meaning")
+        }
+        .padding(2)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.primary.opacity(0.055))
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("vocabularyOrganization")
+    }
+
+    private func organizationSegment(title: String, value: String) -> some View {
+        let isSelected = organization == value
+        return Button {
+            guard organization != value else { return }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+                organization = value
+            }
+        } label: {
+            Text(title)
+                .font(.caption.weight(isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? LingroveBrand.accent : .secondary)
+                .lineLimit(1)
+                .padding(.horizontal, 7.5)
+                .padding(.vertical, 2.5)
+                .background {
+                    if isSelected {
+                        Capsule(style: .continuous)
+                            .fill(LingroveBrand.accent.opacity(0.14))
+                    }
+                }
+                .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
-    private var filterMenus: some View {
+    private func filterMenus(compact: Bool) -> some View {
         Menu {
             Button {
                 language = nil
@@ -676,13 +715,14 @@ struct VocabularyNotebookView: View {
             }
         } label: {
             filterPillLabel(
-                title: language?.compactLabel ?? String(localized: "All languages", table: "Vocabulary"),
+                title: language?.compactLabel ?? (compact ? nil : String(localized: "All languages", table: "Vocabulary")),
                 symbol: "globe",
                 isActive: language != nil
             )
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .help(String(localized: "All languages", table: "Vocabulary"))
 
         if !allTags.isEmpty {
             Menu {
@@ -707,13 +747,16 @@ struct VocabularyNotebookView: View {
                 }
             } label: {
                 filterPillLabel(
-                    title: selectedTag.isEmpty ? String(localized: "All tags", table: "Vocabulary") : "#\(selectedTag)",
+                    title: selectedTag.isEmpty
+                        ? (compact ? nil : String(localized: "All tags", table: "Vocabulary"))
+                        : "#\(selectedTag)",
                     symbol: "tag",
                     isActive: !selectedTag.isEmpty
                 )
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+            .help(String(localized: "All tags", table: "Vocabulary"))
         }
 
         if language != nil || !selectedTag.isEmpty {
@@ -732,12 +775,13 @@ struct VocabularyNotebookView: View {
         }
     }
 
-    /// Compact filter strip anchored above the sidebar list. Keeping language, tag, and sort
-    /// controls inside the sidebar eliminates main-toolbar clutter and visually ties filters to
-    /// the list they govern.
+    /// Compact filter strip anchored above the sidebar list. Keeping organization, language, tag,
+    /// and sort controls inside the sidebar eliminates main-toolbar clutter and visually ties
+    /// filters to the list they govern.
     private var sidebarFilterBar: some View {
         HStack(spacing: 6) {
-            filterMenus
+            organizationSwitchPill
+            filterMenus(compact: true)
 
             Spacer(minLength: 4)
 
@@ -763,22 +807,38 @@ struct VocabularyNotebookView: View {
                 ? String(localized: "Detailed list", table: "Vocabulary")
                 : String(localized: "Compact list", table: "Vocabulary"))
 
-            Button {
-                withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 1.0)) {
-                    newestFirst.toggle()
+            if organization == "meaning" {
+                Button {
+                    creatingMeaning = true
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
                 }
-            } label: {
-                Image(systemName: newestFirst ? "arrow.down.circle" : "arrow.up.circle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .help(String(localized: "New meaning", table: "Vocabulary"))
+                .accessibilityIdentifier("vocabularyNewMeaning")
+                .disabled(!store.isLoaded)
+            } else {
+                Button {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 1.0)) {
+                        newestFirst.toggle()
+                    }
+                } label: {
+                    Image(systemName: newestFirst ? "arrow.down.circle" : "arrow.up.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(newestFirst
+                    ? String(localized: "Newest first", table: "Vocabulary")
+                    : String(localized: "Oldest first", table: "Vocabulary"))
             }
-            .buttonStyle(.plain)
-            .help(newestFirst
-                ? String(localized: "Newest first", table: "Vocabulary")
-                : String(localized: "Oldest first", table: "Vocabulary"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
@@ -788,16 +848,18 @@ struct VocabularyNotebookView: View {
         }
     }
 
-    private func filterPillLabel(title: String, symbol: String, isActive: Bool) -> some View {
+    private func filterPillLabel(title: String?, symbol: String, isActive: Bool) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
                 .font(.system(size: 10, weight: .semibold))
-            Text(title)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
+            if let title, !title.isEmpty {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+            }
         }
         .foregroundStyle(isActive ? LingroveBrand.accent : .secondary)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, title == nil ? 6.5 : 8)
         .padding(.vertical, 3.5)
         .background(
             Capsule(style: .continuous)
@@ -885,11 +947,8 @@ struct VocabularyNotebookView: View {
                 openSense: { showSense($0.senseID) }, openMeaning: showMeaning)
                 .id(node.id)
         } else if organization == "meaning", let senseID = meaningDestination?.senseID {
-            VStack(spacing: 0) {
-                meaningSenseBreadcrumbBar(activeSenseID: senseID)
-                entryDetail
-            }
-        } else if organization == "meaning", meaningDestination == .unclassified || (!unclassified.isEmpty && meaningItems.isEmpty) {
+            entryDetail(breadcrumb: AnyView(meaningSenseBreadcrumbBar(activeSenseID: senseID)))
+        } else if organization == "meaning", meaningDestination == .unclassified {
             VocabularyUnclassifiedDetail(store: store, entries: scopedEntries, unclassified: unclassified, speech: speech,
                 openSense: { meaningDestination = .sense(nodeID: nil, senseID: $0.senseID) }, openMeaning: showMeaning)
         } else if organization == "meaning" {
@@ -993,12 +1052,13 @@ struct VocabularyNotebookView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 28)
-        .padding(.top, 14)
-        .padding(.bottom, 4)
     }
 
     @ViewBuilder private var entryDetail: some View {
+        entryDetail(breadcrumb: nil)
+    }
+
+    @ViewBuilder private func entryDetail(breadcrumb: AnyView?) -> some View {
         if let entry = selectedEntry, let sense = selectedSense {
             VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
                 edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
@@ -1016,7 +1076,7 @@ struct VocabularyNotebookView: View {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
                         selectedTag = selectedTag == tag ? "" : tag
                     }
-                }, openMeaning: showMeaning)
+                }, openMeaning: showMeaning, breadcrumb: breadcrumb)
                 .id(sense.id)
                 .transition(.opacity)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: sense.id)
@@ -1085,10 +1145,19 @@ struct VocabularyEntryDetail: View {
     var selectSense: ((UUID) -> Void)?
     var filterByTag: ((String) -> Void)?
     var openMeaning: ((UUID) -> Void)?
+    var breadcrumb: AnyView?
+
+    private var hasSemanticContent: Bool {
+        VocabularySenseSemanticSection.hasContent(in: store.semantics, for: sense.id)
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
+                if let breadcrumb {
+                    breadcrumb
+                        .padding(.bottom, -8)
+                }
                 heroHeader
                 if entry.senses.count > 1 {
                     senseSwitcherBar
@@ -1098,8 +1167,10 @@ struct VocabularyEntryDetail: View {
                 if !sense.examples.isEmpty {
                     examplesSection
                 }
-                VocabularySenseSemanticSection(store: store, selection: .init(entryID: entry.id, senseID: sense.id),
-                    openMeaning: openMeaning)
+                if hasSemanticContent {
+                    VocabularySenseSemanticSection(store: store, selection: .init(entryID: entry.id, senseID: sense.id),
+                        openMeaning: openMeaning)
+                }
                 if let review {
                     VocabularyReviewSection(entry: entry, sense: sense, controller: review)
                 }
@@ -1133,26 +1204,35 @@ struct VocabularyEntryDetail: View {
     /// metadata pills (language, entry kind, lemma, and clickable tags).
     private var heroHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.expression)
                     .font(.system(size: 26, weight: .bold))
                     .tracking(-0.3)
                     .textSelection(.enabled)
                 speaker(text: entry.expression, item: "expression", language: entry.language)
                     .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
-                Spacer(minLength: 8)
-                VocabularyCopyActionButton(
-                    title: String(localized: "Copy expression", table: "Vocabulary"),
-                    text: entry.expression
-                )
-                Button(action: edit) {
-                    Label(String(localized: "Edit", table: "Vocabulary"), systemImage: "pencil")
-                        .font(.caption.weight(.medium))
+                Spacer(minLength: 6)
+                HStack(alignment: .center, spacing: 6) {
+                    VocabularyCopyActionButton(
+                        title: String(localized: "Copy expression", table: "Vocabulary"),
+                        text: entry.expression
+                    )
+                    VocabularySenseOrganizeMenuButton(
+                        store: store,
+                        selection: .init(entryID: entry.id, senseID: sense.id),
+                        openMeaning: openMeaning
+                    )
+                    Button(action: edit) {
+                        Label(String(localized: "Edit", table: "Vocabulary"), systemImage: "pencil")
+                            .font(.caption.weight(.medium))
+                    }
+                    .controlSize(.small)
+                    .buttonStyle(.bordered)
+                    VocabularyFavoriteIcon(isSaved: true)
+                        .frame(width: 18, height: 18)
                 }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
-                VocabularyFavoriteIcon(isSaved: true)
-                    .frame(width: 18, height: 18)
+                .fixedSize(horizontal: true, vertical: false)
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
             }
 
             HStack(spacing: 6) {
