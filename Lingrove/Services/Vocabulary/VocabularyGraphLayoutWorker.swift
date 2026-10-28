@@ -41,7 +41,7 @@ actor VocabularyGraphLayoutWorker {
             let radius = 60 * sqrt(Double(index + 1))
             let seed = SIMD2(cos(angle) * radius, sin(angle) * radius)
             if let old = cached[id] { positions.append(old) } else if id.selection != nil {
-                let parent = cached[.headword(id.entryID)] ?? .zero
+                let parent = cached[.headword(id.rootID)] ?? .zero
                 positions.append(parent + SIMD2(cos(angle), sin(angle)) * settings.linkDistance)
             } else { positions.append(seed) }
         }

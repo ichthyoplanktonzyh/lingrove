@@ -14,9 +14,53 @@ One core meaning or interpretation of an expression. Its identity remains the sa
 is reworded, translated or explained again; different wording alone does not establish a new sense.
 _Avoid_: treating a generated definition string as the sense itself.
 
+**Meaning node / 意义节点**:
+An independently identified content concept or communicative function that can connect several
+expression senses. Its names and aliases can be written in multiple languages.
+_Avoid_: equating a meaning node with a word's definition string or a personal tag.
+
+**Content concept / 内容概念**:
+What is expressed: an entity, event, state, property or relation, optionally with semantic roles.
+
+**Communicative function / 交际功能**:
+What a speaker does with an utterance, such as requesting, proposing or refusing. It can combine
+with different content concepts; a request is not a synonym of the event being requested.
+
+**Usage pattern / 具体用法**:
+A reusable syntactic realization of one sense, with optional slots, collocations and usage features.
+It is distinct from an original example sentence and does not replace that sentence.
+
+**Meaning association / 意义关联**:
+A claim that a particular sense, optionally restricted to one usage pattern, expresses a content
+concept or realizes a communicative function. Conditions, nuances, confirmation and evidence belong
+to the association. Removing an association does not remove the expression.
+
+**Search cue / 检索线索**:
+A paraphrase, familiar expression or personal wording that may lead to several meaning nodes.
+_Avoid_: treating an ambiguous cue as a strict synonym or an automatically confirmed meaning.
+
+**Source snapshot / 来源快照**:
+The retained wording and provenance of a source. Several occurrences may refer to one snapshot;
+correcting one occurrence's source wording creates a new snapshot and does not rewrite other occurrences' evidence.
+Sources and occurrences can exist before any lexical destination, interpretation or collection.
+
+**Occurrence / 出现位置**:
+An immutable source reference and exact UTF-16 spans, independent of an interpretation.
+
+**Interpretation / 解释判断**:
+An independently identified claim about an occurrence, optionally linked to a sense. Several
+candidates or rejected readings may coexist; at most one accepted reading owns a sense destination.
+_Avoid_: identifying a claim with its source or requiring uncertain material to have a sense.
+
+**Personal collection / 个人收藏**:
+The local user's explicit relationship to a sense and selected accepted interpretations. It owns
+notes, tags, content and review state. Uncollecting preserves catalog knowledge, evidence and
+interpretations. Meaning-graph organization is optional and external-agent driven through CLI.
+_Avoid_: treating a record's existence as proof that it is personally collected.
+
 **Usage / 用例**:
-An encountered use of an expression in a specific sentence or fragment. A usage belongs to one
-sense and retains its original wording, exact occurrence, translations and contextual explanation.
+An expression occurrence in a specific sentence or fragment, interpreted under one sense. It
+retains its source, exact text spans, translations and contextual explanation.
 _Avoid_: treating a different translation of the same occurrence as a different meaning.
 
 **Contextual meaning / 此处含义**:

@@ -97,7 +97,8 @@ struct VocabularyEntryEditor: View {
 
                     Section {
                         Button {
-                            draft.senses[sense].examples.append(VocabularyExample(id: UUID(), text: "", translation: "",
+                            draft.senses[sense].examples.append(VocabularyExample(id: UUID(), sourceKind: .authored,
+                                text: "", translation: "",
                                 translationLanguage: draft.senses[sense].meaningLanguage, ranges: [], completeness: .fragment,
                                 meaning: "", createdAt: Date()))
                         } label: { Label(String(localized: "Add example", table: "Vocabulary"), systemImage: "plus") }

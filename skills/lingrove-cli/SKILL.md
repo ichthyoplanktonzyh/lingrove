@@ -1,6 +1,6 @@
 ---
 name: lingrove-cli
-description: Read, search, and save language-learning material in the local Lingrove (拾语) vocabulary notebook through its macOS CLI. Use when the user asks to capture expressions from a conversation, add examples or learning notes, inspect saved vocabulary, or edit a saved sense in Lingrove. Do not use for general language questions without a notebook request, autocomplete control, or Anki synchronization.
+description: Read, save, and organize language-learning material in local Lingrove (拾语) through its macOS CLI. Use for notebook capture, learning notes, personal collections, source interpretations, and meaning-graph organization. Do not use for general language questions without a Lingrove request, autocomplete control, or Anki synchronization.
 ---
 
 # Lingrove CLI
@@ -62,7 +62,9 @@ not a per-entry version. Its portable entry is read output, not an apply payload
 | Correct a saved meaning, note, or tags | `update` | Read the entry and use its current notebook revision as `expectedRevision`; supply only intended replacement fields. |
 
 For capture requests, check likely existing entries and reuse the matching sense when the meaning
-is clear. If existing senses are ambiguous, ask which one to use before writing. Preserve the
+is clear. If evidence is ambiguous, retain candidate interpretations or a distinct provisional
+sense rather than forcing a merge. Ask only when the requested existing destination cannot be
+inferred and affects the user's intent. Preserve the
 source expression and context; put a known lemma in `dictionaryForm` without assuming it merges
 different expression spellings. Distinguish the sense's `meaning` from an example's translation
 and contextual meaning. Use the user's requested explanation language and supported codes.
@@ -71,10 +73,23 @@ Do not invent a source sentence; label any requested illustrative material as ag
 Read [references/batches.md](references/batches.md) when preparing a write. It contains complete
 add/append/update payloads, rich-content rules, UTF-16 ranges, and size limits.
 
+## Organize retained material and meaning knowledge
+
+Traditional `vocab list/get` reads the personal collection. `data list/get` reads the independent
+catalog, evidence, interpretations, collections and optional meaning graph. Organizing knowledge
+does not imply collecting it, and uncollecting does not delete its evidence or interpretations.
+
+Read [references/organization.md](references/organization.md) for resource reads and version 2
+`put`/`delete` batches. Use these operations when the user asks to classify meanings, resolve
+candidate interpretations, move claims, manage personal membership or maintain the meaning graph.
+The external agent makes those decisions; Lingrove validates and stores them without an internal
+classifier. Do not create a graph merely because the user asks to save an expression.
+
 ## Preview, commit, and report
 
 1. A request to save or edit authorizes that write. General discussion alone does not.
-2. Create one JSON batch file with `version: 1`, a fresh `idempotencyKey` for this intended
+2. Create one JSON batch file with `version: 1` for traditional actions, or `version: 2` and a
+   current `expectedRevision` for resource actions, plus a fresh `idempotencyKey` for this intended
    change (for example a UUID), and 1–100 operations. Use a JSON serializer or a quoted heredoc
    to keep quotes, newlines, backticks, and shell substitutions in learning text intact.
 3. Preview with `vocab apply --file /absolute/path/material.json --dry-run`. Inspect the exit

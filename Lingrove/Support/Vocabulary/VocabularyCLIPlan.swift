@@ -17,12 +17,22 @@ nonisolated struct VocabularyCLIPlan {
 
     init(batch: CLIBatch, snapshot: VocabularySnapshot, fingerprint: String,
          prepared: [String: VocabularyPreparedImage], now: Date) throws {
-        guard batch.version == 1, (1...200).contains(batch.idempotencyKey.utf8.count),
+        guard (1...2).contains(batch.version), (1...200).contains(batch.idempotencyKey.utf8.count),
               !batch.idempotencyKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               (1...100).contains(batch.operations.count) else {
             throw CLIError.invalid("Invalid batch version, idempotency key or operation count.")
         }
         document = snapshot.document
+        if batch.operations.contains(where: { $0.put != nil || $0.delete != nil }) {
+            guard batch.version == 2, let expected = batch.expectedRevision else {
+                throw CLIError.invalid("Resource operations require batch version 2 and expectedRevision.")
+            }
+            guard expected == snapshot.revision else {
+                throw CLIError(code: .conflict, message: "Notebook revision changed. Read resources again before writing.")
+            }
+        } else if let expected = batch.expectedRevision, expected != snapshot.revision {
+            throw CLIError(code: .conflict, message: "Notebook revision changed. Read it again before writing.")
+        }
         for (index, change) in batch.operations.enumerated() {
             let context = OperationContext(index: index, batchKey: batch.idempotencyKey, fingerprint: fingerprint, now: now)
             try apply(change, context: context, revision: snapshot.revision, prepared: prepared)
@@ -57,8 +67,21 @@ nonisolated struct VocabularyCLIPlan {
     private mutating func apply(
         _ change: CLIChange, context: OperationContext, revision: UInt64, prepared: [String: VocabularyPreparedImage]
     ) throws {
-        guard [change.add != nil, change.append != nil, change.update != nil].filter({ $0 }).count == 1 else {
+        guard [change.add != nil, change.append != nil, change.update != nil,
+               change.put != nil, change.delete != nil].filter({ $0 }).count == 1 else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if let put = change.put {
+            let id = try VocabularyCLIResources.put(put, in: &document, now: context.now)
+            outcomes.append(.object(["operation": .integer(Int64(context.index)), "resource": .string(put.resource),
+                "id": .string(id.uuidString), "action": .string("put")]))
+            return
+        }
+        if let deletion = change.delete {
+            try VocabularyCLIResources.delete(deletion, in: &document)
+            outcomes.append(.object(["operation": .integer(Int64(context.index)), "resource": .string(deletion.resource),
+                "id": .string(deletion.id.uuidString), "action": .string("delete")]))
+            return
         }
         let entryCount = document.entries.count
         let target: (entry: Int, sense: Int)
@@ -67,6 +90,8 @@ nonisolated struct VocabularyCLIPlan {
         } else {
             target = try existingTarget(for: change)
         }
+        VocabularyNotebookProjection.collect(senseID: document.entries[target.entry].senses[target.sense].id,
+            interpretationID: nil, in: &document, now: context.now)
         var sense = document.entries[target.entry].senses[target.sense]
         if let update = change.update { try Self.applyUpdate(update, to: &sense, revision: revision) }
         let examples = change.add?.examples ?? change.append?.examples ?? []
@@ -79,6 +104,10 @@ nonisolated struct VocabularyCLIPlan {
         sense.updatedAt = context.now
         document.entries[target.entry].senses[target.sense] = sense
         document.entries[target.entry].updatedAt = context.now
+        for id in usageIDs {
+            VocabularyNotebookProjection.collect(senseID: sense.id, interpretationID: id, in: &document, now: context.now)
+        }
+        VocabularyNotebookProjection.collect(senseID: sense.id, interpretationID: nil, in: &document, now: context.now)
         outcomes.append(.object([
             "operation": .integer(Int64(context.index)), "entryID": .string(document.entries[target.entry].id.uuidString),
             "senseID": .string(sense.id.uuidString), "createdEntry": .bool(document.entries.count > entryCount),
@@ -259,7 +288,8 @@ nonisolated struct VocabularyCLIPlan {
               let completeness = VocabularyExample.Completeness(rawValue: input.completeness ?? "sentence") else {
             throw CLIError.invalid("Invalid UTF-16 ranges or context completeness.")
         }
-        return .init(id: id, text: text, translation: try self.text(input.translation ?? "", limit: 262_144),
+        return .init(id: id, sourceID: id, sourceKind: VocabularyExample.SourceKind(rawValue: input.sourceKind ?? "authored") ?? .authored,
+            text: text, translation: try self.text(input.translation ?? "", limit: 262_144),
             translationLanguage: try language(input.translationLanguage), ranges: ranges, completeness: completeness,
             meaning: try self.text(input.meaning ?? "", limit: 32_000), meaningLanguage: try language(input.meaningLanguage),
             meaningOrigin: input.meaning == nil ? .captured : .user, createdAt: now)

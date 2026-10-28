@@ -50,6 +50,7 @@ actor VocabularyArchive {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entry.id }) else { throw VocabularyError.invalidContent }
         let original = next.entries[index]
+        try validatePersonalEdit(entry, baseline: baseline, collections: next.collections)
         guard baseline.id == entry.id,
               Set(entry.senses.map(\.id)).count == entry.senses.count,
               Set(entry.examples.map(\.id)).count == entry.examples.count else { throw VocabularyError.invalidContent }
@@ -61,8 +62,22 @@ actor VocabularyArchive {
         merged.expression = try merge(baseline.expression, original.expression, entry.expression)
         merged.dictionaryForm = try merge(baseline.dictionaryForm, original.dictionaryForm, entry.dictionaryForm)
         merged.senses = try mergeSenses(baseline: baseline.senses, current: original.senses, edited: entry.senses)
+        let priorOccurrences = Dictionary(grouping: original.examples, by: VocabularyPolicy.exampleKey)
+        let editedOccurrences = Dictionary(grouping: merged.examples, by: VocabularyPolicy.exampleKey)
+        guard editedOccurrences.allSatisfy({ key, values in
+            values.count <= 1 || values.count <= (priorOccurrences[key]?.count ?? 0)
+        }) else { throw VocabularyError.editConflict }
         merged.updatedAt = Date()
         next.entries[index] = merged
+        for before in baseline.senses {
+            guard let edited = entry.senses.first(where: { $0.id == before.id }) else {
+                next.collections.removeAll { $0.senseID == before.id }; continue
+            }
+            let removed = Set(before.examples.map(\.id)).subtracting(edited.examples.map(\.id))
+            if let collection = next.collections.firstIndex(where: { $0.senseID == before.id }) {
+                next.collections[collection].interpretationIDs.removeAll { removed.contains($0) }
+            }
+        }
         return try commitWithImages(next, supplied: importedImages)
     }
 
@@ -99,7 +114,7 @@ actor VocabularyArchive {
         }
         for before in baseline where !edited.contains(where: { $0.id == before.id }) {
             if let live = result.first(where: { $0.id == before.id }), live != before { throw VocabularyError.editConflict }
-            result.removeAll { $0.id == before.id }
+            // An editor removes a personal collection relationship, not the catalog sense.
         }
         return result
     }
@@ -108,6 +123,19 @@ actor VocabularyArchive {
         guard edited != baseline else { return current }
         guard current == baseline || current == edited else { throw VocabularyError.editConflict }
         return edited
+    }
+
+    /// A detached editor cannot recreate personal state after an agent or another window
+    /// uncollects it. Unchanged hidden senses can remain in the editor's stale baseline.
+    private func validatePersonalEdit(_ entry: VocabularyEntry, baseline: VocabularyEntry,
+                                      collections: [VocabularyCollectionItem]) throws {
+        let ids = Set(collections.map(\.senseID))
+        guard entry.senses.contains(where: { ids.contains($0.id) }) else { throw VocabularyError.editConflict }
+        for sense in entry.senses {
+            if let before = baseline.senses.first(where: { $0.id == sense.id }), sense != before, !ids.contains(sense.id) {
+                throw VocabularyError.editConflict
+            }
+        }
     }
 
     /// Example IDs distinguish edits/deletions from captures appended after the editor opened.
@@ -124,7 +152,7 @@ actor VocabularyArchive {
             }
             guard example != before else { continue }
             guard let index = merged.firstIndex(where: { $0.id == example.id }) else { throw VocabularyError.editConflict }
-            var editedExample = example
+            var editedExample = correctedEvidence(example, before: before)
             if example.text != before.text, example.meaning.isEmpty {
                 // The editor clears a stale sense when the source changes. That automatic clear
                 // is not a user-authored blank; a new explanation may fill the new occurrence.
@@ -136,54 +164,66 @@ actor VocabularyArchive {
         }
         for before in baseline where !edited.contains(where: { $0.id == before.id }) {
             if let item = merged.first(where: { $0.id == before.id }), item != before { throw VocabularyError.editConflict }
-            merged.removeAll { $0.id == before.id }
+            // Uncollect below the entry merge; keep the interpretation available to agents.
         }
         return merged
     }
 
+    /// A correction is new evidence, while its interpretation retains the editor identity.
+    /// Commit reconciliation withdraws stale mapping citations and requests confirmation;
+    /// other interpretations continue citing the original immutable snapshot.
+    private func correctedEvidence(_ example: VocabularyExample, before: VocabularyExample) -> VocabularyExample {
+        var result = example
+        if example.text != before.text || example.appBundleIdentifier != before.appBundleIdentifier {
+            result.sourceID = UUID(); result.sourceKind = .authored; result.occurrenceID = UUID()
+        }
+        if example.ranges != before.ranges { result.occurrenceID = UUID() }
+        return result
+    }
+
+    /// Notebook deletion removes personal membership. Catalog identities, raw evidence and
+    /// interpretations remain addressable to an agent until an explicit resource deletion.
     func remove(id: UUID) throws -> VocabularySnapshot {
         var next = try load().document
-        next.entries.removeAll { $0.id == id }
+        let senseIDs = Set(next.catalog.first { $0.id == id }?.senses.map(\.id) ?? [])
+        next.collections.removeAll { senseIDs.contains($0.senseID) }
         return try commit(next)
     }
 
     func remove(_ capture: VocabularyCapture) throws -> VocabularySnapshot {
         var next = try load().document
-        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
-              let destination = VocabularySensePolicy.destination(capture, in: next.entries[index]),
-              let sense = VocabularySensePolicy.index(destination.senseID, in: next.entries[index]) else {
+        guard let entry = next.collectedEntries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
+              let destination = VocabularySensePolicy.destination(capture, in: entry),
+              let index = next.collections.firstIndex(where: { $0.senseID == destination.senseID }) else {
             return .init(revision: revision, document: next)
         }
-        if let id = destination.exampleID {
-            next.entries[index].senses[sense].examples.removeAll { $0.id == id }
-        } else {
-            next.entries[index].senses[sense].standaloneMeanings.removeAll()
-            next.entries[index].senses[sense].isSavedWithoutContext = false
-            next.entries[index].senses[sense].explanations.removeAll()
+        if let id = destination.exampleID { next.collections[index].interpretationIDs.removeAll { $0 == id } } else {
+            next.collections[index].isSavedWithoutContext = false
         }
-        // Removing the exact favorite keeps other senses and their notes. A completely empty
-        // captured identity can disappear; annotated identities require an explicit delete.
-        let value = next.entries[index].senses[sense]
-        if value.examples.isEmpty, !value.isSavedWithoutContext, value.note.isEmpty, value.tags.isEmpty,
-           value.meaningOrigin != .user, value.mergedFrom.isEmpty, value.review == nil, (value.reviewCards ?? []).isEmpty,
-               (value.content ?? []).isEmpty {
-            next.entries[index].senses.remove(at: sense)
+        let collection = next.collections[index]
+        if collection.interpretationIDs.isEmpty, !collection.isSavedWithoutContext, collection.note.isEmpty,
+           collection.tags.isEmpty, (collection.content ?? []).isEmpty, collection.review == nil,
+           (collection.reviewCards ?? []).isEmpty {
+            next.collections.remove(at: index)
         }
-        if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
         return try commit(next)
     }
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularySnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        let selected = next.collections.first { $0.senseID == source }?.interpretationIDs ?? []
         try VocabularySensePolicy.merge(source: source, into: target, in: &next.entries[index], now: Date())
+        for id in selected { VocabularyNotebookProjection.collect(senseID: target, interpretationID: id, in: &next, now: Date()) }
         return try commit(next)
     }
 
     func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularySnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
+        let wasCollected = next.collections.first { $0.senseID == source }?.interpretationIDs.contains(exampleID) == true
+        let targetID = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
+        if wasCollected { VocabularyNotebookProjection.collect(senseID: targetID, interpretationID: exampleID, in: &next, now: Date()) }
         return try commit(next)
     }
 
@@ -198,10 +238,10 @@ actor VocabularyArchive {
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularySnapshot {
         var next = try load().document
-        guard let index = next.entries.firstIndex(where: { $0.id == entryID }),
-              let sense = next.entries[index].senses.firstIndex(where: { $0.id == senseID }) else { throw VocabularyError.invalidContent }
-        next.entries[index].senses.remove(at: sense)
-        if next.entries[index].senses.isEmpty { next.entries.remove(at: index) }
+        guard next.catalog.contains(where: { $0.id == entryID && $0.senses.contains { $0.id == senseID } }) else {
+            throw VocabularyError.invalidContent
+        }
+        next.collections.removeAll { $0.senseID == senseID }
         return try commit(next)
     }
 
@@ -210,7 +250,8 @@ actor VocabularyArchive {
     func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview,
                     expected: VocabularyReview?, cardID: UUID? = nil, importedImages: [String: Data] = [:]) throws -> VocabularySnapshot {
         var next = try load().document
-        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
+        guard next.collections.contains(where: { $0.senseID == senseID }),
+              let entry = next.entries.firstIndex(where: { $0.id == entryID }),
               let sense = next.entries[entry].senses.firstIndex(where: { $0.id == senseID }),
               next.entries[entry].senses[sense].reviewValue(cardID) == expected else { throw VocabularyError.editConflict }
         guard cardID == nil || value.plan.id == cardID else { throw VocabularyError.invalidContent }
@@ -249,36 +290,48 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func commit(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt? = nil) throws -> VocabularySnapshot {
-        try storageAccess(write: true) { try commitUnlocked(document, receipt: receipt) }
+    func commit(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt? = nil,
+                restoringBackup: Bool = false) throws -> VocabularySnapshot {
+        try storageAccess(write: true) { try commitUnlocked(document, receipt: receipt, restoringBackup: restoringBackup) }
     }
 
-    private func commitUnlocked(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt?) throws -> VocabularySnapshot {
+    private func commitUnlocked(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt?,
+                                restoringBackup: Bool) throws -> VocabularySnapshot {
         // Fixtures/restores may commit before browsing has loaded the notebook. Establish the
         // same baseline and durable revision that ordinary card/editor operations use.
         let baseline = try transactionBaseline()
-        guard [3, 4, 5].contains(document.schemaVersion) else { throw VocabularyError.unsupportedVersion }
+        guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
         var next = document
+        // Validate canonical relationships before the joined editor adapter can normalize
+        // children. An invalid resource relation must fail, never be silently pruned on commit.
+        try VocabularyLifecyclePolicy.validate(next)
+        // A validated backup replaces evidence and assertions together. Comparing its old
+        // occurrence IDs against today's notebook would incorrectly invalidate restored facts.
+        if !restoringBackup {
+            VocabularySemanticPolicy.reconcile(&next.semantics, previous: baseline.document, entries: next.entries)
+        }
         // Explanation snapshots remain attached to their exact current input. A moved usage
         // retains them intact; editing its text cannot relabel an old answer as a current one.
-        for index in next.entries.indices {
-            let entry = next.entries[index]
+        var entries = next.entries
+        for index in entries.indices {
+            let entry = entries[index]
             for sense in entry.senses.indices {
                 let value = entry.senses[sense]
                 let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: value, example: nil))
-                next.entries[index].senses[sense].explanations = value.explanations.filter {
-                    value.supportsGeneralExplanation && $0.input == generalInput
+                entries[index].senses[sense].explanations = value.explanations.filter {
+                    $0.input == generalInput
                 }
                 for usage in value.examples.indices {
                     let input = LearningExplanationPolicy.input(
                         LearningExplanationPolicy.capture(entry, sense: value, example: value.examples[usage]))
-                    next.entries[index].senses[sense].examples[usage].explanations = value.examples[usage].explanations.filter {
+                    entries[index].senses[sense].examples[usage].explanations = value.examples[usage].explanations.filter {
                         $0.input == input
                     }
                 }
             }
         }
-        next.schemaVersion = VocabularyDocument.requiredVersion(for: next.entries)
+        next.entries = entries
+        next.schemaVersion = VocabularyDocument.requiredVersion(for: entries)
         try validate(next)
         // SQL stores entity rows, not a document-version row. Keep the cached envelope canonical
         // with reconstruction, including after the last unknown-language entry is removed.
@@ -294,19 +347,18 @@ actor VocabularyArchive {
     /// Validate the whole ownership graph on load and every write. UUID uniqueness includes
     /// retired aliases, preventing a later merge or edit from giving one identity two owners.
     func validate(_ document: VocabularyDocument) throws {
-        guard [3, 4, 5].contains(document.schemaVersion),
+        guard document.schemaVersion == VocabularyDocument.currentVersion,
               document.schemaVersion >= VocabularyDocument.requiredVersion(for: document.entries),
               Set(document.entries.map(VocabularyPolicy.entryKey)).count == document.entries.count else {
             throw VocabularyError.invalidArchive
         }
+        try VocabularyLifecyclePolicy.validate(document)
         try validateTemplates(document.reviewTemplates ?? [])
         var ids = Set<UUID>()
         for entry in document.entries {
-            guard ids.insert(entry.id).inserted, !VocabularyPolicy.normalized(entry.expression).isEmpty, !entry.senses.isEmpty else {
+            guard ids.insert(entry.id).inserted, !VocabularyPolicy.normalized(entry.expression).isEmpty else {
                 throw VocabularyError.invalidArchive
             }
-            guard Set(entry.examples.map { VocabularyPolicy.exampleKey($0) }).count == entry.examples.count,
-                  entry.senses.filter(\.isSavedWithoutContext).count <= 1 else { throw VocabularyError.invalidArchive }
             for sense in entry.senses {
                 try VocabularyContentPolicy.validate(sense.content ?? [])
                 try validateBlockIdentities(sense.content ?? [], ids: &ids)
@@ -332,6 +384,7 @@ actor VocabularyArchive {
                 }
             }
         }
+        try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
     }
 
     func validateReview(_ review: VocabularyReview) throws {

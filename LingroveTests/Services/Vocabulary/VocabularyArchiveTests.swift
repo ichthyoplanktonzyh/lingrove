@@ -10,7 +10,7 @@ nonisolated struct VocabularyArchiveTests {
         var input = capture()
         input.example?.completeness = .unknown
         let saved = try await VocabularyArchive(url: url).save(input)
-        #expect(saved.document.schemaVersion == 5)
+        #expect(saved.document.schemaVersion == VocabularyDocument.currentVersion)
         let reopened = try await VocabularyArchive(url: url).load()
         #expect(reopened.document == saved.document)
         #expect(reopened.document.entries.first?.examples.first?.completeness == .unknown)
@@ -32,7 +32,7 @@ nonisolated struct VocabularyArchiveTests {
         #expect(repeated.document.entries[0].senses.count == 1 && repeated.document.entries[0].examples.count == 1)
         #expect(first.document.entries[0].examples[0].id == repeated.document.entries[0].examples[0].id)
         #expect(repeated.document.entries[0].examples[0].completeness == .fragment)
-        #expect(repeated.document.schemaVersion == 3)
+        #expect(repeated.document.schemaVersion == VocabularyDocument.currentVersion)
 
         let other = VocabularyArchive(url: nil)
         let uncertain = try await other.save(input)
@@ -40,7 +40,8 @@ nonisolated struct VocabularyArchiveTests {
         let confirmed = try await other.save(input)
         #expect(confirmed.document.entries[0].examples.count == 1)
         #expect(confirmed.document.entries[0].examples[0].id == uncertain.document.entries[0].examples[0].id)
-        #expect(confirmed.document.entries[0].examples[0].completeness == .sentence && confirmed.document.schemaVersion == 3)
+        #expect(confirmed.document.entries[0].examples[0].completeness == .sentence &&
+            confirmed.document.schemaVersion == VocabularyDocument.currentVersion)
     }
 
     @Test func uncertainEvidenceDoesNotMergeAmbiguousLegacyUsages() throws {
@@ -54,13 +55,16 @@ nonisolated struct VocabularyArchiveTests {
         #expect(document.entries[0].senses.count == 2 && document.entries[0].examples.count == 2)
     }
 
-    @Test func exportsOnlyLearningContentInSchemaThree() async throws {
+    @Test func serializesIndependentLearningRecordsWithoutJoinedDuplicates() async throws {
         let archive = VocabularyArchive(url: nil)
         let snapshot = try await archive.save(capture())
         let encoded = try JSONEncoder().encode(snapshot.document)
         let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        let entries = try #require(object["entries"] as? [[String: Any]])
-        #expect(snapshot.document.schemaVersion == 3)
+        let entries = try #require(object["catalog"] as? [[String: Any]])
+        #expect(object["entries"] == nil)
+        #expect(object["sources"] != nil && object["occurrences"] != nil)
+        #expect(object["interpretations"] != nil && object["collections"] != nil)
+        #expect(snapshot.document.schemaVersion == VocabularyDocument.currentVersion)
         #expect(entries[0]["definitions"] == nil)
         #expect(entries[0]["senses"] != nil)
     }
@@ -89,8 +93,8 @@ nonisolated struct VocabularyArchiveTests {
         #expect(entry.examples[0].ranges != entry.examples[1].ranges)
         let fresh = VocabularyArchive(url: url)
         let removed = try await fresh.remove(first)
-        #expect(removed.document.entries[0].examples.count == 1)
-        #expect(VocabularyPolicy.contains(second, in: removed.document.entries))
+        #expect(removed.document.collectedEntries[0].examples.count == 1)
+        #expect(VocabularyPolicy.contains(second, in: removed.document.collectedEntries))
     }
 
     @Test @MainActor func notebookWorkflowPersistsEditsExportAndSelectiveRemoval() async throws {
@@ -125,7 +129,7 @@ nonisolated struct VocabularyArchiveTests {
         #expect(!store.contains(first) && store.contains(second))
         #expect(store.entries[0].senses[0].note == edited.senses[0].note && store.entries[0].senses[0].tags == edited.senses[0].tags)
         #expect(await store.remove(id: baseline.id))
-        #expect(try await VocabularyArchive(url: url).load().document.entries.isEmpty)
+        #expect(try await VocabularyArchive(url: url).load().document.collectedEntries.isEmpty)
     }
 
     @Test func savedItemSurvivesReopenWithStableIDsAndEditableContent() async throws {
@@ -162,9 +166,9 @@ nonisolated struct VocabularyArchiveTests {
         _ = try await archive.save(first)
         _ = try await archive.save(second)
         let snapshot = try await archive.remove(first)
-        #expect(snapshot.document.entries.count == 1)
-        #expect(snapshot.document.entries[0].examples.count == 1)
-        #expect(snapshot.document.entries[0].examples[0].text == second.example?.text)
+        #expect(snapshot.document.collectedEntries.count == 1)
+        #expect(snapshot.document.collectedEntries[0].examples.count == 1)
+        #expect(snapshot.document.collectedEntries[0].examples[0].text == second.example?.text)
     }
 
     @Test func corruptArchiveIsPreservedAndCannotBeOverwrittenBySave() async throws {
@@ -249,9 +253,9 @@ nonisolated struct VocabularyArchiveTests {
         _ = try await archive.save(withContext)
         _ = try await archive.save(standalone)
         let removed = try await archive.remove(standalone)
-        #expect(removed.document.entries.count == 1)
-        #expect(removed.document.entries[0].examples.count == 1)
-        #expect(!removed.document.entries[0].senses.contains { $0.isSavedWithoutContext })
+        #expect(removed.document.collectedEntries.count == 1)
+        #expect(removed.document.collectedEntries[0].examples.count == 1)
+        #expect(!removed.document.collectedEntries[0].senses.contains { $0.isSavedWithoutContext })
     }
 
     @Test func invalidArchiveRangesFailWithoutChangingTheFile() async throws {
@@ -259,13 +263,14 @@ nonisolated struct VocabularyArchiveTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         let url = folder.appendingPathComponent("notebook.sqlite")
         let snapshot = try await VocabularyArchive(url: url).save(capture())
-        var invalid = snapshot.document.entries[0].examples[0]
-        invalid.ranges = [VocabularyTextRange(NSRange(location: 9_999, length: 5))]
-        let bytes = try VocabularyDatabaseRecord.Payload.usage(invalid).encoded()
+        let original = snapshot.document.occurrences[0]
+        let invalid = VocabularySourceOccurrence(id: original.id, sourceID: original.sourceID,
+            ranges: [VocabularyTextRange(NSRange(location: 9_999, length: 5))])
+        let bytes = try VocabularyDatabaseRecord.Payload.occurrence(invalid).encoded()
         let connection = try VocabularySQLiteConnection(url: url)
-        try connection.execute("UPDATE usages SET payload=? WHERE id=?", [.blob(bytes), .text(invalid.id.uuidString)])
+        try connection.execute("UPDATE occurrences SET payload=? WHERE id=?", [.blob(bytes), .text(invalid.id.uuidString)])
         await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).save(capture()) }
-        #expect(try connection.rows("SELECT payload FROM usages WHERE id=?", [.text(invalid.id.uuidString)]) == [[.blob(bytes)]])
+        #expect(try connection.rows("SELECT payload FROM occurrences WHERE id=?", [.text(invalid.id.uuidString)]) == [[.blob(bytes)]])
     }
 
     @Test func oldSchemaIsRejectedWithoutRewritingIt() async throws {
@@ -291,8 +296,8 @@ nonisolated struct VocabularyArchiveTests {
         #expect(VocabularyPolicy.contains(chinese, in: result.document.entries))
         #expect(VocabularyPolicy.contains(spanish, in: result.document.entries))
         let removed = try await archive.remove(chinese)
-        #expect(!VocabularyPolicy.contains(chinese, in: removed.document.entries))
-        #expect(!VocabularyPolicy.contains(spanish, in: removed.document.entries))
+        #expect(!VocabularyPolicy.contains(chinese, in: removed.document.collectedEntries))
+        #expect(!VocabularyPolicy.contains(spanish, in: removed.document.collectedEntries))
     }
 
     @Test func manuallyAddedExampleSurvivesSaveAndCanBeRemovedWithoutDeletingTheWord() async throws {
@@ -309,9 +314,9 @@ nonisolated struct VocabularyArchiveTests {
         edited = withExample
         edited.senses[0].examples = []
         let removed = try await archive.update(edited, basedOn: withExample)
-        #expect(removed.document.entries.count == 1)
-        #expect(removed.document.entries[0].examples.isEmpty)
-        #expect(removed.document.entries[0].senses[0].isSavedWithoutContext)
+        #expect(removed.document.collectedEntries.count == 1)
+        #expect(removed.document.collectedEntries[0].examples.isEmpty)
+        #expect(removed.document.collectedEntries[0].senses[0].isSavedWithoutContext)
     }
 
     @Test func deletingLastExampleDoesNotResurrectARemovedGeneralSense() async throws {
@@ -327,7 +332,7 @@ nonisolated struct VocabularyArchiveTests {
         var edited = baseline
         edited.senses[0].examples = []
         _ = try await archive.update(edited, basedOn: baseline)
-        let current = try await archive.load().document.entries[0]
+        let current = try await archive.load().document.collectedEntries[0]
         #expect(!current.senses[0].isSavedWithoutContext)
         #expect(current.senses[0].standaloneMeanings.isEmpty)
         #expect(current.examples.isEmpty)

@@ -96,7 +96,8 @@ struct LanguageLearningSection: View {
                 } label: {
                     SettingsRowLabel(
                         title: String(localized: "Find an expression or term while writing", table: "Learning"),
-                        description: String(localized: "Example: type \(settings.expressionAssist.trigger) and then describe what you mean.",
+                        description: String(
+                            localized: "Example: type \(settings.expressionAssist.trigger) and then describe what you mean.",
                             table: "Learning"),
                         systemImage: "text.magnifyingglass"
                     )

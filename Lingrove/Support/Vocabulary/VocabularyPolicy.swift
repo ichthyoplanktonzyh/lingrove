@@ -104,7 +104,7 @@ nonisolated enum VocabularyPolicy {
         let scope = sentence ?? NSRange(location: 0, length: text.utf16.count)
         let complete = sentence != nil && (scope.location > 0 || startsAtBoundary) &&
             (NSMaxRange(scope) < text.utf16.count || endsAtBoundary)
-        return VocabularyExample(id: UUID(), text: (text as NSString).substring(with: scope), translation: "",
+        return VocabularyExample(id: UUID(), sourceKind: .captured, text: (text as NSString).substring(with: scope), translation: "",
             ranges: ranges.map { VocabularyTextRange(NSRange(location: $0.location - scope.location, length: $0.length)) },
             completeness: complete ? .sentence : .fragment, meaning: "", appBundleIdentifier: app, createdAt: Date())
     }
@@ -134,6 +134,10 @@ nonisolated enum VocabularyPolicy {
             index = document.entries.count - 1
         }
         try VocabularySensePolicy.save(capture, in: &document.entries[index], now: now)
+        if let destination = VocabularySensePolicy.destination(capture, in: document.entries[index]) {
+            VocabularyNotebookProjection.collect(senseID: destination.senseID, interpretationID: destination.exampleID,
+                withoutContext: capture.example == nil, in: &document, now: now)
+        }
         document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
         return document.entries[index].id
     }

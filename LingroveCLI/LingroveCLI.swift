@@ -19,7 +19,7 @@ struct LingroveCLI {
             let arguments = try CLIArguments(Array(CommandLine.arguments.dropFirst()))
             switch arguments.mode {
             case .help: print(CLIArguments.help); return 0
-            case .version: print("lingrove CLI 1 (protocol 1)"); return 0
+            case .version: print("lingrove CLI 2 (protocol 1, batch 1/2)"); return 0
             case .schema: print(CLIInputSchema.json); return 0
             case .request: break
             }

@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// store used by cards and the existing speech controller; this view owns only browsing state.
 struct VocabularyNotebookView: View {
     @AppStorage private var browserMode: String
+    @AppStorage private var organization: String
     @AppStorage private var listDensity: String
     @StateObject private var graph: VocabularyGraphPresentation
     @State private var selectedTag = ""
@@ -15,6 +16,7 @@ struct VocabularyNotebookView: View {
     var learning: VocabularyNotebookSession?
     var review: AnkiReviewController?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
     @State private var selection: UUID?
     @State private var query = ""
     @State private var language: LearningLanguage?
@@ -33,11 +35,14 @@ struct VocabularyNotebookView: View {
     @State private var choosingWordList = false
     @State private var importingWordList: VocabularyWordListImportRequest?
     @State private var importResult: VocabularyEntryImportResult?
+    @State private var meaningDestination: VocabularyMeaningDestination?
+    @State private var creatingMeaning = false
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
          learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
          preferences: UserDefaults = .standard) {
         _browserMode = AppStorage(wrappedValue: "list", "vocabularyBrowserMode", store: preferences)
+        _organization = AppStorage(wrappedValue: "entry", "vocabularyOrganization", store: preferences)
         _listDensity = AppStorage(wrappedValue: "compact", "vocabularyListDensity", store: preferences)
         _graph = StateObject(wrappedValue: VocabularyGraphPresentation(defaults: preferences))
         self.store = store
@@ -48,18 +53,47 @@ struct VocabularyNotebookView: View {
         _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
         _expandedEntries = State(initialValue: Set(entry.map { [$0.id] } ?? []))
         _requestedSenseID = State(initialValue: selectedSenseID)
+        if let selectedID {
+            _meaningDestination = State(initialValue: .sense(nodeID: nil,
+                senseID: selectedSenseID ?? entry?.senses.first?.id ?? selectedID))
+        }
         // A loaded archive already supplies the initial selection. Only a cold load needs
         // to retain the request; otherwise saving an annotation can replay it over browsing.
         _requestedID = State(initialValue: store.isLoaded ? nil : selectedID)
     }
 
-    private var visibleEntries: [VocabularyEntry] {
+    private var scopedEntries: [VocabularyEntry] {
         store.entries.compactMap { entry -> VocabularyEntry? in
             guard language == nil || entry.language == language else { return nil }
             var value = entry
             if !selectedTag.isEmpty { value.senses.removeAll { !$0.tags.contains(selectedTag) } }
-            return !value.senses.isEmpty && VocabularyPolicy.matches(value, query: query) ? value : nil
+            return !value.senses.isEmpty ? value : nil
         }.sorted { newestFirst ? $0.updatedAt > $1.updatedAt : $0.updatedAt < $1.updatedAt }
+    }
+
+    private var visibleEntries: [VocabularyEntry] {
+        organization == "meaning" ? scopedEntries : scopedEntries.filter { VocabularyPolicy.matches($0, query: query) }
+    }
+    private var meaningItems: [VocabularyMeaningBrowserProjection.Item] {
+        VocabularyMeaningBrowserProjection.items(index: store.semantics, entries: scopedEntries, query: query,
+            includeEmpty: language == nil && selectedTag.isEmpty, preferredLanguages: meaningLanguages)
+    }
+    private var unclassified: [VocabularySelection] {
+        VocabularyMeaningBrowserProjection.unclassified(index: store.semantics,
+            entries: scopedEntries.filter { VocabularyPolicy.matches($0, query: query) })
+    }
+    private var activeSenseID: UUID? { organization == "meaning" ? meaningDestination?.senseID : selection }
+    private var selectedMeaning: VocabularyMeaningNode? {
+        guard organization == "meaning", case let .node(id) = meaningDestination else { return nil }
+        return store.semantics.nodes.first { $0.id == id }
+    }
+    private func showMeaning(_ id: UUID) {
+        organization = "meaning"; meaningDestination = .node(id); graph.revealMeaning(id)
+    }
+    private func showSense(_ id: UUID) {
+        if organization == "meaning" {
+            meaningDestination = .sense(nodeID: meaningDestination?.nodeID, senseID: id)
+        } else { selection = id }
     }
 
     private var allTags: [String] {
@@ -86,9 +120,9 @@ struct VocabularyNotebookView: View {
         )
     }
 
-    var body: some View {
+    private var browserContent: some View {
         ZStack {
-            if store.isLoaded && store.entries.isEmpty {
+            if store.isLoaded && store.entries.isEmpty && organization == "entry" {
                 emptyNotebookContent
             } else if browserMode == "graph" {
                 graphBrowser
@@ -101,7 +135,7 @@ struct VocabularyNotebookView: View {
                             )
                     )
             } else {
-                listBrowser
+                Group { if organization == "meaning" { meaningListBrowser } else { listBrowser } }
                     .transition(
                         reduceMotion
                             ? .opacity
@@ -113,9 +147,16 @@ struct VocabularyNotebookView: View {
             }
         }
         .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92), value: browserMode)
-        .searchable(text: $query, prompt: String(localized: "Search vocabulary", table: "Vocabulary"))
+        .searchable(text: $query, prompt: organization == "meaning"
+            ? String(localized: "Search an idea or expression", table: "Vocabulary")
+            : String(localized: "Search vocabulary", table: "Vocabulary"))
         .toolbar {
             ToolbarItem(placement: .principal) {
+                HStack(spacing: 12) {
+                    Picker(String(localized: "Organize vocabulary", table: "Vocabulary"), selection: $organization) {
+                        Text(String(localized: "By entry", table: "Vocabulary")).tag("entry")
+                        Text(String(localized: "By meaning", table: "Vocabulary")).tag("meaning")
+                    }.pickerStyle(.segmented).frame(width: 150).accessibilityIdentifier("vocabularyOrganization")
                 Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: animatedBrowserMode) {
                     Label(String(localized: "List", table: "Vocabulary"), systemImage: "list.bullet").tag("list")
                     Label(String(localized: "Graph", table: "Vocabulary"), systemImage: "point.3.connected.trianglepath.dotted")
@@ -123,6 +164,7 @@ struct VocabularyNotebookView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 164)
+                }
             }
             ToolbarItemGroup {
                 Button { creatingEntry = true } label: {
@@ -132,6 +174,12 @@ struct VocabularyNotebookView: View {
                 .accessibilityIdentifier("vocabularyAddEntry")
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(!store.isLoaded)
+                if organization == "meaning" {
+                    Button { creatingMeaning = true } label: {
+                        Label(String(localized: "New meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
+                    }.help(String(localized: "New meaning", table: "Vocabulary"))
+                        .accessibilityIdentifier("vocabularyNewMeaning").disabled(!store.isLoaded)
+                }
                 Button { choosingWordList = true } label: {
                     Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
                 }
@@ -142,7 +190,7 @@ struct VocabularyNotebookView: View {
                 Button {
                     withAnimation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.94)) {
                         selectingSenses.toggle()
-                        if selectingSenses { browserMode = "list" }
+                        if selectingSenses { browserMode = "list"; organization = "entry" }
                     }
                 } label: {
                     Image(systemName: selectingSenses ? "checklist.checked" : "checklist")
@@ -166,9 +214,13 @@ struct VocabularyNotebookView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 460)
+    }
+
+    private var lifecycleContent: some View {
+        browserContent
         .onAppear { store.loadIfNeeded(); if browserMode == "graph" { graph.reveal(graphSelection) } }
         .onChange(of: selectedEntry, initial: true) { _, entry in
-            learning?.select(entry, senseID: selection)
+            learning?.select(entry, senseID: activeSenseID)
             // Selections that originate outside the sidebar (graph, "show in notebook") must
             // reveal their sense row. Insert-only: never collapse other entries, so rows above
             // the click target cannot shift. A headword click already expanded synchronously in
@@ -178,10 +230,37 @@ struct VocabularyNotebookView: View {
             }
         }
         .onChange(of: selection) { _, _ in
-            learning?.select(selectedEntry, senseID: selection)
-            if browserMode == "graph" { graph.reveal(graphSelection) }
+            learning?.select(selectedEntry, senseID: activeSenseID)
+            if browserMode == "graph", organization == "entry" { graph.reveal(graphSelection) }
         }
-        .onChange(of: browserMode) { _, value in if value == "graph" { graph.reveal(graphSelection) } }
+        .onChange(of: meaningDestination) { _, value in
+            learning?.select(selectedEntry, senseID: activeSenseID)
+            if let id = value?.nodeID { graph.revealMeaning(id) }
+        }
+        .onChange(of: organization) { _, value in
+            graph.clearFocus(); graph.fitsInitialLayout = true
+            if value == "meaning" {
+                selectingSenses = false
+                if meaningDestination == nil, let selection {
+                    let nodes = Set(store.semantics.mappings.filter { $0.senseID == selection }.map(\.nodeID))
+                    if nodes.count == 1, let id = nodes.first { meaningDestination = .node(id) }
+                }
+                if let id = meaningDestination?.nodeID { graph.revealMeaning(id) }
+            } else {
+                if let id = meaningDestination?.senseID { selection = id }
+                graph.reveal(graphSelection)
+            }
+        }
+        .onChange(of: store.semantics) { _, value in
+            if let id = meaningDestination?.nodeID, !value.nodes.contains(where: { $0.id == id }) { meaningDestination = nil }
+        }
+        .onChange(of: browserMode) { _, value in
+            if value == "graph" {
+                if organization == "meaning", let id = meaningDestination?.nodeID {
+                    graph.revealMeaning(id)
+                } else if organization == "entry" { graph.reveal(graphSelection) }
+            }
+        }
         .onChange(of: store.entries) { _, entries in
             if !selectedTag.isEmpty, !entries.contains(where: { $0.senses.contains { $0.tags.contains(selectedTag) } }) {
                 selectedTag = ""
@@ -194,6 +273,14 @@ struct VocabularyNotebookView: View {
                       let index = VocabularySensePolicy.index(selection, in: entry) {
                 self.selection = entry.senses[index].id
             } else if selection != nil { selection = nil }
+            if let id = meaningDestination?.senseID {
+                if let entry = entries.first(where: { VocabularySensePolicy.index(id, in: $0) != nil }),
+                   let index = VocabularySensePolicy.index(id, in: entry) {
+                    meaningDestination = .sense(nodeID: meaningDestination?.nodeID, senseID: entry.senses[index].id)
+                } else {
+                    meaningDestination = meaningDestination?.nodeID.map(VocabularyMeaningDestination.node)
+                }
+            }
         }
         .onChange(of: query) { _, value in
             if !value.isEmpty { expandedEntries.formUnion(visibleEntries.map(\.id)) }
@@ -201,9 +288,16 @@ struct VocabularyNotebookView: View {
         }
         .onChange(of: selectedTag) { _, _ in reconcileGraphSelection() }
         .onChange(of: language) { _, _ in reconcileGraphSelection() }
+    }
+
+    private var sheetContent: some View {
+        lifecycleContent
         .sheet(item: $exporting) { request in VocabularyExportSheet(store: store, request: request) }
         .sheet(isPresented: $creatingEntry) {
             VocabularyEntryCreationSheet(store: store, language: language ?? .english, onSaved: revealAddedEntries)
+        }
+        .sheet(isPresented: $creatingMeaning) {
+            VocabularyMeaningEditor(store: store, preferredLanguages: meaningLanguages, onSaved: showMeaning)
         }
         .fileImporter(isPresented: $choosingWordList, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
             switch result {
@@ -237,7 +331,11 @@ struct VocabularyNotebookView: View {
             get: { reviewError != nil }, set: { if !$0 { reviewError = nil } })) {
                 Button(String(localized: "OK"), role: .cancel) { reviewError = nil }
             } message: { Text(reviewError ?? "") }
-        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: selection) }
+        .sheet(item: $editing) { VocabularyEntryEditor(entry: $0, store: store, senseID: activeSenseID) }
+    }
+
+    var body: some View {
+        sheetContent
         .alert(String(localized: "Replace notebook?", table: "Vocabulary"), isPresented: Binding(
             get: { restoreURL != nil }, set: { if !$0 { restoreURL = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { restoreURL = nil }
@@ -247,7 +345,7 @@ struct VocabularyNotebookView: View {
                 }
             } message: { Text(String(localized: "Replace this notebook with the selected backup, including images and Anki associations.",
                 table: "Vocabulary")) }
-        .alert(String(localized: "Delete this sense?", table: "Vocabulary"), isPresented: Binding(
+        .alert(String(localized: "Remove from vocabulary?", table: "Vocabulary"), isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
                 Button(String(localized: "Delete"), role: .destructive) {
@@ -262,6 +360,12 @@ struct VocabularyNotebookView: View {
     }
 
     private func reconcileGraphSelection() {
+        if organization == "meaning" {
+            if let id = meaningDestination?.nodeID, !meaningItems.contains(where: { $0.id == id }) {
+                meaningDestination = nil; graph.clearFocus()
+            }
+            return
+        }
         guard browserMode == "graph", let selection else { return }
         if !visibleEntries.contains(where: { VocabularySensePolicy.index(selection, in: $0) != nil }) {
             self.selection = nil
@@ -289,7 +393,7 @@ struct VocabularyNotebookView: View {
     private func revealAddedEntries(_ result: VocabularyEntryImportResult) {
         guard let target = result.selection else { return }
         query = ""; language = nil; selectedTag = ""; newestFirst = true
-        browserMode = "list"; selectingSenses = false; batchSelection.removeAll()
+        browserMode = "list"; organization = "entry"; selectingSenses = false; batchSelection.removeAll()
         expandedEntries.insert(target.entryID)
         selection = target.senseID
     }
@@ -307,7 +411,7 @@ struct VocabularyNotebookView: View {
 
     private var graphBrowser: some View {
         let drawerWidth: CGFloat = 396
-        let hasSelection = selectedSense != nil
+        let hasSelection = selectedSense != nil || selectedMeaning != nil
         return ZStack(alignment: .trailing) {
             VocabularyGraphView(
                 entries: visibleEntries,
@@ -316,10 +420,16 @@ struct VocabularyNotebookView: View {
                 presentation: graph,
                 select: { next in
                     withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92)) {
-                        selection = next?.senseID
+                        if let next {
+                            showSense(next.senseID)
+                        } else if organization == "meaning" { meaningDestination = nil } else { selection = nil }
                     }
                 },
-                trailingInset: hasSelection ? (drawerWidth + 16) : 0
+                trailingInset: hasSelection ? (drawerWidth + 16) : 0,
+                meanings: organization == "meaning" ? store.semantics : nil,
+                meaningSelection: organization == "meaning" ? meaningDestination?.nodeID : nil,
+                includeEmptyMeanings: language == nil && selectedTag.isEmpty,
+                selectMeaning: { id in organization = "meaning"; meaningDestination = .node(id) }
             )
             .overlay(alignment: .topLeading) {
                 graphFilterHUD
@@ -330,7 +440,8 @@ struct VocabularyNotebookView: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
                         Label(
-                            selectedEntry?.expression ?? String(localized: "Core meaning", table: "Vocabulary"),
+                            selectedMeaning?.title(in: meaningLanguages) ?? selectedEntry?.expression ??
+                                String(localized: "Core meaning", table: "Vocabulary"),
                             systemImage: "sparkles.rectangle.stack"
                         )
                         .font(.caption.weight(.semibold))
@@ -340,6 +451,7 @@ struct VocabularyNotebookView: View {
                         Button {
                             withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
                                 selection = nil
+                                meaningDestination = nil
                                 graph.clearFocus()
                             }
                         } label: {
@@ -356,7 +468,7 @@ struct VocabularyNotebookView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     Divider().opacity(0.6)
-                    entryDetail
+                    browserDetail
                 }
                 .frame(width: drawerWidth)
                 .frame(maxHeight: .infinity)
@@ -490,6 +602,19 @@ struct VocabularyNotebookView: View {
         }
     }
 
+    private var meaningListBrowser: some View {
+        NavigationSplitView {
+            VocabularyMeaningSidebar(items: meaningItems, entries: scopedEntries, unclassified: unclassified,
+                isDetailed: isDetailedList, destination: $meaningDestination)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) {
+                        sidebarFilterBar
+                    }
+                }
+                .navigationSplitViewColumnWidth(min: 245, ideal: 300, max: 420)
+        } detail: { browserDetail }
+    }
+
     private func senseCheckbox(entry: VocabularyEntry, sense: VocabularySense) -> some View {
         Toggle("", isOn: Binding(get: {
             batchSelection.contains(.init(entryID: entry.id, senseID: sense.id))
@@ -508,7 +633,12 @@ struct VocabularyNotebookView: View {
     private var graphFilterHUD: some View {
         HStack(spacing: 6) {
             filterMenus
-            Text("\(visibleEntries.count)")
+            if organization == "meaning" {
+                Button(String(localized: "Other expressions", table: "Vocabulary") + " (\(unclassified.count))") {
+                    browserMode = "list"; meaningDestination = .unclassified
+                }.buttonStyle(.borderless).font(.caption)
+            }
+            Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
@@ -611,7 +741,7 @@ struct VocabularyNotebookView: View {
 
             Spacer(minLength: 4)
 
-            Text("\(visibleEntries.count)")
+            Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
@@ -749,25 +879,144 @@ struct VocabularyNotebookView: View {
         .padding(10)
     }
 
+    @ViewBuilder private var browserDetail: some View {
+        if let node = selectedMeaning {
+            VocabularyMeaningDetail(store: store, node: node, entries: scopedEntries, speech: speech,
+                openSense: { showSense($0.senseID) }, openMeaning: showMeaning)
+                .id(node.id)
+        } else if organization == "meaning", let senseID = meaningDestination?.senseID {
+            VStack(spacing: 0) {
+                meaningSenseBreadcrumbBar(activeSenseID: senseID)
+                entryDetail
+            }
+        } else if organization == "meaning", meaningDestination == .unclassified || (!unclassified.isEmpty && meaningItems.isEmpty) {
+            VocabularyUnclassifiedDetail(store: store, entries: scopedEntries, unclassified: unclassified, speech: speech,
+                openSense: { meaningDestination = .sense(nodeID: nil, senseID: $0.senseID) }, openMeaning: showMeaning)
+        } else if organization == "meaning" {
+            ContentUnavailableView {
+                Label(String(localized: "Browse by meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
+            } description: {
+                Text(String(localized: "Select a meaning in the sidebar to compare expressions, or create a new meaning.",
+                    table: "Vocabulary"))
+            } actions: {
+                HStack(spacing: 10) {
+                    Button(String(localized: "New meaning", table: "Vocabulary")) { creatingMeaning = true }
+                        .buttonStyle(.borderedProminent)
+                    if !unclassified.isEmpty {
+                        Button(String(localized: "Other expressions", table: "Vocabulary") + " (\(unclassified.count))") {
+                            meaningDestination = .unclassified
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        } else { entryDetail }
+    }
+
+    /// Contextual breadcrumb and sibling expression switcher bar shown when drilling into a single
+    /// sense from "By meaning" mode. Keeps the parent meaning context visible and allows one-click
+    /// hopping between sibling expressions without backing out to the comparison matrix.
+    private func meaningSenseBreadcrumbBar(activeSenseID: UUID) -> some View {
+        let parentNode = meaningDestination?.nodeID.flatMap { id in
+            store.semantics.nodes.first { $0.id == id }
+        }
+        let parentTitle = parentNode?.title(in: meaningLanguages)
+            ?? String(localized: "Other expressions", table: "Vocabulary")
+        let siblingSelections: [VocabularySelection] = {
+            guard let nodeID = parentNode?.id else { return [] }
+            let senseIDs = Set(store.semantics.mappings.filter { $0.nodeID == nodeID }.map(\.senseID))
+            return scopedEntries.flatMap { entry in
+                entry.senses
+                    .filter { senseIDs.contains($0.id) }
+                    .map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
+            }
+        }()
+
+        return HStack(spacing: 10) {
+            Button {
+                meaningDestination = parentNode.map { .node($0.id) } ?? .unclassified
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                    if let parentNode {
+                        Image(systemName: parentNode.kind == .function ? "bubble.left.and.text.bubble.right" : "circle.hexagongrid")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    Text(parentTitle)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(LingroveBrand.accent)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4.5)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(LingroveBrand.accent.opacity(0.11))
+                )
+            }
+            .buttonStyle(.plain)
+
+            if siblingSelections.count > 1 {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        ForEach(siblingSelections, id: \.self) { selection in
+                            if let entry = scopedEntries.first(where: { $0.id == selection.entryID }) {
+                                let isCurrent = selection.senseID == activeSenseID
+                                Button {
+                                    meaningDestination = .sense(nodeID: parentNode?.id, senseID: selection.senseID)
+                                } label: {
+                                    Text(entry.expression)
+                                        .font(.caption.weight(isCurrent ? .semibold : .medium))
+                                        .foregroundStyle(isCurrent ? .primary : .secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3.5)
+                                        .background(
+                                            Capsule(style: .continuous)
+                                                .fill(isCurrent ? Color.primary.opacity(0.09) : Color.primary.opacity(0.035))
+                                        )
+                                        .overlay(
+                                            Capsule(style: .continuous)
+                                                .strokeBorder(isCurrent ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 0.5)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 14)
+        .padding(.bottom, 4)
+    }
+
     @ViewBuilder private var entryDetail: some View {
         if let entry = selectedEntry, let sense = selectedSense {
             VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
                 edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
                 newSense: {
-                    Task { if let id = await store.createSense(entryID: entry.id) { selection = id } }
+                    Task { if let id = await store.createSense(entryID: entry.id) { showSense(id) } }
                 }, merge: { target in
                     Task {
-                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target) { selection = target }
+                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target) { showSense(target) }
                     }
                 }, selectSense: { id in
                     withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1.0)) {
-                        selection = id
+                        showSense(id)
                     }
                 }, filterByTag: { tag in
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
                         selectedTag = selectedTag == tag ? "" : tag
                     }
-                })
+                }, openMeaning: showMeaning)
                 .id(sense.id)
                 .transition(.opacity)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: sense.id)
@@ -777,11 +1026,12 @@ struct VocabularyNotebookView: View {
     }
 
     private var selectedEntry: VocabularyEntry? {
-        guard let selection else { return nil }
+        guard let selection = activeSenseID else { return nil }
         return store.entries.first { VocabularySensePolicy.index(selection, in: $0) != nil }
     }
     private var selectedSense: VocabularySense? {
-        guard let selection, let entry = selectedEntry, let index = VocabularySensePolicy.index(selection, in: entry) else { return nil }
+        guard let selection = activeSenseID, let entry = selectedEntry,
+              let index = VocabularySensePolicy.index(selection, in: entry) else { return nil }
         return entry.senses[index]
     }
 
@@ -794,7 +1044,9 @@ struct VocabularyNotebookView: View {
         let selected = single.map { [$0] } ?? all.filter { batchSelection.contains($0) }
         let initial = single != nil ? VocabularyExportScope.selected : scope ?? (!selected.isEmpty ? .selected :
             query.isEmpty && language == nil && selectedTag.isEmpty ? .all : .filtered)
-        exporting = .init(all: all, filtered: selections(in: visibleEntries), selected: selected, initialScope: initial)
+        let filtered = organization == "meaning" ? Array(Set(meaningItems.flatMap(\.selections) + unclassified))
+            : selections(in: visibleEntries)
+        exporting = .init(all: all, filtered: filtered, selected: selected, initialScope: initial)
     }
 
     private func backup() {
@@ -832,6 +1084,7 @@ struct VocabularyEntryDetail: View {
     let merge: (UUID) -> Void
     var selectSense: ((UUID) -> Void)?
     var filterByTag: ((String) -> Void)?
+    var openMeaning: ((UUID) -> Void)?
 
     var body: some View {
         ScrollView {
@@ -845,6 +1098,8 @@ struct VocabularyEntryDetail: View {
                 if !sense.examples.isEmpty {
                     examplesSection
                 }
+                VocabularySenseSemanticSection(store: store, selection: .init(entryID: entry.id, senseID: sense.id),
+                    openMeaning: openMeaning)
                 if let review {
                     VocabularyReviewSection(entry: entry, sense: sense, controller: review)
                 }

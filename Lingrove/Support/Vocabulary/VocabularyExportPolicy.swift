@@ -20,11 +20,12 @@ nonisolated enum VocabularyExportPolicy {
         return result
     }
 
-    static func document(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration) -> VocabularyExportDocument {
+    static func document(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration,
+                         semantics: VocabularySemanticIndex? = nil) -> VocabularyExportDocument {
         let options = configuration
         let version = options.examples && entries.contains { $0.examples.contains { $0.completeness == .unknown } }
             ? 3 : entries.contains { $0.language == nil } ? 2 : 1
-        return .init(version: version, entries: entries.map { entry in
+        var document = VocabularyExportDocument(version: version, entries: entries.map { entry in
             .init(id: entry.id, expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
                 kind: entry.kind, senses: entry.senses.map { sense in
                     .init(id: sense.id, createdAt: sense.createdAt, meaning: options.meanings ? sense.meaning : nil,
@@ -51,6 +52,12 @@ nonisolated enum VocabularyExportPolicy {
                         } : nil)
                 })
         })
+        if options.meanings, !options.isExpressionList, let semantics,
+           !semantics.nodes.isEmpty || !semantics.patterns.isEmpty {
+            document.version = 4
+            document.semantics = VocabularySemanticPolicy.selected(semantics, entries: entries, examples: options.examples)
+        }
+        return document
     }
 
     static func images(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration) -> Set<VocabularyImageReference> {
@@ -58,9 +65,10 @@ nonisolated enum VocabularyExportPolicy {
         return Set(entries.flatMap { $0.senses.flatMap { VocabularyContentPolicy.images($0.content ?? []) } })
     }
 
-    static func package(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
+    static func package(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration,
+                        semantics: VocabularySemanticIndex? = nil) throws -> VocabularyExportPackage {
         try Task.checkCancellation()
-        let document = document(entries, configuration: configuration)
+        let document = document(entries, configuration: configuration, semantics: semantics)
         let data = try VocabularyExportFormatter.render(document, configuration: configuration)
         guard data.count <= maximumDataBytes else { throw VocabularyExportError.tooLarge }
         return .init(configuration: configuration, data: data,

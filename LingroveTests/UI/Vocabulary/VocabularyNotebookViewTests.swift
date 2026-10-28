@@ -15,10 +15,10 @@ struct VocabularyNotebookViewTests {
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let controller = VocabularyWindowController(store: store, speech: speech,
             dictionaryProvider: LearningLexiconService(resourceURL: nil),
-            dictionarySettings: LearningDictionarySettings(defaults: defaults), preferences: defaults)
+            learningSettings: LanguageLearningSettings(defaults: defaults), preferences: defaults)
         controller.show()
         defer { controller.close() }
-        let host = try #require(controller.window?.contentView as? NSHostingView<VocabularyNotebookView>)
+        let host = try #require(controller.window?.contentView as? NSHostingView<VocabularyNotebookRoot>)
         controller.show()
         #expect(controller.window?.contentView === host)
     }

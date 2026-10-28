@@ -447,12 +447,14 @@ existing nonactivating lifetime. The shared fish-tail button lives in `UI/Compon
 
 The environment constructs one store for both writing and reading cards, isolates the XCTest
 host from real user data, and keeps Dev/production archives in separate support directories.
-The live file is `Vocabulary/notebook.sqlite`, initialized as a fresh library. Retired JSON
-archives are neither read nor migrated nor deleted. SQLite's `application_id` and `user_version`
-identify its independent schema; portable backups/exports retain their existing JSON formats.
+The live file is `Vocabulary/learning-library.sqlite`, initialized as a fresh library. Retired
+SQLite/JSON libraries are not read, migrated or deleted. SQLite schema 4 and portable notebook
+format 7 describe independent evidence, interpretations, collection and meaning knowledge; selective JSON exports containing meaning knowledge use
+format 4. Full backups retain the complete graph and original media.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
 
-`VocabularyDatabaseRecord` and `VocabularyDatabaseProjection` split expressions, senses, usages,
+`VocabularyDatabaseRecord` and `VocabularyDatabaseProjection` split expressions, senses, source
+snapshots, text occurrences, usage annotations,
 AI records, content blocks, review cards/bindings and templates into owned rows. JSON payloads
 contain a single entity's scalar/leaf values, with children stripped; foreign keys and order live
 in SQL columns. `VocabularySQLiteConnection` confines C pointers, copied bindings and private
@@ -464,11 +466,50 @@ A durable revision rejects stale commits. Domain graph
 validation and the existing UI snapshot model remain in place; search still filters those values
 in memory and is not claimed to have become an indexed/paged database search in this change.
 
+`VocabularyLifecycleModels` owns independent interpretation claims and personal collection
+relations. `VocabularyDocument.catalog`, `sources`, `occurrences`, `interpretations` and
+`collections` are canonical; its `entries` is a joined editing adapter, not duplicate storage.
+`VocabularyNotebookProjection` joins accepted claims, overlays personal state and exposes
+`collectedEntries` to `VocabularyStore`. Editing examples forks immutable evidence; cancelling a
+favorite only changes membership. `VocabularyLifecyclePolicy` validates all canonical references,
+unique acceptance per occurrence and collection ownership. Raw evidence and unresolved claims
+survive without lexical senses, collections or meaning nodes. Notes/content/reviews belong to
+collections; portable backups preserve the entire canonical graph.
+
+`VocabularySemanticModels` owns independent meaning nodes, multilingual labels, semantic roles,
+usage patterns/slots, sense-to-meaning mappings, role bindings, occurrence evidence, typed meaning
+relations and many-to-many retrieval cues. `VocabularySemanticPolicy` validates references and
+acyclic hierarchies, merges independent drafts, and reconciles lexical merges/deletions without
+broadening restricted associations. `VocabularySemanticDatabaseProjection` maps these values
+to normalized rows; `VocabularySQLiteMeaningSchema` adds foreign keys and lookup indexes.
+Evidence corrections withdraw affected citations and return their mappings to proposed status;
+translation-only edits preserve those assertions. `VocabularySemanticEditingPolicy` owns the
+small name/classification edits exposed to learners and preserves hidden semantic metadata.
+`VocabularyArchive+Semantics` serializes explicit local edits and publishes through the same
+`VocabularyStore`; saving or browsing never starts automatic classification or network inference.
+
+`VocabularyMeaningBrowserProjection` supplies meaning groups and unclassified senses under the
+same language/tag scope. The notebook window owns separate organization and layout preferences.
+`VocabularyMeaningSidebar` and `VocabularyMeaningDetail` reuse the native split view and delegate
+expression navigation to the existing sense detail. `VocabularySenseSemanticSection` adds
+optional organization after the original examples. Meaning and mapping sheets expose names and
+concrete expression choices, while roles, slot bindings and verification fields remain in the
+maintenance resources. Detached drafts preserve existing restrictions and provenance. Both list
+and graph navigate confirmed relations; unconfirmed cues do not route ordinary searches.
+`VocabularySemanticPresentation` contains shared usage/example cards, explicit adoption of
+suggested groupings, sheet framing and return navigation. The store owns every resulting write.
+`VocabularyNotebookRoot` observes the app-owned explanation-language setting and passes a display
+context to the notebook without rebuilding its window/session. `VocabularyMeaningLabelPolicy`
+chooses existing names by explanation language, interface language and explicit fallbacks; the
+study-language filter only scopes expressions. Localized edits retain the chosen label UUID and
+language. Mixed-language graph labels and expression badges distinguish homographs without
+guessing unknown source languages or translating stored content.
+
 `VocabularyContentModels` adds optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
 the archive actor, normalizes imports to bounded PNGs, and keeps hash-named files in
-`notebook.sqlite.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
+`learning-library.sqlite.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
 before the SQL commit, rolls back new files on failure, and retires unreferenced images
 only after commit. `VocabularyContentEditor` and `VocabularyContentView` share the native editor
 and read-only presentation; no inference or new provider is involved.
@@ -506,6 +547,13 @@ The server holds an exclusive lifetime lease on a private app-specific mailbox; 
 directory source wakes its serial drain. `VocabularyStore.executeCLI` forwards to the existing
 archive actor and applies acknowledged snapshots so open windows refresh. `VocabularyCLIPlan`
 owns pure additive/update planning with stable IDs, explicit ownership and revision conflicts;
+`CLIResourceContract` shares closed field validation and JSON Schema generation between the
+executable and app. `VocabularyCLIResources` plans canonical resource patches/deletions, without
+implicitly collecting knowledge. `VocabularyArchive+CLIResources` returns bounded full records,
+related-ID/query/status filters and revisions. Version 2 resource batches require CAS and explicit
+UUIDs, support linked records in one transaction, and reject dangling deletion references. The
+external agent owns classification; no internal classifier or vector service is constructed.
+`skills/lingrove-cli/references/organization.md` documents the independent-resource workflow.
 `VocabularyCLIReadBudget` bounds whole-entry response construction before JSON encoding.
 
 `VocabularyArchive+CLI` owns query projection, image preparation, dry runs and replay lookup.
@@ -657,8 +705,8 @@ settings/vocabulary routing and lifecycle cleanup now pass through the native co
 
 ## Vocabulary Graph
 
-- `Models/Vocabulary/VocabularyGraphModels.swift`: immutable headword/sense graph, validated appearance/force settings and camera math.
-- `Support/Vocabulary/VocabularyGraphProjection.swift`: filtered notebook to explicit ownership edges; no inferred semantic links.
+- `Models/Vocabulary/VocabularyGraphModels.swift`: immutable headword/sense/meaning graph, typed edges, appearance/force settings and camera math.
+- `Support/Vocabulary/VocabularyGraphProjection.swift`: lexical ownership or confirmed meaning mappings/relations; no inferred semantic links.
 - `Services/Vocabulary/VocabularyGraphLayoutWorker.swift`: window-owned actor confining the Grape simulation and rejecting stale epochs.
 - `UI/Vocabulary/VocabularyGraphPresentation.swift`: window browsing/preferences lifetime, independent of SQLite content.
 - `UI/Vocabulary/VocabularyGraphView.swift`: native controls/settings and the canvas adapter.

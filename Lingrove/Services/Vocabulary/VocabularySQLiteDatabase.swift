@@ -8,7 +8,7 @@ nonisolated final class VocabularySQLiteDatabase {
     typealias Row = VocabularyDatabaseRecord
     typealias Value = VocabularySQLiteConnection.Value
     static let applicationID: Int64 = 0x4C47564E // LGVN, independent of the portable JSON schema.
-    static let schemaVersion: Int64 = 2
+    static let schemaVersion: Int64 = 4
     let connection: VocabularySQLiteConnection
     private var fileLock: VocabularySQLiteFileLock?
     private(set) var lastWrittenRows = 0
@@ -27,17 +27,9 @@ nonisolated final class VocabularySQLiteDatabase {
         try access(write: true) {
             guard try scalar("PRAGMA application_id") == Self.applicationID else { throw VocabularyError.invalidArchive }
             let version = try scalar("PRAGMA user_version")
-            guard version == 1 || version == Self.schemaVersion else { throw VocabularyError.unsupportedVersion }
+            guard version == Self.schemaVersion else { throw VocabularyError.unsupportedVersion }
             guard try connection.rows("PRAGMA quick_check") == [[.text("ok")]],
                   try connection.rows("PRAGMA foreign_key_check").isEmpty else { throw VocabularyError.invalidArchive }
-            if version == 1 {
-                // This upgrades the already accepted SQLite store, preserving its contents.
-                // Retired JSON libraries are still never read or migrated.
-                try connection.transaction(write: true) {
-                    try Self.createReceiptTable(connection)
-                    try connection.execute("PRAGMA user_version=" + String(Self.schemaVersion))
-                }
-            }
             // WAL lets snapshot readers coexist with the app's writer. FULL retains durable
             // acknowledgement; opening/reconfiguring a second instance uses the same lock.
             _ = try connection.rows("PRAGMA journal_mode=WAL")
@@ -75,8 +67,8 @@ nonisolated final class VocabularySQLiteDatabase {
                           position <= Int64(Int.max), let data = values[3].data else { throw VocabularyError.invalidArchive }
                     let payload: Row.Payload
                     do { payload = try .decode(data, table: table) } catch { throw VocabularyError.invalidArchive }
-                    let extra = values.dropFirst(4).compactMap(\.string)
-                    guard extra.count == table.extraColumns.count,
+                    let extra = values.dropFirst(4).map(\.string)
+                    guard values.dropFirst(4).allSatisfy({ $0 == .null || $0.string != nil }),
                           values[1] == .null || values[1].string != nil else { throw VocabularyError.invalidArchive }
                     records.append(.init(table: table, id: id, parentID: values[1].string,
                         position: Int(position), payload: payload, extra: extra))
@@ -114,6 +106,11 @@ nonisolated final class VocabularySQLiteDatabase {
             for row in oldRows.values where row.table == .entries && newRows[row.key]?.extra.first != row.extra.first {
                 try connection.execute("UPDATE entries SET lookup_key=NULL WHERE id=?", [.text(row.id)])
             }
+            // Preferred-name uniqueness is immediate. Release replaced labels before upserts,
+            // allowing a language's preferred label to change atomically, in either row order.
+            for row in oldRows.values where row.table == .meaningLabels && newRows[row.key] != row {
+                try connection.execute("UPDATE meaning_labels SET preferred='no' WHERE id=?", [.text(row.id)])
+            }
             for table in Row.Table.allCases {
                 for row in changed where row.table == table { try upsert(row) }
             }
@@ -146,7 +143,7 @@ nonisolated final class VocabularySQLiteDatabase {
         let sql = "INSERT INTO " + row.table.rawValue + " (" + columns.joined(separator: ",") + ") VALUES (" +
             Array(repeating: "?", count: columns.count).joined(separator: ",") + ") ON CONFLICT(id) DO UPDATE SET " + update
         try connection.execute(sql, [.text(row.id), row.parentID.map(Value.text) ?? .null,
-            .integer(Int64(row.position)), .blob(try row.payload.encoded())] + row.extra.map(Value.text))
+            .integer(Int64(row.position)), .blob(try row.payload.encoded())] + row.extra.map { $0.map(Value.text) ?? .null })
     }
 
     /// Publish a fully initialized, closed database with an exclusive hard link. A crash cannot
@@ -173,18 +170,19 @@ nonisolated final class VocabularySQLiteDatabase {
             try connection.execute("INSERT INTO state VALUES (1,0,0)")
             for table in Row.Table.allCases {
                 let parent = table.parent.map { "TEXT NOT NULL REFERENCES " + $0.rawValue +
-                    "(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED" } ?? "TEXT CHECK(parent_id IS NULL)"
+                    "(id) DEFERRABLE INITIALLY DEFERRED" } ?? "TEXT CHECK(parent_id IS NULL)"
                 let extra: String
                 switch table {
                 case .entries: extra = ",lookup_key TEXT UNIQUE,language TEXT NOT NULL,expression TEXT NOT NULL"
                 case .senses: extra = ",meaning TEXT NOT NULL"
-                default: extra = ""
+                default: extra = VocabularySQLiteMeaningSchema.columns(table)
                 }
                 try connection.execute("CREATE TABLE " + table.rawValue + " (id TEXT PRIMARY KEY NOT NULL,parent_id " + parent +
                     ",position INTEGER NOT NULL CHECK(position>=0),payload BLOB NOT NULL" + extra + ")")
                 try connection.execute("CREATE INDEX " + table.rawValue + "_owner ON " + table.rawValue + "(parent_id,position)")
             }
             try connection.execute("CREATE INDEX entries_language ON entries(language,expression)")
+            try VocabularySQLiteMeaningSchema.createIndexes(connection)
             try createReceiptTable(connection)
             try connection.execute("PRAGMA application_id=" + String(applicationID))
             try connection.execute("PRAGMA user_version=" + String(schemaVersion))

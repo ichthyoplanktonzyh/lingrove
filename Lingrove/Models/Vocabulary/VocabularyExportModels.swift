@@ -83,6 +83,7 @@ nonisolated struct VocabularyExportDocument: Codable, Sendable {
     var format = "lingrove-vocabulary-export"
     var version = 1
     let entries: [Entry]
+    var semantics: VocabularySemanticIndex?
 
     struct Entry: Codable, Sendable {
         let id: UUID

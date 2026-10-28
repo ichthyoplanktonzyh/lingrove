@@ -31,6 +31,7 @@ nonisolated enum VocabularyCaptureFactory {
             example?.translation = meaning
             example?.translationLanguage = otherLanguage
         }
+        if !original { example?.sourceKind = .generated }
         example?.meaning = kind == .sentence ? "" : meaning
         example?.meaningLanguage = kind == .sentence ? nil : otherLanguage
         return VocabularyCapture(expression: text, dictionaryForm: text, language: language, kind: kind,
@@ -70,6 +71,7 @@ nonisolated enum VocabularyCaptureFactory {
         // A sentence translation is not a definition of a word inside it. Only a whole
         // reading target carries its own translation; subexpressions receive contextual AI meaning.
         let meaning = wholeReadingTarget ? other : ""
+        if !original { example?.sourceKind = .generated }
         example?.meaning = meaning
         example?.meaningLanguage = otherLanguage
         let kind: VocabularyEntry.Kind = switch unit.kind {
@@ -123,6 +125,8 @@ nonisolated enum VocabularyCaptureFactory {
                     length: surfaceOffset.length)
                 example = VocabularyPolicy.example(text: full, ranges: [occurrence],
                     language: targetLanguage, app: appBundleIdentifier)
+                example?.sourceKind = .generated
+                example?.meaningOrigin = .ai
                 example?.meaning = meaning
                 example?.meaningLanguage = meaning.isEmpty ? nil : meaningLanguage
             }

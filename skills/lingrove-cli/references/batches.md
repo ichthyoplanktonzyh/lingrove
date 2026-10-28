@@ -84,7 +84,7 @@ update replaces the tag array. Append cannot edit a sense's meaning or note.
 A repeated occurrence within the target sense keeps its existing usage ID and primary
 translation, collecting distinct translations as variants. A conflicting contextual meaning
 fails instead of overwriting saved material. If another sense owns the occurrence, append to
-that owner when appropriate or let the user move it in the app. Creating another sense is not
+that owner when appropriate or use an explicitly authorized [resource organization batch](organization.md). Creating another sense is not
 a conflict-resolution mechanism. Retrying rich-text appends with a new key can duplicate blocks.
 
 ## Update only intended fields
@@ -114,12 +114,12 @@ rejects the whole batch. Reread and reconcile with the current content before a 
 Only supplied `meaning`, `meaningLanguage`, `note`, and `tags` are replaced. Omit fields that
 should stay unchanged; do not use null as a clearing command. `note: ""` and `tags: []` clear
 those fields. Meaning must remain nonempty. Update cannot rename an entry, replace examples,
-delete senses, or move usages; those actions need the app.
+delete senses, or move usages; use [version 2 resource operations](organization.md) for those actions.
 
 ## Context and UTF-16 ranges
 
 - Supply the actual source sentence if available; use `completeness: "fragment"` for clipped
-  context. Do not label a fragment as a complete sentence. If no context is available, omit the
+  context, or `"unknown"` for unverified boundaries. Do not label a fragment as a complete sentence. If no context is available, omit the
   example rather than fabricating one.
 - Omitted `ranges` finds one exact expression occurrence automatically. No match leaves an empty
   range. Multiple matches, including overlapping ones, need explicit ranges to disambiguate.
@@ -131,6 +131,10 @@ delete senses, or move usages; those actions need the app.
   location = len(text[:start].encode("utf-16-le")) // 2
   length = len(text[start:end].encode("utf-16-le")) // 2
   ```
+
+Example `sourceKind` can be `captured`, `imported`, `authored`, `generated`, or `unspecified`.
+It defaults to `authored`. Preserve the actual provenance; do not label illustrative material
+as captured. Use `generated` for model-created source text.
 
 ## Rich content and local files
 

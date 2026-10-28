@@ -24,6 +24,7 @@ struct VocabularyCaptureFactoryTests {
         #expect(capture.meaning == "发布过的")
         #expect(capture.example?.text == text && capture.example?.translation.isEmpty == true)
         #expect(capture.example?.ranges == preview.vocabularyContext?.ranges)
+        #expect(capture.example?.sourceKind == .captured)
     }
 
     @Test func wordCaptureIncludesFixedSentenceAndTranslationWithoutDictionaryRequest() throws {
@@ -34,6 +35,7 @@ struct VocabularyCaptureFactoryTests {
         #expect(capture.example?.text == preview.translation)
         #expect(capture.example?.translation == preview.source)
         #expect(capture.meaning.isEmpty)
+        #expect(capture.example?.sourceKind == .generated)
     }
 
     @Test func staleAndStreamingResultsCannotBeSaved() {

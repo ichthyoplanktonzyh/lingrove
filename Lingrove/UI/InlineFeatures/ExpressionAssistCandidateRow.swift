@@ -76,7 +76,6 @@ final class ExpressionAssistCandidateRow: NSButton {
                 symbol: isSpeaking ? "speaker.wave.2.fill" : "speaker.wave.2",
                 assetName: nil,
                 active: isSpeaking,
-                selected: showsSelection,
                 tooltip: isSpeaking
                     ? String(localized: "Stop speaking expression", table: "Learning")
                     : String(localized: "Play expression aloud", table: "Learning"),
@@ -91,7 +90,6 @@ final class ExpressionAssistCandidateRow: NSButton {
                 symbol: isSaving ? "ellipsis" : nil,
                 assetName: isSaving ? nil : (isSaved ? "FavoriteFishFilled" : "FavoriteFishOutline"),
                 active: isSaved,
-                selected: showsSelection,
                 tooltip: isSaved
                     ? String(localized: "Remove this saved usage", table: "Vocabulary")
                     : String(localized: "Save to vocabulary", table: "Vocabulary"),
@@ -202,7 +200,6 @@ final class ExpressionAssistCandidateRow: NSButton {
         symbol: String?,
         assetName: String?,
         active: Bool,
-        selected: Bool,
         tooltip: String,
         action: Selector
     ) -> NSButton {
@@ -225,7 +222,7 @@ final class ExpressionAssistCandidateRow: NSButton {
         }
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
-        if selected {
+        if showsSelection {
             button.contentTintColor = .alternateSelectedControlTextColor.withAlphaComponent(active ? 1.0 : 0.82)
         } else {
             button.contentTintColor = active ? .controlAccentColor : .secondaryLabelColor

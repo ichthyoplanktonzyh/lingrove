@@ -16,8 +16,15 @@ extension VocabularyArchive {
         switch request.command {
         case .status:
             result = .object(["storage": .string("sqlite"), "schemaVersion": .integer(VocabularySQLiteDatabase.schemaVersion),
-                "revision": .integer(Int64(snapshot.revision)), "entryCount": .integer(Int64(snapshot.document.entries.count)),
-                "senseCount": .integer(Int64(snapshot.document.entries.reduce(0) { $0 + $1.senses.count })),
+                "revision": .integer(Int64(snapshot.revision)), "entryCount": .integer(Int64(snapshot.document.collectedEntries.count)),
+                "catalogEntryCount": .integer(Int64(snapshot.document.catalog.count)),
+                "sourceCount": .integer(Int64(snapshot.document.sources.count)),
+                "occurrenceCount": .integer(Int64(snapshot.document.occurrences.count)),
+                "interpretationCount": .integer(Int64(snapshot.document.interpretations.count)),
+                "collectionCount": .integer(Int64(snapshot.document.collections.count)),
+                "resources": .array(CLIResourceContract.names.map(CLIJSON.string)),
+                "senseCount": .integer(Int64(snapshot.document.collectedEntries.reduce(0) { $0 + $1.senses.count })),
+                "catalogSenseCount": .integer(Int64(snapshot.document.catalog.reduce(0) { $0 + $1.senses.count })),
                 "languages": .array(LearningLanguage.allCases.map { .string($0.rawValue) }),
                 "kinds": .array(VocabularyEntry.Kind.allCases.map { .string($0.rawValue) })])
         case .list:
@@ -26,7 +33,7 @@ extension VocabularyArchive {
                   request.language == nil || request.language == "und" || LearningLanguage(rawValue: request.language ?? "") != nil else {
                 throw CLIError.invalid("Use a supported language, a limit of 1–200 and a nonnegative offset.")
             }
-            let values = snapshot.document.entries.filter {
+            let values = snapshot.document.collectedEntries.filter {
                 (request.language == nil || ($0.language?.rawValue ?? "und") == request.language)
                     && VocabularyPolicy.matches($0, query: request.query ?? "")
             }
@@ -43,13 +50,14 @@ extension VocabularyArchive {
             result = .object(["revision": .integer(Int64(snapshot.revision)), "total": .integer(Int64(values.count)),
                 "offset": .integer(Int64(offset)), "entries": .array(page)])
         case .get:
-            guard let id = request.entryID, let entry = snapshot.document.entries.first(where: { $0.id == id }) else {
+            guard let id = request.entryID, let entry = snapshot.document.collectedEntries.first(where: { $0.id == id }) else {
                 throw CLIError(code: .notFound, message: "Entry not found.")
             }
             try VocabularyCLIReadBudget.validate(entry)
             var options = VocabularyExportConfiguration(); options.explanation = true
             result = .object(["revision": .integer(Int64(snapshot.revision)),
                 "entry": try .value(VocabularyExportPolicy.document([entry], configuration: options).entries[0])])
+        case .resourceList, .resourceGet: result = try readCLIResources(request, snapshot: snapshot)
         case .apply: preconditionFailure("Handled before the read path")
         }
         return (result, snapshot)
@@ -79,7 +87,9 @@ extension VocabularyArchive {
         }
         let prepared = try prepareCLIImages(in: batch)
         let plan = try VocabularyCLIPlan(batch: batch, snapshot: snapshot, fingerprint: fingerprint, prepared: prepared, now: Date())
-        try validate(plan.document)
+        do { try validate(plan.document) } catch {
+            throw CLIError.invalid("Invalid resource relationships or content. Check references, accepted claims and graph constraints.")
+        }
         guard request.expiresAt > Date() else { throw CLIError(code: .timeout, message: "Request expired before commit.") }
         let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision) + (request.dryRun ? 0 : 1)),
             "dryRun": .bool(request.dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes)])

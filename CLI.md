@@ -22,7 +22,7 @@ Learning material stays on the Mac; none of these commands requests AI inference
 
 ## Atomic batches
 
-The executable publishes the version 1 input JSON Schema with `lingrove schema`. `status` lists
+The executable publishes the version 1/2 input JSON Schema with `lingrove schema`. `status` lists
 supported language codes and expression kinds. Input accepts 1–100 operations. Unknown keys are
 rejected so a spelling mistake cannot silently discard a note.
 
@@ -66,7 +66,7 @@ rejected so a spelling mistake cannot silently discard a note.
 - **`append`** requires exact `entryID` and `senseID`; it appends `examples`, `content`, or `tags`.
   A repeated occurrence in that sense retains its ID and primary translation, collecting distinct
   translations as variants. Conflicting saved contextual meanings fail rather than overwrite.
-  An occurrence already owned by another sense is a conflict; move it explicitly in the app.
+  An occurrence already owned by another sense is a conflict; move it explicitly with resource operations.
 - **`update`** requires `entryID`, `senseID`, and the **current notebook `expectedRevision`** returned
   by `get` or `status`. It replaces only supplied `meaning`, `meaningLanguage`, `note`, or `tags`.
   An empty note or empty tags array clears that field. The entire batch fails on stale revision.
@@ -101,6 +101,43 @@ wire messages are limited to 32 MiB, and original image bytes to 16 MiB per batc
 `--dry-run` checks the same domain rules and images, returns planned IDs, and does not write
 material, media, or an idempotency receipt. New IDs remain stable between a dry run and its commit
 for the same batch. The baseline revision can still change before commit; read again on conflict.
+
+## Independent resources and external organization
+
+`vocab list/get` reads personally collected material. Catalog knowledge and raw evidence can
+exist without a personal collection or meaning graph. Resource commands expose both:
+
+```sh
+lingrove data list sources --limit 20
+lingrove data list interpretations --status candidate
+lingrove data list mappings --related SENSE_UUID
+lingrove data list nodes --query 金融
+lingrove data get senses SENSE_UUID
+```
+
+Resources are `entries`, `senses`, `sources`, `occurrences`, `interpretations`, `collections`,
+`nodes`, `patterns`, `mappings`, `relations`, `cues`, and `cueTargets`. Lists return full records,
+`total` and `nextOffset`, with limits of 1–200 and 16 MiB per page. `--related` matches a UUID
+in record values; `--status` is specific to interpretations. Resource timestamps are Unix seconds.
+
+Use a version 2 batch with a batch-level `expectedRevision` for `put`/`delete`. Caller-supplied
+UUIDs make linked records possible in one atomic batch. `put` preserves omitted fields, replaces
+arrays and clears optional nulls. `schema` includes `x-requiredOnCreate` for creation fields.
+Sources and occurrences are immutable; corrections create new UUIDs. Delete dependencies
+explicitly in the same batch: no automatic cascade or orphan cleanup is performed.
+
+Personal membership is a `collections` record keyed by `senseID`, owning notes, tags, selected
+accepted interpretation IDs and private review state. Uncollecting removes this relation while
+preserving catalog, evidence, interpretations and meaning knowledge. Collection creation is
+explicit for resource writes; traditional `add`/`append` remain personal-save conveniences.
+Sources can precede interpretations, and several candidate interpretations can share an
+occurrence. At most one accepted interpretation is allowed per occurrence.
+
+The external agent performs classification. Lingrove validates relationships and persists
+its changes; no internal classification service, vector matching or automatic model request is
+introduced. New agent assertions default to model/proposed provenance. See the complete
+[resource organization guide](skills/lingrove-cli/references/organization.md) for payloads,
+candidate resolution, membership, corrections and deletion.
 
 ## Results, retries and ownership
 

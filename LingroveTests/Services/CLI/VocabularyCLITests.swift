@@ -8,6 +8,102 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func externalAgentCanOrganizeUncollectedMaterialThenCollectAndUncollectIt() async throws {
+        let fixture = try await Fixture()
+        do {
+            let entry = UUID().uuidString, sense = UUID().uuidString, source = UUID().uuidString
+            let occurrence = UUID().uuidString, accepted = UUID().uuidString, candidate = UUID().uuidString
+            let node = UUID().uuidString, pattern = UUID().uuidString, mapping = UUID().uuidString
+            let cue = UUID().uuidString, target = UUID().uuidString
+            func put(_ resource: String, _ value: [String: Any]) -> [String: Any] {
+                ["put": ["resource": resource, "value": value]]
+            }
+            func resourceBatch(_ key: String, _ revision: Int, _ operations: [[String: Any]]) -> [String: Any] {
+                ["version": 2, "idempotencyKey": key, "expectedRevision": revision, "operations": operations]
+            }
+            let input = resourceBatch("organize", 0, [
+                put("sources", ["id": source, "text": "We pushed the meeting back.", "kind": "captured"]),
+                put("occurrences", ["id": occurrence, "sourceID": source, "ranges": [["location": 3, "length": 6]]]),
+                put("entries", ["id": entry, "expression": "push back", "language": "en", "kind": "expression"]),
+                put("senses", ["id": sense, "entryID": entry, "meaning": "推迟", "meaningLanguage": "zh-Hans"]),
+                put("interpretations", ["id": accepted, "occurrenceID": occurrence, "senseID": sense,
+                    "status": "accepted", "meaning": "推迟会议"]),
+                put("interpretations", ["id": candidate, "occurrenceID": occurrence, "meaning": "抵制", "status": "candidate"]),
+                put("nodes", ["id": node, "labels": [["id": UUID().uuidString, "text": "推迟安排", "language": "zh-Hans"]]]),
+                put("patterns", ["id": pattern, "senseID": sense, "template": "push [event] back"]),
+                put("mappings", ["id": mapping, "nodeID": node, "senseID": sense, "patternID": pattern, "evidenceIDs": [accepted]]),
+                put("cues", ["id": cue, "text": "往后挪"]),
+                put("cueTargets", ["id": target, "cueID": cue, "nodeID": node])
+            ])
+            #expect(try await fixture.apply(input, dry: true).0 == 0)
+            #expect(try await fixture.archive.load().document.sources.isEmpty)
+            let committed = try await fixture.apply(input)
+            #expect(committed.0 == 0)
+            #expect(fixture.store.entries.isEmpty)
+            let catalog = try await fixture.call(["data", "get", "senses", sense])
+            #expect(catalog.0 == 0)
+            let unresolved = try await fixture.call(["data", "list", "interpretations", "--related", occurrence, "--status", "candidate"])
+            #expect(unresolved.0 == 0)
+            #expect(try result(unresolved.1)["total"] as? Int == 1)
+            #expect(try await fixture.call(["vocab", "list"]).1["ok"] as? Bool == true)
+            let collect = resourceBatch("collect", 1, [put("collections", ["senseID": sense, "interpretationIDs": [accepted],
+                "note": "Personal note", "tags": ["scheduling"]])])
+            #expect(try await fixture.apply(collect).0 == 0)
+            #expect(fixture.store.entries.first?.examples.first?.id.uuidString == accepted)
+            #expect(fixture.store.entries.first?.senses.first?.note == "Personal note")
+            let replayed = try await fixture.apply(input)
+            #expect(replayed.0 == 0)
+            #expect(try result(replayed.1)["replayed"] as? Bool == true)
+            let stale = resourceBatch("stale", 0, [put("nodes", ["id": node, "definition": "Stale edit"])])
+            #expect(try await fixture.apply(stale).0 == 4)
+            let invalid = resourceBatch("dangling-delete", 2, [["delete": ["resource": "sources", "id": source]]])
+            #expect(try await fixture.apply(invalid).0 == 2)
+            let unknown = resourceBatch("unknown", 2, [put("nodes", ["id": node,
+                "labels": [["id": UUID().uuidString, "text": "Oops", "prefered": true]]])])
+            #expect(try await fixture.apply(unknown).0 == 2)
+            let immutable = resourceBatch("source-edit", 2, [put("sources", ["id": source, "text": "Edited evidence"] )])
+            #expect(try await fixture.apply(immutable).0 == 4)
+            let uncollect = resourceBatch("uncollect", 2, [["delete": ["resource": "collections", "id": sense]]])
+            #expect(try await fixture.apply(uncollect).0 == 0)
+            #expect(fixture.store.entries.isEmpty)
+            let retained = try await fixture.archive.load()
+            #expect(retained.document.sources.count == 1 && retained.document.interpretations.count == 2)
+            #expect(retained.document.semantics.mappings[0].evidenceIDs.map(\.uuidString) == [accepted])
+            #expect(try await fixture.call(["data", "get", "sources", source]).0 == 0)
+            let traditional = batch("legacy-recollect", [["update": ["entryID": entry, "senseID": sense,
+                "expectedRevision": 3, "note": "Collected through the traditional CLI"]]])
+            #expect(try await fixture.apply(traditional).0 == 0)
+            #expect(fixture.store.entries.first?.senses.first?.note == "Collected through the traditional CLI")
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test func deletingExplicitDependenciesTogetherAndPublishingTheSchemaWorkThroughTheExecutable() async throws {
+        let fixture = try await Fixture()
+        do {
+            let source = UUID().uuidString, occurrence = UUID().uuidString
+            let seed: [String: Any] = ["version": 2, "expectedRevision": 0, "idempotencyKey": "raw-source", "operations": [
+                ["put": ["resource": "sources", "value": ["id": source, "text": "raw material", "kind": "imported"]]],
+                ["put": ["resource": "occurrences", "value": ["id": occurrence, "sourceID": source, "ranges": []]]]
+            ]]
+            #expect(try await fixture.apply(seed).0 == 0)
+            let get = try await fixture.call(["data", "get", "sources", source])
+            let record = try #require(try result(get.1)["record"] as? [String: Any])
+            let replay: [String: Any] = ["version": 2, "expectedRevision": 1, "idempotencyKey": "unchanged-source", "operations": [
+                ["put": ["resource": "sources", "value": record]]]]
+            #expect(try await fixture.apply(replay).0 == 0)
+            let remove: [String: Any] = ["version": 2, "expectedRevision": 2, "idempotencyKey": "delete-raw", "operations": [
+                ["delete": ["resource": "occurrences", "id": occurrence]], ["delete": ["resource": "sources", "id": source]]]]
+            #expect(try await fixture.apply(remove).0 == 0)
+            #expect(try await fixture.archive.load().document.sources.isEmpty)
+            let tool = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove")
+            let schema = try await Self.run(tool, arguments: ["schema"], stdin: nil)
+            let object = try #require(JSONSerialization.jsonObject(with: schema.1) as? [String: Any])
+            #expect(schema.0 == 0 && object["allOf"] != nil)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func unknownContextPlansAndWritesTheRequiredEnvelopeVersion() async throws {
         let fixture = try await Fixture()
         do {
@@ -18,7 +114,8 @@ struct VocabularyCLITests {
             #expect(try await fixture.archive.load().document.entries.isEmpty)
             #expect(try await fixture.apply(input).0 == 0)
             let saved = try await fixture.archive.load()
-            #expect(saved.document.schemaVersion == 5 && saved.document.entries[0].examples[0].completeness == .unknown)
+            #expect(saved.document.schemaVersion == VocabularyDocument.currentVersion &&
+                saved.document.entries[0].examples[0].completeness == .unknown)
         } catch { await fixture.close(); throw error }
         await fixture.close()
     }
@@ -320,26 +417,15 @@ struct VocabularyCLITests {
         } catch { await fixture.close(); throw error }; await fixture.close()
     }
 
-    @Test func acceptedSQLiteSchemaOneUpgradesWithoutReadingRetiredJSON() async throws {
+    @Test func oldSQLiteSchemaIsRejectedWithoutMigratingOrDeletingIt() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("notebook.sqlite"), retired = directory.appendingPathComponent("notebook-v3.json")
-        let bytes = Data("Never imported".utf8); try bytes.write(to: retired)
-        do {
-            let database = try VocabularySQLiteDatabase(url: url)
-            let document = VocabularyDocument(entries: try VocabularyExportTests().fixture().entries)
-            _ = try database.write(document, previous: .init(), expectedRevision: 0)
-            try database.connection.execute("DROP TABLE cli_receipts")
-            try database.connection.execute("PRAGMA user_version=1")
-            database.connection.close()
-        }
-        let archive = VocabularyArchive(url: url), snapshot = try await archive.load()
-        #expect(snapshot.document.entries.count == 2 && snapshot.revision == 1)
+        let url = directory.appendingPathComponent("notebook.sqlite")
         let database = try VocabularySQLiteDatabase(url: url)
+        try database.connection.execute("PRAGMA user_version=2")
+        await #expect(throws: VocabularyError.unsupportedVersion) { try await VocabularyArchive(url: url).load() }
         #expect(try database.connection.rows("PRAGMA user_version") == [[.integer(2)]])
-        #expect(try database.connection.rows("SELECT count(*) FROM cli_receipts") == [[.integer(0)]])
-        #expect(try Data(contentsOf: retired) == bytes)
     }
 
     @Test func utf16RangesHandleEmojiAndAppendedMeaningConflictsAreExplicit() async throws {

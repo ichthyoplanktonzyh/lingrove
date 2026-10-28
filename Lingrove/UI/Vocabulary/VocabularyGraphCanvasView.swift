@@ -10,11 +10,14 @@ final class VocabularyGraphCanvasView: NSView {
     private let presentation: VocabularyGraphPresentation
     private var snapshot = VocabularyGraphSnapshot()
     private var selection: VocabularySelection?
+    private var meaningSelection: UUID?
+    private var selectMeaning: (UUID) -> Void = { _ in }
     private var select: (VocabularySelection?) -> Void = { _ in }
     private var positions: [VocabularyGraphNodeID: CGPoint] = [:]
     private var animationTask: Task<Void, Never>?
     private var epoch: UInt64 = 0
     private var hovered: VocabularyGraphNodeID?
+    private var relatedNodes: Set<VocabularyGraphNodeID> = []
     private var pointer: PointerSession?
     private var pinned: VocabularyGraphNodeID?
     private var pinPosition: CGPoint?
@@ -66,8 +69,12 @@ final class VocabularyGraphCanvasView: NSView {
     required init?(coder: NSCoder) { nil }
 
     func update(snapshot: VocabularyGraphSnapshot, selection: VocabularySelection?,
-                select: @escaping (VocabularySelection?) -> Void) {
+                select: @escaping (VocabularySelection?) -> Void, meaningSelection: UUID? = nil,
+                selectMeaning: @escaping (UUID) -> Void = { _ in }) {
         self.select = select
+        self.selectMeaning = selectMeaning
+        if self.meaningSelection != meaningSelection, let meaningSelection { pendingSearchTarget = .meaning(meaningSelection) }
+        self.meaningSelection = meaningSelection
         if self.selection != selection, let selection { pendingSearchTarget = .sense(selection) }
         self.selection = selection
         let oldMatches = self.snapshot.matches
@@ -84,9 +91,9 @@ final class VocabularyGraphCanvasView: NSView {
         appliedSettings = settings
         if topologyChanged {
             let heads = Dictionary(uniqueKeysWithValues: snapshot.nodes.filter { $0.id.selection == nil }
-                .map { ($0.id.entryID, $0.label) })
+                .map { ($0.id.rootID, $0.label) })
             accessibilityNodes = snapshot.nodes.map { node in
-                VocabularyGraphAccessibilityNode(node: node, headword: heads[node.id.entryID], owner: self)
+                VocabularyGraphAccessibilityNode(node: node, headword: heads[node.id.rootID], owner: self)
             }
             needsLayoutWake = true
         }
@@ -226,16 +233,43 @@ final class VocabularyGraphCanvasView: NSView {
         bounds.fill()
         drawDotGrid()
 
-        let focused = hovered?.entryID ?? presentation.focusedEntryID
+        let focused = hovered?.rootID ?? presentation.focusedEntryID
+        updateRelatedNodes()
         for edge in snapshot.edges {
-            guard let start = positions[edge.source], let end = positions[edge.target] else { continue }
+            draw(edge, focused: focused)
+        }
+        for node in snapshot.nodes {
+            guard let world = positions[node.id] else { continue }
+            let point = screen(world)
+            guard bounds.insetBy(dx: -160, dy: -55).contains(point) else { continue }
+            draw(node, at: point, focused: focused)
+        }
+    }
+
+    private func updateRelatedNodes() {
+        // Compute adjacency once per frame; scanning all edges for every dot would turn a
+        // semantic graph's hover feedback into quadratic work on the main actor.
+        relatedNodes = []
+        if snapshot.isMeaningGraph,
+           let focus = hovered ?? meaningSelection.map(VocabularyGraphNodeID.meaning) ?? selection.map(VocabularyGraphNodeID.sense) {
+            relatedNodes.insert(focus)
+            for edge in snapshot.edges where edge.source == focus || edge.target == focus {
+                relatedNodes.insert(edge.source); relatedNodes.insert(edge.target)
+            }
+        }
+    }
+
+    private func draw(_ edge: VocabularyGraphEdge, focused: UUID?) {
+            guard let start = positions[edge.source], let end = positions[edge.target] else { return }
             let screenStart = screen(start)
             let screenEnd = screen(end)
             let path = NSBezierPath()
             path.lineCapStyle = .round
             path.move(to: screenStart)
             path.line(to: screenEnd)
-            let highlighted = edge.source.entryID == focused
+            let highlighted = snapshot.isMeaningGraph
+                ? isRelated(edge.source, focused: focused) && isRelated(edge.target, focused: focused)
+                : edge.source.rootID == focused
             if highlighted {
                 NSColor.controlAccentColor.withAlphaComponent(0.16).setStroke()
                 path.lineWidth = appliedSettings.linkWidth + 2.5
@@ -246,13 +280,28 @@ final class VocabularyGraphCanvasView: NSView {
             baseColor.withAlphaComponent(edgeAlpha).setStroke()
             path.lineWidth = highlighted ? max(1.4, appliedSettings.linkWidth * 1.15) : appliedSettings.linkWidth
             path.stroke()
-        }
-        for node in snapshot.nodes {
-            guard let world = positions[node.id] else { continue }
-            let point = screen(world)
-            guard bounds.insetBy(dx: -160, dy: -55).contains(point) else { continue }
-            draw(node, at: point, focused: focused)
-        }
+            if edge.kind != .ownership && (highlighted || appliedSettings.labels == .all || presentation.camera.scale > 0.8) {
+                let title = edge.kind.label as NSString
+                let midpoint = CGPoint(x: (screenStart.x + screenEnd.x) / 2, y: (screenStart.y + screenEnd.y) / 2)
+                title.draw(at: CGPoint(x: midpoint.x + 5, y: midpoint.y + 3), withAttributes: [
+                    .font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.secondaryLabelColor,
+                    .backgroundColor: NSColor.textBackgroundColor.withAlphaComponent(0.9)
+                ])
+                if edge.kind == .narrower {
+                    let dx = screenEnd.x - screenStart.x, dy = screenEnd.y - screenStart.y
+                    let length = hypot(dx, dy)
+                    if length > 30 {
+                        let tip = CGPoint(x: screenEnd.x - dx / length * 14, y: screenEnd.y - dy / length * 14)
+                        let arrow = NSBezierPath()
+                        arrow.move(to: CGPoint(x: tip.x - dx / length * 8 - dy / length * 4,
+                            y: tip.y - dy / length * 8 + dx / length * 4))
+                        arrow.line(to: tip)
+                        arrow.line(to: CGPoint(x: tip.x - dx / length * 8 + dy / length * 4,
+                            y: tip.y - dy / length * 8 - dx / length * 4))
+                        NSColor.secondaryLabelColor.setStroke(); arrow.lineWidth = 1; arrow.stroke()
+                    }
+                }
+            }
     }
 
     /// Subtle world-space dot grid gives panning and zooming a physical spatial reference
@@ -284,11 +333,11 @@ final class VocabularyGraphCanvasView: NSView {
 
     private func draw(_ node: VocabularyGraphNode, at point: CGPoint, focused: UUID?) {
         let isSense = node.id.selection != nil
-        let selected = node.id.selection.map { $0 == selection } ?? (node.id.entryID == presentation.focusedEntryID)
+        let selected = node.id.selection.map { $0 == selection } ?? (node.id.rootID == presentation.focusedEntryID)
         let active = selected || snapshot.matches.contains(node.id)
         let isHovered = hovered == node.id
         let isKeyFocused = keyboardNode == node.id
-        let related = node.id.entryID == focused
+        let related = isRelated(node.id, focused: focused)
         let alpha: CGFloat = hovered != nil && !related ? 0.23 : 1
         let baseRadius = max(3.5, min(20, appliedSettings.nodeSize * (isSense ? 0.31 : 0.52) * presentation.camera.scale))
         let radius = isHovered ? baseRadius * 1.12 : baseRadius
@@ -433,7 +482,12 @@ final class VocabularyGraphCanvasView: NSView {
     }
     func activate(_ id: VocabularyGraphNodeID) {
         presentation.fitsInitialLayout = false
-        if let target = id.selection { presentation.reveal(target); select(target) } else { presentation.toggle(id.entryID); select(nil) }
+        if case .meaning(let meaningID) = id {
+            presentation.toggle(meaningID); select(nil); selectMeaning(meaningID)
+        } else if let target = id.selection {
+            if !snapshot.isMeaningGraph { presentation.reveal(target) }
+            select(target)
+        } else { presentation.toggle(id.rootID); select(nil) }
         needsDisplay = true
     }
 
@@ -500,7 +554,8 @@ final class VocabularyGraphCanvasView: NSView {
         case .zoomOut: presentation.camera.zoom(by: 1 / 1.2, at: viewportCenter, in: bounds.size)
         case .fit: presentation.camera.fit(Array(positions.values), in: bounds.size)
         case .locate:
-            if let id = presentation.focusedEntryID, let point = positions[.headword(id)] {
+            if let selection, let point = positions[.sense(selection)] { center(on: point) } else if let id = presentation.focusedEntryID,
+                    let point = positions[snapshot.isMeaningGraph ? .meaning(id) : .headword(id)] {
                 center(on: point)
             }
         }
@@ -509,6 +564,11 @@ final class VocabularyGraphCanvasView: NSView {
 
     private func center(on point: CGPoint) {
         presentation.camera.offset = CGPoint(x: -point.x * presentation.camera.scale, y: -point.y * presentation.camera.scale)
+    }
+
+    private func isRelated(_ id: VocabularyGraphNodeID, focused: UUID?) -> Bool {
+        guard snapshot.isMeaningGraph else { return id.rootID == focused }
+        return relatedNodes.contains(id)
     }
 
     override func accessibilityChildren() -> [Any]? { accessibilityNodes }
@@ -529,7 +589,7 @@ private final class VocabularyGraphAccessibilityNode: NSAccessibilityElement {
     init(node: VocabularyGraphNode, headword: String?, owner: VocabularyGraphCanvasView) {
         self.node = node; self.owner = owner
         super.init()
-        let label = node.id.selection == nil ? node.label : (headword ?? "") + " · " +
+        let label = node.id.selection == nil || headword == nil ? node.label : (headword ?? "") + " · " +
             String(localized: "Core meaning", table: "Vocabulary") + ": " + node.label
         setAccessibilityRole(.button); setAccessibilityLabel(label); setAccessibilityParent(owner)
         setAccessibilityEnabled(true)

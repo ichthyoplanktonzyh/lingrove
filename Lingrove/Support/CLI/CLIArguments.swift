@@ -59,6 +59,10 @@ nonisolated struct CLIArguments {
         case ["vocab", "apply"]:
             try configureApplyRequest(from: &parsed)
         default:
+            if parsed.words.first == "data" {
+                try configureResourceRequest(from: &parsed)
+                return
+            }
             guard parsed.words.count == 3, Array(parsed.words.prefix(2)) == ["vocab", "get"],
                   let identifier = UUID(uuidString: parsed.words[2]) else {
                 throw CLIError.invalid("Unknown command. Run 'lingrove --help'.")
@@ -66,6 +70,26 @@ nonisolated struct CLIArguments {
             request.command = .get
             request.entryID = identifier
         }
+    }
+
+    private mutating func configureResourceRequest(from parsed: inout ParsedArguments) throws {
+        guard (3...4).contains(parsed.words.count), CLIResourceContract.names.contains(parsed.words[2]) else {
+            throw CLIError.invalid("Use 'data list RESOURCE' or 'data get RESOURCE UUID'. Run 'lingrove --help'.")
+        }
+        request.resource = parsed.words[2]
+        if parsed.words[1] == "list", parsed.words.count == 3 {
+            request.command = .resourceList
+            request.query = parsed.options.removeValue(forKey: "--query")
+            request.limit = try parsed.integerOption("--limit")
+            request.offset = try parsed.integerOption("--offset")
+            request.claimStatus = parsed.options.removeValue(forKey: "--status")
+            if let related = parsed.options.removeValue(forKey: "--related") {
+                guard let id = UUID(uuidString: related) else { throw CLIError.invalid("--related requires a UUID.") }
+                request.relatedID = id
+            }
+        } else if parsed.words[1] == "get", parsed.words.count == 4, let id = UUID(uuidString: parsed.words[3]) {
+            request.command = .resourceGet; request.resourceID = id
+        } else { throw CLIError.invalid("Invalid data command.") }
     }
 
     private mutating func configureApplyRequest(from parsed: inout ParsedArguments) throws {
@@ -88,7 +112,8 @@ nonisolated struct CLIArguments {
 
         init(_ arguments: [String]) throws {
             let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin"]
-            let valued: Set<String> = ["--app", "--timeout", "--query", "--language", "--limit", "--offset", "--file"]
+            let valued: Set<String> = ["--app", "--timeout", "--query", "--language", "--limit", "--offset", "--file",
+                                       "--related", "--status"]
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
@@ -123,12 +148,20 @@ nonisolated struct CLIArguments {
       vocab list [--query TEXT] [--language CODE] [--limit N] [--offset N]
       vocab get ENTRY_UUID                       Portable entry and current revision
       vocab apply (--file PATH | --stdin) [--dry-run]
-      schema                                     Batch JSON Schema (version 1)
+      data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N]
+      data get RESOURCE UUID                     Full record and current revision
+      schema                                     Batch JSON Schema (versions 1 and 2)
       --version | --help
 
     Images use explicit local paths, relative to the input file (stdin: current directory).
     Writes are atomic. Retry an uncertain write with the SAME idempotencyKey and content.
     New meanings create distinct senses; append uses exact IDs; update needs expectedRevision.
+    Resources: entries, senses, sources, occurrences, interpretations, collections,
+      nodes, patterns, mappings, relations, cues, cueTargets.
+    Resource put/delete use batch version 2 and expectedRevision. Put merges fields;
+    arrays replace, null clears optional fields. UUIDs are caller supplied (collections: senseID).
+    --status filters interpretations: candidate, accepted, rejected. --related matches UUID fields.
+    Resource timestamps are Unix seconds. Catalog/graph writes do not implicitly collect material.
     Successful requests and errors use JSON on stdout. Exit codes: 0 success, 2 input,
     3 missing ID, 4 conflict, 5 busy, 6 app unavailable, 7 IO, 8 timeout.
     """

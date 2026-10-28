@@ -25,9 +25,9 @@ nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-/// A stable learning identity for one core meaning. The entry groups senses; this value owns
-/// its summary, notes and usages and will be the future review/Anki reference. Rewording a
-/// summary does not change its UUID. Merged IDs remain resolvable instead of being recycled.
+/// A stable learning identity for one core meaning. Catalog records keep the lexical fields;
+/// notebook projections overlay selected examples and personal notes/cards from independent
+/// records. Rewording a summary never changes its UUID or its review/meaning-graph references.
 nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     var meaning: String
@@ -41,15 +41,15 @@ nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     var explanations: [LearningExplanationRecord] = []
     var alternateMeanings: [VocabularyMeaning] = []
     var mergedFrom: [UUID] = []
-    /// Optional so existing v3 notebooks decode without a migration or a library reset.
+    /// Projected from the personal collection; absence is distinct from an empty draft.
     var review: VocabularyReview?
     /// Flexible cards have independent review identities. Legacy review records are not migrated.
     var reviewCards: [VocabularyReview]?
     var content: [VocabularyContentBlock]?
     let createdAt: Date
     var updatedAt: Date
-    /// Manual/imported meanings need general explanations without claiming the single
-    /// context-free favorite slot. Optional keeps existing v3 payloads backward compatible.
+    /// Manual/imported meanings support general explanations independently of whether the
+    /// personal collection claims the context-free favorite slot.
     var createdWithoutContext: Bool?
     var supportsGeneralExplanation: Bool { isSavedWithoutContext || createdWithoutContext == true }
 }
@@ -73,13 +73,20 @@ nonisolated struct VocabularyMeaning: Codable, Equatable, Identifiable, Sendable
     var id: String { language?.rawValue ?? "unknown" }
 }
 
-/// One encountered usage, including its exact UTF-16 spans. A pattern may have separated fixed
-/// parts, so a list of ranges preserves more information than searching for the first word match.
+/// A joined example card: one accepted interpretation plus its immutable source occurrence.
+/// Its ID names the interpretation, and optional occurrenceID distinguishes shared evidence.
+/// Separated fixed parts use exact UTF-16 spans rather than a first-word text search.
 nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable {
     /// Unknown boundaries are not evidence of missing text. Keep that distinction when a
     /// reading receipt becomes a saved usage; existing sentence/fragment archives retain their meaning.
     enum Completeness: String, Codable, Sendable { case sentence, fragment, unknown }
+    enum SourceKind: String, Codable, Sendable { case unspecified, captured, authored, generated, imported }
     let id: UUID
+    var sourceID = UUID()
+    /// A displayed example is an accepted interpretation. Several candidate interpretations
+    /// may refer to this same occurrence without copying the source or its UTF-16 spans.
+    var occurrenceID: UUID?
+    var sourceKind: SourceKind = .unspecified
     var text: String
     var translation: String
     var translationLanguage: LearningLanguage?
@@ -94,11 +101,30 @@ nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable
     var explanations: [LearningExplanationRecord] = []
 
     func copiedWithNewID() -> Self {
-        .init(id: UUID(), text: text, translation: translation, translationLanguage: translationLanguage,
+        .init(id: UUID(), sourceID: sourceID, sourceKind: sourceKind, text: text, translation: translation,
+            translationLanguage: translationLanguage,
             translationVariants: translationVariants, ranges: ranges, completeness: completeness, meaning: meaning,
             meaningLanguage: meaningLanguage, meaningOrigin: meaningOrigin, appBundleIdentifier: appBundleIdentifier,
             createdAt: createdAt, explanations: explanations)
     }
+}
+
+/// One retained source snapshot can support multiple expression occurrences. The document and
+/// SQLite own this evidence independently of interpretation and personal collection lifetimes.
+nonisolated struct VocabularySourceSnapshot: Codable, Equatable, Identifiable, Sendable {
+    let id: UUID
+    let text: String
+    let kind: VocabularyExample.SourceKind
+    let appBundleIdentifier: String?
+    let encounteredAt: Date
+}
+
+/// UTF-16 spans name an occurrence in the source. A sense's usage annotation refers to this
+/// identity; moving that annotation never changes the original characters or their positions.
+nonisolated struct VocabularySourceOccurrence: Codable, Equatable, Identifiable, Sendable {
+    let id: UUID
+    let sourceID: UUID
+    let ranges: [VocabularyTextRange]
 }
 
 nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
@@ -133,21 +159,46 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
 /// stores its entities separately; this version describes the portable representation only.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
+    static let currentVersion = 7
     var schemaVersion: Int
-    var entries: [VocabularyEntry]
+    /// Canonical lexical records contain no examples or personal learning state. The joined
+    /// entries adapter below keeps existing editors independent of persistence relationships.
+    var catalog: [VocabularyEntry]
+    var sources: [VocabularySourceSnapshot]
+    var occurrences: [VocabularySourceOccurrence]
+    var interpretations: [VocabularyInterpretation]
+    var collections: [VocabularyCollectionItem]
     var reviewTemplates: [ReviewLayoutTemplate]?
+    var semantics: VocabularySemanticIndex
 
-    init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil) {
+    var entries: [VocabularyEntry] {
+        get { VocabularyNotebookProjection.entries(self, collectedOnly: false) }
+        set { VocabularyNotebookProjection.replace(newValue, in: &self) }
+    }
+    var collectedEntries: [VocabularyEntry] { VocabularyNotebookProjection.entries(self, collectedOnly: true) }
+
+    init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil,
+         semantics: VocabularySemanticIndex = .init()) {
         self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
-        self.entries = entries
+        self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []; self.collections = []
         self.reviewTemplates = reviewTemplates
+        self.semantics = semantics
+        VocabularyNotebookProjection.replace(entries, in: &self)
     }
 
-    /// Version five adds unknown context evidence; four adds optional source languages.
-    /// Entity storage keeps its existing SQL schema. Only envelopes needing the new value advance.
+    init(catalog: [VocabularyEntry], sources: [VocabularySourceSnapshot], occurrences: [VocabularySourceOccurrence],
+         interpretations: [VocabularyInterpretation], collections: [VocabularyCollectionItem],
+         reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init()) {
+        schemaVersion = Self.currentVersion
+        self.catalog = catalog; self.sources = sources; self.occurrences = occurrences
+        self.interpretations = interpretations; self.collections = collections
+        self.reviewTemplates = reviewTemplates; self.semantics = semantics
+    }
+
+    /// The new meaning graph is a fresh format. Old envelopes are deliberately not migrated;
+    /// optional language/context metadata no longer changes the format version per document.
     static func requiredVersion(for entries: [VocabularyEntry]) -> Int {
-        if entries.contains(where: { $0.examples.contains { $0.completeness == .unknown } }) { return 5 }
-        return entries.contains { $0.language == nil } ? 4 : 3
+        currentVersion
     }
 }
 

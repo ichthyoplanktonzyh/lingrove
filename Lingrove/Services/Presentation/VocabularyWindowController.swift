@@ -10,15 +10,18 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let learning: VocabularyNotebookSession
     private let review: AnkiReviewController?
     private let preferences: UserDefaults
+    private let learningSettings: LanguageLearningSettings
 
     init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil,
-         dictionaryProvider: any LearningDictionaryProviding, dictionarySettings: LearningDictionarySettings,
+         dictionaryProvider: any LearningDictionaryProviding, learningSettings: LanguageLearningSettings,
          review: AnkiReviewController? = nil, preferences: UserDefaults = .standard) {
         self.store = store
         self.speech = speech
         self.review = review
         self.preferences = preferences
-        learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider, settings: dictionarySettings)
+        self.learningSettings = learningSettings
+        learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider,
+            settings: learningSettings.dictionary)
         super.init(window: nil)
         store.openSelection = { [weak self] in self?.show(selectedID: $0?.entryID, senseID: $0?.senseID) }
     }
@@ -40,8 +43,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         // the root with its requested selection, resetting filters that might otherwise hide it.
         // NSWindow already has an empty NSView after initialization. Check for our actual
         // hosted root, otherwise opening the library without a selected entry stays blank.
-        if !(window?.contentView is NSHostingView<VocabularyNotebookView>) || (selectedID != nil && window?.attachedSheet == nil) {
-            window?.contentView = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+        if !(window?.contentView is NSHostingView<VocabularyNotebookRoot>) || (selectedID != nil && window?.attachedSheet == nil) {
+            window?.contentView = NSHostingView(rootView: VocabularyNotebookRoot(settings: learningSettings, store: store, speech: speech,
                 selectedID: selectedID, selectedSenseID: senseID,
                 learning: learning, review: review, preferences: preferences))
         }

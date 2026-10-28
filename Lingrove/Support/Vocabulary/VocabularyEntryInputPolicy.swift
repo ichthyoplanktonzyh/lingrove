@@ -7,6 +7,28 @@ nonisolated enum VocabularyEntryInputPolicy {
     struct Plan {
         var document: VocabularyDocument
         var result = VocabularyEntryImportResult()
+        var selectedInterpretations: [UUID: Set<UUID>] = [:]
+
+        mutating func collect(senseID: UUID, interpretationID: UUID? = nil) {
+            if selectedInterpretations[senseID] == nil { selectedInterpretations[senseID] = [] }
+            if let interpretationID { selectedInterpretations[senseID]?.insert(interpretationID) }
+        }
+
+        /// Importing is an explicit personal save even when an external agent already created
+        /// the knowledge. Collect by identity without rebuilding or duplicating that knowledge.
+        mutating func applyCollections(now: Date) {
+            let offsets = Dictionary(uniqueKeysWithValues: document.collections.enumerated().map { ($0.element.senseID, $0.offset) })
+            for (senseID, ids) in selectedInterpretations {
+                let index = offsets[senseID]
+                var collection = index.map { document.collections[$0] } ?? .init(senseID: senseID, savedAt: now)
+                let before = collection
+                let retained = Set(collection.interpretationIDs)
+                collection.interpretationIDs += ids.subtracting(retained).sorted { $0.uuidString < $1.uuidString }
+                if let index {
+                    if collection != before { document.collections[index] = collection; result.changedCollections += 1 }
+                } else { document.collections.append(collection); result.changedCollections += 1 }
+            }
+        }
 
         mutating func record(_ change: VocabularyImportedExamplePolicy.Change, entryID: UUID) {
             if change.changed && !result.hasChanges || result.selection == nil {
@@ -76,7 +98,8 @@ nonisolated enum VocabularyEntryInputPolicy {
         guard !inputs.isEmpty else { throw VocabularyWordListError.empty }
         guard inputs.count <= VocabularyWordListPolicy.maximumRows else { throw VocabularyWordListError.tooLarge }
         var plan = Plan(document: document)
-        var indices = Dictionary(uniqueKeysWithValues: document.entries.enumerated().map {
+        var entries = document.entries
+        var indices = Dictionary(uniqueKeysWithValues: entries.enumerated().map {
             (VocabularyPolicy.entryKey($0.element), $0.offset)
         })
         var keys: [Int: EntryIndex] = [:]
@@ -88,15 +111,15 @@ nonisolated enum VocabularyEntryInputPolicy {
             let key = VocabularyPolicy.entryKey(capture)
             let index: Int
             if let found = indices[key] { index = found } else {
-                index = plan.document.entries.count
+                index = entries.count
                 indices[key] = index
                 if value.language == nil, plan.document.schemaVersion == 3 { plan.document.schemaVersion = 4 }
-                plan.document.entries.append(VocabularyEntry(id: UUID(), expression: value.expression,
+                entries.append(VocabularyEntry(id: UUID(), expression: value.expression,
                     dictionaryForm: value.dictionaryForm, language: value.language, kind: value.kind,
                     senses: [], createdAt: now, updatedAt: now))
                 plan.result.addedEntries += 1
             }
-            if keys[index] == nil { keys[index] = EntryIndex(plan.document.entries[index]) }
+            if keys[index] == nil { keys[index] = EntryIndex(entries[index]) }
             let candidate = SenseKey(meaning: VocabularyPolicy.normalized(value.meaning),
                 language: value.meaning.isEmpty ? nil : value.meaningLanguage, note: value.note, tags: value.tags)
             let bareWord = value.meaning.isEmpty && value.note.isEmpty && value.tags.isEmpty
@@ -105,14 +128,17 @@ nonisolated enum VocabularyEntryInputPolicy {
                 let existing = keys[index]?.examples[VocabularyPolicy.exampleKey(example)]
                 // Mutate the plan's entry directly. Holding a copied entry here would force
                 // Swift's copy-on-write arrays to copy every earlier example on every CSV row.
-                let change = try VocabularyImportedExamplePolicy.append(value, example: example, to: &plan.document.entries[index],
+                let change = try VocabularyImportedExamplePolicy.append(value, example: example, to: &entries[index],
                     lookup: .init(matching: matching, existing: existing), now: now)
-                plan.record(change, entryID: plan.document.entries[index].id)
-                keys[index]?.record(change, key: VocabularyPolicy.exampleKey(example), entry: plan.document.entries[index])
+                plan.record(change, entryID: entries[index].id)
+                plan.collect(senseID: change.senseID,
+                    interpretationID: entries[index].senses[change.location.sense].examples[change.location.example].id)
+                keys[index]?.record(change, key: VocabularyPolicy.exampleKey(example), entry: entries[index])
                 continue
             }
-            let entry = plan.document.entries[index]
+            let entry = entries[index]
             if !entry.senses.isEmpty, bareWord || !matching.isEmpty {
+                plan.collect(senseID: entry.senses[matching.first ?? 0].id)
                 plan.result.skippedRows += 1
                 if plan.result.selection == nil {
                     plan.result.selection = .init(entryID: entry.id, senseID: entry.senses[matching.first ?? 0].id)
@@ -124,13 +150,15 @@ nonisolated enum VocabularyEntryInputPolicy {
             let sense = VocabularySense(id: UUID(), meaning: value.meaning, meaningLanguage: value.meaningLanguage,
                 meaningOrigin: value.meaning.isEmpty ? .captured : .user, note: value.note, tags: value.tags,
                 createdAt: now, updatedAt: now, createdWithoutContext: true)
-            plan.document.entries[index].senses.append(sense)
-            plan.document.entries[index].updatedAt = now
+            entries[index].senses.append(sense)
+            entries[index].updatedAt = now
             keys[index]?.include(sense, at: entry.senses.count)
             let selection = VocabularySelection(entryID: entry.id, senseID: sense.id)
             if !plan.result.hasChanges { plan.result.selection = selection }
             plan.result.addedSenses += 1
         }
+        plan.document.entries = entries
+        plan.applyCollections(now: now)
         return plan
     }
 

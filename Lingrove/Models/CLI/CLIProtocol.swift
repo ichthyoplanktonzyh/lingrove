@@ -3,7 +3,7 @@ import Foundation
 /// Versioned values shared by the bundled command-line executable and app. The executable only
 /// transports these values: domain validation and all notebook writes remain inside the app.
 nonisolated struct CLIRequest: Codable, Sendable {
-    enum Command: String, Codable, Sendable { case status, list, get, apply }
+    enum Command: String, Codable, Sendable { case status, list, get, apply, resourceList, resourceGet }
     var version = 1
     var id = UUID()
     var expiresAt = Date().addingTimeInterval(30)
@@ -13,6 +13,10 @@ nonisolated struct CLIRequest: Codable, Sendable {
     var limit: Int?
     var offset: Int?
     var entryID: UUID?
+    var resource: String?
+    var resourceID: UUID?
+    var relatedID: UUID?
+    var claimStatus: String?
     var batch: CLIBatch?
     var dryRun = false
 }
@@ -22,6 +26,7 @@ nonisolated struct CLIRequest: Codable, Sendable {
 nonisolated struct CLIBatch: Codable, Sendable {
     var version: Int
     var idempotencyKey: String
+    var expectedRevision: UInt64?
     var operations: [CLIChange]
 }
 
@@ -29,6 +34,21 @@ nonisolated struct CLIChange: Codable, Sendable {
     var add: CLINewSense?
     var append: CLIAppend?
     var update: CLIUpdate?
+    var put: CLIResourcePut?
+    var delete: CLIResourceDelete?
+}
+
+/// Resource writes name stable caller-supplied UUIDs, so a single batch can create linked
+/// records without guessing the IDs of earlier operations. The app validates typed domain
+/// records; the executable shares only this bounded wire contract and never opens SQLite.
+nonisolated struct CLIResourcePut: Codable, Sendable {
+    var resource: String
+    var value: CLIJSON
+}
+
+nonisolated struct CLIResourceDelete: Codable, Sendable {
+    var resource: String
+    var id: UUID
 }
 
 nonisolated struct CLINewSense: Codable, Sendable {
@@ -70,6 +90,7 @@ nonisolated struct CLIExample: Codable, Sendable {
     var meaning: String?
     var meaningLanguage: String?
     var completeness: String?
+    var sourceKind: String?
     var ranges: [Range]?
 }
 

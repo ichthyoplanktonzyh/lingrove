@@ -17,7 +17,7 @@ struct VocabularyUnknownLanguageTests {
             kind: .word, meaning: "兼容的", meaningLanguage: .chinese, example: example)
         let archive = VocabularyArchive(url: url)
         let saved = try await archive.save(unknown)
-        #expect(saved.document.schemaVersion == 4)
+        #expect(saved.document.schemaVersion == VocabularyDocument.currentVersion)
         let entry = try #require(saved.document.entries.first)
         #expect(entry.language == nil && entry.examples.first?.text == text)
         #expect(entry.examples.first?.ranges == example?.ranges)
@@ -41,15 +41,15 @@ struct VocabularyUnknownLanguageTests {
 
         _ = try await archive.remove(unknown)
         let afterRemoval = try await VocabularyArchive(url: url).load()
-        #expect(afterRemoval.document.schemaVersion == 3)
-        #expect(afterRemoval.document.entries.count == 1 && afterRemoval.document.entries[0].language == .english)
+        #expect(afterRemoval.document.schemaVersion == VocabularyDocument.currentVersion)
+        #expect(afterRemoval.document.collectedEntries.count == 1 && afterRemoval.document.collectedEntries[0].language == .english)
     }
 
-    @Test func oldKnownLanguageDataKeepsItsFormatAndInvalidOldPayloadsStillFail() async throws {
+    @Test func currentFormatRetainsKnownLanguagesAndRejectsOldPayloads() async throws {
         let archive = VocabularyArchive(url: nil)
         let saved = try await archive.save(.init(expression: "word", dictionaryForm: "word", language: .english, kind: .word))
         let decoded = try JSONDecoder().decode(VocabularyDocument.self, from: JSONEncoder().encode(saved.document))
-        #expect(decoded == saved.document && decoded.schemaVersion == 3)
+        #expect(decoded == saved.document && decoded.schemaVersion == VocabularyDocument.currentVersion)
         #expect(VocabularyExportPolicy.document(decoded.entries, configuration: .init()).version == 1)
         var invalid = VocabularyDocument()
         _ = try VocabularyPolicy.save(.init(expression: "word", dictionaryForm: "word", language: nil, kind: .word),
@@ -64,6 +64,6 @@ struct VocabularyUnknownLanguageTests {
             configuration: VocabularyWordListPolicy.configuration(for: table, language: .english))
         #expect(inputs.count == 1 && inputs[0].language == nil)
         let plan = try VocabularyEntryInputPolicy.plan(inputs, into: .init(), now: Date())
-        #expect(plan.document.schemaVersion == 4)
+        #expect(plan.document.schemaVersion == VocabularyDocument.currentVersion)
     }
 }

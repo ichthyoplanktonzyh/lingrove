@@ -13,12 +13,21 @@ struct VocabularyGraphView: View {
     let select: (VocabularySelection?) -> Void
     var interactionBegan: (() -> Void)?
     var trailingInset: CGFloat = 0
+    var meanings: VocabularySemanticIndex?
+    var meaningSelection: UUID?
+    var meaningKind: VocabularyMeaningNode.Kind?
+    var includeEmptyMeanings = true
+    var selectMeaning: (UUID) -> Void = { _ in }
     @State private var showingSettings = false
+    @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
 
     var body: some View {
-        let snapshot = VocabularyGraphProjection.make(entries: entries, expanded: presentation.expanded, query: query)
+        let snapshot = meanings.map {
+            VocabularyGraphProjection.meanings(index: $0, entries: entries, expanded: presentation.expanded, query: query,
+                kind: meaningKind, includeEmpty: includeEmptyMeanings, preferredLanguages: meaningLanguages)
+        } ?? VocabularyGraphProjection.make(entries: entries, expanded: presentation.expanded, query: query)
         VocabularyGraphCanvas(snapshot: snapshot, selection: selection, presentation: presentation,
-            select: select, interactionBegan: interactionBegan)
+            select: select, interactionBegan: interactionBegan, meaningSelection: meaningSelection, selectMeaning: selectMeaning)
             .overlay(alignment: .topTrailing) {
                 Button { interactionBegan?(); showingSettings.toggle() } label: {
                     Image(systemName: "slider.horizontal.3")
@@ -44,13 +53,15 @@ struct VocabularyGraphView: View {
                         Circle()
                             .fill(Color.primary.opacity(0.72))
                             .frame(width: 8, height: 8)
-                        Text(String(localized: "Headwords", table: "Vocabulary"))
+                        Text(meanings == nil ? String(localized: "Headwords", table: "Vocabulary")
+                             : String(localized: "Meanings", table: "Vocabulary"))
                     }
                     HStack(spacing: 6) {
                         Circle()
                             .stroke(LingroveBrand.accent, lineWidth: 1.6)
                             .frame(width: 7, height: 7)
-                        Text(String(localized: "Senses", table: "Vocabulary"))
+                        Text(meanings == nil ? String(localized: "Senses", table: "Vocabulary")
+                             : String(localized: "Expression", table: "Vocabulary"))
                     }
                 }
                 .font(.caption.weight(.medium))
@@ -90,7 +101,7 @@ struct VocabularyGraphView: View {
                 .padding(.trailing, 14 + trailingInset)
             }
             .overlay {
-                if entries.isEmpty {
+                if snapshot.nodes.isEmpty {
                     ContentUnavailableView(String(localized: "No matching expressions", table: "Vocabulary"), systemImage: "network")
                 }
             }
@@ -115,13 +126,16 @@ private struct VocabularyGraphCanvas: NSViewRepresentable {
     let presentation: VocabularyGraphPresentation
     let select: (VocabularySelection?) -> Void
     let interactionBegan: (() -> Void)?
+    let meaningSelection: UUID?
+    let selectMeaning: (UUID) -> Void
 
     func makeNSView(context: Context) -> VocabularyGraphCanvasView {
         VocabularyGraphCanvasView(presentation: presentation)
     }
     func updateNSView(_ view: VocabularyGraphCanvasView, context: Context) {
         view.interactionBegan = interactionBegan
-        view.update(snapshot: snapshot, selection: selection, select: select)
+        view.update(snapshot: snapshot, selection: selection, select: select,
+            meaningSelection: meaningSelection, selectMeaning: selectMeaning)
     }
     static func dismantleNSView(_ view: VocabularyGraphCanvasView, coordinator: ()) { view.suspend() }
 }

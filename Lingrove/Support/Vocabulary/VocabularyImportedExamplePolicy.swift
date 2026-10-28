@@ -20,7 +20,7 @@ nonisolated enum VocabularyImportedExamplePolicy {
         guard !input.example.isEmpty else { return nil }
         // The user supplied the complete sentence cell. Preserve all its text; the AX capture
         // helper would crop it. Missing literal matches retain the sentence with empty highlights.
-        return .init(id: UUID(), text: input.example, translation: input.exampleTranslation,
+        return .init(id: UUID(), sourceKind: .imported, text: input.example, translation: input.exampleTranslation,
             ranges: VocabularyPolicy.reconciledRanges(in: input.example, expression: input.expression,
                 dictionaryForm: input.dictionaryForm),
             completeness: .sentence, meaning: "", createdAt: now)

@@ -22,7 +22,7 @@ nonisolated enum CLIInputPolicy {
     /// Validate the untyped envelope before Codable can silently ignore an unknown field. These
     /// helpers share no state; each owns one nesting level and retains its original error path.
     private static func validateShape(_ value: Any) throws {
-        let root = try object(value, keys: ["version", "idempotencyKey", "operations"], at: "batch")
+        let root = try object(value, keys: ["version", "idempotencyKey", "expectedRevision", "operations"], at: "batch")
         guard let operations = root["operations"] as? [Any], !operations.isEmpty, operations.count <= 100 else {
             throw CLIError.invalid("Provide 1–100 operations.")
         }
@@ -39,9 +39,13 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateOperationShape(_ value: Any, path: String) throws {
-        let operation = try object(value, keys: ["add", "append", "update"], at: path)
+        let operation = try object(value, keys: ["add", "append", "update", "put", "delete"], at: path)
         guard operation.count == 1, let kind = operation.keys.first, let payload = operation[kind] else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if kind == "put" || kind == "delete" {
+            _ = try object(payload, keys: kind == "put" ? ["resource", "value"] : ["resource", "id"], at: path)
+            return
         }
         let keys: Set<String> = switch kind {
         case "add":
@@ -74,7 +78,7 @@ nonisolated enum CLIInputPolicy {
         }
         for example in examples {
             let fields = try object(example, keys: [
-                "text", "translation", "translationLanguage", "meaning", "meaningLanguage", "completeness", "ranges"
+                "text", "translation", "translationLanguage", "meaning", "meaningLanguage", "completeness", "ranges", "sourceKind"
             ], at: path)
             if let ranges = fields["ranges"] { try validateRangeShape(ranges, path: path + ".ranges") }
         }
@@ -90,24 +94,24 @@ nonisolated enum CLIInputPolicy {
     /// Runs before either process reads/decodes images. Byte limits alone do not bound how many
     /// empty or tiny file paths an otherwise small JSON document could ask us to open.
     static func validate(_ batch: CLIBatch) throws {
-        guard batch.version == 1, (1...200).contains(batch.idempotencyKey.utf8.count),
+        guard (1...2).contains(batch.version), (1...200).contains(batch.idempotencyKey.utf8.count),
               !batch.idempotencyKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               (1...100).contains(batch.operations.count) else {
             throw CLIError.invalid("Invalid batch header or operation count.")
         }
         var images = 0, blocks = 0, examples = 0, imageBytes = 0
         for operation in batch.operations {
-            guard [operation.add != nil, operation.append != nil, operation.update != nil].filter({ $0 }).count == 1 else {
+            guard [operation.add != nil, operation.append != nil, operation.update != nil,
+                   operation.put != nil, operation.delete != nil].filter({ $0 }).count == 1 else {
                 throw CLIError.invalid("Each operation needs exactly one action.")
             }
+            try validateResourceOperation(operation, batch: batch)
             let content = operation.add?.content ?? operation.append?.content ?? []
             let usages = operation.add?.examples ?? operation.append?.examples ?? []
             guard content.count <= 64, usages.count <= 100 else {
                 throw CLIError.invalid("Operation content count exceeds its limit.")
             }
-            guard usages.allSatisfy({ ($0.ranges?.count ?? 0) <= 64 }) else {
-                throw CLIError.invalid("At most 64 ranges are allowed per example.")
-            }
+            try validateExamples(usages)
             for block in content {
                 guard (block.text != nil) != (block.image != nil) else { throw CLIError.invalid("Each block needs text or an image.") }
                 if let image = block.image {
@@ -121,6 +125,27 @@ nonisolated enum CLIInputPolicy {
         }
         guard images <= 64, blocks <= 512, examples <= 1_000, imageBytes <= 16 * 1_024 * 1_024 else {
             throw CLIError.invalid("Batch exceeds 64 images, 16 MiB image bytes, 512 blocks or 1000 examples.")
+        }
+    }
+
+    private static func validateResourceOperation(_ operation: CLIChange, batch: CLIBatch) throws {
+        guard operation.put != nil || operation.delete != nil else { return }
+        guard batch.version == 2, batch.expectedRevision != nil else {
+            throw CLIError.invalid("Resource operations require version 2 and expectedRevision.")
+        }
+        if let put = operation.put {
+            _ = try CLIResourceContract.shape(put.resource).normalized(put.value, creating: false)
+        }
+        if let deletion = operation.delete { _ = try CLIResourceContract.shape(deletion.resource) }
+    }
+
+    private static func validateExamples(_ usages: [CLIExample]) throws {
+        guard usages.allSatisfy({ ($0.ranges?.count ?? 0) <= 64 }) else {
+            throw CLIError.invalid("At most 64 ranges are allowed per example.")
+        }
+        let sourceKinds = ["unspecified", "captured", "authored", "generated", "imported"]
+        guard usages.allSatisfy({ $0.sourceKind == nil || sourceKinds.contains($0.sourceKind ?? "") }) else {
+            throw CLIError.invalid("Unknown example sourceKind.")
         }
     }
 }

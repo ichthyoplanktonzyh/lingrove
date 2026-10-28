@@ -6,11 +6,13 @@ import Foundation
 nonisolated enum VocabularyGraphNodeID: Hashable, Sendable {
     case headword(UUID)
     case sense(VocabularySelection)
+    case meaning(UUID)
 
-    var entryID: UUID {
+    var rootID: UUID {
         switch self {
         case .headword(let id): id
         case .sense(let selection): selection.entryID
+        case .meaning(let id): id
         }
     }
     var selection: VocabularySelection? {
@@ -22,11 +24,14 @@ nonisolated enum VocabularyGraphNodeID: Hashable, Sendable {
 nonisolated struct VocabularyGraphNode: Equatable, Sendable, Identifiable {
     let id: VocabularyGraphNodeID
     let label: String
+    var meaningKind: VocabularyMeaningNode.Kind?
 }
 
 nonisolated struct VocabularyGraphEdge: Equatable, Sendable {
+    enum Kind: String, Sendable { case ownership, expressesContent, realizesFunction, narrower, opposite, related }
     let source: VocabularyGraphNodeID
     let target: VocabularyGraphNodeID
+    var kind: Kind = .ownership
 }
 
 /// A small, immutable rendering projection. Rich text, images, AX handles and model sessions
@@ -37,6 +42,7 @@ nonisolated struct VocabularyGraphSnapshot: Equatable, Sendable {
     var headwordCount = 0
     var matches: Set<VocabularyGraphNodeID> = []
     var searchQuery = ""
+    var isMeaningGraph = false
 }
 
 /// Appearance and forces are notebook preferences, independent of stored learning content.

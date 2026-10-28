@@ -23,8 +23,10 @@ nonisolated struct VocabularyEntryImportResult: Equatable, Sendable {
     var skippedRows = 0
     var addedExamples = 0
     var addedTranslations = 0
+    /// Re-importing knowledge retained after uncollecting can change membership alone.
+    var changedCollections = 0
     var selection: VocabularySelection?
-    var hasChanges: Bool { addedSenses > 0 || addedExamples > 0 || addedTranslations > 0 }
+    var hasChanges: Bool { addedSenses > 0 || addedExamples > 0 || addedTranslations > 0 || changedCollections > 0 }
 }
 
 /// The source table keeps physical line numbers for useful errors even with quoted CSV newlines.

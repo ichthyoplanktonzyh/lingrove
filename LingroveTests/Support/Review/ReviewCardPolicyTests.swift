@@ -32,13 +32,14 @@ struct ReviewCardPolicyTests {
         #expect(fields["GapPrompt"]?.isEmpty == true)
     }
 
-    @Test func emptyLegacyReviewExtensionStillDecodesAsSchemaThree() throws {
+    @Test func emptyReviewConfigurationRoundTripsWithMeaningNotebook() throws {
         let now = Date()
         let entry = VocabularyEntry(id: UUID(), expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
             senses: [.init(id: UUID(), meaning: "", createdAt: now, updatedAt: now)], createdAt: now, updatedAt: now)
         let data = try JSONEncoder().encode(VocabularyDocument(entries: [entry]))
         let decoded = try JSONDecoder().decode(VocabularyDocument.self, from: data)
-        #expect(decoded.schemaVersion == 3)
+        #expect(decoded.schemaVersion == VocabularyDocument.currentVersion)
+        #expect(decoded.semantics == VocabularySemanticIndex())
         #expect(decoded.entries[0].senses[0].review == nil)
     }
     @Test func gapFrontCannotRevealMeaningOrAudioAndPreviewMatchesTemplate() {

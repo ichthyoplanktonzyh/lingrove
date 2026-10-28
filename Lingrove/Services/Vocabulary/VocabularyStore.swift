@@ -7,6 +7,7 @@ import Logging
 /// a slow load response arriving after a newer save. Logs contain counts and IDs, never content.
 @MainActor
 final class VocabularyStore: ObservableObject {
+    @Published private(set) var semantics = VocabularySemanticIndex()
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var pending: Set<String> = []
@@ -160,6 +161,10 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.removeSense(entryID: entryID, senseID: senseID)); return true } catch { report(error); return false }
     }
 
+    func updateSemantics(_ value: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex) async -> Bool {
+        do { apply(try await archive.updateSemantics(value, basedOn: baseline)); return true } catch { report(error); return false }
+    }
+
     func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
                     importedImages: [String: Data] = [:]) async throws {
         apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected, cardID: cardID,
@@ -244,7 +249,8 @@ final class VocabularyStore: ObservableObject {
 
     private func apply(_ snapshot: VocabularySnapshot) {
         guard !isLoaded || snapshot.revision >= revision else { return }
-        entries = snapshot.document.entries
+        entries = snapshot.document.collectedEntries
+        semantics = snapshot.document.semantics
         standaloneKeys = Set(entries.flatMap { entry in
             entry.senses.filter(\.isSavedWithoutContext).map { _ in VocabularyPolicy.entryKey(entry) + ":standalone" }
         })

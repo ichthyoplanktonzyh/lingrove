@@ -41,6 +41,10 @@ final class VocabularyGraphPresentation: ObservableObject {
         if focusedEntryID != selection.entryID { focusedEntryID = selection.entryID }
     }
     func clearFocus() { focusedEntryID = nil }
+    func revealMeaning(_ id: UUID) {
+        expanded.insert(id)
+        focusedEntryID = id
+    }
     func collapse() { expanded = []; focusedEntryID = nil }
     func send(_ command: Command) { self.command = command; commandSerial &+= 1 }
     func nextEpoch() -> UInt64 { epoch &+= 1; return epoch }

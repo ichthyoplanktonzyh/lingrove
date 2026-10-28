@@ -63,21 +63,21 @@ struct VocabularyExplanationTests {
         #expect(store.entries[0].senses[0].standaloneMeanings.contains(.init(text: "be aware of", language: .english)))
     }
 
-    @Test func deletingOrEditingAUsagePrunesItsSavedContextAndRejectsLateReplies() async throws {
+    @Test func uncollectingRetainsKnowledgeAndEditingPrunesOnlyTheChangedExplanation() async throws {
         let archive = VocabularyArchive(url: nil)
         let first = capture(), second = capture("I know the answer.")
         _ = try await archive.save(first); _ = try await archive.save(second)
         _ = try await archive.saveExplanation(record(first)); _ = try await archive.saveExplanation(record(second))
         let removed = try await archive.remove(first)
-        #expect(removed.document.entries[0].explanations?.map(\.input.context) == [second.example!.text])
+        #expect(removed.document.collectedEntries[0].explanations?.map(\.input.context) == [second.example!.text])
         _ = try await archive.saveExplanation(record(first))
-        let baseline = try #require(try await archive.load().document.entries.first)
+        let baseline = try #require(try await archive.load().document.collectedEntries.first)
         var edited = baseline
         edited.senses[0].examples[0].text = "The user changed this example."; edited.senses[0].examples[0].ranges = []
         let updated = try await archive.update(edited, basedOn: baseline)
-        #expect(updated.document.entries[0].explanations == nil)
+        #expect(updated.document.collectedEntries[0].explanations == nil)
         #expect(!LearningExplanationPolicy.isValid(LearningExplanationPolicy.input(
-            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.senses[0].examples[0]))))
+            LearningExplanationPolicy.capture(updated.document.collectedEntries[0], example: edited.senses[0].examples[0]))))
     }
 
     @Test func floatingSessionLoadsSavedAnnotationBeforeModelConfiguration() async throws {

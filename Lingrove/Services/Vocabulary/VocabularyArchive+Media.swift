@@ -34,13 +34,15 @@ extension VocabularyArchive {
     }
 
     func commitWithImages(
-        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil
+        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil, restoringBackup: Bool = false
     ) throws -> VocabularySnapshot {
-        try storageAccess(write: true) { try stageImagesAndCommit(next, supplied: supplied, receipt: receipt) }
+        try storageAccess(write: true) {
+            try stageImagesAndCommit(next, supplied: supplied, receipt: receipt, restoringBackup: restoringBackup)
+        }
     }
 
     private func stageImagesAndCommit(
-        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?
+        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?, restoringBackup: Bool
     ) throws -> VocabularySnapshot {
         // An edited sentence still carries its old explanation until commit normalizes it.
         // Validate media before staging, then let commit prune stale AI records and validate
@@ -62,7 +64,7 @@ extension VocabularyArchive {
             // Cancellation is honored until the atomic metadata commit begins. Staged new
             // files are rolled back below; an acknowledged SQL commit is never undone.
             try Task.checkCancellation()
-            return try commit(next, receipt: receipt)
+            return try commit(next, receipt: receipt, restoringBackup: restoringBackup)
         } catch {
             for image in written { images.remove(image) }
             throw error
@@ -115,7 +117,7 @@ extension VocabularyArchive {
             guard let data = backup.images[image.filename] else { throw VocabularyError.invalidArchive }
             try VocabularyImageStorage.validate(data, reference: image)
         }
-        return try commitWithImages(backup.document, supplied: backup.images)
+        return try commitWithImages(backup.document, supplied: backup.images, restoringBackup: true)
     }
 
     func validateBackupDestination(_ destination: URL) throws {

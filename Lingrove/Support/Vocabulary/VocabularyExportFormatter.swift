@@ -64,6 +64,7 @@ nonisolated enum VocabularyExportFormatter {
                 if let tags = sense.tags, !tags.isEmpty {
                     try append(String(localized: "Tags", table: "Vocabulary") + ": " + tags.joined(separator: "; ") + "\n", to: &data)
                 }
+                try appendSemantics(document.semantics, senseID: sense.id, to: &data)
                 try append(blockText(sense.content ?? []) + explanationText(sense.explanations ?? []), to: &data)
                 for usage in sense.examples ?? [] {
                     try Task.checkCancellation()
@@ -73,6 +74,15 @@ nonisolated enum VocabularyExportFormatter {
             try append("\n────────────────────\n\n", to: &data)
         }
         return data
+    }
+
+    private static func appendSemantics(_ index: VocabularySemanticIndex?, senseID: UUID, to data: inout Data) throws {
+        guard let index else { return }
+        let labels = [String(localized: "Associated meanings", table: "Vocabulary"),
+            String(localized: "Usage patterns", table: "Vocabulary"), String(localized: "Usage conditions", table: "Vocabulary")]
+        for (label, value) in zip(labels, semanticValues(index, senseID: senseID)) where !value.isEmpty {
+            try append(label + ": " + value + "\n", to: &data)
+        }
     }
 
     private static func appendUsage(_ usage: Document.Usage, to data: inout Data) throws {
@@ -92,19 +102,30 @@ nonisolated enum VocabularyExportFormatter {
     private static func csv(_ document: Document, options: VocabularyExportConfiguration) throws -> Data {
         var data = options.spreadsheetCompatibility ? Data([0xEF, 0xBB, 0xBF]) : Data()
         let cell = { (text: String) in csvCell(text, spreadsheetCompatibility: options.spreadsheetCompatibility) }
-        try append(csvColumns(options).map(cell).joined(separator: ",") + "\r\n", to: &data)
+        let semanticColumns = document.semantics == nil ? [] : ["meaning_nodes", "usage_patterns", "usage_conditions"]
+        try append((csvColumns(options) + semanticColumns).map(cell).joined(separator: ",") + "\r\n", to: &data)
         for entry in document.entries {
             for sense in entry.senses {
                 let examples = options.examples ? sense.examples ?? [] : []
                 let usages: [Document.Usage?] = examples.isEmpty ? [nil] : examples.map(Optional.some)
                 for usage in usages {
                     try Task.checkCancellation()
-                    let values = csvValues(entry: entry, sense: sense, usage: usage, options: options)
+                    var values = csvValues(entry: entry, sense: sense, usage: usage, options: options)
+                    if let semantics = document.semantics { values += semanticValues(semantics, senseID: sense.id) }
                     try append(values.map(cell).joined(separator: ",") + "\r\n", to: &data)
                 }
             }
         }
         return data
+    }
+
+    private static func semanticValues(_ index: VocabularySemanticIndex, senseID: UUID) -> [String] {
+        let mappings = index.mappings.filter { $0.senseID == senseID }
+        let nodes = Set(mappings.map(\.nodeID))
+        return [index.nodes.filter { nodes.contains($0.id) }.map(\.title).joined(separator: "; "),
+                index.patterns.filter { $0.senseID == senseID }.map(\.template).joined(separator: "; "),
+                mappings.map { [$0.conditions, $0.nuance].filter { !$0.isEmpty }.joined(separator: " — ") }
+                    .filter { !$0.isEmpty }.joined(separator: "; ")]
     }
 
     private static func csvColumns(_ options: VocabularyExportConfiguration) -> [String] {

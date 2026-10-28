@@ -260,7 +260,7 @@ final class LingroveAppEnvironment {
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
         let isTestHost = LingroveCompatibility.processEnvironment["XCTestConfigurationFilePath"] != nil
         let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
-            .appendingPathComponent("Vocabulary/notebook.sqlite")
+            .appendingPathComponent("Vocabulary/learning-library.sqlite")
         // SQLite starts a fresh library as requested. Retired JSON files/media remain untouched;
         // Dev and production still use distinct support roots, and tests use in-memory SQLite.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
@@ -290,7 +290,7 @@ final class LingroveAppEnvironment {
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
-            dictionarySettings: suggestionSettings.languageLearning.dictionary, review: reviewController)
+            learningSettings: suggestionSettings.languageLearning, review: reviewController)
         vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
             explainer?.enrich(capture) ?? capture
         }
