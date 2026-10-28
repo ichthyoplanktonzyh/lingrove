@@ -176,7 +176,7 @@ targetTemplates:
         CODE_SIGN_IDENTITY[sdk=macosx*]: Apple Development
         CODE_SIGN_STYLE: Automatic
         COMBINE_HIDPI_IMAGES: YES
-        CURRENT_PROJECT_VERSION: "2"
+        CURRENT_PROJECT_VERSION: "3"
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_PREVIEWS: YES
@@ -187,7 +187,7 @@ targetTemplates:
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"
-        MARKETING_VERSION: "0.5.1"
+        MARKETING_VERSION: "0.7.1"
         # First-party targets and modules use Lingrove. Bundle IDs and PRODUCT_NAME retain the
         # installed app identity so renaming source code does not move credentials or user data.
         PRODUCT_NAME: Lingrove

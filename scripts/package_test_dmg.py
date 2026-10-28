@@ -27,8 +27,8 @@ from typing import Iterator, Sequence
 
 PRODUCT_NAME = "Lingrove"
 EXPECTED_BUNDLE_ID = "io.ichthyoplanktonzyh.lingrove"
-EXPECTED_VERSION = "0.5.1"
-EXPECTED_BUILD = "2"
+EXPECTED_VERSION = "0.7.1"
+EXPECTED_BUILD = "3"
 REQUIRED_ARCHITECTURES = ("arm64", "x86_64")
 SIGNING_HELPER = Path(__file__).with_name("sign_local_app.py")
 INSTALL_GUIDE = Path(__file__).resolve().parents[1] / "assets" / "testing" / "INSTALL.zh-CN.txt"

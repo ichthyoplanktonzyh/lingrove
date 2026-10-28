@@ -17,17 +17,24 @@ installed copies discover it. App lifecycle stays in `AppUpdateManager`, packagi
   Leave it unset until the steps below are complete. The upstream Homebrew dispatch is removed.
 - Developer signing has no shared team default. Each developer uses `Config/Signing.local.xcconfig`;
   CI supplies its own distribution team and certificate.
-- The v0.5.1 build 2 test app is ad-hoc signed and packaged in a DMG for the public `v0.5.1-test.1` prerelease. It
+- The v0.7.1 build 3 test app is ad-hoc signed and packaged in a DMG for the public `v0.7.1` prerelease. It
   is not Developer ID signed, notarized, or connected to automatic updates; this does not enable
   the production release or Pages workflows.
 
 Local development can continue without a paid Apple Developer Program membership. The production
 Developer ID signing and notarization flow described here requires that membership; keep release
-jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.5.1
+jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.7.1
 test package also does not require a paid membership; its test status and Gatekeeper steps
 are documented below.
 
-## Current development checkpoint (not published)
+## 0.7.1 test release
+
+Version 0.7.1 (build 3) is packaged with `scripts/build_test_dmg.sh` and published as
+`v0.7.1`, retaining the existing ad-hoc-signed, unnotarized prerelease channel.
+The universal DMG, install guide, checksums and source metadata accompany the
+[release notes](releases/lingrove-0.7.1.md). Automatic updates remain disabled.
+
+## Historical development checkpoints (before 0.7.1)
 
 The namespace migration is integrated on `main` at `257cb125`. First-party source, modules,
 targets, settings keys and diagnostics use Lingrove names; legacy settings and launch interfaces
@@ -87,7 +94,7 @@ notarization, and automatic-update validation remain separate distribution work.
 
 ## v0.5.1 test package (public prerelease)
 
-The current test artifact is `build/distributions/v0.5.1-test.1/Lingrove-0.5.1-test-universal.dmg`, accompanied by
+The historical test artifact is `build/distributions/v0.5.1-test.1/Lingrove-0.5.1-test-universal.dmg`, accompanied by
 `SHA256SUMS.txt` and `build-info.json`. The DMG, Chinese install guide, checksum, and build metadata
 are published at the [v0.5-test.1 prerelease](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1).
 The app is an ad-hoc-signed, unnotarized test build, has no automatic updates, and is not a public

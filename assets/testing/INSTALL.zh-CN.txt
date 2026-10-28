@@ -1,4 +1,4 @@
-Lingrove（拾语）v0.5.1（build 2）测试预发布版
+Lingrove（拾语）v0.7.1（build 3）测试预发布版
 安装与快速体验
 本说明在 DMG 根目录中的文件名为 INSTALL.txt。
 
@@ -27,7 +27,7 @@ LearningExpressions-NOTICE.md，以及 ThirdPartyLicenses/ 第三方许可资料
 
 一、安装并启动
 
-1. 从上面的官方预发布页面下载 Lingrove-0.5.1-test-universal.dmg。
+1. 从上面的官方预发布页面下载 Lingrove-0.7.1-test-universal.dmg。
 2. 双击打开 DMG，将 Lingrove.app 拖到 Applications（应用程序）快捷方式。
 3. 安装完成后，在 Finder 侧边栏中推出 Lingrove 磁盘映像。
 4. 从“应用程序”文件夹启动 Lingrove。不要直接从已挂载的 DMG 运行它。
@@ -86,8 +86,8 @@ Lingrove 与 Lingrove Dev 是两个独立应用，使用不同的设置和模型
 1. 在“语言学习”→“翻译”的阅读翻译区域，分别开启需要的入口并设置阅读目标语言。
 2. 在“设置”→“App”中为目标应用允许相应入口。快捷键统一在“设置”→“快捷键”管理。
 3. 选中文字后按默认 Option+Shift+T；或者启用选区图标后点击图标。
-4. 将鼠标指向文字，按默认 Control+Shift+T 取词翻译；可读文本优先通过辅助功能获取，
-   必要时使用 OCR 回退。当前版本主要翻译指向的词，尚未提供完整的语境词义消歧。
+4. 将鼠标指向文字，按默认 Control+Shift+T 取词翻译；通过屏幕 OCR 与辅助功能获取可用的原句和上下文，
+   在卡片中查看译文、目标表达的语境含义及按需展开的解释。
 5. 按默认 Control+Option+Shift+T 框选屏幕区域，将 OCR 获取的文字交给同一翻译流程。
    Escape 可取消框选。阅读卡片保持只读，不提供写回其他应用的替换操作。
 
