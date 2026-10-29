@@ -26,7 +26,7 @@ struct VocabularyClassificationViewTests {
         let window = makeWindow(host, width: 1260, height: 760)
         defer { window.close() }
         try await settle(host)
-        let tables = tableViews(host).sorted { host.convert($0.bounds, from: $0).minX < host.convert($1.bounds, from: $1).minX }
+        let tables = tableViews(host).sorted { $0.numberOfRows > $1.numberOfRows }
         #expect(tables.count == 2)
         let categories = try #require(tables.first), meanings = try #require(tables.last)
         let before = meanings.numberOfRows
@@ -35,6 +35,8 @@ struct VocabularyClassificationViewTests {
         categories.selectRowIndexes(IndexSet(integer: 6), byExtendingSelection: false)
         try await settle(host)
         #expect(meanings.numberOfRows == 1 && before > meanings.numberOfRows)
+        meanings.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        try await settle(host)
         #expect(defaults.string(forKey: "vocabularyOrganization") == "meaning")
         #expect(defaults.string(forKey: "vocabularyBrowserMode") == "list")
         try screenshot(host, named: "category-time-filter")
@@ -55,9 +57,12 @@ struct VocabularyClassificationViewTests {
         let archive = VocabularyArchive(url: nil)
         var document = VocabularySemanticTests.fixture()
         try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: document.semantics.nodes)
+        let category = try #require(document.classification.categories.first { $0.key == "content.time.timing" })
+        document.classification.memberships = [.init(id: UUID(), nodeID: document.semantics.nodes[0].id, categoryID: category.id)]
         _ = try await archive.commit(document)
         let store = VocabularyStore(archive: archive); await store.load()
-        try await paint(VocabularyCategoryEditor(store: store, preferredLanguages: [.chinese]), named: "new-category", dark: false)
+        try await paint(VocabularyCategoryEditor(store: store, parentID: category.id, preferredLanguages: [.chinese]),
+            named: "new-category", dark: false)
         try await paint(VocabularyMeaningCategorySheet(store: store, nodeID: document.semantics.nodes[0].id),
             named: "meaning-categories", dark: true)
     }

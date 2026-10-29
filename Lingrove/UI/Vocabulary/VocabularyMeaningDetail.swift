@@ -9,6 +9,7 @@ struct VocabularyMeaningDetail: View {
     var speech: LearningSpeechController?
     let openSense: (VocabularySelection) -> Void
     let openMeaning: (UUID) -> Void
+    var selectCategory: ((UUID) -> Void)?
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
     @Environment(\.vocabularyTextSize) private var textSize
     @State private var editing = false
@@ -49,7 +50,6 @@ struct VocabularyMeaningDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 meaningHeader
-                VocabularyMeaningCategoryControl(store: store, nodeID: node.id)
                 expressionsSection
                 relatedMeanings
                 detailsSection
@@ -163,6 +163,13 @@ struct VocabularyMeaningDetail: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
+
+            VocabularyMeaningCategoryControl(
+                store: store,
+                nodeID: node.id,
+                selectCategory: selectCategory
+            )
+            .padding(.top, 2)
         }
     }
 

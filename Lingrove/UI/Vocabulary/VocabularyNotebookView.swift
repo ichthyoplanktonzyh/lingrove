@@ -248,7 +248,7 @@ struct VocabularyNotebookView: View {
                     .disabled(!store.isLoaded)
             }
         }
-        .frame(minWidth: organization == "meaning" && browserMode == "list" && showsCategories ? 940 : 760, minHeight: 460)
+        .frame(minWidth: 760, minHeight: 460)
     }
 
     private var lifecycleContent: some View {
@@ -650,25 +650,29 @@ struct VocabularyNotebookView: View {
     }
 
     private var meaningListBrowser: some View {
-        HSplitView {
-            if showsCategories {
-                VocabularyCategorySidebar(store: store, selection: $categorySelection)
-                    .frame(minWidth: 175, idealWidth: 210, maxWidth: 280)
-            }
-            meaningListColumns
-        }
-    }
-
-    private var meaningListColumns: some View {
         NavigationSplitView {
-            VocabularyMeaningSidebar(items: meaningItems, entries: scopedEntries, unclassified: unclassified,
-                isDetailed: isDetailedList, destination: $meaningDestination)
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(spacing: 0) {
-                        sidebarFilterBar
-                    }
+            VStack(spacing: 0) {
+                sidebarFilterBar
+                VocabularyCategoryFilterBar(
+                    store: store,
+                    selection: $categorySelection,
+                    isDirectoryExpanded: $showsCategories
+                )
+                if showsCategories {
+                    VocabularyCategorySidebar(store: store, selection: $categorySelection)
+                        .frame(minHeight: 195, idealHeight: 245, maxHeight: 290)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    Divider()
                 }
-                .navigationSplitViewColumnWidth(min: 245, ideal: 300, max: 420)
+                VocabularyMeaningSidebar(
+                    items: meaningItems,
+                    entries: scopedEntries,
+                    unclassified: unclassified,
+                    isDetailed: isDetailedList,
+                    destination: $meaningDestination
+                )
+            }
+            .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
         } detail: { browserDetail }
     }
 
@@ -1012,9 +1016,21 @@ struct VocabularyNotebookView: View {
 
     @ViewBuilder private var browserDetail: some View {
         if let node = selectedMeaning {
-            VocabularyMeaningDetail(store: store, node: node, entries: scopedEntries, speech: speech,
-                openSense: { showSense($0.senseID) }, openMeaning: showMeaning)
-                .id(node.id)
+            VocabularyMeaningDetail(
+                store: store,
+                node: node,
+                entries: scopedEntries,
+                speech: speech,
+                openSense: { showSense($0.senseID) },
+                openMeaning: showMeaning,
+                selectCategory: { id in
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.94)) {
+                        browserMode = "list"
+                        categorySelection = id.uuidString
+                    }
+                }
+            )
+            .id(node.id)
         } else if organization == "meaning", let senseID = meaningDestination?.senseID {
             entryDetail(breadcrumb: AnyView(meaningSenseBreadcrumbBar(activeSenseID: senseID)))
         } else if organization == "meaning", meaningDestination == .unclassified {
