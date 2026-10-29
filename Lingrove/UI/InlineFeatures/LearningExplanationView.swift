@@ -5,6 +5,7 @@ import SwiftUI
 /// writes an editor. Long explanations remain in the surrounding card's bounded scroll viewport.
 struct LearningExplanationView: View {
     @Environment(\.learningInteraction) private var interact
+    @Environment(\.vocabularyTextSize) private var textSize
     /// A surrounding card may already own the target and generation button. Embedded results
     /// observe the same session while omitting those duplicate controls and adding separation.
     enum Presentation { case complete, embedded, contextual }
@@ -31,16 +32,17 @@ struct LearningExplanationView: View {
     private var contextualContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let text = meaning ?? session.lookupRecord?.result.meaning ?? session.record?.result.meaning, !text.isEmpty {
-                Text(text).font(.callout.weight(.semibold)).textSelection(.enabled)
+                Text(text).font(textSize.font(15, weight: .semibold)).textSelection(.enabled)
             }
             if let context {
                 VStack(alignment: .leading, spacing: 6) {
                     if context.completeness == .fragment {
-                        Text(String(localized: "Context fragment", table: "Vocabulary")).font(.caption).foregroundStyle(.secondary)
+                        Text(String(localized: "Context fragment", table: "Vocabulary"))
+                            .font(textSize.font(12)).foregroundStyle(.secondary)
                     }
-                    Text(contextualExample(context)).font(.callout).textSelection(.enabled)
+                    Text(contextualExample(context)).font(textSize.font(14.5)).lineSpacing(3).textSelection(.enabled)
                     if !context.translation.isEmpty {
-                        Text(context.translation).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                        Text(context.translation).font(textSize.font(13.5)).foregroundStyle(.secondary).textSelection(.enabled)
                     }
                 }
             }
@@ -53,19 +55,22 @@ struct LearningExplanationView: View {
                 })) {
                     VStack(alignment: .leading, spacing: 8) {
                         if let record = session.record, let meaning, meaning != record.result.meaning {
-                            Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
+                            Text(record.result.meaning).font(textSize.font(14.5, weight: .semibold)).textSelection(.enabled)
                             if let adopt {
                                 Button(String(localized: "Replace contextual meaning", table: "Learning")) { interact(); adopt(record) }
-                                    .buttonStyle(.link).font(.caption)
+                                    .buttonStyle(.link).font(textSize.font(12.5))
                             }
                         }
                         if let record = session.record {
-                            Text(record.result.explanation).font(.callout).textSelection(.enabled)
+                            Text(record.result.explanation)
+                                .font(textSize.font(14))
+                                .lineSpacing(3.5)
+                                .textSelection(.enabled)
                         }
                         if session.isLookup {
                             if let record = session.record, let adopt {
                                 Button(String(localized: "Use as contextual meaning", table: "Learning")) { interact(); adopt(record) }
-                                    .buttonStyle(.link).font(.caption)
+                                    .buttonStyle(.link).font(textSize.font(12.5))
                             }
                             if session.isGenerating {
                                 HStack(spacing: 8) {
@@ -83,7 +88,7 @@ struct LearningExplanationView: View {
                             }
                         }
                     }.padding(.top, 6)
-                }.font(.caption)
+                }.font(textSize.font(12, weight: .medium))
             }
             if session.lookupRecord == nil {
                 if session.isGenerating {

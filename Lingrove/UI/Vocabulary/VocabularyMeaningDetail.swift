@@ -10,6 +10,7 @@ struct VocabularyMeaningDetail: View {
     let openSense: (VocabularySelection) -> Void
     let openMeaning: (UUID) -> Void
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var editing = false
     @State private var associating = false
     @State private var editingMapping: VocabularyMeaningMapping?
@@ -75,7 +76,7 @@ struct VocabularyMeaningDetail: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(primaryTitle)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(textSize.font(28, weight: .bold))
                     .tracking(-0.3)
                     .textSelection(.enabled)
                 Spacer(minLength: 8)
@@ -108,7 +109,7 @@ struct VocabularyMeaningDetail: View {
                         .fixedSize()
                     if node.provenance.status == .proposed {
                         Text(String(localized: "Suggested grouping", table: "Vocabulary"))
-                            .font(.caption.weight(.semibold))
+                            .font(textSize.font(11.5, weight: .semibold))
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -119,12 +120,12 @@ struct VocabularyMeaningDetail: View {
                         HStack(spacing: 4) {
                             if let lang = label.language {
                                 Text(lang.compactLabel)
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(textSize.font(10, weight: .bold))
                                     .foregroundStyle(.tertiary)
                                     .fixedSize()
                             }
                             Text(label.text)
-                                .font(.caption.weight(.medium))
+                                .font(textSize.font(12, weight: .medium))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -138,9 +139,9 @@ struct VocabularyMeaningDetail: View {
 
             if !node.definition.isEmpty {
                 Text(node.definition)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(textSize.font(18, weight: .medium))
                     .foregroundStyle(.primary)
-                    .lineSpacing(2)
+                    .lineSpacing(3)
                     .textSelection(.enabled)
                     .padding(.top, 2)
             }
@@ -148,10 +149,11 @@ struct VocabularyMeaningDetail: View {
             if !node.scopeNote.isEmpty {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "info.circle")
-                        .font(.caption.weight(.semibold))
+                        .font(textSize.font(12, weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(node.scopeNote)
-                        .font(.callout)
+                        .font(textSize.font(14))
+                        .lineSpacing(3)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -167,10 +169,10 @@ struct VocabularyMeaningDetail: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 Text(String(localized: "My expressions", table: "Vocabulary"))
-                    .font(.headline)
+                    .font(textSize.font(15, weight: .semibold))
                 if visibleSenseCount > 0 {
                     Text("\(visibleSenseCount)")
-                        .font(.caption2.weight(.bold))
+                        .font(textSize.font(11, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(LingroveBrand.accent)
                         .padding(.horizontal, 6.5)
@@ -192,10 +194,10 @@ struct VocabularyMeaningDetail: View {
             if visibleEntries.isEmpty {
                 HStack(spacing: 10) {
                     Image(systemName: "text.book.closed")
-                        .font(.callout)
+                        .font(textSize.font(14))
                         .foregroundStyle(.tertiary)
                     Text(String(localized: "No matching expressions", table: "Vocabulary"))
-                        .font(.callout)
+                        .font(textSize.font(14))
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -224,20 +226,21 @@ struct VocabularyMeaningDetail: View {
                 Button {
                     openSense(.init(entryID: entry.id, senseID: sense.id))
                 } label: {
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(entry.expression)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(textSize.font(17.5, weight: .semibold))
                                 .foregroundStyle(.primary)
                             if entry.kind != .word {
                                 Text(entry.kind.label)
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(textSize.font(11.5, weight: .medium))
                                     .foregroundStyle(.tertiary)
                             }
                         }
                         if !sense.displayTitle.isEmpty {
                             Text(sense.displayTitle)
-                                .font(.callout)
+                                .font(textSize.font(14.5))
+                                .lineSpacing(2.5)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                         }
@@ -336,7 +339,7 @@ struct VocabularyMeaningDetail: View {
         if !relations.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text(String(localized: "Related meanings", table: "Vocabulary"))
-                    .font(.headline)
+                    .font(textSize.font(15, weight: .semibold))
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(relations) { relation in
                         let outgoing = relation.sourceID == node.id
@@ -349,17 +352,17 @@ struct VocabularyMeaningDetail: View {
                                 HStack(spacing: 8) {
                                     Text(relation.kind == .narrower && !outgoing
                                          ? String(localized: "More general than", table: "Vocabulary") : relation.kind.label)
-                                        .font(.caption.weight(.semibold))
+                                        .font(textSize.font(11.5, weight: .semibold))
                                         .foregroundStyle(.secondary)
                                         .padding(.horizontal, 7)
                                         .padding(.vertical, 2.5)
                                         .background(Color.primary.opacity(0.06), in: Capsule(style: .continuous))
                                     Text(target.title(in: meaningLanguages))
-                                        .font(.callout.weight(.medium))
+                                        .font(textSize.font(14.5, weight: .medium))
                                         .foregroundStyle(.primary)
                                     Spacer()
                                     Image(systemName: "arrow.up.right")
-                                        .font(.caption.weight(.semibold))
+                                        .font(textSize.font(11.5, weight: .semibold))
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding(.horizontal, 12)
@@ -386,10 +389,10 @@ struct VocabularyMeaningDetail: View {
                     if !cues.isEmpty {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: textSize.size(11), weight: .semibold))
                                 .foregroundStyle(.tertiary)
                             Text(cues.map(\.text).joined(separator: " · "))
-                                .font(.caption)
+                                .font(textSize.font(13))
                                 .foregroundStyle(.secondary)
                                 .textSelection(.enabled)
                         }
@@ -398,11 +401,11 @@ struct VocabularyMeaningDetail: View {
                         ForEach(node.roles) { role in
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Text("[\(role.name)]")
-                                    .font(.caption.weight(.semibold))
+                                    .font(textSize.font(12.5, weight: .semibold))
                                     .foregroundStyle(LingroveBrand.accent)
                                 if !role.description.isEmpty {
                                     Text(role.description)
-                                        .font(.caption)
+                                        .font(textSize.font(13))
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -410,14 +413,14 @@ struct VocabularyMeaningDetail: View {
                     }
                     if !node.provenance.source.isEmpty {
                         Text(node.provenance.source)
-                            .font(.caption)
+                            .font(textSize.font(12.5))
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                     }
                 }
                 .padding(.top, 6)
             }
-            .font(.caption.weight(.medium))
+            .font(textSize.font(12.5, weight: .medium))
             .foregroundStyle(.secondary)
         }
     }
@@ -434,6 +437,7 @@ struct VocabularyUnclassifiedDetail: View {
     let openSense: (VocabularySelection) -> Void
     let openMeaning: (UUID) -> Void
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var groupingSenseID: UUID?
     @State private var creatingMeaningFor: VocabularySelection?
     @State private var creatingBlankMeaning = false
@@ -458,10 +462,10 @@ struct VocabularyUnclassifiedDetail: View {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(String(localized: "Other expressions", table: "Vocabulary"))
-                        .font(.system(size: 26, weight: .bold))
+                        .font(textSize.font(28, weight: .bold))
                         .tracking(-0.3)
                     Text("\(resolvedItems.count)")
-                        .font(.caption.weight(.bold))
+                        .font(textSize.font(12, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -516,7 +520,7 @@ struct VocabularyUnclassifiedDetail: View {
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.entry.expression)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(textSize.font(17, weight: .semibold))
                         .foregroundStyle(.primary)
                     VocabularySenseSummary(sense: item.sense)
                 }

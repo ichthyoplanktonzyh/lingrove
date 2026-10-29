@@ -9,21 +9,24 @@ struct VocabularyExplanationSection: View {
     var example: VocabularyExample?
     @ObservedObject var store: VocabularyStore
     @ObservedObject var learning: VocabularyNotebookSession
+    @Environment(\.vocabularyTextSize) private var textSize
 
     var body: some View {
         if let session = learning.explanations[VocabularyNotebookSession.key(example)] {
             let meaning = example?.meaning ?? sense.meaning
             let origin = example?.meaningOrigin ?? sense.meaningOrigin
-            let hasContent = !meaning.isEmpty || session.record != nil || session.isGenerating || session.error != nil
+            let displayedMeaning = example == nil ? nil : (origin == .user || session.record == nil ? meaning : nil)
+            let hasContent = (displayedMeaning.map { !$0.isEmpty } ?? false)
+                || session.record != nil || session.isGenerating || session.error != nil
             VStack(alignment: .leading, spacing: hasContent ? 8 : 0) {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
-                        .font(.caption2.weight(.semibold))
+                        .font(.system(size: textSize.size(11), weight: .semibold))
                         .foregroundStyle(session.record != nil || session.isGenerating ? LingroveBrand.accent : .secondary)
                         .accessibilityHidden(true)
                     Text(example == nil ? String(localized: "General meaning", table: "Vocabulary")
                         : String(localized: "Meaning in this context", table: "Vocabulary"))
-                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        .font(textSize.font(12, weight: .semibold)).foregroundStyle(.secondary)
                     Spacer()
                     LearningExplanationButton(session: session,
                         prepare: { learning.activateExplanation(VocabularyNotebookSession.key(example)) },
@@ -35,7 +38,7 @@ struct VocabularyExplanationSection: View {
                         Task { _ = await store.adoptExplanation(record,
                             at: .init(entryID: entry.id, senseID: sense.id, exampleID: example?.id)) }
                     }, presentation: .contextual,
-                    meaning: example == nil || origin == .user || session.record == nil ? meaning : nil)
+                    meaning: displayedMeaning)
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 9)

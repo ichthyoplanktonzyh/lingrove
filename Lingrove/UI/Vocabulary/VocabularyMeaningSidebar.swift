@@ -8,6 +8,7 @@ struct VocabularyMeaningSidebar: View {
     let unclassified: [VocabularySelection]
     var isDetailed = false
     @Binding var destination: VocabularyMeaningDestination?
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var isUnclassifiedExpanded = false
 
     private var sidebarSelection: Binding<VocabularyMeaningDestination?> {
@@ -40,14 +41,14 @@ struct VocabularyMeaningSidebar: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Image(systemName: item.node.kind.symbolName)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: textSize.size(11, sidebar: true), weight: .semibold))
                             .foregroundStyle(item.node.kind == .concept ? LingroveBrand.accent : .teal)
                         Text(item.title)
-                            .font(.headline)
+                            .font(textSize.font(14.5, weight: .semibold, sidebar: true))
                             .lineLimit(1)
                         if !isDetailed && isSelected && !preview.isEmpty {
                             Text(preview)
-                                .font(.caption)
+                                .font(textSize.font(12.5, sidebar: true))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .transition(.opacity)
@@ -60,7 +61,7 @@ struct VocabularyMeaningSidebar: View {
                                 .help(String(localized: "Suggested grouping", table: "Vocabulary"))
                         }
                         Text("\(item.selections.count)")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: textSize.size(10.5, sidebar: true), weight: .semibold))
                             .monospacedDigit()
                             .foregroundStyle(item.selections.isEmpty ? Color.secondary : LingroveBrand.accent)
                             .padding(.horizontal, 5.5)
@@ -72,7 +73,7 @@ struct VocabularyMeaningSidebar: View {
                     }
                     if isDetailed && !preview.isEmpty {
                         Text(preview)
-                            .font(.subheadline)
+                            .font(textSize.font(13, sidebar: true))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .padding(.leading, 16)
@@ -94,11 +95,11 @@ struct VocabularyMeaningSidebar: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                                         Text(entry.expression)
-                                            .font(.subheadline.weight(.semibold))
+                                            .font(textSize.font(13.5, weight: .semibold, sidebar: true))
                                             .lineLimit(1)
                                         if !isDetailed && isSenseSelected && !sense.displayTitle.isEmpty {
                                             Text(sense.displayTitle)
-                                                .font(.caption)
+                                                .font(textSize.font(12, sidebar: true))
                                                 .foregroundStyle(.secondary)
                                                 .lineLimit(1)
                                         }
@@ -107,7 +108,7 @@ struct VocabularyMeaningSidebar: View {
                                     }
                                     if isDetailed && !sense.displayTitle.isEmpty {
                                         Text(sense.displayTitle)
-                                            .font(.caption)
+                                            .font(textSize.font(12.5, sidebar: true))
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
                                     }
@@ -120,14 +121,14 @@ struct VocabularyMeaningSidebar: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "tray")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: textSize.size(11.5, sidebar: true), weight: .semibold))
                                 .foregroundStyle(destination == .unclassified ? LingroveBrand.accent : .secondary)
                             Text(String(localized: "Other expressions", table: "Vocabulary"))
-                                .font(.subheadline.weight(.medium))
+                                .font(textSize.font(13.5, weight: .medium, sidebar: true))
                                 .foregroundStyle(destination == .unclassified ? LingroveBrand.accent : .primary)
                             Spacer()
                             Text("\(unclassified.count)")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: textSize.size(10.5, sidebar: true), weight: .semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 5.5)

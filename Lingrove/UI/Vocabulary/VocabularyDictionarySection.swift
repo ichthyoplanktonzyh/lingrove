@@ -7,6 +7,7 @@ struct VocabularyDictionarySection: View {
     let entry: VocabularyEntry
     @ObservedObject var learning: VocabularyNotebookSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var expanded = false
     @State private var hoveringHeader = false
 
@@ -19,20 +20,20 @@ struct VocabularyDictionarySection: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "character.book.closed")
-                        .font(.subheadline.weight(.medium))
+                        .font(textSize.font(13, weight: .medium))
                         .foregroundStyle(expanded ? LingroveBrand.accent : .secondary)
                     Text(String(localized: "Dictionary", table: "Vocabulary"))
-                        .font(.subheadline.weight(.semibold))
+                        .font(textSize.font(13.5, weight: .semibold))
                         .foregroundStyle(.primary)
                     if entry.dictionaryForm != entry.expression {
                         Text(entry.dictionaryForm)
-                            .font(.caption)
+                            .font(textSize.font(12))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
+                        .font(textSize.font(11.5, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
                 }

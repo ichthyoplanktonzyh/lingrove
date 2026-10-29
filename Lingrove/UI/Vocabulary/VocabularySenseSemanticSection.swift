@@ -8,6 +8,7 @@ struct VocabularySenseOrganizeMenuButton: View {
     let selection: VocabularySelection
     var openMeaning: ((UUID) -> Void)?
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var creatingMeaning = false
     @State private var addingMapping = false
     @State private var addingPattern = false
@@ -73,6 +74,7 @@ struct VocabularySenseSemanticSection: View {
     let selection: VocabularySelection
     var openMeaning: ((UUID) -> Void)?
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var creatingMeaning = false
     @State private var addingMapping = false
     @State private var editingMapping: VocabularyMeaningMapping?
@@ -102,7 +104,7 @@ struct VocabularySenseSemanticSection: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .center) {
                     Label(String(localized: "By meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
-                        .font(.caption.weight(.semibold))
+                        .font(textSize.font(12, weight: .semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
                     addMoreMenu
@@ -202,11 +204,11 @@ struct VocabularySenseSemanticSection: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: node.kind.symbolName)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: textSize.size(11), weight: .semibold))
                         Text(node.title(in: meaningLanguages))
-                            .font(.caption.weight(.semibold))
+                            .font(textSize.font(12.5, weight: .semibold))
                         Image(systemName: "arrow.up.right")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.system(size: textSize.size(9), weight: .bold))
                             .opacity(0.75)
                     }
                     .foregroundStyle(tint)

@@ -6,6 +6,7 @@ import SwiftUI
 struct VocabularyContentView: View {
     let blocks: [VocabularyContentBlock]
     let store: VocabularyStore
+    @Environment(\.vocabularyTextSize) private var textSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -13,12 +14,20 @@ struct VocabularyContentView: View {
                 switch block.content {
                 case let .text(value):
                     Text((value.style == .bullet ? "• " : "") + value.text)
-                        .font(value.style == .heading ? .headline : .body)
+                        .font(value.style == .heading
+                            ? textSize.font(16, weight: .semibold)
+                            : textSize.font(14.5))
+                        .lineSpacing(3.5)
                         .bold(value.bold).italic(value.italic).textSelection(.enabled)
                 case let .image(image, caption):
                     VocabularyImageView(reference: image, store: store)
                         .accessibilityLabel(caption.isEmpty ? String(localized: "Image", table: "Vocabulary") : caption)
-                    if !caption.isEmpty { Text(caption).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+                    if !caption.isEmpty {
+                        Text(caption)
+                            .font(textSize.font(12.5))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)

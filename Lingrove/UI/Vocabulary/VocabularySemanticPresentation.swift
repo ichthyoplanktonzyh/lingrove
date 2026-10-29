@@ -11,15 +11,93 @@ extension EnvironmentValues {
         get { self[VocabularyMeaningLanguagesKey.self] }
         set { self[VocabularyMeaningLanguagesKey.self] = newValue }
     }
+    var vocabularyTextSize: VocabularyTextSize {
+        get { self[VocabularyTextSizeKey.self] }
+        set { self[VocabularyTextSizeKey.self] = newValue }
+    }
+}
+
+/// User-adjustable reading scale for the Vocabulary Notebook.
+///
+/// Why this type exists:
+/// macOS SwiftUI semantic text styles (`.body` = 13pt, `.callout` = 12pt, `.subheadline` = 11pt,
+/// `.caption` = 10pt) are tuned for compact system utility panels rather than long-form bilingual
+/// dictionary reading. `VocabularyTextSize` establishes an explicit editorial point scale whose
+/// `.standard` default is already elevated for comfortable reading, while allowing learners to
+/// step between four presets (`small`, `standard`, `large`, `extraLarge`) from the window toolbar.
+nonisolated enum VocabularyTextSize: String, CaseIterable, Identifiable, Sendable {
+    case small
+    case standard
+    case large
+    case extraLarge
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .small: String(localized: "Small", table: "Vocabulary")
+        case .standard: String(localized: "Standard", table: "Vocabulary")
+        case .large: String(localized: "Large", table: "Vocabulary")
+        case .extraLarge: String(localized: "Extra Large", table: "Vocabulary")
+        }
+    }
+
+    var detailDelta: CGFloat {
+        switch self {
+        case .small: -1.5
+        case .standard: 0
+        case .large: 2.0
+        case .extraLarge: 4.0
+        }
+    }
+
+    var sidebarDelta: CGFloat {
+        switch self {
+        case .small: -1.0
+        case .standard: 0
+        case .large: 1.0
+        case .extraLarge: 2.0
+        }
+    }
+
+    func size(_ base: CGFloat, sidebar: Bool = false) -> CGFloat {
+        base + (sidebar ? sidebarDelta : detailDelta)
+    }
+
+    func font(_ base: CGFloat, weight: Font.Weight = .regular, sidebar: Bool = false) -> Font {
+        .system(size: size(base, sidebar: sidebar), weight: weight)
+    }
+
+    var smaller: VocabularyTextSize {
+        switch self {
+        case .small, .standard: .small
+        case .large: .standard
+        case .extraLarge: .large
+        }
+    }
+
+    var larger: VocabularyTextSize {
+        switch self {
+        case .small: .standard
+        case .standard: .large
+        case .large, .extraLarge: .extraLarge
+        }
+    }
+}
+
+private nonisolated struct VocabularyTextSizeKey: EnvironmentKey {
+    static let defaultValue: VocabularyTextSize = .standard
 }
 
 /// The source language belongs to the saved expression. Unknown metadata remains explicit;
 /// a badge never borrows the interface language or the language currently used for explanation.
 struct VocabularyExpressionLanguageBadge: View {
     let language: LearningLanguage?
+    @Environment(\.vocabularyTextSize) private var textSize
+
     var body: some View {
         Text(language?.compactLabel ?? String(localized: "Unspecified", table: "Learning"))
-            .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            .font(textSize.font(11, weight: .semibold)).foregroundStyle(.secondary)
             .padding(.horizontal, 7).padding(.vertical, 2.5)
             .background(Color.primary.opacity(0.06), in: Capsule(style: .continuous))
     }
@@ -29,15 +107,17 @@ struct VocabularyExpressionLanguageBadge: View {
 /// ("what the speaker is doing") across meaning headers and sidebars.
 struct VocabularyMeaningKindBadge: View {
     let kind: VocabularyMeaningNode.Kind
+    @Environment(\.vocabularyTextSize) private var textSize
+
     private var tint: Color {
         kind == .concept ? LingroveBrand.accent : .teal
     }
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: kind.symbolName)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: textSize.size(10), weight: .semibold))
             Text(kind.label)
-                .font(.caption.weight(.semibold))
+                .font(textSize.font(11.5, weight: .semibold))
         }
         .foregroundStyle(tint)
         .padding(.horizontal, 8)
@@ -50,11 +130,12 @@ struct VocabularyMeaningKindBadge: View {
 /// distinguish fixed wording from variable grammatical slots.
 struct VocabularyPatternTemplateText: View {
     let template: String
-    var font: Font = .callout.weight(.semibold)
+    var font: Font?
+    @Environment(\.vocabularyTextSize) private var textSize
 
     var body: some View {
         Text(highlightedTemplate)
-            .font(font)
+            .font(font ?? textSize.font(14.5, weight: .semibold))
             .textSelection(.enabled)
     }
 
@@ -166,6 +247,7 @@ struct VocabularySemanticEditorFrame<Content: View>: View {
 /// slot identities stay in storage; learners see wording, register and practical restrictions.
 struct VocabularyUsagePatternSummary: View {
     let pattern: VocabularyUsagePattern
+    @Environment(\.vocabularyTextSize) private var textSize
 
     private var registerBadges: [String] {
         [
@@ -181,7 +263,7 @@ struct VocabularyUsagePatternSummary: View {
                 VocabularyPatternTemplateText(template: pattern.template)
                 ForEach(registerBadges, id: \.self) { label in
                     Text(label)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(textSize.font(11, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -189,7 +271,7 @@ struct VocabularyUsagePatternSummary: View {
                 }
                 if pattern.provenance.status == .proposed {
                     Text(String(localized: "Suggested wording", table: "Vocabulary"))
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(textSize.font(11, weight: .semibold))
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -198,17 +280,18 @@ struct VocabularyUsagePatternSummary: View {
             }
             if !pattern.note.isEmpty {
                 Text(pattern.note)
-                    .font(.callout)
+                    .font(textSize.font(14))
+                    .lineSpacing(3)
                     .foregroundStyle(.primary.opacity(0.88))
                     .textSelection(.enabled)
             }
             if !pattern.collocations.isEmpty {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Image(systemName: "link")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: textSize.size(10), weight: .semibold))
                         .foregroundStyle(.tertiary)
                     Text(pattern.collocations.joined(separator: " · "))
-                        .font(.caption)
+                        .font(textSize.font(12.5))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -227,6 +310,7 @@ struct VocabularyMeaningMappingSummary: View {
     var showsExample = true
     var showsActionsMenu = true
     let edit: () -> Void
+    @Environment(\.vocabularyTextSize) private var textSize
     @State private var saving = false
 
     private var pattern: VocabularyUsagePattern? {
@@ -254,32 +338,35 @@ struct VocabularyMeaningMappingSummary: View {
                         if !mapping.nuance.isEmpty {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Image(systemName: "sparkles")
-                                    .font(.system(size: 10, weight: .semibold))
+                                    .font(.system(size: textSize.size(11), weight: .semibold))
                                     .foregroundStyle(LingroveBrand.accent)
                                 Text(mapping.nuance)
-                                    .font(.callout)
+                                    .font(textSize.font(14.5))
+                                    .lineSpacing(3)
                                     .textSelection(.enabled)
                             }
                         }
                         if !mapping.conditions.isEmpty {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 Image(systemName: "scope")
-                                    .font(.system(size: 10, weight: .semibold))
+                                    .font(.system(size: textSize.size(11), weight: .semibold))
                                     .foregroundStyle(.secondary)
                                 Text(mapping.conditions)
-                                    .font(.caption.weight(.medium))
+                                    .font(textSize.font(13, weight: .medium))
                                     .foregroundStyle(.secondary)
                                     .textSelection(.enabled)
                             }
                         }
                         if let example = resolvedExample {
-                            VStack(alignment: .leading, spacing: 3) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(highlighted(example))
-                                    .font(.callout)
+                                    .font(textSize.font(14.5))
+                                    .lineSpacing(3)
                                     .textSelection(.enabled)
                                 if !example.translation.isEmpty {
                                     Text(example.translation)
-                                        .font(.caption)
+                                        .font(textSize.font(13.5))
+                                        .lineSpacing(2.5)
                                         .foregroundStyle(.secondary)
                                         .textSelection(.enabled)
                                 }
@@ -295,10 +382,10 @@ struct VocabularyMeaningMappingSummary: View {
                         if !mapping.provenance.source.isEmpty {
                             DisclosureGroup(String(localized: "Source note", table: "Vocabulary")) {
                                 Text(mapping.provenance.source)
-                                    .font(.caption)
+                                    .font(textSize.font(12.5))
                                     .textSelection(.enabled)
                             }
-                            .font(.caption)
+                            .font(textSize.font(12))
                             .foregroundStyle(.secondary)
                         }
                     }
@@ -318,7 +405,7 @@ struct VocabularyMeaningMappingSummary: View {
             if mapping.provenance.status == .proposed {
                 HStack(spacing: 8) {
                     Label(String(localized: "Suggested grouping", table: "Vocabulary"), systemImage: "sparkles")
-                        .font(.caption.weight(.medium))
+                        .font(textSize.font(12, weight: .medium))
                         .foregroundStyle(.orange)
                     Spacer(minLength: 4)
                     Button(String(localized: "Use this grouping", table: "Vocabulary")) { confirm() }
@@ -363,7 +450,7 @@ struct VocabularyMeaningMappingSummary: View {
             guard VocabularyPolicy.valid(value.nsRange, in: example.text),
                   let range = Range(value.nsRange, in: example.text),
                   let converted = Range(range, in: result) else { continue }
-            result[converted].font = .callout.weight(.semibold)
+            result[converted].font = textSize.font(14.5, weight: .semibold)
             result[converted].foregroundColor = LingroveBrand.accent
             result[converted].backgroundColor = LingroveBrand.accent.opacity(0.11)
         }
