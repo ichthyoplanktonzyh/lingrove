@@ -1,7 +1,7 @@
 {
   "key": "lingrove.core",
-  "version": 3,
-  "authorship": "Lingrove retains its original category keys and bilingual labels. Chinese definitions summarize the explicitly mapped SIL v4 domains; scope notes describe Lingrove routing decisions based on those contrasts. Some domains are combined or narrowed. Examples include selected SIL examples and Lingrove-authored illustrations, not collected notebook entries. USAS and CEFR provide the indicated supplementary references. This adapted classification dataset is distributed under CC BY-SA 4.0; application code retains its separate license. Catalog v3 adds locale-specific names, definitions and scope notes for all 15 interface languages, translated from the same sourced Chinese guidance. The original English/Chinese labels and source examples remain unchanged.",
+  "version": 4,
+  "authorship": "Lingrove retains its original category keys and bilingual labels. Chinese definitions summarize the explicitly mapped SIL v4 domains; scope notes describe Lingrove routing decisions based on those contrasts. Some domains are combined or narrowed. Examples include selected SIL examples and Lingrove-authored illustrations, not collected notebook entries. USAS and CEFR provide the indicated supplementary references. This adapted classification dataset is distributed under CC BY-SA 4.0; application code retains its separate license. Catalog v3 adds locale-specific names, definitions and scope notes for all 15 interface languages, translated from the same sourced Chinese guidance. The original English/Chinese labels and source examples remain unchanged. Catalog v4 adds 23 source-mapped branches for physical processes, enabling/hindering and negotiating positions. All v3 category records and existing parent relationships are retained; new localized guidance uses the same 15-locale translation process.",
   "references": [
     {
       "title": "USAS",
@@ -43236,6 +43236,3069 @@
           "name": "Duygu bildirme",
           "definition": "Kişinin kendi duygularını ya da hislerini başkalarına ifade etmesini sağlar.",
           "scopeNote": "Belirli bir duyguyu betimleyen sözcükler içerik tarafındaki duygu kategorisiyle de ilişkili olabilir."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process",
+      "axis": "content",
+      "english": "Material changes and flow",
+      "chinese": "物质变化与流动",
+      "parents": [
+        "content.objects"
+      ],
+      "definition": "描述物体或材料的温度、物态、燃烧状态变化，以及液体的流动过程。",
+      "scopeNote": "关注物质发生的过程；使物体升温、降温等施加作用的表达另归物体操作。",
+      "examples": [
+        {
+          "text": "melt",
+          "language": "en"
+        },
+        {
+          "text": "cool down",
+          "language": "en"
+        },
+        {
+          "text": "flow",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4",
+          "url": "https://semdom.org/v4/8.3.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4.1",
+          "url": "https://semdom.org/v4/8.3.4.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "5.5.4",
+          "url": "https://semdom.org/v4/5.5.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.3.2",
+          "url": "https://semdom.org/v4/1.3.2/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Material changes and flow",
+          "definition": "Describes changes in an object's or material's temperature, state of matter, and burning, as well as the flow of liquids.",
+          "scopeNote": "Focuses on processes that matter undergoes; expressions that apply an effect such as warming or cooling an object belong to object manipulation."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "物质变化与流动",
+          "definition": "描述物体或材料的温度、物态、燃烧状态变化，以及液体的流动过程。",
+          "scopeNote": "关注物质发生的过程；使物体升温、降温等施加作用的表达另归物体操作。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "物質變化與流動",
+          "definition": "描述物體或材料的溫度、物態、燃燒狀態變化，以及液體的流動過程。",
+          "scopeNote": "著重物質所經歷的過程；使物體升溫、降溫等施加作用的表達另歸物體操作。"
+        },
+        {
+          "language": "ja",
+          "name": "物質の変化と流れ",
+          "definition": "物体や材料の温度、物質の状態、燃焼状態の変化、および液体が流れる過程を表す。",
+          "scopeNote": "物質に起きる過程に焦点を当てる。物体を温めたり冷やしたりする作用を加える表現は、物体操作に分類する。"
+        },
+        {
+          "language": "ko",
+          "name": "물질 변화와 흐름",
+          "definition": "물체나 재료의 온도, 물질 상태, 연소 상태 변화와 액체의 흐름 과정을 나타낸다.",
+          "scopeNote": "물질에 일어나는 과정에 초점을 둔다. 물체를 데우거나 식히는 작용을 가하는 표현은 물체 조작으로 분류한다."
+        },
+        {
+          "language": "fr",
+          "name": "Transformations de la matière et écoulement",
+          "definition": "Décrit les changements de température, d’état de la matière ou de combustion d’un objet ou d’un matériau, ainsi que l’écoulement des liquides.",
+          "scopeNote": "L’accent porte sur le processus qui se produit dans la matière ; les expressions qui provoquent le réchauffement ou le refroidissement d’un objet relèvent plutôt de la manipulation d’objets."
+        },
+        {
+          "language": "de",
+          "name": "Materialveränderungen und Fließen",
+          "definition": "Beschreibt Veränderungen der Temperatur, des Aggregatzustands oder des Brennzustands eines Gegenstands oder Stoffes sowie das Fließen von Flüssigkeiten.",
+          "scopeNote": "Im Mittelpunkt stehen Vorgänge in der Materie; Ausdrücke dafür, einen Gegenstand zu erwärmen oder abzukühlen, gehören zum Umgang mit Gegenständen."
+        },
+        {
+          "language": "es",
+          "name": "Cambios en la materia y flujo",
+          "definition": "Describe los cambios de temperatura y de estado físico en objetos o materiales, la combustión y el flujo de líquidos.",
+          "scopeNote": "Se centra en los procesos que ocurren en la materia; las expresiones que ejercen una acción, como calentar o enfriar un objeto, pertenecen a manipulación y cambio de objetos."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Mudanças na matéria e fluxo",
+          "definition": "Descreve mudanças de temperatura e de estado físico em objetos ou materiais, a combustão e o fluxo de líquidos.",
+          "scopeNote": "O foco são os processos que ocorrem na matéria; expressões que aplicam uma ação, como aquecer ou resfriar um objeto, pertencem a manipulação e mudança de objetos."
+        },
+        {
+          "language": "it",
+          "name": "Trasformazioni della materia e flusso",
+          "definition": "Descrive i cambiamenti di temperatura, di stato fisico o di combustione di oggetti e materiali, nonché il flusso dei liquidi.",
+          "scopeNote": "Riguarda i processi che avvengono nella materia; le espressioni che esercitano un'azione, come riscaldare o raffreddare un oggetto, appartengono alla manipolazione degli oggetti."
+        },
+        {
+          "language": "ru",
+          "name": "Изменения вещества и течение жидкостей",
+          "definition": "Описывает изменения температуры, физического состояния или горения предметов и материалов, а также течение жидкостей.",
+          "scopeNote": "Речь идет о процессах, происходящих в веществе; выражения, обозначающие воздействие — например, нагрев или охлаждение предмета, — относятся к действиям с предметами."
+        },
+        {
+          "language": "ar",
+          "name": "تغيّرات المواد والجريان",
+          "definition": "يصف تغيّر درجة حرارة الأشياء أو المواد وحالتها الفيزيائية واحتراقها، وكذلك جريان السوائل.",
+          "scopeNote": "يركّز على العمليات التي تحدث في المادة؛ أما التعبيرات التي تصف التأثير في شيء، مثل تسخينه أو تبريده، فتندرج ضمن التعامل مع الأشياء."
+        },
+        {
+          "language": "hi",
+          "name": "पदार्थों में बदलाव और प्रवाह",
+          "definition": "वस्तुओं या पदार्थों के तापमान, भौतिक अवस्था और जलने की अवस्था में बदलाव, तथा तरल के बहने का वर्णन करता है।",
+          "scopeNote": "ध्यान पदार्थ में होने वाली प्रक्रिया पर है; वस्तु पर असर डालकर उसे गरम या ठंडा करने जैसी क्रियाएँ वस्तुओं पर काम करने की श्रेणी में आती हैं।"
+        },
+        {
+          "language": "id",
+          "name": "Perubahan materi dan aliran",
+          "definition": "Menggambarkan proses perubahan suhu dan wujud benda atau bahan, perubahan keadaan pembakaran, serta aliran cairan.",
+          "scopeNote": "Fokusnya pada proses yang terjadi pada materi; ungkapan yang menyatakan tindakan untuk menaikkan atau menurunkan suhu benda termasuk manipulasi benda."
+        },
+        {
+          "language": "tr",
+          "name": "Maddesel değişimler ve akış",
+          "definition": "Nesne ya da malzemelerdeki sıcaklık ve madde hâli değişimlerini, yanma durumundaki değişimleri ve sıvıların akış sürecini açıklar.",
+          "scopeNote": "Maddede gerçekleşen süreçlere odaklanır; nesnenin sıcaklığını artırma ya da düşürme gibi etki uygulayan ifadeler nesneyle işlem kategorisinde ele alınır."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.warming",
+      "axis": "content",
+      "english": "Becoming warmer",
+      "chinese": "自身升温",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述物体或环境的温度上升、变暖或变热。",
+      "scopeNote": "取 SIL 温度领域中“变热”的过程侧面；与使另一物体升温及情绪升温的比喻义分开。",
+      "examples": [
+        {
+          "text": "warm up",
+          "language": "en"
+        },
+        {
+          "text": "get hot",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4",
+          "url": "https://semdom.org/v4/8.3.4/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Becoming warmer",
+          "definition": "Describes an object's or environment's temperature rising, becoming warmer or hotter.",
+          "scopeNote": "Takes the process sense of “become hot” in the SIL temperature domain; distinguishes it from making another object warmer and from figurative uses involving emotions warming or intensifying."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "自身升温",
+          "definition": "描述物体或环境的温度上升、变暖或变热。",
+          "scopeNote": "取 SIL 温度领域中“变热”的过程侧面；与使另一物体升温及情绪升温的比喻义分开。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "自身升溫",
+          "definition": "描述物體或環境的溫度上升、變暖或變熱。",
+          "scopeNote": "取 SIL 溫度領域中「變熱」的過程側面；與使另一物體升溫及情緒升溫的比喻義區分。"
+        },
+        {
+          "language": "ja",
+          "name": "自ら温まること",
+          "definition": "物体や環境の温度が上昇し、暖かく、または熱くなる過程を表す。",
+          "scopeNote": "SIL の温度領域にある「熱くなる」という過程の側面を取る。他の物体を温める使役的な意味や、感情が温まるという比喩的な意味とは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "스스로 따뜻해짐",
+          "definition": "물체나 환경의 온도가 올라 따뜻해지거나 뜨거워지는 과정을 나타낸다.",
+          "scopeNote": "SIL 온도 영역의 ‘뜨거워지다’라는 과정 측면을 취한다. 다른 물체를 데우는 사역적 의미나 감정이 따뜻해진다는 비유적 의미와 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Se réchauffer",
+          "definition": "Décrit la hausse de température d’un objet ou de l’environnement, qui devient plus chaud.",
+          "scopeNote": "Retient l’aspect de processus « devenir plus chaud » dans le domaine SIL de la température ; à distinguer du fait de chauffer un autre objet et du sens métaphorique d’une montée émotionnelle."
+        },
+        {
+          "language": "de",
+          "name": "Sich erwärmen",
+          "definition": "Beschreibt, dass die Temperatur eines Gegenstands oder der Umgebung steigt und es wärmer wird.",
+          "scopeNote": "Gemeint ist der Prozessaspekt „wärmer werden“ im SIL-Temperaturbereich; zu unterscheiden vom Erwärmen eines anderen Gegenstands und von der übertragenen Bedeutung emotionaler Erregung."
+        },
+        {
+          "language": "es",
+          "name": "El objeto se calienta",
+          "definition": "Describe el aumento de temperatura de un objeto o del entorno, que se vuelve más cálido o caliente.",
+          "scopeNote": "Se centra en el proceso físico de aumento de temperatura expresado como “volverse más caliente” en el dominio de temperatura de SIL; se distingue de causar el calentamiento de otro objeto y de los usos figurados de intensificación emocional."
+        },
+        {
+          "language": "pt-BR",
+          "name": "O objeto se aquece",
+          "definition": "Descreve o aumento da temperatura de um objeto ou do ambiente, que fica mais quente.",
+          "scopeNote": "Foca o processo físico de aumento da temperatura descrito como “ficar mais quente” no domínio de temperatura da SIL; distingue-se de causar o aquecimento de outro objeto e dos usos figurados de intensificação emocional."
+        },
+        {
+          "language": "it",
+          "name": "Riscaldarsi",
+          "definition": "Descrive l'aumento della temperatura di un oggetto o dell'ambiente, che diventa più caldo.",
+          "scopeNote": "Seleziona l'aspetto processuale del «diventare più caldo» nell'area SIL della temperatura; è distinto dal riscaldare un altro oggetto e dai significati figurati di riscaldamento emotivo."
+        },
+        {
+          "language": "ru",
+          "name": "Самонагревание",
+          "definition": "Описывает повышение температуры предмета или окружающей среды, когда они становятся теплее или горячее.",
+          "scopeNote": "Выделяет процессуальное значение «становиться горячее» из раздела SIL о температуре; отличается от нагрева другого предмета и переносного эмоционального накала."
+        },
+        {
+          "language": "ar",
+          "name": "ازدياد حرارة الشيء نفسه",
+          "definition": "يصف ارتفاع درجة حرارة شيء أو بيئة أو ازدياد دفئها أو سخونتها.",
+          "scopeNote": "يأخذ جانب عملية «ازدياد الحرارة» من مجال درجة الحرارة لدى SIL؛ ويميّزه عن جعل شيء آخر يزداد حرارة وعن المعنى المجازي لاحتدام العاطفة."
+        },
+        {
+          "language": "hi",
+          "name": "स्वयं गरम होना",
+          "definition": "किसी वस्तु या वातावरण का तापमान बढ़ने, गरम होने या अधिक गरम होने का वर्णन करता है।",
+          "scopeNote": "SIL के तापमान क्षेत्र में “गरम होने” की प्रक्रिया वाला अर्थ लिया गया है; इसे दूसरी वस्तु को गरम करने और भावनाओं के उफान वाले रूपक अर्थ से अलग रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Suhu benda meningkat",
+          "definition": "Menggambarkan kenaikan suhu pada benda atau lingkungan itu sendiri, menjadi lebih hangat atau panas.",
+          "scopeNote": "Mengambil sisi proses “menjadi panas” dari ranah suhu SIL; bedakan dari tindakan memanaskan benda lain dan makna kiasan meningkatnya emosi."
+        },
+        {
+          "language": "tr",
+          "name": "Nesnenin kendi sıcaklığının artması",
+          "definition": "Bir nesnenin ya da ortamın kendi sıcaklığının yükselmesini, ısınmasını ya da daha sıcak hâle gelmesini açıklar.",
+          "scopeNote": "SIL sıcaklık alanındaki “ısınma” sürecini esas alır; başka bir nesneyi ısıtmaktan ve duygusal yoğunluğun artması gibi mecaz anlamlardan ayrılır."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.cooling",
+      "axis": "content",
+      "english": "Becoming cooler",
+      "chinese": "自身降温",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述物体或环境的温度下降、变凉或变冷。",
+      "scopeNote": "取 SIL 温度领域中“变冷”的过程侧面；与使另一物体降温及情绪冷静的引申义分开。",
+      "examples": [
+        {
+          "text": "cool down",
+          "language": "en"
+        },
+        {
+          "text": "lose heat",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4.1",
+          "url": "https://semdom.org/v4/8.3.4.1/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Becoming cooler",
+          "definition": "Describes an object's or environment's temperature falling, becoming cooler or colder.",
+          "scopeNote": "Takes the process sense of “become cold” in the SIL temperature domain; distinguishes it from cooling another object and from the figurative sense of calming emotions."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "自身降温",
+          "definition": "描述物体或环境的温度下降、变凉或变冷。",
+          "scopeNote": "取 SIL 温度领域中“变冷”的过程侧面；与使另一物体降温及情绪冷静的引申义分开。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "自身降溫",
+          "definition": "描述物體或環境的溫度下降、變涼或變冷。",
+          "scopeNote": "取 SIL 溫度領域中「變冷」的過程側面；與使另一物體降溫及使情緒冷靜下來的引申義區分。"
+        },
+        {
+          "language": "ja",
+          "name": "自ら冷えること",
+          "definition": "物体や環境の温度が下がり、涼しく、または冷たくなる過程を表す。",
+          "scopeNote": "SIL の温度領域にある「冷たくなる」という過程の側面を取る。他の物体を冷やす使役的な意味や、感情を落ち着かせるという転義とは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "스스로 차가워짐",
+          "definition": "물체나 환경의 온도가 내려 서늘해지거나 차가워지는 과정을 나타낸다.",
+          "scopeNote": "SIL 온도 영역의 ‘차가워지다’라는 과정 측면을 취한다. 다른 물체를 식히는 사역적 의미나 감정을 가라앉힌다는 파생 의미와 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Se refroidir",
+          "definition": "Décrit la baisse de température d’un objet ou de l’environnement, qui devient plus frais ou plus froid.",
+          "scopeNote": "Retient l’aspect de processus « devenir plus froid » dans le domaine SIL de la température ; à distinguer du fait de refroidir un autre objet et du sens figuré de retrouver son calme émotionnel."
+        },
+        {
+          "language": "de",
+          "name": "Sich abkühlen",
+          "definition": "Beschreibt, dass die Temperatur eines Gegenstands oder der Umgebung sinkt und es kühler oder kälter wird.",
+          "scopeNote": "Gemeint ist der Prozessaspekt „kälter werden“ im SIL-Temperaturbereich; zu unterscheiden vom Abkühlen eines anderen Gegenstands und von der übertragenen Bedeutung, emotional zur Ruhe zu kommen."
+        },
+        {
+          "language": "es",
+          "name": "El objeto se enfría",
+          "definition": "Describe la disminución de temperatura de un objeto o del entorno, que se vuelve más fresco o frío.",
+          "scopeNote": "Se centra en el proceso físico de descenso de temperatura expresado como “volverse más frío” en el dominio de temperatura de SIL; se distingue de causar el enfriamiento de otro objeto y del sentido figurado de calmarse emocionalmente."
+        },
+        {
+          "language": "pt-BR",
+          "name": "O objeto esfria",
+          "definition": "Descreve a queda de temperatura de um objeto ou do ambiente, que fica mais frio.",
+          "scopeNote": "Foca o processo físico de queda da temperatura descrito como “ficar mais frio” no domínio de temperatura da SIL; distingue-se de causar o resfriamento de outro objeto e do sentido figurado de se acalmar emocionalmente."
+        },
+        {
+          "language": "it",
+          "name": "Raffreddarsi",
+          "definition": "Descrive la diminuzione della temperatura di un oggetto o dell'ambiente, che diventa più fresco o freddo.",
+          "scopeNote": "Seleziona l'aspetto processuale del «diventare più freddo» nell'area SIL della temperatura; è distinto dal raffreddare un altro oggetto e dal calmarsi in senso emotivo."
+        },
+        {
+          "language": "ru",
+          "name": "Самоохлаждение",
+          "definition": "Описывает снижение температуры предмета или окружающей среды, когда они становятся прохладнее или холоднее.",
+          "scopeNote": "Выделяет процессуальное значение «становиться холоднее» из раздела SIL о температуре; отличается от охлаждения другого предмета и переносного значения эмоционального успокоения."
+        },
+        {
+          "language": "ar",
+          "name": "انخفاض حرارة الشيء نفسه",
+          "definition": "يصف انخفاض درجة حرارة شيء أو بيئة أو ازدياد برودتها.",
+          "scopeNote": "يأخذ جانب عملية «الازدياد في البرودة» من مجال درجة الحرارة لدى SIL؛ ويميّزه عن تبريد شيء آخر وعن المعنى المجازي لهدوء المشاعر."
+        },
+        {
+          "language": "hi",
+          "name": "स्वयं ठंडा होना",
+          "definition": "किसी वस्तु या वातावरण का तापमान घटने, ठंडा या अधिक ठंडा होने का वर्णन करता है।",
+          "scopeNote": "SIL के तापमान क्षेत्र में “ठंडा होने” की प्रक्रिया वाला अर्थ लिया गया है; इसे दूसरी वस्तु को ठंडा करने और भावनाओं को शांत करने के रूपक अर्थ से अलग रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Suhu benda menurun",
+          "definition": "Menggambarkan penurunan suhu pada benda atau lingkungan itu sendiri, menjadi lebih sejuk atau dingin.",
+          "scopeNote": "Mengambil sisi proses “menjadi dingin” dari ranah suhu SIL; bedakan dari tindakan mendinginkan benda lain dan makna kiasan menenangkan emosi."
+        },
+        {
+          "language": "tr",
+          "name": "Nesnenin kendi sıcaklığının düşmesi",
+          "definition": "Bir nesnenin ya da ortamın kendi sıcaklığının düşmesini, serinlemesini ya da soğumasını açıklar.",
+          "scopeNote": "SIL sıcaklık alanındaki “soğuma” sürecini esas alır; başka bir nesneyi soğutmaktan ve duyguların sakinleşmesi gibi mecaz anlamlardan ayrılır."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.melting",
+      "axis": "content",
+      "english": "Melting",
+      "chinese": "融化",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述固体转变成液体的过程。",
+      "scopeNote": "与物质溶入液体的溶解过程分开；“人群消散”等比喻义不自动归入融化。",
+      "examples": [
+        {
+          "text": "melt",
+          "language": "en"
+        },
+        {
+          "text": "thaw",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.1.3.4",
+          "url": "https://semdom.org/v4/1.1.3.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Melting",
+          "definition": "Describes the process by which a solid changes into a liquid.",
+          "scopeNote": "Distinguishes melting from a substance dissolving in a liquid; figurative senses such as a crowd dispersing do not automatically belong to melting."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "融化",
+          "definition": "描述固体转变成液体的过程。",
+          "scopeNote": "与物质溶入液体的溶解过程分开；“人群消散”等比喻义不自动归入融化。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "融化",
+          "definition": "描述固體轉變成液體的過程。",
+          "scopeNote": "與物質溶入液體的溶解過程分開；「人群消散」等比喻義不自動歸入融化。"
+        },
+        {
+          "language": "ja",
+          "name": "融解",
+          "definition": "固体が液体に変わる過程を表す。",
+          "scopeNote": "物質が液体に溶け込む溶解とは区別する。「人の群れが散る」などの比喩的な意味を、自動的に融解に分類しない。"
+        },
+        {
+          "language": "ko",
+          "name": "융해",
+          "definition": "고체가 액체로 변하는 과정을 나타낸다.",
+          "scopeNote": "물질이 액체에 녹아드는 용해 과정과 구분한다. ‘군중이 흩어지다’ 같은 비유적 의미를 자동으로 융해에 넣지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Fusion",
+          "definition": "Décrit le passage d’un solide à l’état liquide.",
+          "scopeNote": "À distinguer de la dissolution d’une substance dans un liquide ; un sens figuré tel que « la foule se disperse » ne relève pas automatiquement de la fusion."
+        },
+        {
+          "language": "de",
+          "name": "Schmelzen",
+          "definition": "Beschreibt den Übergang eines Feststoffs in den flüssigen Zustand.",
+          "scopeNote": "Von der Auflösung eines Stoffes in einer Flüssigkeit zu unterscheiden; eine übertragene Bedeutung wie „eine Menschenmenge löst sich auf“ gehört nicht automatisch zum Schmelzen."
+        },
+        {
+          "language": "es",
+          "name": "Fusión",
+          "definition": "Describe el proceso por el que un sólido se transforma en líquido.",
+          "scopeNote": "Se distingue de la disolución de una sustancia en un líquido; los sentidos figurados, como la dispersión de una multitud, no se clasifican automáticamente como fusión."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Fusão",
+          "definition": "Descreve o processo pelo qual um sólido se transforma em líquido.",
+          "scopeNote": "Distingue-se da dissolução de uma substância em um líquido; sentidos figurados, como a dispersão de uma multidão, não são classificados automaticamente como fusão."
+        },
+        {
+          "language": "it",
+          "name": "Fusione",
+          "definition": "Descrive il processo in cui un solido si trasforma in liquido.",
+          "scopeNote": "È distinta dalla dissoluzione di una sostanza in un liquido; i sensi figurati come «la folla si disperde» non appartengono automaticamente alla fusione."
+        },
+        {
+          "language": "ru",
+          "name": "Плавление",
+          "definition": "Описывает процесс перехода твердого вещества в жидкое состояние.",
+          "scopeNote": "Отличается от растворения вещества в жидкости; переносные значения, например «толпа рассеивается», не следует автоматически относить к плавлению."
+        },
+        {
+          "language": "ar",
+          "name": "الانصهار",
+          "definition": "يصف تحوّل مادة صلبة إلى سائل.",
+          "scopeNote": "يختلف عن ذوبان مادة في سائل؛ ولا يندرج معنى مجازي مثل تفرّق حشد تلقائيًا ضمن الانصهار."
+        },
+        {
+          "language": "hi",
+          "name": "पिघलना",
+          "definition": "ठोस पदार्थ के तरल में बदलने की प्रक्रिया का वर्णन करता है।",
+          "scopeNote": "तरल में किसी पदार्थ के घुलने से अलग है; “भीड़ का बिखर जाना” जैसे रूपक अर्थ को अपने-आप पिघलने की श्रेणी में न रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Mencair",
+          "definition": "Menggambarkan proses perubahan zat padat menjadi cair.",
+          "scopeNote": "Bedakan dari proses zat larut ke dalam cairan; makna kiasan seperti kerumunan yang berangsur bubar tidak otomatis termasuk mencair."
+        },
+        {
+          "language": "tr",
+          "name": "Erime",
+          "definition": "Katı bir maddenin sıvıya dönüşme sürecini açıklar.",
+          "scopeNote": "Bir maddenin sıvı içinde çözünmesinden ayrıdır; kalabalığın dağılması gibi mecaz anlamlar otomatik olarak erime sayılmaz."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.solidification",
+      "axis": "content",
+      "english": "Solidification",
+      "chinese": "凝固",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述液体转变成固体的过程，包括水冻结成冰。",
+      "scopeNote": "不把停止移动或冻结账户等 freeze 的其他义项归入物态变化。",
+      "examples": [
+        {
+          "text": "solidify",
+          "language": "en"
+        },
+        {
+          "text": "freeze",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.1.3.4",
+          "url": "https://semdom.org/v4/1.1.3.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Solidification",
+          "definition": "Describes the process by which a liquid changes into a solid, including water freezing into ice.",
+          "scopeNote": "Excludes other senses of “freeze,” such as stopping movement or freezing an account, from changes of physical state."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "凝固",
+          "definition": "描述液体转变成固体的过程，包括水冻结成冰。",
+          "scopeNote": "不把停止移动或冻结账户等 freeze 的其他义项归入物态变化。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "凝固",
+          "definition": "描述液體轉變成固體的過程，包括水凍結成冰。",
+          "scopeNote": "不把停止移動或凍結帳戶等 freeze 的其他義項歸入物態變化。"
+        },
+        {
+          "language": "ja",
+          "name": "凝固",
+          "definition": "水が凍って氷になる場合を含め、液体が固体に変わる過程を表す。",
+          "scopeNote": "移動を止めることや、口座を凍結することなど、freeze の別の語義は物質の状態変化に分類しない。"
+        },
+        {
+          "language": "ko",
+          "name": "응고",
+          "definition": "물이 얼음으로 어는 경우를 포함해 액체가 고체로 변하는 과정을 나타낸다.",
+          "scopeNote": "움직임을 멈추거나 계좌를 동결하는 등 freeze의 다른 의미는 물질 상태 변화에 포함하지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Solidification",
+          "definition": "Décrit le passage d’un liquide à l’état solide, notamment lorsque l’eau gèle et devient de la glace.",
+          "scopeNote": "Les autres sens de freeze, comme cesser de bouger ou bloquer un compte, ne relèvent pas d’un changement d’état de la matière."
+        },
+        {
+          "language": "de",
+          "name": "Erstarren",
+          "definition": "Beschreibt den Übergang einer Flüssigkeit in den festen Zustand, etwa wenn Wasser gefriert und zu Eis wird.",
+          "scopeNote": "Andere Bedeutungen von freeze, etwa sich nicht mehr zu bewegen oder ein Konto zu sperren, gehören nicht zu einer Änderung des Aggregatzustands."
+        },
+        {
+          "language": "es",
+          "name": "Solidificación",
+          "definition": "Describe el proceso por el que un líquido se transforma en sólido, incluido el congelamiento del agua en hielo.",
+          "scopeNote": "No incluye otros sentidos de freeze, como dejar de moverse o congelar una cuenta; aquí se trata del cambio de estado físico."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Solidificação",
+          "definition": "Descreve o processo pelo qual um líquido se transforma em sólido, incluindo o congelamento da água em gelo.",
+          "scopeNote": "Não inclui outros sentidos de freeze, como parar de se mover ou congelar uma conta; aqui se trata da mudança de estado físico."
+        },
+        {
+          "language": "it",
+          "name": "Solidificazione",
+          "definition": "Descrive il processo in cui un liquido si trasforma in solido, compreso il congelamento dell'acqua in ghiaccio.",
+          "scopeNote": "Non include altri significati di freeze, come smettere di muoversi o bloccare un conto."
+        },
+        {
+          "language": "ru",
+          "name": "Затвердевание",
+          "definition": "Описывает переход жидкости в твердое состояние, в том числе замерзание воды и образование льда.",
+          "scopeNote": "Не включает другие значения английского freeze, например остановку движения или блокировку счета."
+        },
+        {
+          "language": "ar",
+          "name": "التصلّب",
+          "definition": "يصف تحوّل سائل إلى مادة صلبة، بما في ذلك تجمّد الماء ليصبح جليدًا.",
+          "scopeNote": "لا تُدرج المعاني الأخرى لكلمة freeze، مثل توقف الحركة أو تجميد حساب، ضمن تغيّر الحالة الفيزيائية."
+        },
+        {
+          "language": "hi",
+          "name": "ठोस बनना",
+          "definition": "तरल के ठोस में बदलने की प्रक्रिया का वर्णन करता है, जिसमें पानी का जमकर बर्फ बनना भी शामिल है।",
+          "scopeNote": "चलना बंद हो जाना या खाते पर रोक लगना जैसे freeze के दूसरे अर्थों को पदार्थ की अवस्था में बदलाव की श्रेणी में न रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Membeku dan memadat",
+          "definition": "Menggambarkan proses perubahan cairan menjadi padat, termasuk air yang membeku menjadi es.",
+          "scopeNote": "Jangan masukkan makna lain freeze, seperti berhenti bergerak atau membekukan rekening, sebagai perubahan wujud zat."
+        },
+        {
+          "language": "tr",
+          "name": "Katılaşma ve donma",
+          "definition": "Suyun buza dönüşmesi de dâhil olmak üzere sıvının katıya dönüşme sürecini açıklar.",
+          "scopeNote": "Hareketin durması ya da hesapların dondurulması gibi freeze sözcüğünün başka anlamlarını madde hâli değişimi saymaz."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.evaporation",
+      "axis": "content",
+      "english": "Evaporation",
+      "chinese": "蒸发",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述液体转变成气体并散失的过程。",
+      "scopeNote": "从 SIL 液体变气体和变干领域中选取蒸发侧面；与沸腾及财富消失的比喻义分开。",
+      "examples": [
+        {
+          "text": "evaporate",
+          "language": "en"
+        },
+        {
+          "text": "evaporation",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.3.3.1",
+          "url": "https://semdom.org/v4/1.3.3.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Evaporation",
+          "definition": "Describes the process by which a liquid changes into a gas and dissipates.",
+          "scopeNote": "Selects the evaporation sense from the SIL liquid-to-gas and drying domain; distinguishes it from boiling and the figurative disappearance of wealth."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "蒸发",
+          "definition": "描述液体转变成气体并散失的过程。",
+          "scopeNote": "从 SIL 液体变气体和变干领域中选取蒸发侧面；与沸腾及财富消失的比喻义分开。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "蒸發",
+          "definition": "描述液體轉變成氣體並散失的過程。",
+          "scopeNote": "從 SIL 液體變氣體和變乾領域中選取蒸發側面；與沸騰及財富消失的比喻義區分。"
+        },
+        {
+          "language": "ja",
+          "name": "蒸発",
+          "definition": "液体が気体に変わって失われる過程を表す。",
+          "scopeNote": "SIL の「液体が気体になる・乾く」領域から蒸発の側面を取り出す。沸騰や、富が消えるという比喩的な意味とは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "증발",
+          "definition": "액체가 기체로 변해 없어지는 과정을 나타낸다.",
+          "scopeNote": "SIL의 액체가 기체로 변하고 마르는 영역에서 증발 측면을 취한다. 끓음이나 재산이 사라진다는 비유적 의미와 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Évaporation",
+          "definition": "Décrit la transformation d’un liquide en gaz et sa dispersion.",
+          "scopeNote": "Retient l’aspect de l’évaporation dans les domaines SIL du passage de liquide à gaz et du séchage ; à distinguer de l’ébullition et du sens métaphorique de la disparition d’une fortune."
+        },
+        {
+          "language": "de",
+          "name": "Verdunstung",
+          "definition": "Beschreibt den Übergang einer Flüssigkeit in den gasförmigen Zustand und ihr Entweichen.",
+          "scopeNote": "Gemeint ist der Verdunstungsaspekt der SIL-Bereiche Flüssigkeit wird zu Gas und Trocknen; von Sieden und der übertragenen Bedeutung des Verschwindens von Vermögen zu unterscheiden."
+        },
+        {
+          "language": "es",
+          "name": "Evaporación",
+          "definition": "Describe el proceso por el que un líquido se transforma en gas y se disipa.",
+          "scopeNote": "Toma el sentido de evaporación dentro de los campos SIL de paso de líquido a gas y secado; se distingue de la ebullición y del sentido figurado de la desaparición de la riqueza."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Evaporação",
+          "definition": "Descreve o processo pelo qual um líquido se transforma em gás e se dissipa.",
+          "scopeNote": "Toma o sentido de evaporação nos domínios SIL de passagem de líquido para gás e de secagem; distingue-se da fervura e do sentido figurado de desaparecimento da riqueza."
+        },
+        {
+          "language": "it",
+          "name": "Evaporazione",
+          "definition": "Descrive il passaggio di un liquido allo stato gassoso e la sua dispersione.",
+          "scopeNote": "Seleziona l'aspetto dell'evaporazione nell'area SIL relativa ai liquidi che diventano gas e all'essiccazione; è distinto dall'ebollizione e dal senso figurato di scomparsa della ricchezza."
+        },
+        {
+          "language": "ru",
+          "name": "Испарение",
+          "definition": "Описывает переход жидкости в газ и ее рассеивание.",
+          "scopeNote": "Выделяет значение испарения из области SIL, связанной с переходом жидкости в газ и высыханием; отличается от кипения и переносного значения исчезновения богатства."
+        },
+        {
+          "language": "ar",
+          "name": "التبخّر",
+          "definition": "يصف تحوّل سائل إلى غاز وتبدّده.",
+          "scopeNote": "يختار جانب التبخر من مجال تحوّل السوائل إلى غاز وجفافها لدى SIL؛ ويميّزه عن الغليان والمعنى المجازي لاختفاء الثروة."
+        },
+        {
+          "language": "hi",
+          "name": "वाष्पीकरण",
+          "definition": "तरल के गैस में बदलने और लुप्त होने की प्रक्रिया का वर्णन करता है।",
+          "scopeNote": "SIL के तरल से गैस बनने और सूखने वाले क्षेत्र में से वाष्पीकरण का अर्थ लिया गया है; इसे उबलने और धन-संपत्ति के ग़ायब होने वाले रूपक अर्थ से अलग रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Penguapan",
+          "definition": "Menggambarkan proses cairan berubah menjadi gas dan menghilang.",
+          "scopeNote": "Mengambil sisi penguapan dari ranah SIL tentang cairan menjadi gas dan mengering; bedakan dari pendidihan dan makna kiasan kekayaan yang menghilang."
+        },
+        {
+          "language": "tr",
+          "name": "Buharlaşma",
+          "definition": "Sıvının gaza dönüşüp ortadan kaybolması sürecini açıklar.",
+          "scopeNote": "SIL'in sıvının gaza dönüşmesi ve kuruması alanından buharlaşma anlamını alır; kaynamadan ve servetin yok olması gibi mecaz anlamlardan ayrılır."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.condensation",
+      "axis": "content",
+      "english": "Condensation",
+      "chinese": "凝结",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述气体转变成液体的过程。",
+      "scopeNote": "这里取 SIL 物态领域中气体变液体的侧面；不包含把长文压缩成摘要的 condense 引申义。",
+      "examples": [
+        {
+          "text": "condense",
+          "language": "en"
+        },
+        {
+          "text": "condensation",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Condensation",
+          "definition": "Describes the process by which a gas changes into a liquid.",
+          "scopeNote": "Takes the gas-to-liquid sense in the SIL physical-state domain; excludes the figurative sense of “condense” meaning to compress a long text into a summary."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "凝结",
+          "definition": "描述气体转变成液体的过程。",
+          "scopeNote": "这里取 SIL 物态领域中气体变液体的侧面；不包含把长文压缩成摘要的 condense 引申义。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "凝結",
+          "definition": "描述氣體轉變成液體的過程。",
+          "scopeNote": "取 SIL 物態領域中氣體變液體的側面；不包含把長文壓縮成摘要的 condense 引申義。"
+        },
+        {
+          "language": "ja",
+          "name": "凝結",
+          "definition": "気体が液体に変わる過程を表す。",
+          "scopeNote": "ここでは SIL の物質状態領域における「気体が液体になる」側面を指す。長文を要約に圧縮する condense の比喩的な意味は含めない。"
+        },
+        {
+          "language": "ko",
+          "name": "응결",
+          "definition": "기체가 액체로 변하는 과정을 나타낸다.",
+          "scopeNote": "여기서는 SIL 물질 상태 영역의 기체가 액체로 변하는 측면을 가리킨다. 긴 글을 요약으로 압축한다는 condense의 비유적 의미는 포함하지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Condensation",
+          "definition": "Décrit le passage d’un gaz à l’état liquide.",
+          "scopeNote": "Retient l’aspect du passage de gaz à liquide dans le domaine SIL des états de la matière ; n’inclut pas le sens figuré de condense, qui consiste à résumer un long texte."
+        },
+        {
+          "language": "de",
+          "name": "Kondensation",
+          "definition": "Beschreibt den Übergang eines Gases in den flüssigen Zustand.",
+          "scopeNote": "Gemeint ist im SIL-Bereich Aggregatzustände der Übergang von Gas zu Flüssigkeit; die übertragene Bedeutung von condense, einen langen Text zusammenzufassen, ist nicht eingeschlossen."
+        },
+        {
+          "language": "es",
+          "name": "Condensación",
+          "definition": "Describe el proceso por el que un gas se transforma en líquido.",
+          "scopeNote": "Se limita aquí al cambio de gas a líquido en el dominio SIL de estados de la materia; no incluye el sentido figurado de condense como reducir un texto largo a un resumen."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Condensação",
+          "definition": "Descreve o processo pelo qual um gás se transforma em líquido.",
+          "scopeNote": "Limita-se aqui à passagem de gás para líquido no domínio SIL de estados da matéria; não inclui o sentido figurado de condense como reduzir um texto longo a um resumo."
+        },
+        {
+          "language": "it",
+          "name": "Condensazione",
+          "definition": "Descrive il processo in cui un gas si trasforma in liquido.",
+          "scopeNote": "Qui seleziona l'aspetto del passaggio da gas a liquido nell'area SIL degli stati della materia; non include il senso figurato di condense, cioè ridurre un testo lungo a un riassunto."
+        },
+        {
+          "language": "ru",
+          "name": "Конденсация",
+          "definition": "Описывает переход газа в жидкость.",
+          "scopeNote": "Здесь выделяется переход газа в жидкость в области SIL о состояниях вещества; не включает переносное английское condense — сжать длинный текст до краткого изложения."
+        },
+        {
+          "language": "ar",
+          "name": "التكاثف",
+          "definition": "يصف تحوّل غاز إلى سائل.",
+          "scopeNote": "يقتصر هنا على تحوّل الغاز إلى سائل ضمن مجال حالات المادة لدى SIL؛ ولا يشمل المعنى المجازي للفعل condense، أي اختصار نص طويل في ملخّص."
+        },
+        {
+          "language": "hi",
+          "name": "संघनन",
+          "definition": "गैस के तरल में बदलने की प्रक्रिया का वर्णन करता है।",
+          "scopeNote": "यहाँ SIL के पदार्थ-अवस्था क्षेत्र में गैस के तरल बनने वाला अर्थ है; लंबे पाठ को संक्षेप में बदलने वाले condense के रूपक अर्थ को शामिल न करें।"
+        },
+        {
+          "language": "id",
+          "name": "Pengembunan",
+          "definition": "Menggambarkan proses gas berubah menjadi cairan.",
+          "scopeNote": "Mengambil sisi perubahan gas menjadi cairan dari ranah wujud zat SIL; tidak mencakup makna kiasan condense, yaitu meringkas teks panjang menjadi ringkasan."
+        },
+        {
+          "language": "tr",
+          "name": "Yoğuşma",
+          "definition": "Gazın sıvıya dönüşme sürecini açıklar.",
+          "scopeNote": "SIL'in madde hâlleri alanındaki gazdan sıvıya dönüşme anlamını alır; uzun bir metni özete dönüştürmek anlamındaki condense sözcüğünün mecaz kullanımını kapsamaz."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.boiling",
+      "axis": "content",
+      "english": "Boiling",
+      "chinese": "沸腾",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述液体沸腾、起泡并汽化的过程。",
+      "scopeNote": "沸腾不同于单纯温度上升；“气得沸腾”等情绪用法按具体义项归类。",
+      "examples": [
+        {
+          "text": "boil",
+          "language": "en"
+        },
+        {
+          "text": "boiling",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.2.3",
+          "url": "https://semdom.org/v4/1.2.3/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4",
+          "url": "https://semdom.org/v4/8.3.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Boiling",
+          "definition": "Describes the process of a liquid boiling, bubbling, and vaporizing.",
+          "scopeNote": "Boiling differs from a simple temperature increase; emotional uses such as “boiling with anger” are classified by their particular sense."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "沸腾",
+          "definition": "描述液体沸腾、起泡并汽化的过程。",
+          "scopeNote": "沸腾不同于单纯温度上升；“气得沸腾”等情绪用法按具体义项归类。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "沸騰",
+          "definition": "描述液體沸騰、起泡並汽化的過程。",
+          "scopeNote": "沸騰不同於單純溫度上升；「氣得沸騰」等情緒用法按具體義項歸類。"
+        },
+        {
+          "language": "ja",
+          "name": "沸騰",
+          "definition": "液体が沸騰し、泡立って気化する過程を表す。",
+          "scopeNote": "単に温度が上昇することとは異なる。「怒りで沸騰する」などの感情的な用法は、具体的な語義に応じて分類する。"
+        },
+        {
+          "language": "ko",
+          "name": "끓음",
+          "definition": "액체가 끓고 거품이 생기며 기화하는 과정을 나타낸다.",
+          "scopeNote": "단순히 온도가 오르는 것과 다르다. ‘화가 끓어오르다’ 같은 감정적 용법은 구체적인 의미에 따라 분류한다."
+        },
+        {
+          "language": "fr",
+          "name": "Ébullition",
+          "definition": "Décrit un liquide qui bout, forme des bulles et se vaporise.",
+          "scopeNote": "L’ébullition diffère d’une simple hausse de température ; les emplois émotionnels comme « bouillir de colère » sont classés selon leur sens précis."
+        },
+        {
+          "language": "de",
+          "name": "Sieden",
+          "definition": "Beschreibt, dass eine Flüssigkeit siedet, Blasen bildet und verdampft.",
+          "scopeNote": "Sieden ist mehr als ein bloßer Temperaturanstieg; emotionale Verwendungen wie „vor Wut kochen“ sind nach ihrer konkreten Bedeutung einzuordnen."
+        },
+        {
+          "language": "es",
+          "name": "Ebullición",
+          "definition": "Describe el proceso por el que un líquido hierve, forma burbujas y se vaporiza.",
+          "scopeNote": "La ebullición es distinta de un simple aumento de temperatura; los usos emocionales, como “hervir de ira”, se clasifican según su sentido específico."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Fervura",
+          "definition": "Descreve o processo pelo qual um líquido ferve, forma bolhas e se vaporiza.",
+          "scopeNote": "A fervura é diferente de um simples aumento de temperatura; usos emocionais, como “ferver de raiva”, são classificados conforme o sentido específico."
+        },
+        {
+          "language": "it",
+          "name": "Ebollizione",
+          "definition": "Descrive l'ebollizione di un liquido, la formazione di bolle e la vaporizzazione.",
+          "scopeNote": "L'ebollizione è diversa dal semplice aumento della temperatura; usi emotivi come «ribollire di rabbia» vanno classificati secondo il loro significato specifico."
+        },
+        {
+          "language": "ru",
+          "name": "Кипение",
+          "definition": "Описывает кипение жидкости, образование пузырьков и испарение.",
+          "scopeNote": "Кипение отличается от простого повышения температуры; эмоциональные выражения вроде «кипеть от злости» классифицируйте по конкретному значению."
+        },
+        {
+          "language": "ar",
+          "name": "الغليان",
+          "definition": "يصف غليان سائل وتكوّن الفقاعات وتبخّره.",
+          "scopeNote": "يختلف الغليان عن مجرد ارتفاع درجة الحرارة؛ ويُصنّف الاستخدام العاطفي مثل «الغليان غضبًا» وفق معناه المحدد."
+        },
+        {
+          "language": "hi",
+          "name": "उबलना",
+          "definition": "तरल के उबलने, बुलबुले उठने और भाप बनने की प्रक्रिया का वर्णन करता है।",
+          "scopeNote": "उबलना केवल तापमान बढ़ने से अलग है; “गुस्से से उबलना” जैसे भावनात्मक प्रयोग को उसके विशिष्ट अर्थ के अनुसार वर्गीकृत करें।"
+        },
+        {
+          "language": "id",
+          "name": "Pendidihan",
+          "definition": "Menggambarkan proses cairan mendidih, berbuih, dan menguap.",
+          "scopeNote": "Pendidihan berbeda dari sekadar kenaikan suhu; pemakaian emosional seperti ungkapan “mendidih karena marah” dikategorikan menurut maknanya."
+        },
+        {
+          "language": "tr",
+          "name": "Kaynama",
+          "definition": "Sıvının kaynamasını, kabarcıklar oluşturmasını ve buharlaşmasını açıklar.",
+          "scopeNote": "Kaynama, yalnızca sıcaklığın artmasından farklıdır; öfkeyle kaynamak gibi duygusal kullanımlar somut anlamlarına göre sınıflandırılır."
+        }
+      ]
+    },
+    {
+      "key": "content.objects.process.burning",
+      "axis": "content",
+      "english": "Burning",
+      "chinese": "燃烧",
+      "parents": [
+        "content.objects.process"
+      ],
+      "definition": "描述火在燃烧或物体正在被火烧的过程。",
+      "scopeNote": "燃烧不同于一般升温；点火、灭火以及情绪上的“燃烧”需要按各自义项区分。",
+      "examples": [
+        {
+          "text": "burn",
+          "language": "en"
+        },
+        {
+          "text": "smolder",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "5.5.4",
+          "url": "https://semdom.org/v4/5.5.4/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Burning",
+          "definition": "Describes a fire burning or an object being burned by fire.",
+          "scopeNote": "Burning differs from general warming; distinguish lighting a fire, extinguishing it, and figurative emotional uses of “burning” by sense."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "燃烧",
+          "definition": "描述火在燃烧或物体正在被火烧的过程。",
+          "scopeNote": "燃烧不同于一般升温；点火、灭火以及情绪上的“燃烧”需要按各自义项区分。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "燃燒",
+          "definition": "描述火在燃燒或物體正在被火燒的過程。",
+          "scopeNote": "燃燒不同於一般升溫；點火、滅火以及情緒上的「燃燒」需按各自義項區分。"
+        },
+        {
+          "language": "ja",
+          "name": "燃焼",
+          "definition": "火が燃える過程や、物体が火によって燃やされている過程を表す。",
+          "scopeNote": "一般的な温度上昇とは異なる。火をつける、消すことや感情的な「燃える」は、それぞれの語義に応じて区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "연소",
+          "definition": "불이 타거나 물체가 불에 타고 있는 과정을 나타낸다.",
+          "scopeNote": "일반적인 온도 상승과 다르다. 불을 붙이거나 끄는 일, 감정이 ‘타오른다’는 용법은 각각의 의미에 따라 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Combustion",
+          "definition": "Décrit un feu en train de brûler ou un objet consumé par le feu.",
+          "scopeNote": "La combustion diffère d’un simple réchauffement ; l’allumage, l’extinction et les emplois métaphoriques liés aux émotions sont à classer selon leur sens respectif."
+        },
+        {
+          "language": "de",
+          "name": "Brennen",
+          "definition": "Beschreibt ein brennendes Feuer oder einen Gegenstand, der gerade vom Feuer verbrannt wird.",
+          "scopeNote": "Brennen ist von bloßer Erwärmung zu unterscheiden; Entzünden, Löschen und emotionale übertragene Verwendungen sind jeweils nach ihrer Bedeutung einzuordnen."
+        },
+        {
+          "language": "es",
+          "name": "Combustión",
+          "definition": "Describe el proceso por el que el fuego arde o un objeto está siendo consumido por el fuego.",
+          "scopeNote": "La combustión es distinta del calentamiento general; encender el fuego, apagarlo y los usos figurados de “arder” deben distinguirse según cada sentido."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Combustão",
+          "definition": "Descreve o processo em que o fogo está queimando ou um objeto está sendo consumido pelo fogo.",
+          "scopeNote": "A combustão é diferente do aquecimento em geral; acender o fogo, apagá-lo e os usos figurados de “queimar” devem ser distinguidos conforme cada sentido."
+        },
+        {
+          "language": "it",
+          "name": "Combustione",
+          "definition": "Descrive il processo in cui il fuoco brucia o un oggetto viene bruciato dal fuoco.",
+          "scopeNote": "La combustione è diversa dal riscaldamento generico; accendere, spegnere e l'uso figurato di «bruciare» in senso emotivo vanno distinti secondo il rispettivo significato."
+        },
+        {
+          "language": "ru",
+          "name": "Горение",
+          "definition": "Описывает горение огня или предмета, который горит в огне.",
+          "scopeNote": "Горение отличается от общего нагрева; зажигание, тушение и переносное эмоциональное «гореть» следует различать по конкретным значениям."
+        },
+        {
+          "language": "ar",
+          "name": "الاحتراق",
+          "definition": "يصف احتراق نار أو احتراق شيء بفعل النار.",
+          "scopeNote": "يختلف الاحتراق عن الازدياد العام في الحرارة؛ وتُميّز معاني إشعال النار وإطفائها و«الاحتراق» العاطفي كلٌّ وفق معناها."
+        },
+        {
+          "language": "hi",
+          "name": "जलना",
+          "definition": "आग के जलने या किसी वस्तु के आग से जलने की प्रक्रिया का वर्णन करता है।",
+          "scopeNote": "जलना सामान्य रूप से गरम होने से अलग है; आग जलाने, बुझाने और भावनाओं के “जलने” के अर्थों को अलग-अलग समझें।"
+        },
+        {
+          "language": "id",
+          "name": "Pembakaran",
+          "definition": "Menggambarkan api yang menyala atau benda yang sedang terbakar oleh api.",
+          "scopeNote": "Pembakaran berbeda dari kenaikan suhu biasa; makna menyalakan api, memadamkan api, dan “terbakar” secara emosional dibedakan menurut maknanya masing-masing."
+        },
+        {
+          "language": "tr",
+          "name": "Yanma",
+          "definition": "Ateşin yanmasını ya da bir nesnenin ateş tarafından yakılmakta olmasını açıklar.",
+          "scopeNote": "Yanma olağan ısınmadan farklıdır; ateş yakma, ateşi söndürme ve duygusal anlamda “yanma” kendi anlamlarına göre ayrılmalıdır."
+        }
+      ]
+    },
+    {
+      "key": "content.motion.flow",
+      "axis": "content",
+      "english": "Liquid flow",
+      "chinese": "液体流动",
+      "parents": [
+        "content.motion",
+        "content.objects.process"
+      ],
+      "definition": "描述水或其他液体从一处向另一处流动。",
+      "scopeNote": "以 SIL 的液体运动领域为范围；信息流、现金流等引申义不自动视为液体运动。",
+      "examples": [
+        {
+          "text": "flow",
+          "language": "en"
+        },
+        {
+          "text": "run",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.3.2",
+          "url": "https://semdom.org/v4/1.3.2/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.3.2.1",
+          "url": "https://semdom.org/v4/1.3.2.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Liquid flow",
+          "definition": "Describes water or another liquid flowing from one place to another.",
+          "scopeNote": "Uses the SIL liquid-motion domain; figurative senses such as information flow and cash flow are not automatically treated as liquid motion."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "液体流动",
+          "definition": "描述水或其他液体从一处向另一处流动。",
+          "scopeNote": "以 SIL 的液体运动领域为范围；信息流、现金流等引申义不自动视为液体运动。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "液體流動",
+          "definition": "描述水或其他液體從一處向另一處流動。",
+          "scopeNote": "以 SIL 的液體運動領域為範圍；資訊流、現金流等引申義不自動視為液體運動。"
+        },
+        {
+          "language": "ja",
+          "name": "液体の流れ",
+          "definition": "水やその他の液体がある場所から別の場所へ流れることを表す。",
+          "scopeNote": "SIL の液体の移動領域に限定する。情報の流れやキャッシュフローなどの比喩的な意味を、自動的に液体の移動と見なさない。"
+        },
+        {
+          "language": "ko",
+          "name": "액체의 흐름",
+          "definition": "물이나 다른 액체가 한 곳에서 다른 곳으로 흐르는 것을 나타낸다.",
+          "scopeNote": "SIL의 액체 움직임 영역에 한정한다. 정보 흐름이나 현금 흐름 같은 비유적 의미를 자동으로 액체의 움직임으로 보지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Écoulement des liquides",
+          "definition": "Décrit l’eau ou un autre liquide qui s’écoule d’un endroit vers un autre.",
+          "scopeNote": "Se limite au domaine SIL des mouvements de liquides ; les sens figurés comme flux d’information ou flux de trésorerie ne désignent pas automatiquement un mouvement de liquide."
+        },
+        {
+          "language": "de",
+          "name": "Fließen von Flüssigkeiten",
+          "definition": "Beschreibt, dass Wasser oder eine andere Flüssigkeit von einem Ort zu einem anderen fließt.",
+          "scopeNote": "Gehört zum SIL-Bereich Flüssigkeitsbewegung; übertragene Bedeutungen wie Informationsfluss oder Geldfluss bezeichnen nicht automatisch eine Flüssigkeitsbewegung."
+        },
+        {
+          "language": "es",
+          "name": "Flujo de líquidos",
+          "definition": "Describe el movimiento del agua u otro líquido de un lugar a otro.",
+          "scopeNote": "Se limita al dominio SIL del movimiento de líquidos; los sentidos figurados de flujo de información o de dinero no se consideran automáticamente movimiento de líquidos."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Fluxo de líquidos",
+          "definition": "Descreve o movimento da água ou de outro líquido de um lugar a outro.",
+          "scopeNote": "Limita-se ao domínio SIL de movimento de líquidos; sentidos figurados, como fluxo de informações ou de dinheiro, não são automaticamente considerados movimento de líquidos."
+        },
+        {
+          "language": "it",
+          "name": "Flusso di liquidi",
+          "definition": "Descrive l'acqua o un altro liquido che scorre da un luogo a un altro.",
+          "scopeNote": "Rientra nell'area SIL del movimento dei liquidi; i sensi figurati come flusso di informazioni o di denaro non indicano automaticamente un movimento di liquidi."
+        },
+        {
+          "language": "ru",
+          "name": "Течение жидкости",
+          "definition": "Описывает движение воды или другой жидкости из одного места в другое.",
+          "scopeNote": "Ограничено областью SIL, связанной с движением жидкостей; переносные значения, такие как поток информации или денежных средств, не следует автоматически считать движением жидкости."
+        },
+        {
+          "language": "ar",
+          "name": "جريان السوائل",
+          "definition": "يصف جريان الماء أو سائل آخر من مكان إلى آخر.",
+          "scopeNote": "يقتصر على مجال حركة السوائل لدى SIL؛ ولا تُعد تعبيرات مثل تدفق المعلومات أو التدفق النقدي حركةً لسائل تلقائيًا."
+        },
+        {
+          "language": "hi",
+          "name": "तरल का बहाव",
+          "definition": "पानी या किसी अन्य तरल के एक जगह से दूसरी जगह बहने का वर्णन करता है।",
+          "scopeNote": "यह SIL के तरल-गति क्षेत्र तक सीमित है; जानकारी का प्रवाह या नकदी का प्रवाह अपने-आप में तरल का बहना नहीं है।"
+        },
+        {
+          "language": "id",
+          "name": "Aliran cairan",
+          "definition": "Menggambarkan air atau cairan lain yang mengalir dari satu tempat ke tempat lain.",
+          "scopeNote": "Cakupannya mengikuti ranah gerakan cairan SIL; makna kiasan seperti arus informasi atau arus kas tidak otomatis dianggap sebagai gerakan cairan."
+        },
+        {
+          "language": "tr",
+          "name": "Sıvı akışı",
+          "definition": "Suyun ya da başka bir sıvının bir yerden başka bir yere akmasını açıklar.",
+          "scopeNote": "SIL'in sıvı hareketi alanını esas alır; bilgi akışı ve nakit akışı gibi mecaz anlamlar otomatik olarak sıvı hareketi sayılmaz."
+        }
+      ]
+    },
+    {
+      "key": "content.motion.flow.leak",
+      "axis": "content",
+      "english": "Liquid leakage",
+      "chinese": "液体泄漏",
+      "parents": [
+        "content.motion.flow"
+      ],
+      "definition": "描述液体经容器、管道或其他结构中的缝隙漏出。",
+      "scopeNote": "以液体排出和漏水管道为依据；消息泄露与气体泄漏不凭表面拼写自动归入本类。",
+      "examples": [
+        {
+          "text": "leak",
+          "language": "en"
+        },
+        {
+          "text": "leaky pipe",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "1.3.2.1",
+          "url": "https://semdom.org/v4/1.3.2.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "6.6.7.1",
+          "url": "https://semdom.org/v4/6.6.7.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Liquid leakage",
+          "definition": "Describes liquid leaking through a gap in a container, pipe, or other structure.",
+          "scopeNote": "Draws on liquid discharge and leaking pipes; message leaks and gas leaks are not assigned here based on surface wording alone."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "液体泄漏",
+          "definition": "描述液体经容器、管道或其他结构中的缝隙漏出。",
+          "scopeNote": "以液体排出和漏水管道为依据；消息泄露与气体泄漏不凭表面拼写自动归入本类。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "液體洩漏",
+          "definition": "描述液體經容器、管道或其他結構中的縫隙漏出。",
+          "scopeNote": "以液體排出和漏水管道為依據；消息洩露與氣體洩漏不憑表面拼寫自動歸入本類。"
+        },
+        {
+          "language": "ja",
+          "name": "液体の漏出",
+          "definition": "液体が容器、管、その他の構造の隙間から漏れ出すことを表す。",
+          "scopeNote": "液体の流出や漏れる管を根拠とする。情報漏えいや気体の漏出は、表記が似ているだけでこの分類に含めない。"
+        },
+        {
+          "language": "ko",
+          "name": "액체 누출",
+          "definition": "액체가 용기, 관, 다른 구조의 틈으로 새어 나오는 것을 나타낸다.",
+          "scopeNote": "액체가 빠져나오거나 새는 파이프의 의미를 기준으로 한다. 정보 유출이나 기체 누출은 철자가 비슷하다는 이유만으로 이 범주에 넣지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Fuite de liquide",
+          "definition": "Décrit un liquide qui s’échappe par une fissure dans un récipient, une conduite ou une autre structure.",
+          "scopeNote": "S’appuie sur les domaines SIL de l’écoulement de liquides et des fuites de canalisations ; une fuite d’informations ou une fuite de gaz ne relève pas de cette catégorie sur la seule base d’une ressemblance de forme."
+        },
+        {
+          "language": "de",
+          "name": "Flüssigkeit tritt aus",
+          "definition": "Beschreibt, dass Flüssigkeit durch einen Spalt in einem Behälter, einer Leitung oder einer anderen Struktur austritt.",
+          "scopeNote": "Orientiert sich an den SIL-Bereichen Flüssigkeitsabfluss und undichte Leitungen; ein Informationsleck oder Gasaustritt gehört nicht allein aufgrund einer ähnlichen Wortform zu dieser Kategorie."
+        },
+        {
+          "language": "es",
+          "name": "Fuga de líquido",
+          "definition": "Describe el líquido que se escapa por una grieta de un recipiente, una tubería u otra estructura.",
+          "scopeNote": "Se refiere al escape de líquidos y a tuberías con fugas; las filtraciones de información y las fugas de gas no se incluyen automáticamente por la forma de la palabra."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Vazamento de líquido",
+          "definition": "Descreve o líquido que escapa por uma fresta em um recipiente, cano ou outra estrutura.",
+          "scopeNote": "Refere-se ao escoamento de líquidos e a canos com vazamento; vazamentos de informações e de gás não são incluídos automaticamente pela forma da palavra."
+        },
+        {
+          "language": "it",
+          "name": "Perdita di liquido",
+          "definition": "Descrive la fuoriuscita di un liquido attraverso una fessura in un contenitore, una tubatura o un'altra struttura.",
+          "scopeNote": "Si basa sul deflusso dei liquidi e sulle tubature che perdono; una fuga di notizie o una perdita di gas non appartengono a questa categoria per la sola somiglianza lessicale."
+        },
+        {
+          "language": "ru",
+          "name": "Утечка жидкости",
+          "definition": "Описывает вытекание жидкости через щель в контейнере, трубе или другой конструкции.",
+          "scopeNote": "Основано на вытекании жидкости и протекающих трубах; утечку информации или газа не следует относить сюда только из-за внешнего сходства слов."
+        },
+        {
+          "language": "ar",
+          "name": "تسرّب السوائل",
+          "definition": "يصف تسرّب سائل عبر شق في وعاء أو أنبوب أو بنية أخرى.",
+          "scopeNote": "يستند إلى تصريف السوائل والأنابيب المتسرّبة؛ ولا تندرج تسريبات المعلومات أو تسرّب الغاز هنا لمجرد التشابه في الصياغة."
+        },
+        {
+          "language": "hi",
+          "name": "तरल का रिसाव",
+          "definition": "बर्तन, पाइप या दूसरी संरचना की दरार से तरल के बाहर निकलने का वर्णन करता है।",
+          "scopeNote": "यह तरल के निकलने और रिसते पाइप के अर्थों पर आधारित है; केवल शब्द-समानता के आधार पर जानकारी का रिसाव या गैस का रिसाव इस श्रेणी में न रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Kebocoran cairan",
+          "definition": "Menggambarkan cairan yang merembes keluar melalui celah pada wadah, pipa, atau struktur lain.",
+          "scopeNote": "Didasarkan pada cairan yang keluar dan pipa yang bocor; kebocoran informasi dan kebocoran gas tidak otomatis masuk kategori ini hanya karena kemiripan bentuk kata."
+        },
+        {
+          "language": "tr",
+          "name": "Sıvı sızıntısı",
+          "definition": "Sıvının bir kapta, boruda ya da başka bir yapıda bulunan aralıktan dışarı sızmasını açıklar.",
+          "scopeNote": "Sıvının dışarı çıkması ve sızdıran borular temel alınır; bilgi sızıntısı ve gaz kaçağı yalnızca sözcüklerin yüzeydeki yazılışına bakılarak bu kategoriye alınmaz."
+        }
+      ]
+    },
+    {
+      "key": "content.actions.heating",
+      "axis": "content",
+      "english": "Heating an object",
+      "chinese": "使物体升温",
+      "parents": [
+        "content.actions"
+      ],
+      "definition": "描述某种作用使另一物体或环境的温度升高。",
+      "scopeNote": "取 SIL 温度领域中“使某物变热”的使动侧面；加热并不必然意味着融化或沸腾。",
+      "examples": [
+        {
+          "text": "heat something",
+          "language": "en"
+        },
+        {
+          "text": "warm something",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4",
+          "url": "https://semdom.org/v4/8.3.4/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Heating an object",
+          "definition": "Describes an action or influence that raises the temperature of another object or an environment.",
+          "scopeNote": "Takes the causative sense of “make something hot” in the SIL temperature domain; heating does not necessarily imply melting or boiling."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "使物体升温",
+          "definition": "描述某种作用使另一物体或环境的温度升高。",
+          "scopeNote": "取 SIL 温度领域中“使某物变热”的使动侧面；加热并不必然意味着融化或沸腾。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "使物體升溫",
+          "definition": "描述某種作用使另一物體或環境的溫度升高。",
+          "scopeNote": "取 SIL 溫度領域中「使某物變熱」的使動側面；加熱並不必然意味著融化或沸騰。"
+        },
+        {
+          "language": "ja",
+          "name": "物体を温める",
+          "definition": "何らかの作用によって、別の物体や環境の温度が上がることを表す。",
+          "scopeNote": "SIL の温度領域にある「何かを熱くする」という使役的な側面を取る。加熱しても、必ず融解や沸騰が起きるとは限らない。"
+        },
+        {
+          "language": "ko",
+          "name": "물체 가열하기",
+          "definition": "어떤 작용으로 다른 물체나 환경의 온도가 올라가는 것을 나타낸다.",
+          "scopeNote": "SIL 온도 영역의 ‘무언가를 뜨겁게 하다’라는 사역적 측면을 취한다. 가열한다고 해서 반드시 융해나 끓음이 일어나는 것은 아니다."
+        },
+        {
+          "language": "fr",
+          "name": "Chauffer un objet",
+          "definition": "Décrit une action qui élève la température d’un autre objet ou de l’environnement.",
+          "scopeNote": "Retient l’aspect causatif « rendre quelque chose plus chaud » du domaine SIL de la température ; chauffer ne signifie pas nécessairement faire fondre ou bouillir."
+        },
+        {
+          "language": "de",
+          "name": "Einen Gegenstand erwärmen",
+          "definition": "Beschreibt eine Einwirkung, durch die die Temperatur eines anderen Gegenstands oder der Umgebung steigt.",
+          "scopeNote": "Gemeint ist der kausative Aspekt „etwas wärmer machen“ im SIL-Temperaturbereich; Erwärmen bedeutet nicht zwangsläufig Schmelzen oder Sieden."
+        },
+        {
+          "language": "es",
+          "name": "Calentar un objeto",
+          "definition": "Describe una acción que eleva la temperatura de otro objeto o del entorno.",
+          "scopeNote": "Toma el aspecto causativo de “hacer que algo se caliente” en el dominio de temperatura de SIL; calentar no implica necesariamente derretir ni hervir."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Aquecer um objeto",
+          "definition": "Descreve uma ação que eleva a temperatura de outro objeto ou do ambiente.",
+          "scopeNote": "Toma o aspecto causativo de “fazer algo ficar mais quente” no domínio de temperatura da SIL; aquecer não implica necessariamente derreter nem ferver."
+        },
+        {
+          "language": "it",
+          "name": "Riscaldare un oggetto",
+          "definition": "Descrive un'azione che aumenta la temperatura di un altro oggetto o dell'ambiente.",
+          "scopeNote": "Seleziona l'aspetto causativo del «rendere qualcosa più caldo» nell'area SIL della temperatura; riscaldare non comporta necessariamente la fusione o l'ebollizione."
+        },
+        {
+          "language": "ru",
+          "name": "Нагреть предмет",
+          "definition": "Описывает воздействие, повышающее температуру другого предмета или окружающей среды.",
+          "scopeNote": "Выделяет каузативное значение «сделать что-либо горячее» из раздела SIL о температуре; нагрев не обязательно приводит к плавлению или кипению."
+        },
+        {
+          "language": "ar",
+          "name": "تسخين شيء",
+          "definition": "يصف تأثيرًا ما يؤدي إلى ارتفاع درجة حرارة شيء آخر أو بيئة أخرى.",
+          "scopeNote": "يأخذ الجانب السببي «جعل شيء ساخنًا» من مجال درجة الحرارة لدى SIL؛ ولا يعني التسخين بالضرورة حدوث انصهار أو غليان."
+        },
+        {
+          "language": "hi",
+          "name": "वस्तु को गरम करना",
+          "definition": "किसी प्रभाव से दूसरी वस्तु या वातावरण का तापमान बढ़ने का वर्णन करता है।",
+          "scopeNote": "SIL के तापमान क्षेत्र में किसी चीज़ को गरम करने वाला कारणसूचक अर्थ लिया गया है; गरम करने से पिघलना या उबलना ज़रूरी नहीं।"
+        },
+        {
+          "language": "id",
+          "name": "Memanaskan benda",
+          "definition": "Menggambarkan suatu tindakan atau pengaruh yang menaikkan suhu benda lain atau lingkungan.",
+          "scopeNote": "Mengambil sisi kausatif “membuat sesuatu menjadi panas” dari ranah suhu SIL; pemanasan tidak selalu berarti benda mencair atau mendidih."
+        },
+        {
+          "language": "tr",
+          "name": "Nesneyi ısıtma",
+          "definition": "Bir etki ya da eylemin başka bir nesnenin ya da ortamın sıcaklığını artırmasını açıklar.",
+          "scopeNote": "SIL sıcaklık alanındaki “bir şeyi sıcak hâle getirme” anlamını, yani ettirgen yönünü alır; ısıtma mutlaka erime ya da kaynamaya yol açmaz."
+        }
+      ]
+    },
+    {
+      "key": "content.actions.cooling",
+      "axis": "content",
+      "english": "Cooling an object",
+      "chinese": "使物体降温",
+      "parents": [
+        "content.actions"
+      ],
+      "definition": "描述某种作用使另一物体或环境的温度降低。",
+      "scopeNote": "取 SIL 温度领域中“使某物变冷”的使动侧面；与自身降温及安抚情绪的义项分开。",
+      "examples": [
+        {
+          "text": "cool something",
+          "language": "en"
+        },
+        {
+          "text": "refrigerate",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "8.3.4.1",
+          "url": "https://semdom.org/v4/8.3.4.1/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Cooling an object",
+          "definition": "Describes an action or influence that lowers the temperature of another object or an environment.",
+          "scopeNote": "Takes the causative sense of “make something cold” in the SIL temperature domain; distinguishes it from an object cooling by itself and from calming emotions."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "使物体降温",
+          "definition": "描述某种作用使另一物体或环境的温度降低。",
+          "scopeNote": "取 SIL 温度领域中“使某物变冷”的使动侧面；与自身降温及安抚情绪的义项分开。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "使物體降溫",
+          "definition": "描述某種作用使另一物體或環境的溫度降低。",
+          "scopeNote": "取 SIL 溫度領域中「使某物變冷」的使動側面；與自身降溫及安撫情緒的義項區分。"
+        },
+        {
+          "language": "ja",
+          "name": "物体を冷やす",
+          "definition": "何らかの作用によって、別の物体や環境の温度が下がることを表す。",
+          "scopeNote": "SIL の温度領域にある「何かを冷たくする」という使役的な側面を取る。自ら冷える過程や感情をなだめる意味とは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "물체 냉각하기",
+          "definition": "어떤 작용으로 다른 물체나 환경의 온도가 내려가는 것을 나타낸다.",
+          "scopeNote": "SIL 온도 영역의 ‘무언가를 차갑게 하다’라는 사역적 측면을 취한다. 스스로 차가워지는 과정이나 감정을 진정시키는 의미와 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Refroidir un objet",
+          "definition": "Décrit une action qui abaisse la température d’un autre objet ou de l’environnement.",
+          "scopeNote": "Retient l’aspect causatif « rendre quelque chose plus froid » du domaine SIL de la température ; à distinguer du refroidissement propre et du sens de calmer une émotion."
+        },
+        {
+          "language": "de",
+          "name": "Einen Gegenstand abkühlen",
+          "definition": "Beschreibt eine Einwirkung, durch die die Temperatur eines anderen Gegenstands oder der Umgebung sinkt.",
+          "scopeNote": "Gemeint ist der kausative Aspekt „etwas kälter machen“ im SIL-Temperaturbereich; zu unterscheiden vom Sich-Abkühlen und von der Bedeutung, ein Gefühl zu beruhigen."
+        },
+        {
+          "language": "es",
+          "name": "Enfriar un objeto",
+          "definition": "Describe una acción que reduce la temperatura de otro objeto o del entorno.",
+          "scopeNote": "Toma el aspecto causativo de “hacer que algo se enfríe” en el dominio de temperatura de SIL; se distingue de que el objeto se enfríe por sí solo y de calmar emociones."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Resfriar um objeto",
+          "definition": "Descreve uma ação que reduz a temperatura de outro objeto ou do ambiente.",
+          "scopeNote": "Toma o aspecto causativo de “fazer algo ficar mais frio” no domínio de temperatura da SIL; distingue-se de o próprio objeto esfriar e de acalmar emoções."
+        },
+        {
+          "language": "it",
+          "name": "Raffreddare un oggetto",
+          "definition": "Descrive un'azione che diminuisce la temperatura di un altro oggetto o dell'ambiente.",
+          "scopeNote": "Seleziona l'aspetto causativo del «rendere qualcosa più freddo» nell'area SIL della temperatura; è distinto dal raffreddarsi spontaneamente e dal calmare le emozioni."
+        },
+        {
+          "language": "ru",
+          "name": "Охладить предмет",
+          "definition": "Описывает воздействие, понижающее температуру другого предмета или окружающей среды.",
+          "scopeNote": "Выделяет каузативное значение «сделать что-либо холоднее» из раздела SIL о температуре; отличается от самостоятельного охлаждения и успокоения эмоций."
+        },
+        {
+          "language": "ar",
+          "name": "تبريد شيء",
+          "definition": "يصف تأثيرًا ما يؤدي إلى انخفاض درجة حرارة شيء آخر أو بيئة أخرى.",
+          "scopeNote": "يأخذ الجانب السببي «جعل شيء باردًا» من مجال درجة الحرارة لدى SIL؛ ويميّزه عن انخفاض حرارة الشيء نفسه وعن معنى تهدئة المشاعر."
+        },
+        {
+          "language": "hi",
+          "name": "वस्तु को ठंडा करना",
+          "definition": "किसी प्रभाव से दूसरी वस्तु या वातावरण का तापमान घटने का वर्णन करता है।",
+          "scopeNote": "SIL के तापमान क्षेत्र में किसी चीज़ को ठंडा करने वाला कारणसूचक अर्थ लिया गया है; इसे वस्तु के स्वयं ठंडा होने और भावनाओं को शांत करने के अर्थ से अलग रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Mendinginkan benda",
+          "definition": "Menggambarkan suatu tindakan atau pengaruh yang menurunkan suhu benda lain atau lingkungan.",
+          "scopeNote": "Mengambil sisi kausatif “membuat sesuatu menjadi dingin” dari ranah suhu SIL; bedakan dari penurunan suhu pada benda itu sendiri dan makna menenangkan emosi."
+        },
+        {
+          "language": "tr",
+          "name": "Nesneyi soğutma",
+          "definition": "Bir etki ya da eylemin başka bir nesnenin ya da ortamın sıcaklığını düşürmesini açıklar.",
+          "scopeNote": "SIL sıcaklık alanındaki “bir şeyi soğuk hâle getirme” anlamını, yani ettirgen yönünü alır; nesnenin kendi sıcaklığının düşmesinden ve duyguları yatıştırma anlamından ayrılır."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement",
+      "axis": "content",
+      "english": "Enabling and hindering",
+      "chinese": "促成与阻碍",
+      "parents": [
+        "content.general"
+      ],
+      "definition": "描述条件或作用如何使事件能够发生、更容易进行、受到妨碍或被阻止。",
+      "scopeNote": "合并因果、条件及帮助／阻碍领域以组织跨场景关系；不把促成、妨碍和成功阻止当作同义。",
+      "examples": [
+        {
+          "text": "help",
+          "language": "en"
+        },
+        {
+          "text": "hinder",
+          "language": "en"
+        },
+        {
+          "text": "prevent",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.5",
+          "url": "https://semdom.org/v4/9.6.2.5/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.8",
+          "url": "https://semdom.org/v4/9.6.2.8/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.3.4.2",
+          "url": "https://semdom.org/v4/4.3.4.2/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.3.4.2.1",
+          "url": "https://semdom.org/v4/4.3.4.2.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "3.3.4.4",
+          "url": "https://semdom.org/v4/3.3.4.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "S8",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=29",
+          "relationship": "narrower"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "A2.2",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=5",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Enabling and hindering",
+          "definition": "Describes how a condition or influence makes an event possible, easier to carry out, harder to carry out, or unable to occur.",
+          "scopeNote": "Combines causal, conditional, and help-or-hindrance domains to organize relations across contexts; do not treat enabling, hindering, and successfully preventing as synonymous."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "促成与阻碍",
+          "definition": "描述条件或作用如何使事件能够发生、更容易进行、受到妨碍或被阻止。",
+          "scopeNote": "合并因果、条件及帮助／阻碍领域以组织跨场景关系；不把促成、妨碍和成功阻止当作同义。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "促成與阻礙",
+          "definition": "描述條件或作用如何使事件能夠發生、更容易進行、受到妨礙或被阻止。",
+          "scopeNote": "合併因果、條件及幫助／阻礙領域，以組織跨情境關係；不把促成、妨礙和成功阻止當作同義。"
+        },
+        {
+          "language": "ja",
+          "name": "可能化・促進と阻害",
+          "definition": "条件や作用によって、出来事が可能になる、進みやすくなる、妨げられる、または阻止される関係を表す。",
+          "scopeNote": "場面をまたぐ関係を整理するため、因果、条件、援助・妨害の領域をまとめる。可能にすること、妨げること、成功裏に阻止することを同義として扱わない。"
+        },
+        {
+          "language": "ko",
+          "name": "가능화·촉진과 방해",
+          "definition": "조건이나 작용이 사건을 가능하게 하거나 더 쉽게 진행하게 하고, 방해하거나 막는 관계를 나타낸다.",
+          "scopeNote": "여러 상황에 걸친 관계를 정리하기 위해 인과, 조건, 도움·방해 영역을 함께 묶는다. 가능하게 함, 방해함, 성공적으로 막음을 같은 뜻으로 취급하지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Rendre possible et entraver",
+          "definition": "Décrit comment une condition ou une action rend un événement possible, en facilite le déroulement, y fait obstacle ou l’empêche.",
+          "scopeNote": "Cette catégorie réunit les domaines de la cause, de la condition et de l’aide ou de l’entrave pour organiser des relations pertinentes dans différents contextes ; rendre possible, faire obstacle et empêcher avec succès ne sont pas synonymes."
+        },
+        {
+          "language": "de",
+          "name": "Ermöglichung und Behinderung",
+          "definition": "Beschreibt, wie eine Bedingung oder Einwirkung ein Ereignis ermöglicht, erleichtert, behindert oder verhindert.",
+          "scopeNote": "Diese Kategorie bündelt Ursache, Bedingung sowie Hilfe und Behinderung, um kontextübergreifende Beziehungen zu ordnen; Ermöglichen, Behindern und erfolgreiches Verhindern sind nicht gleichbedeutend."
+        },
+        {
+          "language": "es",
+          "name": "Facilitación y obstaculización",
+          "definition": "Describe cómo una condición o acción permite que un acontecimiento ocurra, facilita su desarrollo, lo dificulta o lo impide.",
+          "scopeNote": "Reúne los dominios de causa, condición y ayuda/obstáculo para organizar relaciones entre distintos contextos; no trata posibilitar, dificultar e impedir con éxito como sinónimos."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Facilitação e impedimento",
+          "definition": "Descreve como uma condição ou ação permite que um acontecimento ocorra, facilita seu andamento, dificulta ou impede sua realização.",
+          "scopeNote": "Reúne os domínios de causa, condição e ajuda/obstáculo para organizar relações entre diferentes contextos; não trata possibilitar, dificultar e impedir com sucesso como sinônimos."
+        },
+        {
+          "language": "it",
+          "name": "Facilitazione e impedimento",
+          "definition": "Descrive come una condizione o un'azione renda possibile o più facile un evento, lo ostacoli oppure ne impedisca il verificarsi.",
+          "scopeNote": "Riunisce aspetti di causa, condizione, aiuto e ostacolo per organizzare relazioni che ricorrono in contesti diversi; rendere possibile, ostacolare e impedire con successo non sono sinonimi."
+        },
+        {
+          "language": "ru",
+          "name": "Содействие и препятствия",
+          "definition": "Описывает, как условие или воздействие делает событие возможным или более легким, затрудняет его либо не дает ему произойти.",
+          "scopeNote": "Объединяет причинность, условия, помощь и препятствия для организации отношений в разных ситуациях; создание условий, затруднение и успешное предотвращение — не синонимы."
+        },
+        {
+          "language": "ar",
+          "name": "التمكين والإعاقة",
+          "definition": "يصف كيف تجعل الشروط أو التأثيرات وقوع حدث ممكنًا أو أسهل، أو تعوقه أو تمنعه.",
+          "scopeNote": "يجمع علاقات السبب والشرط والمساعدة والإعاقة لتنظيم العلاقات العابرة للسياقات؛ ولا يعامل التمكين والإعاقة والمنع الناجح على أنها مترادفات."
+        },
+        {
+          "language": "hi",
+          "name": "संभव बनाना और बाधा डालना",
+          "definition": "बताता है कि परिस्थितियाँ या प्रभाव किसी घटना को संभव या आसान कैसे बनाते हैं, उसमें बाधा डालते हैं या उसे रोकते हैं।",
+          "scopeNote": "अलग संदर्भों में संबंधों को व्यवस्थित करने के लिए इसमें कारण, शर्त, मदद और बाधा के क्षेत्र जोड़े गए हैं; संभव बनाना, बाधा डालना और सफलतापूर्वक रोकना एक ही अर्थ नहीं हैं।"
+        },
+        {
+          "language": "id",
+          "name": "Memungkinkan dan menghambat",
+          "definition": "Menggambarkan bagaimana kondisi atau pengaruh memungkinkan suatu peristiwa terjadi, mempermudah prosesnya, menghambatnya, atau mencegahnya.",
+          "scopeNote": "Menggabungkan ranah sebab, kondisi, serta bantuan dan hambatan untuk menata hubungan lintas situasi; jangan samakan tindakan yang memungkinkan, menghambat, dan berhasil mencegah."
+        },
+        {
+          "language": "tr",
+          "name": "Olanak sağlama ve engelleme",
+          "definition": "Bir koşulun ya da etkinin bir olayın gerçekleşmesini nasıl mümkün kıldığını, kolaylaştırdığını, aksattığını ya da önlediğini açıklar.",
+          "scopeNote": "Farklı bağlamlardaki ilişkileri düzenlemek için neden, koşul ve yardım/engel alanlarını birleştirir; olanak sağlama, aksatma ve başarıyla önlemeyi eş anlamlı saymaz."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement.enable",
+      "axis": "content",
+      "english": "Making something possible",
+      "chinese": "使之可能",
+      "parents": [
+        "content.general.enablement"
+      ],
+      "definition": "描述某种条件或作用使原本做不到或无法发生的事情成为可能。",
+      "scopeNote": "这是能力、条件与因果领域的组合侧面；使之可能不表示事情已经发生，也不同于给予许可。",
+      "examples": [
+        {
+          "text": "enable",
+          "language": "en"
+        },
+        {
+          "text": "make possible",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.4.2.1",
+          "url": "https://semdom.org/v4/9.4.2.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.8",
+          "url": "https://semdom.org/v4/9.6.2.8/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.5",
+          "url": "https://semdom.org/v4/9.6.2.5/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "A7",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=6",
+          "relationship": "narrower"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "A2.2",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=5",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Making something possible",
+          "definition": "Describes a condition or influence that makes something previously impossible to do or unable to happen possible.",
+          "scopeNote": "Combines aspects of ability, conditions, and causation; making something possible does not mean it has happened and differs from granting permission."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "使之可能",
+          "definition": "描述某种条件或作用使原本做不到或无法发生的事情成为可能。",
+          "scopeNote": "这是能力、条件与因果领域的组合侧面；使之可能不表示事情已经发生，也不同于给予许可。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "使之可能",
+          "definition": "描述某種條件或作用使原本做不到或無法發生的事情成為可能。",
+          "scopeNote": "這是能力、條件與因果領域的組合側面；使之可能不表示事情已經發生，也不同於給予許可。"
+        },
+        {
+          "language": "ja",
+          "name": "可能にする",
+          "definition": "ある条件や作用によって、それまではできなかったことや起こり得なかったことが可能になることを表す。",
+          "scopeNote": "能力、条件、因果の組み合わせとしての側面である。可能になったからといって事柄がすでに起きたわけではなく、許可を与えることとも異なる。"
+        },
+        {
+          "language": "ko",
+          "name": "가능하게 함",
+          "definition": "어떤 조건이나 작용이 원래 할 수 없거나 일어날 수 없던 일을 가능하게 하는 것을 나타낸다.",
+          "scopeNote": "능력, 조건, 인과 영역이 결합된 측면이다. 가능해졌다고 해서 일이 이미 일어난 것은 아니며 허가를 주는 것과도 다르다."
+        },
+        {
+          "language": "fr",
+          "name": "Rendre quelque chose possible",
+          "definition": "Décrit une condition ou une action qui rend possible quelque chose qui ne pouvait pas être fait ou se produire auparavant.",
+          "scopeNote": "Il s’agit d’un aspect combinant capacité, condition et causalité ; rendre une chose possible ne signifie ni qu’elle s’est effectivement produite ni qu’une autorisation a été donnée."
+        },
+        {
+          "language": "de",
+          "name": "Etwas ermöglichen",
+          "definition": "Beschreibt, dass eine Bedingung oder Einwirkung etwas ermöglicht, das zuvor nicht getan werden oder eintreten konnte.",
+          "scopeNote": "Dies verbindet Aspekte von Fähigkeit, Bedingung und Ursache; etwas zu ermöglichen bedeutet weder, dass es tatsächlich geschehen ist, noch, dass eine Erlaubnis erteilt wurde."
+        },
+        {
+          "language": "es",
+          "name": "Hacer posible",
+          "definition": "Describe una condición o acción que hace posible algo que antes no se podía hacer o no podía ocurrir.",
+          "scopeNote": "Combina aspectos de capacidad, condiciones y causalidad; hacer algo posible no significa que ya haya ocurrido ni equivale a conceder permiso."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Tornar possível",
+          "definition": "Descreve uma condição ou ação que torna possível algo que antes não podia ser feito ou acontecer.",
+          "scopeNote": "Combina aspectos de capacidade, condições e causalidade; tornar algo possível não significa que já tenha acontecido nem equivale a conceder permissão."
+        },
+        {
+          "language": "it",
+          "name": "Rendere possibile",
+          "definition": "Descrive una condizione o un'azione che rende possibile qualcosa che prima non si poteva fare o che non poteva accadere.",
+          "scopeNote": "È un aspetto combinato di capacità, condizione e causalità; rendere qualcosa possibile non significa che sia già accaduto né equivale a concedere il permesso."
+        },
+        {
+          "language": "ru",
+          "name": "Сделать возможным",
+          "definition": "Описывает условие или воздействие, благодаря которому становится возможным то, что раньше нельзя было сделать или что не могло произойти.",
+          "scopeNote": "Объединяет аспекты способности, условия и причинности; сделать что-либо возможным не значит, что оно уже произошло, и это не то же самое, что дать разрешение."
+        },
+        {
+          "language": "ar",
+          "name": "جعل الشيء ممكنًا",
+          "definition": "يصف شرطًا أو تأثيرًا يجعل أمرًا كان متعذرًا فعله أو وقوعه ممكنًا.",
+          "scopeNote": "هذا جانب يجمع القدرة والشرط والسبب؛ فجعل الأمر ممكنًا لا يعني أنه وقع بالفعل، كما لا يعني منح الإذن به."
+        },
+        {
+          "language": "hi",
+          "name": "संभव बनाना",
+          "definition": "किसी ऐसी बात को किसी शर्त या प्रभाव से संभव बनाने का वर्णन करता है जिसे पहले करना या घटित होना संभव नहीं था।",
+          "scopeNote": "यह क्षमता, शर्त और कारण का मिला-जुला पहलू है; संभव बनाने का अर्थ यह नहीं कि बात वास्तव में घटित हुई या उसकी अनुमति दी गई।"
+        },
+        {
+          "language": "id",
+          "name": "Memungkinkan sesuatu terjadi",
+          "definition": "Menggambarkan kondisi atau pengaruh yang membuat sesuatu yang sebelumnya tidak dapat dilakukan atau terjadi menjadi mungkin.",
+          "scopeNote": "Ini merupakan sisi gabungan dari ranah kemampuan, kondisi, dan sebab-akibat; memungkinkan sesuatu tidak berarti hal itu sudah terjadi, dan berbeda dari memberi izin."
+        },
+        {
+          "language": "tr",
+          "name": "Bir şeyi mümkün kılma",
+          "definition": "Bir koşulun ya da etkinin, önceden yapılamayan veya gerçekleşemeyen bir şeyi mümkün hâle getirmesini açıklar.",
+          "scopeNote": "Yeti, koşul ve nedensellik alanlarının birleşik yönüdür; mümkün kılmak, şeyin gerçekleştiği anlamına gelmez ve izin vermekten farklıdır."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement.facilitate",
+      "axis": "content",
+      "english": "Facilitating an event",
+      "chinese": "使之更容易",
+      "parents": [
+        "content.general.enablement"
+      ],
+      "definition": "描述某种帮助或条件使事情更容易进行。",
+      "scopeNote": "便利或协助不保证事情已经完成；与赋予许可及从不可能变为可能的关系分开。",
+      "examples": [
+        {
+          "text": "facilitate",
+          "language": "en"
+        },
+        {
+          "text": "help",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.3.4.2",
+          "url": "https://semdom.org/v4/4.3.4.2/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.8",
+          "url": "https://semdom.org/v4/9.6.2.8/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "S8",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=29",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Facilitating an event",
+          "definition": "Describes help or a condition that makes something easier to carry out.",
+          "scopeNote": "Facilitation or assistance does not guarantee that the event has been completed; it differs from granting permission and from changing something impossible into possible."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "使之更容易",
+          "definition": "描述某种帮助或条件使事情更容易进行。",
+          "scopeNote": "便利或协助不保证事情已经完成；与赋予许可及从不可能变为可能的关系分开。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "使之更容易",
+          "definition": "描述某種幫助或條件使事情更容易進行。",
+          "scopeNote": "便利或協助不保證事情已經完成；與賦予許可及從不可能變為可能的關係區分。"
+        },
+        {
+          "language": "ja",
+          "name": "容易にする",
+          "definition": "何らかの助けや条件によって、物事がより容易に進むことを表す。",
+          "scopeNote": "便宜や援助があっても、物事が完了したとは限らない。許可を与えることや、不可能から可能になる関係とは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "더 쉽게 함",
+          "definition": "어떤 도움이나 조건이 일을 더 쉽게 진행하게 하는 것을 나타낸다.",
+          "scopeNote": "편의나 도움을 준다고 해서 일이 완료되었다는 보장은 없다. 허가를 주는 것과 불가능한 일이 가능해지는 관계는 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Faciliter un événement",
+          "definition": "Décrit une aide ou une condition qui rend le déroulement d’une chose plus facile.",
+          "scopeNote": "Une facilité ou une aide ne garantit pas que la chose soit achevée ; à distinguer d’une autorisation et du passage de l’impossibilité à la possibilité."
+        },
+        {
+          "language": "de",
+          "name": "Einen Vorgang erleichtern",
+          "definition": "Beschreibt, dass eine Hilfe oder Bedingung den Ablauf einer Sache erleichtert.",
+          "scopeNote": "Eine Erleichterung oder Unterstützung garantiert keinen Abschluss; zu unterscheiden von einer Erlaubnis und davon, etwas Unmögliches möglich zu machen."
+        },
+        {
+          "language": "es",
+          "name": "Facilitar un acontecimiento",
+          "definition": "Describe una ayuda o condición que hace que algo sea más fácil de llevar a cabo.",
+          "scopeNote": "Facilitar o ayudar no garantiza que el hecho ya se haya completado; se distingue tanto de conceder permiso como de convertir lo imposible en posible."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Facilitar um acontecimento",
+          "definition": "Descreve uma ajuda ou condição que torna algo mais fácil de realizar.",
+          "scopeNote": "Facilitar ou ajudar não garante que o fato já tenha sido concluído; distingue-se tanto de conceder permissão quanto de tornar possível o que era impossível."
+        },
+        {
+          "language": "it",
+          "name": "Facilitare",
+          "definition": "Descrive un aiuto o una condizione che rende più facile un'attività.",
+          "scopeNote": "Agevolare o aiutare non garantisce che l'attività sia stata completata; è distinto dal concedere il permesso e dal rendere possibile ciò che prima era impossibile."
+        },
+        {
+          "language": "ru",
+          "name": "Облегчить",
+          "definition": "Описывает помощь или условие, благодаря которым что-либо становится легче выполнить.",
+          "scopeNote": "Облегчение или помощь не гарантирует, что дело завершено; это отличается от предоставления разрешения и от превращения невозможного в возможное."
+        },
+        {
+          "language": "ar",
+          "name": "تيسير وقوع حدث",
+          "definition": "يصف مساعدة أو شرطًا يجعل سير أمر ما أسهل.",
+          "scopeNote": "لا يضمن التيسير أو الدعم اكتمال الأمر؛ ويختلفان عن منح الإذن وعن العلاقة التي تحوّل المستحيل إلى ممكن."
+        },
+        {
+          "language": "hi",
+          "name": "काम आसान बनाना",
+          "definition": "किसी मदद या परिस्थिति से काम का आगे बढ़ना आसान होने का वर्णन करता है।",
+          "scopeNote": "सुविधा या मदद से काम पूरा होना तय नहीं होता; यह अनुमति देने और असंभव बात को संभव बनाने से अलग है।"
+        },
+        {
+          "language": "id",
+          "name": "Mempermudah suatu peristiwa",
+          "definition": "Menggambarkan bantuan atau kondisi yang membuat sesuatu lebih mudah dilakukan atau berlangsung.",
+          "scopeNote": "Kemudahan atau bantuan tidak menjamin sesuatu sudah selesai; bedakan dari pemberian izin dan hubungan yang mengubah sesuatu dari mustahil menjadi mungkin."
+        },
+        {
+          "language": "tr",
+          "name": "Bir olayı kolaylaştırma",
+          "definition": "Bir yardımın ya da koşulun bir işin yapılmasını veya sürmesini daha kolay hâle getirmesini açıklar.",
+          "scopeNote": "Kolaylık ya da yardım, işin tamamlandığını garanti etmez; izin vermekten ve olanaksızlıktan olanağa geçişten ayrıdır."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement.hinder",
+      "axis": "content",
+      "english": "Hindering an event",
+      "chinese": "妨碍进行",
+      "parents": [
+        "content.general.enablement"
+      ],
+      "definition": "描述某种障碍或作用使事情更难进行。",
+      "scopeNote": "妨碍不蕴含事情完全没有发生或最终失败；障碍也不必来自有意阻挠的人。",
+      "examples": [
+        {
+          "text": "hinder",
+          "language": "en"
+        },
+        {
+          "text": "impede",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.3.4.2.1",
+          "url": "https://semdom.org/v4/4.3.4.2.1/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "S8",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=29",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Hindering an event",
+          "definition": "Describes an obstacle or influence that makes something harder to carry out.",
+          "scopeNote": "Hindering does not entail that the event did not happen at all or ultimately failed; the obstacle need not come from someone deliberately obstructing it."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "妨碍进行",
+          "definition": "描述某种障碍或作用使事情更难进行。",
+          "scopeNote": "妨碍不蕴含事情完全没有发生或最终失败；障碍也不必来自有意阻挠的人。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "妨礙進行",
+          "definition": "描述某種障礙或作用使事情更難進行。",
+          "scopeNote": "妨礙不蘊含事情完全沒有發生或最終失敗；障礙也不必來自有意阻撓的人。"
+        },
+        {
+          "language": "ja",
+          "name": "進行を妨げる",
+          "definition": "障害や作用によって、物事が進みにくくなることを表す。",
+          "scopeNote": "妨げられても、まったく起きなかった、または最終的に失敗したとは限らない。障害の原因が意図的に妨害する人である必要もない。"
+        },
+        {
+          "language": "ko",
+          "name": "진행을 방해함",
+          "definition": "장애물이나 작용으로 일이 더 어렵게 진행되는 것을 나타낸다.",
+          "scopeNote": "방해를 받았다고 해서 전혀 일어나지 않거나 결국 실패한 것은 아니다. 방해가 의도적으로 막으려는 사람에게서 비롯될 필요도 없다."
+        },
+        {
+          "language": "fr",
+          "name": "Entraver un événement",
+          "definition": "Décrit un obstacle ou une action qui rend le déroulement d’une chose plus difficile.",
+          "scopeNote": "Une entrave n’implique ni que la chose n’ait pas eu lieu du tout ni qu’elle ait finalement échoué ; l’obstacle ne doit pas nécessairement provenir d’une personne qui agit délibérément pour bloquer."
+        },
+        {
+          "language": "de",
+          "name": "Einen Vorgang behindern",
+          "definition": "Beschreibt ein Hindernis oder eine Einwirkung, die den Ablauf einer Sache erschwert.",
+          "scopeNote": "Eine Behinderung bedeutet weder, dass die Sache überhaupt nicht stattgefunden hat, noch, dass sie letztlich gescheitert ist; das Hindernis muss nicht von einer Person ausgehen, die absichtlich blockiert."
+        },
+        {
+          "language": "es",
+          "name": "Dificultar un acontecimiento",
+          "definition": "Describe un obstáculo o una acción que hace más difícil que algo se lleve a cabo.",
+          "scopeNote": "Dificultar algo no implica que no ocurra en absoluto ni que finalmente fracase; el obstáculo no tiene que provenir de alguien que lo obstruya intencionalmente."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Dificultar um acontecimento",
+          "definition": "Descreve um obstáculo ou uma ação que torna mais difícil a realização de algo.",
+          "scopeNote": "Dificultar algo não implica que não aconteça de modo algum nem que fracasse no final; o obstáculo não precisa vir de alguém que esteja agindo para atrapalhar."
+        },
+        {
+          "language": "it",
+          "name": "Ostacolare",
+          "definition": "Descrive un impedimento o un'azione che rende più difficile un'attività.",
+          "scopeNote": "Un ostacolo non implica che l'attività non sia avvenuta affatto o che sia fallita alla fine; l'ostacolo non deve provenire da qualcuno che agisce intenzionalmente per intralciare."
+        },
+        {
+          "language": "ru",
+          "name": "Затруднить",
+          "definition": "Описывает препятствие или воздействие, из-за которого что-либо становится труднее выполнить.",
+          "scopeNote": "Препятствие не означает, что действие совсем не состоялось или в итоге провалилось; оно не обязательно создается кем-то с намерением помешать."
+        },
+        {
+          "language": "ar",
+          "name": "إعاقة سير حدث",
+          "definition": "يصف عائقًا أو تأثيرًا يجعل سير أمر ما أصعب.",
+          "scopeNote": "لا تستلزم الإعاقة عدم وقوع الأمر إطلاقًا أو إخفاقه في النهاية؛ كما لا يلزم أن يكون العائق ناتجًا عن شخص يتعمد العرقلة."
+        },
+        {
+          "language": "hi",
+          "name": "काम में बाधा डालना",
+          "definition": "किसी रुकावट या प्रभाव से काम का आगे बढ़ना कठिन होने का वर्णन करता है।",
+          "scopeNote": "बाधा होने का अर्थ यह नहीं कि काम बिल्कुल नहीं हुआ या अंत में असफल रहा; बाधा डालने वाला व्यक्ति जान-बूझकर ऐसा करे, यह भी ज़रूरी नहीं।"
+        },
+        {
+          "language": "id",
+          "name": "Menghambat berlangsungnya peristiwa",
+          "definition": "Menggambarkan hambatan atau pengaruh yang membuat sesuatu lebih sulit dilakukan atau berlangsung.",
+          "scopeNote": "Hambatan tidak berarti sesuatu sama sekali tidak terjadi atau akhirnya gagal; hambatan juga tidak harus berasal dari orang yang sengaja menghalangi."
+        },
+        {
+          "language": "tr",
+          "name": "Bir olayın ilerlemesini zorlaştırma",
+          "definition": "Bir engelin ya da etkinin bir işin yapılmasını veya sürmesini zorlaştırmasını açıklar.",
+          "scopeNote": "Aksatma, işin hiç gerçekleşmediği ya da sonunda başarısız olduğu anlamına gelmez; engelin kasıtlı biçimde önlemeye çalışan bir kişiden gelmesi de gerekmez."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement.prevent",
+      "axis": "content",
+      "english": "Preventing an event",
+      "chinese": "阻止发生",
+      "parents": [
+        "content.general.enablement"
+      ],
+      "definition": "描述使某个行为不能继续或使某个事件不发生的阻止关系。",
+      "scopeNote": "与仅使事情更困难的妨碍分开；表达尝试阻止时，不自动视为已经成功阻止。",
+      "examples": [
+        {
+          "text": "prevent",
+          "language": "en"
+        },
+        {
+          "text": "keep someone from",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "3.3.4.4",
+          "url": "https://semdom.org/v4/3.3.4.4/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "S8",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=29",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Preventing an event",
+          "definition": "Describes a relation in which an action is stopped from continuing or an event is made not to occur.",
+          "scopeNote": "Distinguishes prevention from merely making something harder; an attempt to prevent an event is not automatically a successful prevention."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "阻止发生",
+          "definition": "描述使某个行为不能继续或使某个事件不发生的阻止关系。",
+          "scopeNote": "与仅使事情更困难的妨碍分开；表达尝试阻止时，不自动视为已经成功阻止。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "阻止發生",
+          "definition": "描述使某個行為不能繼續或使某個事件不發生的阻止關係。",
+          "scopeNote": "與僅使事情更困難的妨礙區分；表達嘗試阻止時，不自動視為已經成功阻止。"
+        },
+        {
+          "language": "ja",
+          "name": "発生を阻止する",
+          "definition": "行動を続けられなくしたり、出来事を起こらなくしたりする阻止関係を表す。",
+          "scopeNote": "物事を単に難しくする妨害とは区別する。阻止しようとしたという表現だけでは、阻止に成功したとは見なさない。"
+        },
+        {
+          "language": "ko",
+          "name": "발생을 막음",
+          "definition": "행동을 계속할 수 없게 하거나 사건이 일어나지 않게 하는 방지 관계를 나타낸다.",
+          "scopeNote": "일을 단지 더 어렵게 만드는 방해와 구분한다. 막으려 했다는 표현만으로 실제로 막는 데 성공했다고 보지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Empêcher un événement",
+          "definition": "Décrit une relation de blocage qui rend impossible la poursuite d’un comportement ou empêche un événement de se produire.",
+          "scopeNote": "À distinguer du simple fait de rendre une chose plus difficile ; exprimer une tentative d’empêcher ne signifie pas automatiquement que l’empêchement a réussi."
+        },
+        {
+          "language": "de",
+          "name": "Ein Ereignis verhindern",
+          "definition": "Beschreibt eine Verhinderung, durch die eine Handlung nicht fortgesetzt werden kann oder ein Ereignis nicht eintritt.",
+          "scopeNote": "Von bloßer Erschwerung zu unterscheiden; einen Verhinderungsversuch auszudrücken bedeutet nicht automatisch, dass er erfolgreich war."
+        },
+        {
+          "language": "es",
+          "name": "Impedir que ocurra",
+          "definition": "Describe una relación de impedimento que hace que una acción no pueda continuar o que un acontecimiento no ocurra.",
+          "scopeNote": "Se distingue de simplemente dificultar algo; si alguien intenta impedirlo, no se considera automáticamente que lo haya logrado."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Impedir que aconteça",
+          "definition": "Descreve uma relação de impedimento que faz uma ação não poder continuar ou um acontecimento não ocorrer.",
+          "scopeNote": "Distingue-se de apenas dificultar algo; se alguém tenta impedir, não se considera automaticamente que tenha conseguido."
+        },
+        {
+          "language": "it",
+          "name": "Impedire",
+          "definition": "Descrive una relazione di impedimento che rende impossibile proseguire un'azione o fa sì che un evento non accada.",
+          "scopeNote": "È distinto dal rendere un'attività soltanto più difficile; un tentativo di impedire qualcosa non implica automaticamente che l'impedimento sia riuscito."
+        },
+        {
+          "language": "ru",
+          "name": "Предотвратить",
+          "definition": "Описывает предотвращение, которое не дает действию продолжиться или событию произойти.",
+          "scopeNote": "Отличается от простого затруднения; попытка предотвратить что-либо не означает автоматически, что предотвращение удалось."
+        },
+        {
+          "language": "ar",
+          "name": "منع وقوع حدث",
+          "definition": "يصف علاقة منع تحول دون استمرار فعل أو تحول دون وقوع حدث.",
+          "scopeNote": "يختلف عن مجرد جعل الأمر أصعب؛ وعند التعبير عن محاولة المنع، لا يُفترض تلقائيًا أن المنع قد نجح بالفعل."
+        },
+        {
+          "language": "hi",
+          "name": "घटना को रोकना",
+          "definition": "ऐसे रोकने वाले संबंध का वर्णन करता है जिससे कोई काम जारी न रह सके या कोई घटना घटित न हो।",
+          "scopeNote": "सिर्फ काम कठिन बनाने से अलग है; रोकने की कोशिश का वर्णन अपने-आप में सफलतापूर्वक रोक देना नहीं माना जाता।"
+        },
+        {
+          "language": "id",
+          "name": "Mencegah terjadinya peristiwa",
+          "definition": "Menggambarkan hubungan penghalangan yang membuat suatu tindakan tidak dapat berlanjut atau suatu peristiwa tidak terjadi.",
+          "scopeNote": "Bedakan dari sekadar membuat sesuatu lebih sulit; ungkapan tentang upaya mencegah tidak otomatis berarti pencegahannya berhasil."
+        },
+        {
+          "language": "tr",
+          "name": "Gerçekleşmesini önleme",
+          "definition": "Bir eylemin devam etmesini olanaksız kılan ya da bir olayın gerçekleşmemesini sağlayan engelleme ilişkisini açıklar.",
+          "scopeNote": "Bir şeyi yalnızca zorlaştırmaktan ayrıdır; önleme girişiminden söz etmek, önlemenin başarıldığı anlamına gelmez."
+        }
+      ]
+    },
+    {
+      "key": "content.general.enablement.avoid",
+      "axis": "content",
+      "english": "Avoiding an unwanted situation",
+      "chinese": "避开不利情况",
+      "parents": [
+        "content.general.enablement"
+      ],
+      "definition": "描述通过避开某人、事物或行动来避免不希望遇到的情况。",
+      "scopeNote": "避开危险不代表危险本身消失；避免接触和阻止外部事件发生需要区分。",
+      "examples": [
+        {
+          "text": "avoid trouble",
+          "language": "en"
+        },
+        {
+          "text": "evade",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.4.3.3",
+          "url": "https://semdom.org/v4/4.4.3.3/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "USAS category guide 2002",
+          "identifier": "A1.9",
+          "url": "https://ucrel.lancs.ac.uk/usas/usas_guide.pdf#page=4",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Avoiding an unwanted situation",
+          "definition": "Describes avoiding an unwanted situation by staying away from a person, thing, or action.",
+          "scopeNote": "Avoiding danger does not make the danger itself disappear; distinguish avoiding contact from preventing an external event."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "避开不利情况",
+          "definition": "描述通过避开某人、事物或行动来避免不希望遇到的情况。",
+          "scopeNote": "避开危险不代表危险本身消失；避免接触和阻止外部事件发生需要区分。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "避開不利情況",
+          "definition": "描述透過避開某人、事物或行動來避免不希望遇到的情況。",
+          "scopeNote": "避開危險不代表危險本身消失；避免接觸和阻止外部事件發生需要區分。"
+        },
+        {
+          "language": "ja",
+          "name": "不都合な状況を避ける",
+          "definition": "人、物、行動を避けることで、望ましくない状況に遭わないようにすることを表す。",
+          "scopeNote": "危険を避けても、危険そのものが消えるわけではない。接触を避けることと、外部の出来事の発生を阻止することは区別する。"
+        },
+        {
+          "language": "ko",
+          "name": "불리한 상황 피하기",
+          "definition": "사람, 사물, 행동을 피함으로써 원치 않는 상황을 겪지 않으려는 것을 나타낸다.",
+          "scopeNote": "위험을 피한다고 위험 자체가 사라지는 것은 아니다. 접촉을 피하는 것과 외부 사건이 일어나지 않게 막는 것은 구분한다."
+        },
+        {
+          "language": "fr",
+          "name": "Éviter une situation défavorable",
+          "definition": "Décrit le fait d’éviter une personne, une chose ou une action afin de ne pas rencontrer une situation indésirable.",
+          "scopeNote": "Éviter un danger ne signifie pas que le danger lui-même a disparu ; il faut distinguer le fait d’éviter un contact de celui d’empêcher un événement extérieur de se produire."
+        },
+        {
+          "language": "de",
+          "name": "Eine ungünstige Situation vermeiden",
+          "definition": "Beschreibt, dass man einer Person, Sache oder Handlung ausweicht, um eine unerwünschte Situation nicht zu erleben.",
+          "scopeNote": "Einer Gefahr auszuweichen bedeutet nicht, dass die Gefahr selbst verschwunden ist; Kontakt zu vermeiden ist davon zu unterscheiden, ein äußeres Ereignis zu verhindern."
+        },
+        {
+          "language": "es",
+          "name": "Evitar una situación desfavorable",
+          "definition": "Describe evitar a una persona, cosa o acción para no enfrentarse a una situación no deseada.",
+          "scopeNote": "Evitar un peligro no significa que el peligro mismo desaparezca; hay que distinguir esquivar algo de impedir que un acontecimiento externo ocurra."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Evitar uma situação indesejada",
+          "definition": "Descreve evitar uma pessoa, coisa ou ação para não se deparar com uma situação que não se deseja.",
+          "scopeNote": "Evitar um perigo não significa que o próprio perigo desapareça; é preciso distinguir esquivar-se de algo de impedir que um acontecimento externo ocorra."
+        },
+        {
+          "language": "it",
+          "name": "Evitare una situazione sfavorevole",
+          "definition": "Descrive l'evitare una persona, una cosa o un'azione per non trovarsi in una situazione indesiderata.",
+          "scopeNote": "Evitare un pericolo non significa che il pericolo stesso scompaia; occorre distinguere l'evitare il contatto dall'impedire che un evento esterno accada."
+        },
+        {
+          "language": "ru",
+          "name": "Избежать неблагоприятной ситуации",
+          "definition": "Описывает избегание человека, предмета или действия, чтобы не столкнуться с нежелательной ситуацией.",
+          "scopeNote": "Избегание опасности не означает, что сама опасность исчезла; следует различать избегание контакта и предотвращение внешнего события."
+        },
+        {
+          "language": "ar",
+          "name": "تجنّب وضع غير مرغوب فيه",
+          "definition": "يصف تجنّب شخص أو شيء أو فعل بغية تفادي وضع لا يرغب المرء في مواجهته.",
+          "scopeNote": "تجنّب الخطر لا يعني زوال الخطر نفسه؛ وينبغي التمييز بين تجنّب الاحتكاك ومنع حدث خارجي من الوقوع."
+        },
+        {
+          "language": "hi",
+          "name": "अनचाही स्थिति से बचना",
+          "definition": "किसी अवांछित स्थिति का सामना न करना पड़े, इसके लिए किसी व्यक्ति, वस्तु या कार्रवाई से बचने का वर्णन करता है।",
+          "scopeNote": "ख़तरे से बचने का अर्थ यह नहीं कि ख़तरा स्वयं समाप्त हो गया; संपर्क से बचने और बाहरी घटना को रोकने में फर्क रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Menghindari keadaan yang tidak diinginkan",
+          "definition": "Menggambarkan upaya menghindari orang, benda, atau tindakan agar tidak menghadapi keadaan yang tidak diinginkan.",
+          "scopeNote": "Menghindari bahaya tidak membuat bahaya itu sendiri hilang; bedakan dari mencegah peristiwa eksternal terjadi."
+        },
+        {
+          "language": "tr",
+          "name": "İstenmeyen bir durumdan kaçınma",
+          "definition": "İstenmeyen bir durumla karşılaşmamak için bir kişiden, nesneden ya da eylemden kaçınmayı açıklar.",
+          "scopeNote": "Tehlikeden kaçınmak tehlikenin kendisini ortadan kaldırmaz; kaçınma ile dışarıdaki bir olayın gerçekleşmesini önlemek birbirinden ayrılmalıdır."
+        }
+      ]
+    },
+    {
+      "key": "function.influence.negotiate",
+      "axis": "function",
+      "english": "Negotiating terms",
+      "chinese": "协商条件",
+      "parents": [
+        "function.influence"
+      ],
+      "definition": "通过与对方讨论条件，寻求共同接受的安排。",
+      "scopeNote": "协商不意味着已经达成一致；描述谈判过程的内容与实际实施协商的交际功能可分别关联。",
+      "examples": [
+        {
+          "text": "negotiate",
+          "language": "en"
+        },
+        {
+          "text": "discuss terms",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.8.4.4",
+          "url": "https://semdom.org/v4/4.8.4.4/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "CEFR 2001",
+          "identifier": "5.2.3.2",
+          "url": "https://rm.coe.int/1680459f97#page=134",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Negotiating terms",
+          "definition": "Uses discussion with another party to seek an arrangement both sides can accept.",
+          "scopeNote": "Negotiation does not mean agreement has already been reached; the content of the discussion and the communicative act of negotiating may be linked separately."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "协商条件",
+          "definition": "通过与对方讨论条件，寻求共同接受的安排。",
+          "scopeNote": "协商不意味着已经达成一致；描述谈判过程的内容与实际实施协商的交际功能可分别关联。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "協商條件",
+          "definition": "透過與對方討論條件，尋求共同接受的安排。",
+          "scopeNote": "協商不意味著已經達成一致；描述談判過程的內容與實際實施協商的交際功能可分別關聯。"
+        },
+        {
+          "language": "ja",
+          "name": "条件の交渉",
+          "definition": "相手と条件について話し合い、双方が受け入れられる取り決めを目指すことを表す。",
+          "scopeNote": "交渉したからといって、すでに合意に達したとは限らない。交渉過程を内容として述べることと、交渉を実際に行うコミュニケーション機能は、それぞれ別に関連づけられる。"
+        },
+        {
+          "language": "ko",
+          "name": "조건 협상",
+          "definition": "상대와 조건을 논의해 서로 받아들일 수 있는 합의를 모색하는 것을 나타낸다.",
+          "scopeNote": "협상한다고 해서 이미 합의한 것은 아니다. 협상 과정을 내용으로 서술하는 것과 실제로 협상을 수행하는 의사소통 기능은 따로 연결할 수 있다."
+        },
+        {
+          "language": "fr",
+          "name": "Négocier des conditions",
+          "definition": "Discute des conditions avec l’interlocuteur afin de parvenir à un arrangement accepté par les deux parties.",
+          "scopeNote": "Négocier ne signifie pas qu’un accord a déjà été conclu ; le contenu décrivant le processus de négociation et la fonction communicative qui consiste à négocier peuvent être associés séparément."
+        },
+        {
+          "language": "de",
+          "name": "Bedingungen aushandeln",
+          "definition": "Bespricht mit dem Gegenüber Bedingungen, um eine von beiden Seiten akzeptierte Vereinbarung zu finden.",
+          "scopeNote": "Verhandeln bedeutet nicht, dass bereits eine Einigung erzielt wurde; Inhalte, die den Verhandlungsprozess beschreiben, und die kommunikative Funktion des Verhandelns können getrennt zugeordnet werden."
+        },
+        {
+          "language": "es",
+          "name": "Negociar condiciones",
+          "definition": "Discutir las condiciones con otra persona para buscar un acuerdo que ambas puedan aceptar.",
+          "scopeNote": "Negociar no significa que ya se haya llegado a un acuerdo; el contenido de una negociación y la función comunicativa de negociar pueden clasificarse por separado."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Negociar condições",
+          "definition": "Discutir condições com outra pessoa para buscar um acordo que ambas possam aceitar.",
+          "scopeNote": "Negociar não significa que já se tenha chegado a um acordo; o conteúdo de uma negociação e a função comunicativa de negociar podem ser classificados separadamente."
+        },
+        {
+          "language": "it",
+          "name": "Negoziare condizioni",
+          "definition": "Attraverso una discussione con l'altra parte, cerca un accordo su condizioni che entrambi possano accettare.",
+          "scopeNote": "Negoziare non significa aver già raggiunto un accordo; il contenuto discusso e la funzione comunicativa dell'atto di negoziare possono essere classificati separatamente."
+        },
+        {
+          "language": "ru",
+          "name": "Обсуждение условий",
+          "definition": "Путем обсуждения условий с другой стороной ищет договоренность, приемлемую для обеих сторон.",
+          "scopeNote": "Переговоры не означают, что согласие уже достигнуто; обсуждаемое содержание и коммуникативную функцию проведения переговоров можно классифицировать раздельно."
+        },
+        {
+          "language": "ar",
+          "name": "التفاوض على الشروط",
+          "definition": "يسعى عبر مناقشة الشروط مع الطرف الآخر إلى ترتيب يقبله الطرفان.",
+          "scopeNote": "لا يعني التفاوض التوصل إلى اتفاق بالفعل؛ ويمكن تصنيف محتوى عملية التفاوض ووظيفة التواصل التي تنفذها كلٌّ على حدة."
+        },
+        {
+          "language": "hi",
+          "name": "शर्तों पर बातचीत",
+          "definition": "दूसरे पक्ष से शर्तों पर बात करके ऐसी व्यवस्था खोजता है जिसे दोनों पक्ष स्वीकार कर सकें।",
+          "scopeNote": "बातचीत का अर्थ यह नहीं कि सहमति हो ही गई; बातचीत की विषय-वस्तु और बातचीत करने की संवाद-क्रिया को अलग-अलग जोड़ा जा सकता है।"
+        },
+        {
+          "language": "id",
+          "name": "Merundingkan persyaratan",
+          "definition": "Melalui pembahasan persyaratan dengan pihak lain, mengupayakan kesepakatan yang dapat diterima bersama.",
+          "scopeNote": "Berunding tidak berarti kesepakatan sudah tercapai; isi pembahasan negosiasi dan tindakan komunikatif bernegosiasi dapat dikaitkan secara terpisah."
+        },
+        {
+          "language": "tr",
+          "name": "Koşulları müzakere etme",
+          "definition": "Karşı tarafla koşulları görüşerek birlikte kabul edilebilir bir düzenlemeye ulaşmaya çalışır.",
+          "scopeNote": "Müzakere etmek, uzlaşmaya varıldığı anlamına gelmez; müzakere konusunun içeriği ile müzakere etme iletişim işlevi ayrı ayrı ilişkilendirilebilir."
+        }
+      ]
+    },
+    {
+      "key": "function.influence.negotiate.compromise",
+      "axis": "function",
+      "english": "Reaching a compromise",
+      "chinese": "相互妥协",
+      "parents": [
+        "function.influence.negotiate"
+      ],
+      "definition": "通过双方调整部分要求，形成共同可以接受的安排。",
+      "scopeNote": "妥协不等于完全赞同对方，也不同于单方面让步；compromise 的损害安全性义项另归。",
+      "examples": [
+        {
+          "text": "compromise",
+          "language": "en"
+        },
+        {
+          "text": "meet halfway",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "3.2.5.4",
+          "url": "https://semdom.org/v4/3.2.5.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.8.4.4",
+          "url": "https://semdom.org/v4/4.8.4.4/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "CEFR 2001",
+          "identifier": "5.2.3.2",
+          "url": "https://rm.coe.int/1680459f97#page=134",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Reaching a compromise",
+          "definition": "Forms an arrangement acceptable to both sides by having each side adjust some of its demands.",
+          "scopeNote": "Compromise does not mean fully agreeing with the other party and differs from a one-sided concession; the sense of “compromise” meaning to endanger safety belongs elsewhere."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "相互妥协",
+          "definition": "通过双方调整部分要求，形成共同可以接受的安排。",
+          "scopeNote": "妥协不等于完全赞同对方，也不同于单方面让步；compromise 的损害安全性义项另归。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "相互妥協",
+          "definition": "透過雙方調整部分要求，形成共同可以接受的安排。",
+          "scopeNote": "妥協不等於完全贊同對方，也不同於單方面讓步；compromise 的損害安全性義項另歸。"
+        },
+        {
+          "language": "ja",
+          "name": "相互の妥協",
+          "definition": "双方が要求の一部を調整し、互いに受け入れられる取り決めを作ることを表す。",
+          "scopeNote": "妥協は相手に完全に賛同することとも、一方だけが譲歩することとも異なる。compromise の安全性を損なう意味は別に分類する。"
+        },
+        {
+          "language": "ko",
+          "name": "상호 타협",
+          "definition": "양쪽이 요구의 일부를 조정해 함께 받아들일 수 있는 합의를 만드는 것을 나타낸다.",
+          "scopeNote": "타협은 상대에게 완전히 동의하는 것도, 한쪽만 양보하는 것도 아니다. 안전성을 훼손한다는 compromise의 의미는 별도로 분류한다."
+        },
+        {
+          "language": "fr",
+          "name": "Un compromis mutuel",
+          "definition": "Ajuste certaines exigences de part et d’autre pour parvenir à un arrangement que les deux parties peuvent accepter.",
+          "scopeNote": "Un compromis n’implique pas d’approuver entièrement la position de l’autre et diffère d’une concession unilatérale ; le sens de compromise impliquant un risque pour la sécurité relève d’une autre catégorie."
+        },
+        {
+          "language": "de",
+          "name": "Einen Kompromiss erzielen",
+          "definition": "Beide Seiten passen einen Teil ihrer Forderungen an und finden so eine Vereinbarung, die beide akzeptieren können.",
+          "scopeNote": "Ein Kompromiss bedeutet keine vollständige Zustimmung zur Position der anderen Seite und unterscheidet sich von einem einseitigen Zugeständnis; die sicherheitsgefährdende Bedeutung von compromise gehört in eine andere Kategorie."
+        },
+        {
+          "language": "es",
+          "name": "Llegar a un compromiso mutuo",
+          "definition": "Ajustar ambas partes algunas de sus exigencias para llegar a un acuerdo que puedan aceptar conjuntamente.",
+          "scopeNote": "Transigir no significa estar plenamente de acuerdo con la otra parte y difiere de una concesión unilateral; el sentido de compromise como poner en riesgo la seguridad pertenece a otra categoría."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Chegar a um acordo com concessões mútuas",
+          "definition": "Ambas as partes ajustam algumas de suas exigências para chegar a um acordo que possam aceitar em conjunto.",
+          "scopeNote": "Fazer concessões mútuas não significa concordar plenamente com a outra parte e difere de uma concessão unilateral; o sentido de compromise como comprometer a segurança pertence a outra categoria."
+        },
+        {
+          "language": "it",
+          "name": "Compromesso reciproco",
+          "definition": "Attraverso l'adeguamento parziale delle richieste da entrambe le parti, raggiunge un accordo accettabile per tutti.",
+          "scopeNote": "Un compromesso non equivale a essere pienamente d'accordo con l'altra parte e si distingue da una concessione unilaterale; il significato di compromise relativo a danni alla sicurezza va classificato altrove."
+        },
+        {
+          "language": "ru",
+          "name": "Взаимный компромисс",
+          "definition": "Обе стороны частично корректируют свои требования и достигают договоренности, приемлемой для всех.",
+          "scopeNote": "Компромисс не означает полного согласия с другой стороной и отличается от односторонней уступки; английское compromise в значении ущерба безопасности относится к другой категории."
+        },
+        {
+          "language": "ar",
+          "name": "التوصل إلى تسوية",
+          "definition": "يعدّل الطرفان بعض مطالبهما لتكوين ترتيب يمكنهما قبوله معًا.",
+          "scopeNote": "لا تعني التسوية الموافقة التامة للطرف الآخر ولا تقديم تنازل من طرف واحد؛ ويُصنّف معنى compromise المتعلق بالمساس بالسلامة ضمن فئة أخرى."
+        },
+        {
+          "language": "hi",
+          "name": "आपसी समझौता करना",
+          "definition": "दोनों पक्ष अपनी कुछ माँगों में बदलाव करके ऐसी व्यवस्था बनाते हैं जिसे वे मिलकर स्वीकार कर सकें।",
+          "scopeNote": "आपसी समझौते का अर्थ दूसरे पक्ष से पूरी तरह सहमत होना या एकतरफ़ा रियायत देना नहीं है; सुरक्षा को नुकसान पहुँचाने वाले compromise अर्थ को अलग श्रेणी में रखें।"
+        },
+        {
+          "language": "id",
+          "name": "Mencapai kompromi",
+          "definition": "Melalui penyesuaian sebagian tuntutan oleh kedua pihak, membentuk kesepakatan yang dapat diterima bersama.",
+          "scopeNote": "Kompromi tidak sama dengan sepenuhnya menyetujui pihak lain dan berbeda dari menyerah sepihak; makna compromise yang membahayakan keamanan termasuk kategori lain."
+        },
+        {
+          "language": "tr",
+          "name": "Karşılıklı uzlaşmaya varma",
+          "definition": "Her iki tarafın da taleplerinin bir kısmını değiştirmesi yoluyla birlikte kabul edilebilir bir düzenleme oluşturur.",
+          "scopeNote": "Uzlaşma, karşı tarafı tamamen onaylamakla aynı değildir ve tek taraflı ödünden farklıdır; güvenliği tehlikeye atma anlamındaki compromise başka bir kategoriye girer."
+        }
+      ]
+    },
+    {
+      "key": "function.influence.negotiate.concede",
+      "axis": "function",
+      "english": "Making a concession",
+      "chinese": "作出让步",
+      "parents": [
+        "function.influence.negotiate"
+      ],
+      "definition": "在协商中向对方放弃或降低某项主张、要求。",
+      "scopeNote": "取 SIL 放弃主张领域中的协商侧面；单方让步不同于双方妥协，法律权利转让等义项另归。",
+      "examples": [
+        {
+          "text": "concede",
+          "language": "en"
+        },
+        {
+          "text": "make a concession",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "4.8.4.5",
+          "url": "https://semdom.org/v4/4.8.4.5/",
+          "relationship": "narrower",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "CEFR 2001",
+          "identifier": "5.2.3.2",
+          "url": "https://rm.coe.int/1680459f97#page=134",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Making a concession",
+          "definition": "Gives up or reduces a claim or demand in a negotiation.",
+          "scopeNote": "Takes the negotiation sense from the SIL domain of relinquishing a claim; a one-sided concession differs from a compromise by both sides, and senses such as transferring a legal right belong elsewhere."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "作出让步",
+          "definition": "在协商中向对方放弃或降低某项主张、要求。",
+          "scopeNote": "取 SIL 放弃主张领域中的协商侧面；单方让步不同于双方妥协，法律权利转让等义项另归。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "作出讓步",
+          "definition": "在協商中向對方放棄或降低某項主張、要求。",
+          "scopeNote": "取 SIL 放棄主張領域中的協商側面；單方讓步不同於雙方妥協，法律權利轉讓等義項另歸。"
+        },
+        {
+          "language": "ja",
+          "name": "譲歩する",
+          "definition": "交渉において、相手に対して主張や要求の一部を取り下げる、または弱めることを表す。",
+          "scopeNote": "SIL の主張を放棄する領域にある交渉上の側面を取る。一方的な譲歩は双方の妥協とは異なり、法的権利の譲渡などの語義は別に分類する。"
+        },
+        {
+          "language": "ko",
+          "name": "양보하기",
+          "definition": "협상에서 상대를 위해 주장이나 요구의 일부를 포기하거나 낮추는 것을 나타낸다.",
+          "scopeNote": "SIL의 주장 포기 영역에서 협상과 관련된 측면을 취한다. 한쪽의 양보는 양쪽의 타협과 다르며 법적 권리 이전 등의 의미는 별도로 분류한다."
+        },
+        {
+          "language": "fr",
+          "name": "Faire une concession",
+          "definition": "Au cours d’une négociation, renonce à une position ou à une exigence, ou la réduit, au profit de l’interlocuteur.",
+          "scopeNote": "Retient l’aspect de la négociation dans les domaines SIL relatifs à l’abandon d’une revendication ; une concession unilatérale diffère d’un compromis mutuel, et les sens tels que le transfert de droits légaux relèvent d’autres catégories."
+        },
+        {
+          "language": "de",
+          "name": "Ein Zugeständnis machen",
+          "definition": "Gibt in einer Verhandlung eine eigene Position oder Forderung gegenüber der anderen Seite teilweise auf oder schränkt sie ein.",
+          "scopeNote": "Gemeint ist der Verhandlungsaspekt der SIL-Bereiche zum Aufgeben einer Forderung; ein einseitiges Zugeständnis unterscheidet sich von einem gegenseitigen Kompromiss, und Bedeutungen wie die Übertragung gesetzlicher Rechte gehören in andere Kategorien."
+        },
+        {
+          "language": "es",
+          "name": "Hacer una concesión",
+          "definition": "Ceder o reducir una afirmación o exigencia propia durante una negociación.",
+          "scopeNote": "Toma el sentido negociador del dominio SIL de renunciar a una postura; una concesión unilateral es distinta de un compromiso mutuo, y otros sentidos, como transferir derechos legales, pertenecen a otra categoría."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Fazer uma concessão",
+          "definition": "Abrir mão de uma reivindicação ou reduzir uma exigência durante uma negociação.",
+          "scopeNote": "Toma o sentido de negociação do domínio SIL de abrir mão de uma reivindicação; uma concessão unilateral é diferente de um acordo com concessões mútuas, e outros sentidos, como transferir direitos legais, pertencem a outra categoria."
+        },
+        {
+          "language": "it",
+          "name": "Concedere e fare una concessione",
+          "definition": "Nel corso di una negoziazione, rinuncia a una posizione o a una richiesta, oppure le ridimensiona a favore dell'altra parte.",
+          "scopeNote": "Seleziona l'aspetto negoziale dell'abbandono di una posizione nell'area SIL; una concessione unilaterale è diversa dal compromesso reciproco e i significati come il trasferimento di diritti legali appartengono ad altre categorie."
+        },
+        {
+          "language": "ru",
+          "name": "Уступка",
+          "definition": "В ходе переговоров отказывается от некоторого утверждения или требования либо смягчает его в пользу другой стороны.",
+          "scopeNote": "Выделяет переговорное значение отказа от утверждения из области SIL; односторонняя уступка отличается от взаимного компромисса, а передача юридических прав относится к другим категориям."
+        },
+        {
+          "language": "ar",
+          "name": "تقديم تنازل",
+          "definition": "يتخلى أحد الأطراف في التفاوض عن موقف أو مطلب للطرف الآخر أو يخفضه.",
+          "scopeNote": "يأخذ الجانب التفاوضي من مجال التخلي عن الموقف لدى SIL؛ ويختلف التنازل من طرف واحد عن التسوية المتبادلة، وتندرج معاني نقل الحقوق القانونية ضمن فئة أخرى."
+        },
+        {
+          "language": "hi",
+          "name": "रियायत देना",
+          "definition": "बातचीत में एक पक्ष दूसरे पक्ष के लिए अपना कोई दावा या माँग छोड़ता या कम करता है।",
+          "scopeNote": "SIL के दावा छोड़ने वाले क्षेत्र में बातचीत-संबंधी अर्थ लिया गया है; एकतरफ़ा रियायत आपसी समझौते से अलग है, और कानूनी अधिकार सौंपने के अर्थ अलग श्रेणी में आते हैं।"
+        },
+        {
+          "language": "id",
+          "name": "Memberi konsesi",
+          "definition": "Dalam perundingan, melepaskan atau mengurangi suatu pendirian atau tuntutan demi pihak lain.",
+          "scopeNote": "Mengambil sisi perundingan dari ranah SIL tentang melepaskan pendirian atau tuntutan; konsesi sepihak berbeda dari kompromi kedua pihak, sedangkan pengalihan hak hukum dan makna lain termasuk kategori lain."
+        },
+        {
+          "language": "tr",
+          "name": "Ödün verme",
+          "definition": "Müzakere sırasında karşı taraf için bir iddia ya da talepten vazgeçmeyi veya onu azaltmayı açıklar.",
+          "scopeNote": "SIL'deki iddiadan vazgeçme alanının müzakere yönünü alır; tek taraflı ödün, iki tarafın uzlaşmasından farklıdır; yasal hak devri gibi başka anlamlar ayrı kategoridedir."
+        }
+      ]
+    },
+    {
+      "key": "function.influence.refuse.conditional",
+      "axis": "function",
+      "english": "Conditional acceptance",
+      "chinese": "附条件接受",
+      "parents": [
+        "function.influence.refuse",
+        "function.influence.negotiate"
+      ],
+      "definition": "表达同意某项提议、请求或行动，同时明确该同意以满足某个前提为限。",
+      "scopeNote": "区别无条件答应、单纯陈述条件及提出请求；条件未满足时，不自动视为已无条件承诺履行。",
+      "examples": [
+        {
+          "text": "I'll agree if …",
+          "language": "en"
+        },
+        {
+          "text": "on condition that",
+          "language": "en"
+        }
+      ],
+      "references": [
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "3.3.2.1",
+          "url": "https://semdom.org/v4/3.3.2.1/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "SIL Semantic Domains v4",
+          "identifier": "9.6.2.8",
+          "url": "https://semdom.org/v4/9.6.2.8/",
+          "relationship": "combined",
+          "attribution": "Ron Moe / SIL Global. Adapted by Lingrove.",
+          "license": "CC-BY-SA-4.0"
+        },
+        {
+          "source": "CEFR 2001",
+          "identifier": "5.2.3.2",
+          "url": "https://rm.coe.int/1680459f97#page=134",
+          "relationship": "narrower"
+        }
+      ],
+      "localizations": [
+        {
+          "language": "en",
+          "name": "Conditional acceptance",
+          "definition": "Expresses agreement with a proposal, request, or action while explicitly making that agreement contingent on a prerequisite being met.",
+          "scopeNote": "Distinguishes conditional acceptance from unconditional agreement, merely stating a condition, and making a request; if the condition is unmet, do not treat it automatically as an unconditional commitment to carry it out."
+        },
+        {
+          "language": "zh-Hans",
+          "name": "附条件接受",
+          "definition": "表达同意某项提议、请求或行动，同时明确该同意以满足某个前提为限。",
+          "scopeNote": "区别无条件答应、单纯陈述条件及提出请求；条件未满足时，不自动视为已无条件承诺履行。"
+        },
+        {
+          "language": "zh-Hant",
+          "name": "附條件接受",
+          "definition": "表達同意某項提議、請求或行動，同時明確表示該同意以滿足某個前提為限。",
+          "scopeNote": "區別無條件答應、單純陳述條件及提出請求；條件未滿足時，不自動視為已無條件承諾履行。"
+        },
+        {
+          "language": "ja",
+          "name": "条件付きで受け入れる",
+          "definition": "提案、依頼、行動に同意する一方、その同意が特定の前提条件を満たすことに限られると明示することを表す。",
+          "scopeNote": "無条件の承諾、単に条件を述べること、依頼をすることとは区別する。条件が満たされていないとき、無条件に履行すると約束したとは見なさない。"
+        },
+        {
+          "language": "ko",
+          "name": "조건부 수락",
+          "definition": "제안, 요청, 행동에 동의하면서 그 동의가 특정 전제 조건의 충족을 전제로 한다고 명시하는 것을 나타낸다.",
+          "scopeNote": "무조건적인 승낙, 단순히 조건을 말하는 것, 요청하는 것과 구분한다. 조건이 충족되지 않으면 무조건 이행하겠다고 약속한 것으로 보지 않는다."
+        },
+        {
+          "language": "fr",
+          "name": "Acceptation sous condition",
+          "definition": "Exprime l’accord à une proposition, une demande ou une action, en indiquant explicitement que cet accord dépend d’une condition préalable.",
+          "scopeNote": "À distinguer d’une acceptation sans condition, du simple énoncé d’une condition et d’une demande ; si la condition n’est pas remplie, cela ne signifie pas automatiquement que l’on s’est engagé sans réserve à agir."
+        },
+        {
+          "language": "de",
+          "name": "Bedingte Annahme",
+          "definition": "Drückt die Zustimmung zu einem Vorschlag, einer Bitte oder einer Handlung aus und macht ausdrücklich deutlich, dass diese Zustimmung an eine Voraussetzung geknüpft ist.",
+          "scopeNote": "Von vorbehaltloser Zustimmung, der bloßen Nennung einer Bedingung und einer Bitte zu unterscheiden; ist die Bedingung nicht erfüllt, gilt dies nicht automatisch als vorbehaltlose Verpflichtung zur Ausführung."
+        },
+        {
+          "language": "es",
+          "name": "Aceptación condicional",
+          "definition": "Expresar que se acepta una propuesta, solicitud o acción, dejando claro que el acuerdo depende de que se cumpla una condición previa.",
+          "scopeNote": "Se distingue de aceptar sin condiciones, de enunciar una condición sin aceptar nada y de hacer una solicitud; si la condición no se cumple, no debe tratarse automáticamente como un compromiso incondicional."
+        },
+        {
+          "language": "pt-BR",
+          "name": "Aceitação condicional",
+          "definition": "Expressar que se aceita uma proposta, pedido ou ação, deixando claro que a aceitação depende do cumprimento de uma condição prévia.",
+          "scopeNote": "Distingue-se de aceitar sem condições, de apenas enunciar uma condição e de fazer um pedido; se a condição não for cumprida, a aceitação não deve ser tratada automaticamente como um compromisso incondicional."
+        },
+        {
+          "language": "it",
+          "name": "Accettazione condizionata",
+          "definition": "Esprime l'accordo a una proposta, richiesta o azione subordinandolo esplicitamente a una condizione preliminare.",
+          "scopeNote": "È distinta dall'accettazione senza condizioni, dal semplice enunciare una condizione e dal fare una richiesta; se la condizione non è soddisfatta, l'accettazione non costituisce automaticamente un impegno incondizionato a mantenere la promessa."
+        },
+        {
+          "language": "ru",
+          "name": "Условное принятие",
+          "definition": "Выражает согласие с предложением, просьбой или действием, явно ставя это согласие в зависимость от выполнения условия.",
+          "scopeNote": "Отличается от безусловного согласия, простого сообщения об условии и выдвижения просьбы; если условие не выполнено, это автоматически не означает безусловного обязательства выполнить обещанное."
+        },
+        {
+          "language": "ar",
+          "name": "القبول المشروط",
+          "definition": "يعبّر عن الموافقة على اقتراح أو طلب أو فعل، مع التصريح بأن هذه الموافقة تتوقف على استيفاء شرط مسبق.",
+          "scopeNote": "ينبغي تمييزه عن الموافقة غير المشروطة، ومجرد ذكر شرط، وتقديم طلب؛ وعدم استيفاء الشرط لا يحوّل الموافقة تلقائيًا إلى التزام غير مشروط بالتنفيذ."
+        },
+        {
+          "language": "hi",
+          "name": "शर्त के साथ स्वीकार करना",
+          "definition": "किसी प्रस्ताव, अनुरोध या कार्रवाई के लिए सहमति जताता है और स्पष्ट करता है कि यह सहमति किसी पूर्वशर्त के पूरा होने पर निर्भर है।",
+          "scopeNote": "इसे बिना शर्त सहमति, केवल शर्त बताने और अनुरोध करने से अलग रखें; शर्त पूरी न होने पर इसे अपने-आप बिना शर्त निभाने की प्रतिबद्धता न मानें।"
+        },
+        {
+          "language": "id",
+          "name": "Menerima dengan syarat",
+          "definition": "Menyatakan persetujuan atas usulan, permintaan, atau tindakan, sekaligus menegaskan bahwa persetujuan tersebut bergantung pada terpenuhinya suatu prasyarat.",
+          "scopeNote": "Bedakan dari persetujuan tanpa syarat, sekadar menyatakan suatu syarat, dan mengajukan permintaan; jika syarat belum terpenuhi, persetujuan ini tidak otomatis menjadi komitmen tanpa syarat untuk melaksanakannya."
+        },
+        {
+          "language": "tr",
+          "name": "Koşullu kabul",
+          "definition": "Bir öneriyi, isteği ya da eylemi kabul ettiğini bildirirken bu kabulün belirli bir ön koşulun karşılanmasına bağlı olduğunu açıkça belirtir.",
+          "scopeNote": "Koşulsuz kabulden, yalnızca koşul belirtmekten ve istekte bulunmaktan ayrıdır; koşul karşılanmadığında, bu kabul kendiliğinden koşulsuz bir yerine getirme taahhüdü sayılmaz."
         }
       ]
     }

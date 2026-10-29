@@ -1,8 +1,7 @@
 # Meaning categories
 
-Read the selected installed client's `schema` and `schema capture`; category support is additive
-to CLI 3. Do not infer capability from the version number alone. The app installs its bundled
-catalog locally; no model or vector search is involved.
+Categories group reusable semantic meaning nodes; mappings connect those nodes to lexical senses.
+Inspect `schema` and discover existing categories before creating a custom one.
 
 ```sh
 "$lingrove_cli" data list categories --query 'content.degree' --limit 100
@@ -11,100 +10,73 @@ catalog locally; no model or vector search is involved.
 "$lingrove_cli" data list categoryOverrides --related CATEGORY_UUID
 ```
 
-Paginate using `nextOffset`. A category has an `axis` (`content` or `function`), multilingual
-`labels`, optional definition and stable `id`. Built-ins also have `frameworkID` and `key`;
-custom categories have neither. `frameworks` exposes read-only catalog version receipts.
-Do not reproduce an entire category catalog in prompts when a narrow query suffices.
+Paginate using `nextOffset`. Categories have stable `id`, `axis` (`content` or `function`) and
+multilingual `labels`. Built-ins also have `frameworkID` and `key`. Search narrowly rather than
+loading the entire directory when a known topic suffices.
 
-Capture meaning declarations accept additive `categories`, each a category UUID or an unambiguous
-built-in key. Read a key from the installed catalog before using it. Existing-node references may
-add categories while preserving their names and cues:
+## Assign a meaning
+
+Capture meaning declarations accept category UUIDs or unambiguous active catalog keys:
 
 ```json
 {"ref":"almost-none","title":"几乎没有","categories":["content.degree.near-zero"]}
 ```
 
+An existing node can receive additive memberships without replacing its names or cues:
+
 ```json
-{"ref":"existing","id":"NODE_UUID","categories":["CATEGORY_UUID"]}
+{"ref":"existing","id":"NODE_UUID","categories":["CATEGORY_UUID_OR_KEY"]}
 ```
 
-Choose the intended meaning rather than the expression's surface spelling: barely may express
-near absence or just reaching a threshold in different senses. Do not assign all its senses to
-one category automatically. Category membership is not an expression-to-meaning mapping, nor a
-personal learning relationship. Existing uncategorized nodes are retained without inferred links.
+Use the particular sense and context, not surface spelling, to choose a category. Read definitions
+and scope notes for adjacent categories. A meaning can have several memberships; different
+paths to one category do not require duplicate meanings. Agent memberships default to
+`model`/`confirmed`; proposed memberships are excluded from active filtering.
 
-For explicit organization, use revisioned version 2 resource batches as described in
-[organization.md](organization.md):
+## Category fields
+
+| Field | Meaning |
+| --- | --- |
+| `definition` | Original category description. |
+| `examples` | Up to 64 `{text, language?}` illustrations; not collected vocabulary. |
+| `scopeNote` | Inclusion/exclusion boundaries and distinctions from adjacent categories. |
+| `references` | Up to 64 source mappings with `source`, `identifier`, HTTP(S) `url`, `relationship`, optional `attribution`/`license`. |
+| `localizations` | Up to 64 language-specific rows with required `language` and optional `name`, `definition`, `scopeNote`. At least one presentation field is required. |
+
+Reference relationships are `adapted`, `combined` or `narrower`. Consult a source when its boundary
+is unclear; an adapted summary is not an external project's exact definition. Preserve attribution
+and license fields when exporting or adapting sourced guidance.
+
+Locale and example-language tags are independent BCP-47-style strings, not the study-language enum
+from `status.languages`. Keep examples in their source language. Custom guidance and translations
+are optional; a category can provide one language only. Locale keys must be unique after
+case/underscore normalization, and names must be nonblank.
+
+Presentation resolves each field from the current interface locale (including available regional
+or script aliases), then English, then the original field. Missing localized fields inherit;
+an empty localized definition or scope note clears that field.
+
+## Edit categories and local overrides
+
+Use revisioned resource batches as described in [organization.md](organization.md).
 
 | Resource | Write behavior |
 | --- | --- |
-| `categories` | Create/edit a custom category with `id`, `axis`, `labels`, optional `definition` and provenance. |
-| `categoryParents` | `id`, `categoryID`, `parentID`; custom children may have several same-axis parents, or none for a root. Cycles and duplicate pairs fail. |
-| `categoryMemberships` | `id`, `nodeID`, `categoryID`, optional provenance. Several categories per meaning; duplicate pairs fail. New agent memberships default to model/confirmed. |
-| `categoryOverrides` | Keyed by `categoryID`, with optional replacement `labels`, `definition`, and `isHidden`. Omitted fields retain current values; null clears an optional override. |
-| `frameworks` | Read only. |
+| `categories` | Create or patch a custom category: explicit `id`, `axis`, `labels`, optional guidance and provenance. |
+| `categoryParents` | Explicit `id`, `categoryID`, `parentID`; custom children can have multiple same-axis parents or none. Cycles and duplicate edges fail. |
+| `categoryMemberships` | Explicit `id`, `nodeID`, `categoryID`, optional provenance. |
+| `categoryOverrides` | Keyed by `categoryID`; replaces local labels, description, examples, scope, references or visibility. |
+| `frameworks` | Read-only catalog receipts. |
 
-Built-in definitions and their parent links are read only. Rename or hide a built-in via its
-override; do not relabel it as custom or replace its catalog key. Catalog upgrades retain local
-overrides, custom children and memberships. Retired definitions keep their IDs and existing links;
-new capture memberships must reference active categories.
+Built-in categories and their parent edges are read only. Use overrides to rename, describe or
+hide a built-in. Read both the base category and its override to resolve effective values.
+Omitted patch fields stay unchanged; null clears an optional override and restores inheritance.
+Empty arrays/strings explicitly clear examples, references or scope text.
 
-Deleting a custom category also detaches its parent edges, child edges, memberships and override.
-It preserves meanings, lexical senses, examples and other categories. Delete a membership to
-unclassify a meaning; delete an override to inherit the catalog's display values again. A proposed
-membership is retained for maintenance but excluded from active category filtering.
+`categoryOverrides.localizations` replaces the stored override array, then merges its rows into
+the base by language and non-null field. Null removes translated overrides; [] supplies none.
+Original untagged description/scope overrides remain authored fallback text.
 
-Preview, commit and verify through the CLI using the same destination, file and idempotency key.
-Resource writes require the latest notebook revision. Never edit the database or catalog file in
-the installed app to organize a notebook.
-
-## Category guidance and sources
-
-Categories may include `definition`, `examples: [{"text": "not", "language": "en"}]`,
-`scopeNote`, and `references`. These describe classification, not collected entries; examples
-never create senses, evidence or review cards. Read this guidance before creating a new category.
-In particular, distinguish negation from near absence, obligation from permission, and spatial
-arrival from attaining a goal. Use sense-level meaning, not surface spelling, when choosing a branch.
-
-A reference has `source`, `identifier`, `url`, and `relationship` (`adapted`, `combined`, or
-`narrower`), plus optional `attribution` and `license`. It records a source mapping, not a claim
-that the frameworks are equivalent. Consult the referenced definition when boundaries are unclear;
-do not present a locally adapted summary as an external project's exact definition.
-
-`data list/get categories` returns catalog/custom records. Also read `categoryOverrides` for a
-category's effective local guidance. Optional override `examples`, `scopeNote` and `references`
-replace the corresponding base values; omission preserves a patch's current value, null restores
-inheritance, and an empty array/string explicitly clears the value. Custom category guidance is
-optional. Built-in changes still use overlays and survive future catalog updates.
-
-The catalog retains its sourced Chinese summaries and language-tagged examples, mainly English;
-v3 adds localized names and guidance as described below. Source mappings and the bundled notice identify the adapted
-SIL v4 material under CC BY-SA 4.0. Preserve reference attribution/license when exporting or
-adapting that guidance. The app shows only the existing short category description; scope notes,
-examples and sources are available through CLI, not additional notebook explanation panels.
-
-## Localized category presentation
-
-Catalog v3 provides names, definitions and scope notes in all 15 interface locales. `localizations`
-is an array of objects with required `language` (BCP-47-style string) and optional `name`,
-`definition`, `scopeNote`. These locale tags are independent of `status.languages`, which lists
-study languages: `id`, `tr` and `pt-BR` are valid interface tags without changing study-language
-support. Read all authored versions through the normal `data list/get categories` commands.
-The original `labels`, `definition` and `scopeNote` stay available for compatibility.
-
-Presentation chooses the current interface locale (including an available regional/script alias),
-then English, then the original field. Missing fields inherit separately; an empty definition or
-scope note explicitly hides that field. Names must be nonblank. Examples retain their source
-language and are not translated or duplicated as collected entries. Source references are shared
-across translations.
-
-Custom categories can provide one language only. Locale keys must be unique after case/underscore
-normalization. A `categoryOverrides.localizations` array replaces the stored override array, but
-its effective rows merge into the base category by language and field. Null removes those local
-translation overrides; [] has no per-language overrides. Old untagged definition/scope overrides
-remain visible as authored fallback text until translated overrides are supplied. Editing through
-the UI writes only changed fields in the interface locale; saving a displayed fallback unchanged
-does not create a translation. Restore defaults removes local overrides together.
-
-Category example language tags are also independent BCP-47-style strings. This does not add
-new languages to lexical-entry capture or change saved examples; existing language codes decode unchanged.
+Deleting a custom category detaches its parent/child edges, memberships and override, preserving
+meanings and lexical senses. Delete just a membership to unclassify a meaning, or delete an
+override to restore inherited presentation. Catalog updates preserve user categories and overlays.

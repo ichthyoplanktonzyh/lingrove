@@ -11,11 +11,53 @@ struct VocabularyClassificationPersistenceTests {
         let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url, installsBundledClassification: true)
         let first = try await archive.load(), again = try await archive.load()
-        #expect(first.document.classification.categories.count == 315)
+        #expect(first.document.classification.categories.count == 338)
         #expect(first.document.classification.memberships.isEmpty && first.document.catalog.isEmpty)
         #expect(first.revision == 1 && again.revision == first.revision && again.document == first.document)
         let reopened = try await VocabularyArchive(url: url, installsBundledClassification: true).load()
         #expect(reopened.revision == first.revision && reopened.document == first.document)
+    }
+
+    @Test func versionFourExpansionPreservesVersionThreeTranslationsAndUserOrganization() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("notebook.sqlite")
+        let bundled = try VocabularyClassificationCatalog.bundled()
+        var wire = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(bundled)) as? [String: Any])
+        wire["version"] = 3
+        let categories = try #require(wire["categories"] as? [[String: Any]])
+        wire["categories"] = Array(categories.prefix(315))
+        let legacy = try JSONDecoder().decode(VocabularyClassificationCatalog.self,
+            from: JSONSerialization.data(withJSONObject: wire))
+        var document = VocabularySemanticTests.fixture()
+        try legacy.install(in: &document.classification, nodes: document.semantics.nodes)
+        let oldCategory = document.classification.categories[0]
+        var custom = VocabularyClassificationTests.category("Custom category")
+        custom.localizations = [.init(language: "tr", name: "Özel kategori", definition: "Yerel tanım.")]
+        document.classification.categories.append(custom)
+        document.classification.parents.append(.init(id: UUID(), categoryID: custom.id, parentID: oldCategory.id))
+        document.classification.memberships = [.init(id: UUID(), nodeID: document.semantics.nodes[0].id, categoryID: custom.id)]
+        document.classification.overrides = [.init(categoryID: oldCategory.id,
+            localizations: [.init(language: "fr", definition: "Définition locale.")], isHidden: true)]
+        let original = try await VocabularyArchive(url: url).commit(document)
+        let archive = VocabularyArchive(url: url, installsBundledClassification: true)
+        let upgraded = try await archive.load()
+        #expect(upgraded.revision == original.revision + 1)
+        #expect(upgraded.document.catalog == document.catalog && upgraded.document.collections == document.collections)
+        #expect(upgraded.document.sources == document.sources && upgraded.document.occurrences == document.occurrences)
+        #expect(upgraded.document.interpretations == document.interpretations && upgraded.document.semantics == document.semantics)
+        let index = upgraded.document.classification
+        #expect(index.categories.count == document.classification.categories.count + 23)
+        #expect(index.overrides == document.classification.overrides && index.memberships == document.classification.memberships)
+        #expect(document.classification.parents.allSatisfy { index.parents.contains($0) })
+        for before in document.classification.categories {
+            var after = try #require(index.categories.first { $0.id == before.id })
+            after.provenance = before.provenance
+            #expect(after == before)
+        }
+        #expect(index.frameworks.first?.version == 4)
+        let again = try await archive.load()
+        #expect(again.revision == upgraded.revision && again.document == upgraded.document)
     }
 
     @Test func fullBackupRetainsClassificationAndOldBackupRestoresWithoutInventingLinks() async throws {

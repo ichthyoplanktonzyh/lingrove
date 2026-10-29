@@ -1,8 +1,7 @@
 # Independent material and meaning organization
 
-Use the selected installed executable throughout. Run `schema` first: resource support requires
-CLI 2. The mailbox protocol remains 1; resource batches use version 2. Ordinary add/append/update
-remain available and need no meaning graph.
+Inspect the installed `schema` for resource fields. Resource writes use batch `version: 2`
+with the current notebook revision. Ordinary entry saves can use capture or add/append/update.
 
 ## Read the independent resources
 
@@ -60,7 +59,7 @@ Unix seconds in UTC, defaulting to the write time. Enum values and supported lan
 `schema`/`status`; unknown or misspelled nested fields fail.
 
 This self-contained illustrative batch creates uncollected knowledge. Replace its IDs/key and
-revision before actual use; the example source is authored rather than an asserted observation.
+revision before actual use; the example is illustrative rather than a captured observation.
 
 ```json
 {
@@ -79,7 +78,7 @@ revision before actual use; the example source is authored rather than an assert
     }}},
     {"put": {"resource": "sources", "value": {
       "id": "33333333-3333-4333-8333-333333333333",
-      "text": "The bank is closed.", "kind": "authored"
+      "text": "The bank is closed.", "kind": "generated"
     }}},
     {"put": {"resource": "occurrences", "value": {
       "id": "44444444-4444-4444-8444-444444444444",

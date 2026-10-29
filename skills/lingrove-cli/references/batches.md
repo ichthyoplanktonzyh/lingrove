@@ -19,11 +19,11 @@ batch, and example IDs/revisions with values read from the chosen notebook.
         "kind": "word",
         "meaning": "银行，提供存取款等服务的金融机构",
         "meaningLanguage": "zh-Hans",
-        "note": "Agent-authored practice example",
         "tags": ["finance"],
         "examples": [
           {
             "text": "The bank is open.",
+            "sourceKind": "generated",
             "translation": "银行开门了。",
             "translationLanguage": "zh-Hans",
             "meaning": "银行",
@@ -32,8 +32,8 @@ batch, and example IDs/revisions with values read from the chosen notebook.
           }
         ],
         "content": [
-          {"text": "Usage note", "bold": true},
-          {"text": "A financial institution; distinguish it from a river bank."}
+          {"text": "Common patterns", "bold": true},
+          {"text": "open an account at a bank; deposit money in a bank"}
         ]
       }
     }
@@ -48,8 +48,8 @@ dictionary form performs a sense merge.
 
 Sense `meaning` names the saved sense. Example `meaning` describes that expression's meaning
 in its specific context, while `translation` translates the whole example. These are separate
-fields, with separate language codes. Agent-supplied meanings and content are authored material,
-not app-generated AI explanations; do not put them in an invented `explanations` input field.
+fields, with separate language codes. Put learning notes in `note` or `content`; there is no
+`explanations` input field.
 
 ## Append to an existing sense
 
@@ -65,12 +65,12 @@ not app-generated AI explanations; do not put them in an invented `explanations`
         "examples": [
           {
             "text": "She works at a bank.",
+            "sourceKind": "generated",
             "translation": "她在一家银行工作。",
             "translationLanguage": "zh-Hans",
             "completeness": "sentence"
           }
         ],
-        "content": [{"text": "Agent-authored example of bank as a workplace."}],
         "tags": ["work"]
       }
     }
@@ -99,7 +99,7 @@ a conflict-resolution mechanism. Retrying rich-text appends with a new key can d
         "entryID": "11111111-1111-4111-8111-111111111111",
         "senseID": "22222222-2222-4222-8222-222222222222",
         "expectedRevision": 12,
-        "note": "Use this sense for financial institutions.",
+        "note": "Use a bank for an unspecified institution and the bank for one already identified.",
         "tags": ["finance", "review"]
       }
     }
@@ -174,3 +174,21 @@ are rejected at every input level, so do not copy a get response into apply.
 | Tags on a sense | 100 tags, each nonempty after trimming and at most 200 UTF-8 bytes |
 
 Split larger material into independently keyed batches; atomicity stops at each batch boundary.
+
+## Replies and recovery
+
+Replies are JSON on stdout; inspect `ok` and `error.code` even after a nonzero exit.
+
+| Exit / code | Action |
+| --- | --- |
+| 2 / `invalid_input` | Check schema, fields, limits or response size. Use app export for an oversized get. |
+| 3 / `not_found` | Search/read the target again; do not guess replacement IDs. |
+| 4 / `conflict` | Reread revision, ownership and the result of an existing key; reconcile before a revised write. |
+| 5 / `busy` | Retry the unchanged request. |
+| 6 / `unavailable` | Check the executable/app destination and launch state. |
+| 7 / `io` | Check the named input/image/storage path; preserve uncertain write material. |
+| 8 / `timeout` | The write may have committed; retry exactly the same key and content. |
+
+A committed retry returns `replayed: true`, the original `revision`, and `currentRevision`.
+It does not restore subsequently changed or deleted records. A replay can also be returned for
+`--dry-run` after the same key has committed. Read affected records before further updates.

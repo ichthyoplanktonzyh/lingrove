@@ -19,7 +19,7 @@ struct VocabularyClassificationTests {
         let catalog = try VocabularyClassificationCatalog.bundled()
         var index = VocabularyClassificationIndex()
         #expect(try catalog.install(in: &index, nodes: []))
-        #expect(index.categories.count == 315)
+        #expect(index.categories.count == 338)
         #expect(catalog.categories.filter { $0.parents.isEmpty && $0.axis == .content }.count == 21)
         #expect(catalog.categories.filter { $0.parents.isEmpty && $0.axis == .function }.count == 6)
         let category = try #require(index.categories.first { $0.key == "content.degree.near-zero" })

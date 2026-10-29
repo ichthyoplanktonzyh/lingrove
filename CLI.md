@@ -1,145 +1,118 @@
-# Local vocabulary CLI
+# Lingrove CLI
 
-Install from **Settings → General → Command-line tools**. The app embeds its client at
-`Lingrove.app/Contents/Helpers/lingrove`; installation adds a symlink at `~/.local/bin/lingrove`.
-The developer app installs **`~/.local/bin/lingrove-dev`** and uses the independent Dev notebook.
-If `~/.local/bin` is not on your PATH, use the complete path. Installation does not edit shell files.
+Read, save and organize language-learning material in the local Lingrove notebook.
+Commands do not request AI inference or send material to Anki.
+
+## Installation and notebook selection
+
+Install from **Settings → General → Command-line tools**. The normal app installs
+`~/.local/bin/lingrove`; the developer app installs `~/.local/bin/lingrove-dev`.
+They use separate notebooks. Use the full executable path if `~/.local/bin` is not on PATH.
+
+The client starts its app in the background when needed. Global options:
+
+| Option | Effect |
+| --- | --- |
+| `--app APP_PATH` | Select a particular app installation. |
+| `--no-launch` | Require that app to be running. |
+| `--timeout SECONDS` | Wait 1–120 seconds; default 30. |
+
+Keep the selected executable and app destination consistent throughout a read/write operation.
+
+## Discover and read
 
 ```sh
+lingrove --version
 lingrove status
 lingrove schema
-lingrove vocab list --query bank --language en --limit 20
+lingrove schema capture
+lingrove vocab list --query bank --language en --limit 20 --offset 0
 lingrove vocab get ENTRY_UUID
-lingrove vocab apply --file material.json --dry-run
-lingrove vocab apply --file material.json
-cat material.json | lingrove vocab apply --stdin
 ```
 
-The client starts its containing app in the background when needed. `--app /path/Lingrove.app`
-chooses another installation explicitly. `--no-launch` requires an already running app.
-`--timeout SECONDS` accepts 1–120 seconds; the default is 30. No network port is opened.
-Learning material stays on the Mac; none of these commands requests AI inference or sends to Anki.
+`status` reports the notebook revision, supported study languages and expression kinds.
+`schema` describes batch input; `schema capture` describes capture input. Run schema, help and
+version commands without request options. The installed schema is the authority for available fields.
 
-## Task-shaped capture
+`vocab list/get` reads collected material. Lists return summaries with `entryID`, `senseID`,
+`total` and truncation flags; `get` returns the full entry under `result.entry`, using `id` fields.
+List pages accept 1–200 entries. Read the full entry before choosing an existing sense or reusing
+truncated text. Use the app's export if an entry is too large for a CLI response.
 
-Use `lingrove schema capture` and `lingrove vocab capture --file capture.json --dry-run`, then
-repeat without `--dry-run`. A capture task supplies version 1, an idempotencyKey, optional defaults,
-meaning declarations with local refs, entries with senses/examples/associations and optional relations.
-The app creates stable IDs, canonical evidence, personal membership and graph links atomically.
-No caller UUID is needed for new records. A successful reply returns counts and resolved IDs;
-full-table readback is optional. See the [complete capture example](skills/lingrove-cli/references/capture.md).
+## Save entries, examples and meanings
 
-Capture is additive: exact lexical headers are reused, each new sense is distinct, and existing
-sense/node IDs can be referenced without replacing user material. Expected revision is optional;
-when supplied it is checked. Explicit resource edits continue requiring a revision. Authorized
-agent assertions retain model authorship and are active by default; proposed claims remain explicit.
-
-## Atomic batches
-
-The executable publishes the version 1/2 input JSON Schema with `lingrove schema`. `status` lists
-supported language codes and expression kinds. Input accepts 1–100 operations. Unknown keys are
-rejected so a spelling mistake cannot silently discard a note.
+Use `vocab capture` for adding expressions, examples and semantic associations together.
+Save this illustrative task as `capture.json`, replacing the idempotency key for each new task:
 
 ```json
 {
   "version": 1,
-  "idempotencyKey": "lesson-2026-10-21-bank-1",
-  "operations": [
+  "idempotencyKey": "REPLACE-WITH-A-FRESH-UUID",
+  "defaults": {
+    "language": "en",
+    "meaningLanguage": "zh-Hans",
+    "sourceKind": "generated"
+  },
+  "meanings": [
+    {"ref": "finance", "title": "金融机构", "definition": "提供存款、借贷等金融服务的机构。"}
+  ],
+  "entries": [
     {
-      "add": {
-        "expression": "bank",
-        "dictionaryForm": "bank",
-        "language": "en",
-        "kind": "word",
-        "meaning": "银行，提供存取款等服务的金融机构",
-        "meaningLanguage": "zh-Hans",
-        "note": "Lesson 1",
-        "tags": ["finance"],
-        "examples": [
-          {
-            "text": "The bank is open.",
-            "translation": "银行开门了。",
-            "translationLanguage": "zh-Hans",
-            "meaning": "银行",
-            "meaningLanguage": "zh-Hans",
-            "completeness": "sentence"
-          }
-        ],
-        "content": [
-          {"text": "A place to keep or borrow money.", "bold": true},
-          {"image": {"path": "images/bank.png", "caption": "A bank building"}}
-        ]
-      }
+      "expression": "bank",
+      "senses": [
+        {
+          "meaning": "银行；提供存款、借贷等服务的金融机构。",
+          "examples": [{"text": "The bank is closed.", "translation": "银行关门了。"}],
+          "associations": [{"meaning": "finance"}]
+        }
+      ]
     }
   ]
 }
 ```
 
-- **`add`** groups exact normalized expressions of the same language/kind and creates a new sense.
-  It never merges meanings by wording. Existing dictionary forms, senses and user notes stay intact.
-- **`append`** requires exact `entryID` and `senseID`; it appends `examples`, `content`, or `tags`.
-  A repeated occurrence in that sense retains its ID and primary translation, collecting distinct
-  translations as variants. Conflicting saved contextual meanings fail rather than overwrite.
-  An occurrence already owned by another sense is a conflict; move it explicitly with resource operations.
-- **`update`** requires `entryID`, `senseID`, and the **current notebook `expectedRevision`** returned
-  by `get` or `status`. It replaces only supplied `meaning`, `meaningLanguage`, `note`, or `tags`.
-  An empty note or empty tags array clears that field. The entire batch fails on stale revision.
-
-```json
-{
-  "version": 1,
-  "idempotencyKey": "lesson-1-append-2",
-  "operations": [
-    {"append": {
-      "entryID": "ENTRY_UUID",
-      "senseID": "SENSE_UUID",
-      "content": [{"text": "Additional learning material"}],
-      "tags": ["review-later"]
-    }}
-  ]
-}
+```sh
+lingrove vocab capture --file capture.json --dry-run
+lingrove vocab capture --file capture.json
 ```
 
-Example `ranges`, when supplied, are `{ "location": 4, "length": 4 }` offsets in **UTF-16**,
-matching macOS text ranges. If omitted, one exact occurrence is located automatically; multiple
-matches require explicit ranges. No match leaves the range empty rather than inventing a span.
-Use `completeness: "fragment"` for incomplete context. Agent-supplied meanings and rich text are
-saved as authored learning material; they are not relabeled as an app-generated AI explanation.
+Capture reuses an exact expression/language/kind header. Every sense without an `id` is new;
+meaning similarity does not merge senses. Supply a sense's exact `id` to extend it. An existing
+semantic meaning is referenced with `{"ref":"finance","id":"NODE_UUID"}`.
+Omit `meanings` and `associations` when no semantic organization is wanted.
 
-Image paths are relative to the JSON file, or the current directory for stdin. The CLI reads only
-these explicit paths and sends bounded bytes. The app normalizes images using the same PNG pipeline
-as its editor. HTML and executable content are not accepted. A batch permits 64 images, 512 content
-blocks, and 1000 examples in total; each operation permits 64 blocks and 100 examples. Input and
-wire messages are limited to 32 MiB, and original image bytes to 16 MiB per batch.
+A sense's `meaning` defines the expression; example `meaning` describes its contextual reading;
+`translation` translates the whole example. Preserve real source text and its provenance. Mark
+illustrative model-written examples as `generated`, and incomplete context as `fragment`.
+See [capture fields and examples](skills/lingrove-cli/references/capture.md).
 
-`--dry-run` checks the same domain rules and images, returns planned IDs, and does not write
-material, media, or an idempotency receipt. New IDs remain stable between a dry run and its commit
-for the same batch. The baseline revision can still change before commit; read again on conflict.
+## Edit individual records
 
-## Independent resources and external organization
+`vocab apply` accepts atomic batches with 1–100 operations:
 
-Meaning classification adds `frameworks`, `categories`, `categoryParents`, `categoryMemberships`
-and `categoryOverrides` to the resource interface. Categories are independent of meaning nodes
-and lexical mappings. Custom categories support several same-axis parents or standalone roots;
-meaning nodes support several category memberships. The app rejects hierarchy cycles and duplicate
-memberships. Built-in definitions/parent edges are read only; local overrides can rename, describe
-or hide them. Catalog updates preserve these overlays and custom extensions.
+| Action | Use |
+| --- | --- |
+| `add` | Add a distinct sense, with optional examples, notes, tags and rich content. |
+| `append` | Add examples, content or tags to an exact entry/sense ID. |
+| `update` | Replace specified sense meaning, language, note or tags; requires the current notebook revision. |
+| `put` / `delete` | Create, patch or remove catalog resources and explicit relationships. |
 
-`data list categories --query content.degree --limit 100` discovers IDs and stable catalog keys.
-Capture meaning declarations accept `categories: ["content.degree.near-zero"]` (or category UUIDs),
-including additive category membership on existing `ref`/`id` declarations. Category keys must
-come from the installed catalog; capture rejects ambiguous, missing and retired destinations.
-New agent memberships default to model/confirmed, with explicit proposed memberships excluded
-from active filtering. Resource batches can replace/delete individual memberships.
+Use batch `version: 1` for `add`/`append`/`update`; resource batches use `version: 2` and a
+batch-level `expectedRevision`. Both require a fresh `idempotencyKey` for each new intent.
+`put` preserves omitted fields, replaces arrays and clears nullable fields with null.
+Creation requirements are listed in schema under `x-requiredOnCreate`.
 
-`categoryOverrides` is keyed by `categoryID`, rather than `id`. Other new resources use explicit
-UUIDs. Deleting a custom category detaches its edges and memberships while preserving meanings
-and expressions; built-in categories and framework receipts cannot be deleted through the CLI.
-SQLite version 4 upgrades transactionally to 5; portable version 7 upgrades to 8 with an empty
-classification directory, preserving its existing evidence and meaning identities.
+```sh
+lingrove vocab apply --file changes.json --dry-run
+lingrove vocab apply --file changes.json
+lingrove vocab apply --stdin < changes.json
+```
 
-`vocab list/get` reads personally collected material. Catalog knowledge and raw evidence can
-exist without a personal collection or meaning graph. Resource commands expose both:
+Use `--file` or `--stdin`. Preview and commit the same material and key. A dry run returns a
+validated plan without saving it. On a stale-revision conflict, reread and reconcile the changes.
+See [batch payloads, rich content and limits](skills/lingrove-cli/references/batches.md).
+
+## Read and organize catalog resources
 
 ```sh
 lingrove data list sources --limit 20
@@ -149,72 +122,76 @@ lingrove data list nodes --query 金融
 lingrove data get senses SENSE_UUID
 ```
 
-Resources are `entries`, `senses`, `sources`, `occurrences`, `interpretations`, `collections`,
-`nodes`, `patterns`, `mappings`, `relations`, `cues`, and `cueTargets`. Lists return full records,
-`total` and `nextOffset`, with limits of 1–200 and 16 MiB per page. `--related` matches a UUID
-in record values; `--status` is specific to interpretations. Resource timestamps are Unix seconds.
+| Resources | Content |
+| --- | --- |
+| `entries`, `senses` | Lexical headers and distinct senses, including uncollected knowledge. |
+| `sources`, `occurrences`, `interpretations` | Source text, selected spans and contextual readings. |
+| `collections` | Collected senses, selected interpretations, notes and tags; keyed by `senseID`. |
+| `nodes`, `patterns`, `mappings`, `relations` | Reusable meanings, usage patterns and their explicit links. |
+| `cues`, `cueTargets` | Retrieval wording and its targets. |
+| `frameworks`, `categories`, `categoryParents`, `categoryMemberships`, `categoryOverrides` | Classification directory, hierarchy, memberships and local overrides. |
 
-Use a version 2 batch with a batch-level `expectedRevision` for `put`/`delete`. Caller-supplied
-UUIDs make linked records possible in one atomic batch. `put` preserves omitted fields, replaces
-arrays and clears optional nulls. `schema` includes `x-requiredOnCreate` for creation fields.
-Sources and occurrences are immutable; corrections create new UUIDs. Delete dependencies
-explicitly in the same batch: no automatic cascade or orphan cleanup is performed.
+Resource lists return full `records`, `revision`, `total` and `nextOffset`; `get` returns `record`.
+Use `nextOffset` until null. Pages accept 1–200 records and at most 16 MiB. `--related` matches
+UUID-valued references; `--status` applies only to interpretations. Timestamps are Unix seconds.
 
-Personal membership is a `collections` record keyed by `senseID`, owning notes, tags, selected
-accepted interpretation IDs and private review state. Uncollecting removes this relation while
-preserving catalog, evidence, interpretations and meaning knowledge. Collection creation is
-explicit for resource writes; traditional `add`/`append` remain personal-save conveniences.
-Sources can precede interpretations, and several candidate interpretations can share an
-occurrence. At most one accepted interpretation is allowed per occurrence.
+Resource writes use explicit UUIDs. Sources and occurrences are immutable; corrections create
+new records. Except for custom-category deletion described below, deletions must remove or
+redirect incoming dependencies in the same batch.
+Uncollecting removes collection membership while retaining the lexical sense and its evidence.
+See [resource fields and organization](skills/lingrove-cli/references/organization.md).
 
-The external agent performs classification. Lingrove validates relationships and persists
-its changes; no internal classification service, vector matching or automatic model request is
-introduced. New agent assertions default to model/confirmed provenance (adopted for use, without claiming human review). See the complete
-[resource organization guide](skills/lingrove-cli/references/organization.md) for payloads,
-candidate resolution, membership, corrections and deletion.
+## Classify meanings
 
-## Results, retries and ownership
+```sh
+lingrove data list categories --query content.degree --limit 100
+lingrove data list categoryMemberships --related NODE_UUID
+lingrove data list categoryOverrides --related CATEGORY_UUID
+```
 
-Request results and errors are JSON on stdout (`--help` and `--version` use text). A successful
-write returns `revision`, `operations` with exact IDs, `dryRun`, and `replayed`. An open notebook
-updates through the app's shared store immediately. `list` returns paginated summaries, and `get`
-returns portable learning material, excluding app-specific Anki receipts and host metadata.
-List summaries include at most 50 senses per expression and 200 Unicode scalars per label; `get`
-reads the complete entry. `expressionTruncated` and `meaningTruncated` explicitly mark abbreviated
-labels; retrieve the entry before reusing its complete text. A conservative pre-encoding budget rejects extremely large entries
-before allocating the full JSON response; use the app's export for those.
+Categories organize semantic meaning nodes; mappings link those nodes to lexical senses.
+Discover category IDs or stable keys before using them. Capture meaning declarations accept
+`categories: ["CATEGORY_UUID_OR_KEY"]`; resource operations edit individual memberships.
+A meaning may belong to several categories, and a category may have several same-axis parents.
+New agent assertions are active (`model`/`confirmed`) by default; proposed assertions are explicit.
 
-Each committed batch stores an idempotency receipt **in the same SQLite transaction** as its
-content. If a reply is lost or times out, retry the **same key and same material**. A different
-payload with an existing key fails. `replayed: true` returns the original write acknowledgement;
-it does not recreate items subsequently edited or deleted. `currentRevision` reports the present
-notebook revision on replay. Read the entry again before preparing an update.
+Built-in categories and their parent links are read only. Use `categoryOverrides` to change local
+presentation or visibility. Custom categories are editable; deleting one detaches its links while
+preserving meanings and expressions.
 
-The app is the writer: do not modify its SQLite file or image directory directly. Mailbox files
-are private to the current macOS user. A passive directory watcher consumes requests; idle apps
-do not poll. The client removes consumed replies and unclaimed timed-out requests; the server
-retires abandoned reply files after a day. Durable idempotency receipts are not expired.
+Category records include definitions, language-tagged examples, scope notes and source references.
+Their examples are classification metadata, not collected vocabulary. `localizations` stores
+language-specific names, definitions and scope notes. Read the base category and its overrides
+for effective values. Presentation falls back from interface language to English, then original
+text. Locale and category-example language tags are independent of the study-language enum.
+See [category fields, localization and overrides](skills/lingrove-cli/references/classification.md).
 
-| Exit | Error code | Meaning |
+## Results and recovery
+
+Requests return JSON on stdout. Inspect `ok`, including when the command exits nonzero.
+A write result includes `revision`, `operations`, `dryRun` and `replayed`.
+
+If a reply is lost or times out, retry the same key, material and image bytes. Reusing a key
+with different content is a conflict. `replayed: true` acknowledges the original write; it does
+not restore material edited or deleted later. Reread before making a subsequent change.
+The app owns storage writes; do not modify its SQLite, media or mailbox files directly.
+
+| Exit | Error code | Action |
 | --- | --- | --- |
-| 0 | — | Success |
-| 2 | `invalid_input` | Invalid input, content limit, or oversized response |
-| 3 | `not_found` | Entry/sense no longer exists |
-| 4 | `conflict` | Stale revision, changed key payload, or conflicting ownership |
-| 5 | `busy` | Storage/server busy; retry the same key |
-| 6 | `unavailable` | App cannot be found/launched |
-| 7 | `io` | Local file/storage failure |
-| 8 | `timeout` | Completion uncertain; retry the same key |
+| 0 | — | Inspect the successful result. |
+| 2 | `invalid_input` | Check schema, content limits or response size. |
+| 3 | `not_found` | Search/read the target again. |
+| 4 | `conflict` | Reread the revision, ownership or existing key's result. |
+| 5 | `busy` | Retry the unchanged request. |
+| 6 | `unavailable` | Check the executable, app path and launch state. |
+| 7 | `io` | Check the reported file/storage failure; preserve uncertain writes. |
+| 8 | `timeout` | Retry the same write key and content. |
 
 ## Agent skill
 
-The portable [lingrove-cli skill](skills/lingrove-cli/SKILL.md) teaches agents to search before
-saving, choose add/append/update, preview batches, and recover uncertain writes without duplicates.
-Its [batch reference](skills/lingrove-cli/references/batches.md) travels with it; agents can use the
-skill without access to this repository or the app source. The installed CLI's `schema` and
-`status` remain the authority for the available input format and language/kind values.
-
-For Codex, install from the repository root (the symlink keeps local edits in sync):
+Use the portable [lingrove-cli skill](skills/lingrove-cli/SKILL.md) to save or organize material
+through an agent. Install the complete `skills/lingrove-cli` directory in the agent's skill folder,
+or symlink it for a checkout-backed installation:
 
 ```sh
 lingrove_skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
@@ -222,39 +199,6 @@ mkdir -p "$lingrove_skill_root"
 ln -s "$PWD/skills/lingrove-cli" "$lingrove_skill_root/lingrove-cli"
 ```
 
-This intentionally fails if that destination already exists; inspect it rather than overwriting
-another skill. To install independently of the checkout, copy the complete `skills/lingrove-cli`
-directory into your agent's skill directory instead. CLI installation is a separate step, described
-at the top of this document.
-
-Invoke with `$lingrove-cli`, for example: “把这次对话里的表达和例句保存到拾语。” The skill can also be
-selected automatically for Lingrove notebook requests. It uses the normal notebook by default;
-explicitly name `lingrove-dev` when the Dev notebook is intended.
-
-### Category guidance
-
-`categories` also exposes optional authored guidance: `definition`, `examples` (up to 64 objects
-with nonempty `text` and optional `language`), `scopeNote`, and `references` (up to 64 objects).
-Reference fields are `source`, `identifier`, HTTP(S) `url`, and `relationship` (`adapted`,
-`combined`, `narrower`); optional `attribution` and `license` retain source credit. Examples are
-classification metadata and never create lexical entries or personal membership. Custom records
-may omit all guidance. Local `categoryOverrides` may replace these fields, or use null to inherit.
-Reads return base category records and overlays independently; callers resolve effective values.
-
-Catalog v2 adds source-mapped domains and Chinese guidance while preserving all v1 keys/IDs.
-SIL v4 domain definitions/examples inform the adapted dataset; per-category references identify
-combined or narrower domains, and supplemental USAS/CEFR references describe their role. See
-`Lingrove/Resources/VocabularyClassificationCatalog.NOTICE.md` for sources, changes and data license.
-
-Category records and overlays also support `localizations` (at most 64 rows):
-`{"language":"fr","name":"Négation","definition":"…","scopeNote":"…"}`.
-Only `language` is required; at least one presentation field must be supplied. Language tags are
-interface/content locale strings, independent of the supported study-language enum. Locale rows
-are unique after case/underscore normalization. Custom categories can carry partial translations.
-Overrides merge into the base by locale and non-null field; null on the override array restores
-inheritance. Empty description text clears that locale's field. Catalog v3 includes all 15 UI
-locales; the presentation fallback is interface locale, English, then original text. Raw CLI reads
-retain every authored version and its common source references; examples keep their own language.
-
-Category example language tags are also independent BCP-47-style strings. This does not add
-new languages to lexical-entry capture or change saved examples; existing language codes decode unchanged.
+Inspect an existing destination instead of overwriting it. CLI installation remains separate.
+Invoke `$lingrove-cli`, for example: “把这次对话里的表达和例句保存到拾语。”
+Name `lingrove-dev` explicitly when saving to the Dev notebook.

@@ -2,7 +2,7 @@
 
 Use `vocab capture` for ordinary entry/example/meaning capture. Read `schema capture` rather than
 learning every resource record. Keep the selected CLI and `--app` fixed throughout the task.
-The capture-task format is version 1; it is transported as a version 2 batch operation.
+The capture-task format uses `version: 1`.
 
 ```json
 {
@@ -11,8 +11,7 @@ The capture-task format is version 1; it is transported as a version 2 batch ope
   "defaults": {
     "language": "en",
     "meaningLanguage": "zh-Hans",
-    "sourceKind": "generated",
-    "source": "Agent-created practice material"
+    "sourceKind": "generated"
   },
   "meanings": [
     {
@@ -104,4 +103,4 @@ One task permits at most 100 entries, 100 senses total, 100 meaning declarations
 Unknown fields, unsupported language codes, dangling refs and invalid relationships reject the
 entire task. Capture accepts text material; use traditional append for rich text/images. Low-level
 resource batches remain available for independent evidence, candidate interpretations, explicit
-replacement, deletion and detailed graph maintenance. Neither path invokes a model or vector search.
+replacement, deletion and detailed graph maintenance.

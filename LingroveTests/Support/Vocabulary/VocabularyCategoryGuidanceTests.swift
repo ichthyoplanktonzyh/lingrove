@@ -8,8 +8,8 @@ import Testing
 struct VocabularyCategoryGuidanceTests {
     @Test func bundledGuidanceIsCompleteAndTraceable() throws {
         let catalog = try VocabularyClassificationCatalog.bundled()
-        #expect(catalog.version == 3)
-        #expect(catalog.categories.count == 315)
+        #expect(catalog.version == 4)
+        #expect(catalog.categories.count == 338)
         for category in catalog.categories {
             #expect(!category.definition.isEmpty)
             #expect(!(category.scopeNote ?? "").isEmpty)
@@ -31,6 +31,33 @@ struct VocabularyCategoryGuidanceTests {
         var index = VocabularyClassificationIndex()
         try catalog.install(in: &index, nodes: [])
         #expect(index.memberships.isEmpty)
+    }
+
+    @Test func expandedDomainsPreserveDistinctRoutesAndDeduplicateSharedBranches() throws {
+        let catalog = try VocabularyClassificationCatalog.bundled()
+        var index = VocabularyClassificationIndex()
+        let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Liquid movement")])
+        try catalog.install(in: &index, nodes: [node])
+        func category(_ key: String) throws -> VocabularyCategory {
+            try #require(index.categories.first { $0.key == key })
+        }
+        let warming = try category("content.objects.process.warming"), heating = try category("content.actions.heating")
+        #expect(warming.id != heating.id && warming.definition != heating.definition)
+        #expect(warming.references.contains { $0.identifier == "8.3.4" })
+        #expect(heating.references.contains { $0.identifier == "8.3.4" })
+        let flow = try category("content.motion.flow")
+        let motion = try category("content.motion"), process = try category("content.objects.process")
+        #expect(Set(index.parents.filter { $0.categoryID == flow.id }.map(\.parentID)) == [motion.id, process.id])
+        index.memberships = [.init(id: UUID(), nodeID: node.id, categoryID: flow.id)]
+        #expect(VocabularyClassificationPolicy.meaningIDs(in: motion.id, index: index) == [node.id])
+        #expect(VocabularyClassificationPolicy.meaningIDs(in: process.id, index: index) == [node.id])
+        let conditional = try category("function.influence.refuse.conditional")
+        let negotiation = try category("function.influence.negotiate"), acceptance = try category("function.influence.refuse")
+        #expect(Set(index.parents.filter { $0.categoryID == conditional.id }.map(\.parentID)) == [negotiation.id, acceptance.id])
+        #expect(conditional.references.contains { $0.identifier == "3.3.2.1" })
+        #expect(conditional.references.contains { $0.identifier == "9.6.2.8" })
+        #expect(try category("content.general.enablement.hinder").id != category("content.general.enablement.prevent").id)
+        try VocabularyClassificationPolicy.validate(index, nodes: [node])
     }
 
     @Test func legacyCategoryAndOverlayDecodeWithoutGuidance() throws {

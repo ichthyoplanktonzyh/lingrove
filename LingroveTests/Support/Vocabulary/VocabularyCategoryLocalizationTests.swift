@@ -20,7 +20,7 @@ struct VocabularyCategoryLocalizationTests {
     @Test func bundledCatalogCoversEveryInterfaceLocaleWithoutChangingExamples() throws {
         let catalog = try VocabularyClassificationCatalog.bundled()
         let required = Set(InterfaceLanguage.allCases.map(\.rawValue))
-        #expect(catalog.version == 3)
+        #expect(catalog.version == 4)
         for category in catalog.categories {
             let rows = try #require(category.localizations)
             #expect(Set(rows.map(\.language)) == required)
