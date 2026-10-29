@@ -263,7 +263,7 @@ nonisolated enum VocabularyGraphProjection {
             // Auto-expand populated branches so the learner sees their semantic map immediately,
             // while keeping zero-count unexplored branches collapsed unless explicitly opened.
             let isExpanded = expanded.contains(category.id) || (!query.isEmpty && hasDirectOrSubtreeMatch) || (count > 0 && depth <= 2)
-            let title = VocabularyClassificationPolicy.title(category, in: classification, languages: preferredLanguages)
+            let title = VocabularyClassificationPolicy.title(category, in: classification)
             let nodeID = VocabularyGraphNodeID.category(category.id)
 
             appendNode(.init(
@@ -317,7 +317,7 @@ nonisolated enum VocabularyGraphProjection {
             let axisMeaningCount = Set(visibleRoots.flatMap {
                 VocabularyClassificationPolicy.meaningIDs(in: $0.id, index: classification).intersection(allMatchedMeaningIDs)
             }).count + uncategorizedForAxis.count
-            let axisLabel = axisLabelText(for: axis, languages: preferredLanguages)
+            let axisLabel = axisLabelText(for: axis)
 
             appendNode(.init(
                 id: axisNodeID,
@@ -378,8 +378,7 @@ nonisolated enum VocabularyGraphProjection {
             for category in categories {
                 let effective = VocabularyClassificationPolicy.effective(category, in: classification)
                 let categoryMatches = terms.allSatisfy { term in
-                    effective.labels.contains { $0.text.localizedStandardContains(term) } ||
-                        effective.definition.localizedStandardContains(term)
+                    VocabularyCategoryLocalizationPolicy.matches(effective, term: term)
                 }
                 if categoryMatches {
                     matchingCategoryIDs.insert(category.id)
@@ -389,13 +388,12 @@ nonisolated enum VocabularyGraphProjection {
         return matchingCategoryIDs
     }
 
-    private static func axisLabelText(for axis: VocabularyCategory.Axis, languages: [LearningLanguage]) -> String {
-        let prefersChinese = languages.first == .chinese
+    private static func axisLabelText(for axis: VocabularyCategory.Axis) -> String {
         switch axis {
         case .content:
-            return prefersChinese ? "内容概念" : "Content meanings"
+            return String(localized: "Content meanings", table: "Vocabulary")
         case .function:
-            return prefersChinese ? "交际功能" : "Communicative functions"
+            return String(localized: "Communicative functions", table: "Vocabulary")
         }
     }
 

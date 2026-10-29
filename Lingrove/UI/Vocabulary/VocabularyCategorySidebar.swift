@@ -44,7 +44,7 @@ struct VocabularyCategoryFilterBar: View {
             if !trail.isEmpty {
                 return trail.suffix(2).joined(separator: " › ")
             }
-            return VocabularyClassificationPolicy.title(selectedCategory, in: store.classification, languages: languages)
+            return VocabularyClassificationPolicy.title(selectedCategory, in: store.classification)
         }
         if selection == "uncategorized" {
             return String(localized: "Uncategorized meanings", table: "Vocabulary")

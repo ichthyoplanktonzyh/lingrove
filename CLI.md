@@ -230,3 +230,31 @@ at the top of this document.
 Invoke with `$lingrove-cli`, for example: “把这次对话里的表达和例句保存到拾语。” The skill can also be
 selected automatically for Lingrove notebook requests. It uses the normal notebook by default;
 explicitly name `lingrove-dev` when the Dev notebook is intended.
+
+### Category guidance
+
+`categories` also exposes optional authored guidance: `definition`, `examples` (up to 64 objects
+with nonempty `text` and optional `language`), `scopeNote`, and `references` (up to 64 objects).
+Reference fields are `source`, `identifier`, HTTP(S) `url`, and `relationship` (`adapted`,
+`combined`, `narrower`); optional `attribution` and `license` retain source credit. Examples are
+classification metadata and never create lexical entries or personal membership. Custom records
+may omit all guidance. Local `categoryOverrides` may replace these fields, or use null to inherit.
+Reads return base category records and overlays independently; callers resolve effective values.
+
+Catalog v2 adds source-mapped domains and Chinese guidance while preserving all v1 keys/IDs.
+SIL v4 domain definitions/examples inform the adapted dataset; per-category references identify
+combined or narrower domains, and supplemental USAS/CEFR references describe their role. See
+`Lingrove/Resources/VocabularyClassificationCatalog.NOTICE.md` for sources, changes and data license.
+
+Category records and overlays also support `localizations` (at most 64 rows):
+`{"language":"fr","name":"Négation","definition":"…","scopeNote":"…"}`.
+Only `language` is required; at least one presentation field must be supplied. Language tags are
+interface/content locale strings, independent of the supported study-language enum. Locale rows
+are unique after case/underscore normalization. Custom categories can carry partial translations.
+Overrides merge into the base by locale and non-null field; null on the override array restores
+inheritance. Empty description text clears that locale's field. Catalog v3 includes all 15 UI
+locales; the presentation fallback is interface locale, English, then original text. Raw CLI reads
+retain every authored version and its common source references; examples keep their own language.
+
+Category example language tags are also independent BCP-47-style strings. This does not add
+new languages to lexical-entry capture or change saved examples; existing language codes decode unchanged.

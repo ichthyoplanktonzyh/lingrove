@@ -17,7 +17,7 @@ struct VocabularyCategoryEditor: View {
     @State private var axis: VocabularyCategory.Axis
     @State private var parentIDs: Set<UUID>
     @State private var expanded: Set<String>
-    @State private var label: VocabularyMeaningLabel
+    private let editingLanguage: String
     @State private var hidden: Bool
     @State private var query = ""
     @State private var saving = false
@@ -49,15 +49,16 @@ struct VocabularyCategoryEditor: View {
         )
         _original = State(initialValue: original)
         let effective = VocabularyClassificationPolicy.effective(original, in: initialIndex)
-        let label = VocabularyMeaningLabelPolicy.label(in: effective.labels, languages: preferredLanguages) ?? effective.labels[0]
+        let interfaceIdentifiers = Bundle.main.preferredLocalizations
+        editingLanguage = VocabularyCategoryLocalizationPolicy.editingLanguage(interfaceIdentifiers)
+        let presentation = VocabularyCategoryLocalizationPolicy.presentation(effective, identifiers: interfaceIdentifiers)
         let initialParents: Set<UUID> = category == nil
             ? Set(parentID.map { [$0] } ?? [])
             : Set(initialIndex.parents.filter { $0.categoryID == original.id }.map(\.parentID))
         _baseline = State(initialValue: initialIndex)
-        _name = State(initialValue: label.text)
-        _definition = State(initialValue: effective.definition)
+        _name = State(initialValue: presentation.name)
+        _definition = State(initialValue: presentation.definition)
         _axis = State(initialValue: original.axis)
-        _label = State(initialValue: label)
         _hidden = State(initialValue: initialIndex.overrides.first { $0.categoryID == original.id }?.isHidden ?? false)
         _parentIDs = State(initialValue: initialParents)
         _expanded = State(initialValue: VocabularyClassificationProjection.expansionPaths(
@@ -93,7 +94,7 @@ struct VocabularyCategoryEditor: View {
     }
 
     private func title(_ category: VocabularyCategory) -> String {
-        VocabularyClassificationPolicy.title(category, in: baseline, languages: languages)
+        VocabularyClassificationPolicy.title(category, in: baseline)
     }
 
     var body: some View {
@@ -328,8 +329,8 @@ struct VocabularyCategoryEditor: View {
         HStack {
             if original.frameworkID != nil, baseline.overrides.contains(where: { $0.categoryID == original.id }) {
                 Button(String(localized: "Restore defaults", table: "Vocabulary")) {
-                    let raw = VocabularyMeaningLabelPolicy.label(in: original.labels, languages: languages) ?? original.labels[0]
-                    label = raw; name = raw.text; definition = original.definition; hidden = false; usesCatalogLabels = true
+                    let raw = VocabularyCategoryLocalizationPolicy.presentation(original, identifiers: [editingLanguage])
+                    name = raw.name; definition = raw.definition; hidden = false; usesCatalogLabels = true
                 }
                 .disabled(saving)
                 .accessibilityIdentifier("vocabularyRestoreCategoryDefaults")
@@ -351,27 +352,14 @@ struct VocabularyCategoryEditor: View {
     }
 
     private func save() {
-        var edited = baseline, value = original
-        var labels = usesCatalogLabels ? original.labels : VocabularyClassificationPolicy.effective(original, in: baseline).labels
-        var renamed = label
-        renamed.text = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let position = labels.firstIndex(where: { $0.id == label.id }) {
-            labels[position] = renamed
-        }
-        let overlay = VocabularyCategoryOverride(
-            categoryID: value.id,
-            labels: value.frameworkID == nil ? nil : labels,
-            definition: value.frameworkID == nil ? nil : definition,
-            isHidden: hidden
-        )
+        var edited = baseline
+        let result = VocabularyCategoryLocalizationPolicy.edited(original, in: baseline,
+            language: editingLanguage, name: name, definition: definition, hidden: hidden, restoringDefaults: usesCatalogLabels)
+        var value = result.category
         edited.overrides.removeAll { $0.categoryID == value.id }
-        if hidden || value.frameworkID != nil && (labels != original.labels || definition != original.definition) {
-            edited.overrides.append(overlay)
-        }
+        if let overlay = result.overlay { edited.overrides.append(overlay) }
         if value.frameworkID == nil {
             value.axis = axis
-            value.labels = labels
-            value.definition = definition
             if let position = edited.categories.firstIndex(where: { $0.id == value.id }) {
                 edited.categories[position] = value
             } else {

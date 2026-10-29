@@ -25,10 +25,66 @@ nonisolated struct VocabularyCategory: Codable, Equatable, Identifiable, Sendabl
     var axis: Axis
     var labels: [VocabularyMeaningLabel]
     var definition = ""
+    var examples: [VocabularyCategoryExample] = []
+    var scopeNote = ""
+    var references: [VocabularyCategoryReference] = []
+    var localizations: [VocabularyCategoryLocalization] = []
     var frameworkID: UUID?
     var key: String?
     var isRetired = false
     var provenance = VocabularySemanticProvenance(origin: .user, status: .confirmed)
+}
+
+/// A classification example illustrates a domain, rather than collecting a lexical sense.
+/// It lives with its category and has no notebook membership, review state or evidence identity.
+/// Its language tag describes source text without selecting or expanding a learning backend.
+nonisolated struct VocabularyCategoryExample: Codable, Equatable, Sendable {
+    var text: String
+    var language: String?
+}
+
+/// Locale-specific presentation belongs to the same stable category. String language tags are
+/// independent of study languages (the interface also supports Indonesian and Turkish). Partial
+/// custom translations inherit missing fields; examples and source references stay untranslated.
+nonisolated struct VocabularyCategoryLocalization: Codable, Equatable, Sendable {
+    var language: String
+    var name: String?
+    var definition: String?
+    var scopeNote: String?
+}
+
+/// A source mapping explains how an authored category uses an external domain. Combined and
+/// narrower mappings deliberately avoid claiming that Lingrove reproduces an external ontology.
+/// References travel with portable category data so CLI consumers can inspect the evidence.
+nonisolated struct VocabularyCategoryReference: Codable, Equatable, Sendable {
+    enum Relationship: String, Codable, Sendable { case adapted, combined, narrower }
+    var source: String
+    var identifier: String
+    var url: String
+    var relationship: Relationship
+    var attribution: String?
+    var license: String?
+}
+
+extension VocabularyCategory {
+    /// Category payloads predate guidance. Decode absent fields without rewriting old evidence
+    /// or requiring a SQL schema migration: guidance belongs in the existing category payload.
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        axis = try values.decode(Axis.self, forKey: .axis)
+        labels = try values.decode([VocabularyMeaningLabel].self, forKey: .labels)
+        definition = try values.decodeIfPresent(String.self, forKey: .definition) ?? ""
+        examples = try values.decodeIfPresent([VocabularyCategoryExample].self, forKey: .examples) ?? []
+        scopeNote = try values.decodeIfPresent(String.self, forKey: .scopeNote) ?? ""
+        references = try values.decodeIfPresent([VocabularyCategoryReference].self, forKey: .references) ?? []
+        localizations = try values.decodeIfPresent([VocabularyCategoryLocalization].self, forKey: .localizations) ?? []
+        frameworkID = try values.decodeIfPresent(UUID.self, forKey: .frameworkID)
+        key = try values.decodeIfPresent(String.self, forKey: .key)
+        isRetired = try values.decodeIfPresent(Bool.self, forKey: .isRetired) ?? false
+        provenance = try values.decodeIfPresent(VocabularySemanticProvenance.self, forKey: .provenance)
+            ?? .init(origin: .user, status: .confirmed)
+    }
 }
 
 /// Explicit edges support several parents without duplicating the category or its meanings.
@@ -54,6 +110,10 @@ nonisolated struct VocabularyCategoryOverride: Codable, Equatable, Identifiable,
     let categoryID: UUID
     var labels: [VocabularyMeaningLabel]?
     var definition: String?
+    var examples: [VocabularyCategoryExample]?
+    var scopeNote: String?
+    var references: [VocabularyCategoryReference]?
+    var localizations: [VocabularyCategoryLocalization]?
     var isHidden = false
     var id: UUID { categoryID }
 }

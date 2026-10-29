@@ -92,7 +92,7 @@ struct VocabularyMeaningCategoryControl: View {
             languages: languages
         )
         let displayPath = trail.isEmpty
-            ? VocabularyClassificationPolicy.title(category, in: store.classification, languages: languages)
+            ? VocabularyClassificationPolicy.title(category, in: store.classification)
             : trail.suffix(2).joined(separator: " › ")
         let icon = VocabularyClassificationProjection.symbolName(for: category, in: store.classification)
         let tint = category.axis.tint
@@ -437,7 +437,7 @@ struct VocabularyMeaningCategorySheet: View {
     }
 
     private func title(_ category: VocabularyCategory) -> String {
-        VocabularyClassificationPolicy.title(category, in: baseline, languages: languages)
+        VocabularyClassificationPolicy.title(category, in: baseline)
     }
 
     private func save() {

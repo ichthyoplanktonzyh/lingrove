@@ -8,6 +8,57 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func categoryGuidanceTravelsThroughTheInstalledCLIContract() async throws {
+        let fixture = try await Fixture()
+        do {
+            var document = VocabularyDocument()
+            try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: [])
+            _ = try await fixture.archive.commit(document)
+            let base = try #require(document.classification.categories.first { $0.key == "content.general.polarity.negate" })
+            let read = try result(try await fixture.call(["data", "get", "categories", base.id.uuidString]).1)
+            let record = try #require(read["record"] as? [String: Any])
+            #expect((record["examples"] as? [[String: Any]])?.isEmpty == false)
+            #expect((record["references"] as? [[String: Any]])?.first?["identifier"] as? String == "9.4.6.1")
+            let custom = UUID()
+            let value: [String: Any] = ["id": custom.uuidString, "axis": "content",
+                "labels": [["id": UUID().uuidString, "text": "Local domain"]], "definition": "Definition",
+                "examples": [["text": "değil", "language": "tr"]], "scopeNote": "Do not confuse with refusal.",
+                "localizations": [["language": "tr", "name": "Olumsuzlama", "definition": "Bir önermeyi reddeder."]],
+                "references": [["source": "SIL Semantic Domains v4", "identifier": "9.4.6.1",
+                    "url": "https://semdom.org/v4/9.4.6.1/", "relationship": "adapted", "license": "CC-BY-SA-4.0"]]]
+            let batch: [String: Any] = ["version": 2, "idempotencyKey": "category-guidance", "expectedRevision": 1,
+                "operations": [["put": ["resource": "categories", "value": value]]]]
+            #expect(try await fixture.apply(batch, dry: true).0 == 0)
+            #expect(try await fixture.archive.load().revision == 1)
+            #expect(try await fixture.apply(batch).0 == 0)
+            let snapshot = try await fixture.archive.load()
+            let saved = try #require(snapshot.document.classification.categories.first { $0.id == custom })
+            #expect(saved.examples == [.init(text: "değil", language: "tr")])
+            #expect(saved.scopeNote == "Do not confuse with refusal.")
+            #expect(saved.localizations.first?.language == "tr")
+            #expect(VocabularyCategoryLocalizationPolicy.presentation(saved, identifiers: ["tr"]).name == "Olumsuzlama")
+            #expect(saved.references.first?.license == "CC-BY-SA-4.0")
+            #expect(snapshot.document.catalog.isEmpty && snapshot.document.collections.isEmpty)
+            let reply = try result(try await fixture.call(["data", "get", "categories", custom.uuidString]).1)
+            #expect((reply["record"] as? [String: Any])?["scopeNote"] as? String == saved.scopeNote)
+            let overlay: [String: Any] = ["categoryID": base.id.uuidString,
+                "examples": [["text": "a local illustration", "language": "en"]], "scopeNote": "Local scope", "references": [],
+                "localizations": [["language": "fr", "name": "Nom local", "definition": "Définition locale."]]]
+            let overridden: [String: Any] = ["version": 2, "idempotencyKey": "guidance-overlay", "expectedRevision": 2,
+                "operations": [["put": ["resource": "categoryOverrides", "value": overlay]]]]
+            #expect(try await fixture.apply(overridden).0 == 0)
+            let local = VocabularyClassificationPolicy.effective(base, in: fixture.store.classification)
+            #expect(local.scopeNote == "Local scope" && local.references.isEmpty)
+            #expect(VocabularyCategoryLocalizationPolicy.presentation(local, identifiers: ["fr"]).name == "Nom local")
+            let reset: [String: Any] = ["version": 2, "idempotencyKey": "guidance-inherit", "expectedRevision": 3,
+                "operations": [["put": ["resource": "categoryOverrides", "value": ["categoryID": base.id.uuidString,
+                    "examples": NSNull(), "scopeNote": NSNull(), "references": NSNull(), "localizations": NSNull()]]]]]
+            #expect(try await fixture.apply(reset).0 == 0)
+            #expect(VocabularyClassificationPolicy.effective(base, in: fixture.store.classification) == base)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func categoriesSupportCaptureOverridesMultiParentsAndProtectedBuiltIns() async throws {
         let fixture = try await Fixture()
         do {

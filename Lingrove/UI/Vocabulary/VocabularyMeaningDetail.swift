@@ -626,12 +626,12 @@ struct VocabularyCategoryDetail: View {
     @State private var creatingSubcategory = false
     @State private var creatingMeaning = false
 
-    private var effectiveCategory: VocabularyCategory {
-        VocabularyClassificationPolicy.effective(category, in: store.classification)
+    private var effectiveCategory: VocabularyCategoryLocalizationPolicy.Presentation {
+        VocabularyClassificationPolicy.presentation(category, in: store.classification)
     }
 
     private var primaryTitle: String {
-        VocabularyClassificationPolicy.title(category, in: store.classification, languages: languages)
+        VocabularyClassificationPolicy.title(category, in: store.classification)
     }
 
     private var breadcrumbItems: [VocabularyCategory] {
@@ -746,7 +746,7 @@ struct VocabularyCategoryDetail: View {
                     Button {
                         openCategory(ancestor.id)
                     } label: {
-                        Text(VocabularyClassificationPolicy.title(ancestor, in: store.classification, languages: languages))
+                        Text(VocabularyClassificationPolicy.title(ancestor, in: store.classification))
                             .font(textSize.font(12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -837,7 +837,7 @@ struct VocabularyCategoryDetail: View {
                             Image(systemName: isUnexplored ? "circle.dashed" : "folder.fill")
                                 .font(.system(size: textSize.size(11.5), weight: .semibold))
                                 .foregroundStyle(isUnexplored ? .secondary : tint)
-                            Text(VocabularyClassificationPolicy.title(child, in: store.classification, languages: languages))
+                            Text(VocabularyClassificationPolicy.title(child, in: store.classification))
                                 .font(textSize.font(13, weight: isUnexplored ? .regular : .medium))
                                 .foregroundStyle(isUnexplored ? .secondary : .primary)
                                 .lineLimit(1)

@@ -38,6 +38,9 @@ nonisolated enum VocabularyClassificationPolicy {
         for category in index.categories {
             try validateLabels(category.labels)
             try text(category.definition)
+            try validateGuidance(examples: category.examples, scopeNote: category.scopeNote)
+            try validateReferences(category.references)
+            try VocabularyCategoryLocalizationPolicy.validate(category.localizations)
             try provenance(category.provenance)
             if let frameworkID = category.frameworkID {
                 guard frameworks[frameworkID] != nil, let key = category.key, !key.isEmpty, key.utf8.count <= 200,
@@ -84,21 +87,34 @@ nonisolated enum VocabularyClassificationPolicy {
             guard categories[overlay.categoryID] != nil else { throw VocabularyError.invalidContent }
             if let labels = overlay.labels { try validateLabels(labels) }
             if let definition = overlay.definition { try text(definition) }
+            try validateGuidance(examples: overlay.examples ?? [], scopeNote: overlay.scopeNote ?? "")
+            try validateReferences(overlay.references ?? [])
+            try VocabularyCategoryLocalizationPolicy.validate(overlay.localizations ?? [])
         }
     }
 
     static func effective(_ category: VocabularyCategory, in index: VocabularyClassificationIndex) -> VocabularyCategory {
         var value = category
         if let overlay = index.overrides.first(where: { $0.categoryID == category.id }) {
+            value.localizations = VocabularyCategoryLocalizationPolicy.overlaid(category, with: overlay)
             if let labels = overlay.labels { value.labels = labels }
             if let definition = overlay.definition { value.definition = definition }
+            if let examples = overlay.examples { value.examples = examples }
+            if let scopeNote = overlay.scopeNote { value.scopeNote = scopeNote }
+            if let references = overlay.references { value.references = references }
         }
         return value
     }
 
     static func title(_ category: VocabularyCategory, in index: VocabularyClassificationIndex,
-                      languages: [LearningLanguage]) -> String {
-        VocabularyMeaningLabelPolicy.label(in: effective(category, in: index).labels, languages: languages)?.text ?? ""
+                      interfaceIdentifiers: [String] = Bundle.main.preferredLocalizations) -> String {
+        presentation(category, in: index, interfaceIdentifiers: interfaceIdentifiers).name
+    }
+
+    static func presentation(_ category: VocabularyCategory, in index: VocabularyClassificationIndex,
+                             interfaceIdentifiers: [String] = Bundle.main.preferredLocalizations)
+        -> VocabularyCategoryLocalizationPolicy.Presentation {
+        VocabularyCategoryLocalizationPolicy.presentation(effective(category, in: index), identifiers: interfaceIdentifiers)
     }
 
     static func descendants(of id: UUID, in index: VocabularyClassificationIndex) -> Set<UUID> {
@@ -195,6 +211,30 @@ nonisolated enum VocabularyClassificationPolicy {
     }
     private static func text(_ value: String) throws {
         guard value.utf8.count <= 16_384 else { throw VocabularyError.invalidContent }
+    }
+    private static func validateGuidance(examples: [VocabularyCategoryExample], scopeNote: String) throws {
+        try text(scopeNote)
+        guard examples.count <= 64 else { throw VocabularyError.invalidContent }
+        for example in examples {
+            guard !example.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  example.text.utf8.count <= 4_096 else { throw VocabularyError.invalidContent }
+            if let language = example.language, !VocabularyCategoryLocalizationPolicy.validLanguageTag(language) {
+                throw VocabularyError.invalidContent
+            }
+        }
+    }
+    private static func validateReferences(_ references: [VocabularyCategoryReference]) throws {
+        guard references.count <= 64 else { throw VocabularyError.invalidContent }
+        for reference in references {
+            guard !reference.source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !reference.identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let url = URL(string: reference.url), ["https", "http"].contains(url.scheme), url.host != nil else {
+                throw VocabularyError.invalidContent
+            }
+            try text(reference.source); try text(reference.identifier); try text(reference.url)
+            if let attribution = reference.attribution { try text(attribution) }
+            if let license = reference.license { try text(license) }
+        }
     }
     private static func validateLabels(_ labels: [VocabularyMeaningLabel]) throws {
         guard !labels.isEmpty, labels.count <= 64, Set(labels.map(\.id)).count == labels.count else { throw VocabularyError.invalidContent }

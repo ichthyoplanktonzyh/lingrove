@@ -136,7 +136,15 @@ struct VocabularyClassificationViewTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: bitmap)
-        try #require(bitmap.representation(using: .png, properties: [:])).write(to: directory.appendingPathComponent(name + ".png"))
+        // Cached AppKit backgrounds can be transparent even in this light-appearance fixture.
+        // Composite onto white so image viewers do not hide black labels on a black alpha canvas.
+        let context = try #require(CGContext(data: nil, width: bitmap.pixelsWide, height: bitmap.pixelsHigh,
+            bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        let bounds = CGRect(x: 0, y: 0, width: bitmap.pixelsWide, height: bitmap.pixelsHigh)
+        context.setFillColor(CGColor(gray: 1, alpha: 1)); context.fill(bounds)
+        context.draw(try #require(bitmap.cgImage), in: bounds)
+        let opaque = NSBitmapImageRep(cgImage: try #require(context.makeImage()))
+        try #require(opaque.representation(using: .png, properties: [:])).write(to: directory.appendingPathComponent(name + ".png"))
     }
 }
 

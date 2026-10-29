@@ -500,6 +500,15 @@ the authored resource manifest, preserving user extensions and retiring removed 
 `VocabularyClassificationRows` maps these values to relational storage, while
 `VocabularySQLiteClassificationSchema` owns its additive migration and SQL constraints.
 `VocabularyClassificationProjection` produces bounded tree paths with unique meaning counts.
+Category payloads also carry language-tagged examples, scope notes and source mappings. Legacy
+payloads decode absent guidance as empty. Catalog v2 preserves v1 identities, installs the
+source-mapped additions once, and retains local guidance overlays. Only the existing definition
+slot appears in notebook UI; CLI and portable exports retain the complete guidance.
+`VocabularyCategoryLocalizationPolicy` selects category names/descriptions using interface locale,
+English and original-field fallbacks, independently of study/explanation languages. Its locale
+value rows permit partial custom translations. Editors stage only changed fields in locale overlays;
+legacy untagged edits remain visible. Catalog v3 carries all 15 UI locales and retains source examples.
+`VocabularyClassificationCatalog.NOTICE.md` records data attribution and its separate license.
 `VocabularyMeaningDraft` carries category context and expression choices through child pickers.
 The archive's `updateMeaningOrganization` merges both semantic and classification baselines
 before one transaction. Category creation inside a meaning task stays in its detached draft;

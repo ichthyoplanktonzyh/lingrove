@@ -11,6 +11,10 @@ nonisolated struct VocabularyClassificationCatalog: Codable, Sendable {
         let english: String
         let chinese: String
         var definition = ""
+        var examples: [VocabularyCategoryExample]?
+        var scopeNote: String?
+        var references: [VocabularyCategoryReference]?
+        var localizations: [VocabularyCategoryLocalization]?
         var parents: [String] = []
     }
     struct Reference: Codable, Sendable {
@@ -60,7 +64,10 @@ nonisolated struct VocabularyClassificationCatalog: Codable, Sendable {
             return .init(id: Self.identifier(seed), axis: category.axis,
                 labels: [.init(id: Self.identifier(seed + ".en"), text: category.english, language: .english),
                     .init(id: Self.identifier(seed + ".zh"), text: category.chinese, language: .chinese)],
-                definition: category.definition, frameworkID: frameworkID, key: category.key,
+                definition: category.definition, examples: category.examples ?? [], scopeNote: category.scopeNote ?? "",
+                references: category.references ?? [],
+                localizations: category.localizations ?? [],
+                frameworkID: frameworkID, key: category.key,
                 provenance: .init(origin: .imported, status: .confirmed, source: "Lingrove classification catalog \(version)"))
         }
         next.categories += retired

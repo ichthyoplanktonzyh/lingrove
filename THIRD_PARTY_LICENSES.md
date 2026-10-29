@@ -164,3 +164,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Semantic classification guidance
+
+The adapted `VocabularyClassificationCatalog.json` dataset includes Chinese summaries and selected
+examples based on Ron Moe / SIL Global's Semantic Domains v4, licensed under CC BY-SA 4.0.
+Lingrove's changes include combined/narrower categories, Chinese summaries and routing boundaries.
+Per-category source mappings, attribution and licensing are included in the JSON. The dataset is
+licensed under CC BY-SA 4.0; the application's source-code license is separate. See
+`Lingrove/Resources/VocabularyClassificationCatalog.NOTICE.md` and the bundled
+`Lingrove/Resources/ThirdPartyLicenses/CC-BY-SA-4.0.txt` for the sources and license.

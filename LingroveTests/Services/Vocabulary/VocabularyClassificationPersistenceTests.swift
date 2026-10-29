@@ -11,7 +11,7 @@ struct VocabularyClassificationPersistenceTests {
         let url = folder.appendingPathComponent("notebook.sqlite")
         let archive = VocabularyArchive(url: url, installsBundledClassification: true)
         let first = try await archive.load(), again = try await archive.load()
-        #expect(first.document.classification.categories.count == 256)
+        #expect(first.document.classification.categories.count == 315)
         #expect(first.document.classification.memberships.isEmpty && first.document.catalog.isEmpty)
         #expect(first.revision == 1 && again.revision == first.revision && again.document == first.document)
         let reopened = try await VocabularyArchive(url: url, installsBundledClassification: true).load()

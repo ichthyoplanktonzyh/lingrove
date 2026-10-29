@@ -86,6 +86,12 @@ nonisolated enum CLIResourceContract {
     static let slot = Shape(fields: ["id": .uuid, "name": .text(200), "constraint": .text(4_096)],
         required: ["id", "name"], defaults: ["constraint": .string("")])
     static let binding = Shape(fields: ["id": .uuid, "roleID": .uuid, "slotID": .uuid], required: ["id", "roleID", "slotID"])
+    static let categoryExample = Shape(fields: ["text": .text(4_096), "language": .nullable(.text(100))], required: ["text"])
+    static let categoryLocalization = Shape(fields: ["language": .text(100), "name": .nullable(.text(4_096)),
+        "definition": .nullable(.text(16_384)), "scopeNote": .nullable(.text(16_384))], required: ["language"])
+    static let categoryReference = Shape(fields: ["source": .text(16_384), "identifier": .text(16_384), "url": .text(16_384),
+        "attribution": .nullable(.text(16_384)), "license": .nullable(.text(16_384)),
+        "relationship": .enumeration(["adapted", "combined", "narrower"])], required: ["source", "identifier", "url", "relationship"])
 
     // Each root descriptor permits partial updates; required fields describe creation. UUIDs
     // inside replacement arrays are explicit too, making an agent's retry structurally stable.
@@ -98,6 +104,9 @@ nonisolated enum CLIResourceContract {
         case "categories":
             return .init(fields: ["id": .uuid, "axis": .enumeration(["content", "function"]),
                 "labels": .array(.object(label), 64), "definition": .text(16_384), "frameworkID": .nullable(.uuid),
+                "examples": .array(.object(categoryExample), 64), "scopeNote": .text(16_384),
+                "references": .array(.object(categoryReference), 64),
+                "localizations": .array(.object(categoryLocalization), 64),
                 "key": .nullable(.text(200)), "isRetired": .bool, "provenance": .object(provenance)],
                 required: ["id", "axis", "labels"])
         case "categoryParents":
@@ -107,7 +116,10 @@ nonisolated enum CLIResourceContract {
                 required: ["id", "nodeID", "categoryID"])
         case "categoryOverrides":
             return .init(fields: ["categoryID": .uuid, "labels": .nullable(.array(.object(label), 64)),
-                "definition": .nullable(.text(16_384)), "isHidden": .bool], required: ["categoryID"])
+                "definition": .nullable(.text(16_384)), "examples": .nullable(.array(.object(categoryExample), 64)),
+                "scopeNote": .nullable(.text(16_384)), "references": .nullable(.array(.object(categoryReference), 64)),
+                "localizations": .nullable(.array(.object(categoryLocalization), 64)),
+                "isHidden": .bool], required: ["categoryID"])
         case "entries":
             return .init(fields: ["id": .uuid, "expression": .text(32_000), "dictionaryForm": .text(32_000),
                 "language": .nullable(.text(100)), "kind": .enumeration(["word", "expression", "pattern", "sentence"]),

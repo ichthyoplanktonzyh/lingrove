@@ -20,3 +20,7 @@ Upstream repositories: [Sparkle](https://github.com/sparkle-project/Sparkle), [C
 
 SymSpell, Google Ngram, and dictionary notices are in the root THIRD_PARTY_LICENSES.md and the
 SpellingDictionaries resources. These files supplement those notices; they do not replace them.
+
+Semantic classification data: Ron Moe / SIL Global, Semantic Domains v4,
+https://semdom.org/bibliography/ (CC BY-SA 4.0). The adapted catalog's attribution and change notice
+is in `VocabularyClassificationCatalog.NOTICE.md`; `CC-BY-SA-4.0.txt` is the unmodified legal code.

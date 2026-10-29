@@ -500,7 +500,7 @@ struct VocabularyNotebookView: View {
                         return meaning.title(in: meaningLanguages)
                     }
                     if let category = selectedCategory {
-                        return VocabularyClassificationPolicy.title(category, in: store.classification, languages: meaningLanguages)
+                        return VocabularyClassificationPolicy.title(category, in: store.classification)
                     }
                     return selectedEntry?.expression ?? String(localized: "Core meaning", table: "Vocabulary")
                 }()

@@ -38,7 +38,7 @@ nonisolated enum VocabularyClassificationProjection {
         var matches = Set(categories.filter { category in
             let value = VocabularyClassificationPolicy.effective(category, in: index)
             return terms.allSatisfy { term in
-                value.labels.contains { $0.text.localizedStandardContains(term) } || value.definition.localizedStandardContains(term)
+                VocabularyCategoryLocalizationPolicy.matches(value, term: term)
             }
         }.map(\.id))
         if !terms.isEmpty {
@@ -59,7 +59,7 @@ nonisolated enum VocabularyClassificationProjection {
             guard let category = byID[id], !ancestors.contains(id), terms.isEmpty || matches.contains(id) else { continue }
             let path = parentPath + "/" + id.uuidString
             let childIDs = children[id, default: []].map(\.categoryID)
-            let itemTitle = VocabularyClassificationPolicy.title(category, in: index, languages: languages)
+            let itemTitle = VocabularyClassificationPolicy.title(category, in: index)
             let nextTrail = trail + [itemTitle]
             let icon = depth == 0 ? rootSymbol(for: category) : inheritedSymbol
             result.append(.init(
@@ -161,7 +161,7 @@ nonisolated enum VocabularyClassificationProjection {
                 axis: axis,
                 target: .category(row.category),
                 title: row.title,
-                subtitle: VocabularyClassificationPolicy.effective(row.category, in: classification).definition,
+                subtitle: VocabularyClassificationPolicy.presentation(row.category, in: classification).definition,
                 depth: row.depth,
                 hasChildren: hasExpandableChildren,
                 itemCount: row.meaningCount,
@@ -264,7 +264,7 @@ nonisolated enum VocabularyClassificationProjection {
             chain.append(chosen)
         }
         return chain.reversed().map {
-            VocabularyClassificationPolicy.title($0, in: index, languages: languages)
+            VocabularyClassificationPolicy.title($0, in: index)
         }.filter { !$0.isEmpty }
     }
 
