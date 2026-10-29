@@ -263,7 +263,8 @@ final class LingroveAppEnvironment {
             .appendingPathComponent("Vocabulary/learning-library.sqlite")
         // SQLite starts a fresh library as requested. Retired JSON files/media remain untouched;
         // Dev and production still use distinct support roots, and tests use in-memory SQLite.
-        let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL))
+        let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL,
+            installsBundledClassification: !isTestHost))
         let cliInstallation = isTestHost ? nil : CLIInstallationModel()
         let vocabularyCLI: CLIMailboxServer? = isTestHost ? nil : CLIMailboxServer(
             root: vocabularyURL.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Automation")) {

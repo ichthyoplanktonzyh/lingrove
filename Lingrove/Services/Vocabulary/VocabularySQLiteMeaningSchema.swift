@@ -42,7 +42,7 @@ nonisolated enum VocabularySQLiteMeaningSchema {
         case .cueTargets:
             return ",meaning_id TEXT NOT NULL REFERENCES meaning_nodes(id) ON DELETE CASCADE" + deferred +
                 ",UNIQUE(parent_id,meaning_id)"
-        default: return ""
+        default: return VocabularySQLiteClassificationSchema.columns(table)
         }
     }
 

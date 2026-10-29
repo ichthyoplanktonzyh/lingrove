@@ -8,6 +8,11 @@ nonisolated enum VocabularyCLIResources {
     // swiftlint:disable:next cyclomatic_complexity
     static func records(_ resource: String, in document: VocabularyDocument) throws -> [CLIJSON] {
         switch resource {
+        case "frameworks": return try document.classification.frameworks.map { try filtered($0, resource: resource) }
+        case "categories": return try document.classification.categories.map { try filtered($0, resource: resource) }
+        case "categoryParents": return try document.classification.parents.map { try filtered($0, resource: resource) }
+        case "categoryMemberships": return try document.classification.memberships.map { try filtered($0, resource: resource) }
+        case "categoryOverrides": return try document.classification.overrides.map { try filtered($0, resource: resource) }
         case "entries": return try document.catalog.map { try filtered($0, resource: resource) }
         case "senses":
             return try document.catalog.flatMap { entry in
@@ -34,9 +39,14 @@ nonisolated enum VocabularyCLIResources {
 
     static func identifier(_ value: CLIJSON, resource: String) throws -> UUID {
         guard case let .object(fields) = value,
-              case let .string(text) = fields[resource == "collections" ? "senseID" : "id"],
+              case let .string(text) = fields[identityField(resource)],
               let id = UUID(uuidString: text) else { throw CLIError.invalid("Resource writes require an explicit UUID.") }
         return id
+    }
+
+    private static func identityField(_ resource: String) -> String {
+        if resource == "collections" { return "senseID" }
+        return resource == "categoryOverrides" ? "categoryID" : "id"
     }
 
     // One branch per typed resource keeps dispatch exhaustive without dynamic SQL or reflection.
@@ -44,9 +54,25 @@ nonisolated enum VocabularyCLIResources {
     static func put(_ input: CLIResourcePut, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         let id = try identifier(input.value, resource: input.resource)
         let adopted = VocabularySemanticProvenance(origin: .model, status: .confirmed)
+        try VocabularyCLIClassificationResources.validatePut(input, id: id, in: document.classification)
         // Required fields are checked against the submitted object only on creation. On update,
         // omitted fields retain their current value; null clears an optional field and arrays replace.
         switch input.resource {
+        case "frameworks": throw CLIError.invalid("Frameworks are read-only.")
+        case "categories":
+            upsert(try updated(input, values: document.classification.categories, id: id,
+                fallback: VocabularyCategory(id: id, axis: .content, labels: [], provenance: adopted)),
+                in: &document.classification.categories)
+        case "categoryParents":
+            upsert(try updated(input, values: document.classification.parents, id: id,
+                fallback: VocabularyCategoryParent(id: id, categoryID: id, parentID: id)), in: &document.classification.parents)
+        case "categoryMemberships":
+            upsert(try updated(input, values: document.classification.memberships, id: id,
+                fallback: VocabularyMeaningCategoryMembership(id: id, nodeID: id, categoryID: id, provenance: adopted)),
+                in: &document.classification.memberships)
+        case "categoryOverrides":
+            upsert(try updated(input, values: document.classification.overrides, id: id,
+                fallback: VocabularyCategoryOverride(categoryID: id)), in: &document.classification.overrides)
         case "entries":
             let value = try updated(input, values: document.catalog, id: id,
                 fallback: VocabularyEntry(id: id, expression: "", dictionaryForm: "", language: nil, kind: .word,
@@ -139,6 +165,8 @@ nonisolated enum VocabularyCLIResources {
             throw CLIError(code: .notFound, message: "Resource not found.")
         }
         switch input.resource {
+        case "frameworks", "categories", "categoryParents", "categoryMemberships", "categoryOverrides":
+            try VocabularyCLIClassificationResources.delete(input, from: &document.classification)
         case "entries":
             guard document.catalog.first(where: { $0.id == input.id })?.senses.isEmpty == true else {
                 throw CLIError.invalid("Delete or move the entry's senses explicitly first.")

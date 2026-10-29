@@ -42,6 +42,8 @@ nonisolated enum VocabularyDatabaseProjection {
         }
         try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
         rows.append(contentsOf: VocabularySemanticDatabaseProjection.rows(document.semantics))
+        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
+        rows.append(contentsOf: VocabularyClassificationRows.rows(document.classification))
         guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
         return Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
     }
@@ -110,7 +112,8 @@ nonisolated enum VocabularyDatabaseProjection {
         }
         let result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
             interpretations: interpretations, collections: try graph.all(.collections).map { try graph.collection($0) },
-            reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(rows))
+            reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(rows),
+            classification: try VocabularyClassificationRows.index(rows))
         // Round-tripping rejects orphan records, inconsistent indexes and nested children
         // smuggled into scalar headers instead of discarding evidence on reopen.
         guard try self.rows(result) == Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) }) else {

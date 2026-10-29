@@ -9,6 +9,7 @@ struct VocabularyNotebookView: View {
     @AppStorage private var organization: String
     @AppStorage private var listDensity: String
     @AppStorage private var textSizeRaw: String
+    @AppStorage private var showsCategories: Bool
     @StateObject private var graph: VocabularyGraphPresentation
     @State private var selectedTag = ""
     @State private var restoreURL: URL?
@@ -38,6 +39,7 @@ struct VocabularyNotebookView: View {
     @State private var importResult: VocabularyEntryImportResult?
     @State private var meaningDestination: VocabularyMeaningDestination?
     @State private var creatingMeaning = false
+    @State private var categorySelection = "all"
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
          learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
@@ -46,6 +48,7 @@ struct VocabularyNotebookView: View {
         _organization = AppStorage(wrappedValue: "entry", "vocabularyOrganization", store: preferences)
         _listDensity = AppStorage(wrappedValue: "compact", "vocabularyListDensity", store: preferences)
         _textSizeRaw = AppStorage(wrappedValue: VocabularyTextSize.standard.rawValue, "vocabularyTextSize", store: preferences)
+        _showsCategories = AppStorage(wrappedValue: true, "vocabularyShowsCategories", store: preferences)
         _graph = StateObject(wrappedValue: VocabularyGraphPresentation(defaults: preferences))
         self.store = store
         self.speech = speech
@@ -77,11 +80,21 @@ struct VocabularyNotebookView: View {
         organization == "meaning" ? scopedEntries : scopedEntries.filter { VocabularyPolicy.matches($0, query: query) }
     }
     private var meaningItems: [VocabularyMeaningBrowserProjection.Item] {
-        VocabularyMeaningBrowserProjection.items(index: store.semantics, entries: scopedEntries, query: query,
+        let items = VocabularyMeaningBrowserProjection.items(index: store.semantics, entries: scopedEntries, query: query,
             includeEmpty: language == nil && selectedTag.isEmpty, preferredLanguages: meaningLanguages)
+        guard browserMode == "list", categorySelection != "all" else { return items }
+        let ids: Set<UUID>
+        if let categoryID = UUID(uuidString: categorySelection) {
+            ids = VocabularyClassificationPolicy.meaningIDs(in: categoryID, index: store.classification)
+        } else {
+            ids = Set(store.semantics.nodes.map(\.id)).subtracting(
+                store.classification.memberships.filter { $0.provenance.status == .confirmed }.map(\.nodeID))
+        }
+        return items.filter { ids.contains($0.id) }
     }
     private var unclassified: [VocabularySelection] {
-        VocabularyMeaningBrowserProjection.unclassified(index: store.semantics,
+        guard browserMode != "list" || categorySelection == "all" else { return [] }
+        return VocabularyMeaningBrowserProjection.unclassified(index: store.semantics,
             entries: scopedEntries.filter { VocabularyPolicy.matches($0, query: query) })
     }
     private var activeSenseID: UUID? { organization == "meaning" ? meaningDestination?.senseID : selection }
@@ -90,6 +103,7 @@ struct VocabularyNotebookView: View {
         return store.semantics.nodes.first { $0.id == id }
     }
     private func showMeaning(_ id: UUID) {
+        if !meaningItems.contains(where: { $0.id == id }) { categorySelection = "all" }
         organization = "meaning"; meaningDestination = .node(id); graph.revealMeaning(id)
     }
     private func showSense(_ id: UUID) {
@@ -163,6 +177,13 @@ struct VocabularyNotebookView: View {
                 .frame(width: 164)
             }
             ToolbarItemGroup {
+                if organization == "meaning", browserMode == "list" {
+                    Button { showsCategories.toggle() } label: {
+                        Label(String(localized: "Categories", table: "Vocabulary"), systemImage: "sidebar.left")
+                    }
+                    .help(String(localized: "Categories", table: "Vocabulary"))
+                    .accessibilityIdentifier("vocabularyToggleCategories")
+                }
                 Button { creatingEntry = true } label: {
                     Label(String(localized: "Add entry", table: "Vocabulary"), systemImage: "plus")
                 }
@@ -227,7 +248,7 @@ struct VocabularyNotebookView: View {
                     .disabled(!store.isLoaded)
             }
         }
-        .frame(minWidth: 760, minHeight: 460)
+        .frame(minWidth: organization == "meaning" && browserMode == "list" && showsCategories ? 940 : 760, minHeight: 460)
     }
 
     private var lifecycleContent: some View {
@@ -268,6 +289,13 @@ struct VocabularyNotebookView: View {
         }
         .onChange(of: store.semantics) { _, value in
             if let id = meaningDestination?.nodeID, !value.nodes.contains(where: { $0.id == id }) { meaningDestination = nil }
+        }
+        .onChange(of: categorySelection) { _, _ in
+            if let id = meaningDestination?.nodeID, !meaningItems.contains(where: { $0.id == id }) { meaningDestination = nil }
+        }
+        .onChange(of: store.classification) { _, _ in
+            if organization == "meaning", browserMode == "list", categorySelection != "all",
+               let id = meaningDestination?.nodeID, !meaningItems.contains(where: { $0.id == id }) { meaningDestination = nil }
         }
         .onChange(of: browserMode) { _, value in
             if value == "graph" {
@@ -622,6 +650,16 @@ struct VocabularyNotebookView: View {
     }
 
     private var meaningListBrowser: some View {
+        HSplitView {
+            if showsCategories {
+                VocabularyCategorySidebar(store: store, selection: $categorySelection)
+                    .frame(minWidth: 175, idealWidth: 210, maxWidth: 280)
+            }
+            meaningListColumns
+        }
+    }
+
+    private var meaningListColumns: some View {
         NavigationSplitView {
             VocabularyMeaningSidebar(items: meaningItems, entries: scopedEntries, unclassified: unclassified,
                 isDetailed: isDetailedList, destination: $meaningDestination)

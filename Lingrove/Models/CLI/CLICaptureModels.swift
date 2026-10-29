@@ -29,6 +29,7 @@ nonisolated struct CLICapture: Codable, Sendable {
         var definition: String?
         var cues: [String]?
         var status: String?
+        var categories: [String]?
     }
     /// A lexical header groups the distinct senses being collected in this task.
     struct Entry: Codable, Sendable {

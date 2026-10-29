@@ -8,6 +8,7 @@ import Logging
 @MainActor
 final class VocabularyStore: ObservableObject {
     @Published private(set) var semantics = VocabularySemanticIndex()
+    @Published private(set) var classification = VocabularyClassificationIndex()
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var pending: Set<String> = []
@@ -165,6 +166,10 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.updateSemantics(value, basedOn: baseline)); return true } catch { report(error); return false }
     }
 
+    func updateClassification(_ value: VocabularyClassificationIndex, basedOn baseline: VocabularyClassificationIndex) async -> Bool {
+        do { apply(try await archive.updateClassification(value, basedOn: baseline)); return true } catch { report(error); return false }
+    }
+
     func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
                     importedImages: [String: Data] = [:]) async throws {
         apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected, cardID: cardID,
@@ -251,6 +256,7 @@ final class VocabularyStore: ObservableObject {
         guard !isLoaded || snapshot.revision >= revision else { return }
         entries = snapshot.document.collectedEntries
         semantics = snapshot.document.semantics
+        classification = snapshot.document.classification
         standaloneKeys = Set(entries.flatMap { entry in
             entry.senses.filter(\.isSavedWithoutContext).map { _ in VocabularyPolicy.entryKey(entry) + ":standalone" }
         })

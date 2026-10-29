@@ -84,6 +84,7 @@ nonisolated struct VocabularyExportDocument: Codable, Sendable {
     var version = 1
     let entries: [Entry]
     var semantics: VocabularySemanticIndex?
+    var classification: VocabularyClassificationIndex?
 
     struct Entry: Codable, Sendable {
         let id: UUID

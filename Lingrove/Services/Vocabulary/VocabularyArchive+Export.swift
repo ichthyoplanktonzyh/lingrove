@@ -9,10 +9,12 @@ extension VocabularyArchive {
         let entries: [VocabularyEntry]
         let media: [String: Data]
         let semantics: VocabularySemanticIndex
+        let classification: VocabularyClassificationIndex
     }
     func prepareExport(selections: [VocabularySelection], configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
         let snapshot = try storageAccess(write: false) { try exportSnapshot(selections: selections, configuration: configuration) }
-        var package = try VocabularyExportPolicy.package(snapshot.entries, configuration: configuration, semantics: snapshot.semantics)
+        var package = try VocabularyExportPolicy.package(snapshot.entries, configuration: configuration,
+            semantics: snapshot.semantics, classification: snapshot.classification)
         package.images = snapshot.media
         try Task.checkCancellation()
         return package
@@ -31,7 +33,7 @@ extension VocabularyArchive {
             do { media[reference.filename] = try images.read(reference) } catch { throw VocabularyExportError.missingImage }
         }
         try Task.checkCancellation()
-        return .init(entries: selected, media: media, semantics: document.semantics)
+        return .init(entries: selected, media: media, semantics: document.semantics, classification: document.classification)
     }
 
     func writeExport(_ package: VocabularyExportPackage, to destination: URL) throws {

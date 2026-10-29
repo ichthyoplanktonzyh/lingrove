@@ -49,6 +49,7 @@ struct VocabularyMeaningDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 meaningHeader
+                VocabularyMeaningCategoryControl(store: store, nodeID: node.id)
                 expressionsSection
                 relatedMeanings
                 detailsSection

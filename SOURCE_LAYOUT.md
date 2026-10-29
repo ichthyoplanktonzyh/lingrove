@@ -448,9 +448,12 @@ existing nonactivating lifetime. The shared fish-tail button lives in `UI/Compon
 The environment constructs one store for both writing and reading cards, isolates the XCTest
 host from real user data, and keeps Dev/production archives in separate support directories.
 The live file is `Vocabulary/learning-library.sqlite`, initialized as a fresh library. Retired
-SQLite/JSON libraries are not read, migrated or deleted. SQLite schema 4 and portable notebook
-format 7 describe independent evidence, interpretations, collection and meaning knowledge; selective JSON exports containing meaning knowledge use
-format 4. Full backups retain the complete graph and original media.
+SQLite/JSON libraries are not read, migrated or deleted. SQLite schema 5 and portable notebook
+format 8 add meaning classification to independent evidence, interpretations, collection and meaning knowledge; selective JSON exports containing meaning knowledge use
+format 4, or format 5 when retaining category memberships and their ancestors. Full backups retain the complete graph and original media.
+The active SQLite schema upgrades from 4 to 5 transactionally, retaining evidence, revisions and
+CLI receipts. Portable format 7 upgrades with an empty classification directory; older retired
+library formats remain outside this compatibility boundary.
 Vocabulary shortcuts are edited only in Shortcuts. Their unset defaults do not claim host keys.
 
 `VocabularyDatabaseRecord` and `VocabularyDatabaseProjection` split expressions, senses, source
@@ -490,6 +493,16 @@ small name/classification edits exposed to learners and preserves hidden semanti
 
 `VocabularyMeaningBrowserProjection` supplies meaning groups and unclassified senses under the
 same language/tag scope. The notebook window owns separate organization and layout preferences.
+`VocabularyClassificationModels` owns the independent category directory, parent edges, meaning
+memberships and local overlays. `VocabularyClassificationPolicy` validates the DAG and merges
+detached drafts; `VocabularyClassificationCatalog` installs stable key-derived identities from
+the authored resource manifest, preserving user extensions and retiring removed definitions.
+`VocabularyClassificationRows` maps these values to relational storage, while
+`VocabularySQLiteClassificationSchema` owns its additive migration and SQL constraints.
+`VocabularyClassificationProjection` produces bounded tree paths with unique meaning counts.
+`VocabularyCategorySidebar`, `VocabularyCategoryEditor` and `VocabularyMeaningCategorySheet`
+add navigation and membership editing beside the existing meaning browser without replacing its
+entry/meaning capsule. Classification remains explicit and requires no vector database.
 `VocabularyMeaningSidebar` and `VocabularyMeaningDetail` reuse the native split view and delegate
 expression navigation to the existing sense detail. `VocabularySenseSemanticSection` adds
 optional organization after the original examples. Meaning and mapping sheets expose names and

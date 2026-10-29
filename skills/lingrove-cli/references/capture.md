@@ -73,8 +73,11 @@ a capture otherwise uses the archive's serialized current snapshot without repla
   `kind` defaults to concept, or use function for communicative acts. Aliases need text, optional
   language, and no UUID. Cues inherit the meaning language and status.
 - To refer to existing knowledge, supply `{"ref":"delay","id":"NODE_UUID"}` instead of a new
-  definition. Existing references accept only ref/id and preserve the node's names and cues.
+  definition. Existing references accept ref/id and optional additive categories, preserving the node's names and cues.
   Similar wording does not automatically merge two meanings.
+- Optional meaning `categories` contains category UUIDs or unambiguous built-in keys discovered
+  with `data list categories`. Read [classification.md](classification.md) for category membership,
+  custom parents and local overrides. Omission leaves current membership unchanged.
 - An association names a meaning ref. `usage` creates a pattern; optional formality, medium and
   collocations describe that pattern. Nuance and conditions describe the association. The app
   infers expressesContent/realizesFunction from the node kind and attaches this capture's examples

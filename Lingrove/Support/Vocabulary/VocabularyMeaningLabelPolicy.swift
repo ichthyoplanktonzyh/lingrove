@@ -29,13 +29,17 @@ nonisolated enum VocabularyMeaningLabelPolicy {
     }
 
     static func label(for node: VocabularyMeaningNode, languages: [LearningLanguage]) -> VocabularyMeaningLabel? {
+        label(in: node.labels, languages: languages)
+    }
+
+    static func label(in labels: [VocabularyMeaningLabel], languages: [LearningLanguage]) -> VocabularyMeaningLabel? {
         for language in languages {
-            if let label = preferred(in: node.labels.filter { $0.language == language }) { return label }
+            if let label = preferred(in: labels.filter { $0.language == language }) { return label }
         }
         // Untagged names are retained as authored, without guessing their language. English
         // and then another existing name are last-resort fallbacks, never generated text.
-        return preferred(in: node.labels.filter { $0.language == nil }) ??
-            preferred(in: node.labels.filter { $0.language == .english }) ?? preferred(in: node.labels)
+        return preferred(in: labels.filter { $0.language == nil }) ??
+            preferred(in: labels.filter { $0.language == .english }) ?? preferred(in: labels)
     }
 
     private static func preferred(in labels: [VocabularyMeaningLabel]) -> VocabularyMeaningLabel? {

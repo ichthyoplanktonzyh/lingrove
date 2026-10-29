@@ -13,7 +13,8 @@ nonisolated enum CLICaptureContract {
         "translationLanguage": .text(100), "sourceKind": sourceKind, "status": status, "source": .text(4_096)])
     private static let meaning = Shape(fields: ["ref": .text(200), "id": .uuid, "title": .text(4_096),
         "language": .text(100), "kind": .enumeration(["concept", "function"]), "aliases": .array(.object(label), 63),
-        "definition": .text(16_384), "cues": .array(.text(4_096), 64), "status": status], required: ["ref"])
+        "definition": .text(16_384), "cues": .array(.text(4_096), 64), "status": status,
+        "categories": .array(.text(200), 64)], required: ["ref"])
     private static let example = Shape(fields: ["text": .text(262_144), "translation": .text(262_144),
         "translationLanguage": .text(100), "meaning": .text(32_000), "meaningLanguage": .text(100),
         "completeness": .enumeration(["sentence", "fragment", "unknown"]), "sourceKind": sourceKind,

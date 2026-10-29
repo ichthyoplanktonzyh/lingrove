@@ -73,7 +73,8 @@ nonisolated enum CLIResourceContract {
     }
 
     static let names = ["entries", "senses", "sources", "occurrences", "interpretations", "collections",
-                        "nodes", "patterns", "mappings", "relations", "cues", "cueTargets"]
+                        "nodes", "patterns", "mappings", "relations", "cues", "cueTargets",
+                        "frameworks", "categories", "categoryParents", "categoryMemberships", "categoryOverrides"]
     static let provenance = Shape(fields: ["origin": .enumeration(["user", "imported", "model"]),
         "status": .enumeration(["confirmed", "proposed"]), "source": .text(4_096), "confidence": .nullable(.confidence)])
     static let range = Shape(fields: ["location": .integer, "length": .integer], required: ["location", "length"])
@@ -92,6 +93,21 @@ nonisolated enum CLIResourceContract {
     // swiftlint:disable:next cyclomatic_complexity
     static func shape(_ resource: String) throws -> Shape {
         switch resource {
+        case "frameworks":
+            return .init(fields: ["id": .uuid, "key": .text(200), "version": .integer], required: ["id", "key", "version"])
+        case "categories":
+            return .init(fields: ["id": .uuid, "axis": .enumeration(["content", "function"]),
+                "labels": .array(.object(label), 64), "definition": .text(16_384), "frameworkID": .nullable(.uuid),
+                "key": .nullable(.text(200)), "isRetired": .bool, "provenance": .object(provenance)],
+                required: ["id", "axis", "labels"])
+        case "categoryParents":
+            return .init(fields: ["id": .uuid, "categoryID": .uuid, "parentID": .uuid], required: ["id", "categoryID", "parentID"])
+        case "categoryMemberships":
+            return .init(fields: ["id": .uuid, "nodeID": .uuid, "categoryID": .uuid, "provenance": .object(provenance)],
+                required: ["id", "nodeID", "categoryID"])
+        case "categoryOverrides":
+            return .init(fields: ["categoryID": .uuid, "labels": .nullable(.array(.object(label), 64)),
+                "definition": .nullable(.text(16_384)), "isHidden": .bool], required: ["categoryID"])
         case "entries":
             return .init(fields: ["id": .uuid, "expression": .text(32_000), "dictionaryForm": .text(32_000),
                 "language": .nullable(.text(100)), "kind": .enumeration(["word", "expression", "pattern", "sentence"]),

@@ -118,6 +118,26 @@ for the same batch. The baseline revision can still change before commit; read a
 
 ## Independent resources and external organization
 
+Meaning classification adds `frameworks`, `categories`, `categoryParents`, `categoryMemberships`
+and `categoryOverrides` to the resource interface. Categories are independent of meaning nodes
+and lexical mappings. Custom categories support several same-axis parents or standalone roots;
+meaning nodes support several category memberships. The app rejects hierarchy cycles and duplicate
+memberships. Built-in definitions/parent edges are read only; local overrides can rename, describe
+or hide them. Catalog updates preserve these overlays and custom extensions.
+
+`data list categories --query content.degree --limit 100` discovers IDs and stable catalog keys.
+Capture meaning declarations accept `categories: ["content.degree.near-zero"]` (or category UUIDs),
+including additive category membership on existing `ref`/`id` declarations. Category keys must
+come from the installed catalog; capture rejects ambiguous, missing and retired destinations.
+New agent memberships default to model/confirmed, with explicit proposed memberships excluded
+from active filtering. Resource batches can replace/delete individual memberships.
+
+`categoryOverrides` is keyed by `categoryID`, rather than `id`. Other new resources use explicit
+UUIDs. Deleting a custom category detaches its edges and memberships while preserving meanings
+and expressions; built-in categories and framework receipts cannot be deleted through the CLI.
+SQLite version 4 upgrades transactionally to 5; portable version 7 upgrades to 8 with an empty
+classification directory, preserving its existing evidence and meaning identities.
+
 `vocab list/get` reads personally collected material. Catalog knowledge and raw evidence can
 exist without a personal collection or meaning graph. Resource commands expose both:
 

@@ -8,6 +8,56 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func categoriesSupportCaptureOverridesMultiParentsAndProtectedBuiltIns() async throws {
+        let fixture = try await Fixture()
+        do {
+            var document = VocabularyDocument()
+            try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: [])
+            _ = try await fixture.archive.commit(document)
+            let listed = try await fixture.call(["data", "list", "categories", "--query", "content.degree.near-zero"])
+            #expect(listed.0 == 0)
+            #expect(try result(listed.1)["total"] as? Int == 1)
+            let capture: [String: Any] = ["version": 1, "idempotencyKey": "categorized-capture",
+                "defaults": ["language": "en", "meaningLanguage": "zh-Hans"],
+                "meanings": [["ref": "almost-none", "title": "几乎没有", "categories": ["content.degree.near-zero", "content.quantity.none"]]],
+                "entries": [["expression": "barely", "senses": [["meaning": "几乎不", "associations": [["meaning": "almost-none"]]]]]]]
+            let bytes = try JSONSerialization.data(withJSONObject: capture)
+            #expect(try await fixture.call(["vocab", "capture", "--stdin", "--dry-run"], stdin: bytes).0 == 0)
+            #expect(try await fixture.archive.load().revision == 1)
+            #expect(try await fixture.call(["vocab", "capture", "--stdin"], stdin: bytes).0 == 0)
+            let snapshot = try await fixture.archive.load()
+            #expect(snapshot.document.classification.memberships.count == 2)
+            #expect(snapshot.document.classification.memberships.allSatisfy { $0.provenance.origin == .model && $0.provenance.status == .confirmed })
+            #expect(try result(try await fixture.call(["vocab", "capture", "--stdin"], stdin: bytes).1)["replayed"] as? Bool == true)
+            let builtIn = try #require(snapshot.document.classification.categories.first { $0.key == "content.degree.near-zero" })
+            let other = try #require(snapshot.document.classification.categories.first { $0.key == "content.quantity.none" })
+            let custom = UUID(), nodeID = snapshot.document.semantics.nodes[0].id
+            func put(_ resource: String, _ value: [String: Any]) -> [String: Any] { ["put": ["resource": resource, "value": value]] }
+            func changes(_ key: String, _ revision: Int, _ operations: [[String: Any]]) -> [String: Any] {
+                ["version": 2, "idempotencyKey": key, "expectedRevision": revision, "operations": operations]
+            }
+            let operations = [
+                put("categories", ["id": custom.uuidString, "axis": "content", "labels": [["id": UUID().uuidString, "text": "My category"]]]),
+                put("categoryParents", ["id": UUID().uuidString, "categoryID": custom.uuidString, "parentID": builtIn.id.uuidString]),
+                put("categoryParents", ["id": UUID().uuidString, "categoryID": custom.uuidString, "parentID": other.id.uuidString]),
+                put("categoryMemberships", ["id": UUID().uuidString, "nodeID": nodeID.uuidString, "categoryID": custom.uuidString]),
+                put("categoryOverrides", ["categoryID": builtIn.id.uuidString, "isHidden": true])
+            ]
+            #expect(try await fixture.apply(changes("custom-category", 2, operations)).0 == 0)
+            #expect(fixture.store.classification.categories.contains { $0.id == custom })
+            #expect(fixture.store.classification.parents.filter { $0.categoryID == custom }.count == 2)
+            #expect(try await fixture.apply(changes("protected-category", 3, [put("categories",
+                ["id": builtIn.id.uuidString, "definition": "Must not overwrite catalog"])] )).0 == 2)
+            let remove: [[String: Any]] = [["delete": ["resource": "categories", "id": custom.uuidString]]]
+            #expect(try await fixture.apply(changes("remove-category", 3, remove)).0 == 0)
+            let final = try await fixture.archive.load()
+            #expect(final.document.classification.memberships.count == 2)
+            #expect(final.document.semantics == snapshot.document.semantics && final.document.entries == snapshot.document.entries)
+            #expect(try await fixture.apply(changes("stale-category", 3, operations)).0 == 4)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func captureTaskBuildsActiveMeaningGraphWithStableIDsAndReplay() async throws {
         let fixture = try await Fixture()
         do {

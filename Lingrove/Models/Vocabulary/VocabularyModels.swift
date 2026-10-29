@@ -159,7 +159,7 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
 /// stores its entities separately; this version describes the portable representation only.
 nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    static let currentVersion = 7
+    static let currentVersion = 8
     var schemaVersion: Int
     /// Canonical lexical records contain no examples or personal learning state. The joined
     /// entries adapter below keeps existing editors independent of persistence relationships.
@@ -170,6 +170,7 @@ nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var collections: [VocabularyCollectionItem]
     var reviewTemplates: [ReviewLayoutTemplate]?
     var semantics: VocabularySemanticIndex
+    var classification: VocabularyClassificationIndex
 
     var entries: [VocabularyEntry] {
         get { VocabularyNotebookProjection.entries(self, collectedOnly: false) }
@@ -178,25 +179,48 @@ nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     var collectedEntries: [VocabularyEntry] { VocabularyNotebookProjection.entries(self, collectedOnly: true) }
 
     init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil,
-         semantics: VocabularySemanticIndex = .init()) {
+         semantics: VocabularySemanticIndex = .init(), classification: VocabularyClassificationIndex = .init()) {
         self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
         self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []; self.collections = []
         self.reviewTemplates = reviewTemplates
         self.semantics = semantics
+        self.classification = classification
         VocabularyNotebookProjection.replace(entries, in: &self)
     }
 
     init(catalog: [VocabularyEntry], sources: [VocabularySourceSnapshot], occurrences: [VocabularySourceOccurrence],
          interpretations: [VocabularyInterpretation], collections: [VocabularyCollectionItem],
-         reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init()) {
+         reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init(),
+         classification: VocabularyClassificationIndex = .init()) {
         schemaVersion = Self.currentVersion
         self.catalog = catalog; self.sources = sources; self.occurrences = occurrences
         self.interpretations = interpretations; self.collections = collections
         self.reviewTemplates = reviewTemplates; self.semantics = semantics
+        self.classification = classification
     }
 
-    /// The new meaning graph is a fresh format. Old envelopes are deliberately not migrated;
-    /// optional language/context metadata no longer changes the format version per document.
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, catalog, sources, occurrences, interpretations, collections, reviewTemplates, semantics, classification
+    }
+
+    /// Version seven already has the canonical evidence/meaning graph. Upgrading adds an empty
+    /// directory without synthesizing memberships or changing any existing identity or receipt.
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let version = try values.decode(Int.self, forKey: .schemaVersion)
+        guard version == 7 || version == Self.currentVersion else { throw VocabularyError.unsupportedVersion }
+        schemaVersion = Self.currentVersion
+        catalog = try values.decode([VocabularyEntry].self, forKey: .catalog)
+        sources = try values.decode([VocabularySourceSnapshot].self, forKey: .sources)
+        occurrences = try values.decode([VocabularySourceOccurrence].self, forKey: .occurrences)
+        interpretations = try values.decode([VocabularyInterpretation].self, forKey: .interpretations)
+        collections = try values.decode([VocabularyCollectionItem].self, forKey: .collections)
+        reviewTemplates = try values.decodeIfPresent([ReviewLayoutTemplate].self, forKey: .reviewTemplates)
+        semantics = try values.decode(VocabularySemanticIndex.self, forKey: .semantics)
+        classification = version == 7 ? .init() : try values.decode(VocabularyClassificationIndex.self, forKey: .classification)
+    }
+
+    /// Optional language/context metadata does not change the portable format per document.
     static func requiredVersion(for entries: [VocabularyEntry]) -> Int {
         currentVersion
     }

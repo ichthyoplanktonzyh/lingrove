@@ -50,7 +50,8 @@ nonisolated struct VocabularyCLICapturePlan {
             // Referencing an existing node must not silently replace its names, cues or status.
             guard input.title == nil, input.kind == nil, input.language == nil, input.aliases == nil,
                   input.definition == nil, input.cues == nil, input.status == nil else {
-                throw CLIError.invalid("An existing meaning accepts ref and id only. Use resource operations to edit it.")
+                throw CLIError.invalid("An existing meaning accepts ref, id and additive categories only. " +
+                    "Use resource operations to edit it.")
             }
             guard document.semantics.nodes.contains(where: { $0.id == existing }) else {
                 throw CLIError(code: .notFound, message: "Referenced meaning does not exist.")
@@ -78,6 +79,18 @@ nonisolated struct VocabularyCLICapturePlan {
                 document.semantics.cues.append(.init(id: cueID, text: text, language: language))
                 document.semantics.cueTargets.append(.init(id: id(path + ".target.\(index)"), cueID: cueID,
                     nodeID: nodeID, provenance: provenance))
+            }
+        }
+        for (offset, reference) in (input.categories ?? []).enumerated() {
+            let matches = document.classification.categories.filter {
+                $0.id == UUID(uuidString: reference) || $0.key == reference
+            }
+            guard matches.count == 1, let category = matches.first, !category.isRetired else {
+                throw CLIError.invalid("Category reference must name one active category UUID or catalog key.")
+            }
+            if !document.classification.memberships.contains(where: { $0.nodeID == nodeID && $0.categoryID == category.id }) {
+                document.classification.memberships.append(.init(id: id(path + ".category.\(offset)"),
+                    nodeID: nodeID, categoryID: category.id, provenance: try provenance(input.status)))
             }
         }
         nodes[ref] = nodeID

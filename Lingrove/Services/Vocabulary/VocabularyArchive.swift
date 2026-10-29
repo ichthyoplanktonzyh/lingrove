@@ -10,17 +10,36 @@ actor VocabularyArchive {
     private var document: VocabularyDocument?
     private var revision: UInt64 = 0
     private var database: VocabularySQLiteDatabase?
+    private let installsBundledClassification: Bool
+    private var classificationCatalog: VocabularyClassificationCatalog?
 
     /// nil is an isolated in-memory notebook for tests; it never probes the user's real archive.
-    init(url: URL?) { self.url = url; images = VocabularyImageStorage(notebook: url) }
+    init(url: URL?, installsBundledClassification: Bool = false) {
+        self.url = url; images = VocabularyImageStorage(notebook: url)
+        self.installsBundledClassification = installsBundledClassification
+    }
 
     func load() throws -> VocabularySnapshot {
         let database = try persistence()
-        if let document, try database.revision() == revision { return .init(revision: revision, document: document) }
-        let snapshot = try database.read()
-        try validate(snapshot.document)
-        document = snapshot.document; revision = snapshot.revision
+        let snapshot: VocabularySnapshot
+        if let document, try database.revision() == revision {
+            snapshot = .init(revision: revision, document: document)
+        } else {
+            snapshot = try database.read()
+            try validate(snapshot.document)
+            document = snapshot.document; revision = snapshot.revision
+        }
+        // A failed first catalog load must remain retryable even when the database snapshot
+        // was already cached. The installer's version receipt makes subsequent checks cheap.
+        var next = snapshot.document
+        if try installClassification(in: &next) { return try commit(next) }
         return snapshot
+    }
+
+    private func installClassification(in document: inout VocabularyDocument) throws -> Bool {
+        guard installsBundledClassification else { return false }
+        if classificationCatalog == nil { classificationCatalog = try .bundled() }
+        return try classificationCatalog?.install(in: &document.classification, nodes: document.semantics.nodes) ?? false
     }
 
     func persistence() throws -> VocabularySQLiteDatabase {
@@ -302,6 +321,7 @@ actor VocabularyArchive {
         let baseline = try transactionBaseline()
         guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
         var next = document
+        _ = try installClassification(in: &next)
         // Validate canonical relationships before the joined editor adapter can normalize
         // children. An invalid resource relation must fail, never be silently pruned on commit.
         try VocabularyLifecyclePolicy.validate(next)
@@ -385,6 +405,7 @@ actor VocabularyArchive {
             }
         }
         try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
+        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
     }
 
     func validateReview(_ review: VocabularyReview) throws {

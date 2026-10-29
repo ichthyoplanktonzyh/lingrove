@@ -8,7 +8,7 @@ nonisolated final class VocabularySQLiteDatabase {
     typealias Row = VocabularyDatabaseRecord
     typealias Value = VocabularySQLiteConnection.Value
     static let applicationID: Int64 = 0x4C47564E // LGVN, independent of the portable JSON schema.
-    static let schemaVersion: Int64 = 4
+    static let schemaVersion: Int64 = 5
     let connection: VocabularySQLiteConnection
     private var fileLock: VocabularySQLiteFileLock?
     private(set) var lastWrittenRows = 0
@@ -27,7 +27,9 @@ nonisolated final class VocabularySQLiteDatabase {
         try access(write: true) {
             guard try scalar("PRAGMA application_id") == Self.applicationID else { throw VocabularyError.invalidArchive }
             let version = try scalar("PRAGMA user_version")
-            guard version == Self.schemaVersion else { throw VocabularyError.unsupportedVersion }
+            if version == 4 {
+                try VocabularySQLiteClassificationSchema.migrate(connection)
+            } else if version != Self.schemaVersion { throw VocabularyError.unsupportedVersion }
             guard try connection.rows("PRAGMA quick_check") == [[.text("ok")]],
                   try connection.rows("PRAGMA foreign_key_check").isEmpty else { throw VocabularyError.invalidArchive }
             // WAL lets snapshot readers coexist with the app's writer. FULL retains durable
@@ -183,6 +185,7 @@ nonisolated final class VocabularySQLiteDatabase {
             }
             try connection.execute("CREATE INDEX entries_language ON entries(language,expression)")
             try VocabularySQLiteMeaningSchema.createIndexes(connection)
+            try VocabularySQLiteClassificationSchema.createIndexes(connection)
             try createReceiptTable(connection)
             try connection.execute("PRAGMA application_id=" + String(applicationID))
             try connection.execute("PRAGMA user_version=" + String(schemaVersion))

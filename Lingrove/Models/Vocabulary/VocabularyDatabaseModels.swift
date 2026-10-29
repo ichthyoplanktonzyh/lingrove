@@ -12,10 +12,14 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
         case usagePatterns = "usage_patterns", patternSlots = "pattern_slots", meaningMappings = "meaning_mappings"
         case mappingRoles = "mapping_roles", mappingEvidence = "mapping_evidence", meaningRelations = "meaning_relations"
         case retrievalCues = "retrieval_cues", cueTargets = "cue_targets"
+        case classificationFrameworks = "classification_frameworks", categories
+        case categoryParents = "category_parents", categoryMemberships = "category_memberships", categoryOverrides = "category_overrides"
 
         var parent: Self? {
             switch self {
             case .entries, .templates, .meaningNodes, .retrievalCues, .sources, .usages, .collections: nil
+            case .classificationFrameworks, .categories, .categoryParents, .categoryMemberships: nil
+            case .categoryOverrides: .categories
             case .occurrences: .sources
             case .senses: .entries
             case .senseExplanations: .senses
@@ -31,6 +35,10 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
         }
         var extraColumns: [String] {
             switch self {
+            case .classificationFrameworks: ["catalog_key"]
+            case .categories: ["framework_id", "catalog_key", "axis"]
+            case .categoryParents: ["category_id", "parent_category_id"]
+            case .categoryMemberships: ["meaning_id", "category_id"]
             case .entries: ["lookup_key", "language", "expression"]
             case .senses: ["meaning"]
             case .usages: ["occurrence_id", "sense_id", "status"]
@@ -64,12 +72,20 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
         case usagePattern(VocabularyUsagePattern), patternSlot(VocabularyPatternSlot), meaningMapping(VocabularyMeaningMapping)
         case roleBinding(VocabularyRoleBinding), evidence(UUID), meaningRelation(VocabularyMeaningRelation)
         case retrievalCue(VocabularyRetrievalCue), cueTarget(VocabularyCueTarget)
+        case classificationFramework(VocabularyClassificationFramework), category(VocabularyCategory)
+        case categoryParent(VocabularyCategoryParent), categoryMembership(VocabularyMeaningCategoryMembership)
+        case categoryOverride(VocabularyCategoryOverride)
 
         // Keep the typed table dispatch exhaustive; each case describes an independent row format.
         // swiftlint:disable:next cyclomatic_complexity
         func encoded() throws -> Data {
             let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
             switch self {
+            case let .classificationFramework(value): return try encoder.encode(value)
+            case let .category(value): return try encoder.encode(value)
+            case let .categoryParent(value): return try encoder.encode(value)
+            case let .categoryMembership(value): return try encoder.encode(value)
+            case let .categoryOverride(value): return try encoder.encode(value)
             case let .entry(value): return try encoder.encode(value)
             case let .sense(value): return try encoder.encode(value)
             case let .usage(value): return try encoder.encode(value)
@@ -100,6 +116,13 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
         static func decode(_ bytes: Data, table: Table) throws -> Self {
             let decoder = JSONDecoder()
             switch table {
+            case .classificationFrameworks:
+                return .classificationFramework(try decoder.decode(VocabularyClassificationFramework.self, from: bytes))
+            case .categories: return .category(try decoder.decode(VocabularyCategory.self, from: bytes))
+            case .categoryParents: return .categoryParent(try decoder.decode(VocabularyCategoryParent.self, from: bytes))
+            case .categoryMemberships:
+                return .categoryMembership(try decoder.decode(VocabularyMeaningCategoryMembership.self, from: bytes))
+            case .categoryOverrides: return .categoryOverride(try decoder.decode(VocabularyCategoryOverride.self, from: bytes))
             case .entries: return .entry(try decoder.decode(VocabularyEntry.self, from: bytes))
             case .senses: return .sense(try decoder.decode(VocabularySense.self, from: bytes))
             case .usages: return .usage(try decoder.decode(VocabularyInterpretation.self, from: bytes))

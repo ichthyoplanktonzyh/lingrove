@@ -34,6 +34,8 @@ only for interpretations: `candidate`, `accepted`, `rejected`. Reads do not perf
 | `mappings` | A sense's claim about a node, optionally restricted to a pattern; `evidenceIDs` name accepted interpretation IDs. |
 | `relations` | Explicit node-to-node relation: `narrower`, `opposite`, `related`. Narrower points to the broader node. |
 | `cues` / `cueTargets` | Ambiguous personal/paraphrase query wording and its explicit targets. |
+| `frameworks` / `categories` | Versioned built-in directory and user categories above meaning nodes; see [classification.md](classification.md). |
+| `categoryParents` / `categoryMemberships` / `categoryOverrides` | Category hierarchy, many-to-many meaning membership, and local display overrides. |
 
 Keep optional learning copy specific and nonredundant. Pattern notes describe syntax/register;
 mapping nuances distinguish expression choices, and conditions name actual applicability limits.
@@ -53,7 +55,7 @@ be updated together atomically. There are no symbolic references to operation ou
 
 `put` creates or patches one resource. Existing omitted fields are preserved; arrays replace,
 optional nulls clear, and provenance fields merge. Root `id` is required, except collections use
-`senseID`. Published schema `x-requiredOnCreate` lists additional creation fields. Timestamps are
+`senseID`, and categoryOverrides use `categoryID`. Published schema `x-requiredOnCreate` lists additional creation fields. Timestamps are
 Unix seconds in UTC, defaulting to the write time. Enum values and supported languages come from
 `schema`/`status`; unknown or misspelled nested fields fail.
 
@@ -141,6 +143,7 @@ Sources and occurrences are immutable snapshots. For a correction, create new so
 UUIDs and patch the interpretation's `occurrenceID`; other claims keep their original evidence.
 Retained evidence is never automatically garbage-collected after uncollecting or moving a claim.
 
+Except for custom-category deletion (documented in [classification.md](classification.md)),
 `delete` removes exactly the requested record. Remove or redirect all incoming references in the
 same batch; dangling links reject the entire transaction. Delete an entry's senses explicitly
 first. Graph operations also enforce node kinds, role/slot ownership, same-sense evidence and

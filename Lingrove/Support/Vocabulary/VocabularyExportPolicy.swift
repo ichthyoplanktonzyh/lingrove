@@ -21,7 +21,8 @@ nonisolated enum VocabularyExportPolicy {
     }
 
     static func document(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration,
-                         semantics: VocabularySemanticIndex? = nil) -> VocabularyExportDocument {
+                         semantics: VocabularySemanticIndex? = nil,
+                         classification: VocabularyClassificationIndex? = nil) -> VocabularyExportDocument {
         let options = configuration
         let version = options.examples && entries.contains { $0.examples.contains { $0.completeness == .unknown } }
             ? 3 : entries.contains { $0.language == nil } ? 2 : 1
@@ -56,6 +57,10 @@ nonisolated enum VocabularyExportPolicy {
            !semantics.nodes.isEmpty || !semantics.patterns.isEmpty {
             document.version = 4
             document.semantics = VocabularySemanticPolicy.selected(semantics, entries: entries, examples: options.examples)
+            if let classification, let selected = document.semantics {
+                let directory = VocabularyClassificationPolicy.selected(classification, nodes: selected.nodes)
+                if !directory.memberships.isEmpty { document.classification = directory; document.version = 5 }
+            }
         }
         return document
     }
@@ -66,9 +71,10 @@ nonisolated enum VocabularyExportPolicy {
     }
 
     static func package(_ entries: [VocabularyEntry], configuration: VocabularyExportConfiguration,
-                        semantics: VocabularySemanticIndex? = nil) throws -> VocabularyExportPackage {
+                        semantics: VocabularySemanticIndex? = nil,
+                        classification: VocabularyClassificationIndex? = nil) throws -> VocabularyExportPackage {
         try Task.checkCancellation()
-        let document = document(entries, configuration: configuration, semantics: semantics)
+        let document = document(entries, configuration: configuration, semantics: semantics, classification: classification)
         let data = try VocabularyExportFormatter.render(document, configuration: configuration)
         guard data.count <= maximumDataBytes else { throw VocabularyExportError.tooLarge }
         return .init(configuration: configuration, data: data,

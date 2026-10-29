@@ -102,6 +102,10 @@ candidate interpretations, move claims, manage personal membership or maintain t
 The external agent makes those decisions; Lingrove validates and stores them without an internal
 classifier. Do not create a graph merely because the user asks to save an expression.
 
+For category organization, read [references/classification.md](references/classification.md).
+Categories group meaning nodes above their expression mappings. Discover existing categories
+before creating custom ones; a meaning can have several memberships without duplicating it.
+
 ## Preview, commit, and report
 
 1. A request to save or edit authorizes that write. General discussion alone does not.

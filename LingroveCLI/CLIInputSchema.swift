@@ -17,17 +17,20 @@ enum CLIInputSchema {
             var alternatives = items["oneOf"] as? [[String: Any]] ?? []
             alternatives.append(["type": "object", "additionalProperties": false, "required": ["capture"],
                 "properties": ["capture": CLICaptureContract.shape.schema]])
-            alternatives += try CLIResourceContract.names.map { name in
+            root["x-readOnlyResources"] = ["frameworks"]
+            alternatives += try CLIResourceContract.names.filter { $0 != "frameworks" }.map { name in
                 var shape = try CLIResourceContract.shape(name).schema
                 shape["x-requiredOnCreate"] = shape["required"]
-                shape["required"] = [name == "collections" ? "senseID" : "id"]
+                let identity = name == "collections" ? "senseID" : name == "categoryOverrides" ? "categoryID" : "id"
+                shape["required"] = [identity]
                 return ["type": "object", "additionalProperties": false, "required": ["put"], "properties": [
                     "put": ["type": "object", "additionalProperties": false, "required": ["resource", "value"],
                             "properties": ["resource": ["const": name], "value": shape]]]]
             }
             alternatives.append(["type": "object", "additionalProperties": false, "required": ["delete"], "properties": [
                 "delete": ["type": "object", "additionalProperties": false, "required": ["resource", "id"],
-                           "properties": ["resource": ["enum": CLIResourceContract.names], "id": ["type": "string", "format": "uuid"]]]]])
+                           "properties": ["resource": ["enum": CLIResourceContract.names.filter { $0 != "frameworks" }],
+                                          "id": ["type": "string", "format": "uuid"]]]]])
             items["oneOf"] = alternatives; operations["items"] = items; properties["operations"] = operations
             root["properties"] = properties
             root["allOf"] = [["if": ["properties": ["operations": ["contains": ["anyOf": [
