@@ -15,6 +15,7 @@ struct VocabularyMeaningMappingEditor: View {
     @State private var showingDetails = false
     @State private var saving = false
     @State private var failure: String?
+    @State private var choosingExpression = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
 
@@ -36,15 +37,11 @@ struct VocabularyMeaningMappingEditor: View {
             canSave: node != nil && sense != nil, failure: failure, save: save) {
             Section {
                 if fixedSenseID == nil {
-                    Picker(String(localized: "Expression", table: "Vocabulary"), selection: $senseID) {
-                        Text(String(localized: "Choose an expression", table: "Vocabulary")).tag(UUID?.none)
-                        ForEach(store.entries) { entry in
-                            ForEach(entry.senses) { sense in
-                                Text(VocabularyMeaningLabelPolicy.expressionTitle(entry, includeLanguage: true)
-                                     + " · " + sense.displayTitle)
-                                    .tag(Optional(sense.id))
-                            }
-                        }
+                    Button {
+                        choosingExpression = true
+                    } label: {
+                        Text(entry.map { VocabularyMeaningLabelPolicy.expressionTitle($0, includeLanguage: true) +
+                            " · " + (sense?.displayTitle ?? "") } ?? String(localized: "Choose an expression", table: "Vocabulary"))
                     }
                     if let sense, let example = sense.examples.first {
                         Text(example.text)
@@ -117,6 +114,10 @@ struct VocabularyMeaningMappingEditor: View {
                 TextField(String(localized: "Usage conditions", table: "Vocabulary"), text: $conditions, axis: .vertical)
                 TextField(String(localized: "Nuance", table: "Vocabulary"), text: $nuance, axis: .vertical)
             }
+        }
+        .sheet(isPresented: $choosingExpression) {
+            VocabularyMeaningExpressionPicker(entries: store.entries, selected: Set(senseID.map { [$0] } ?? []),
+                allowsMultiple: false) { senseID = $0.first }
         }
     }
 

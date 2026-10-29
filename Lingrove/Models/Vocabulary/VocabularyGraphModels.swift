@@ -7,16 +7,27 @@ nonisolated enum VocabularyGraphNodeID: Hashable, Sendable {
     case headword(UUID)
     case sense(VocabularySelection)
     case meaning(UUID)
+    case category(UUID)
+    case axis(VocabularyCategory.Axis)
 
     var rootID: UUID {
         switch self {
         case .headword(let id): id
         case .sense(let selection): selection.entryID
         case .meaning(let id): id
+        case .category(let id): id
+        case .axis(let axis):
+            axis == .content
+                ? UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+                : UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
         }
     }
     var selection: VocabularySelection? {
         if case .sense(let value) = self { return value }
+        return nil
+    }
+    var categoryID: UUID? {
+        if case .category(let id) = self { return id }
         return nil
     }
 }
@@ -25,17 +36,34 @@ nonisolated struct VocabularyGraphNode: Equatable, Sendable, Identifiable {
     let id: VocabularyGraphNodeID
     let label: String
     var meaningKind: VocabularyMeaningNode.Kind?
+    var axis: VocabularyCategory.Axis?
+    var depth: Int = 0
+    var itemCount: Int = 0
+    var isUnexplored: Bool = false
+    var hasChildren: Bool = false
+    var isExpanded: Bool = false
 }
 
 nonisolated struct VocabularyGraphEdge: Equatable, Sendable {
-    enum Kind: String, Sendable { case ownership, expressesContent, realizesFunction, narrower, opposite, related }
+    enum Kind: String, Sendable {
+        case ownership
+        case taxonomy
+        case expressesContent
+        case realizesFunction
+        case narrower
+        case opposite
+        case related
+    }
     let source: VocabularyGraphNodeID
     let target: VocabularyGraphNodeID
     var kind: Kind = .ownership
+    var isUnexplored: Bool = false
 }
 
 /// A small, immutable rendering projection. Rich text, images, AX handles and model sessions
 /// remain in the notebook detail view rather than entering the simulation or each frame.
+/// When `isMeaningGraph` is true, `treePositions` supplies deterministic hierarchical coordinates
+/// so the semantic taxonomy renders as a stable left-to-right tree rather than a drifting force cloud.
 nonisolated struct VocabularyGraphSnapshot: Equatable, Sendable {
     var nodes: [VocabularyGraphNode] = []
     var edges: [VocabularyGraphEdge] = []
@@ -43,6 +71,7 @@ nonisolated struct VocabularyGraphSnapshot: Equatable, Sendable {
     var matches: Set<VocabularyGraphNodeID> = []
     var searchQuery = ""
     var isMeaningGraph = false
+    var treePositions: [VocabularyGraphNodeID: CGPoint] = [:]
 }
 
 /// Appearance and forces are notebook preferences, independent of stored learning content.

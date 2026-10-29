@@ -500,6 +500,10 @@ the authored resource manifest, preserving user extensions and retiring removed 
 `VocabularyClassificationRows` maps these values to relational storage, while
 `VocabularySQLiteClassificationSchema` owns its additive migration and SQL constraints.
 `VocabularyClassificationProjection` produces bounded tree paths with unique meaning counts.
+`VocabularyMeaningDraft` carries category context and expression choices through child pickers.
+The archive's `updateMeaningOrganization` merges both semantic and classification baselines
+before one transaction. Category creation inside a meaning task stays in its detached draft;
+cancelling the outer task publishes nothing. Standalone category management still owns its Save.
 `VocabularyCategorySidebar`, `VocabularyCategoryEditor` and `VocabularyMeaningCategorySheet`
 add navigation and membership editing beside the existing meaning browser without replacing its
 entry/meaning capsule. Classification remains explicit and requires no vector database.

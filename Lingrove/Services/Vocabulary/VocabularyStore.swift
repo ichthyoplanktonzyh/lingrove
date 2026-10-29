@@ -166,6 +166,16 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await archive.updateSemantics(value, basedOn: baseline)); return true } catch { report(error); return false }
     }
 
+    func updateMeaningOrganization(_ semantics: VocabularySemanticIndex, basedOn semanticBaseline: VocabularySemanticIndex,
+                                   classification: VocabularyClassificationIndex,
+                                   basedOn classificationBaseline: VocabularyClassificationIndex) async -> Bool {
+        do {
+            apply(try await archive.updateMeaningOrganization(semantics, basedOn: semanticBaseline,
+                classification: classification, basedOn: classificationBaseline))
+            return true
+        } catch { report(error); return false }
+    }
+
     func updateClassification(_ value: VocabularyClassificationIndex, basedOn baseline: VocabularyClassificationIndex) async -> Bool {
         do { apply(try await archive.updateClassification(value, basedOn: baseline)); return true } catch { report(error); return false }
     }

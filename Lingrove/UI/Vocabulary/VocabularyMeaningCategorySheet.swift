@@ -134,7 +134,10 @@ struct VocabularyMeaningCategoryControl: View {
 /// while preserving conflict-checked baseline commits.
 struct VocabularyMeaningCategorySheet: View {
     @ObservedObject var store: VocabularyStore
-    let nodeID: UUID
+    private let node: VocabularyMeaningNode
+    private let originalIndex: VocabularyClassificationIndex
+    private let onSaveDraft: ((VocabularyClassificationIndex, Set<UUID>) -> Void)?
+    private var nodeID: UUID { node.id }
     @State private var baseline: VocabularyClassificationIndex
     @State private var selectedIDs: Set<UUID>
     @State private var expanded: Set<String>
@@ -147,30 +150,21 @@ struct VocabularyMeaningCategorySheet: View {
     @Environment(\.dismiss) private var dismiss
 
     init(store: VocabularyStore, nodeID: UUID) {
-        self.store = store
-        self.nodeID = nodeID
-        let initialIndex = store.classification
-        let initialSelected = Set(
-            initialIndex.memberships
-                .filter { $0.nodeID == nodeID }
-                .map(\.categoryID)
-        )
-        _baseline = State(initialValue: initialIndex)
-        _selectedIDs = State(initialValue: initialSelected)
-        _expanded = State(initialValue: VocabularyClassificationProjection.expansionPaths(
-            for: initialSelected,
-            in: initialIndex,
-            includeHidden: true
-        ))
-        if let firstSelected = initialIndex.categories.first(where: { initialSelected.contains($0.id) }) {
-            _activeAxis = State(initialValue: firstSelected.axis)
-        } else if let node = store.semantics.nodes.first(where: { $0.id == nodeID }), node.kind == .function {
-            _activeAxis = State(initialValue: .function)
-        }
+        let node = store.semantics.nodes.first { $0.id == nodeID } ?? .init(id: nodeID, labels: [])
+        self.init(store: store, node: node, index: store.classification,
+            selection: Set(store.classification.memberships.filter { $0.nodeID == nodeID }.map(\.categoryID)),
+            axis: node.kind == .function ? .function : .content, onSave: nil)
     }
 
-    private var meaningNode: VocabularyMeaningNode? {
-        store.semantics.nodes.first { $0.id == nodeID }
+    /// A parent editor can borrow the picker without publishing any intermediate directory edits.
+    init(store: VocabularyStore, node: VocabularyMeaningNode, index: VocabularyClassificationIndex,
+         selection: Set<UUID>, axis: VocabularyCategory.Axis,
+         onSave: ((VocabularyClassificationIndex, Set<UUID>) -> Void)?) {
+        self.store = store; self.node = node; originalIndex = index; onSaveDraft = onSave
+        _baseline = State(initialValue: index); _selectedIDs = State(initialValue: selection)
+        _expanded = State(initialValue: VocabularyClassificationProjection.expansionPaths(
+            for: selection, in: index, includeHidden: true))
+        _activeAxis = State(initialValue: axis)
     }
 
     private var selectedCategories: [VocabularyCategory] {
@@ -215,22 +209,13 @@ struct VocabularyMeaningCategorySheet: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .interactiveDismissDisabled(saving)
         .sheet(isPresented: $creating) {
-            VocabularyCategoryEditor(store: store, preferredLanguages: languages) { id in
-                // Adopt the new directory receipt, but retain the old membership baseline: a
-                // concurrent CLI addition must not become a checkbox deletion by this stale sheet.
-                let memberships = baseline.memberships
-                baseline = store.classification
-                baseline.memberships = memberships
-                selectedIDs.insert(id)
-                if let created = baseline.categories.first(where: { $0.id == id }) {
-                    activeAxis = created.axis
-                }
-                expanded.formUnion(VocabularyClassificationProjection.expansionPaths(
-                    for: selectedIDs,
-                    in: baseline,
-                    includeHidden: true
-                ))
-            }
+            VocabularyCategoryEditor(store: store, parentID: selectedIDs.count == 1 ? selectedIDs.first : nil,
+                axis: activeAxis, draft: baseline, preferredLanguages: languages, onDraftSaved: { index, id in
+                    baseline = index; selectedIDs.insert(id)
+                    if let category = index.categories.first(where: { $0.id == id }) { activeAxis = category.axis }
+                    expanded.formUnion(VocabularyClassificationProjection.expansionPaths(
+                        for: selectedIDs, in: baseline, includeHidden: true))
+                })
         }
     }
 
@@ -239,22 +224,19 @@ struct VocabularyMeaningCategorySheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(String(localized: "Categorize", table: "Vocabulary"))
                     .font(.headline)
-                if let meaningNode {
-                    Text(meaningNode.title(in: languages))
+                if !node.title(in: languages).isEmpty {
+                    Text(node.title(in: languages))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
             Spacer()
-            Button {
-                creating = true
-            } label: {
-                Label(String(localized: "New category", table: "Vocabulary"), systemImage: "plus")
-                    .font(.caption.weight(.medium))
-            }
-            .controlSize(.small)
-            .buttonStyle(.bordered)
+            Menu {
+                Button(String(localized: "New category", table: "Vocabulary")) { creating = true }
+            } label: { Image(systemName: "ellipsis.circle") }
+            .menuStyle(.borderlessButton).fixedSize()
+            .accessibilityIdentifier("vocabularyCategoryActions")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -459,19 +441,12 @@ struct VocabularyMeaningCategorySheet: View {
     }
 
     private func save() {
+        if let onSaveDraft { onSaveDraft(baseline, selectedIDs); dismiss(); return }
         var edited = baseline
-        edited.memberships.removeAll { $0.nodeID == nodeID && !selectedIDs.contains($0.categoryID) }
-        for position in edited.memberships.indices where edited.memberships[position].nodeID == nodeID &&
-            selectedIDs.contains(edited.memberships[position].categoryID) &&
-            edited.memberships[position].provenance.status == .proposed {
-            edited.memberships[position].provenance = .init(origin: .user, status: .confirmed)
-        }
-        for id in selectedIDs where !edited.memberships.contains(where: { $0.nodeID == nodeID && $0.categoryID == id }) {
-            edited.memberships.append(.init(id: UUID(), nodeID: nodeID, categoryID: id))
-        }
+        VocabularyClassificationPolicy.assign(nodeID: nodeID, categories: selectedIDs, in: &edited)
         saving = true
         Task {
-            if await store.updateClassification(edited, basedOn: baseline) {
+            if await store.updateClassification(edited, basedOn: originalIndex) {
                 dismiss()
             } else {
                 failure = store.errorMessage

@@ -127,15 +127,21 @@ struct VocabularyCategorySidebar: View {
     @State private var creating = false
     @State private var editing: VocabularyCategory?
     @State private var managing = false
+    @State private var showsAll = false
 
     private var rows: [VocabularyClassificationProjection.Row] {
-        VocabularyClassificationProjection.rows(
+        let values = VocabularyClassificationProjection.rows(
             store.classification,
             nodes: store.semantics.nodes,
             languages: languages,
             expanded: expanded,
             query: query
         )
+        guard !showsAll, query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return values }
+        let revealed = UUID(uuidString: selection).map {
+            VocabularyClassificationProjection.expansionPaths(for: [$0], in: store.classification)
+        } ?? []
+        return values.filter { $0.meaningCount > 0 || $0.category.id.uuidString == selection || revealed.contains($0.id) }
     }
 
     private var totalMeaningCount: Int {
@@ -255,10 +261,13 @@ struct VocabularyCategorySidebar: View {
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
 
-            Button {
-                creating = true
+            Menu {
+                Toggle(String(localized: "All categories", table: "Vocabulary"), isOn: $showsAll)
+                Divider()
+                Button(String(localized: "Manage categories", table: "Vocabulary")) { managing = true }
+                Button(String(localized: "New category", table: "Vocabulary")) { creating = true }
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "ellipsis")
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
@@ -268,24 +277,7 @@ struct VocabularyCategorySidebar: View {
                     )
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help(String(localized: "New category", table: "Vocabulary"))
-            .accessibilityIdentifier("vocabularyNewCategory")
-
-            Button {
-                managing = true
-            } label: {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.primary.opacity(0.05))
-                    )
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton).fixedSize()
             .help(String(localized: "Manage categories", table: "Vocabulary"))
             .accessibilityIdentifier("vocabularyManageCategories")
         }

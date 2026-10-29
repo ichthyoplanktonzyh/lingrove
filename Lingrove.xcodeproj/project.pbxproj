@@ -263,6 +263,7 @@
 		1E2DD29C6A8C211C5EC50949 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847878490F8C4155C73A8658 /* WelcomeView.swift */; };
 		1E36B15C06EFE283964ACD26 /* TypoGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD956CE8F4349659BDB5D09 /* TypoGate.swift */; };
 		1E3DDDA3DED97D92A5729F5E /* SpeechConfigurationView+Local.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03A674029D833786A67BBA6 /* SpeechConfigurationView+Local.swift */; };
+		1E4DCEFE4736FE70F6E2147A /* VocabularyMeaningWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DE2267EC7D40518FAFEAED4 /* VocabularyMeaningWorkflowTests.swift */; };
 		1E592988420F96C54A6D0761 /* VocabularyArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E583D2DA2F8E7E79E2C911 /* VocabularyArchiveTests.swift */; };
 		1E6BDA0F8BC1C224868F2DC4 /* ModelAndPresentationValueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1C305472C50D75ECBCB6BF /* ModelAndPresentationValueTests.swift */; };
 		1E6F16E7F90A6C479D356E3D /* CLICaptureContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3DCF127D4AF300BB3DA9A2 /* CLICaptureContract.swift */; };
@@ -883,6 +884,7 @@
 		69D0F0A01D4D7EA9D5BC69B7 /* AnkiReviewPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4BF2B17EE938C5A27A4C42 /* AnkiReviewPolicy.swift */; };
 		6A1EA881AD4618667F4C7C19 /* SuggestionFadeInPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A9D12D9B453532B2B1CE74 /* SuggestionFadeInPolicyTests.swift */; };
 		6A30ECCB31DB3F796EC88511 /* KeyCodeLabels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DAF3BD26896AEF8FFDD5E59 /* KeyCodeLabels.swift */; };
+		6AD12B555FC7731979A6D5E8 /* VocabularyMeaningDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB2D8FDD88D22E05325BC73 /* VocabularyMeaningDraft.swift */; };
 		6AD46CED17DC5AA013ED27AF /* ModelContextIdentityCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B605B2195352169F7FC82D9 /* ModelContextIdentityCacheTests.swift */; };
 		6B0F1F4863F70D8D369DEB30 /* SpeechModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C4D8E698A6C8F89DF63EC9 /* SpeechModelCatalog.swift */; };
 		6B3EA03DA41AB86682A9208E /* VocabularyExportSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879E21866A09A8B091279724 /* VocabularyExportSession.swift */; };
@@ -1419,6 +1421,7 @@
 		B11DAC690C96E46EA96CBB75 /* Sparkle-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7B0FA43AB1EE15AE8925E8C /* Sparkle-LICENSE.txt */; };
 		B1654E5C63EBF121DB4991DD /* VocabularyDatabaseProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30F29F9B5AE3976DCC4D3E9D /* VocabularyDatabaseProjection.swift */; };
 		B167D9319A3DC0BEDA4B06C2 /* WelcomeModelStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA596EA24B141E31C80D966 /* WelcomeModelStepView.swift */; };
+		B16F79EF2970B298FEBC7CF5 /* VocabularyMeaningDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB2D8FDD88D22E05325BC73 /* VocabularyMeaningDraft.swift */; };
 		B1ADE41ED6B2EEBE1DFF07D8 /* LearningSpeechControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4BBB44A5F2099836092288 /* LearningSpeechControllerTests.swift */; };
 		B1B9FD73ACDD1D6CD04718C1 /* VocabularyContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA953CDDD64449BBE59EA9A /* VocabularyContentView.swift */; };
 		B1C2F86D41F8B2CD1461E64B /* SystemSettingsWindowLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFDB4381A21564A6363B6C47 /* SystemSettingsWindowLocator.swift */; };
@@ -2463,6 +2466,7 @@
 		5D6BF3DC901034E015EA6529 /* InterfaceLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceLanguage.swift; sourceTree = "<group>"; };
 		5D922FDD7A7FD0EA0CF0DAF5 /* AppsPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppsPaneView.swift; sourceTree = "<group>"; };
 		5DDC59B5D3B6A697DBDE3B73 /* VocabularySemanticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySemanticTests.swift; sourceTree = "<group>"; };
+		5DE2267EC7D40518FAFEAED4 /* VocabularyMeaningWorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyMeaningWorkflowTests.swift; sourceTree = "<group>"; };
 		5DE7F5732B6947204C01C5A9 /* HomeLearningDemoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeLearningDemoTests.swift; sourceTree = "<group>"; };
 		5E102E9986A797DBBA8FD4CF /* VocabularyWordListPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyWordListPolicy.swift; sourceTree = "<group>"; };
 		5E634F2EA6C8DB9BBE138FD5 /* ScreenTextExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTextExtractorTests.swift; sourceTree = "<group>"; };
@@ -2609,6 +2613,7 @@
 		7BB52260F9273107B4F26CD1 /* RecommendedSetupPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendedSetupPolicyTests.swift; sourceTree = "<group>"; };
 		7BCA5E2D3C3B27D885BCA06C /* SuggestionOverlayPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionOverlayPresenter.swift; sourceTree = "<group>"; };
 		7BE5F0A68FD6A6491BBB25B7 /* SpeechLanguageResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechLanguageResolverTests.swift; sourceTree = "<group>"; };
+		7CB2D8FDD88D22E05325BC73 /* VocabularyMeaningDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyMeaningDraft.swift; sourceTree = "<group>"; };
 		7CC25684F76903C89918AC90 /* CLIResourceContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIResourceContract.swift; sourceTree = "<group>"; };
 		7CE08A52B31E305152C49A0D /* PermissionReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionReminderView.swift; sourceTree = "<group>"; };
 		7D07D59FB52692A59D7B9685 /* SpeechEndpointClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechEndpointClient.swift; sourceTree = "<group>"; };
@@ -5196,6 +5201,7 @@
 				F1E2830891A4ABD9A7009506 /* VocabularyCLICaptureTests.swift */,
 				1DB06A5CEF6BD727903E8657 /* VocabularyGraphTests.swift */,
 				5A28CFA781C141733ED050C1 /* VocabularyMeaningLabelPolicyTests.swift */,
+				5DE2267EC7D40518FAFEAED4 /* VocabularyMeaningWorkflowTests.swift */,
 				B544EB162C5EBB4A70F9C7CC /* VocabularyPolicyTests.swift */,
 				E8E6750BC58DD10E2238B19D /* VocabularySemanticEditingTests.swift */,
 				1B68C427AC6D104631ACA687 /* VocabularyWordListPolicyTests.swift */,
@@ -5991,6 +5997,7 @@
 				46289DD9FD11C132B8EA2D63 /* VocabularyImportedExamplePolicy.swift */,
 				8715B30A98F29D5003F03C61 /* VocabularyLifecyclePolicy.swift */,
 				0CBCF207A83886B988C53E41 /* VocabularyMeaningBrowserProjection.swift */,
+				7CB2D8FDD88D22E05325BC73 /* VocabularyMeaningDraft.swift */,
 				E9619C296B426C5D6583EA9A /* VocabularyMeaningLabelPolicy.swift */,
 				EFA3A37AF20AA52D40D01C4A /* VocabularyNotebookProjection.swift */,
 				6E2D0F53C2F58F36B5BE9B0C /* VocabularyPolicy.swift */,
@@ -7254,6 +7261,7 @@
 				FF39E87E14685926B184B9D5 /* VocabularyLifecycleTests.swift in Sources */,
 				FDA8E0AB552573E314BB47B0 /* VocabularyMeaningLabelPolicyTests.swift in Sources */,
 				AAFBC3DC937F16DDD5815B59 /* VocabularyMeaningViewTests.swift in Sources */,
+				1E4DCEFE4736FE70F6E2147A /* VocabularyMeaningWorkflowTests.swift in Sources */,
 				9EA8D9F3AA65DBDB3707127E /* VocabularyMultilingualTests.swift in Sources */,
 				397FC03384E0120C9CB3739B /* VocabularyNotebookSessionTests.swift in Sources */,
 				A61968271CFB3D27FE66B2E2 /* VocabularyNotebookViewTests.swift in Sources */,
@@ -7922,6 +7930,7 @@
 				42A1B016A31B70C2146CA470 /* VocabularyMeaningBrowserProjection.swift in Sources */,
 				52DEDD78D039B66DBCF8DE5D /* VocabularyMeaningCategorySheet.swift in Sources */,
 				D7568EE52E645F3F402E64E3 /* VocabularyMeaningDetail.swift in Sources */,
+				B16F79EF2970B298FEBC7CF5 /* VocabularyMeaningDraft.swift in Sources */,
 				4E9E94020293786A59980EFC /* VocabularyMeaningEditor.swift in Sources */,
 				FCB99C6B508859FC6484C5DE /* VocabularyMeaningLabelPolicy.swift in Sources */,
 				474F825C7A77C3CB2581B803 /* VocabularyMeaningMappingEditor.swift in Sources */,
@@ -8641,6 +8650,7 @@
 				683E0B500FE3B869C333172C /* VocabularyMeaningBrowserProjection.swift in Sources */,
 				2FEAF7FE0C73BCCDBF74428D /* VocabularyMeaningCategorySheet.swift in Sources */,
 				78545C7E366ED3775B80FD65 /* VocabularyMeaningDetail.swift in Sources */,
+				6AD12B555FC7731979A6D5E8 /* VocabularyMeaningDraft.swift in Sources */,
 				CD8F54B8C42A6820F2BC8BE9 /* VocabularyMeaningEditor.swift in Sources */,
 				0E5ABDA6779529A42C500649 /* VocabularyMeaningLabelPolicy.swift in Sources */,
 				90B0444EA591725DA99B2AF0 /* VocabularyMeaningMappingEditor.swift in Sources */,

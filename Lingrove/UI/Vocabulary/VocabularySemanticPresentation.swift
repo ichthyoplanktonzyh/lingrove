@@ -157,6 +157,7 @@ extension VocabularyGraphEdge.Kind {
     var label: String {
         switch self {
         case .ownership: String(localized: "Sense", table: "Vocabulary")
+        case .taxonomy: String(localized: "Category", table: "Vocabulary")
         case .expressesContent: String(localized: "Expressed by", table: "Vocabulary")
         case .realizesFunction: String(localized: "Expressed by", table: "Vocabulary")
         case .narrower: String(localized: "More specific than", table: "Vocabulary")
@@ -219,6 +220,7 @@ struct VocabularySemanticEditorFrame<Content: View>: View {
     let saving: Bool
     let canSave: Bool
     let failure: String?
+    var height: CGFloat = 420
     let save: () -> Void
     @ViewBuilder var content: () -> Content
     @Environment(\.dismiss) private var dismiss
@@ -238,7 +240,7 @@ struct VocabularySemanticEditorFrame<Content: View>: View {
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent).disabled(saving || !canSave)
             }.padding(16)
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 560, height: height)
         .interactiveDismissDisabled(saving)
     }
 }
@@ -474,18 +476,22 @@ struct VocabularyMeaningMappingSummary: View {
     }
 }
 
-/// Meaning navigation retains the originating concept when drilling into a sense. The same
-/// sense detail can therefore be reused without adding a permanent third window column.
+/// Meaning navigation retains the originating concept or category when drilling into a sense.
+/// The same sense detail can therefore be reused without adding a permanent third window column.
 enum VocabularyMeaningDestination: Hashable {
+    case category(UUID)
     case node(UUID)
     case sense(nodeID: UUID?, senseID: UUID)
     case unclassified
 
+    var categoryID: UUID? {
+        if case .category(let id) = self { id } else { nil }
+    }
     var nodeID: UUID? {
         switch self {
         case .node(let id): id
         case .sense(let id, _): id
-        case .unclassified: nil
+        case .category, .unclassified: nil
         }
     }
     var senseID: UUID? {

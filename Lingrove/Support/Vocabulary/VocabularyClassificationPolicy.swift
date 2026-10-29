@@ -3,6 +3,19 @@ import Foundation
 /// Both CLI plans and UI drafts cross these pure rules before archive persistence. The policy
 /// owns graph integrity, draft reconciliation and unique descendant aggregation, never file IO.
 nonisolated enum VocabularyClassificationPolicy {
+    /// A checked set replaces this meaning's draft memberships, retaining other meanings and
+    /// stable link IDs. The archive's merge still protects concurrent additions to the baseline.
+    static func assign(nodeID: UUID, categories: Set<UUID>, in index: inout VocabularyClassificationIndex) {
+        index.memberships.removeAll { $0.nodeID == nodeID && !categories.contains($0.categoryID) }
+        for position in index.memberships.indices where index.memberships[position].nodeID == nodeID &&
+            index.memberships[position].provenance.status == .proposed {
+            index.memberships[position].provenance = .init(origin: .user, status: .confirmed)
+        }
+        for categoryID in categories where !index.memberships.contains(where: { $0.nodeID == nodeID && $0.categoryID == categoryID }) {
+            index.memberships.append(.init(id: UUID(), nodeID: nodeID, categoryID: categoryID))
+        }
+    }
+
     static func validate(_ index: VocabularyClassificationIndex, nodes: [VocabularyMeaningNode]) throws {
         guard index.frameworks.count <= 64, index.categories.count <= 20_000, index.parents.count <= 100_000,
               index.memberships.count <= 500_000, index.overrides.count <= 20_000 else { throw VocabularyError.invalidContent }
@@ -94,6 +107,16 @@ nonisolated enum VocabularyClassificationPolicy {
         while cursor < queue.count {
             let next = queue[cursor]; cursor += 1
             for edge in children[next, default: []] where found.insert(edge.categoryID).inserted { queue.append(edge.categoryID) }
+        }
+        return found
+    }
+
+    static func ancestors(of id: UUID, in index: VocabularyClassificationIndex) -> Set<UUID> {
+        let parents = Dictionary(grouping: index.parents, by: \.categoryID)
+        var found: Set<UUID> = [id], queue = [id], cursor = 0
+        while cursor < queue.count {
+            let next = queue[cursor]; cursor += 1
+            for edge in parents[next, default: []] where found.insert(edge.parentID).inserted { queue.append(edge.parentID) }
         }
         return found
     }

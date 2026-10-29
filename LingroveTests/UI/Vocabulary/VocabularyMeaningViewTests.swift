@@ -68,7 +68,7 @@ struct VocabularyMeaningViewTests {
         let archive = VocabularyArchive(url: nil), document = VocabularySemanticTests.fixture()
         _ = try await archive.commit(document)
         let store = VocabularyStore(archive: archive); await store.load()
-        try await paint(VocabularyMeaningEditor(store: store, node: document.semantics.nodes[0]), named: "meaning-editor")
+        try await paint(VocabularyMeaningEditor(store: store, node: document.semantics.nodes[0]), named: "meaning-editor", height: 560)
         try await paint(VocabularyMeaningMappingEditor(store: store, mapping: document.semantics.mappings[0]), named: "grouping-editor")
         try await paint(VocabularyUsagePatternEditor(store: store, senseID: document.semantics.patterns[0].senseID,
             pattern: document.semantics.patterns[0]), named: "wording-editor")
@@ -125,15 +125,15 @@ struct VocabularyMeaningViewTests {
         (canvas.accessibilityChildren() ?? []).compactMap { ($0 as? NSAccessibilityElement)?.accessibilityLabel() }
     }
 
-    private func paint(_ content: some View, named name: String) async throws {
+    private func paint(_ content: some View, named name: String, height: CGFloat = 420) async throws {
         let host = NSHostingView(rootView: content.environment(\.colorScheme, .light).background(Color.white))
-        let window = NSWindow(contentRect: .init(x: 80, y: 80, width: 560, height: 420),
+        let window = NSWindow(contentRect: .init(x: 80, y: 80, width: 560, height: height),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host; window.appearance = NSAppearance(named: .aqua)
         defer { window.close() }
         window.orderFrontRegardless()
         try await settle(host)
-        #expect(host.fittingSize.width <= 560 && host.fittingSize.height <= 420)
+        #expect(host.fittingSize.width <= 560 && host.fittingSize.height <= height)
         try screenshot(host, named: name)
     }
 

@@ -11,7 +11,9 @@ final class VocabularyGraphCanvasView: NSView {
     private var snapshot = VocabularyGraphSnapshot()
     private var selection: VocabularySelection?
     private var meaningSelection: UUID?
+    private var categorySelection: UUID?
     private var selectMeaning: (UUID) -> Void = { _ in }
+    private var selectCategory: (UUID) -> Void = { _ in }
     private var select: (VocabularySelection?) -> Void = { _ in }
     private var positions: [VocabularyGraphNodeID: CGPoint] = [:]
     private var animationTask: Task<Void, Never>?
@@ -68,12 +70,25 @@ final class VocabularyGraphCanvasView: NSView {
     }
     required init?(coder: NSCoder) { nil }
 
-    func update(snapshot: VocabularyGraphSnapshot, selection: VocabularySelection?,
-                select: @escaping (VocabularySelection?) -> Void, meaningSelection: UUID? = nil,
-                selectMeaning: @escaping (UUID) -> Void = { _ in }) {
+    func update(
+        snapshot: VocabularyGraphSnapshot,
+        selection: VocabularySelection?,
+        select: @escaping (VocabularySelection?) -> Void,
+        meaningSelection: UUID? = nil,
+        categorySelection: UUID? = nil,
+        selectMeaning: @escaping (UUID) -> Void = { _ in },
+        selectCategory: @escaping (UUID) -> Void = { _ in }
+    ) {
         self.select = select
         self.selectMeaning = selectMeaning
-        if self.meaningSelection != meaningSelection, let meaningSelection { pendingSearchTarget = .meaning(meaningSelection) }
+        self.selectCategory = selectCategory
+        if self.categorySelection != categorySelection, let categorySelection {
+            pendingSearchTarget = .category(categorySelection)
+        }
+        self.categorySelection = categorySelection
+        if self.meaningSelection != meaningSelection, let meaningSelection {
+            pendingSearchTarget = .meaning(meaningSelection)
+        }
         self.meaningSelection = meaningSelection
         if self.selection != selection, let selection { pendingSearchTarget = .sense(selection) }
         self.selection = selection
@@ -159,6 +174,20 @@ final class VocabularyGraphCanvasView: NSView {
             if snapshot.nodes.isEmpty { suspend(); positions = [:]; needsDisplay = true }
             return
         }
+        // Meaning taxonomy graphs use deterministic left-to-right tree coordinates rather than
+        // iterative force simulation, so layout completes synchronously in a single frame.
+        if snapshot.isMeaningGraph, !snapshot.treePositions.isEmpty {
+            animationTask?.cancel()
+            animationTask = nil
+            needsLayoutWake = false
+            epoch = presentation.nextEpoch()
+            apply(.init(positions: snapshot.treePositions, isRunning: false), epoch: epoch)
+            return
+        }
+        startForceLayout()
+    }
+
+    private func startForceLayout() {
         if animationTask != nil {
             if !needsLayoutWake { return }
             animationTask?.cancel()
@@ -251,7 +280,10 @@ final class VocabularyGraphCanvasView: NSView {
         // semantic graph's hover feedback into quadratic work on the main actor.
         relatedNodes = []
         if snapshot.isMeaningGraph,
-           let focus = hovered ?? meaningSelection.map(VocabularyGraphNodeID.meaning) ?? selection.map(VocabularyGraphNodeID.sense) {
+           let focus = hovered
+               ?? meaningSelection.map(VocabularyGraphNodeID.meaning)
+               ?? categorySelection.map(VocabularyGraphNodeID.category)
+               ?? selection.map(VocabularyGraphNodeID.sense) {
             relatedNodes.insert(focus)
             for edge in snapshot.edges where edge.source == focus || edge.target == focus {
                 relatedNodes.insert(edge.source); relatedNodes.insert(edge.target)
@@ -260,48 +292,66 @@ final class VocabularyGraphCanvasView: NSView {
     }
 
     private func draw(_ edge: VocabularyGraphEdge, focused: UUID?) {
-            guard let start = positions[edge.source], let end = positions[edge.target] else { return }
-            let screenStart = screen(start)
-            let screenEnd = screen(end)
-            let path = NSBezierPath()
-            path.lineCapStyle = .round
-            path.move(to: screenStart)
+        guard let start = positions[edge.source], let end = positions[edge.target] else { return }
+        let screenStart = screen(start)
+        let screenEnd = screen(end)
+        let path = NSBezierPath()
+        path.lineCapStyle = .round
+        path.move(to: screenStart)
+        let isTreeEdge = snapshot.isMeaningGraph
+            && (edge.kind == .taxonomy || edge.kind == .expressesContent || edge.kind == .realizesFunction)
+        if isTreeEdge {
+            let midX = (screenStart.x + screenEnd.x) / 2
+            path.curve(
+                to: screenEnd,
+                controlPoint1: CGPoint(x: midX, y: screenStart.y),
+                controlPoint2: CGPoint(x: midX, y: screenEnd.y)
+            )
+        } else {
             path.line(to: screenEnd)
-            let highlighted = snapshot.isMeaningGraph
-                ? isRelated(edge.source, focused: focused) && isRelated(edge.target, focused: focused)
-                : edge.source.rootID == focused
-            if highlighted {
-                NSColor.controlAccentColor.withAlphaComponent(0.16).setStroke()
-                path.lineWidth = appliedSettings.linkWidth + 2.5
-                path.stroke()
-            }
-            let baseColor = highlighted ? NSColor.controlAccentColor : NSColor.separatorColor
-            let edgeAlpha: CGFloat = hovered != nil && !highlighted ? 0.18 : (highlighted ? 0.85 : 0.65)
-            baseColor.withAlphaComponent(edgeAlpha).setStroke()
-            path.lineWidth = highlighted ? max(1.4, appliedSettings.linkWidth * 1.15) : appliedSettings.linkWidth
+        }
+        let highlighted = snapshot.isMeaningGraph
+            ? isRelated(edge.source, focused: focused) && isRelated(edge.target, focused: focused)
+            : edge.source.rootID == focused
+        if highlighted {
+            NSColor.controlAccentColor.withAlphaComponent(0.16).setStroke()
+            path.lineWidth = appliedSettings.linkWidth + 2.5
             path.stroke()
-            if edge.kind != .ownership && (highlighted || appliedSettings.labels == .all || presentation.camera.scale > 0.8) {
-                let title = edge.kind.label as NSString
-                let midpoint = CGPoint(x: (screenStart.x + screenEnd.x) / 2, y: (screenStart.y + screenEnd.y) / 2)
-                title.draw(at: CGPoint(x: midpoint.x + 5, y: midpoint.y + 3), withAttributes: [
-                    .font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.secondaryLabelColor,
-                    .backgroundColor: NSColor.textBackgroundColor.withAlphaComponent(0.9)
-                ])
-                if edge.kind == .narrower {
-                    let dx = screenEnd.x - screenStart.x, dy = screenEnd.y - screenStart.y
-                    let length = hypot(dx, dy)
-                    if length > 30 {
-                        let tip = CGPoint(x: screenEnd.x - dx / length * 14, y: screenEnd.y - dy / length * 14)
-                        let arrow = NSBezierPath()
-                        arrow.move(to: CGPoint(x: tip.x - dx / length * 8 - dy / length * 4,
-                            y: tip.y - dy / length * 8 + dx / length * 4))
-                        arrow.line(to: tip)
-                        arrow.line(to: CGPoint(x: tip.x - dx / length * 8 + dy / length * 4,
-                            y: tip.y - dy / length * 8 - dx / length * 4))
-                        NSColor.secondaryLabelColor.setStroke(); arrow.lineWidth = 1; arrow.stroke()
-                    }
+        }
+        let baseColor = highlighted ? NSColor.controlAccentColor : NSColor.separatorColor
+        let unexploredAlpha: CGFloat = edge.isUnexplored ? 0.36 : 0.65
+        let edgeAlpha: CGFloat = hovered != nil && !highlighted ? 0.18 : (highlighted ? 0.85 : unexploredAlpha)
+        baseColor.withAlphaComponent(edgeAlpha).setStroke()
+        path.lineWidth = highlighted ? max(1.4, appliedSettings.linkWidth * 1.15) : appliedSettings.linkWidth
+        if edge.isUnexplored || (snapshot.isMeaningGraph && (edge.kind == .opposite || edge.kind == .related)) {
+            let pattern: [CGFloat] = [4, 3]
+            path.setLineDash(pattern, count: pattern.count, phase: 0)
+        }
+        path.stroke()
+        if edge.kind != .ownership && edge.kind != .taxonomy
+            && !(snapshot.isMeaningGraph && (edge.kind == .expressesContent || edge.kind == .realizesFunction))
+            && (highlighted || appliedSettings.labels == .all || presentation.camera.scale > 0.8) {
+            let title = edge.kind.label as NSString
+            let midpoint = CGPoint(x: (screenStart.x + screenEnd.x) / 2, y: (screenStart.y + screenEnd.y) / 2)
+            title.draw(at: CGPoint(x: midpoint.x + 5, y: midpoint.y + 3), withAttributes: [
+                .font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.secondaryLabelColor,
+                .backgroundColor: NSColor.textBackgroundColor.withAlphaComponent(0.9)
+            ])
+            if edge.kind == .narrower {
+                let dx = screenEnd.x - screenStart.x, dy = screenEnd.y - screenStart.y
+                let length = hypot(dx, dy)
+                if length > 30 {
+                    let tip = CGPoint(x: screenEnd.x - dx / length * 14, y: screenEnd.y - dy / length * 14)
+                    let arrow = NSBezierPath()
+                    arrow.move(to: CGPoint(x: tip.x - dx / length * 8 - dy / length * 4,
+                        y: tip.y - dy / length * 8 + dx / length * 4))
+                    arrow.line(to: tip)
+                    arrow.line(to: CGPoint(x: tip.x - dx / length * 8 + dy / length * 4,
+                        y: tip.y - dy / length * 8 - dx / length * 4))
+                    NSColor.secondaryLabelColor.setStroke(); arrow.lineWidth = 1; arrow.stroke()
                 }
             }
+        }
     }
 
     /// Subtle world-space dot grid gives panning and zooming a physical spatial reference
@@ -333,36 +383,60 @@ final class VocabularyGraphCanvasView: NSView {
 
     private func draw(_ node: VocabularyGraphNode, at point: CGPoint, focused: UUID?) {
         let isSense = node.id.selection != nil
-        let selected = node.id.selection.map { $0 == selection } ?? (node.id.rootID == presentation.focusedEntryID)
+        let isCategoryOrAxis = isCategory(node.id)
+        let selected = isSelected(node.id)
         let active = selected || snapshot.matches.contains(node.id)
         let isHovered = hovered == node.id
         let isKeyFocused = keyboardNode == node.id
         let related = isRelated(node.id, focused: focused)
-        let alpha: CGFloat = hovered != nil && !related ? 0.23 : 1
-        let baseRadius = max(3.5, min(20, appliedSettings.nodeSize * (isSense ? 0.31 : 0.52) * presentation.camera.scale))
+        let baseAlpha: CGFloat = node.isUnexplored && !active && !isHovered ? 0.55 : 1.0
+        let alpha: CGFloat = hovered != nil && !related ? 0.23 : baseAlpha
+        let sizeMultiplier: CGFloat = isSense ? 0.31 : (isCategoryOrAxis ? 0.46 : 0.52)
+        let baseRadius = max(3.5, min(20, appliedSettings.nodeSize * sizeMultiplier * presentation.camera.scale))
         let radius = isHovered ? baseRadius * 1.12 : baseRadius
         let rect = CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)
 
+        let axisColor: NSColor = node.axis == .function ? .systemTeal : .controlAccentColor
+
         if active || isHovered || isKeyFocused {
-            NSColor.controlAccentColor.withAlphaComponent(active ? 0.16 : 0.11).setFill()
+            axisColor.withAlphaComponent(active ? 0.16 : 0.11).setFill()
             NSBezierPath(ovalIn: rect.insetBy(dx: -6, dy: -6)).fill()
             if active || isKeyFocused {
                 let ring = NSBezierPath(ovalIn: rect.insetBy(dx: -3, dy: -3))
                 ring.lineWidth = 1.2
-                NSColor.controlAccentColor.withAlphaComponent(0.45 * alpha).setStroke()
+                axisColor.withAlphaComponent(0.45 * alpha).setStroke()
                 ring.stroke()
             }
         }
 
-        let dot = NSBezierPath(ovalIn: rect)
-        if isSense && !active {
+        let dot: NSBezierPath = isCategoryOrAxis
+            ? NSBezierPath(roundedRect: rect, xRadius: max(2.5, radius * 0.45), yRadius: max(2.5, radius * 0.45))
+            : NSBezierPath(ovalIn: rect)
+
+        if node.isUnexplored && !active {
             NSColor.textBackgroundColor.withAlphaComponent(alpha).setFill()
             dot.fill()
-            NSColor.controlAccentColor.withAlphaComponent(0.85 * alpha).setStroke()
+            let stroke = NSColor.secondaryLabelColor.withAlphaComponent(0.75 * alpha)
+            stroke.setStroke()
+            dot.lineWidth = 1.25
+            let dash: [CGFloat] = [2.5, 2]
+            dot.setLineDash(dash, count: dash.count, phase: 0)
+            dot.stroke()
+        } else if isSense && !active {
+            NSColor.textBackgroundColor.withAlphaComponent(alpha).setFill()
+            dot.fill()
+            axisColor.withAlphaComponent(0.85 * alpha).setStroke()
             dot.lineWidth = 1.6
             dot.stroke()
         } else {
-            let fill = active || isSense ? NSColor.controlAccentColor : NSColor.labelColor.withAlphaComponent(0.76)
+            let fill: NSColor
+            if active || isSense {
+                fill = axisColor
+            } else if snapshot.isMeaningGraph {
+                fill = isCategoryOrAxis ? NSColor.labelColor.withAlphaComponent(0.78) : axisColor.withAlphaComponent(0.88)
+            } else {
+                fill = NSColor.labelColor.withAlphaComponent(0.76)
+            }
             fill.withAlphaComponent(alpha).setFill()
             dot.fill()
             NSColor.textBackgroundColor.withAlphaComponent(0.85 * alpha).setStroke()
@@ -370,23 +444,70 @@ final class VocabularyGraphCanvasView: NSView {
             dot.stroke()
         }
 
+        drawLabel(node, at: point, radius: radius, alpha: alpha, focused: focused)
+    }
+
+    private func isCategory(_ id: VocabularyGraphNodeID) -> Bool {
+        switch id {
+        case .category, .axis: true
+        default: false
+        }
+    }
+
+    private func isSelected(_ id: VocabularyGraphNodeID) -> Bool {
+        if let target = id.selection { return target == selection }
+        if case .category(let categoryID) = id {
+            return categoryID == categorySelection || categoryID == presentation.focusedEntryID
+        }
+        if case .meaning(let meaningID) = id {
+            return meaningID == meaningSelection || meaningID == presentation.focusedEntryID
+        }
+        return id.rootID == presentation.focusedEntryID
+    }
+
+    /// Labels share node selection and opacity while keeping text measurement out of glyph drawing.
+    private func drawLabel(
+        _ node: VocabularyGraphNode, at point: CGPoint, radius: CGFloat, alpha: CGFloat, focused: UUID? = nil
+    ) {
+        let isSense = node.id.selection != nil
+        let isCategoryOrAxis = isCategory(node.id)
+        let active = isSelected(node.id) || snapshot.matches.contains(node.id)
+        let isHovered = hovered == node.id
+        let isKeyFocused = keyboardNode == node.id
+        let related = isRelated(node.id, focused: focused)
+        let axisColor: NSColor = node.axis == .function ? .systemTeal : .controlAccentColor
         let labels = appliedSettings.labels
         let showLabel = labels == .all || active || isKeyFocused || isHovered || related
-            || (labels == .automatic && presentation.camera.scale >= 0.65)
+            || (labels == .automatic && (presentation.camera.scale >= 0.52 || snapshot.isMeaningGraph))
         guard showLabel else { return }
 
+        let isTreeLayout = snapshot.isMeaningGraph && !snapshot.treePositions.isEmpty
+
         let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
+        paragraph.alignment = isTreeLayout ? .left : .center
         paragraph.lineBreakMode = .byTruncatingTail
-        let textColor = active ? NSColor.controlAccentColor : (isSense ? NSColor.secondaryLabelColor : NSColor.labelColor)
-        let font = NSFont.systemFont(ofSize: isSense ? 11.5 : 12.5, weight: active || !isSense ? .medium : .regular)
+        let textColor: NSColor
+        if active {
+            textColor = axisColor
+        } else if node.isUnexplored {
+            textColor = .secondaryLabelColor
+        } else if isSense {
+            textColor = .secondaryLabelColor
+        } else {
+            textColor = .labelColor
+        }
+        let font = NSFont.systemFont(
+            ofSize: isSense ? 11.5 : 12.5,
+            weight: active || isCategoryOrAxis || (!isSense && !node.isUnexplored) ? .medium : .regular
+        )
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: textColor.withAlphaComponent(alpha),
             .paragraphStyle: paragraph
         ]
-        let labelString = node.label as NSString
-        let maxBoxSize = CGSize(width: 152, height: 34)
+        let displayText = labelText(node)
+        let labelString = displayText as NSString
+        let maxBoxSize = CGSize(width: 176, height: isTreeLayout ? 20 : 34)
         let measured = labelString.boundingRect(
             with: maxBoxSize,
             options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
@@ -394,27 +515,53 @@ final class VocabularyGraphCanvasView: NSView {
         )
         let pillWidth = min(maxBoxSize.width, ceil(measured.width) + 12)
         let pillHeight = min(maxBoxSize.height, ceil(measured.height) + 4)
-        let pillRect = CGRect(
-            x: point.x - pillWidth / 2,
-            y: point.y + radius + 5,
-            width: pillWidth,
-            height: pillHeight
-        )
+        let pillRect: CGRect
+        if isTreeLayout {
+            pillRect = CGRect(
+                x: point.x + radius + 5,
+                y: point.y - pillHeight / 2,
+                width: pillWidth,
+                height: pillHeight
+            )
+        } else {
+            pillRect = CGRect(
+                x: point.x - pillWidth / 2,
+                y: point.y + radius + 5,
+                width: pillWidth,
+                height: pillHeight
+            )
+        }
         let pillPath = NSBezierPath(roundedRect: pillRect, xRadius: 6, yRadius: 6)
-        NSColor.textBackgroundColor.withAlphaComponent(0.84 * alpha).setFill()
+        NSColor.textBackgroundColor.withAlphaComponent(0.92 * alpha).setFill()
         pillPath.fill()
         if active || isHovered {
-            NSColor.controlAccentColor.withAlphaComponent(0.24 * alpha).setStroke()
+            axisColor.withAlphaComponent(0.28 * alpha).setStroke()
             pillPath.lineWidth = 0.75
+            pillPath.stroke()
+        } else if node.isUnexplored {
+            NSColor.separatorColor.withAlphaComponent(0.35 * alpha).setStroke()
+            let dash: [CGFloat] = [2.5, 2]
+            pillPath.setLineDash(dash, count: dash.count, phase: 0)
+            pillPath.lineWidth = 0.5
             pillPath.stroke()
         }
 
-        let textRect = CGRect(
-            x: point.x - 76,
-            y: pillRect.minY + 2,
-            width: 152,
-            height: pillHeight - 2
-        )
+        let textRect: CGRect
+        if isTreeLayout {
+            textRect = CGRect(
+                x: pillRect.minX + 6,
+                y: pillRect.minY + 2,
+                width: pillRect.width - 12,
+                height: pillHeight - 2
+            )
+        } else {
+            textRect = CGRect(
+                x: point.x - maxBoxSize.width / 2,
+                y: pillRect.minY + 2,
+                width: maxBoxSize.width,
+                height: pillHeight - 2
+            )
+        }
         labelString.draw(
             with: textRect,
             options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
@@ -422,13 +569,34 @@ final class VocabularyGraphCanvasView: NSView {
         )
     }
 
+    private func labelText(_ node: VocabularyGraphNode) -> String {
+        if snapshot.isMeaningGraph && node.id.selection == nil && node.itemCount > 0 {
+            return "\(node.label) (\(node.itemCount))"
+        }
+        if snapshot.isMeaningGraph && node.hasChildren && !node.isExpanded {
+            return "\(node.label) +"
+        }
+        return node.label
+    }
+
     private func screen(_ point: CGPoint) -> CGPoint { presentation.camera.screen(point, in: bounds.size) }
     private func hit(_ point: CGPoint) -> VocabularyGraphNodeID? {
+        let isTreeLayout = snapshot.isMeaningGraph && !snapshot.treePositions.isEmpty
         var nearest: (VocabularyGraphNodeID, CGFloat)?
         for node in snapshot.nodes {
             guard let position = positions[node.id] else { continue }
-            let screen = screen(position), distance = hypot(point.x - screen.x, point.y - screen.y)
-            if distance < 22, nearest == nil || distance < (nearest?.1 ?? .infinity) { nearest = (node.id, distance) }
+            let screen = screen(position)
+            let distance = hypot(point.x - screen.x, point.y - screen.y)
+            if distance < 22, nearest == nil || distance < (nearest?.1 ?? .infinity) {
+                nearest = (node.id, distance)
+            } else if isTreeLayout {
+                if abs(point.y - screen.y) < 12 && point.x >= screen.x && point.x <= screen.x + 120 {
+                    let effectiveDistance = max(4, abs(point.y - screen.y))
+                    if nearest == nil || effectiveDistance < (nearest?.1 ?? .infinity) {
+                        nearest = (node.id, effectiveDistance)
+                    }
+                }
+            }
         }
         return nearest?.0
     }
@@ -454,7 +622,7 @@ final class VocabularyGraphCanvasView: NSView {
         if hypot(point.x - pointer.start.x, point.y - pointer.start.y) > 3 { pointer.moved = true }
         self.pointer = pointer
         guard pointer.moved else { return }
-        if let node = pointer.node {
+        if let node = pointer.node, !snapshot.isMeaningGraph {
             pinSerial &+= 1
             releasedPin = nil
             pinned = node
@@ -477,17 +645,30 @@ final class VocabularyGraphCanvasView: NSView {
             }
             pinned = nil; pinPosition = nil
             // Deliver the final location even if no display tick ran during this gesture.
-            wake()
+            if !snapshot.isMeaningGraph { wake() }
         } else if let node = pointer.node { activate(node) } else { presentation.clearFocus(); select(nil); needsDisplay = true }
     }
     func activate(_ id: VocabularyGraphNodeID) {
         presentation.fitsInitialLayout = false
-        if case .meaning(let meaningID) = id {
-            presentation.toggle(meaningID); select(nil); selectMeaning(meaningID)
-        } else if let target = id.selection {
+        switch id {
+        case .meaning(let meaningID):
+            presentation.toggle(meaningID)
+            select(nil)
+            selectMeaning(meaningID)
+        case .category(let categoryID):
+            presentation.toggle(categoryID)
+            select(nil)
+            selectCategory(categoryID)
+        case .axis(let axis):
+            presentation.toggle(id.rootID)
+            _ = axis
+        case .sense(let target):
             if !snapshot.isMeaningGraph { presentation.reveal(target) }
             select(target)
-        } else { presentation.toggle(id.rootID); select(nil) }
+        case .headword(let entryID):
+            presentation.toggle(entryID)
+            select(nil)
+        }
         needsDisplay = true
     }
 
@@ -554,8 +735,14 @@ final class VocabularyGraphCanvasView: NSView {
         case .zoomOut: presentation.camera.zoom(by: 1 / 1.2, at: viewportCenter, in: bounds.size)
         case .fit: presentation.camera.fit(Array(positions.values), in: bounds.size)
         case .locate:
-            if let selection, let point = positions[.sense(selection)] { center(on: point) } else if let id = presentation.focusedEntryID,
-                    let point = positions[snapshot.isMeaningGraph ? .meaning(id) : .headword(id)] {
+            if let selection, let point = positions[.sense(selection)] {
+                center(on: point)
+            } else if let meaningSelection, let point = positions[.meaning(meaningSelection)] {
+                center(on: point)
+            } else if let categorySelection, let point = positions[.category(categorySelection)] {
+                center(on: point)
+            } else if let id = presentation.focusedEntryID,
+                      let point = positions[.meaning(id)] ?? positions[.category(id)] ?? positions[.headword(id)] {
                 center(on: point)
             }
         }

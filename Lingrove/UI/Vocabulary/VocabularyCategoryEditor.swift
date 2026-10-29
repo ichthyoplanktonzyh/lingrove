@@ -4,9 +4,13 @@ import SwiftUI
 /// overlay; custom records and their parent edges commit together through the app-owned store.
 struct VocabularyCategoryEditor: View {
     @ObservedObject var store: VocabularyStore
-    private let original: VocabularyCategory
+    // SwiftUI may recreate this view value while a child sheet is presented. Pin the new
+    // category and its label IDs to the editing lifetime, just like the text-field state.
+    @State private var original: VocabularyCategory
     private let linkingNodeID: UUID?
     private let onSaved: (UUID) -> Void
+    private let onDraftSaved: ((VocabularyClassificationIndex, UUID) -> Void)?
+    @State private var usesCatalogLabels = false
     @State private var baseline: VocabularyClassificationIndex
     @State private var name: String
     @State private var definition: String
@@ -26,20 +30,24 @@ struct VocabularyCategoryEditor: View {
         category: VocabularyCategory? = nil,
         parentID: UUID? = nil,
         linkingNodeID: UUID? = nil,
+        axis: VocabularyCategory.Axis = .content,
+        draft: VocabularyClassificationIndex? = nil,
         preferredLanguages: [LearningLanguage] = VocabularyMeaningLabelPolicy.preferredLanguages(),
+        onDraftSaved: ((VocabularyClassificationIndex, UUID) -> Void)? = nil,
         onSaved: @escaping (UUID) -> Void = { _ in }
     ) {
         self.store = store
         self.onSaved = onSaved
+        self.onDraftSaved = onDraftSaved
         self.linkingNodeID = linkingNodeID
-        let initialIndex = store.classification
+        let initialIndex = draft ?? store.classification
         let parent = initialIndex.categories.first { $0.id == parentID }
         let original = category ?? VocabularyCategory(
             id: UUID(),
-            axis: parent?.axis ?? .content,
+            axis: parent?.axis ?? axis,
             labels: [.init(text: "", language: preferredLanguages.first)]
         )
-        self.original = original
+        _original = State(initialValue: original)
         let effective = VocabularyClassificationPolicy.effective(original, in: initialIndex)
         let label = VocabularyMeaningLabelPolicy.label(in: effective.labels, languages: preferredLanguages) ?? effective.labels[0]
         let initialParents: Set<UUID> = category == nil
@@ -132,8 +140,12 @@ struct VocabularyCategoryEditor: View {
                     : String(localized: "Edit category", table: "Vocabulary")
             )
             .font(.headline)
+            if !isNew {
+                Text(original.frameworkID == nil ? String(localized: "Custom") : String(localized: "Built-in", table: "Vocabulary"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Spacer()
-            Toggle(
+            if !isNew { Toggle(
                 String(localized: "Visible", table: "Vocabulary"),
                 isOn: Binding(get: { !hidden }, set: { hidden = !$0 })
             )
@@ -141,6 +153,7 @@ struct VocabularyCategoryEditor: View {
             .controlSize(.small)
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 11)
@@ -313,6 +326,14 @@ struct VocabularyCategoryEditor: View {
 
     private var sheetFooter: some View {
         HStack {
+            if original.frameworkID != nil, baseline.overrides.contains(where: { $0.categoryID == original.id }) {
+                Button(String(localized: "Restore defaults", table: "Vocabulary")) {
+                    let raw = VocabularyMeaningLabelPolicy.label(in: original.labels, languages: languages) ?? original.labels[0]
+                    label = raw; name = raw.text; definition = original.definition; hidden = false; usesCatalogLabels = true
+                }
+                .disabled(saving)
+                .accessibilityIdentifier("vocabularyRestoreCategoryDefaults")
+            }
             Spacer()
             Button(String(localized: "Cancel"), role: .cancel) {
                 dismiss()
@@ -331,7 +352,7 @@ struct VocabularyCategoryEditor: View {
 
     private func save() {
         var edited = baseline, value = original
-        var labels = VocabularyClassificationPolicy.effective(original, in: baseline).labels
+        var labels = usesCatalogLabels ? original.labels : VocabularyClassificationPolicy.effective(original, in: baseline).labels
         var renamed = label
         renamed.text = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if let position = labels.firstIndex(where: { $0.id == label.id }) {
@@ -344,7 +365,7 @@ struct VocabularyCategoryEditor: View {
             isHidden: hidden
         )
         edited.overrides.removeAll { $0.categoryID == value.id }
-        if hidden || value.frameworkID != nil {
+        if hidden || value.frameworkID != nil && (labels != original.labels || definition != original.definition) {
             edited.overrides.append(overlay)
         }
         if value.frameworkID == nil {
@@ -366,6 +387,10 @@ struct VocabularyCategoryEditor: View {
         if let linkingNodeID {
             edited.memberships.append(.init(id: UUID(), nodeID: linkingNodeID, categoryID: value.id))
         }
+        do { try VocabularyClassificationPolicy.validate(edited, nodes: store.semantics.nodes) } catch {
+            failure = error.localizedDescription; return
+        }
+        if let onDraftSaved { onDraftSaved(edited, value.id); dismiss(); return }
         saving = true
         Task {
             if await store.updateClassification(edited, basedOn: baseline) {
@@ -488,7 +513,7 @@ struct VocabularyCategoryManager: View {
         .frame(width: 560, height: 460)
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $creating) {
-            VocabularyCategoryEditor(store: store, preferredLanguages: languages)
+            VocabularyCategoryEditor(store: store, axis: activeAxis, preferredLanguages: languages)
         }
         .sheet(item: $editing) { category in
             VocabularyCategoryEditor(store: store, category: category, preferredLanguages: languages)

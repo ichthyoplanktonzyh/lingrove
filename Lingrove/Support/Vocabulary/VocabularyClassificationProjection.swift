@@ -19,7 +19,7 @@ nonisolated enum VocabularyClassificationProjection {
         _ index: VocabularyClassificationIndex,
         nodes: [VocabularyMeaningNode],
         languages: [LearningLanguage],
-        expanded: Set<String>,
+        expanded: Set<String> = [],
         query: String = "",
         includeHidden: Bool = false,
         excludedIDs: Set<UUID> = []
@@ -81,6 +81,167 @@ nonisolated enum VocabularyClassificationProjection {
             }
         }
         return result
+    }
+
+    /// Unified outline row for the "By meaning" sidebar. Merges the category hierarchy and its
+    /// member `VocabularyMeaningNode`s into a single navigable outline tree so learners can browse
+    /// semantic domains, see unexplored (0-meaning) branches, and open concrete meaning groups
+    /// without juggling two stacked sidebar lists.
+    enum OutlineTarget: Equatable {
+        case category(VocabularyCategory)
+        case meaning(VocabularyMeaningBrowserProjection.Item, parentCategoryID: UUID?)
+
+        var destination: VocabularyMeaningDestination {
+            switch self {
+            case .category(let category): .category(category.id)
+            case .meaning(let item, _): .node(item.id)
+            }
+        }
+    }
+
+    struct OutlineRow: Identifiable, Equatable {
+        let id: String
+        let axis: VocabularyCategory.Axis
+        let target: OutlineTarget
+        let title: String
+        let subtitle: String
+        let depth: Int
+        let hasChildren: Bool
+        let itemCount: Int
+        let pendingCount: Int
+        var isUnexplored: Bool { itemCount == 0 }
+        var symbolName: String
+        var breadcrumb: [String] = []
+    }
+
+    /// Builds the unified semantic taxonomy outline for a single `Axis` (`.content` or `.function`).
+    /// When `showsUnexplored` is `false`, only categories that contain at least one meaning (or are
+    /// explicitly revealed) appear; when `true`, the full catalog hierarchy is shown with zero-count
+    /// categories marked as `isUnexplored` so learners can discover semantic blind spots.
+    static func outlineRows(
+        axis: VocabularyCategory.Axis,
+        classification: VocabularyClassificationIndex,
+        items: [VocabularyMeaningBrowserProjection.Item],
+        entries: [VocabularyEntry],
+        languages: [LearningLanguage],
+        expanded: Set<String> = [],
+        query: String = "",
+        showsUnexplored: Bool = false,
+        revealedCategoryIDs: Set<UUID> = []
+    ) -> [OutlineRow] {
+        let baseRows = rows(
+            classification,
+            nodes: items.map(\.node),
+            languages: languages,
+            expanded: expanded,
+            query: query
+        ).filter { $0.category.axis == axis }
+
+        let itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        let directMemberships = Dictionary(
+            grouping: classification.memberships.filter { $0.provenance.status == .confirmed },
+            by: \.categoryID
+        )
+        let entriesByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var result: [OutlineRow] = []
+        for row in baseRows {
+            let directMeanings = (directMemberships[row.category.id] ?? [])
+                .compactMap { itemsByID[$0.nodeID] }
+                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            let hasExpandableChildren = row.hasChildren || !directMeanings.isEmpty
+            let isRevealed = revealedCategoryIDs.contains(row.category.id)
+            guard showsUnexplored || !trimmedQuery.isEmpty || row.meaningCount > 0 || isRevealed else {
+                continue
+            }
+
+            result.append(OutlineRow(
+                id: row.id,
+                axis: axis,
+                target: .category(row.category),
+                title: row.title,
+                subtitle: VocabularyClassificationPolicy.effective(row.category, in: classification).definition,
+                depth: row.depth,
+                hasChildren: hasExpandableChildren,
+                itemCount: row.meaningCount,
+                pendingCount: 0,
+                symbolName: row.depth == 0 ? row.symbolName : (row.hasChildren ? "folder" : "tag"),
+                breadcrumb: row.breadcrumb
+            ))
+
+            if expanded.contains(row.id) || !trimmedQuery.isEmpty {
+                for item in directMeanings {
+                    let preview = expressionPreview(for: item, entriesByID: entriesByID)
+                    result.append(OutlineRow(
+                        id: row.id + "/meaning/" + item.id.uuidString,
+                        axis: axis,
+                        target: .meaning(item, parentCategoryID: row.category.id),
+                        title: item.title,
+                        subtitle: preview,
+                        depth: row.depth + 1,
+                        hasChildren: false,
+                        itemCount: item.selections.count,
+                        pendingCount: item.pendingCount,
+                        symbolName: item.node.kind.symbolName,
+                        breadcrumb: row.breadcrumb + [item.title]
+                    ))
+                }
+            }
+        }
+        return result
+    }
+
+    /// Returns meaning items that have not yet been assigned to any confirmed category, optionally
+    /// filtered by axis/kind.
+    static func uncategorizedMeanings(
+        classification: VocabularyClassificationIndex,
+        items: [VocabularyMeaningBrowserProjection.Item]
+    ) -> [VocabularyMeaningBrowserProjection.Item] {
+        let categorizedIDs = Set(
+            classification.memberships
+                .filter { $0.provenance.status == .confirmed }
+                .map(\.nodeID)
+        )
+        return items.filter { !categorizedIDs.contains($0.id) }
+    }
+
+    /// Computes domain exploration coverage (`exploredRootCount`, `totalRootCount`) for an axis
+    /// so the sidebar and overview headers can show how much of the semantic world has been mapped.
+    static func axisCoverage(
+        axis: VocabularyCategory.Axis,
+        classification: VocabularyClassificationIndex,
+        nodes: [VocabularyMeaningNode]
+    ) -> (explored: Int, total: Int) {
+        let hidden = Set(classification.overrides.filter(\.isHidden).map(\.categoryID))
+        let categories = classification.categories.filter {
+            $0.axis == axis && !$0.isRetired && !hidden.contains($0.id)
+        }
+        let visibleIDs = Set(categories.map(\.id))
+        let parentedIDs = Set(
+            classification.parents
+                .filter { visibleIDs.contains($0.categoryID) && visibleIDs.contains($0.parentID) }
+                .map(\.categoryID)
+        )
+        let roots = categories.filter { !parentedIDs.contains($0.id) }
+        let nodeIDs = Set(nodes.map(\.id))
+        let explored = roots.filter { root in
+            !VocabularyClassificationPolicy.meaningIDs(in: root.id, index: classification)
+                .isDisjoint(with: nodeIDs)
+        }.count
+        return (explored, roots.count)
+    }
+
+    private static func expressionPreview(
+        for item: VocabularyMeaningBrowserProjection.Item,
+        entriesByID: [UUID: VocabularyEntry]
+    ) -> String {
+        var seen = Set<String>()
+        let names = item.selections.compactMap { target -> String? in
+            guard let expression = entriesByID[target.entryID]?.expression else { return nil }
+            return seen.insert(expression).inserted ? expression : nil
+        }
+        return names.isEmpty ? item.node.definition : names.joined(separator: " · ")
     }
 
     /// Resolves the primary ancestor title chain from root down to `categoryID` so chips and

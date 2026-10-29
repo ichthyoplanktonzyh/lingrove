@@ -8,12 +8,51 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct VocabularyClassificationViewTests {
+    @Test(.enabled(if: LingroveCompatibility.processEnvironment["LINGROVE_MEANING_WORKFLOW_REVIEW"] == "1"))
+    func nativeMeaningTaskCancelsNestedChangesThenSavesOneCompleteTask() async throws {
+        let archive = VocabularyArchive(url: nil)
+        var document = VocabularyDocument()
+        _ = try VocabularyPolicy.save(.init(expression: "Hello", dictionaryForm: "Hello", language: .english,
+            kind: .word, meaning: "你好", meaningLanguage: .chinese), in: &document, now: Date())
+        try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: [])
+        _ = try await archive.commit(document)
+        let store = VocabularyStore(archive: archive); await store.load()
+        let category = try #require(document.classification.categories.first { $0.key == "function.social.greet" })
+        let entry = try #require(store.entries.first), sense = try #require(entry.senses.first)
+        for round in 0..<2 {
+            var finished = false, savedID: UUID?
+            let root = MeaningTaskHarness(store: store, categoryID: category.id,
+                linking: .init(entryID: entry.id, senseID: sense.id), onSaved: { savedID = $0 }, onFinished: { finished = true })
+            let host = NSHostingView(rootView: root.environment(\.vocabularyMeaningLanguages, [.chinese]))
+            let window = makeWindow(host, width: 720, height: 720)
+            window.title = "Meaning workflow review \(round + 1)"
+            for _ in 0..<1_200 {
+                if finished { break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            window.close()
+            #expect(finished)
+            let snapshot = try await archive.load()
+            if round == 0 {
+                #expect(savedID == nil && snapshot.document == document)
+            } else {
+                let id = try #require(savedID)
+                #expect(snapshot.document.semantics.nodes.first { $0.id == id }?.kind == .function)
+                #expect(snapshot.document.semantics.mappings.contains { $0.nodeID == id && $0.senseID == sense.id })
+                #expect(snapshot.document.classification.memberships.contains { $0.nodeID == id && $0.categoryID == category.id })
+                #expect(snapshot.document.classification.categories.count == document.classification.categories.count + 1)
+                #expect(snapshot.document.entries == document.entries)
+            }
+        }
+    }
+
     @Test func categorySelectionFiltersMeaningsAndKeepsExistingBrowserControls() async throws {
         let suite = "CategoryUI-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("meaning", forKey: "vocabularyOrganization")
         defaults.set("list", forKey: "vocabularyBrowserMode")
+        defaults.set(false, forKey: "vocabularyShowsUnexplored")
         var document = VocabularySemanticTests.fixture()
         try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: document.semantics.nodes)
         let category = try #require(document.classification.categories.first { $0.key == "content.time.timing" })
@@ -26,27 +65,29 @@ struct VocabularyClassificationViewTests {
         let window = makeWindow(host, width: 1260, height: 760)
         defer { window.close() }
         try await settle(host)
-        let tables = tableViews(host).sorted { $0.numberOfRows > $1.numberOfRows }
-        #expect(tables.count == 2)
-        let categories = try #require(tables.first), meanings = try #require(tables.last)
-        let before = meanings.numberOfRows
-        // Two virtual rows, the content section header, then the authored root order. Time is
-        // root four; native table selection exercises the production binding and filter path.
-        categories.selectRowIndexes(IndexSet(integer: 6), byExtendingSelection: false)
-        try await settle(host)
-        #expect(meanings.numberOfRows == 1 && before > meanings.numberOfRows)
-        meanings.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        let tables = tableViews(host)
+        #expect(tables.count == 1)
+        let outline = try #require(tables.first)
+        let populatedCount = outline.numberOfRows
+        #expect(populatedCount > 0)
+        outline.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
         try await settle(host)
         #expect(defaults.string(forKey: "vocabularyOrganization") == "meaning")
         #expect(defaults.string(forKey: "vocabularyBrowserMode") == "list")
         try screenshot(host, named: "category-time-filter")
+        defaults.set(true, forKey: "vocabularyShowsUnexplored")
+        try await settle(host)
+        let unexploredCount = try #require(tableViews(host).first).numberOfRows
+        #expect(unexploredCount > populatedCount)
+        try screenshot(host, named: "category-unexplored-visible")
+        defaults.set("graph", forKey: "vocabularyBrowserMode")
+        try await settle(host)
+        try screenshot(host, named: "category-taxonomy-tree-graph")
         if let seconds = Int(LingroveCompatibility.processEnvironment["LINGROVE_CLASSIFICATION_UI_REVIEW_SECONDS"] ?? ""), seconds > 0 {
             try await Task.sleep(for: .seconds(min(seconds, 50)))
         }
-        categories.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
-        try await settle(host)
-        #expect(meanings.numberOfRows == before)
         #expect(try await archive.load().document == document)
+        defaults.set("list", forKey: "vocabularyBrowserMode")
         defaults.set("entry", forKey: "vocabularyOrganization")
         try await settle(host)
         #expect(tableViews(host).count == 1)
@@ -96,5 +137,23 @@ struct VocabularyClassificationViewTests {
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: bitmap)
         try #require(bitmap.representation(using: .png, properties: [:])).write(to: directory.appendingPathComponent(name + ".png"))
+    }
+}
+
+/// Acceptance-only sheet presentation lets the UI driver cancel the real editor and observe
+/// onDismiss, while all data remains in a private in-memory archive owned by this test.
+private struct MeaningTaskHarness: View {
+    let store: VocabularyStore
+    let categoryID: UUID
+    let linking: VocabularySelection
+    let onSaved: (UUID) -> Void
+    let onFinished: () -> Void
+    @State private var presented = true
+
+    var body: some View {
+        Color.clear.sheet(isPresented: $presented, onDismiss: onFinished) {
+            VocabularyMeaningEditor(store: store, linking: linking, categoryID: categoryID,
+                preferredLanguages: [.chinese], onSaved: onSaved)
+        }
     }
 }

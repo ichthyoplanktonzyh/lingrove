@@ -41,7 +41,13 @@ final class VocabularyGraphPresentation: ObservableObject {
         if focusedEntryID != selection.entryID { focusedEntryID = selection.entryID }
     }
     func clearFocus() { focusedEntryID = nil }
-    func revealMeaning(_ id: UUID) {
+    func revealMeaning(_ id: UUID, ancestors: Set<UUID> = []) {
+        expanded.formUnion(ancestors)
+        expanded.insert(id)
+        focusedEntryID = id
+    }
+    func revealCategory(_ id: UUID, ancestors: Set<UUID> = []) {
+        expanded.formUnion(ancestors)
         expanded.insert(id)
         focusedEntryID = id
     }

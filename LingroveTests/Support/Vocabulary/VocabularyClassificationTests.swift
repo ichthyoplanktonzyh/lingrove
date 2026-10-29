@@ -128,4 +128,87 @@ struct VocabularyClassificationTests {
             configuration: .init(format: .json, meanings: false), semantics: document.semantics, classification: document.classification)
         #expect(withoutMeanings.classification == nil)
     }
+
+    @Test func outlineRowsAndTaxonomyTreeRespectUnexploredToggle() throws {
+        var document = VocabularySemanticTests.fixture()
+        try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: document.semantics.nodes)
+        let category = try #require(document.classification.categories.first { $0.key == "content.time.timing" })
+        let parent = try #require(document.classification.categories.first { $0.key == "content.time" })
+        document.classification.memberships = [.init(id: UUID(), nodeID: document.semantics.nodes[0].id, categoryID: category.id)]
+
+        let items = VocabularyMeaningBrowserProjection.items(index: document.semantics, entries: document.entries, query: "", includeEmpty: true, preferredLanguages: [.chinese])
+        let parentPath = "/" + parent.id.uuidString
+        let childPath = parentPath + "/" + category.id.uuidString
+        let populatedRows = VocabularyClassificationProjection.outlineRows(
+            axis: .content,
+            classification: document.classification,
+            items: items,
+            entries: document.entries,
+            languages: [.chinese],
+            expanded: [parentPath, childPath],
+            query: "",
+            showsUnexplored: false
+        )
+        #expect(populatedRows.count == 3)
+        #expect(populatedRows[0].target.destination == .category(parent.id))
+        #expect(populatedRows[1].target.destination == .category(category.id))
+        #expect(populatedRows[2].target.destination == .node(document.semantics.nodes[0].id))
+
+        let allRows = VocabularyClassificationProjection.outlineRows(
+            axis: .content,
+            classification: document.classification,
+            items: items,
+            entries: document.entries,
+            languages: [.chinese],
+            expanded: [parentPath, childPath],
+            query: "",
+            showsUnexplored: true
+        )
+        #expect(allRows.count > populatedRows.count)
+
+        let uncategorized = VocabularyClassificationProjection.uncategorizedMeanings(classification: document.classification, items: items)
+        #expect(uncategorized.map(\.id) == [document.semantics.nodes[1].id])
+
+        let treeCollapsed = VocabularyGraphProjection.meanings(
+            index: document.semantics,
+            entries: document.entries,
+            expanded: [],
+            query: "",
+            preferredLanguages: [.chinese],
+            classification: document.classification,
+            showsUnexplored: false
+        )
+        #expect(treeCollapsed.isMeaningGraph)
+        #expect(!treeCollapsed.treePositions.isEmpty)
+        #expect(treeCollapsed.nodes.contains { $0.id == .category(parent.id) && !$0.isUnexplored })
+        #expect(!treeCollapsed.nodes.contains { $0.isUnexplored })
+
+        let treeWithUnexplored = VocabularyGraphProjection.meanings(
+            index: document.semantics,
+            entries: document.entries,
+            expanded: [],
+            query: "",
+            preferredLanguages: [.chinese],
+            classification: document.classification,
+            showsUnexplored: true
+        )
+        #expect(treeWithUnexplored.nodes.contains { $0.isUnexplored })
+        #expect(treeWithUnexplored.nodes.count > treeCollapsed.nodes.count)
+
+        let treeExpanded = VocabularyGraphProjection.meanings(
+            index: document.semantics,
+            entries: document.entries,
+            expanded: [parent.id, category.id, document.semantics.nodes[0].id],
+            query: "",
+            preferredLanguages: [.chinese],
+            classification: document.classification,
+            showsUnexplored: false
+        )
+        #expect(treeExpanded.nodes.contains { $0.id == .category(category.id) })
+        #expect(treeExpanded.nodes.contains { $0.id == .meaning(document.semantics.nodes[0].id) })
+        let parentX = try #require(treeExpanded.treePositions[.category(parent.id)]?.x)
+        let childX = try #require(treeExpanded.treePositions[.category(category.id)]?.x)
+        let meaningX = try #require(treeExpanded.treePositions[.meaning(document.semantics.nodes[0].id)]?.x)
+        #expect(parentX < childX && childX < meaningX)
+    }
 }
