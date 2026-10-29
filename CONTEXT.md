@@ -14,6 +14,23 @@ One core meaning or interpretation of an expression. Its identity remains the sa
 is reworded, translated or explained again; different wording alone does not establish a new sense.
 _Avoid_: treating a generated definition string as the sense itself.
 
+**Meaning category / 意义类别**:
+A reusable organizing class containing meaning nodes, such as degree or minimal degree.
+Categories may have several parents, and a meaning node may belong to several categories.
+_Avoid_: equating category membership with synonymy or an expression's sense.
+
+**Classification framework / 分类框架**:
+The maintained default organization of content categories and communicative-function categories.
+Its identities remain stable when its names are translated or its definitions are refined.
+
+**Custom category / 自定义类别**:
+A user-defined meaning category that extends existing categories or stands independently.
+It participates in the same classification relationships as a built-in category.
+
+**Category membership / 类别归属**:
+The explicit relationship placing a meaning node in an organizing category.
+It remains distinct from the association connecting an expression sense to that meaning node.
+
 **Meaning node / 意义节点**:
 An independently identified content concept or communicative function that can connect several
 expression senses. Its names and aliases can be written in multiple languages.
