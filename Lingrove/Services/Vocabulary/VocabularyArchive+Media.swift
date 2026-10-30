@@ -1,3 +1,4 @@
+import LingroveNotebookStorage
 import LingroveNotebook
 import Foundation
 
@@ -84,6 +85,7 @@ extension VocabularyArchive {
 
     func backup(to destination: URL) throws {
         try validateBackupDestination(destination)
+        _ = try load() // Catalog installation may write; finish it before the shared read lock.
         let snapshot = try storageAccess(write: false) { try backupSnapshot() }
         // Bytes are owned now. Encoding and fsync need not hold a cross-process media lock.
         let data = try JSONEncoder().encode(snapshot)
@@ -92,7 +94,7 @@ extension VocabularyArchive {
     }
 
     private func backupSnapshot() throws -> VocabularyBackup {
-        let document = try load().document
+        let document = try readSnapshot().document
         var media: [String: Data] = [:]
         for image in Set(Self.imageReferences(document)) { media[image.filename] = try images.read(image) }
         guard media.values.reduce(0, { $0 + $1.count }) <= Self.maximumMediaBytes else { throw VocabularyError.oversizedArchive }

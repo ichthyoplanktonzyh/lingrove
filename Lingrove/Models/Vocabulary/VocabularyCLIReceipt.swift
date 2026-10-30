@@ -1,10 +1,4 @@
-import Foundation
+import LingroveNotebookStorage
 
-/// The archive passes this receipt into the same SQL transaction as a batch's content. It is
-/// operational metadata, excluded from vocabulary exports and cards; a lost CLI reply can be
-/// recovered without appending a second copy of the learning material.
-nonisolated struct VocabularyCLIReceipt: Sendable {
-    let key: String
-    let fingerprint: String
-    let result: Data
-}
+/// The app-owned archive uses one shared persistence implementation on Apple platforms.
+typealias VocabularyCLIReceipt = LingroveNotebookStorage.VocabularyCLIReceipt

@@ -1,13 +1,19 @@
 # Shared notebook code
 
 This package shares Lingrove's existing portable notebook graph between the Mac and iOS apps.
-It contains the complete document values, their joined editing projection, snapshot and backup
-contracts, and a text reading component. Validation policies, SQLite, resources, generation
-sessions and the complete editing interface still belong to the app.
+It contains document values and their joined editing projection, deterministic data rules,
+snapshot/backup contracts, SQLite and PNG storage, and a text reading component. The app still
+owns transaction orchestration, catalog resources, generation sessions and the complete editor.
 
 ## Ownership and data flow
 
-`LingroveNotebook` depends only on Foundation. `VocabularyContentBlock` carries an ordered block's
+`LingroveTextRules` contains Foundation-only Unicode safety and UTF-16 range checks shared by
+autocomplete and notebook validation. Neither feature needs the other's domain to perform these
+checks. The App's insertion gate delegates to the same predicate, retaining newline/punctuation
+handling and rejecting replacement/control characters.
+
+`LingroveNotebook` uses Foundation, the text rules, and built-in CryptoKit for stable identity.
+`VocabularyContentBlock` carries an ordered block's
 identity and either text formatting or an image reference with a caption. `VocabularyTextContent`
 keeps the existing paragraph, heading and bullet styles. `VocabularyImageReference` carries
 immutable dimensions and hash-based media identity; `VocabularyPreparedImage` pairs that identity
@@ -27,7 +33,14 @@ changing an editor projection uses the same reconciliation code on either platfo
 NaturalLanguage recognition and segmentation. Saved explanation inputs/results/records cross
 the module boundary without a generation protocol, provider or running model. Semantic and
 classification values include their provenance and optional overlays; bundled catalog loading
-and policy validation remain app responsibilities.
+remains an app responsibility. Lifecycle, semantic, classification, localization-overlay and
+content rules run in the shared core. Whole-document commit normalization and device-binding
+checks remain in the archive orchestration.
+
+`VocabularyIdentityPolicy` preserves normalization, UTF-8 length framing and SHA-256 lookup keys.
+Both App capture reconciliation and SQLite unique-key mapping call it; the storage target does
+not maintain a second identity algorithm. Saved-explanation validation has the existing byte
+ceilings, independent of prompt rendering or a model's token budget.
 
 Review plans, layouts, templates and receipts are part of the existing portable graph. They
 retain Anki note identity and audio receipts without importing an Anki client, scheduler or
@@ -45,6 +58,20 @@ editor's copy. Save passes values to the existing validated SQLite transaction. 
 `VocabularyBackup` pairs the same document with referenced media bytes for explicit local backup
 and restore. Neither contract opens a database or owns a second archive.
 
+`LingroveNotebookStorage` owns SQLite connections, schema migration, typed row mapping, private
+file locks and PNG normalization/verification. Its public database is an ordinary non-Sendable
+class held by the archive actor; image storage also remains actor-owned. Production consumers
+cannot access the C connection, raw rows or schema helpers. The synchronous `access` closure
+lets media staging and the SQL commit share one cross-process lock without suspending or
+transferring ownership. Persistent revision checks, WAL/FULL durability, regular-file identity
+and the existing schema version 5 remain unchanged. CLI receipts commit atomically with rows.
+Code-only diagnostic callbacks keep the App's logger outside this target.
+
+A cold backup/export first allows catalog installation before acquiring its shared media lock.
+Inside that lock it reads the current committed snapshot without attempting another installation;
+the file-lock rule still refuses a shared-to-exclusive upgrade. This preserves snapshot/media
+consistency even if another process commits between preparation and the read lock.
+
 Internal type aliases in the Mac model files keep existing callers on the shared representation.
 Consumers explicitly import this package when accessing its members. Public initializers preserve
 the old memberwise parameter order and defaults because Swift does not export a synthesized
@@ -60,7 +87,9 @@ and are bundled test resources. Comparisons normalize only known unordered revie
 and sets, preserving the order of content, evidence, labels and relationships. Tests cover v7 to
 v8 decoding, missing classification guidance, absent versus empty values, collection ownership,
 stored explanations and local review receipts. Mac archive and notebook tests cover integration
-separately.
+separately. Storage tests copy and reopen a real schema-5 fixture written by the checkpoint's old
+implementation, then check revisions, receipts, rollback, file identity, lock nesting and PNG
+isolation. Fixture provenance is retained alongside the synthetic test data.
 The package declares macOS 14 and iOS 18; cross-compilation alone does not establish runtime or
 accessibility compatibility on those minimum systems.
 

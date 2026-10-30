@@ -1,31 +1,20 @@
+import LingroveTextRules
 import LingroveNotebook
-import CryptoKit
 import Foundation
 import NaturalLanguage
 
 /// Pure identity, context extraction and merge rules shared by cards, persistence and tests.
 /// No model is asked to invent a sentence or meaning when the capture did not contain one.
 nonisolated enum VocabularyPolicy {
-    static func normalized(_ text: String) -> String {
-        text.precomposedStringWithCanonicalMapping.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-    }
+    static func normalized(_ text: String) -> String { VocabularyIdentityPolicy.normalized(text) }
 
     static func entryKey(_ capture: VocabularyCapture) -> String {
-        key([(capture.language?.rawValue ?? "und"), capture.kind.rawValue, normalized(capture.expression)])
+        VocabularyIdentityPolicy.entryKey(expression: capture.expression, language: capture.language, kind: capture.kind)
     }
 
-    static func entryKey(_ entry: VocabularyEntry) -> String {
-        key([(entry.language?.rawValue ?? "und"), entry.kind.rawValue, normalized(entry.expression)])
-    }
+    static func entryKey(_ entry: VocabularyEntry) -> String { VocabularyIdentityPolicy.entryKey(entry) }
 
-    static func exampleKey(_ example: VocabularyExample?) -> String {
-        guard let example else { return "no-context" }
-        // Preserve the legacy key, including classification, so existing deliberately distinct
-        // examples remain valid. Sense reconciliation separately handles a unique unknown-state
-        // observation. Annotation/translation languages are mutable content, not identity.
-        return key([example.text, example.ranges.map { "\($0.location):\($0.length)" }.joined(separator: ","),
-            example.completeness.rawValue])
-    }
+    static func exampleKey(_ example: VocabularyExample?) -> String { VocabularyIdentityPolicy.exampleKey(example) }
 
     static func captureKey(_ capture: VocabularyCapture) -> String {
         entryKey(capture) + ":" + (capture.example.map { exampleKey($0) } ?? "standalone")
@@ -48,11 +37,7 @@ nonisolated enum VocabularyPolicy {
         }
     }
 
-    static func valid(_ range: NSRange, in text: String) -> Bool {
-        range.location >= 0 && range.length > 0 && range.location <= text.utf16.count &&
-            range.length <= text.utf16.count - range.location && Range(range, in: text) != nil &&
-            (text as NSString).rangeOfComposedCharacterSequences(for: range) == range
-    }
+    static func valid(_ range: NSRange, in text: String) -> Bool { UTF16TextRangePolicy.isValid(range, in: text) }
 
     /// Reconciles an example's highlight spans after the user edits `example.text` or `expression`
     /// in the notebook editor. Existing translations, translation variants, and contextual meanings
@@ -213,11 +198,7 @@ nonisolated enum VocabularyPolicy {
         records = Array(records.suffix(24))
     }
 
-    private static func key(_ parts: [String]) -> String {
-        // Length framing prevents strings containing delimiters from aliasing another capture.
-        let value = parts.map { "\($0.utf8.count):\($0)" }.joined()
-        return SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
+
 }
 
 /// Preserve the app error name while package decoding throws the same error identity.

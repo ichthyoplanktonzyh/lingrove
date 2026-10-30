@@ -1,3 +1,4 @@
+@testable import LingroveNotebookStorage
 import LingroveNotebook
 import AppKit
 import SwiftUI

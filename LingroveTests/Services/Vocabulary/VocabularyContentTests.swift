@@ -1,3 +1,4 @@
+@testable import LingroveNotebookStorage
 import LingroveNotebook
 import CoreGraphics
 import Foundation

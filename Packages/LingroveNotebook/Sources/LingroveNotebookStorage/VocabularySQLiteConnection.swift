@@ -1,7 +1,6 @@
 import LingroveNotebook
 import Darwin
 import Foundation
-import Logging
 import SQLite3
 
 /// A non-Sendable connection belongs exclusively to VocabularyArchive's actor. Synchronous
@@ -14,11 +13,13 @@ nonisolated final class VocabularySQLiteConnection {
         var integer: Int64? { if case let .integer(value) = self { value } else { nil } }
         var data: Data? { if case let .blob(value) = self { value } else { nil } }
     }
+    private let onDiagnostic: (@Sendable (VocabularySQLiteDiagnostic) -> Void)?
     private var handle: OpaquePointer?
     private let url: URL?
     private let identity: (device: dev_t, inode: ino_t)?
 
-    init(url: URL?, create: Bool = false) throws {
+    init(url: URL?, create: Bool = false, onDiagnostic: (@Sendable (VocabularySQLiteDiagnostic) -> Void)? = nil) throws {
+        self.onDiagnostic = onDiagnostic
         self.url = url
         if let url, create {
             let file = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, mode_t(0o600))
@@ -43,7 +44,7 @@ nonisolated final class VocabularySQLiteConnection {
         } else { path = ":memory:" }
         let status = sqlite3_open_v2(path, &pointer, flags, nil)
         guard status == SQLITE_OK, let pointer else {
-            LingroveLogger.learning.error("Vocabulary SQLite connection failed", metadata: ["sqlite_code": .stringConvertible(status)])
+            onDiagnostic?(.connectionFailed(code: status))
             if let pointer { sqlite3_close_v2(pointer) }; throw VocabularyError.invalidArchive
         }
         handle = pointer
@@ -137,7 +138,7 @@ nonisolated final class VocabularySQLiteConnection {
 
     private func check(_ code: Int32) throws {
         guard code != SQLITE_OK, code != SQLITE_ROW, code != SQLITE_DONE else { return }
-        LingroveLogger.learning.error("Vocabulary SQLite operation failed", metadata: ["sqlite_code": .stringConvertible(code)])
+        onDiagnostic?(.operationFailed(code: code))
         if code == SQLITE_BUSY || code == SQLITE_LOCKED { throw VocabularyError.storageBusy }
         throw VocabularyError.invalidArchive
     }

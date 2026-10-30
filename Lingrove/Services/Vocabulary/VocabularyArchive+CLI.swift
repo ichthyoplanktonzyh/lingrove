@@ -1,3 +1,4 @@
+import LingroveNotebookStorage
 import LingroveNotebook
 import Foundation
 

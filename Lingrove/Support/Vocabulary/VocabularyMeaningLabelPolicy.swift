@@ -17,35 +17,18 @@ nonisolated enum VocabularyMeaningLabelPolicy {
     /// Region variants share a display language, but Chinese scripts remain distinct. An
     /// ambiguous/unsupported locale stays unknown rather than relabeling a user's content.
     static func language(for identifier: String) -> LearningLanguage? {
-        let parts = identifier.replacingOccurrences(of: "_", with: "-").lowercased().split(separator: "-")
-        guard let base = parts.first else { return nil }
-        if base == "zh" {
-            if parts.contains("hans") { return .chinese }
-            if parts.contains("hant") { return .traditionalChinese }
-            if parts.contains(where: { ["cn", "sg", "my"].contains($0) }) { return .chinese }
-            if parts.contains(where: { ["tw", "hk", "mo"].contains($0) }) { return .traditionalChinese }
-            return nil
-        }
-        return LearningLanguage(rawValue: String(base))
+        VocabularyMeaningLabelRules.language(for: identifier)
     }
 
     static func label(for node: VocabularyMeaningNode, languages: [LearningLanguage]) -> VocabularyMeaningLabel? {
-        label(in: node.labels, languages: languages)
+        VocabularyMeaningLabelRules.label(for: node, languages: languages)
     }
 
     static func label(in labels: [VocabularyMeaningLabel], languages: [LearningLanguage]) -> VocabularyMeaningLabel? {
-        for language in languages {
-            if let label = preferred(in: labels.filter { $0.language == language }) { return label }
-        }
-        // Untagged names are retained as authored, without guessing their language. English
-        // and then another existing name are last-resort fallbacks, never generated text.
-        return preferred(in: labels.filter { $0.language == nil }) ??
-            preferred(in: labels.filter { $0.language == .english }) ?? preferred(in: labels)
+        VocabularyMeaningLabelRules.label(in: labels, languages: languages)
     }
 
-    private static func preferred(in labels: [VocabularyMeaningLabel]) -> VocabularyMeaningLabel? {
-        labels.first(where: \.preferred) ?? labels.first
-    }
+
 
     static func hasMultipleLanguages(_ entries: [VocabularyEntry]) -> Bool {
         Set(entries.map { $0.language?.rawValue ?? "und" }).count > 1

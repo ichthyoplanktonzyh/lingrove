@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Additive schema evolution runs under the database's existing file lock and one transaction.

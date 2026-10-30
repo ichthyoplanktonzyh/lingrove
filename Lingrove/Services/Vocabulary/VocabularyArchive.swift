@@ -1,6 +1,8 @@
+import LingroveNotebookStorage
 import LingroveNotebook
 import Darwin
 import Foundation
+import Logging
 
 /// One actor owns one local SQLite notebook. Synchronous transactions serialize read/modify/commit
 /// away from MainActor; cached state advances only after the SQL commit succeeds. This is
@@ -21,6 +23,18 @@ actor VocabularyArchive {
     }
 
     func load() throws -> VocabularySnapshot {
+        let snapshot = try readSnapshot()
+        // A failed first catalog load must remain retryable even when the database snapshot
+        // was already cached. The installer's version receipt makes subsequent checks cheap.
+        var next = snapshot.document
+        if try installClassification(in: &next) { return try commit(next) }
+        return snapshot
+    }
+
+    /// Read an existing committed snapshot without installing catalog resources. A backup
+    /// may hold a shared media lock here; silently upgrading it to write would deadlock or
+    /// fail. The caller first runs load() outside that lock when installation is needed.
+    func readSnapshot() throws -> VocabularySnapshot {
         let database = try persistence()
         let snapshot: VocabularySnapshot
         if let document, try database.revision() == revision {
@@ -30,10 +44,6 @@ actor VocabularyArchive {
             try validate(snapshot.document)
             document = snapshot.document; revision = snapshot.revision
         }
-        // A failed first catalog load must remain retryable even when the database snapshot
-        // was already cached. The installer's version receipt makes subsequent checks cheap.
-        var next = snapshot.document
-        if try installClassification(in: &next) { return try commit(next) }
         return snapshot
     }
 
@@ -45,7 +55,18 @@ actor VocabularyArchive {
 
     func persistence() throws -> VocabularySQLiteDatabase {
         if let database { return database }
-        let value = try VocabularySQLiteDatabase(url: url); database = value; return value
+        let value = try VocabularySQLiteDatabase(url: url, onDiagnostic: { diagnostic in
+            // The app owns log routing; the storage layer reports only an operation kind
+            // and numeric SQLite code, never its C handles or notebook content.
+            switch diagnostic {
+            case let .connectionFailed(code):
+                LingroveLogger.learning.error("Vocabulary SQLite connection failed", metadata: ["sqlite_code": .stringConvertible(code)])
+            case let .operationFailed(code):
+                LingroveLogger.learning.error("Vocabulary SQLite operation failed", metadata: ["sqlite_code": .stringConvertible(code)])
+            }
+        })
+        database = value
+        return value
     }
 
     /// A mutation has already built its candidate from this cached revision. Refreshing here

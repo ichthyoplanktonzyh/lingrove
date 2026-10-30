@@ -1,3 +1,4 @@
+import LingroveNotebookStorage
 import Foundation
 import LingroveNotebook
 
@@ -13,6 +14,7 @@ extension VocabularyArchive {
         let classification: VocabularyClassificationIndex
     }
     func prepareExport(selections: [VocabularySelection], configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
+        _ = try load() // A first catalog installation cannot upgrade the shared export lock.
         let snapshot = try storageAccess(write: false) { try exportSnapshot(selections: selections, configuration: configuration) }
         var package = try VocabularyExportPolicy.package(snapshot.entries, configuration: configuration,
             semantics: snapshot.semantics, classification: snapshot.classification)
@@ -24,7 +26,7 @@ extension VocabularyArchive {
     private func exportSnapshot(
         selections: [VocabularySelection], configuration: VocabularyExportConfiguration
     ) throws -> ExportSnapshot {
-        let document = try load().document
+        let document = try readSnapshot().document
         let selected = try VocabularyExportPolicy.selected(document.collectedEntries, selections: selections)
         var media: [String: Data] = [:]
         let references = VocabularyExportPolicy.images(selected, configuration: configuration)

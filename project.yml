@@ -125,9 +125,13 @@ targetTemplates:
         buildPhase: resources
     dependencies:
       - package: LingroveNotebook
+        product: LingroveTextRules
+      - package: LingroveNotebook
         product: LingroveNotebook
       - package: LingroveNotebook
         product: LingroveNotebookUI
+      - package: LingroveNotebook
+        product: LingroveNotebookStorage
       - package: LingroveGraphLayout
         product: LingroveGraphLayout
       - target: LingroveCLI
@@ -269,6 +273,10 @@ targets:
       - target: Lingrove
       - package: LingroveNotebook
         product: LingroveNotebook
+      - package: LingroveNotebook
+        product: LingroveNotebookStorage
+      - package: LingroveNotebook
+        product: LingroveTextRules
     settings:
       base:
         BUNDLE_LOADER: $(TEST_HOST)

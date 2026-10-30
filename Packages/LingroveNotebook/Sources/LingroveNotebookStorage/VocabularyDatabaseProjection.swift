@@ -28,7 +28,7 @@ nonisolated enum VocabularyDatabaseProjection {
         for (position, entry) in document.catalog.enumerated() {
             var header = entry; header.senses = []
             rows.append(.init(table: .entries, id: entry.id.uuidString, parentID: nil, position: position, payload: .entry(header),
-                extra: [VocabularyPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
+                extra: [VocabularyIdentityPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
             for (position, sense) in entry.senses.enumerated() {
                 var header = sense; header.explanations = []
                 rows.append(.init(table: .senses, id: sense.id.uuidString, parentID: entry.id.uuidString,

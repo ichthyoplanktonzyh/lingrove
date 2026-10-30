@@ -7,15 +7,28 @@ let package = Package(
     name: "LingroveNotebook",
     platforms: [.macOS(.v14), .iOS(.v18)],
     products: [
+        .library(name: "LingroveTextRules", targets: ["LingroveTextRules"]),
         .library(name: "LingroveNotebook", targets: ["LingroveNotebook"]),
-        .library(name: "LingroveNotebookUI", targets: ["LingroveNotebookUI"])
+        .library(name: "LingroveNotebookUI", targets: ["LingroveNotebookUI"]),
+        .library(name: "LingroveNotebookStorage", targets: ["LingroveNotebookStorage"])
     ],
     targets: [
-        .target(name: "LingroveNotebook"),
+        .target(name: "LingroveTextRules"),
+        .target(name: "LingroveNotebook", dependencies: ["LingroveTextRules"]),
         .target(name: "LingroveNotebookUI", dependencies: ["LingroveNotebook"]),
+        .target(
+            name: "LingroveNotebookStorage",
+            dependencies: ["LingroveNotebook"],
+            linkerSettings: [.linkedLibrary("sqlite3")]
+        ),
         .testTarget(
             name: "LingroveNotebookTests",
-            dependencies: ["LingroveNotebook"],
+            dependencies: ["LingroveNotebook", "LingroveTextRules"],
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "LingroveNotebookStorageTests",
+            dependencies: ["LingroveNotebookStorage"],
             resources: [.copy("Fixtures")]
         )
     ]

@@ -1,3 +1,4 @@
+import LingroveTextRules
 import Foundation
 
 /// File overview:
@@ -15,28 +16,6 @@ import Foundation
 nonisolated enum InsertionSafetyGate {
     /// Returns true when `completion` is safe to display and insert.
     static func isSafeToInsert(_ completion: String) -> Bool {
-        guard !completion.isEmpty else {
-            return false
-        }
-
-        var sawNonWhitespace = false
-        for scalar in completion.unicodeScalars {
-            // Replacement character: the detokenizer produced bytes it could not decode. Never text.
-            if scalar == "\u{FFFD}" {
-                return false
-            }
-            // C0 control range and DEL. A line feed is legitimate content in a multi-line completion
-            // (the normalizer keeps newlines when multi-line mode is on), so it must pass; any other
-            // control character (an interior tab, a stray escape) is corruption, not content.
-            if scalar.value != 0x0A, scalar.value < 0x20 || scalar.value == 0x7F {
-                return false
-            }
-            if !CharacterSet.whitespacesAndNewlines.contains(scalar) {
-                sawNonWhitespace = true
-            }
-        }
-
-        // Whitespace-only output is not a completion.
-        return sawNonWhitespace
+        UnicodeTextSafety.isSafeToInsert(completion)
     }
 }

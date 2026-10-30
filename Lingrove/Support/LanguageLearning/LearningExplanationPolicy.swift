@@ -47,11 +47,7 @@ nonisolated enum LearningExplanationPolicy {
     /// context is reduced, using the common conservative token estimate; local execution still
     /// checks exact framed token counts before decoding, so an estimate cannot overrun native KV.
     static func isValid(_ input: LearningExplanationInput) -> Bool {
-        !input.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            input.target.utf8.count <= 32_000 && input.dictionaryForm.utf8.count <= 32_000 &&
-            input.context.utf8.count <= ModelContextBudget.maximumTextBytes &&
-            !input.ranges.isEmpty && input.ranges.count <= 64 &&
-            input.ranges.allSatisfy { VocabularyPolicy.valid($0.nsRange, in: input.context) }
+        VocabularyExplanationValidation.isValid(input)
     }
 
     static func prompt(_ input: LearningExplanationInput, language: LearningLanguage,
@@ -134,10 +130,7 @@ nonisolated enum LearningExplanationPolicy {
     }
 
     static func isValid(_ result: LearningExplanationResult) -> Bool {
-        !result.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !result.explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            result.meaning.utf8.count <= 2_000 && result.explanation.utf8.count <= 16_000 &&
-            InsertionSafetyGate.isSafeToInsert(result.meaning) && InsertionSafetyGate.isSafeToInsert(result.explanation)
+        VocabularyExplanationValidation.isValid(result)
     }
 
     static func parse(_ raw: String) throws -> LearningExplanationResult {

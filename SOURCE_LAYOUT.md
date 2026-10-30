@@ -550,7 +550,7 @@ study-language filter only scopes expressions. Localized edits retain the chosen
 language. Mixed-language graph labels and expression badges distinguish homographs without
 guessing unknown source languages or translating stored content.
 
-`Packages/LingroveNotebook` is the shared Mac/iOS notebook boundary. Its Foundation-only
+`Packages/LingroveNotebook` is the shared Mac/iOS notebook boundary. Its
 `LingroveNotebook` product owns the complete portable document graph: lexical values, evidence,
 interpretations, collections, semantic/classification relationships, saved explanations and review
 metadata, plus content, UTF-16 ranges, snapshots and backups. `VocabularyNotebookProjection`
@@ -562,9 +562,20 @@ generated from frozen old declarations fix its Codable representation and versio
 `LearningLanguage` identity is shared; detection, host language labels and generation protocols
 stay in the app. Review labels, Anki connections, sessions and generated audio also remain there.
 `VocabularyError` is a shared typed failure using the host localization table.
-`LingroveNotebookUI` renders saved text with a host-provided font. Validation policies, SQLite,
-catalog resources and image decoding retain their existing app ownership. Package tests live under
-`Packages/LingroveNotebook/Tests/` and bundle historical JSON fixtures with SwiftPM resources.
+`LingroveNotebookUI` renders saved text with a host-provided font. Data identity uses the original
+CryptoKit SHA-256 key framing. Lifecycle, semantic/classification/overlay and content rules are
+shared; the App retains acquisition, prompt rendering, full commit normalization and device-bound
+review checks. `LingroveTextRules` supplies Foundation-only Unicode and UTF-16 primitives to both
+autocomplete and the notebook, keeping the two core features independent.
+
+`LingroveNotebookStorage` owns the existing SQLite schema/connection/flock, typed row projection,
+CLI receipts and PNG storage. Only the database, receipt, image storage and code-only diagnostic
+surface are public; low-level SQL stays internal and App tests use `@testable` access. The single
+App `VocabularyArchive` actor still owns all transactions and media staging/GC, with synchronous
+lock closures. Cold backup/export complete catalog installation before a shared lock, then read
+the current committed snapshot and media together without attempting lock upgrade. Catalog
+resources and NSItemProvider callback bridging remain in the App. Package tests under
+`Packages/LingroveNotebook/Tests/` include historical JSON and a synthetic old-writer SQLite fixture.
 
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
