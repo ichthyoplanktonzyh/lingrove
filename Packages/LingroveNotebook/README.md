@@ -66,10 +66,16 @@ editor's copy. Save passes values to the existing validated SQLite transaction. 
 `VocabularyBackup` pairs the same document with referenced media bytes for explicit local backup
 and restore. Neither contract opens a database or owns a second archive.
 
-`LingroveNotebookStorage` owns SQLite connections, schema migration, typed row mapping, private
+`LingroveNotebookPersistenceCodec` maps the complete graph to 29 persistence families. Immutable
+typed rows expose an entity ID, parent, position, exact nullable indexes and lazily encoded payload;
+typed equality ignores dictionary/set JSON ordering. Decode verifies identity, ownership, ordering
+and index/payload agreement. Each host chooses physical tables and scope columns. This product
+owns no SQL, files or network, and its local tool metadata must not become a remote wire payload.
+
+`LingroveNotebookStorage` owns the Mac SQLite connections, schema migration, private
 file locks and PNG normalization/verification. Its public database is an ordinary non-Sendable
 class held by the archive actor; image storage also remains actor-owned. Production consumers
-cannot access the C connection, raw rows or schema helpers. The synchronous `access` closure
+cannot access the C connection or schema helpers. The synchronous `access` closure
 lets media staging and the SQL commit share one cross-process lock without suspending or
 transferring ownership. Persistent revision checks, WAL/FULL durability, regular-file identity
 and the existing schema version 5 remain unchanged. CLI receipts commit atomically with rows.
@@ -105,4 +111,4 @@ The [mobile plan](../../docs/MOBILE_NOTEBOOK_PLAN.md) tracks the remaining extra
 work. The [source map](../../SOURCE_LAYOUT.md) documents responsibilities that still belong to the
 Mac app.
 The [Nibomo integration](../../docs/NIBOMO_INTEGRATION.md) describes the maintained downstream
-source and use of the shared Core with Nibomo's own database/transaction owner.
+source and use of shared Core/Codec values with Nibomo's own database/transaction owner.

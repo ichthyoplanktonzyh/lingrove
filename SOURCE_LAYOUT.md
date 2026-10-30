@@ -573,7 +573,13 @@ shared; the App retains acquisition, prompt rendering, catalog resources and tra
 orchestration. `LingroveTextRules` supplies Foundation-only Unicode and UTF-16 primitives to both
 autocomplete and the notebook, keeping the two core features independent.
 
-`LingroveNotebookStorage` owns the existing SQLite schema/connection/flock, typed row projection,
+`LingroveNotebookPersistenceCodec` owns the typed document/row projection shared by host stores.
+Its immutable `VocabularyPersistenceRow` keeps a typed payload and exact nullable indexes;
+`VocabularyPersistenceEntity` fixes family names, parent families and index order. Decode checks
+identity, relationships, ordering and payload/index agreement. It opens no files or databases and
+does not define the cloud wire protocol, which must exclude local tool-adapter metadata.
+
+`LingroveNotebookStorage` owns the existing Mac SQLite schema/connection/flock,
 CLI receipts and PNG storage. Only the database, receipt, image storage and code-only diagnostic
 surface are public; low-level SQL stays internal and App tests use `@testable` access. The single
 App `VocabularyArchive` actor still owns all transactions and media staging/GC, with synchronous
@@ -583,9 +589,12 @@ resources and NSItemProvider callback bridging remain in the App. Package tests 
 `Packages/LingroveNotebook/Tests/` include historical JSON and a synthetic old-writer SQLite fixture.
 
 `Nibomo/` is the pinned full upstream application imported as a Git subtree, with its own MIT and
-third-party notices. Its existing iOS app/test targets link `LingroveNotebook` Core by a local
-relative package reference. The mobile notebook will extend Nibomo's existing `LocalDatabase` and
-transaction/outbox graph; it does not link the Mac SQLite owner as a second primary store. Source
+third-party notices. Its existing iOS app/test targets link Core and PersistenceCodec by a local
+relative package reference. `Database/NotebookStore` extends Nibomo's existing `LocalDatabase` and
+connection with workspace-scoped notebook tables, revision checks and an atomic pending journal.
+The journal stays outside the existing card sync dispatcher until the server supports notebook
+transactions; it is not a remote payload. The mobile store does not open the Mac SQLite owner as
+a second primary store. Source
 provenance, the retained UI experiment and current implementation boundaries are documented in
 `docs/NIBOMO_INTEGRATION.md`.
 
