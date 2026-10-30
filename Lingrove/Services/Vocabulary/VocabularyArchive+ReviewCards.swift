@@ -5,12 +5,7 @@ import Foundation
 /// only that card, so another card can be edited without losing its receipt or imported images.
 extension VocabularyArchive {
     func validateCards(_ cards: [VocabularyReview], ids: inout Set<UUID>) throws {
-        guard cards.count <= 64 else { throw VocabularyError.invalidArchive }
-        for card in cards {
-            guard ids.insert(card.plan.id).inserted, let layout = card.plan.layout else { throw VocabularyError.invalidArchive }
-            try ReviewLayoutPolicy.validate(layout)
-            try validateReview(card)
-        }
+        try VocabularyReviewValidation.validateCards(cards, ids: &ids)
     }
 
     func removeReview(entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview) throws -> VocabularySnapshot {
@@ -41,11 +36,6 @@ extension VocabularyArchive {
     }
 
     func validateTemplates(_ templates: [ReviewLayoutTemplate]) throws {
-        guard templates.count <= 64, Set(templates.map(\.id)).count == templates.count else { throw VocabularyError.invalidArchive }
-        for template in templates {
-            guard !template.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  template.name.utf8.count <= 1024 else { throw VocabularyError.invalidArchive }
-            try ReviewLayoutPolicy.validate(template.layout)
-        }
+        try VocabularyReviewValidation.validateTemplates(templates)
     }
 }

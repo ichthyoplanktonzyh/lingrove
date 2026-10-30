@@ -6,19 +6,11 @@ import Foundation
 /// normalization and file IO therefore never run on MainActor. Immutable resources are written
 /// first, the SQL transaction is the commit point, and failure removes only newly introduced resources.
 extension VocabularyArchive {
-    func validateBlockIdentities(_ blocks: [VocabularyContentBlock], ids: inout Set<UUID>) throws {
-        for block in blocks { guard ids.insert(block.id).inserted else { throw VocabularyError.invalidArchive } }
-    }
-    static let maximumBackupBytes = 192 * 1_024 * 1_024
-    static let maximumMediaBytes = 128 * 1_024 * 1_024
+    static let maximumBackupBytes = VocabularyDocumentValidation.maximumBackupBytes
+    static let maximumMediaBytes = VocabularyDocumentValidation.maximumMediaBytes
 
     static func imageReferences(_ document: VocabularyDocument) -> [VocabularyImageReference] {
-        let senseImages = document.entries.flatMap { $0.senses.flatMap { sense in
-            VocabularyContentPolicy.images(sense.content ?? []) + sense.reviewLayouts.flatMap {
-                VocabularyContentPolicy.images($0.customContent)
-            }
-        } }
-        return senseImages + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
+        VocabularyDocumentValidation.imageReferences(document)
     }
 
     func prepareImage(_ data: Data) throws -> VocabularyPreparedImage { try VocabularyImageStorage.prepare(data) }
@@ -74,13 +66,7 @@ extension VocabularyArchive {
     }
 
     private func validateMediaContent(_ next: VocabularyDocument) throws {
-        for entry in next.entries {
-            for sense in entry.senses {
-                try VocabularyContentPolicy.validate(sense.content ?? [])
-                for layout in sense.reviewLayouts { try ReviewLayoutPolicy.validate(layout) }
-            }
-        }
-        try validateTemplates(next.reviewTemplates ?? [])
+        try VocabularyDocumentValidation.validateMediaContent(next)
     }
 
     func backup(to destination: URL) throws {

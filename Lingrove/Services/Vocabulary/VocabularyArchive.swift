@@ -344,37 +344,9 @@ actor VocabularyArchive {
         guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
         var next = document
         _ = try installClassification(in: &next)
-        // Validate canonical relationships before the joined editor adapter can normalize
-        // children. An invalid resource relation must fail, never be silently pruned on commit.
-        try VocabularyLifecyclePolicy.validate(next)
-        // A validated backup replaces evidence and assertions together. Comparing its old
-        // occurrence IDs against today's notebook would incorrectly invalidate restored facts.
-        if !restoringBackup {
-            VocabularySemanticPolicy.reconcile(&next.semantics, previous: baseline.document, entries: next.entries)
-        }
-        // Explanation snapshots remain attached to their exact current input. A moved usage
-        // retains them intact; editing its text cannot relabel an old answer as a current one.
-        var entries = next.entries
-        for index in entries.indices {
-            let entry = entries[index]
-            for sense in entry.senses.indices {
-                let value = entry.senses[sense]
-                let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: value, example: nil))
-                entries[index].senses[sense].explanations = value.explanations.filter {
-                    $0.input == generalInput
-                }
-                for usage in value.examples.indices {
-                    let input = LearningExplanationPolicy.input(
-                        LearningExplanationPolicy.capture(entry, sense: value, example: value.examples[usage]))
-                    entries[index].senses[sense].examples[usage].explanations = value.examples[usage].explanations.filter {
-                        $0.input == input
-                    }
-                }
-            }
-        }
-        next.entries = entries
-        next.schemaVersion = VocabularyDocument.requiredVersion(for: entries)
-        try validate(next)
+        // Both hosts use the same pure preparation/validation boundary. The actor still owns
+        // the exact transaction baseline and advances its cache only after the SQL CAS succeeds.
+        next = try VocabularyDocumentValidation.prepare(next, previous: baseline.document, restoringBackup: restoringBackup)
         // SQL stores entity rows, not a document-version row. Keep the cached envelope canonical
         // with reconstruction, including after the last unknown-language entry is removed.
         let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision, receipt: receipt)
@@ -386,78 +358,13 @@ actor VocabularyArchive {
         return .init(revision: revision, document: next)
     }
 
-    /// Validate the whole ownership graph on load and every write. UUID uniqueness includes
-    /// retired aliases, preventing a later merge or edit from giving one identity two owners.
+    /// The shared rule walks the complete graph without performing IO or selecting a tool.
     func validate(_ document: VocabularyDocument) throws {
-        guard document.schemaVersion == VocabularyDocument.currentVersion,
-              document.schemaVersion >= VocabularyDocument.requiredVersion(for: document.entries),
-              Set(document.entries.map(VocabularyPolicy.entryKey)).count == document.entries.count else {
-            throw VocabularyError.invalidArchive
-        }
-        try VocabularyLifecyclePolicy.validate(document)
-        try validateTemplates(document.reviewTemplates ?? [])
-        var ids = Set<UUID>()
-        for entry in document.entries {
-            guard ids.insert(entry.id).inserted, !VocabularyPolicy.normalized(entry.expression).isEmpty else {
-                throw VocabularyError.invalidArchive
-            }
-            for sense in entry.senses {
-                try VocabularyContentPolicy.validate(sense.content ?? [])
-                try validateBlockIdentities(sense.content ?? [], ids: &ids)
-                if let review = sense.review { try validateReview(review) }
-                try validateCards(sense.reviewCards ?? [], ids: &ids)
-                let generalInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: nil))
-                guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
-                      sense.explanations.count <= 128,
-                      sense.explanations.allSatisfy({
-                          LearningExplanationPolicy.isValid($0.input) && LearningExplanationPolicy.isValid($0.result) &&
-                              $0.input == generalInput
-                      })
-                else { throw VocabularyError.invalidArchive }
-                for usage in sense.examples {
-                    let usageInput = LearningExplanationPolicy.input(LearningExplanationPolicy.capture(entry, sense: sense, example: usage))
-                    guard ids.insert(usage.id).inserted, !usage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                          usage.text.utf8.count <= 262_144,
-                          usage.ranges.allSatisfy({ VocabularyPolicy.valid($0.nsRange, in: usage.text) }),
-                          usage.explanations.count <= 24, usage.explanations.allSatisfy({
-                              LearningExplanationPolicy.isValid($0.input) && LearningExplanationPolicy.isValid($0.result) &&
-                                  $0.input == usageInput
-                          }) else { throw VocabularyError.invalidArchive }
-                }
-            }
-        }
-        try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
-        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
+        try VocabularyDocumentValidation.validate(document)
     }
 
     func validateReview(_ review: VocabularyReview) throws {
-        guard review.bindings.count <= 64, review.preservedPlans.count <= 64,
-              Set(review.bindings.map(\.id)).count == review.bindings.count,
-              review.activeBindingID == nil || review.bindings.contains(where: { $0.id == review.activeBindingID }) else {
-            throw VocabularyError.invalidArchive
-        }
-        for plan in [review.plan] + review.preservedPlans {
-            if let layout = plan.layout { try ReviewLayoutPolicy.validate(layout) }
-            guard (plan.name?.utf8.count ?? 0) <= 1024, (plan.answer?.utf8.count ?? 0) <= 262_144, plan.fieldOverrides.count <= 32,
-                  plan.fieldOverrides.allSatisfy({ $0.key.utf8.count <= 200 && $0.value.utf8.count <= 1_000_000 }) else {
-                throw VocabularyError.invalidArchive
-            }
-        }
-        for plan in [review.plan] + review.preservedPlans {
-            guard (plan.audioReceipts?.count ?? 0) <= 2,
-                  plan.audioReceipts?.values.allSatisfy({
-                      $0.fingerprint.count == 64 && $0.textHash.count == 64 && SpeechExportPolicy.validFilename($0.filename) &&
-                      AnkiReviewPolicy.endpoint($0.endpoint) != nil && !$0.profile.isEmpty
-                  }) ?? true else { throw VocabularyError.invalidArchive }
-        }
-        for binding in review.bindings {
-            guard binding.noteID.map({ $0 > 0 }) ?? true, !binding.profile.isEmpty, !binding.model.isEmpty,
-                  AnkiReviewPolicy.endpoint(binding.endpoint) != nil, binding.mapping[.identity] == binding.identityField,
-                  binding.fields[binding.identityField] == binding.originSenseID.uuidString.lowercased(),
-                  binding.fields.count <= 32, binding.fields.allSatisfy({ $0.value.utf8.count <= 1_000_000 }) else {
-                throw VocabularyError.invalidArchive
-            }
-        }
+        try VocabularyReviewValidation.validate(review)
     }
 
     private static func encoded(_ document: VocabularyDocument) throws -> Data {

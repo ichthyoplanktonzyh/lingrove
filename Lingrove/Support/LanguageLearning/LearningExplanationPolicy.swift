@@ -5,17 +5,9 @@ import Foundation
 /// notebook persistence and tests. No caller rereads the focused application to explain a word.
 nonisolated enum LearningExplanationPolicy {
     static func input(_ capture: VocabularyCapture) -> LearningExplanationInput {
-        .init(target: capture.expression, dictionaryForm: capture.dictionaryForm,
-            language: capture.language, kind: capture.kind, context: capture.example?.text ?? capture.expression,
-            ranges: capture.example?.ranges ?? [VocabularyTextRange(NSRange(location: 0, length: capture.expression.utf16.count))],
-            contextKind: capture.example.map {
-                switch $0.completeness {
-                case .sentence: .sentence
-                case .fragment: .fragment
-                case .unknown: .unknown
-                }
-            } ?? .none,
-            occurrenceIdentity: capture.example.map { VocabularyPolicy.exampleKey($0) } ?? capture.generalExplanationIdentity)
+        VocabularyExplanationIdentity.input(expression: capture.expression, dictionaryForm: capture.dictionaryForm,
+            language: capture.language, kind: capture.kind, example: capture.example,
+            generalIdentity: capture.generalExplanationIdentity)
     }
 
     static func capture(_ entry: VocabularyEntry, sense: VocabularySense? = nil, example: VocabularyExample?) -> VocabularyCapture {
@@ -23,9 +15,7 @@ nonisolated enum LearningExplanationPolicy {
             if let example { return candidate.examples.contains { $0.id == example.id } }
             return candidate.isSavedWithoutContext
         }
-        let identity = owner.flatMap {
-            $0.createdWithoutContext == true && !$0.isSavedWithoutContext ? "sense:" + $0.id.uuidString : nil
-        }
+        let identity = VocabularyExplanationIdentity.generalIdentity(for: owner)
         return .init(expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
             kind: entry.kind, meaning: example?.meaning ?? owner?.meaning ?? "",
             meaningLanguage: example?.meaningLanguage ?? owner?.meaningLanguage, example: example, senseID: owner?.id,

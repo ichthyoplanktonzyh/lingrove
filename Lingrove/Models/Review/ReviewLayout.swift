@@ -22,14 +22,6 @@ nonisolated enum ReviewResolvedPart: Equatable, Sendable {
 }
 
 extension VocabularySense {
-    /// All accepted layouts participate in the media graph, even retained plans hidden from
-    /// the current UI. Backups must never depend on which editor presently exposes a value.
-    nonisolated var reviewLayouts: [ReviewLayout] {
-        ([review].compactMap { $0 } + (reviewCards ?? [])).flatMap {
-            ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
-        }
-    }
-
     nonisolated func reviewValue(_ cardID: UUID?) -> VocabularyReview? {
         guard let cardID else { return review }
         return reviewCards?.first { $0.plan.id == cardID }

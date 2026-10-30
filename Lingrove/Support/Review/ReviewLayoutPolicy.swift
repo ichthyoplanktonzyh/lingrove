@@ -20,14 +20,7 @@ nonisolated enum ReviewLayoutPolicy {
     }
 
     static func validate(_ layout: ReviewLayout) throws {
-        guard layout.parts.count <= 64, Set(layout.parts.map(\.id)).count == layout.parts.count else {
-            throw VocabularyError.invalidContent
-        }
-        for part in layout.parts {
-            guard part.source == .custom || part.content.isEmpty else { throw VocabularyError.invalidContent }
-            try VocabularyContentPolicy.validate(part.content)
-        }
-        try VocabularyContentPolicy.validate(layout.customContent)
+        try VocabularyReviewValidation.validate(layout)
     }
 
     static func portable(_ layout: ReviewLayout) -> ReviewLayout {

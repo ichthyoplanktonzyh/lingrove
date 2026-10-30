@@ -34,13 +34,21 @@ NaturalLanguage recognition and segmentation. Saved explanation inputs/results/r
 the module boundary without a generation protocol, provider or running model. Semantic and
 classification values include their provenance and optional overlays; bundled catalog loading
 remains an app responsibility. Lifecycle, semantic, classification, localization-overlay and
-content rules run in the shared core. Whole-document commit normalization and device-binding
-checks remain in the archive orchestration.
+content rules run in the shared core. Whole-document preparation and persisted review-receipt
+checks are shared too; catalog installation and the commit's IO remain host-owned.
 
 `VocabularyIdentityPolicy` preserves normalization, UTF-8 length framing and SHA-256 lookup keys.
 Both App capture reconciliation and SQLite unique-key mapping call it; the storage target does
 not maintain a second identity algorithm. Saved-explanation validation has the existing byte
 ceilings, independent of prompt rendering or a model's token budget.
+
+`VocabularyExplanationIdentity` constructs that saved input from notebook values or a host capture
+adapter. `VocabularyDocumentValidation.validate` checks the complete graph without IO;
+`prepare` preserves the Mac commit's ordered reconciliation and stale-explanation pruning before
+validation. Strict reads/imports reject stale data instead of silently repairing it. The host owns
+the transaction baseline and persists that exact prepared candidate under its revision check.
+`VocabularyReviewValidation` validates layouts and optional legacy tool receipts without requiring
+an Anki connection. Their historical limits and UUID scopes remain unchanged.
 
 Review plans, layouts, templates and receipts are part of the existing portable graph. They
 retain Anki note identity and audio receipts without importing an Anki client, scheduler or
@@ -96,3 +104,5 @@ accessibility compatibility on those minimum systems.
 The [mobile plan](../../docs/MOBILE_NOTEBOOK_PLAN.md) tracks the remaining extraction and platform
 work. The [source map](../../SOURCE_LAYOUT.md) documents responsibilities that still belong to the
 Mac app.
+The [Nibomo integration](../../docs/NIBOMO_INTEGRATION.md) describes the maintained downstream
+source and use of the shared Core with Nibomo's own database/transaction owner.

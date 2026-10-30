@@ -562,10 +562,15 @@ generated from frozen old declarations fix its Codable representation and versio
 `LearningLanguage` identity is shared; detection, host language labels and generation protocols
 stay in the app. Review labels, Anki connections, sessions and generated audio also remain there.
 `VocabularyError` is a shared typed failure using the host localization table.
+`VocabularyExplanationIdentity` owns exact saved-input identity. `VocabularyDocumentValidation`
+owns read-only full-graph checks and ordered candidate preparation; `VocabularyReviewValidation`
+owns layout and optional tool-receipt data validation. App archive methods delegate to these
+stateless rules while retaining catalog installation, transaction baseline, media staging and SQL
+commit ownership. No shared validation call opens a review tool or database.
 `LingroveNotebookUI` renders saved text with a host-provided font. Data identity uses the original
 CryptoKit SHA-256 key framing. Lifecycle, semantic/classification/overlay and content rules are
-shared; the App retains acquisition, prompt rendering, full commit normalization and device-bound
-review checks. `LingroveTextRules` supplies Foundation-only Unicode and UTF-16 primitives to both
+shared; the App retains acquisition, prompt rendering, catalog resources and transaction/IO
+orchestration. `LingroveTextRules` supplies Foundation-only Unicode and UTF-16 primitives to both
 autocomplete and the notebook, keeping the two core features independent.
 
 `LingroveNotebookStorage` owns the existing SQLite schema/connection/flock, typed row projection,
@@ -576,6 +581,13 @@ lock closures. Cold backup/export complete catalog installation before a shared 
 the current committed snapshot and media together without attempting lock upgrade. Catalog
 resources and NSItemProvider callback bridging remain in the App. Package tests under
 `Packages/LingroveNotebook/Tests/` include historical JSON and a synthetic old-writer SQLite fixture.
+
+`Nibomo/` is the pinned full upstream application imported as a Git subtree, with its own MIT and
+third-party notices. Its existing iOS app/test targets link `LingroveNotebook` Core by a local
+relative package reference. The mobile notebook will extend Nibomo's existing `LocalDatabase` and
+transaction/outbox graph; it does not link the Mac SQLite owner as a second primary store. Source
+provenance, the retained UI experiment and current implementation boundaries are documented in
+`docs/NIBOMO_INTEGRATION.md`.
 
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
