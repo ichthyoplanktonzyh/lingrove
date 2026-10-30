@@ -83,6 +83,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case translationModel
     case explanationModel, explanationLanguage, explanationParameters
     case expressionAssist, expressionAssistShortcut
+    case vocabularySearch
     // Context
     case extendedContext
     case typingHistory
@@ -169,6 +170,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// Search uses these same localized titles and summaries, while English synonyms remain aliases.
     var title: String {
         switch self {
+        case .vocabularySearch: return String(localized: "Expression search", table: "Vocabulary")
         case .replacementTranslationShortcut: return String(localized: "Replace preview translation", table: "Learning")
         case .translationDetailsShortcut: return String(localized: "Expand / collapse translation details", table: "Learning")
         case .saveVocabularyShortcut: return String(localized: "Save current learning item", table: "Vocabulary")
@@ -304,6 +306,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .vocabularySearch: return "text.magnifyingglass"
         case .expressionAssist: return "text.magnifyingglass"
         case .expressionAssistShortcut: return "keyboard"
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
@@ -423,6 +426,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
+        case .vocabularySearch: return .engineAndModel
         case .expressionAssist: return .languageLearning
         case .expressionAssistShortcut: return .shortcuts
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
@@ -482,6 +486,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// phrasing the title doesn't carry ("looks too big", "on every keystroke").
     var summary: String {
         switch self {
+        case .vocabularySearch: return String(localized: "Find expressions in your own words", table: "Vocabulary")
         case .expressionAssist: return String(localized: "Find an expression or term while writing", table: "Learning")
         case .expressionAssistShortcut: return String(localized: "Configure an expression shortcut", table: "Learning")
         case .replacementTranslationShortcut, .translationDetailsShortcut, .saveVocabularyShortcut, .openVocabularyShortcut:
@@ -631,6 +636,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     /// search behaves more like "find anything that mentions this" than strict label matching.
     var keywords: [String] {
         switch self {
+        case .vocabularySearch: return ["vocabulary", "semantic", "embedding", "search", "表达检索", "语义检索", "词库"]
         case .expressionAssist: return ["expression", "term", "concept", "trigger", "??", "表达", "术语", "概念", "触发符号"]
         case .expressionAssistShortcut: return ["expression shortcut", "表达快捷键"]
         case .replacementTranslationShortcut: return ["replace translation", "shortcut", "替换译文", "翻译快捷键"]

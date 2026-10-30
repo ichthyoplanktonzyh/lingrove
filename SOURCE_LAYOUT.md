@@ -493,6 +493,25 @@ small name/classification edits exposed to learners and preserves hidden semanti
 
 `VocabularyMeaningBrowserProjection` supplies meaning groups and unclassified senses under the
 same language/tag scope. The notebook window owns separate organization and layout preferences.
+`VocabularySearchPolicy` builds one bounded record per collected sense from the expression,
+core/accepted contextual definitions, adopted meaning labels and explicit cues; example sentences and personal notes do
+not enter either retrieval branch. Literal matches require a whole contiguous phrase within one
+field; partial definition matches only boost admitted vectors when hybrid search is available.
+`VocabularySearchRelevancePolicy` owns model-calibrated cosine admission before rank
+fusion: a low-scoring first candidate cannot qualify on rank alone, and a distant tail is dropped.
+The result limit never fills missing slots with rejected candidates. Tests mirror these pure
+boundaries; `VocabularySearchRelevanceTests` additionally runs the labeled multilingual corpus
+against actual optional weights, including absent answers and known opposite-meaning failures.
+`VocabularySearchCatalog` pins the optional multilingual Qwen3 Embedding 0.6B Q8_0 resource,
+downloaded explicitly into `SearchModels` through the existing download manager. The app-owned
+`VocabularySearchController` serves the notebook and Engine & Model's Expression search page;
+the notebook activates indexing, and closing it cancels work and releases the native model.
+`VocabularySearchIndex` serializes the independent LAST-pooling native embedding context and
+persists a rebuildable, model-versioned cache of material hashes and normalized vectors outside
+the canonical archive. Edits/deletions invalidate vectors; query and archive epochs reject stale
+results. `VocabularySearchView` owns the contextual search-suggestion action, progress and relevance-ordered
+sense navigation. Its observed count view follows admitted hits rather than legacy category counts.
+Language/tag filters scope results; query language is independent of study language.
 `VocabularyClassificationModels` owns the independent category directory, parent edges, meaning
 memberships and local overlays. `VocabularyClassificationPolicy` validates the DAG and merges
 detached drafts; `VocabularyClassificationCatalog` installs stable key-derived identities from

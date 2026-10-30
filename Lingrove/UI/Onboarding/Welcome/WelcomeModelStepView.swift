@@ -16,7 +16,7 @@ struct WelcomeModelStepView<Completion: View>: View {
                 .padding(.horizontal, OnboardingLayout.horizontalPadding).padding(.top, 18)
             Picker(String(localized: "Model task", table: "Learning"), selection: Binding(
                 get: { navigation.engineTask }, set: navigation.openEngineTask)) {
-                ForEach(SettingsEngineTask.allCases) { Text($0.label).tag($0) }
+                ForEach(SettingsEngineTask.allCases.filter { $0 != .vocabularySearch }) { Text($0.label).tag($0) }
             }.pickerStyle(.segmented).labelsHidden()
                 .padding(.horizontal, OnboardingLayout.horizontalPadding)
                 .accessibilityIdentifier("welcomeModelTask")

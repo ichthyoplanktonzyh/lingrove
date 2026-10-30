@@ -11,11 +11,12 @@ struct VocabularyNotebookRoot: View {
     var selectedSenseID: UUID?
     let learning: VocabularyNotebookSession
     var review: AnkiReviewController?
+    var search: VocabularySearchController?
     var preferences: UserDefaults = .standard
 
     var body: some View {
         VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID, selectedSenseID: selectedSenseID,
-            learning: learning, review: review, preferences: preferences)
+            learning: learning, review: review, search: search, preferences: preferences)
             .environment(\.vocabularyMeaningLanguages,
                 VocabularyMeaningLabelPolicy.preferredLanguages(explanation: settings.explanationLanguage))
     }

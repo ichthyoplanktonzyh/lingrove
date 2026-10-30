@@ -17,6 +17,7 @@ struct VocabularyNotebookView: View {
     let speech: LearningSpeechController
     var learning: VocabularyNotebookSession?
     var review: AnkiReviewController?
+    var search: VocabularySearchController?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
     @State private var selection: UUID?
@@ -41,7 +42,7 @@ struct VocabularyNotebookView: View {
     @State private var creatingMeaning = false
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
-         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
+         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil, search: VocabularySearchController? = nil,
          preferences: UserDefaults = .standard) {
         _browserMode = AppStorage(wrappedValue: "list", "vocabularyBrowserMode", store: preferences)
         _organization = AppStorage(wrappedValue: "entry", "vocabularyOrganization", store: preferences)
@@ -53,6 +54,7 @@ struct VocabularyNotebookView: View {
         self.speech = speech
         self.learning = learning
         self.review = review
+        self.search = search
         let entry = store.entries.first { $0.id == selectedID }
         _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
         _expandedEntries = State(initialValue: Set(entry.map { [$0.id] } ?? []))
@@ -77,6 +79,13 @@ struct VocabularyNotebookView: View {
 
     private var visibleEntries: [VocabularyEntry] {
         organization == "meaning" ? scopedEntries : scopedEntries.filter { VocabularyPolicy.matches($0, query: query) }
+    }
+    @ViewBuilder private var collectionCount: some View {
+        if let search, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VocabularySearchCountView(controller: search)
+        } else {
+            Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
+        }
     }
     private var meaningItems: [VocabularyMeaningBrowserProjection.Item] {
         VocabularyMeaningBrowserProjection.items(index: store.semantics, entries: scopedEntries, query: query,
@@ -143,7 +152,16 @@ struct VocabularyNotebookView: View {
 
     private var browserContent: some View {
         ZStack {
-            if store.isLoaded && store.entries.isEmpty && organization == "entry" {
+            if let search, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                NavigationSplitView {
+                    VStack(spacing: 0) {
+                        sidebarFilterBar
+                        VocabularySearchResultsView(controller: search, query: query, language: language, tag: selectedTag,
+                            selection: Binding(get: { activeSenseID }, set: { if let id = $0 { showSense(id) } }))
+                    }
+                    .navigationSplitViewColumnWidth(min: 260, ideal: 315, max: 420)
+                } detail: { browserDetail }
+            } else if store.isLoaded && store.entries.isEmpty && organization == "entry" {
                 emptyNotebookContent
             } else if browserMode == "graph" {
                 graphBrowser
@@ -168,9 +186,14 @@ struct VocabularyNotebookView: View {
             }
         }
         .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92), value: browserMode)
-        .searchable(text: $query, prompt: organization == "meaning"
+        .searchable(text: $query, prompt: search != nil || organization == "meaning"
             ? String(localized: "Search an idea or expression", table: "Vocabulary")
             : String(localized: "Search vocabulary", table: "Vocabulary"))
+        .searchSuggestions {
+            // Installation belongs to the search interaction. SwiftUI presents this content
+            // only while the native search field is active, leaving ordinary browsing unchanged.
+            if let search { VocabularySearchSuggestionsView(controller: search) }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker(String(localized: "Browse vocabulary", table: "Vocabulary"), selection: animatedBrowserMode) {
@@ -252,7 +275,7 @@ struct VocabularyNotebookView: View {
     private var lifecycleContent: some View {
         browserContent
         .environment(\.vocabularyTextSize, currentTextSize)
-        .onAppear { store.loadIfNeeded(); if browserMode == "graph" { graph.reveal(graphSelection) } }
+        .onAppear { store.loadIfNeeded(); search?.activate(); if browserMode == "graph" { graph.reveal(graphSelection) } }
         .onChange(of: selectedEntry, initial: true) { _, entry in
             learning?.select(entry, senseID: activeSenseID)
             // Selections that originate outside the sidebar (graph, "show in notebook") must
@@ -726,7 +749,7 @@ struct VocabularyNotebookView: View {
                 .help(String(localized: "Show unexplored categories", table: "Vocabulary"))
                 .accessibilityIdentifier("vocabularyGraphToggleUnexplored")
             }
-            Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
+            collectionCount
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
@@ -889,7 +912,7 @@ struct VocabularyNotebookView: View {
 
             Spacer(minLength: 4)
 
-            Text("\(organization == "meaning" ? meaningItems.count : visibleEntries.count)")
+            collectionCount
                 .font(.caption2.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)

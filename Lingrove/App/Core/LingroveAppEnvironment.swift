@@ -22,6 +22,7 @@ final class LingroveAppEnvironment {
     /// Optional debug artifacts share one bounded disk writer across all visual-context sessions.
     let debugScreenshotWriter: DebugScreenshotWriter?
     let vocabularyStore: VocabularyStore
+    let vocabularySearch: VocabularySearchController
     let vocabularyCLI: CLIMailboxServer?
     let cliInstallation: CLIInstallationModel?
     let reviewController: AnkiReviewController
@@ -265,6 +266,10 @@ final class LingroveAppEnvironment {
         // Dev and production still use distinct support roots, and tests use in-memory SQLite.
         let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL,
             installsBundledClassification: !isTestHost))
+        let vocabularySearch = VocabularySearchController(store: vocabularyStore,
+            directoryURL: isTestHost ? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                : VocabularySearchCatalog.directoryURL,
+            cacheURL: isTestHost ? nil : VocabularySearchCatalog.cacheURL)
         let cliInstallation = isTestHost ? nil : CLIInstallationModel()
         let vocabularyCLI: CLIMailboxServer? = isTestHost ? nil : CLIMailboxServer(
             root: vocabularyURL.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Automation")) {
@@ -291,7 +296,7 @@ final class LingroveAppEnvironment {
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
-            learningSettings: suggestionSettings.languageLearning, review: reviewController)
+            learningSettings: suggestionSettings.languageLearning, review: reviewController, search: vocabularySearch)
         vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
             explainer?.enrich(capture) ?? capture
         }
@@ -340,6 +345,7 @@ final class LingroveAppEnvironment {
             learningModels: learningModels,
             speech: speechController,
             review: reviewController,
+            vocabularySearch: vocabularySearch,
             appUpdateManager: appUpdateManager,
             permissionManager: permissionManager,
             permissionGuidanceController: permissionGuidanceController,
@@ -363,6 +369,7 @@ final class LingroveAppEnvironment {
         welcomeCoordinator.openUsageGuide = { [weak settingsCoordinator] in settingsCoordinator?.showUsageGuide() }
         welcomeCoordinator.openVocabulary = { [weak vocabularyWindow] in vocabularyWindow?.show() }
         reviewController.configure = { [weak settingsCoordinator] in settingsCoordinator?.showReviewSettings() }
+        vocabularySearch.openModelSettings = { [weak settingsCoordinator] in settingsCoordinator?.showVocabularySearchModels() }
 
         let interactionState = SuggestionInteractionState()
         let workController = SuggestionWorkController()
@@ -547,6 +554,7 @@ final class LingroveAppEnvironment {
         self.ocrRuntime = ocrRuntime
         self.debugScreenshotWriter = debugScreenshotWriter
         self.vocabularyStore = vocabularyStore
+        self.vocabularySearch = vocabularySearch
         self.vocabularyCLI = vocabularyCLI
         self.cliInstallation = cliInstallation
         self.reviewController = reviewController

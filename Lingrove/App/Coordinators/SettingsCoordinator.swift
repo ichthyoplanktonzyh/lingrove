@@ -17,6 +17,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     /// Reopening this window must never create a second synthesizer or a separate voice preference.
     private let speech: LearningSpeechController?
     private let review: AnkiReviewController?
+    private let vocabularySearch: VocabularySearchController?
     private let appUpdateManager: AppUpdateManager
     private let permissionManager: PermissionManager
     private let permissionGuidanceController: PermissionGuidanceController
@@ -49,6 +50,11 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         showSettings()
     }
 
+    func showVocabularySearchModels() {
+        navigation.openEngineTask(.vocabularySearch)
+        showSettings()
+    }
+
     func showSettings(at destination: MenuBarSettingsDestination) {
         navigation.openMenuDestination(destination)
         showSettings()
@@ -71,6 +77,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         learningModels: LearningModelCollection? = nil,
         speech: LearningSpeechController? = nil,
         review: AnkiReviewController? = nil,
+        vocabularySearch: VocabularySearchController? = nil,
         appUpdateManager: AppUpdateManager,
         permissionManager: PermissionManager,
         permissionGuidanceController: PermissionGuidanceController,
@@ -92,6 +99,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         self.learningModels = learningModels
         self.speech = speech
         self.review = review
+        self.vocabularySearch = vocabularySearch
         self.appUpdateManager = appUpdateManager
         self.permissionManager = permissionManager
         self.permissionGuidanceController = permissionGuidanceController
@@ -136,6 +144,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                     learningModels: learningModels,
                     speech: speech,
                     review: review,
+                    vocabularySearch: vocabularySearch,
                     attentionModel: attentionModel,
                     appUpdateManager: appUpdateManager,
                     permissionManager: permissionManager,

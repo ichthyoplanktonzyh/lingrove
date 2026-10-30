@@ -9,15 +9,17 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let speech: LearningSpeechController
     private let learning: VocabularyNotebookSession
     private let review: AnkiReviewController?
+    private let search: VocabularySearchController?
     private let preferences: UserDefaults
     private let learningSettings: LanguageLearningSettings
 
     init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil,
          dictionaryProvider: any LearningDictionaryProviding, learningSettings: LanguageLearningSettings,
-         review: AnkiReviewController? = nil, preferences: UserDefaults = .standard) {
+         review: AnkiReviewController? = nil, search: VocabularySearchController? = nil, preferences: UserDefaults = .standard) {
         self.store = store
         self.speech = speech
         self.review = review
+        self.search = search
         self.preferences = preferences
         self.learningSettings = learningSettings
         learning = VocabularyNotebookSession(service: explanationService, provider: dictionaryProvider,
@@ -46,9 +48,10 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         if !(window?.contentView is NSHostingView<VocabularyNotebookRoot>) || (selectedID != nil && window?.attachedSheet == nil) {
             window?.contentView = NSHostingView(rootView: VocabularyNotebookRoot(settings: learningSettings, store: store, speech: speech,
                 selectedID: selectedID, selectedSenseID: senseID,
-                learning: learning, review: review, preferences: preferences))
+                learning: learning, review: review, search: search, preferences: preferences))
         }
         learning.resume()
+        search?.activate()
         store.loadIfNeeded()
         NSApplication.shared.activate(ignoringOtherApps: true)
         showWindow(nil)
@@ -57,6 +60,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         learning.cancel()
+        search?.suspend()
         guard let target = speech.activeTarget, target.itemID.hasPrefix("vocabulary.") else { return }
         speech.stop(target: target)
     }

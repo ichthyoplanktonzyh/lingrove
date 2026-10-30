@@ -148,7 +148,7 @@ index 1b2aca3..eac2395 100644
  ## Requirements
  
 diff --git a/Sources/CotabbyInferenceEngine/CotabbyInferenceEngine.cpp b/Sources/CotabbyInferenceEngine/CotabbyInferenceEngine.cpp
-index 5fc867f..244414d 100644
+index 5fc867f..02b4111 100644
 --- a/Sources/CotabbyInferenceEngine/CotabbyInferenceEngine.cpp
 +++ b/Sources/CotabbyInferenceEngine/CotabbyInferenceEngine.cpp
 @@ -1,4 +1,5 @@
@@ -784,7 +784,7 @@ index 5fc867f..244414d 100644
      }
  }
  
-@@ -860,3 +1207,16 @@ int CotabbyInferenceEngine::getThreadCount() const {
+@@ -860,3 +1207,103 @@ int CotabbyInferenceEngine::getThreadCount() const {
  int CotabbyInferenceEngine::getGPULayerCount() const {
      return impl_->gpu_layer_count;
  }
@@ -800,6 +800,93 @@ index 5fc867f..244414d 100644
 +    result.last_restore_replayed_tokens = seq->last_restore_replayed_tokens;
 +    result.uses_partial_checkpoint = impl_->needs_prompt_checkpoint;
 +    return result;
++}
++
++// The search runtime owns this context independently of autocomplete and instruction models.
++// LAST pooling is Qwen3 Embedding's trained representation; no sampler or text generation runs.
++struct CotabbyEmbeddingEngine::Impl {
++    llama_model* model = nullptr;
++    llama_context* context = nullptr;
++    const llama_vocab* vocab = nullptr;
++    int maximum_tokens = 0;
++    bool retained_backend = false;
++};
++
++CotabbyEmbeddingEngine::CotabbyEmbeddingEngine() : impl_(new Impl) {}
++CotabbyEmbeddingEngine::CotabbyEmbeddingEngine(CotabbyEmbeddingEngine&& other) noexcept : impl_(other.impl_) {
++    other.impl_ = nullptr;
++}
++CotabbyEmbeddingEngine::~CotabbyEmbeddingEngine() {
++    if (impl_) { unloadModel(); delete impl_; }
++}
++EngineStatus CotabbyEmbeddingEngine::loadModel(const char* path, int maximum_tokens) {
++    if (!impl_ || !path || maximum_tokens < 1 || maximum_tokens > 2048) return EngineStatus::error;
++    unloadModel();
++    retain_backend();
++    impl_->retained_backend = true;
++    auto params = llama_model_default_params();
++    params.n_gpu_layers = -1;
++    params.use_mmap = true;
++    impl_->model = llama_model_load_from_file(path, params);
++    if (!impl_->model) { unloadModel(); return EngineStatus::error; }
++    impl_->vocab = llama_model_get_vocab(impl_->model);
++    auto ctx = llama_context_default_params();
++    ctx.n_ctx = maximum_tokens;
++    ctx.n_batch = maximum_tokens;
++    ctx.n_ubatch = maximum_tokens;
++    ctx.n_seq_max = 1;
++    ctx.n_threads = ctx.n_threads_batch = resolveDecodeThreadCount();
++    ctx.embeddings = true;
++    ctx.pooling_type = LLAMA_POOLING_TYPE_LAST;
++    impl_->context = llama_init_from_model(impl_->model, ctx);
++    if (!impl_->context || !impl_->vocab) { unloadModel(); return EngineStatus::error; }
++    impl_->maximum_tokens = maximum_tokens;
++    return EngineStatus::ok;
++}
++std::vector<float> CotabbyEmbeddingEngine::embed(const char* text, int length) {
++    if (!impl_ || !impl_->context || !text || length <= 0) return {};
++    // Tokenize literal text: user-supplied control-token spellings never become chat framing.
++    int count = -llama_tokenize(impl_->vocab, text, length, nullptr, 0, true, false);
++    if (count < 1) return {};
++    std::vector<llama_token> tokens(count);
++    count = llama_tokenize(impl_->vocab, text, length, tokens.data(), count, true, false);
++    if (count < 1) return {};
++    // Short meaning records can still tokenize densely in some scripts. Bound native work
++    // consistently; keep the start containing the expression and its primary interpretation.
++    count = std::min(count, impl_->maximum_tokens);
++    auto memory = llama_get_memory(impl_->context);
++    llama_memory_clear(memory, true);
++    auto batch = llama_batch_init(count, 0, 1);
++    batch.n_tokens = count;
++    for (int i = 0; i < count; ++i) {
++        batch.token[i] = tokens[i];
++        batch.pos[i] = i;
++        batch.n_seq_id[i] = 1;
++        batch.seq_id[i][0] = 0;
++        batch.logits[i] = true;
++    }
++    const int status = llama_decode(impl_->context, batch);
++    llama_batch_free(batch);
++    const float* pooled = status == 0 ? llama_get_embeddings_seq(impl_->context, 0) : nullptr;
++    const int dimensions = llama_model_n_embd(impl_->model);
++    std::vector<float> result;
++    if (pooled && dimensions > 0) {
++        result.assign(pooled, pooled + dimensions); // copy before clearing context-owned storage
++        double norm = 0;
++        for (float value : result) norm += static_cast<double>(value) * value;
++        norm = std::sqrt(norm);
++        if (!(norm > 0) || !std::isfinite(norm)) result.clear();
++        else for (float& value : result) value = static_cast<float>(value / norm);
++    }
++    llama_memory_clear(memory, true);
++    return result;
++}
++void CotabbyEmbeddingEngine::unloadModel() {
++    if (!impl_) return;
++    if (impl_->context) { llama_free(impl_->context); impl_->context = nullptr; }
++    if (impl_->model) { llama_model_free(impl_->model); impl_->model = nullptr; }
++    impl_->vocab = nullptr;
++    if (impl_->retained_backend) { release_backend(); impl_->retained_backend = false; }
 +}
 diff --git a/Sources/CotabbyInferenceEngine/TokenHealing.cpp b/Sources/CotabbyInferenceEngine/TokenHealing.cpp
 new file mode 100644
@@ -957,7 +1044,7 @@ index 0000000..15712fb
 +
 +} // namespace cotabby
 diff --git a/Sources/CotabbyInferenceEngine/include/CotabbyInferenceEngine.h b/Sources/CotabbyInferenceEngine/include/CotabbyInferenceEngine.h
-index 383bcaf..78b370c 100644
+index 383bcaf..07d684a 100644
 --- a/Sources/CotabbyInferenceEngine/include/CotabbyInferenceEngine.h
 +++ b/Sources/CotabbyInferenceEngine/include/CotabbyInferenceEngine.h
 @@ -40,6 +40,15 @@ enum class EngineStatus : int {
@@ -1001,7 +1088,7 @@ index 383bcaf..78b370c 100644
      // Prompt decoding
      EngineStatus decodePrompt(int32_t sequence_id,
                                const int32_t* tokens, int token_count,
-@@ -94,6 +117,7 @@ public:
+@@ -94,8 +117,27 @@ public:
      int getBatchSize() const;
      int getThreadCount() const;
      int getGPULayerCount() const;
@@ -1009,6 +1096,26 @@ index 383bcaf..78b370c 100644
  
  private:
      struct Impl;
+     Impl* impl_;
+ };
++
++// Independent embedding context. Its Swift owner serializes load/embed/unload away from UI;
++// backend lifetime is shared with generative owners, but their KV caches are never reused.
++class CotabbyEmbeddingEngine {
++public:
++    CotabbyEmbeddingEngine();
++    ~CotabbyEmbeddingEngine();
++    CotabbyEmbeddingEngine(CotabbyEmbeddingEngine&& other) noexcept;
++    CotabbyEmbeddingEngine& operator=(CotabbyEmbeddingEngine&&) = delete;
++    CotabbyEmbeddingEngine(const CotabbyEmbeddingEngine&) = delete;
++    CotabbyEmbeddingEngine& operator=(const CotabbyEmbeddingEngine&) = delete;
++    EngineStatus loadModel(const char* path, int maximum_tokens);
++    std::vector<float> embed(const char* text, int length);
++    void unloadModel();
++private:
++    struct Impl;
++    Impl* impl_;
++};
 diff --git a/Tests/CotabbyInferenceTests/LlamaMiddlewareTests.swift b/Tests/CotabbyInferenceTests/LlamaMiddlewareTests.swift
 index b7741ba..83380c8 100644
 --- a/Tests/CotabbyInferenceTests/LlamaMiddlewareTests.swift

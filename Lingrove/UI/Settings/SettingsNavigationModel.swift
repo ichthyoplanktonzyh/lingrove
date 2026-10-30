@@ -4,7 +4,7 @@ import SwiftUI
 /// The fixed Engine & Model tabs select which task's settings are visible. This is window
 /// navigation state, independent of the engine/model values that control actual generation.
 enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
-    case completion, translation, explanation, speech
+    case completion, translation, explanation, speech, vocabularySearch
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -12,6 +12,7 @@ enum SettingsEngineTask: String, CaseIterable, Identifiable, Hashable {
         case .translation: String(localized: "Translation", table: "Learning")
         case .explanation: String(localized: "Explanation & expression", table: "Learning")
         case .speech: String(localized: "TTS", table: "Learning")
+        case .vocabularySearch: String(localized: "Expression search", table: "Vocabulary")
         }
     }
     init(role: LearningModelRole) {
@@ -166,6 +167,7 @@ final class SettingsNavigationModel: ObservableObject {
         // to translation must not leave those search hits scrolling an unrelated learning form.
         if item.category == .engineAndModel {
             switch item {
+            case .vocabularySearch: engineTask = .vocabularySearch
             case .translationModel, .translationSampling: engineTask = .translation
             case .explanationModel, .explanationParameters: engineTask = .explanation
             case .speechSampling, .speechProvider, .speechLanguage, .speechVoice, .speechModel, .speechDecoder, .speechEndpoint,

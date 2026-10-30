@@ -16,6 +16,7 @@ struct SettingsContainerView: View {
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
     var review: AnkiReviewController?
+    var vocabularySearch: VocabularySearchController?
     var renderDiagnostics: SettingsRenderDiagnostics? = .process
     @ObservedObject var attentionModel: SettingsAttentionModel
     let appUpdateManager: AppUpdateManager
@@ -157,6 +158,7 @@ struct SettingsContainerView: View {
                 navigation: navigation,
                 learningModels: learningModels,
                 speech: speech,
+                vocabularySearch: vocabularySearch,
                 suggestionSettings: suggestionSettings,
                 openAICompatibleConnectionModel: openAICompatibleConnectionModel,
                 foundationModelAvailabilityService: foundationModelAvailabilityService,

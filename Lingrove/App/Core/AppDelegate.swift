@@ -300,6 +300,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // All roles now use the same native ownership rule with independent sessions: cancel
         // decoding, close admission, and wait for a non-interruptible loader before releasing it.
         environment.learningModels.shutdownSync()
+        environment.vocabularySearch.suspend()
         runtimeModel.shutdownSync(timeoutSeconds: 1.5)
     }
 

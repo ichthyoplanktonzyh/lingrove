@@ -9,6 +9,7 @@ nonisolated enum LocalModelTaskPolicy {
             return entry.task == task && !entry.isResource
         }
         let name = filename.lowercased().filter { $0.isLetter || $0.isNumber }
+        if name.contains("embedding") || name.contains("reranker") { return false }
         if filename.lowercased().hasPrefix("mmproj-") || name.contains("mmproj") { return false }
         if name.contains("qwen3tts") { return task == .speech }
         if name.contains("translategemma") || name.contains("hymt") || name.contains("hunyuanmt") {

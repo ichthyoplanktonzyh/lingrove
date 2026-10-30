@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// File overview:
-/// Fixed task tabs navigate among completion, translation, AI explanation, and TTS.
+/// Fixed task tabs navigate among completion, translation, AI explanation, TTS and expression search.
 /// Each page uses the established grouped settings scaffold and app-owned services for its task.
 /// Task pages show current configuration first. Resource management opens in a task-scoped
 /// sheet, while technical options stay in collapsed sibling Form sections. Navigation belongs
@@ -12,6 +12,7 @@ struct EngineAndModelPaneView: View {
     @ObservedObject var navigation: SettingsNavigationModel
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
+    var vocabularySearch: VocabularySearchController?
     @ObservedObject var suggestionSettings: SuggestionSettingsModel
     @ObservedObject var openAICompatibleConnectionModel: OpenAICompatibleConnectionModel
     @ObservedObject var foundationModelAvailabilityService: FoundationModelAvailabilityService
@@ -46,6 +47,14 @@ struct EngineAndModelPaneView: View {
                 learningPage(role: .explanation)
             case .speech:
                 speechPage
+            case .vocabularySearch:
+                SettingsPaneScaffold {
+                    Section(String(localized: "Expression search", table: "Vocabulary")) {
+                        if let vocabularySearch {
+                            VocabularySearchModelView(controller: vocabularySearch).settingsItem(.vocabularySearch)
+                        }
+                    }
+                }
             }
         }
         .onAppear {

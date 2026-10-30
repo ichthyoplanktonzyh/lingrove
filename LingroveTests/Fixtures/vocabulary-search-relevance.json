@@ -1,0 +1,480 @@
+{
+  "documents": [
+    {
+      "id": "0",
+      "expression": "postpone",
+      "meaning": "Move a scheduled event to a later time"
+    },
+    {
+      "id": "1",
+      "expression": "put off",
+      "meaning": "Delay doing something until a later time"
+    },
+    {
+      "id": "2",
+      "expression": "defer",
+      "meaning": "Delay an action or decision until later"
+    },
+    {
+      "id": "3",
+      "expression": "expedite",
+      "meaning": "Make a process happen sooner or more quickly"
+    },
+    {
+      "id": "4",
+      "expression": "cancel",
+      "meaning": "Decide that a planned event will not happen"
+    },
+    {
+      "id": "5",
+      "expression": "approve",
+      "meaning": "Accept or agree to a proposal"
+    },
+    {
+      "id": "6",
+      "expression": "reject",
+      "meaning": "Refuse to accept a proposal"
+    },
+    {
+      "id": "7",
+      "expression": "sleep on it",
+      "meaning": "Delay making a decision until after a night's rest"
+    },
+    {
+      "id": "8",
+      "expression": "keep me posted",
+      "meaning": "Continue telling someone about new developments in an ongoing situation"
+    },
+    {
+      "id": "9",
+      "expression": "rule out",
+      "meaning": "Exclude a possibility from consideration"
+    },
+    {
+      "id": "10",
+      "expression": "rule in",
+      "meaning": "Include a possibility for further consideration"
+    },
+    {
+      "id": "11",
+      "expression": "on the fence",
+      "meaning": "Undecided between alternatives"
+    },
+    {
+      "id": "12",
+      "expression": "on the same page",
+      "meaning": "Share an understanding or agreement"
+    },
+    {
+      "id": "13",
+      "expression": "break the ice",
+      "meaning": "Make people feel more relaxed when they first meet"
+    },
+    {
+      "id": "14",
+      "expression": "take it with a grain of salt",
+      "meaning": "Be skeptical about the truth or accuracy of information"
+    },
+    {
+      "id": "15",
+      "expression": "call it a day",
+      "meaning": "Stop working on an activity for the rest of the day"
+    },
+    {
+      "id": "16",
+      "expression": "cut corners",
+      "meaning": "Save time or money by doing a task carelessly or skipping necessary steps"
+    },
+    {
+      "id": "17",
+      "expression": "give someone a hand",
+      "meaning": "Help someone with a task"
+    },
+    {
+      "id": "18",
+      "expression": "bank",
+      "meaning": "A financial institution that holds money and provides loans"
+    },
+    {
+      "id": "19",
+      "expression": "bank",
+      "meaning": "The land along the edge of a river"
+    },
+    {
+      "id": "20",
+      "expression": "lend",
+      "meaning": "Give something to someone temporarily, expecting it to be returned"
+    },
+    {
+      "id": "21",
+      "expression": "borrow",
+      "meaning": "Receive something from someone temporarily, intending to return it"
+    },
+    {
+      "id": "22",
+      "expression": "promise",
+      "meaning": "Commit to doing something in the future"
+    },
+    {
+      "id": "23",
+      "expression": "apologize",
+      "meaning": "Express regret for something wrong that one has done"
+    }
+  ],
+  "cases": [
+    {
+      "split": "calibration",
+      "query": "把原来定好的事情往后挪一些",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "有啥新消息记得跟我说",
+      "expected": [
+        "8"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "目前可以排除这种可能性",
+      "expected": [
+        "9"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "这事先不拍板，明天再想",
+      "expected": [
+        "7"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "まだどちらにするか決められない",
+      "expected": [
+        "11"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "Tiens-moi au courant de l'évolution de la situation",
+      "expected": [
+        "8"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "Do the planned event at a later date",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "予定をもっと後の日にずらしたい",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "تأجيل الموعد إلى وقت لاحق",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "तय कार्यक्रम को बाद की तारीख पर करना",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "先别全信这个消息，保留一点怀疑",
+      "expected": [
+        "14"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "我要找一种能表达火山喷发的说法",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "Comment dire que les fleurs sentent bon ?",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "宇宙船が木星に着陸する",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "Turn down a proposal",
+      "expected": [
+        "6"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "把事情提前一点做完",
+      "expected": [],
+      "pool": [
+        "0",
+        "1",
+        "2",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "split": "calibration",
+      "query": "不要推迟，直接取消这个活动",
+      "expected": [
+        "4"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "把这种可能性保留下来继续调查",
+      "expected": [
+        "10"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "把原来定好的事情往后挪一些",
+      "expected": [],
+      "pool": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    {
+      "split": "calibration",
+      "query": "A place to keep my money",
+      "expected": [
+        "18"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "我想向他借一本书",
+      "expected": [
+        "21"
+      ],
+      "pool": null
+    },
+    {
+      "split": "calibration",
+      "query": "我要把书暂时借给他",
+      "expected": [
+        "20"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "推迟",
+      "expected": [
+        "0",
+        "1",
+        "2"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "这个决定等一晚再说",
+      "expected": [
+        "7"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "刚见面有点尴尬，想让大家放松下来",
+      "expected": [
+        "13"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "我们对这件事的理解一致",
+      "expected": [
+        "12"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "今天先做到这里，收工吧",
+      "expected": [
+        "15"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "为了省时间而省掉必要步骤",
+      "expected": [
+        "16"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "مساعدته في إتمام المهمة",
+      "expected": [
+        "17"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "Je n'arrive pas à choisir entre les deux options",
+      "expected": [
+        "11"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "提案を受け入れることに同意する",
+      "expected": [
+        "5"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "Die geplante Veranstaltung soll gar nicht stattfinden",
+      "expected": [
+        "4"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "Necesito mantenerme informado de las novedades",
+      "expected": [
+        "8"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "把这种可能性排除掉",
+      "expected": [
+        "9"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "在河边散步",
+      "expected": [
+        "19"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "تأجيل الموعد إلى وقت لاحق",
+      "expected": [],
+      "pool": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    {
+      "split": "validation",
+      "query": "Do it earlier than planned",
+      "expected": [],
+      "pool": [
+        "0",
+        "1",
+        "2",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "split": "validation",
+      "query": "暂时不要排除任何可能",
+      "expected": [
+        "10"
+      ],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "形容食物好吃",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "鳥が南へ渡っていく",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "A polite way to describe a bright red sunset",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "संगीत की धुन बहुत सुंदर है",
+      "expected": [],
+      "pool": null
+    },
+    {
+      "split": "validation",
+      "query": "أبحث عن وصف لصحراء شديدة الحرارة",
+      "expected": [],
+      "pool": null
+    }
+  ]
+}

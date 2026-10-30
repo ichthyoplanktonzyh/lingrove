@@ -41,6 +41,26 @@ Language learning can be enabled independently of inline autocomplete:
 - Missing expression entries are stated explicitly; constituent word definitions are never combined into a phrase definition. Copy always returns the original sentence.
 - Contextual AI explanations share a general instruction model with expression assistance and preserve the chosen text and its sentence context.
 
+### Finding Collected Expressions
+
+The vocabulary window also supports finding collected expressions in your own words. Expanding
+Search reveals **Enable semantic search** in the suggestions, with its 639 MB download size.
+This action installs the optional multilingual Qwen3 Embedding search
+model. Downloads use the shared pause/resume, retry and integrity checks. Once installed, the
+notebook combines keyword and local vector search over individual collected senses, including
+unclassified senses. Search material contains expressions, definitions, adopted meaning names and
+search cues; it excludes example sentences. Results retain the original expressions and senses,
+with no generated alternatives or additional model filtering. Query language is independent of
+the language/tag filters. Vector candidates must pass a model-calibrated cosine floor and stay
+close to the best candidate before rank fusion; eight results is a ceiling, not a target. An
+unrelated query can return no results. Literal matches use contiguous whole-word phrases within
+expressions, concise definitions and confirmed cues; notes and source sentences do not admit a
+result. In hybrid search, a partial definition match only boosts an already admitted vector, so
+a comparison with an opposite does not bypass semantic filtering. Keyword search remains available while weights are absent, downloading or unavailable.
+**Engine & Model → Expression search** manages deletion and reinstallation. The
+[relevance benchmark](benchmarks/vocabulary-search-relevance.md) records the multilingual tradeoff
+and remaining errors on similar or opposite meanings.
+
 ### Expression Assistance While Writing
 
 - Enable **Language Learning → Explanation & expression → Expression assistance** separately
