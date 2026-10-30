@@ -2,63 +2,9 @@ import LingroveNotebook
 import Foundation
 
 /// Typed rows separate durable relationships from flexible leaf values. The archive's SQLite
-/// implementation owns these projections; no SQL handle or storage representation reaches UI.
+/// adapters borrow this module-private representation; UI never receives SQL or typed payload dispatch.
 nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
-    enum Table: String, CaseIterable, Sendable {
-        case entries, senses, sources, occurrences, usages, collections
-        case collectionInterpretations = "collection_interpretations"
-        case senseExplanations = "sense_explanations", usageExplanations = "usage_explanations"
-        case blocks, reviews, bindings, templates
-        case meaningNodes = "meaning_nodes", meaningLabels = "meaning_labels", meaningRoles = "meaning_roles"
-        case usagePatterns = "usage_patterns", patternSlots = "pattern_slots", meaningMappings = "meaning_mappings"
-        case mappingRoles = "mapping_roles", mappingEvidence = "mapping_evidence", meaningRelations = "meaning_relations"
-        case retrievalCues = "retrieval_cues", cueTargets = "cue_targets"
-        case classificationFrameworks = "classification_frameworks", categories
-        case categoryParents = "category_parents", categoryMemberships = "category_memberships", categoryOverrides = "category_overrides"
-
-        var parent: Self? {
-            switch self {
-            case .entries, .templates, .meaningNodes, .retrievalCues, .sources, .usages, .collections: nil
-            case .classificationFrameworks, .categories, .categoryParents, .categoryMemberships: nil
-            case .categoryOverrides: .categories
-            case .occurrences: .sources
-            case .senses: .entries
-            case .senseExplanations: .senses
-            case .blocks, .reviews, .collectionInterpretations: .collections
-            case .usageExplanations: .usages
-            case .bindings: .reviews
-            case .meaningLabels, .meaningRoles, .meaningRelations: .meaningNodes
-            case .usagePatterns, .meaningMappings: .senses
-            case .patternSlots: .usagePatterns
-            case .mappingRoles, .mappingEvidence: .meaningMappings
-            case .cueTargets: .retrievalCues
-            }
-        }
-        var extraColumns: [String] {
-            switch self {
-            case .classificationFrameworks: ["catalog_key"]
-            case .categories: ["framework_id", "catalog_key", "axis"]
-            case .categoryParents: ["category_id", "parent_category_id"]
-            case .categoryMemberships: ["meaning_id", "category_id"]
-            case .entries: ["lookup_key", "language", "expression"]
-            case .senses: ["meaning"]
-            case .usages: ["occurrence_id", "sense_id", "status"]
-            case .collections: ["sense_id"]
-            case .collectionInterpretations: ["usage_id"]
-            case .meaningNodes: ["kind"]
-            case .meaningLabels: ["language", "text", "preferred"]
-            case .meaningRoles, .patternSlots: ["name"]
-            case .usagePatterns: ["template"]
-            case .meaningMappings: ["meaning_id", "pattern_id", "relation"]
-            case .mappingRoles: ["role_id", "slot_id"]
-            case .mappingEvidence: ["usage_id"]
-            case .meaningRelations: ["target_id", "relation"]
-            case .retrievalCues: ["language", "text"]
-            case .cueTargets: ["meaning_id"]
-            default: []
-            }
-        }
-    }
+    typealias Table = VocabularyPersistenceEntity
 
     struct Key: Hashable, Sendable { let table: Table; let id: String }
 

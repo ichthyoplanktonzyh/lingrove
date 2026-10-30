@@ -1,3 +1,4 @@
+import LingroveNotebookPersistenceCodec
 import LingroveNotebook
 import Foundation
 
@@ -5,11 +6,11 @@ import Foundation
 /// No evidence, receipt or revision row is rewritten by a schema-only upgrade; failure rolls back
 /// both the new tables and user_version so another launch can safely retry.
 nonisolated enum VocabularySQLiteClassificationSchema {
-    static let tables: [VocabularyDatabaseRecord.Table] = [
+    static let tables: [VocabularyPersistenceEntity] = [
         .classificationFrameworks, .categories, .categoryParents, .categoryMemberships, .categoryOverrides
     ]
 
-    static func columns(_ table: VocabularyDatabaseRecord.Table) -> String {
+    static func columns(_ table: VocabularyPersistenceEntity) -> String {
         let deferred = " DEFERRABLE INITIALLY DEFERRED"
         switch table {
         case .classificationFrameworks: return ",catalog_key TEXT NOT NULL UNIQUE"

@@ -1,3 +1,4 @@
+import LingroveNotebookPersistenceCodec
 import LingroveNotebook
 import Darwin
 import Foundation
@@ -6,7 +7,7 @@ import Foundation
 /// indexes; small typed payloads preserve rich formatting and review configuration without a
 /// second interpretation of domain rules. Only changed rows are encoded and written in a commit.
 public nonisolated final class VocabularySQLiteDatabase {
-    typealias Row = VocabularyDatabaseRecord
+    typealias Row = VocabularyPersistenceRow
     typealias Value = VocabularySQLiteConnection.Value
     static let applicationID: Int64 = 0x4C47564E // LGVN, independent of the portable JSON schema.
     public static let schemaVersion: Int64 = 5
@@ -66,21 +67,20 @@ public nonisolated final class VocabularySQLiteDatabase {
             let revision = try self.revision(), hasTemplates = try scalar("SELECT has_templates FROM state WHERE singleton=1")
             guard hasTemplates == 0 || hasTemplates == 1 else { throw VocabularyError.invalidArchive }
             var records: [Row] = []
-            for table in Row.Table.allCases {
+            for table in VocabularyPersistenceEntity.allCases {
                 let columns = ["id", "parent_id", "position", "payload"] + table.extraColumns
                 for values in try connection.rows("SELECT " + columns.joined(separator: ",") + " FROM " + table.rawValue) {
                     guard let id = values[0].string, let position = values[2].integer, position >= 0,
                           position <= Int64(Int.max), let data = values[3].data else { throw VocabularyError.invalidArchive }
-                    let payload: Row.Payload
-                    do { payload = try .decode(data, table: table) } catch { throw VocabularyError.invalidArchive }
                     let extra = values.dropFirst(4).map(\.string)
                     guard values.dropFirst(4).allSatisfy({ $0 == .null || $0.string != nil }),
                           values[1] == .null || values[1].string != nil else { throw VocabularyError.invalidArchive }
-                    records.append(.init(table: table, id: id, parentID: values[1].string,
-                        position: Int(position), payload: payload, extra: extra))
+                    records.append(try .init(entity: table, id: id, parentID: values[1].string,
+                        position: Int(position), payload: data,
+                        indexValues: Dictionary(uniqueKeysWithValues: zip(table.indexKeys, extra))))
                 }
             }
-            return .init(revision: revision, document: try VocabularyDatabaseProjection.document(records, hasTemplates: hasTemplates == 1))
+            return .init(revision: revision, document: try VocabularyPersistenceCodec.decode(.init(rows: records, reviewTemplatesPresent: hasTemplates == 1)))
         }
     }
 
@@ -104,7 +104,7 @@ public nonisolated final class VocabularySQLiteDatabase {
 
     private func writeUnlocked(_ next: VocabularyDocument, previous: VocabularyDocument, expectedRevision: UInt64,
                                receipt: VocabularyCLIReceipt?) throws -> UInt64 {
-        let oldRows = try VocabularyDatabaseProjection.rows(previous), newRows = try VocabularyDatabaseProjection.rows(next)
+        let oldRows = try VocabularyPersistenceCodec.encode(previous).keyedRows(), newRows = try VocabularyPersistenceCodec.encode(next).keyedRows()
         let changed = newRows.values.filter { oldRows[$0.key] != $0 }
         let removed = oldRows.values.filter { newRows[$0.key] == nil }
         let count = connection.totalChanges
@@ -112,20 +112,20 @@ public nonisolated final class VocabularySQLiteDatabase {
             guard try self.revision() == expectedRevision, expectedRevision < UInt64(Int64.max) else { throw VocabularyError.editConflict }
             // A restore can replace an entry with a different ID but the same expression key.
             // Release changed/deleted keys inside this transaction before installing new owners.
-            for row in oldRows.values where row.table == .entries && newRows[row.key]?.extra.first != row.extra.first {
+            for row in oldRows.values where row.entity == .entries && newRows[row.key]?.indexValue(.lookupKey) != row.indexValue(.lookupKey) {
                 try connection.execute("UPDATE entries SET lookup_key=NULL WHERE id=?", [.text(row.id)])
             }
             // Preferred-name uniqueness is immediate. Release replaced labels before upserts,
             // allowing a language's preferred label to change atomically, in either row order.
-            for row in oldRows.values where row.table == .meaningLabels && newRows[row.key] != row {
+            for row in oldRows.values where row.entity == .meaningLabels && newRows[row.key] != row {
                 try connection.execute("UPDATE meaning_labels SET preferred='no' WHERE id=?", [.text(row.id)])
             }
-            for table in Row.Table.allCases {
-                for row in changed where row.table == table { try upsert(row) }
+            for table in VocabularyPersistenceEntity.allCases {
+                for row in changed where row.entity == table { try upsert(row) }
             }
             // Reparent usages/cards before deleting old owners; cascades cannot erase a move.
-            for table in Row.Table.allCases.reversed() {
-                for row in removed where row.table == table {
+            for table in VocabularyPersistenceEntity.allCases.reversed() {
+                for row in removed where row.entity == table {
                     try connection.execute("DELETE FROM " + table.rawValue + " WHERE id=?", [.text(row.id)])
                 }
             }
@@ -147,12 +147,12 @@ public nonisolated final class VocabularySQLiteDatabase {
     }
 
     private func upsert(_ row: Row) throws {
-        let columns = ["id", "parent_id", "position", "payload"] + row.table.extraColumns
+        let columns = ["id", "parent_id", "position", "payload"] + row.entity.extraColumns
         let update = columns.dropFirst().map { $0 + "=excluded." + $0 }.joined(separator: ",")
-        let sql = "INSERT INTO " + row.table.rawValue + " (" + columns.joined(separator: ",") + ") VALUES (" +
+        let sql = "INSERT INTO " + row.entity.rawValue + " (" + columns.joined(separator: ",") + ") VALUES (" +
             Array(repeating: "?", count: columns.count).joined(separator: ",") + ") ON CONFLICT(id) DO UPDATE SET " + update
         try connection.execute(sql, [.text(row.id), row.parentID.map(Value.text) ?? .null,
-            .integer(Int64(row.position)), .blob(try row.payload.encoded())] + row.extra.map { $0.map(Value.text) ?? .null })
+            .integer(Int64(row.position)), .blob(try row.encodedPayload())] + row.entity.indexKeys.map { row.indexValue($0).map(Value.text) ?? .null })
     }
 
     /// Publish a fully initialized, closed database with an exclusive hard link. A crash cannot
@@ -177,7 +177,7 @@ public nonisolated final class VocabularySQLiteDatabase {
             try connection.execute("CREATE TABLE state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), " +
                 "revision INTEGER NOT NULL CHECK(revision>=0), has_templates INTEGER NOT NULL CHECK(has_templates IN (0,1)))")
             try connection.execute("INSERT INTO state VALUES (1,0,0)")
-            for table in Row.Table.allCases {
+            for table in VocabularyPersistenceEntity.allCases {
                 let parent = table.parent.map { "TEXT NOT NULL REFERENCES " + $0.rawValue +
                     "(id) DEFERRABLE INITIALLY DEFERRED" } ?? "TEXT CHECK(parent_id IS NULL)"
                 let extra: String
@@ -202,4 +202,10 @@ public nonisolated final class VocabularySQLiteDatabase {
     private static func createReceiptTable(_ connection: VocabularySQLiteConnection) throws {
         try connection.execute("CREATE TABLE cli_receipts (key TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, result BLOB NOT NULL)")
     }
+}
+
+/// SQL identifiers remain a store concern. The codec supplies only a fixed typed index set;
+/// user text is still passed as a bound SQLite value rather than interpolated into identifiers.
+private extension VocabularyPersistenceEntity {
+    var extraColumns: [String] { indexKeys.map(\.rawValue) }
 }

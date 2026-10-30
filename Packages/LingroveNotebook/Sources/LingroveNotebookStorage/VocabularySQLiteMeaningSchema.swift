@@ -1,3 +1,4 @@
+import LingroveNotebookPersistenceCodec
 import LingroveNotebook
 import Foundation
 
@@ -7,7 +8,7 @@ import Foundation
 nonisolated enum VocabularySQLiteMeaningSchema {
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
-    static func columns(_ table: VocabularyDatabaseRecord.Table) -> String {
+    static func columns(_ table: VocabularyPersistenceEntity) -> String {
         let deferred = " DEFERRABLE INITIALLY DEFERRED"
         switch table {
         case .usages:

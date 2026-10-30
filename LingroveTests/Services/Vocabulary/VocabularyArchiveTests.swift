@@ -268,7 +268,7 @@ nonisolated struct VocabularyArchiveTests {
         let original = snapshot.document.occurrences[0]
         let invalid = VocabularySourceOccurrence(id: original.id, sourceID: original.sourceID,
             ranges: [VocabularyTextRange(NSRange(location: 9_999, length: 5))])
-        let bytes = try VocabularyDatabaseRecord.Payload.occurrence(invalid).encoded()
+        let bytes = try JSONEncoder().encode(invalid)
         let connection = try VocabularySQLiteConnection(url: url)
         try connection.execute("UPDATE occurrences SET payload=? WHERE id=?", [.blob(bytes), .text(invalid.id.uuidString)])
         await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).save(capture()) }
