@@ -608,6 +608,15 @@ will borrow it rather than opening databases. Image staging precedes the SQL wri
 mapping and notebook changes commit with the pending journal. Hash blobs survive failed writes
 because another producer may already rely on them; unified reference-aware GC remains pending.
 
+Native `Notebook/UI` owns value-based notebook routes, list/search, entry/sense reading and the
+multi-screen editor sheet. `LingroveNotebookEntryDraft` keeps the exact saved baseline, one entry
+copy, explicit collection selection and uncommitted image bytes; only Save calls the app-owned
+library. Manual sense creation does not claim the historical standalone capture slot. The draft
+overlays the complete document so evidence, other entries, knowledge and tool state survive.
+`LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
+Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
+and reproducible generator live under Nibomo's Apple scripts directory.
+
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
