@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// One inherited display context reaches lists, graph projections, details and sheets. It is

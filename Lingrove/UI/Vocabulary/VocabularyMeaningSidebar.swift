@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Unified semantic outline sidebar for "By meaning" mode. Replaces the old split category drawer

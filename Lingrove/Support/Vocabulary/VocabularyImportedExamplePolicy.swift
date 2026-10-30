@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Imported sentences reuse the notebook's usage identity without moving an existing usage to

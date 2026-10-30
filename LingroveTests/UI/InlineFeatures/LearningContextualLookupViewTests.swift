@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 import Combine
 import SwiftUI
@@ -10,8 +11,8 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningContextualLookupViewTests {
-    @Test(arguments: [LearningExplanationContext.sentence, .fragment, .unknown, .none])
-    func queriedUnitShowsTheAppropriateSenseBeforeAnyDictionaryRequest(_ scope: LearningExplanationContext) async throws {
+    @Test(arguments: [LingroveNotebook.LearningExplanationContext.sentence, .fragment, .unknown, .none])
+    func queriedUnitShowsTheAppropriateSenseBeforeAnyDictionaryRequest(_ scope: LingroveNotebook.LearningExplanationContext) async throws {
         let provider = LookupViewDictionary(), service = LookupViewExplainer()
         let session = LearningDictionarySession(provider: provider, explanationService: service)
         var capture = capture()
@@ -181,7 +182,7 @@ struct LearningContextualLookupViewTests {
 
 private actor LookupViewDictionary: LearningDictionaryProviding {
     var calls = 0
-    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
+    func lookup(_ query: String, language: Optional<LingroveNotebook.LearningLanguage>, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         calls += 1
         return .systemText(source == .system ? "LIVE DICTIONARY SYSTEM" : "LIVE DICTIONARY BUILTIN")
@@ -190,7 +191,7 @@ private actor LookupViewDictionary: LearningDictionaryProviding {
 
 @MainActor private final class LookupViewExplainer: LearningExplanationGenerating {
     var changes: AnyPublisher<Void, Never> { Empty().eraseToAnyPublisher() }
-    var language: LearningLanguage { .english }
+    var language: LingroveNotebook.LearningLanguage { .english }
     var isConfigured: Bool { true }
     var generations = 0
     func generate(_ input: LearningExplanationInput, requestID: String, refresh: Bool) async throws -> LearningExplanationRecord {

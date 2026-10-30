@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Automatic requests need evidence of the configured source script, unlike an explicit shortcut

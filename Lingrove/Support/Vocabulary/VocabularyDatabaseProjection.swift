@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// Lossless row mapping follows lifecycle ownership: catalog, source evidence, interpretations
 /// and collections each have their own roots. Reopening never regenerates raw evidence from

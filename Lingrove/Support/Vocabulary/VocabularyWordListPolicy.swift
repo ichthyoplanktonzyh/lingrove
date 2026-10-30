@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Bounded, value-only CSV/TXT decoding. Quoted commas, escaped quotes and embedded newlines

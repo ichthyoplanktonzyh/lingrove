@@ -1,4 +1,5 @@
 #if DEBUG
+import LingroveNotebook
 import SwiftUI
 
 /// A small design-workbench toolbar surrounds the real card. The toolbar belongs only to Canvas;

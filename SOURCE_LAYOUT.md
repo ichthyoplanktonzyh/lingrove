@@ -550,14 +550,31 @@ study-language filter only scopes expressions. Localized edits retain the chosen
 language. Mixed-language graph labels and expression badges distinguish homographs without
 guessing unknown source languages or translating stored content.
 
-`VocabularyContentModels` adds optional, ordered text/image blocks to a sense. The existing
+`Packages/LingroveNotebook` is the shared Mac/iOS notebook boundary. Its Foundation-only
+`LingroveNotebook` product owns the complete portable document graph: lexical values, evidence,
+interpretations, collections, semantic/classification relationships, saved explanations and review
+metadata, plus content, UTF-16 ranges, snapshots and backups. `VocabularyNotebookProjection`
+provides the same joined editing adapter to both platforms. The app's model files and projection
+file retain internal aliases, with explicit package imports at member consumers; no second model
+or archive is introduced. Public initializers preserve the old memberwise API, and package fixtures
+generated from frozen old declarations fix its Codable representation and version handling.
+
+`LearningLanguage` identity is shared; detection, host language labels and generation protocols
+stay in the app. Review labels, Anki connections, sessions and generated audio also remain there.
+`VocabularyError` is a shared typed failure using the host localization table.
+`LingroveNotebookUI` renders saved text with a host-provided font. Validation policies, SQLite,
+catalog resources and image decoding retain their existing app ownership. Package tests live under
+`Packages/LingroveNotebook/Tests/` and bundle historical JSON fixtures with SwiftPM resources.
+
+The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
 the archive actor, normalizes imports to bounded PNGs, and keeps hash-named files in
 `learning-library.sqlite.media/`. Editor drafts hold imported bytes in memory; Save writes referenced media
 before the SQL commit, rolls back new files on failure, and retires unreferenced images
-only after commit. `VocabularyContentEditor` and `VocabularyContentView` share the native editor
-and read-only presentation; no inference or new provider is involved.
+only after commit. `VocabularyContentEditor` owns the native editor; `VocabularyContentView`
+delegates text rendering to the shared UI product and keeps AppKit image decoding in the Mac
+host. No inference or new provider is involved.
 
 `VocabularyArchive+Media` owns portable `.lingrove` backups (versioned JSON envelope containing the
 document and referenced image bytes) and explicit replacement restore. JSON data export contains

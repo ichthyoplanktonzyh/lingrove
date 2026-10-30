@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// A presentation-only grouped form borrows the shared controller/settings. Opening this tab

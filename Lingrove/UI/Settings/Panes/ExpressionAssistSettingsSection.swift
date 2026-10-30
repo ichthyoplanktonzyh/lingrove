@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Interaction settings observe their own persisted model. Translation may be off while the user

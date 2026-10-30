@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import Testing
 @testable import Lingrove

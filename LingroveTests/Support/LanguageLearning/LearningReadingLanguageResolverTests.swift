@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import NaturalLanguage
 import Testing
@@ -40,11 +41,11 @@ struct LearningReadingLanguageResolverTests {
     }
 
     @Test(arguments: [
-        ("focus", "这是有关 focus 的中文说明。", LearningLanguage.chinese),
+        ("focus", "这是有关 focus 的中文说明。", LingroveNotebook.LearningLanguage.chinese),
         ("你好", "We say 你好 to greet someone.", .english),
         ("ありがとう", "We say ありがとう to thank someone.", .english)
     ])
-    func aDifferentScriptCannotRelabelTheSelectedWord(text: String, context: String, hint: LearningLanguage) {
+    func aDifferentScriptCannotRelabelTheSelectedWord(text: String, context: String, hint: LingroveNotebook.LearningLanguage) {
         let result = LearningReadingLanguageResolver.resolve(text: text, context: context, hint: hint) { sample in
             if sample == text { return [:] }
             return [hint.naturalLanguage: 0.99]
@@ -54,10 +55,10 @@ struct LearningReadingLanguageResolverTests {
     }
 
     @Test(arguments: [
-        ("你好", LearningLanguage.chinese), ("銀行", .traditionalChinese), ("ありがとう", .japanese),
+        ("你好", LingroveNotebook.LearningLanguage.chinese), ("銀行", .traditionalChinese), ("ありがとう", .japanese),
         ("한국", .korean), ("привет", .russian), ("नमस्ते", .hindi), ("مرحبا", .arabic), ("bonjour", .french)
     ])
-    func compatibleCaptureHintsRemainAvailable(text: String, language: LearningLanguage) {
+    func compatibleCaptureHintsRemainAvailable(text: String, language: LingroveNotebook.LearningLanguage) {
         let result = LearningReadingLanguageResolver.resolve(text: text, hint: language, recognize: { _ in [:] })
         #expect(result.language == language)
         #expect(result.evidence == .hint)

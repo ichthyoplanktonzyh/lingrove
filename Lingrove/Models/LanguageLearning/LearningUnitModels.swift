@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// A click target in one fixed translation. It describes lexical boundaries: a

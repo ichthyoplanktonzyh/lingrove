@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Narrow interoperability rules shared by the controller, archive and tests. Exact IDs and

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Pure instructions for sentence/selection translation. The explicit source is the only input;

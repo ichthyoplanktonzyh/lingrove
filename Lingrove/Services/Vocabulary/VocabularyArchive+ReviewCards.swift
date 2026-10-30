@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Card transactions share the notebook actor and media commit point. Saving one card compares

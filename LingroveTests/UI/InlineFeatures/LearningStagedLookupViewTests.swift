@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 import Combine
 import SwiftUI
@@ -10,8 +11,8 @@ import Vision
 @Suite(.serialized)
 @MainActor
 struct LearningStagedLookupViewTests {
-    @Test(arguments: [LearningLanguage?.some(.english), nil])
-    func lookupShowsTheBasicPairAndLoadsDetailsOnlyWhenExpanded(_ sourceLanguage: LearningLanguage?) async throws {
+    @Test(arguments: [Optional<LingroveNotebook.LearningLanguage>.some(.english), nil])
+    func lookupShowsTheBasicPairAndLoadsDetailsOnlyWhenExpanded(_ sourceLanguage: Optional<LingroveNotebook.LearningLanguage>) async throws {
         let service = StagedLookupViewService()
         let session = LearningDictionarySession(provider: StagedLookupViewDictionary(), explanationService: service)
         let capture = makeCapture(language: sourceLanguage)
@@ -108,7 +109,7 @@ struct LearningStagedLookupViewTests {
         #expect(!panel.isVisible && dismissals == 1)
     }
 
-    private func makeCapture(language: LearningLanguage? = .english) -> VocabularyCapture {
+    private func makeCapture(language: Optional<LingroveNotebook.LearningLanguage> = .english) -> VocabularyCapture {
         let sentence = "Please keep me posted on the progress."
         let range = (sentence as NSString).range(of: "keep me posted")
         var example = VocabularyPolicy.example(text: sentence, ranges: [range], language: language)
@@ -223,7 +224,7 @@ struct LearningStagedLookupViewTests {
 private final class StagedLookupViewService: LearningLookupGenerating {
     private let changed = PassthroughSubject<Void, Never>()
     var changes: AnyPublisher<Void, Never> { changed.eraseToAnyPublisher() }
-    var language: LearningLanguage { .english }
+    var language: LingroveNotebook.LearningLanguage { .english }
     var isConfigured = true
     private(set) var lookupCalls = 0
     private(set) var detailCalls = 0
@@ -252,7 +253,7 @@ private final class StagedLookupViewService: LearningLookupGenerating {
 }
 
 private actor StagedLookupViewDictionary: LearningDictionaryProviding {
-    func lookup(_ query: String, language: LearningLanguage?, expression: Bool,
+    func lookup(_ query: String, language: Optional<LingroveNotebook.LearningLanguage>, expression: Bool,
                 source: LearningDictionarySource, configuration: LearningDictionaryConfiguration) async throws -> LearningDictionaryResult {
         .notFound
     }

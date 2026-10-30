@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Image transport reuses the same explicit Anki send operation and profile/content guards as

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import ApplicationServices
 import Combine
 import CoreGraphics
@@ -107,8 +108,8 @@ struct LanguageLearningCoordinatorTests {
         #expect(preview.targetLanguage == .english)
     }
 
-    @Test(arguments: [LearningLanguage.chinese, .spanish])
-    func sourceLanguageCannotAlsoBeTheConfiguredTarget(_ language: LearningLanguage) async throws {
+    @Test(arguments: [LingroveNotebook.LearningLanguage.chinese, .spanish])
+    func sourceLanguageCannotAlsoBeTheConfiguredTarget(_ language: LingroveNotebook.LearningLanguage) async throws {
         let rig = try Rig(sourceText: "你好", sourceLanguages: [language], targetLanguage: language)
         defer { rig.cleanup() }
         rig.coordinator.start()
@@ -422,8 +423,8 @@ struct LanguageLearningCoordinatorTests {
             nativeSentenceAtCaret: Bool = false,
             shortcutConflict: String? = nil,
             sourceText: String? = nil,
-            sourceLanguages: [LearningLanguage] = [.chinese],
-            targetLanguage: LearningLanguage = .english
+            sourceLanguages: [LingroveNotebook.LearningLanguage] = [.chinese],
+            targetLanguage: LingroveNotebook.LearningLanguage = .english
         ) throws {
             let suiteName = "io.ichthyoplanktonzyh.lingrove.tests.LanguageLearningCoordinator-\(UUID().uuidString)"
             let defaults = try #require(UserDefaults(suiteName: suiteName))

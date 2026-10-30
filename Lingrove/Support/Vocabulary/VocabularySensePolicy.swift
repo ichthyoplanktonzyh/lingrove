@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// Pure ownership rules for expression → sense → usage. The archive runs these inside one
 /// transaction; cards never infer an identity from generated wording or ask a classifier.
@@ -202,7 +203,7 @@ nonisolated enum VocabularySensePolicy {
 /// A label is a projection, never an identity or a semantic matching key. A contextual draft
 /// can label an unnamed sense while its canonical summary remains explicitly editable.
 extension VocabularySense {
-    var displayTitle: String {
+    nonisolated var displayTitle: String {
         if !meaning.isEmpty { return meaning }
         for block in content ?? [] {
             if case let .text(value) = block.content, !value.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Export configuration belongs to one sheet, independently of notebook editing and Anki.

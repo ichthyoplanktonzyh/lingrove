@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 import Foundation
 import Testing
@@ -7,8 +8,8 @@ import Testing
 /// downloads. The retained receipt guard is driven after presentation like a delayed model reply.
 @MainActor
 struct LearningReadingLookupTests {
-    @Test(arguments: [LearningLanguage.chinese, .english])
-    func aPartialSelectionOpensTheExistingLookupWithoutCallingTranslation(_ target: LearningLanguage) async throws {
+    @Test(arguments: [LingroveNotebook.LearningLanguage.chinese, .english])
+    func aPartialSelectionOpensTheExistingLookupWithoutCallingTranslation(_ target: LingroveNotebook.LearningLanguage) async throws {
         let rig = try Rig(text: "bank", context: "He sat on the bank of the river.", target: target)
         defer { rig.close() }
         #expect(rig.coordinator.decide(rig.shortcut) == .consume)
@@ -59,8 +60,8 @@ struct LearningReadingLookupTests {
         #expect(rig.service.calls == 0 && rig.panel.sentence == nil)
     }
 
-    @Test(arguments: [LearningLanguage.chinese, .english])
-    func aSharedWordUsesItsSentenceWithoutALanguageHint(_ target: LearningLanguage) async throws {
+    @Test(arguments: [LingroveNotebook.LearningLanguage.chinese, .english])
+    func aSharedWordUsesItsSentenceWithoutALanguageHint(_ target: LingroveNotebook.LearningLanguage) async throws {
         let rig = try Rig(text: "focus", context:
             "Listen to sentences or expressions without losing typing focus using macOS system voices.", target: target)
         defer { rig.close() }
@@ -103,7 +104,7 @@ struct LearningReadingLookupTests {
         let panel = LookupPanel()
         let coordinator: LearningReadingCoordinator
         let shortcut: InputMonitorKeyEvent
-        init(text: String, context: String, target: LearningLanguage = .chinese) throws {
+        init(text: String, context: String, target: LingroveNotebook.LearningLanguage = .chinese) throws {
             defaults = try #require(UserDefaults(suiteName: name))
             let settings = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
             settings.languageLearning.translationEnabled = true
@@ -151,7 +152,7 @@ struct LearningReadingLookupTests {
         let settings: SuggestionSettingsModel
         var calls = 0
         init(settings: SuggestionSettingsModel) { self.settings = settings }
-        func translateSentence(source: String, sourceLanguage: LearningLanguage?, targetLanguage: LearningLanguage) async throws -> String {
+        func translateSentence(source: String, sourceLanguage: Optional<LingroveNotebook.LearningLanguage>, targetLanguage: LingroveNotebook.LearningLanguage) async throws -> String {
             calls += 1; return "他坐在河岸上。"
         }
         func recordDisplay(source: ModelRequestSource, requestID: String) {}

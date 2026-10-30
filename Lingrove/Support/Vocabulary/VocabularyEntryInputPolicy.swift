@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Non-destructive addition is shared by manual creation and import. It groups headwords by

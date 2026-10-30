@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// The semantic half of the relational projection keeps graph foreign keys in SQL columns.

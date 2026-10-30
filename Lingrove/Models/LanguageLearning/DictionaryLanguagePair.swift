@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Source metadata describes the language of the headword separately from its definitions.

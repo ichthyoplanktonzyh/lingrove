@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Writing and reading share translation generation while retaining their own captured scope.

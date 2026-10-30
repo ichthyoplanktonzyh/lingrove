@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Compact category filter and directory toggle bar anchored at the top of the "By meaning"

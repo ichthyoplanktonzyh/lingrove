@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Classification starts from a concrete expression meaning. Hidden evidence and syntax stay

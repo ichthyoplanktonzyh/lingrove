@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Converts already displayed values into a durable capture. Both the sentence panel and its

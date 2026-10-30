@@ -1,28 +1,26 @@
+import LingroveNotebook
 import Foundation
 import NaturalLanguage
 
 /// Stable identifiers for translation settings, borrowing the original language palette's labels.
 /// A language selects a direction and text-segmentation locale; it does not promise model support.
-nonisolated enum LearningLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
-    case english = "en", spanish = "es", french = "fr", german = "de", italian = "it"
-    case portuguese = "pt", dutch = "nl", russian = "ru", chinese = "zh-Hans"
-    case traditionalChinese = "zh-Hant"
-    case japanese = "ja", korean = "ko", hindi = "hi", arabic = "ar"
+typealias LearningLanguage = LingroveNotebook.LearningLanguage
 
-    var id: String { rawValue }
-    var name: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.name ?? rawValue }
-    var label: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.nativeLabel ?? rawValue }
+/// Recognition and host language labels stay outside the saved notebook graph.
+extension LearningLanguage {
+    nonisolated var name: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.name ?? rawValue }
+    nonisolated var label: String { LanguageCatalog.commonLanguages.first { $0.code == rawValue }?.nativeLabel ?? rawValue }
     /// Cards need the native language name without the picker's bilingual explanation.
     /// Cache Foundation's names once so streamed previews do not repeat locale lookups.
-    var compactLabel: String { Self.compactLabels[self] ?? label }
-    private static let compactLabels = Dictionary(uniqueKeysWithValues: allCases.map { language in
+    nonisolated var compactLabel: String { Self.compactLabels[self] ?? label }
+    private nonisolated static let compactLabels = Dictionary(uniqueKeysWithValues: allCases.map { language in
         (language, Locale(identifier: language.rawValue).localizedString(forIdentifier: language.rawValue) ?? language.label)
     })
-    var naturalLanguage: NLLanguage { self == .chinese ? .simplifiedChinese : NLLanguage(rawValue: rawValue) }
+    nonisolated var naturalLanguage: NLLanguage { self == .chinese ? .simplifiedChinese : NLLanguage(rawValue: rawValue) }
 
     /// Only recent committed text is inspected. An uncertain result leaves the configured source
     /// language unavailable rather than guessing which translation direction to use.
-    static func detect(in text: String) -> Self? {
+    nonisolated static func detect(in text: String) -> Self? {
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(String(text.suffix(600)))
         let hypotheses = recognizer.languageHypotheses(withMaximum: 2).sorted { $0.value > $1.value }

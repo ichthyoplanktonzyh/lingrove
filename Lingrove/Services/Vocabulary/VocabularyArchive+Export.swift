@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// The archive serializes snapshot and media reads with edits/GC. The returned immutable package
 /// owns all selected bytes, so later source deletion cannot change a preview or its saved file.

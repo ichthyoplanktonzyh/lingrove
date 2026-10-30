@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// The same presentation appears inside dictionary, sentence and notebook cards. Its owner

@@ -1,4 +1,6 @@
+import LingroveNotebook
 import SwiftUI
+import LingroveNotebookUI
 
 /// Sense reading and the editor share the same native block presentation. An image view loads
 /// only while visible, cancels when replaced and never decodes the original imported full-size
@@ -13,12 +15,12 @@ struct VocabularyContentView: View {
             ForEach(blocks) { block in
                 switch block.content {
                 case let .text(value):
-                    Text((value.style == .bullet ? "• " : "") + value.text)
-                        .font(value.style == .heading
+                    VocabularyTextBlockView(
+                        content: value,
+                        font: value.style == .heading
                             ? textSize.font(16, weight: .semibold)
-                            : textSize.font(14.5))
-                        .lineSpacing(3.5)
-                        .bold(value.bold).italic(value.italic).textSelection(.enabled)
+                            : textSize.font(14.5)
+                    )
                 case let .image(image, caption):
                     VocabularyImageView(reference: image, store: store)
                         .accessibilityLabel(caption.isEmpty ? String(localized: "Image", table: "Vocabulary") : caption)

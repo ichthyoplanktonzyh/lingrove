@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import Testing
 @testable import Lingrove
@@ -35,7 +36,7 @@ struct LearningLexiconServiceTests {
                       ("안녕하세요", LearningLanguage.korean),
                       ("一举两得", LearningLanguage.chinese),
                       ("一舉兩得", LearningLanguage.traditionalChinese)])
-    func recordedNonEnglishExpressionsRemainWholeClickUnits(_ sample: (String, LearningLanguage)) async throws {
+    func recordedNonEnglishExpressionsRemainWholeClickUnits(_ sample: (String, LingroveNotebook.LearningLanguage)) async throws {
         let service = LearningLexiconService(resourceURL: try #require(Bundle.main.url(forResource: "learning-expressions", withExtension: "json")))
         let units = try await service.recognize(sample.0, language: sample.1)
         #expect(units.contains { $0.surface == sample.0 && $0.kind == .expression })

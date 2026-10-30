@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// A sense groups independent cards. The app controller performs sends; this section owns only

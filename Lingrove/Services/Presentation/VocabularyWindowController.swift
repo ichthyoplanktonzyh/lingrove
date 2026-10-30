@@ -1,4 +1,5 @@
 import AppKit
+import LingroveNotebook
 import SwiftUI
 
 /// The app environment retains one reusable, activating library window. Floating learning cards

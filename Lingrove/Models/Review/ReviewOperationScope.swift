@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// A single click or batch freezes its destination before any write. Credentials stay ephemeral;

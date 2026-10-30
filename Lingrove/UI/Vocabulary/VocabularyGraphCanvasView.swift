@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 
 /// A window-local canvas draws compact dots and labels without constructing thousands of

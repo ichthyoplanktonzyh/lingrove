@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import NaturalLanguage
 import Testing
@@ -14,7 +15,7 @@ import Testing
         ("これは日本語の音声テストです。", .japanese),
         ("안녕하세요. 오늘의 음성 테스트입니다.", .korean)
     ])
-    func actualTextOverridesTheCardHint(text: String, expected: LearningLanguage) {
+    func actualTextOverridesTheCardHint(text: String, expected: LingroveNotebook.LearningLanguage) {
         let hint: LearningLanguage = expected == .english ? .chinese : .english
         #expect(SpeechLanguageResolver.resolve(text: text, hint: hint) == expected)
     }

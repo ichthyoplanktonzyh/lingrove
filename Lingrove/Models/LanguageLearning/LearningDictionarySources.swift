@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Stable identities distinguish a provider from each imported dictionary or website. The

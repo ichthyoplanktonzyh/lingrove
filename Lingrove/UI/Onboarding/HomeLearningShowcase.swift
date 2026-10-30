@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Home and explicit guide examples share one interactive scene player. Its model lives while mounted;

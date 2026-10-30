@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// The translation service owns one request built by this pure policy. Specialist models need

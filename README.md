@@ -186,6 +186,7 @@ Lingrove requests only the macOS permissions required for the features you enabl
 
 - [**FAQ.md**](FAQ.md) — Common questions on setup, offline usage, and permissions
 - [**docs/LANGUAGE_LEARNING.md**](docs/LANGUAGE_LEARNING.md) — Deep dive into translation workflows, dictionaries, TTS, and model token budgets
+- [**Mobile Notebook Plan**](docs/MOBILE_NOTEBOOK_PLAN.md) — Implementation plan in Chinese for shared UI, iPhone/iPad adaptation, sync, MCP, and later review
 - [**ARCHITECTURE.md**](ARCHITECTURE.md) & [**SOURCE_LAYOUT.md**](SOURCE_LAYOUT.md) — Subsystem boundaries and codebase navigation
 - [**CONTRIBUTING.md**](CONTRIBUTING.md) & [**CODE_OF_CONDUCT.md**](CODE_OF_CONDUCT.md) — How to report issues, run evaluations, and submit pull requests
 

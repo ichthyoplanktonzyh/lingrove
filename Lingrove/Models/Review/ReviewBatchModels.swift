@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Queue state is presentation-only. Stable notebook IDs and durable Anki bindings remain the

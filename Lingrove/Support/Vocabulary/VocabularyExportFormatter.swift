@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// All formats serialize the same portable projection. This value-only boundary is independent
 /// of SwiftUI and IO, so delimiter/Unicode behavior and omitted fields can be verified directly.

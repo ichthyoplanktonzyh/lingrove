@@ -1,4 +1,5 @@
 #if DEBUG
+import LingroveNotebook
 import Combine
 import SwiftUI
 

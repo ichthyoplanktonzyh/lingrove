@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// One drag/paste operation owns this callback bridge. Task cancellation must release its

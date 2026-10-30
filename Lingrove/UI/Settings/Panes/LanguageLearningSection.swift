@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Presents the cross-language learning controls from the app-owned settings model.

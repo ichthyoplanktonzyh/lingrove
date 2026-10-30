@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// An immutable per-language index owns only explicit dictionary forms and fixed expression

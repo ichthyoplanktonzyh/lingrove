@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Pure resolution is the shared boundary between saved source references and card HTML.

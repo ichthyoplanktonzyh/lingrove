@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Builds a complete target with optional nearest-neighbor reference. Native callers inject the

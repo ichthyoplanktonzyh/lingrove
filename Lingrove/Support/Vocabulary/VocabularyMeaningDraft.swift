@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// One meaning editor owns this detached value until Save. It carries category context and

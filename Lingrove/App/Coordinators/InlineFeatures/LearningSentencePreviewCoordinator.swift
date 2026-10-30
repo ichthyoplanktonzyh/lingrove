@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Combine
 import AppKit
 import CoreGraphics

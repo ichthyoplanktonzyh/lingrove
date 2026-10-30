@@ -1,38 +1,52 @@
+import LingroveNotebook
 import Foundation
 
 /// A card owns an ordered pair of layouts. Parts either follow notebook content by stable ID
 /// or own card-only rich content. The same value feeds the editor, preview, backup and Anki.
-nonisolated struct ReviewLayout: Codable, Equatable, Sendable {
-    var front: [ReviewCardPart] = []
-    var back: [ReviewCardPart] = []
-    var parts: [ReviewCardPart] { front + back }
-    var customContent: [VocabularyContentBlock] { parts.flatMap(\.content) }
-    var audioKinds: Set<ReviewAudioKind> {
-        Set(parts.compactMap { part in
-            switch part.source {
-            case .expressionAudio: .expression
-            case .sentenceAudio: .sentence
-            default: nil
-            }
-        })
-    }
-}
+typealias ReviewLayout = LingroveNotebook.ReviewLayout
 
 /// References never infer an image from its caption or an example from array position. A nil
 /// block ID is a template slot awaiting a concrete selection when applied to another sense.
-nonisolated struct ReviewCardPart: Codable, Equatable, Identifiable, Sendable {
-    var id = UUID()
-    var source: ReviewContentSource
-    var blockID: UUID?
-    var showCaption = false
-    var content: [VocabularyContentBlock] = []
+typealias ReviewCardPart = LingroveNotebook.ReviewCardPart
+
+typealias ReviewContentSource = LingroveNotebook.ReviewContentSource
+
+/// Templates are reusable layouts, not remote Anki note types. Each application creates fresh
+/// part IDs and binds source slots to the destination sense; existing cards remain independent.
+typealias ReviewLayoutTemplate = LingroveNotebook.ReviewLayoutTemplate
+
+/// Resolved material contains no source IDs, so equality measures only what will be exported.
+/// Audio remains typed until serialization, avoiding unsafe placeholder replacement in user text.
+nonisolated enum ReviewResolvedPart: Equatable, Sendable {
+    case text(String), blocks([VocabularyContentBlock]), audio(ReviewAudioKind)
 }
 
-nonisolated enum ReviewContentSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    case expression, meaning, sentence, translation, contextualMeaning, explanation, notes, gapSentence
-    case senseText, senseImage, expressionAudio, sentenceAudio, custom
-    var id: String { rawValue }
-    var label: String {
+extension VocabularySense {
+    /// All accepted layouts participate in the media graph, even retained plans hidden from
+    /// the current UI. Backups must never depend on which editor presently exposes a value.
+    nonisolated var reviewLayouts: [ReviewLayout] {
+        ([review].compactMap { $0 } + (reviewCards ?? [])).flatMap {
+            ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
+        }
+    }
+
+    nonisolated func reviewValue(_ cardID: UUID?) -> VocabularyReview? {
+        guard let cardID else { return review }
+        return reviewCards?.first { $0.plan.id == cardID }
+    }
+
+    nonisolated mutating func setReview(_ value: VocabularyReview, cardID: UUID?) {
+        guard let cardID else { review = value; return }
+        if let index = reviewCards?.firstIndex(where: { $0.plan.id == cardID }) { reviewCards?[index] = value } else {
+            if reviewCards == nil { reviewCards = [] }
+            reviewCards?.append(value)
+        }
+    }
+}
+
+/// The Mac host owns localized labels; shared review values carry stable field identities.
+extension ReviewContentSource {
+    nonisolated var label: String {
         switch self {
         case .expression: String(localized: "Expression", table: "Vocabulary")
         case .meaning: String(localized: "Core meaning", table: "Vocabulary")
@@ -47,43 +61,6 @@ nonisolated enum ReviewContentSource: String, Codable, CaseIterable, Identifiabl
         case .expressionAudio: ReviewAudioKind.expression.label
         case .sentenceAudio: ReviewAudioKind.sentence.label
         case .custom: String(localized: "Custom content", table: "Vocabulary")
-        }
-    }
-}
-
-/// Templates are reusable layouts, not remote Anki note types. Each application creates fresh
-/// part IDs and binds source slots to the destination sense; existing cards remain independent.
-nonisolated struct ReviewLayoutTemplate: Codable, Equatable, Identifiable, Sendable {
-    var id = UUID()
-    var name: String
-    var layout: ReviewLayout
-}
-
-/// Resolved material contains no source IDs, so equality measures only what will be exported.
-/// Audio remains typed until serialization, avoiding unsafe placeholder replacement in user text.
-nonisolated enum ReviewResolvedPart: Equatable, Sendable {
-    case text(String), blocks([VocabularyContentBlock]), audio(ReviewAudioKind)
-}
-
-extension VocabularySense {
-    /// All accepted layouts participate in the media graph, even retained plans hidden from
-    /// the current UI. Backups must never depend on which editor presently exposes a value.
-    var reviewLayouts: [ReviewLayout] {
-        ([review].compactMap { $0 } + (reviewCards ?? [])).flatMap {
-            ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
-        }
-    }
-
-    func reviewValue(_ cardID: UUID?) -> VocabularyReview? {
-        guard let cardID else { return review }
-        return reviewCards?.first { $0.plan.id == cardID }
-    }
-
-    mutating func setReview(_ value: VocabularyReview, cardID: UUID?) {
-        guard let cardID else { review = value; return }
-        if let index = reviewCards?.firstIndex(where: { $0.plan.id == cardID }) { reviewCards?[index] = value } else {
-            if reviewCards == nil { reviewCards = [] }
-            reviewCards?.append(value)
         }
     }
 }

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Pure target construction, bounded prompting and response validation shared by cards,

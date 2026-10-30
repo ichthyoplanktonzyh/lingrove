@@ -10,6 +10,8 @@ options:
   groupSortPosition: top
   xcodeVersion: "2600"
 packages:
+  LingroveNotebook:
+    path: Packages/LingroveNotebook
   LingroveGraphLayout:
     path: Packages/LingroveGraphLayout
   MDictReader:
@@ -122,6 +124,10 @@ targetTemplates:
       - path: Lingrove/Resources/DictionaryNotices/MDict-NOTICE.md
         buildPhase: resources
     dependencies:
+      - package: LingroveNotebook
+        product: LingroveNotebook
+      - package: LingroveNotebook
+        product: LingroveNotebookUI
       - package: LingroveGraphLayout
         product: LingroveGraphLayout
       - target: LingroveCLI
@@ -261,6 +267,8 @@ targets:
       - path: LingroveTests
     dependencies:
       - target: Lingrove
+      - package: LingroveNotebook
+        product: LingroveNotebook
     settings:
       base:
         BUNDLE_LOADER: $(TEST_HOST)

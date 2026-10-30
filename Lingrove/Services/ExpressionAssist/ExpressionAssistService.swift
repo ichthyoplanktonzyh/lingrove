@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// App-owned expression generator. It borrows the existing explanation controller and its loaded

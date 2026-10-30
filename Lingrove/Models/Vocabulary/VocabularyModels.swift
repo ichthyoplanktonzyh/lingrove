@@ -1,138 +1,43 @@
 import Foundation
+import LingroveNotebook
 
 /// Durable learning content is independent of translation requests and Anki. The app-owned
 /// vocabulary store persists these values; cards supply immutable captures and never AX handles.
-nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sendable {
-    enum Kind: String, Codable, CaseIterable, Sendable { case word, expression, pattern, sentence }
-    let id: UUID
-    var expression: String
-    var dictionaryForm: String
-    /// Unknown source metadata stays nil; saving must never relabel a homograph as English.
-    let language: LearningLanguage?
-    let kind: Kind
-    var senses: [VocabularySense]
-    let createdAt: Date
-    var updatedAt: Date
-
-    /// Read-only projections support headword-wide search and dictionary lookup. Storage and
-    /// editing always name a sense; these projections never create a second owner of a usage.
-    var examples: [VocabularyExample] { senses.flatMap(\.examples) }
-    var explanations: [LearningExplanationRecord]? {
-        let records = senses.flatMap { $0.explanations + $0.examples.flatMap(\.explanations) }
-        var seen = Set<UUID>()
-        let unique = records.filter { seen.insert($0.id).inserted }
-        return unique.isEmpty ? nil : unique
-    }
-}
+typealias VocabularyEntry = LingroveNotebook.VocabularyEntry
 
 /// A stable learning identity for one core meaning. Catalog records keep the lexical fields;
 /// notebook projections overlay selected examples and personal notes/cards from independent
 /// records. Rewording a summary never changes its UUID or its review/meaning-graph references.
-nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
-    let id: UUID
-    var meaning: String
-    var meaningLanguage: LearningLanguage?
-    var meaningOrigin: VocabularyMeaningOrigin = .captured
-    var note = ""
-    var tags: [String] = []
-    var examples: [VocabularyExample] = []
-    var isSavedWithoutContext = false
-    var standaloneMeanings: [VocabularyMeaning] = []
-    var explanations: [LearningExplanationRecord] = []
-    var alternateMeanings: [VocabularyMeaning] = []
-    var mergedFrom: [UUID] = []
-    /// Projected from the personal collection; absence is distinct from an empty draft.
-    var review: VocabularyReview?
-    /// Flexible cards have independent review identities. Legacy review records are not migrated.
-    var reviewCards: [VocabularyReview]?
-    var content: [VocabularyContentBlock]?
-    let createdAt: Date
-    var updatedAt: Date
-    /// Manual/imported meanings support general explanations independently of whether the
-    /// personal collection claims the context-free favorite slot.
-    var createdWithoutContext: Bool?
-    var supportsGeneralExplanation: Bool { isSavedWithoutContext || createdWithoutContext == true }
-}
+typealias VocabularySense = LingroveNotebook.VocabularySense
 
 /// Window navigation and durable destinations use both levels. Sense IDs stay independent of
 /// presentation order, labels and generated explanation language.
-nonisolated struct VocabularySelection: Equatable, Hashable, Sendable {
-    let entryID: UUID
-    let senseID: UUID
-}
+typealias VocabularySelection = LingroveNotebook.VocabularySelection
 
 /// The archive records who owns a meaning, independently of its text. Model refreshes may
 /// replace captured/AI drafts, while an explicit edit or adoption transfers ownership to the user.
-nonisolated enum VocabularyMeaningOrigin: String, Codable, Equatable, Sendable { case captured, ai, user }
+typealias VocabularyMeaningOrigin = LingroveNotebook.VocabularyMeaningOrigin
 
 /// A word can be saved without sentence context in several translation languages. Keep those
 /// translations distinct instead of pretending they are full example-sentence translations.
-nonisolated struct VocabularyMeaning: Codable, Equatable, Identifiable, Sendable {
-    var text: String
-    let language: LearningLanguage?
-    var id: String { language?.rawValue ?? "unknown" }
-}
+typealias VocabularyMeaning = LingroveNotebook.VocabularyMeaning
 
 /// A joined example card: one accepted interpretation plus its immutable source occurrence.
 /// Its ID names the interpretation, and optional occurrenceID distinguishes shared evidence.
 /// Separated fixed parts use exact UTF-16 spans rather than a first-word text search.
-nonisolated struct VocabularyExample: Codable, Equatable, Identifiable, Sendable {
-    /// Unknown boundaries are not evidence of missing text. Keep that distinction when a
-    /// reading receipt becomes a saved usage; existing sentence/fragment archives retain their meaning.
-    enum Completeness: String, Codable, Sendable { case sentence, fragment, unknown }
-    enum SourceKind: String, Codable, Sendable { case unspecified, captured, authored, generated, imported }
-    let id: UUID
-    var sourceID = UUID()
-    /// A displayed example is an accepted interpretation. Several candidate interpretations
-    /// may refer to this same occurrence without copying the source or its UTF-16 spans.
-    var occurrenceID: UUID?
-    var sourceKind: SourceKind = .unspecified
-    var text: String
-    var translation: String
-    var translationLanguage: LearningLanguage?
-    var translationVariants: [VocabularyMeaning] = []
-    var ranges: [VocabularyTextRange]
-    var completeness: Completeness
-    var meaning: String
-    var meaningLanguage: LearningLanguage?
-    var meaningOrigin: VocabularyMeaningOrigin = .captured
-    var appBundleIdentifier: String?
-    let createdAt: Date
-    var explanations: [LearningExplanationRecord] = []
-
-    func copiedWithNewID() -> Self {
-        .init(id: UUID(), sourceID: sourceID, sourceKind: sourceKind, text: text, translation: translation,
-            translationLanguage: translationLanguage,
-            translationVariants: translationVariants, ranges: ranges, completeness: completeness, meaning: meaning,
-            meaningLanguage: meaningLanguage, meaningOrigin: meaningOrigin, appBundleIdentifier: appBundleIdentifier,
-            createdAt: createdAt, explanations: explanations)
-    }
-}
+typealias VocabularyExample = LingroveNotebook.VocabularyExample
 
 /// One retained source snapshot can support multiple expression occurrences. The document and
 /// SQLite own this evidence independently of interpretation and personal collection lifetimes.
-nonisolated struct VocabularySourceSnapshot: Codable, Equatable, Identifiable, Sendable {
-    let id: UUID
-    let text: String
-    let kind: VocabularyExample.SourceKind
-    let appBundleIdentifier: String?
-    let encounteredAt: Date
-}
+typealias VocabularySourceSnapshot = LingroveNotebook.VocabularySourceSnapshot
 
 /// UTF-16 spans name an occurrence in the source. A sense's usage annotation refers to this
 /// identity; moving that annotation never changes the original characters or their positions.
-nonisolated struct VocabularySourceOccurrence: Codable, Equatable, Identifiable, Sendable {
-    let id: UUID
-    let sourceID: UUID
-    let ranges: [VocabularyTextRange]
-}
+typealias VocabularySourceOccurrence = LingroveNotebook.VocabularySourceOccurrence
 
-nonisolated struct VocabularyTextRange: Codable, Equatable, Hashable, Sendable {
-    let location: Int
-    let length: Int
-    init(_ range: NSRange) { location = range.location; length = range.length }
-    var nsRange: NSRange { NSRange(location: location, length: length) }
-}
+/// The shared range retains the existing archive keys and UTF-16 units. The
+/// app alias lets capture, validation and editors keep naming the same value.
+typealias VocabularyTextRange = LingroveNotebook.VocabularyTextRange
 
 /// Short-lived card input. It is copied with the displayed sentence, so saving never rereads
 /// whichever editor happens to be focused after the user clicks a nonactivating card.
@@ -158,78 +63,9 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
 /// stores its entities separately; this version describes the portable representation only.
-nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    static let currentVersion = 8
-    var schemaVersion: Int
-    /// Canonical lexical records contain no examples or personal learning state. The joined
-    /// entries adapter below keeps existing editors independent of persistence relationships.
-    var catalog: [VocabularyEntry]
-    var sources: [VocabularySourceSnapshot]
-    var occurrences: [VocabularySourceOccurrence]
-    var interpretations: [VocabularyInterpretation]
-    var collections: [VocabularyCollectionItem]
-    var reviewTemplates: [ReviewLayoutTemplate]?
-    var semantics: VocabularySemanticIndex
-    var classification: VocabularyClassificationIndex
+typealias VocabularyDocument = LingroveNotebook.VocabularyDocument
 
-    var entries: [VocabularyEntry] {
-        get { VocabularyNotebookProjection.entries(self, collectedOnly: false) }
-        set { VocabularyNotebookProjection.replace(newValue, in: &self) }
-    }
-    var collectedEntries: [VocabularyEntry] { VocabularyNotebookProjection.entries(self, collectedOnly: true) }
-
-    init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil,
-         semantics: VocabularySemanticIndex = .init(), classification: VocabularyClassificationIndex = .init()) {
-        self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
-        self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []; self.collections = []
-        self.reviewTemplates = reviewTemplates
-        self.semantics = semantics
-        self.classification = classification
-        VocabularyNotebookProjection.replace(entries, in: &self)
-    }
-
-    init(catalog: [VocabularyEntry], sources: [VocabularySourceSnapshot], occurrences: [VocabularySourceOccurrence],
-         interpretations: [VocabularyInterpretation], collections: [VocabularyCollectionItem],
-         reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init(),
-         classification: VocabularyClassificationIndex = .init()) {
-        schemaVersion = Self.currentVersion
-        self.catalog = catalog; self.sources = sources; self.occurrences = occurrences
-        self.interpretations = interpretations; self.collections = collections
-        self.reviewTemplates = reviewTemplates; self.semantics = semantics
-        self.classification = classification
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, catalog, sources, occurrences, interpretations, collections, reviewTemplates, semantics, classification
-    }
-
-    /// Version seven already has the canonical evidence/meaning graph. Upgrading adds an empty
-    /// directory without synthesizing memberships or changing any existing identity or receipt.
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        let version = try values.decode(Int.self, forKey: .schemaVersion)
-        guard version == 7 || version == Self.currentVersion else { throw VocabularyError.unsupportedVersion }
-        schemaVersion = Self.currentVersion
-        catalog = try values.decode([VocabularyEntry].self, forKey: .catalog)
-        sources = try values.decode([VocabularySourceSnapshot].self, forKey: .sources)
-        occurrences = try values.decode([VocabularySourceOccurrence].self, forKey: .occurrences)
-        interpretations = try values.decode([VocabularyInterpretation].self, forKey: .interpretations)
-        collections = try values.decode([VocabularyCollectionItem].self, forKey: .collections)
-        reviewTemplates = try values.decodeIfPresent([ReviewLayoutTemplate].self, forKey: .reviewTemplates)
-        semantics = try values.decode(VocabularySemanticIndex.self, forKey: .semantics)
-        classification = version == 7 ? .init() : try values.decode(VocabularyClassificationIndex.self, forKey: .classification)
-    }
-
-    /// Optional language/context metadata does not change the portable format per document.
-    static func requiredVersion(for entries: [VocabularyEntry]) -> Int {
-        currentVersion
-    }
-}
-
-nonisolated struct VocabularySnapshot: Sendable {
-    let revision: UInt64
-    let document: VocabularyDocument
-}
+typealias VocabularySnapshot = LingroveNotebook.VocabularySnapshot
 
 /// Storage destination is separate from semantic input: two saved translations can share one
 /// explanation while still owning independently editable meanings.

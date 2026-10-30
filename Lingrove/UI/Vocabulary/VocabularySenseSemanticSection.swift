@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Compact icon menu placed in the entry detail header so learners can link a sense to a

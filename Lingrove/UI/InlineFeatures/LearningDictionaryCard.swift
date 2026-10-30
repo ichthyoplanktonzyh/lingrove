@@ -1,4 +1,5 @@
 import AppKit
+import LingroveNotebook
 import SwiftUI
 
 /// Presents every dictionary source inside the app-owned detail window. The session owns source

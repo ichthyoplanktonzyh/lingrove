@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// A user-authored entry before it has durable IDs. Create sheets and word-list previews own

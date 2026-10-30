@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 import SwiftUI
 import Testing
@@ -13,7 +14,7 @@ struct LearningSentenceCardTests {
     /// Check TextKit's actual line boxes inside the production card: a fitting-size probe must
     /// never leave the original laid out wider than its final row and paint over the speaker.
     @Test(arguments: [LearningLanguage.chinese, .english, .arabic])
-    func longOriginalWrapsInsideItsRowBesideTheSpeechButton(language: LearningLanguage) async throws {
+    func longOriginalWrapsInsideItsRowBesideTheSpeechButton(language: LingroveNotebook.LearningLanguage) async throws {
         let suite = "LearningSentenceCardTests.original.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }

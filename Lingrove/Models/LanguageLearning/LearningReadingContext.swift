@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Evidence belongs to the in-memory reading session, not to a saved vocabulary example.

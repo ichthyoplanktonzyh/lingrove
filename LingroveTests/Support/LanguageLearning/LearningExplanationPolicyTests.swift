@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import Testing
 @testable import Lingrove
@@ -11,7 +12,7 @@ nonisolated struct LearningExplanationPolicyTests {
     }
 
     @Test(arguments: [LearningExplanationContext.sentence, .fragment, .unknown, .none])
-    func evidenceScopeControlsTheTaskWithoutForcingOneSense(_ scope: LearningExplanationContext) throws {
+    func evidenceScopeControlsTheTaskWithoutForcingOneSense(_ scope: LingroveNotebook.LearningExplanationContext) throws {
         let context = scope == .none ? "bat" : "I saw a bat near the window."
         var capture = VocabularyCapture(expression: "bat", dictionaryForm: "bat", language: .english, kind: .word)
         if scope != .none {
@@ -92,7 +93,7 @@ nonisolated struct LearningExplanationPolicyTests {
     }
 
     @Test(arguments: [LearningLanguage.chinese, .english, .japanese])
-    func responseLanguageGovernsBothFieldsIndependentlyOfTheTarget(_ language: LearningLanguage) throws {
+    func responseLanguageGovernsBothFieldsIndependentlyOfTheTarget(_ language: LingroveNotebook.LearningLanguage) throws {
         let prompt = try LearningExplanationPolicy.prompt(input(), language: language, total: 8_192, output: 1_024)
         #expect(prompt.contains("\"targetLanguage\":\"en\""))
         #expect(prompt.contains("meaning AND explanation"))

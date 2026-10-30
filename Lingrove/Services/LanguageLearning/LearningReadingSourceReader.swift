@@ -1,3 +1,4 @@
+import LingroveNotebook
 import AppKit
 import ApplicationServices
 import Logging

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 import Testing
 @testable import Lingrove
@@ -18,7 +19,7 @@ struct LearningLanguageTests {
     }
 
     @Test(arguments: LearningLanguage.allCases)
-    func languageNamesAndNativeLabelsMatchTheExistingCatalog(_ language: LearningLanguage) throws {
+    func languageNamesAndNativeLabelsMatchTheExistingCatalog(_ language: LingroveNotebook.LearningLanguage) throws {
         let option = try #require(LanguageCatalog.commonLanguages.first { $0.code == language.rawValue })
 
         #expect(language.name == option.name)

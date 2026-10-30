@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// The native search suggestions borrow the app-owned downloader. Installation is a secondary

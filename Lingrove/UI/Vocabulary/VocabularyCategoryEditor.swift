@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// One sheet owns an immutable baseline and a name/parent draft. Built-ins write only a local

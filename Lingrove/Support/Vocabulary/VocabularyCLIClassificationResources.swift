@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Classification uses the existing revisioned resource protocol. Built-in definitions are

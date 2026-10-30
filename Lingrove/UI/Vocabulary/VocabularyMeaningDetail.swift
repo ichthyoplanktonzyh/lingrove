@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// A meaning page puts expression choices, their differences and original examples first.

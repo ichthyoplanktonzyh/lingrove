@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Ordinary notebook editors change a small, user-facing part of a richer semantic record.

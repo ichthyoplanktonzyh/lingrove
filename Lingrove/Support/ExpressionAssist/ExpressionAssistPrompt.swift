@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Owns expression assistance's model contract, independently of explanation's definition JSON.

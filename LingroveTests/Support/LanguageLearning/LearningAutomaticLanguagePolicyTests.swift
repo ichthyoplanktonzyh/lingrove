@@ -1,9 +1,10 @@
+import LingroveNotebook
 import Testing
 @testable import Lingrove
 
 struct LearningAutomaticLanguagePolicyTests {
     @Test(arguments: [
-        ("你好", LearningLanguage.chinese, true), ("謝謝", .traditionalChinese, true),
+        ("你好", LingroveNotebook.LearningLanguage.chinese, true), ("謝謝", .traditionalChinese, true),
         ("nihao", .chinese, false), ("I can do it.", .chinese, false),
         ("안녕", .korean, true), ("hello", .korean, false),
         ("こんにちは", .japanese, true), ("日本", .japanese, true),
@@ -11,7 +12,7 @@ struct LearningAutomaticLanguagePolicyTests {
         ("नमस्ते", .hindi, true), ("مرحبا", .arabic, true),
         ("Café", .french, true), ("", .english, false)
     ])
-    func automaticRequestsRequireTheConfiguredSourceScript(_ text: String, _ language: LearningLanguage, _ expected: Bool) {
+    func automaticRequestsRequireTheConfiguredSourceScript(_ text: String, _ language: LingroveNotebook.LearningLanguage, _ expected: Bool) {
         #expect(LearningAutomaticLanguagePolicy.accepts(text, sourceLanguage: language) == expected)
     }
 }

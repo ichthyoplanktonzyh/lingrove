@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Inline category breadcrumb bar integrated into `VocabularyMeaningDetail`'s editorial header.

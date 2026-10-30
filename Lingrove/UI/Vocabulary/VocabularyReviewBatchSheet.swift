@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Batch preparation reuses the individual review sheet for examples, preview and conflict

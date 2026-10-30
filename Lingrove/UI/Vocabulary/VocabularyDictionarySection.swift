@@ -1,3 +1,4 @@
+import LingroveNotebook
 import SwiftUI
 
 /// Expanding this reference area is an explicit dictionary query. It borrows the window's

@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Translation owns only the quick expression task. The facade retains it for the app lifetime;
