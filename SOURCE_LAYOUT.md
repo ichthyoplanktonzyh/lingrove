@@ -598,6 +598,16 @@ a second primary store. Source
 provenance, the retained UI experiment and current implementation boundaries are documented in
 `docs/NIBOMO_INTEGRATION.md`.
 
+Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
+`LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
+Nibomo's same primary file. It borrows PNG helpers from Storage without instantiating the Mac
+database or its media directory. `Database/NotebookStore/LingroveNotebookMediaStore` registers
+original PNGs in Nibomo's cache/registry with workspace ownership. `FlashcardsStore.notebook`
+owns `LingroveNotebookLibrary`, its observable snapshot, request identity and save state; views
+will borrow it rather than opening databases. Image staging precedes the SQL writer lock; media
+mapping and notebook changes commit with the pending journal. Hash blobs survive failed writes
+because another producer may already rely on them; unified reference-aware GC remains pending.
+
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by
