@@ -5,6 +5,11 @@ saved examples and later learning. Autocomplete remains an equally core product 
 
 ## Language
 
+**Notebook / 生词本**:
+The user's saved expressions, senses, evidence, organization and personal learning material.
+It is a content source that can be used independently of any review tool.
+_Avoid_: equating the notebook with a flashcard collection or an Anki collection.
+
 **Expression / 词头与表达**:
 An expression groups the same normalized word, phrase, pattern or sentence in one language.
 _Avoid_: using “word” for every saved phrase or sentence.
@@ -77,7 +82,8 @@ _Avoid_: identifying a claim with its source or requiring uncertain material to 
 
 **Personal collection / 个人收藏**:
 The local user's explicit relationship to a sense and selected accepted interpretations. It owns
-notes, tags, content and review state. Uncollecting preserves catalog knowledge, evidence and
+notes, tags, content, review preparation and review links; each review tool owns its scheduling
+and review history. Uncollecting preserves catalog knowledge, evidence and
 interpretations. Meaning-graph organization is optional and external-agent driven through CLI.
 _Avoid_: treating a record's existence as proof that it is personally collected.
 
@@ -109,6 +115,21 @@ _Avoid_: “chunk alignment” when only identifying a phrase in one sentence.
 Correspondence between exact excerpts in an original sentence and its translation.
 _Avoid_: equating a bilingual correspondence with a word’s contextual definition.
 
+**Review tool / 复习工具**:
+A product or system that owns exercises, grading, scheduling and review history. Nibomo and Anki
+are review tools; using the notebook does not require configuring either one.
+_Avoid_: using “Anki” as the general name for all review capabilities.
+
+**Review card / 复习卡片**:
+An exercise with a prompt and an answer. One sense can supply several different review cards;
+a card remains distinct from the source expression, sense or usage.
+_Avoid_: treating a review card as the sense itself.
+
+**Review link / 复习关联**:
+The connection from notebook content to an exercise in one review tool. A sense may have several
+links, including links to different tools, whose review histories remain independent.
+_Avoid_: using “Anki association” as the general name for every review link.
+
 **Review plan / 制卡方案**:
 The chosen example, review answer and exercise forms for learning one sense. Review edits belong
 to this material independently of the expression’s core meaning or contextual explanations.
@@ -116,3 +137,4 @@ to this material independently of the expression’s core meaning or contextual 
 **Anki association / Anki 关联**:
 The relationship between a saved sense and an identified note in an Anki profile. Synchronization
 describes agreement of their exported content, independently of learning progress.
+An Anki association is one optional, tool-specific kind of review link.
