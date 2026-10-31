@@ -125,6 +125,16 @@ public nonisolated struct VocabularyWireConfirmationPage: Codable, Equatable, Se
         }
         return (bytes, members)
     }
+    /// A host may durably stage one bounded page without replaying all prior
+    /// pages or reparsing the large frozen body. This proves page-local identity
+    /// and exact frozen members; only the accumulator proves the complete root.
+    public func validate(for manifest: VocabularyWireConfirmationManifest, upload: VocabularyWireStagedUpload) throws {
+        let checked = try verified(for: manifest, upload: upload)
+        guard firstMemberOrdinal <= upload.batch.request.members.count,
+              checked.members.count <= upload.batch.request.members.count - firstMemberOrdinal,
+              zip(upload.batch.request.members[firstMemberOrdinal..<(firstMemberOrdinal + checked.members.count)], checked.members)
+                .allSatisfy({ $0.memberID == $1 }) else { throw VocabularyWireStagedError.invalidPage }
+    }
     public func encode(to encoder: any Encoder) throws {
         try VocabularyWireJSON.object(["groupId": .uuid(groupID), "manifestSha256": .string(manifestSHA256), "ordinal": .number(Double(ordinal)),
             "firstMemberOrdinal": .number(Double(firstMemberOrdinal)), "memberCount": .number(Double(memberCount)), "encoding": .string("base64"),

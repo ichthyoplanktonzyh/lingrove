@@ -683,11 +683,18 @@ normalizing the saved body. Ordinary planning/restoration/decoding keep the orig
 limits; staged factories are separate opt-ins. `VocabularyWireConfirmationValues` models compact
 decisions and bounded UUID pages; `VocabularyWireConfirmationAccumulator` checks every member
 against the frozen request and both stream hashes before issuing a non-Codable proof. Conversion
-to a large ordinary outcome is currently in-memory only: schema 32's receipt codec remains 10k.
+to a large ordinary outcome remains in-memory only; ordinary receipt codecs retain their 10k limit.
+Schema 33 adds an explicit transport kind and `LingroveNotebookStagedUploadStore`, which borrows
+UploadStore's frozen request and transaction. Its child tables own bounded compact manifest/page
+JSON; reopening replays every page through the shared verifier before exposing an outcome.
+Callbacks recheck the account generation and frozen identity without reparsing the body per page.
+Positive covering apply retires exact captured journals; negative apply retains every journal.
+Both atomically replace the frozen body/pages with a compact manifest ledger. Existing direct
+digests remain unchanged; staged digests use a separate domain to detect transport-mode changes.
 The staged URLSession methods are not called by the production runner. Only the explicit
 `privateStagedTransport` server composition option mounts their routes for loopback acceptance;
-production composition and capability negotiation do not enable them. Actual staged SQLite
-durability, transport closure recovery and rollout/resource gates remain separate work.
+production composition and capability negotiation do not enable them. Transport closure recovery
+and rollout/resource gates remain separate work.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
