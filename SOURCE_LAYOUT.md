@@ -617,6 +617,16 @@ overlays the complete document so evidence, other entries, knowledge and tool st
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
 and reproducible generator live under Nibomo's Apple scripts directory.
 
+Native `Notebook/LingroveNotebookReviewEnrollment` holds immutable participation and exercise
+mapping values, separate from collection and Card scheduling. `Database/NotebookStore` owns the
+review/link schemas and value adapters on the existing Core; `LocalDatabase+LingroveNotebookReview`
+composes explicit enrollment, Card/provenance, exercise ownership and pending operations in one
+transaction. `LingroveNotebookIO` returns these values from background connections to the same
+database. CardStore's shared SQL eligibility predicate gates managed exercises before queue
+pagination and in due summaries; independent Cards keep their original behavior. Native module
+tests mirror this boundary under `FlashcardsTests/Notebook`. UI enrollment wiring remains a
+separate delivery step, with current evidence tracked in the integration document.
+
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
 validates sizes and serializes only app-generated formatting. `VocabularyImageStorage` is owned by

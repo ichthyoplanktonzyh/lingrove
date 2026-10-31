@@ -125,6 +125,14 @@ The user's explicit choice to practice a corpus sense in a review tool, with its
 state. Collecting or preparing material alone does not create this choice.
 _Avoid_: equating enrollment with collection, knowledge adoption or the existence of a review draft.
 
+**Paused review participation / 暂停复习**:
+Temporarily stopping a selected sense from entering practice while retaining its exercises and
+memory progress. Pausing does not remove the material from the personal corpus.
+
+**Withdrawn review participation / 退出复习**:
+The user's explicit removal of a sense from their current practice selection. Prior exercises
+and history remain available; practicing it again requires another explicit choice.
+
 **Built-in review / 内置复习**:
 Lingrove's own practice, scheduling and history, accessed from Mac and mobile as one system.
 Its progress is independent of an optional external tool's scheduling and history.
