@@ -673,8 +673,21 @@ transaction. Migration alone backfills old batches, so missing state on reopen f
 chooses apply/cancel from persisted intent. `LingroveNotebookNetworkRunner` captures the original
 account generation before metadata negotiation, consumes only matching connections, and composes
 window staging and atomic apply without holding SQLite transactions across network waits.
-It currently has the opt-in real-HTTP integration consumer; production trigger/lifecycle wiring
-remains separate. `LocalNotebookHTTP` uses its own fixture plan instead of default local acceptance.
+`FlashcardsStore` supplies `LingroveNotebookCloudSync` to the existing single-flight runtime;
+save, refresh and explicit retry use that ordinary lane. `LocalNotebookHTTP` uses its own fixture
+plan instead of default local acceptance.
+
+`VocabularyWireStagedUpload` binds an explicit staged planner batch to its original frozen bytes,
+raw digest and descriptor. `VocabularyWireStagedJSON` rejects duplicate keys/scalar faults without
+normalizing the saved body. Ordinary planning/restoration/decoding keep the original 2 MiB/10k
+limits; staged factories are separate opt-ins. `VocabularyWireConfirmationValues` models compact
+decisions and bounded UUID pages; `VocabularyWireConfirmationAccumulator` checks every member
+against the frozen request and both stream hashes before issuing a non-Codable proof. Conversion
+to a large ordinary outcome is currently in-memory only: schema 32's receipt codec remains 10k.
+The staged URLSession methods are not called by the production runner. Only the explicit
+`privateStagedTransport` server composition option mounts their routes for loopback acceptance;
+production composition and capability negotiation do not enable them. Actual staged SQLite
+durability, transport closure recovery and rollout/resource gates remain separate work.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

@@ -5,13 +5,16 @@ import LingroveNotebook
 /// part of the batch; hosts persist target entities separately from exact HTTP
 /// bytes and revalidate both against the unchanged confirmed baseline on reopen.
 public nonisolated struct VocabularyWireUploadBatch: Sendable {
+    public enum Transport: String, Codable, Sendable { case direct, staged }
     public let scope: VocabularyWireWindowScope
     public let baseSequence: VocabularyWireSequence
     public let request: VocabularyWireGroupRequest
     public let targetEntities: [VocabularyWireEntity]
-    public func encodedBody() throws -> Data { try request.encodedBody() }
-    fileprivate init(scope: VocabularyWireWindowScope, baseSequence: VocabularyWireSequence, request: VocabularyWireGroupRequest, targetEntities: [VocabularyWireEntity]) {
-        self.scope = scope; self.baseSequence = baseSequence; self.request = request; self.targetEntities = targetEntities
+    public let transport: Transport
+    public func encodedBody() throws -> Data { try transport == .direct ? request.encodedBody() : request.encodedStagedBody() }
+    fileprivate init(scope: VocabularyWireWindowScope, baseSequence: VocabularyWireSequence, request: VocabularyWireGroupRequest,
+                     targetEntities: [VocabularyWireEntity], transport: Transport) {
+        self.scope = scope; self.baseSequence = baseSequence; self.request = request; self.targetEntities = targetEntities; self.transport = transport
     }
 }
 
@@ -20,16 +23,27 @@ public nonisolated struct VocabularyWireUploadBatch: Sendable {
 public nonisolated enum VocabularyWireUploadPlanner {
     public static func make(local: VocabularyDocument, base: VocabularyWireServerShadow,
                             initializeEmpty: Bool = false) throws -> VocabularyWireUploadBatch? {
+        try make(local: local, base: base, initializeEmpty: initializeEmpty, transport: .direct)
+    }
+    /// Explicit opt-in for the staged transport. Existing hosts and persisted
+    /// direct batches keep their original budget until their own durable store
+    /// and capability negotiation support staged identities.
+    public static func makeStaged(local: VocabularyDocument, base: VocabularyWireServerShadow,
+                                  initializeEmpty: Bool = false) throws -> VocabularyWireUploadBatch? {
+        try make(local: local, base: base, initializeEmpty: initializeEmpty, transport: .staged)
+    }
+    private static func make(local: VocabularyDocument, base: VocabularyWireServerShadow, initializeEmpty: Bool,
+                             transport: VocabularyWireUploadBatch.Transport) throws -> VocabularyWireUploadBatch? {
         let target = try VocabularyWireProjectionCodec.project(local, notebookID: base.scope.notebookID).entities
         if !base.initialized && !initializeEmpty && target.count == 1 && local == VocabularyDocument() { return nil }
         let changes = try differences(target: target, base: base)
         guard !changes.isEmpty else { return nil }
-        guard changes.count <= 10_000 else { throw VocabularyWireUploadError.requestTooLarge }
+        guard changes.count <= (transport == .direct ? 10_000 : VocabularyWireStagedLimits.maximumMembers) else { throw VocabularyWireUploadError.requestTooLarge }
         let request = VocabularyWireGroupRequest(notebookID: base.scope.notebookID, groupID: UUID(), replicaID: base.scope.replicaID,
             members: changes.map { .init(memberID: UUID(), change: $0) })
-        _ = try request.encodedBody()
+        _ = try transport == .direct ? request.encodedBody() : request.encodedStagedBody()
         return .init(scope: base.scope, baseSequence: base.sequence, request: request,
-            targetEntities: acknowledgedTarget(target, changes: changes, base: base))
+            targetEntities: acknowledgedTarget(target, changes: changes, base: base), transport: transport)
     }
 
     private static func acknowledgedTarget(_ target: [VocabularyWireEntity], changes: [VocabularyWireMutation],
@@ -51,9 +65,17 @@ public nonisolated enum VocabularyWireUploadPlanner {
 
     public static func restore(body: Data, targetEntities: [VocabularyWireEntity], expectedBaseSequence: VocabularyWireSequence,
                                base: VocabularyWireServerShadow) throws -> VocabularyWireUploadBatch {
+        try restore(body: body, targetEntities: targetEntities, expectedBaseSequence: expectedBaseSequence, base: base, transport: .direct)
+    }
+    public static func restoreStaged(body: Data, targetEntities: [VocabularyWireEntity], expectedBaseSequence: VocabularyWireSequence,
+                                     base: VocabularyWireServerShadow) throws -> VocabularyWireUploadBatch {
+        try restore(body: body, targetEntities: targetEntities, expectedBaseSequence: expectedBaseSequence, base: base, transport: .staged)
+    }
+    private static func restore(body: Data, targetEntities: [VocabularyWireEntity], expectedBaseSequence: VocabularyWireSequence,
+                                base: VocabularyWireServerShadow, transport: VocabularyWireUploadBatch.Transport) throws -> VocabularyWireUploadBatch {
         guard expectedBaseSequence == base.sequence else { throw VocabularyWireUploadError.invalidRequest }
-        guard body.count <= 2 * 1024 * 1024 else { throw VocabularyWireUploadError.requestTooLarge }
-        let request = try JSONDecoder().decode(VocabularyWireGroupRequest.self, from: body)
+        guard body.count <= (transport == .direct ? 2 * 1024 * 1024 : VocabularyWireStagedLimits.maximumBodyBytes) else { throw VocabularyWireUploadError.requestTooLarge }
+        let request = try transport == .direct ? JSONDecoder().decode(VocabularyWireGroupRequest.self, from: body) : VocabularyWireGroupRequest.stagedRequest(from: body)
         guard request.notebookID == base.scope.notebookID, request.replicaID == base.scope.replicaID else { throw VocabularyWireUploadError.invalidRequest }
         _ = try VocabularyWireProjectionCodec.materializeComplete(targetEntities, notebookID: base.scope.notebookID)
         let expected = try differences(target: targetEntities, base: base)
@@ -62,7 +84,7 @@ public nonisolated enum VocabularyWireUploadPlanner {
               zip(targetEntities, acknowledgedTarget(targetEntities, changes: expected, base: base)).allSatisfy({
                   VocabularyWireJSON.object($0.fields).hasSameWireValue(as: .object($1.fields))
               }) else { throw VocabularyWireUploadError.invalidRequest }
-        return .init(scope: base.scope, baseSequence: base.sequence, request: request, targetEntities: targetEntities)
+        return .init(scope: base.scope, baseSequence: base.sequence, request: request, targetEntities: targetEntities, transport: transport)
     }
 
     private static func differences(target: [VocabularyWireEntity], base: VocabularyWireServerShadow) throws -> [VocabularyWireMutation] {

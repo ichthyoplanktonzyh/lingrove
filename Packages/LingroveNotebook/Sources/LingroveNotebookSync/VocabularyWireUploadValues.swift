@@ -84,7 +84,10 @@ public nonisolated struct VocabularyWireGroupRequest: Codable, Sendable {
         self.notebookID = notebookID; self.groupID = groupID; self.replicaID = replicaID; self.members = members
     }
     public init(from decoder: any Decoder) throws {
-        var f = try VocabularyWireFields(VocabularyWireJSON(from: decoder))
+        try self.init(VocabularyWireJSON(from: decoder), maximumMembers: 10_000)
+    }
+    private init(_ json: VocabularyWireJSON, maximumMembers: Int) throws {
+        var f = try VocabularyWireFields(json)
         guard try f.integer("protocolVersion") == 1 else { throw VocabularyWireUploadError.invalidRequest }
         notebookID = try f.uuid("notebookId"); groupID = try f.uuid("groupId"); replicaID = try f.uuid("replicaId")
         members = try f.array("members").map { value in
@@ -93,21 +96,35 @@ public nonisolated struct VocabularyWireGroupRequest: Codable, Sendable {
             try m.finish(); return Member(memberID: id, change: change)
         }
         try f.finish()
-        guard !members.isEmpty, members.count <= 10_000,
+        guard !members.isEmpty, members.count <= maximumMembers,
               Set(members.map(\.memberID)).count == members.count,
               Set(members.map(\.change.key)).count == members.count else { throw VocabularyWireUploadError.invalidRequest }
+    }
+    static func stagedRequest(from body: Data) throws -> Self {
+        guard body.count <= VocabularyWireStagedLimits.maximumBodyBytes else { throw VocabularyWireUploadError.requestTooLarge }
+        return try .init(VocabularyWireStagedJSON.read(body), maximumMembers: VocabularyWireStagedLimits.maximumMembers)
+    }
+    func hasSameRequest(as other: Self) -> Bool {
+        notebookID == other.notebookID && groupID == other.groupID && replicaID == other.replicaID && members.count == other.members.count
+            && zip(members, other.members).allSatisfy { $0.memberID == $1.memberID && $0.change.json.hasSameWireValue(as: $1.change.json) }
     }
     public func encode(to encoder: any Encoder) throws {
         try VocabularyWireJSON.object(["protocolVersion": .number(1), "notebookId": .uuid(notebookID), "groupId": .uuid(groupID), "replicaId": .uuid(replicaID),
             "members": .array(members.map { .object(["memberId": .uuid($0.memberID), "change": $0.change.json]) })]).encode(to: encoder)
     }
     func encodedBody() throws -> Data {
+        try encodedBody(maximumMembers: 10_000, maximumBytes: 2 * 1024 * 1024)
+    }
+    func encodedStagedBody() throws -> Data {
+        try encodedBody(maximumMembers: VocabularyWireStagedLimits.maximumMembers, maximumBytes: VocabularyWireStagedLimits.maximumBodyBytes)
+    }
+    private func encodedBody(maximumMembers: Int, maximumBytes: Int) throws -> Data {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let bytes = try encoder.encode(self)
         // This bounds the actual native request. The server independently checks
         // its canonical group budget (including workspace framing); 413 remains
         // an explicit error, never permission to split a relationship graph.
-        guard members.count <= 10_000, bytes.count <= 2 * 1024 * 1024 else { throw VocabularyWireUploadError.requestTooLarge }
+        guard members.count <= maximumMembers, bytes.count <= maximumBytes else { throw VocabularyWireUploadError.requestTooLarge }
         return bytes
     }
 }
@@ -119,6 +136,9 @@ public nonisolated struct VocabularyWireGroupReceipt: Codable, Equatable, Sendab
     public let groupID: UUID
     public let committedSequence: VocabularyWireSequence
     public let memberIDs: [UUID]
+    init(notebookID: UUID, groupID: UUID, committedSequence: VocabularyWireSequence, verifiedMemberIDs: [UUID]) {
+        self.notebookID = notebookID; self.groupID = groupID; self.committedSequence = committedSequence; memberIDs = verifiedMemberIDs
+    }
     public init(from decoder: any Decoder) throws {
         try self.init(VocabularyWireJSON(from: decoder))
     }

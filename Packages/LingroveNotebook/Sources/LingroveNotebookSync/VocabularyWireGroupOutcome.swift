@@ -13,6 +13,9 @@ public nonisolated struct VocabularyWireGroupRejection: Codable, Equatable, Send
     public let groupID: UUID
     public let memberIDs: [UUID]
     public let reason: Reason
+    init(notebookID: UUID, groupID: UUID, reason: Reason, verifiedMemberIDs: [UUID]) {
+        self.notebookID = notebookID; self.groupID = groupID; self.reason = reason; memberIDs = verifiedMemberIDs
+    }
 
     public init(from decoder: any Decoder) throws {
         try self.init(VocabularyWireJSON(from: decoder))
