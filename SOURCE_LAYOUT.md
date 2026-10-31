@@ -761,7 +761,7 @@ library. Manual sense creation does not claim the historical standalone capture 
 overlays the complete document so evidence, other entries, knowledge and tool state survive.
 `Database/NotebookStore/LingroveNotebookBackupStore` reads the complete document and
 its workspace-owned original PNGs in one SQLite read transaction. It borrows the persisted
-local identity generation from `LingroveNotebookWindowStore` without requiring cloud membership;
+local identity generation from `LingroveNotebookLocalScopeStore` without requiring cloud membership;
 metadata checks reject changed revisions, account/workspace ABA and a closed original Core.
 `Notebook/LingroveNotebookBackupExport` owns one asynchronous export, its unique private temporary
 directory and native activity lease. `LingroveNotebookIO` collects bytes on a worker, releases the
@@ -771,6 +771,21 @@ only activity completion releases a shared file. The portable `VocabularyBackup`
 corpus and original images, while native Card/review storage remains a separate backup concern.
 `FlashcardsTests/Notebook/LingroveNotebookBackupExportIntegrationTests` crosses those real
 SQLite, file, shared-archive and activity-lifetime boundaries.
+
+`Database/NotebookStore/LingroveNotebookLocalScopeStore` borrows a transaction to read the durable
+account/workspace generation also used by wire windows. `LingroveNotebookSnapshot` captures it
+with the document; local saves compare it inside the writer transaction and preserve it in save
+and sync results. It never enters the portable document or server payload. A stale draft cannot
+acquire a new generation when Save or export starts. `LingroveNotebookLocalScopeIntegrationTests`
+checks actual identity triggers, Unicode identity bytes, background save/restore and library scope.
+`Notebook/LingroveNotebookCollectionChange` freezes one sense selection, desired collection state
+and baseline until confirmation/submission. Its pure operation edits canonical collections only;
+recollection selects accepted claims without rewriting their evidence or claiming a legacy favorite
+slot. `LingroveNotebookIO` and the library reuse the normal fenced save/journal path. Sense UI uses
+a native destructive confirmation that discloses personal-content loss and, when present, legacy
+review-plan/Anki-link loss. Native participation, Card/FSRS state and review events remain separate.
+`LingroveNotebookCollectionIntegrationTests` compares complete documents and complete persisted
+review/queue rows; UI tests cover the collection filter, cancellation, recollection and relaunch.
 
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
