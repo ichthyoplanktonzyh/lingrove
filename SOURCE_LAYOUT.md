@@ -645,8 +645,15 @@ retaining clocks/tombstones and validating the resulting graph before materializ
 no persistence or local pending edits. The iOS `LingroveNotebookWindowStore`, owned by
 `LocalDatabase`, stages resumable pages in the existing SQLite connection. Schema 29 rotates
 an account/workspace generation in SQL so late responses cannot recreate a discarded stage.
-Completion rechecks the lease and binding after decoding, and returns only the framing proof;
-the future apply transaction still owns adoption, private overlay, pending rebase and cursor.
+Completion rechecks the lease and binding after decoding, and returns only the framing proof.
+`VocabularyWireRebase` overlays unacknowledged public intent onto the next confirmed shadow,
+using field/reset clocks and strict graph reconstruction. The iOS `LingroveNotebookSyncStore`
+prepares a value and compares local/remote revisions again inside its apply transaction. Schema
+30 preserves the separate local/server book binding, confirmed records, private remainders and
+cursor with a byte-framed integrity digest. Its host-only `LingroveNotebookPrivateStateCodec`
+archives unmatched tool state without making public sync values Codable. Local saves and remote
+apply borrow one `LingroveNotebookStore.replaceRows` writer; the caller owns journal/header
+semantics. An apply never acknowledges old journals or releases held Card/review operations.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

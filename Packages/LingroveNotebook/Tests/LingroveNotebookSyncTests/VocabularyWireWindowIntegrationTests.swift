@@ -605,7 +605,163 @@ struct VocabularyWireWindowIntegrationTests {
     }
 }
 
+extension VocabularyWireWindowIntegrationTests {
+    @Test("Rebase preserves an unsynced populated local book when the server is uninitialized")
+    func rebaseUninitializedServerPreservesLocalGraphAndPrivateState() throws {
+        let original = try VocabularyWireTestFixture.document()
+        let empty = try Self.verify(Self.window(records: [], scope: Self.scope, highWaterSequence: "0", initialized: false))
+        let result = try VocabularyWireRebase.prepare(local: original, base: .empty(scope: Self.scope), window: empty, now: Self.now)
+        #expect(!result.shadow.initialized)
+        #expect(result.shadow.records.isEmpty)
+        #expect(result.materialization.document == original)
+        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
+    }
+
+    @Test("Rebase combines independent fields and add-only tags while retaining local private tools")
+    func rebaseCombinesPublicIntentWithoutUploadingPrivateState() throws {
+        let original = try VocabularyWireTestFixture.document()
+        let base = try Self.rebaseBase(original)
+        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        var local = original, remote = original, expected = original
+        local.collections[index].note = "local note\u{0000}"
+        local.collections[index].tags.append("local tag")
+        remote.collections[index].tags.append("remote tag")
+        expected.collections[index].note = "local note\u{0000}"
+        expected.collections[index].tags += ["remote tag", "local tag"]
+        let result = try VocabularyWireRebase.prepare(local: local, base: base,
+            window: Self.rebaseDelta(original: original, remote: remote, additiveTags: true), now: Self.now)
+        #expect(result.shadow.sequence.rawValue == "2")
+        #expect(result.materialization.document == expected)
+        #expect(try result.shadow.materialize().document.collections[index].note == original.collections[index].note)
+        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
+        #expect(result.materialization.unattachedPrivateState.explanations.isEmpty)
+    }
+
+    @Test("Rebase rejects concurrent scalar edits, list replacements, and a field changed back to its earlier value")
+    func rebaseConflictsRespectFieldClocksAndResets() throws {
+        let original = try VocabularyWireTestFixture.document()
+        let base = try Self.rebaseBase(original)
+        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        var local = original, remote = original
+        local.collections[index].note = "cafe\u{0301}"
+        remote.collections[index].note = "caf\u{00E9}"
+        try Self.expectRebaseConflict(local, base: base, window: Self.rebaseDelta(original: original, remote: remote), field: "note")
+        local = original; remote = original
+        local.collections[index].tags.append("mine")
+        remote.collections[index].tags.append("theirs")
+        try Self.expectRebaseConflict(local, base: base, window: Self.rebaseDelta(original: original, remote: remote), field: "tags")
+        // An intervening replacement can restore the same visible value. Its
+        // advanced clock still prevents blindly rebasing an older local edit.
+        var row = try #require(Self.rows(from: VocabularyWireProjectionCodec.project(original, notebookID: Self.scope.notebookID).entities)
+            .first { $0["entityType"] as? String == "collection" && $0["entityId"] as? String == VocabularyWireTestFixture.targetSenseID.uuidString.lowercased() })
+        row["version"] = "2"
+        var versions = try Self.stringDictionary(row["fieldVersions"]), resets = try Self.stringDictionary(row["fieldResets"])
+        versions["tags"] = "2"; resets["tags"] = "2"
+        row["fieldVersions"] = versions; row["fieldResets"] = resets
+        let reverted = try Self.verify(Self.window(records: [row], scope: Self.scope, mode: .incremental,
+            afterSequence: "1", highWaterSequence: "2", initialized: true))
+        try Self.expectRebaseConflict(local, base: base, window: reverted, field: "tags")
+    }
+
+    @Test("Remote plan retirement returns private bindings and audio instead of recreating the plan")
+    func rebaseReturnsUnattachedPrivateStateAcrossPlanDeletion() throws {
+        let original = try VocabularyWireTestFixture.document()
+        let base = try Self.rebaseBase(original)
+        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        var remote = original
+        remote.collections[index].review = nil
+        let result = try VocabularyWireRebase.prepare(local: original, base: base,
+            window: Self.rebaseDelta(original: original, remote: remote), now: Self.now)
+        #expect(result.materialization.document.collections[index].review == nil)
+        #expect(result.materialization.unattachedPrivateState.reviews.contains {
+            $0.senseID == VocabularyWireTestFixture.targetSenseID && $0.role == .legacy && !$0.bindings.isEmpty && !$0.audio.isEmpty
+        })
+        let next = try Self.verify(Self.window(records: [], scope: Self.scope, mode: .incremental,
+            afterSequence: "2", highWaterSequence: "2", initialized: true))
+        let again = try VocabularyWireRebase.prepare(local: result.materialization.document, base: result.shadow,
+            window: next, retaining: result.materialization.unattachedPrivateState, now: Self.now)
+        #expect(again.materialization.document == result.materialization.document)
+        #expect(again.materialization.unattachedPrivateState == result.materialization.unattachedPrivateState)
+    }
+
+    @Test("Rebase rejects colliding offline creation and re-creation of a confirmed deleted identity")
+    func rebaseRejectsCreationAndRetiredIdentityCollisions() throws {
+        let original = try VocabularyWireTestFixture.document()
+        var local = original
+        local.collections[0].note = "independent creator"
+        let rows = try Self.rows(from: VocabularyWireProjectionCodec.project(original, notebookID: Self.scope.notebookID).entities)
+        let bootstrap = try Self.verify(Self.window(records: rows, scope: Self.scope, initialized: true))
+        #expect(throws: VocabularyWireRebaseError.self) {
+            try VocabularyWireRebase.prepare(local: local, base: .empty(scope: Self.scope), window: bootstrap, now: Self.now)
+        }
+        let entry = VocabularyEntry(id: UUID(), expression: "retired", dictionaryForm: "retired", language: nil,
+            kind: .word, senses: [], createdAt: Self.now, updatedAt: Self.now)
+        let populated = VocabularyDocument(entries: [entry])
+        let retiredBase = try Self.rebaseBase(populated)
+        let deleted = try VocabularyWireRebase.prepare(local: populated, base: retiredBase,
+            window: Self.rebaseDelta(original: populated, remote: VocabularyDocument()), now: Self.now)
+        let noChanges = try Self.verify(Self.window(records: [], scope: Self.scope, mode: .incremental,
+            afterSequence: "2", highWaterSequence: "2", initialized: true))
+        #expect(throws: VocabularyWireRebaseError.self) {
+            try VocabularyWireRebase.prepare(local: populated, base: deleted.shadow, window: noChanges, now: Self.now)
+        }
+    }
+
+    @Test("Separately valid edits that combine into an orphan graph fail without a repaired partial document")
+    func rebaseRejectsInvalidCombinedGraph() throws {
+        let entry = VocabularyEntry(id: UUID(), expression: "anchor", dictionaryForm: "anchor", language: nil,
+            kind: .word, senses: [], createdAt: Self.now, updatedAt: Self.now)
+        let original = VocabularyDocument(entries: [entry])
+        var local = original
+        local.catalog[0].senses.append(.init(id: UUID(), meaning: "a local sense", meaningLanguage: .english,
+            meaningOrigin: .user, createdAt: Self.now, updatedAt: Self.now))
+        try VocabularyDocumentValidation.validate(local)
+        #expect(throws: VocabularyWireRebaseError.invalidMergedGraph) {
+            try VocabularyWireRebase.prepare(local: local, base: Self.rebaseBase(original),
+                window: Self.rebaseDelta(original: original, remote: VocabularyDocument()), now: Self.now)
+        }
+    }
+}
+
 private extension VocabularyWireWindowIntegrationTests {
+    static func rebaseBase(_ document: VocabularyDocument) throws -> VocabularyWireServerShadow {
+        let rows = try rows(from: VocabularyWireProjectionCodec.project(document, notebookID: scope.notebookID).entities)
+        return try VocabularyWireServerShadow.empty(scope: scope).applying(verify(window(records: rows, scope: scope, initialized: true)), now: now)
+    }
+    static func rebaseDelta(original: VocabularyDocument, remote: VocabularyDocument, additiveTags: Bool = false) throws -> VocabularyWireVerifiedWindow {
+        let before = try VocabularyWireProjectionCodec.project(original, notebookID: scope.notebookID).entities
+        let after = try VocabularyWireProjectionCodec.project(remote, notebookID: scope.notebookID).entities
+        func key(_ e: VocabularyWireEntity) -> String { e.entityType.rawValue + ":" + e.entityID }
+        let old = Dictionary(uniqueKeysWithValues: before.map { (key($0), $0) })
+        let next = Dictionary(uniqueKeysWithValues: after.map { (key($0), $0) })
+        let encoder = JSONEncoder.wireEncoder()
+        var changes: [[String: Any]] = []
+        for e in before where next[key(e)] == nil { changes.append(tombstone(entityType: e.entityType.rawValue, entityID: e.entityID, version: "2")) }
+        for e in after {
+            guard let b = old[key(e)] else { changes.append(try row(from: e, version: "2")); continue }
+            let changed = try e.fields.keys.filter { try encoder.encode(e.fields[$0]) != encoder.encode(b.fields[$0]) }
+            if changed.isEmpty { continue }
+            var record = try row(from: e)
+            record["version"] = "2"
+            var clocks = try stringDictionary(record["fieldVersions"]), resets = try stringDictionary(record["fieldResets"])
+            for field in changed {
+                clocks[field] = "2"
+                if !(additiveTags && field == "tags") { resets[field] = "2" }
+            }
+            record["fieldVersions"] = clocks; record["fieldResets"] = resets; changes.append(record)
+        }
+        return try verify(window(records: changes, scope: scope, mode: .incremental, afterSequence: "1", highWaterSequence: "2", initialized: true))
+    }
+    static func expectRebaseConflict(_ local: VocabularyDocument, base: VocabularyWireServerShadow,
+                                     window: VocabularyWireVerifiedWindow, field: String) throws {
+        do {
+            _ = try VocabularyWireRebase.prepare(local: local, base: base, window: window, now: now)
+            Issue.record("Expected a conflict for \(field)")
+        } catch let VocabularyWireRebaseError.conflicts(conflicts) {
+            #expect(conflicts.contains { $0.field == field && $0.reason == .fieldChanged })
+        }
+    }
+
     static func assertUnchangedClockRejectsCanonicalEquivalentText(in rows: [[String: Any]]) throws {
         let nfc = "caf\u{00E9}"
         let nfd = "cafe\u{0301}"
