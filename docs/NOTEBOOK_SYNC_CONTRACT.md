@@ -1,7 +1,7 @@
 # 语料实体同步契约（内部验证阶段）
 
-当前实现是服务端带类型的语料写入与读取模块，尚未开放 HTTP/MCP，也未接入移动端
-上传、分页拉取或账户迁移。完整目标仍按 [移动计划](MOBILE_NOTEBOOK_PLAN.md) 推进。
+当前实现包含服务端带类型的语料写入/读取模块与原生纯值转换模块，尚未开放 HTTP/MCP，
+也未接入移动端上传、分页拉取或账户迁移。完整目标仍按 [移动计划](MOBILE_NOTEBOOK_PLAN.md) 推进。
 字段定义以 [`fields.ts`](../Nibomo/apps/backend/src/notebook/corpus/fields.ts) 为准，修改
 与身份契约以 [`contract.ts`](../Nibomo/apps/backend/src/notebook/corpus/contract.ts) 为准。
 它们没有复用 SQLite codec 的 opaque payload、索引或整本备份格式。
@@ -17,8 +17,9 @@ UUID 使用小写字符串。未知学习语言保持 null，不能因界面语�
 标签是另一种值。明确的 presence 字段区分原文档中的 nil 与空内容/复习卡/模板集合。
 设备专用的 Anki binding、active binding、音频回执、provider 地址、缓存文件名和
 持久化索引不进入这些字段。计划和模板保留准备材料及用户选择，存在计划不表示
-选入内置复习。解释的本地 `occurrenceIdentity` 不作为远程字段；后续原生适配仍须
-重建这个派生键并验证已有解释的身份，当前不能声称客户端往返已完成。
+选入内置复习。解释的本地 `occurrenceIdentity` 不作为远程字段；原生转换重建当前已
+接受例句的派生键（包括未收藏例句），并保留候选/拒绝判断的本地身份快照。
+完整窗口和应用存储提交仍由宿主负责。
 
 时间使用明确的 Foundation reference seconds：自 2001-01-01T00:00:00Z 起的有限
 Double 秒数，保留分数精度。它不是 Unix 秒或毫秒。服务器提交序号、实体版本和
@@ -52,5 +53,23 @@ occurrence、解释判断与收藏连接增加，无需重写父义项。
 提交日志只保留变更身份，避免建立永久的私人正文编辑历史。后续 pull 必须先固定、
 物化并原子应用完整当前状态窗口，不能把身份日志当作历史值回放，见
 [ADR 0002](adr/0002-corpus-current-state-windows.md)。跨请求分页、大备份的分阶段暂存、
-窗口清理、媒体字节、原生适配、受管理练习及真实客户端验收仍需完成；不得把超过
+窗口清理、媒体字节、原生网络/存储适配、受管理练习及真实客户端验收仍需完成；不得把超过
 单组上限的语料简单拆成会暴露半个关系图的独立提交。
+
+## 原生文档边界
+
+[`LingroveNotebookSync`](../Packages/LingroveNotebook/Sources/LingroveNotebookSync/VocabularyWireProjection.swift)
+直接读取规范领域数组，以明确的公开字段形成远程实体；不借用本地 SQL payload 或备份。
+重组入口只接受宿主已确认完整的窗口，拒绝缺根、未消费的子行、未知字段和无效领域图，
+不调用会修理/裁剪内容的 `prepare`。它无法自行判断传输是否遗漏一个无引用的独立记录。
+
+私有状态按服务端生词本归属单独返回。绑定保留原始义项身份并可沿 `mergedFrom` 追溯；
+音频回执仅在计划身份与公开材料均匹配时附着。远端已删除或改写的计划不会被私有状态
+重建，未匹配值作为 `unattachedPrivateState` 返回，宿主必须将它与文档一起持久保存。
+这个状态和整体 projection 刻意不提供 Codable，公开实体不能意外夹带工具地址、绑定
+或音频文件名。当前模块没有网络、数据库、账户接管、复习选入或 UI 副作用。
+
+历史本地校验允许同一 owner 下重复解释 UUID，而远程身份为 `ownerID:explanationID`。
+这种文档在投影时明确报 `duplicateEntity`，不会自动去重、改 UUID 或丢掉一条解释；
+后续接管流程必须向用户呈现无法表示的输入，保留原本地数据。不同 owner 复用解释
+UUID 仍合法。转换成功也不替代服务端组大小、权限、版本与最终图校验。

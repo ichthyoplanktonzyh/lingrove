@@ -617,8 +617,18 @@ tool receipts; `contract.ts` owns typed mutations and stable relationship identi
 validates the complete candidate lexical/meaning/classification graph with transaction-local
 indexes. `store.ts` borrows the existing group executor to combine field-version merging,
 tombstones, canonical writes and key-only commit coverage. It does not send data to legacy Card
-sync or enroll review. Native projection, transport windows and media bytes remain separate work;
+sync or enroll review. Transport windows and media bytes remain separate work;
 the internal contract and retention decision live in `docs/NOTEBOOK_SYNC_CONTRACT.md` and ADR0002.
+
+Shared `LingroveNotebookSync` maps a strictly valid canonical document to the explicit remote
+entities and reconstructs only a host-verified complete snapshot. `VocabularyWireEncoding` and
+`VocabularyWireReading` name every public leaf; `VocabularyWireDecoding` owns per-call ordered
+owner indexes and rejects unconsumed rows. `VocabularyWirePrivateOverlay` captures and restores
+device-local tool state, returning unmatched values to the host instead of resurrecting remote
+plans. `VocabularyWireProjectionCodec` is the stateless public boundary; its projection and
+private-state results are deliberately not Codable. The host still owns scope/adoption, transport
+coverage, durable private storage and the atomic document/window commit. It borrows no SQLite
+row codec, network service, app lifecycle or UI ownership.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

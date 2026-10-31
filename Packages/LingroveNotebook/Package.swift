@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "LingroveNotebook", targets: ["LingroveNotebook"]),
         .library(name: "LingroveNotebookUI", targets: ["LingroveNotebookUI"]),
         .library(name: "LingroveNotebookPersistenceCodec", targets: ["LingroveNotebookPersistenceCodec"]),
+        .library(name: "LingroveNotebookSync", targets: ["LingroveNotebookSync"]),
         .library(name: "LingroveNotebookStorage", targets: ["LingroveNotebookStorage"])
     ],
     targets: [
@@ -18,6 +19,7 @@ let package = Package(
         .target(name: "LingroveNotebook", dependencies: ["LingroveTextRules"]),
         .target(name: "LingroveNotebookUI", dependencies: ["LingroveNotebook"]),
         .target(name: "LingroveNotebookPersistenceCodec", dependencies: ["LingroveNotebook"]),
+        .target(name: "LingroveNotebookSync", dependencies: ["LingroveNotebook"]),
         .target(
             name: "LingroveNotebookStorage",
             dependencies: ["LingroveNotebook", "LingroveNotebookPersistenceCodec"],
@@ -32,6 +34,10 @@ let package = Package(
             name: "LingroveNotebookStorageTests",
             dependencies: ["LingroveNotebookStorage", "LingroveNotebookPersistenceCodec"],
             resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "LingroveNotebookSyncTests",
+            dependencies: ["LingroveNotebook", "LingroveNotebookSync"]
         )
     ]
 )
