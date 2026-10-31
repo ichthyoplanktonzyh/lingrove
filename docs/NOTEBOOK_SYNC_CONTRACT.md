@@ -164,9 +164,29 @@ receipt 仍不删日志；随后窗口须覆盖该序号及每个成员的规范
 receipt ledger 插入和冻结组删除。较新的 journal、受管理 Card/评分 hold 及旧 outbox
 不在该退役集合。完成 ledger 不留语料正文；下一组已存在时，旧确认仍可幂等返回。
 
-当前只实现正向确认的内部边界，生产 HTTP 调度尚未接入。权限、超时或未知失败
-必须保留冻结请求；单次冲突响应也不能证明旧请求永远不会提交。接调度前还需建设
-服务端可验证的终态拒绝/撤销协议，防止超时重试仍在服务端执行时过早改组。冲突
-处理界面、无公开差异日志的本地收口、大图暂存和完整多端网络验收继续按 M3 推进。
-终态决定必须与该 book 的提交串行，绑定原 group/replica/请求摘要，并阻止同一旧组
-后续再提交；保留可回放的状态元数据即可，不新增永久语料正文历史。
+原生目前只消费正向确认，生产 HTTP 调度尚未接入。权限、超时或未知失败必须保留
+冻结请求；单次冲突响应也不能证明旧请求永远不会提交。原生拒绝结果的验证与持久化、
+冲突处理界面、无公开差异日志的本地收口、大图暂存和完整多端网络验收继续按 M3 推进。
+
+## 服务端终态决定与 HTTP 入口
+
+0237 迁移增加只含身份、摘要、有序成员和固定原因的拒绝账本；不留请求正文。
+`settleNotebookGroup` 在既有工作区/replica 保护及 book 锁内重放一个既定结果：已提交，
+或已拒绝。只有确切的领域冲突和无效语料会成为终态拒绝；晚发生的领域拒绝先回滚
+savepoint 中的正文、正向账本、成员与游标，再持久拒绝决定。未知 SQL、认证、超时
+和提交结果不明均保持普通错误，不能据此删除冻结请求。设计原因见
+[ADR 0003](adr/0003-terminal-notebook-groups.md)。
+
+cancel 使用同一份冻结组：若提交已赢得竞争，返回原提交确认，不撤回已保存内容；
+否则持久 cancelled 结果。重放校验原 replica、协议、摘要及有序完整成员；换正文或
+actor 不能复用该 group。数据库触发器同样阻止旧内部接口或直接 INSERT 复活已拒绝
+身份。看不到 book 时仍由既有 RLS/FK 拒绝，不改变旧权限错误。旧接口保留原异常行为，
+并可继续在原迁移边界运行。
+
+服务端已注册工作区下的 notebook capabilities、open、groups/apply、groups/cancel
+及 windows/open、page、release 路由；具体请求形状与上限以
+[`httpContract.ts`](../Nibomo/apps/backend/src/notebook/httpContract.ts) 和
+[`routes/notebook.ts`](../Nibomo/apps/backend/src/routes/notebook.ts) 为准。每次先复用
+认证/CSRF、实际 membership 和 schema readiness，再读取有字节上限的 UTF-8 JSON。
+所有响应 no-store；数据库操作沿用请求 deadline。用户身份来自认证结果，公开 writer
+固定没有目录安装权限。此处没有部署，也尚未接入原生账户绑定或网络调度。
