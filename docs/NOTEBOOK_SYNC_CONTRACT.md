@@ -52,8 +52,8 @@ occurrence、解释判断与收藏连接增加，无需重写父义项。
 
 提交日志只保留变更身份，避免建立永久的私人正文编辑历史。后续 pull 必须先固定、
 物化并原子应用完整当前状态窗口，不能把身份日志当作历史值回放，见
-[ADR 0002](adr/0002-corpus-current-state-windows.md)。跨请求分页、大备份的分阶段暂存、
-窗口清理、媒体字节、原生网络/存储适配、受管理练习及真实客户端验收仍需完成；不得把超过
+[ADR 0002](adr/0002-corpus-current-state-windows.md)。内部固定窗口已实现，原生分阶段暂存、
+媒体字节、网络/存储适配、受管理练习及真实客户端验收仍需完成；不得把超过
 单组上限的语料简单拆成会暴露半个关系图的独立提交。
 
 ## 原生文档边界
@@ -73,3 +73,32 @@ occurrence、解释判断与收藏连接增加，无需重写父义项。
 这种文档在投影时明确报 `duplicateEntity`，不会自动去重、改 UUID 或丢掉一条解释；
 后续接管流程必须向用户呈现无法表示的输入，保留原本地数据。不同 owner 复用解释
 UUID 仍合法。转换成功也不替代服务端组大小、权限、版本与最终图校验。
+
+## 固定读取窗口
+
+[`windows/store.ts`](../Nibomo/apps/backend/src/notebook/corpus/windows/store.ts) 在与写入相同
+的生词本锁内捕获当前值与高水位。bootstrap 返回全部规范记录，包括 tombstone；
+incremental 返回 `(afterSequence, highWaterSequence]` 内受影响身份的当前记录，每个
+身份只出现一次。只含 key 的日志从不充当历史正文。未来日志裁剪须另加保留水位与
+bootstrap 回退，目前不会悄悄跳过旧 key。
+
+页是 typed `CorpusRecord[]` JSON 的连续 UTF-8 字节流，固定最多 256 KiB，通过 base64
+传输，可跨 JSON token/实体/码点。下载者先验证并拼接原始字节，再解码 JSON；不能
+逐页当成实体数组解析。`CorpusRecord` 包含版本、删除身份和字段时钟，与原生公开
+`VocabularyWireEntity` 不同。宿主先完整更新自己的服务端 shadow，再提取 live entities
+给领域重组器；本地未上传变更、私有状态和游标仍须在同一提交边界保留。
+
+页 SHA 使用原始 bytes。顺序描述符是 `ordinal:sha256:byteCount` 加一个换行，按从零
+开始的连续 ordinal 拼接后求 SHA256。manifest 使用
+[`contract.ts`](../Nibomo/apps/backend/src/notebook/corpus/windows/contract.ts) 中固定 ASCII
+行顺序，包含账户（UTF-8 base64url）、工作区、生词本、replica、窗口身份、模式、起止
+游标、initialized、到期毫秒、记录/页/字节总数和描述符 SHA；最后也有换行。全部页和
+完整 manifest 校验成功之前，不得推进本地游标。相同参数的未过期窗口可以重放，
+重放不续期；release 只是幂等缓存删除，不能证明客户端下载或本地提交成功。
+
+空书也有 `[]` 的一页两字节，`initialized` 只由不可删除的规范根决定；它为 false 时
+不能清空已有本地书。十五分钟 lease 到期后拒绝读取；membership 删除立即级联清理。
+维护任务每批最多处理 128 页（32 MiB）和 100 个已空 header，不清活窗口。代码复用
+既有每分钟任务，尚未部署；失败会保留重试，同时继续原媒体工作负载，不上传语料遥测。
+单次物化仍持有书锁，内存包含当前实体及其 JSON/UTF-8 表示；没有宣称大规模吞吐、
+原生下载恢复或真实多设备同步已验收。

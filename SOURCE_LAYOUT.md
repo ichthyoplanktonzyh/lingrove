@@ -620,6 +620,14 @@ tombstones, canonical writes and key-only commit coverage. It does not send data
 sync or enroll review. Transport windows and media bytes remain separate work;
 the internal contract and retention decision live in `docs/NOTEBOOK_SYNC_CONTRACT.md` and ADR0002.
 
+Notebook `scope.ts` owns the shared workspace/replica lifecycle fences borrowed by group writers
+and fixed read windows. `corpus/windows/store.ts` owns one transaction per immutable lease;
+`encoding.ts` streams explicit records into fixed byte pages, and `contract.ts` binds scope,
+coverage and hashes without cross-language JSON canonicalization. Migration 0236 owns leases,
+pages, membership erasure and bounded expiry. `windows/expiry.ts` exposes only the fixed purge
+routine to the existing minute-based maintenance handler; it has no caller-selected SQL scope.
+The native host still owns shadow/staging/pending overlays and the final local commit.
+
 Shared `LingroveNotebookSync` maps a strictly valid canonical document to the explicit remote
 entities and reconstructs only a host-verified complete snapshot. `VocabularyWireEncoding` and
 `VocabularyWireReading` name every public leaf; `VocabularyWireDecoding` owns per-call ordered
