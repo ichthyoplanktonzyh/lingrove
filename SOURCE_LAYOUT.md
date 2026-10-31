@@ -624,8 +624,18 @@ composes explicit enrollment, Card/provenance, exercise ownership and pending op
 transaction. `LingroveNotebookIO` returns these values from background connections to the same
 database. CardStore's shared SQL eligibility predicate gates managed exercises before queue
 pagination and in due summaries; independent Cards keep their original behavior. Native module
-tests mirror this boundary under `FlashcardsTests/Notebook`. UI enrollment wiring remains a
-separate delivery step, with current evidence tracked in the integration document.
+tests mirror this boundary under `FlashcardsTests/Notebook`.
+
+`Notebook/LingroveNotebookReviewSnapshot` is an immutable, workspace/book/revision-scoped read
+projection; the LocalDatabase facade loads its participation groups, live Cards and provenance
+under one read transaction. `LingroveNotebookReviewActions` connects explicit UI choices to the
+library-owned mutation task, then invalidates the original queue, counts and reminders. Read-page
+tasks may be cancelled on navigation; they do not own committed participation writes. Native
+`Notebook/UI` presents participation and a separate sense picker using the existing List/Menu
+patterns. `LingroveNotebookSourceButton` passes historical provenance to its host, which resolves
+the current sense after dismissing an optional Card editor; dirty editor drafts cannot navigate
+away through that action. `AppNavigationModel` owns the Cards path used by both editor and review
+source returns. Runtime acceptance and remaining work are tracked in the integration document.
 
 The shared content values add optional, ordered text/image blocks to a sense. The existing
 `meaning` remains its compact label; user blocks never become AI usage records. `VocabularyContentPolicy`
