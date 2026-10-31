@@ -727,6 +727,10 @@ for strict older decoders. New oversized intents may fall back after the direct 
 through an ordinary pull even if staging support disappears. Production rollout and maximum-size
 resource qualification remain separate work. The existing one-minute scheduled media worker now
 calls `notebook/maintenance`, including bounded private-upload cleanup across disconnected clients.
+Migration 0241 gives that cleanup an ordered partial expression index: open rows become eligible
+at lease expiry, closed rows use their finite creation time. A fixed cutoff avoids scanning active
+headers; finite age keeps newer terminal arrivals behind older expirations. The real PostgreSQL
+boundary lives in `notebook/uploads/cleanup.postgres.integration`.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
