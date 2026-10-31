@@ -731,6 +731,12 @@ Migration 0241 gives that cleanup an ordered partial expression index: open rows
 at lease expiry, closed rows use their finite creation time. A fixed cutoff avoids scanning active
 headers; finite age keeps newer terminal arrivals behind older expirations. The real PostgreSQL
 boundary lives in `notebook/uploads/cleanup.postgres.integration`.
+Migration 0242 indexes the entity FK's child lookup for physical workspace erasure. Migration 0243
+keeps large positive-upload statistics refresh and the named member-FK drain inside the existing
+authenticated finalizer statement, then restores deferral. It adds no runtime maintenance grant.
+`testSupport/notebookStagedResources` owns opt-in synthetic inputs and immutable measurements;
+its short-lived worker isolates finalizer allocation from the producer and inherits the recorded
+database OID/role guard. These probes distinguish module observations from production admission.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
