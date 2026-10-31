@@ -653,7 +653,17 @@ prepares a value and compares local/remote revisions again inside its apply tran
 cursor with a byte-framed integrity digest. Its host-only `LingroveNotebookPrivateStateCodec`
 archives unmatched tool state without making public sync values Codable. Local saves and remote
 apply borrow one `LingroveNotebookStore.replaceRows` writer; the caller owns journal/header
-semantics. An apply never acknowledges old journals or releases held Card/review operations.
+semantics. Ordinary pulls never acknowledge journals or release held Card/review operations.
+
+`VocabularyWireUploadPlanner` computes versioned public mutations; `VocabularyWireUploadValues`
+defines strict request/receipt metadata, while only planner batches expose a validated body.
+ACK-aware rebase uses the frozen sent target to preserve post-send local edits, checking receipt
+coverage against the actual downloaded shadow. iOS `LingroveNotebookUploadStore` freezes one
+group per workspace in schema 31, binds its body/target/journal coverage to an integrity digest,
+and records receipts without prematurely advancing the remote baseline. A covering apply retires
+only captured corpus journal headers and writes a compact body-free receipt ledger in the same
+transaction. Newer journals and the held Card/review lane stay separate. Production HTTP
+orchestration and terminal rejection settlement remain outside these internal adapters.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

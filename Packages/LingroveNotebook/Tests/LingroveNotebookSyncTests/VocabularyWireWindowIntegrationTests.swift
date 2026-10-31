@@ -723,7 +723,130 @@ extension VocabularyWireWindowIntegrationTests {
     }
 }
 
+extension VocabularyWireWindowIntegrationTests {
+    @Test("Initial upload encodes every public family, excludes private tool state, and restores the same frozen request")
+    func uploadInitialPublicGraphAndRestore() throws {
+        let original = try VocabularyWireTestFixture.document(), base = VocabularyWireServerShadow.empty(scope: Self.scope)
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: original, base: base))
+        #expect(batch.request.members.count == 41)
+        #expect(Set(batch.request.members.map(\.change.entityType)).count == 29)
+        let bytes = try batch.encodedBody(), text = String(decoding: bytes, as: UTF8.self)
+        #expect(!text.contains("private-profile")); #expect(!text.contains("http://localhost:8765"))
+        let restored = try VocabularyWireUploadPlanner.restore(body: bytes, targetEntities: batch.targetEntities,
+            expectedBaseSequence: .zero, base: base)
+        #expect(restored.request.groupID == batch.request.groupID)
+        #expect(try restored.encodedBody() == bytes)
+        #expect(try VocabularyWireUploadPlanner.make(local: original, base: Self.rebaseBase(original)) == nil)
+    }
+
+    @Test("Upload diff records add-only intent and excludes unsent timestamp-only changes from the acknowledged ancestor")
+    func uploadDiffAndFrozenBaselineValidation() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var local = original
+        local.collections[0].note = "pending note"; local.collections[0].tags.append("append tag")
+        local.catalog[1].updatedAt = original.catalog[1].updatedAt.addingTimeInterval(1)
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: local, base: base))
+        #expect(batch.request.members.count == 1)
+        guard case let .patch(set, add) = batch.request.members[0].change.action else { Issue.record("Expected patch"); return }
+        #expect(set["note"] == .string("pending note")); #expect(add["tags"] == .array([.string("append tag")]))
+        let entry = try #require(batch.targetEntities.first { $0.entityType == .entry && $0.entityID == original.catalog[1].id.uuidString.lowercased() })
+        #expect(entry.fields["updatedAt"] == .number(original.catalog[1].updatedAt.timeIntervalSinceReferenceDate))
+        let unsentTimestamp = batch.targetEntities.map { value in
+            guard value.entityType == .entry, value.entityID == entry.entityID else { return value }
+            var fields = value.fields; fields["updatedAt"] = .number(local.catalog[1].updatedAt.timeIntervalSinceReferenceDate)
+            return VocabularyWireEntity(entityType: value.entityType, entityID: value.entityID, fields: fields)
+        }
+        #expect(throws: VocabularyWireUploadError.invalidRequest) {
+            try VocabularyWireUploadPlanner.restore(body: batch.encodedBody(), targetEntities: unsentTimestamp,
+                expectedBaseSequence: base.sequence, base: base)
+        }
+        #expect(throws: VocabularyWireUploadError.invalidRequest) {
+            try VocabularyWireUploadPlanner.restore(body: batch.encodedBody(), targetEntities: batch.targetEntities,
+                expectedBaseSequence: VocabularyWireSequence("2"), base: base)
+        }
+        var body = try Self.jsonObject(batch.encodedBody())
+        body["privateOverlay"] = ["endpoint":"must-not-send"]
+        #expect(throws: (any Error).self) {
+            try VocabularyWireUploadPlanner.restore(body: Self.jsonData(body), targetEntities: batch.targetEntities,
+                expectedBaseSequence: base.sequence, base: base)
+        }
+    }
+
+    @Test("A covering receipt rebases edits made after sending, including peer-deduplicated additions, but cannot cross a later reset")
+    func uploadAcknowledgementPreservesPostSendEdits() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var sent = original
+        sent.collections[0].note = "sent value"; sent.collections[0].tags += ["b", "c"]
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
+        let receipt = try Self.uploadReceipt(batch)
+        let acknowledgement = try VocabularyWireUploadAcknowledgement(batch: batch, receipt: receipt)
+        var server = sent; server.collections[0].tags = original.collections[0].tags + ["c", "b"]
+        let window = try Self.rebaseDelta(original: original, remote: server, additiveTags: true)
+        var later = sent; later.collections[0].note = "later value"; later.collections[0].tags.append("later")
+        let result = try VocabularyWireRebase.prepare(local: later, base: base, window: window, acknowledging: acknowledgement, now: Self.now)
+        #expect(result.materialization.document.collections[0].note == "later value")
+        #expect(result.materialization.document.collections[0].tags == original.collections[0].tags + ["c", "b", "later"])
+        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
+        #expect(throws: VocabularyWireRebaseError.self) {
+            try VocabularyWireRebase.prepare(local: later, base: base, window: window, now: Self.now)
+        }
+        let row = try #require(window.records.first { $0.entity.entityType == .collection })
+        var object = try Self.jsonObject(JSONEncoder.wireEncoder().encode(row))
+        object["version"] = "3"
+        var fields = try Self.dictionary(object["fields"]), clocks = try Self.stringDictionary(object["fieldVersions"]), resets = try Self.stringDictionary(object["fieldResets"])
+        fields["tags"] = ["explicit later replacement"]; clocks["tags"] = "3"; resets["tags"] = "3"
+        object["fields"] = fields; object["fieldVersions"] = clocks; object["fieldResets"] = resets
+        let replaced = try Self.verify(Self.window(records: [object], scope: Self.scope, mode: .incremental,
+            afterSequence: "1", highWaterSequence: "3", initialized: true))
+        #expect(throws: VocabularyWireRebaseError.self) {
+            try VocabularyWireRebase.prepare(local: later, base: base, window: replaced, acknowledging: acknowledgement, now: Self.now)
+        }
+    }
+
+    @Test("Receipt validation requires exact ordered members and canonical records covering the actual write")
+    func uploadReceiptRequiresExactCoverage() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var sent = original; sent.collections[0].note = "accepted note"
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
+        let receipt = try Self.uploadReceipt(batch)
+        var wrong = try Self.jsonObject(JSONEncoder().encode(receipt)); wrong["groupId"] = UUID().uuidString.lowercased()
+        let wrongReceipt = try JSONDecoder().decode(VocabularyWireGroupReceipt.self, from: Self.jsonData(wrong))
+        #expect(throws: VocabularyWireUploadError.receiptMismatch) { try wrongReceipt.validate(for: batch) }
+        let ack = try VocabularyWireUploadAcknowledgement(batch: batch, receipt: receipt)
+        let missing = try Self.verify(Self.window(records: [], scope: Self.scope, mode: .incremental,
+            afterSequence: "1", highWaterSequence: "2", initialized: true))
+        #expect(throws: VocabularyWireUploadError.incompleteReceiptCoverage) {
+            try VocabularyWireRebase.prepare(local: sent, base: base, window: missing, acknowledging: ack, now: Self.now)
+        }
+        var different = original; different.collections[0].note = "not the accepted note"
+        #expect(throws: VocabularyWireUploadError.incompleteReceiptCoverage) {
+            try VocabularyWireRebase.prepare(local: sent, base: base, window: Self.rebaseDelta(original: original, remote: different), acknowledging: ack, now: Self.now)
+        }
+    }
+
+    @Test("Oversized graph uploads fail as a whole and immutable evidence is not patched under its old identity")
+    func uploadBudgetAndImmutableEvidence() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var oversized = original
+        oversized.semantics.patterns[0].collocations += (0..<100).map { String(format: "%03d", $0) + String(repeating: "猫", count: 10_900) }
+        try VocabularyDocumentValidation.validate(oversized)
+        #expect(throws: VocabularyWireUploadError.requestTooLarge) { try VocabularyWireUploadPlanner.make(local: oversized, base: base) }
+        let source = VocabularySourceSnapshot(id: UUID(), text: "original evidence", kind: .captured, appBundleIdentifier: nil, encounteredAt: Self.now)
+        let small = VocabularyDocument(catalog: [], sources: [source], occurrences: [], interpretations: [], collections: [])
+        var changed = small
+        changed.sources[0] = .init(id: source.id, text: "replacement evidence", kind: source.kind, appBundleIdentifier: source.appBundleIdentifier, encounteredAt: source.encounteredAt)
+        #expect(throws: VocabularyWireUploadError.invalidTransition) { try VocabularyWireUploadPlanner.make(local: changed, base: Self.rebaseBase(small)) }
+    }
+}
+
 private extension VocabularyWireWindowIntegrationTests {
+    static func uploadReceipt(_ batch: VocabularyWireUploadBatch) throws -> VocabularyWireGroupReceipt {
+        let json: [String: Any] = ["protocolVersion":1,"notebookId":batch.request.notebookID.uuidString.lowercased(),
+            "groupId":batch.request.groupID.uuidString.lowercased(),"committedSequence":"2",
+            "memberIds":batch.request.members.map { $0.memberID.uuidString.lowercased() }]
+        return try JSONDecoder().decode(VocabularyWireGroupReceipt.self, from: jsonData(json))
+    }
+
     static func rebaseBase(_ document: VocabularyDocument) throws -> VocabularyWireServerShadow {
         let rows = try rows(from: VocabularyWireProjectionCodec.project(document, notebookID: scope.notebookID).entities)
         return try VocabularyWireServerShadow.empty(scope: scope).applying(verify(window(records: rows, scope: scope, initialized: true)), now: now)
