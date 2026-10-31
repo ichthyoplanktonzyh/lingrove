@@ -605,6 +605,13 @@ launch attempts under the ignored validation workspace. It does not apply databa
 or establish API readiness; runtime validation checks the actual process and database response.
 The current-source procedure and schema boundary live in `docs/NIBOMO_BASELINE.md`.
 
+Vendored backend `src/notebook/groupContract.ts` owns immutable group values and server-computed
+request digests; `operationGroups.ts` borrows the existing database/workspace lifecycle to commit
+trusted typed writers with a complete durable receipt. Migration 0234 owns workspace book identity,
+commit cursor and append-only group/member ledgers in a separate `notebook` schema. These are
+private foundations, not an HTTP/agent SQL mutation surface; future domain writers own entity
+validation and wire DTOs. Local corpus journals stay held until the complete sync lane is built.
+
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
 Nibomo's same primary file. It borrows PNG helpers from Storage without instantiating the Mac
