@@ -737,6 +737,12 @@ authenticated finalizer statement, then restores deferral. It adds no runtime ma
 `testSupport/notebookStagedResources` owns opt-in synthetic inputs and immutable measurements;
 its short-lived worker isolates finalizer allocation from the producer and inherits the recorded
 database OID/role guard. These probes distinguish module observations from production admission.
+Server `notebook/groupContract` owns the shared canonical token traversal. Caller-owned objects
+use its snapshot collector; `prepareNotebookStagedText` owns a fresh decoded graph and a bounded
+digest collector. `notebook/stagedJson` owns strict parsing into plain JSON objects with inert
+prototype-named data properties. `uploads/body` still verifies the original bytes/envelope before
+calling that text interface. `testSupport/notebookCanonicalVectors` binds both collectors to
+fixed digests independently generated from checkpoint 35526636.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
