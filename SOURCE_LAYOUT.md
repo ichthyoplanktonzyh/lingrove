@@ -669,8 +669,12 @@ state under each frozen batch. `LingroveNotebookUploadTerminalStore` borrows the
 transaction for mutable state and compact completed metadata. Negative settlement uses ordinary
 rebase and deletes no corpus journals; it removes the rejected body only in the final apply
 transaction. Migration alone backfills old batches, so missing state on reopen fails closed.
-Production HTTP orchestration remains outside these internal adapters; its caller must honor
-the persisted cancellation intent when choosing apply or cancel.
+`Cloud/Notebook/LingroveNotebookHTTPTransport` owns the ephemeral, bounded URLSession lane and
+chooses apply/cancel from persisted intent. `LingroveNotebookNetworkRunner` captures the original
+account generation before metadata negotiation, consumes only matching connections, and composes
+window staging and atomic apply without holding SQLite transactions across network waits.
+It currently has the opt-in real-HTTP integration consumer; production trigger/lifecycle wiring
+remains separate. `LocalNotebookHTTP` uses its own fixture plan instead of default local acceptance.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

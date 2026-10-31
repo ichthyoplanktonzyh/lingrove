@@ -179,7 +179,8 @@ schema 32 保留 schema 31 的原请求/正向确认，另建每组必备的 ter
 只有 31→32 迁移为旧组回填初始状态，普通重开不会补回丢失行或重置取消意图。
 request cancellation 先持久保存意图，不清请求、不伪造拒绝；网络调用方必须检查
 `cancelRequested` 续发同体 cancel。提交若已赢得服务端竞争，仍接受匹配的正向结果。
-此处没有网络消费者，不能据这个布尔值的存储验收声称重启后的网络行为已完成。
+网络 transport 直接根据该位选择 cancel；原生 HTTP 场景已验证重开后仍发送 cancel。
+生产触发和账户迁移仍须分别接入，不能据这个布尔值的存储验收声称完整跨端同步已完成。
 
 负确认保存后仍保留冻结正文。随后用原已确认 shadow、本地当前编辑和新的校验窗口
 做普通三方合并，不把未提交的发送目标当祖先。冲突明确失败，等待用户选择；测试
@@ -211,4 +212,26 @@ actor 不能复用该 group。数据库触发器同样阻止旧内部接口或�
 [`routes/notebook.ts`](../Nibomo/apps/backend/src/routes/notebook.ts) 为准。每次先复用
 认证/CSRF、实际 membership 和 schema readiness，再读取有字节上限的 UTF-8 JSON。
 所有响应 no-store；数据库操作沿用请求 deadline。用户身份来自认证结果，公开 writer
-固定没有目录安装权限。此处没有部署，也尚未接入原生账户绑定或网络调度。
+固定没有目录安装权限。connect 复用现有 installation/replica 派生，返回同一工作区
+的 book 与设备副本；客户端既不选择 owner，也不复制服务端派生算法。
+
+HTTP 原文和新写入的 canonical 预算仍各为 2 MiB。结算解析有单独的 16 MiB 硬上限，
+只为允许有界原文在工作区/数值规范化后超出写预算时仍取消或重放既有结果；全新
+apply 在读取账本之后继续严格检查 2 MiB canonical 上限。旧内部接口保持原预算。
+
+## 原生 HTTP 调度模块
+
+transport 先检查 `lingrove.corpus` lane 和精确能力，再发送连接元数据或冻结正文；
+URLSession 不使用 cookie/cache，所有重定向拒绝，按端点限制回复字节。错误仅保留
+HTTP 状态和有界机器码，不把普通错误解释为终态。连接 owner/workspace 与请求前
+身份比对，原 generation 贯穿连接、POST、每页及最终 apply；响应不能选择新归属。
+
+runner 在新工作区初始化 revision-zero 本地头，再读取 shadow，不依赖语料界面先
+打开。一轮至多处理一个冻结组；已知 outcome 不重发正文，未知结果沿用原字节。
+结算后先释放可能来自旧状态的同身份缓存窗口，再取新窗口；已有分页暂存可续传，
+只有完整校验和原子 apply 才推进本地状态。提交后的缓存释放债务以 `cleanupPending`
+明确返回；它不是数据提交确认，也不触碰 held review lane。
+
+当前模块只有真实本地 HTTP/SQLite 集成消费者，尚未挂入应用生产触发器。接入前须
+复用单飞调度、补齐无内容变化窗口的本地修订策略和可见错误/冲突流程；账户迁移、
+媒体传输、大图暂存及真实 iPhone/iPad 和 MCP 客户端验收继续保留。此处没有部署。
