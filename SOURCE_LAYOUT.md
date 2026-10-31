@@ -662,8 +662,15 @@ coverage against the actual downloaded shadow. iOS `LingroveNotebookUploadStore`
 group per workspace in schema 31, binds its body/target/journal coverage to an integrity digest,
 and records receipts without prematurely advancing the remote baseline. A covering apply retires
 only captured corpus journal headers and writes a compact body-free receipt ledger in the same
-transaction. Newer journals and the held Card/review lane stay separate. Production HTTP
-orchestration and terminal rejection settlement remain outside these internal adapters.
+transaction. Newer journals and the held Card/review lane stay separate.
+`VocabularyWireGroupOutcome` closes the positive/negative confirmation protocol; ordinary
+transport errors cannot become terminal values. Schema 32 adds cancellation intent and negative
+state under each frozen batch. `LingroveNotebookUploadTerminalStore` borrows the upload/apply
+transaction for mutable state and compact completed metadata. Negative settlement uses ordinary
+rebase and deletes no corpus journals; it removes the rejected body only in the final apply
+transaction. Migration alone backfills old batches, so missing state on reopen fails closed.
+Production HTTP orchestration remains outside these internal adapters; its caller must honor
+the persisted cancellation intent when choosing apply or cancel.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to

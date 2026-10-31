@@ -120,7 +120,10 @@ public nonisolated struct VocabularyWireGroupReceipt: Codable, Equatable, Sendab
     public let committedSequence: VocabularyWireSequence
     public let memberIDs: [UUID]
     public init(from decoder: any Decoder) throws {
-        var f = try VocabularyWireFields(VocabularyWireJSON(from: decoder))
+        try self.init(VocabularyWireJSON(from: decoder))
+    }
+    init(_ json: VocabularyWireJSON) throws {
+        var f = try VocabularyWireFields(json)
         guard try f.integer("protocolVersion") == 1 else { throw VocabularyWireUploadError.receiptMismatch }
         notebookID = try f.uuid("notebookId"); groupID = try f.uuid("groupId"); committedSequence = try .init(f.string("committedSequence"))
         memberIDs = try f.array("memberIds").map { try VocabularyWireFields.uuid(VocabularyWireFields.string($0)) }
@@ -128,10 +131,11 @@ public nonisolated struct VocabularyWireGroupReceipt: Codable, Equatable, Sendab
         guard committedSequence > .zero, !memberIDs.isEmpty, memberIDs.count <= 10_000,
               Set(memberIDs).count == memberIDs.count else { throw VocabularyWireUploadError.receiptMismatch }
     }
-    public func encode(to encoder: any Encoder) throws {
-        try VocabularyWireJSON.object(["protocolVersion": .number(1), "notebookId": .uuid(notebookID), "groupId": .uuid(groupID),
-            "committedSequence": .string(committedSequence.rawValue), "memberIds": .array(memberIDs.map(VocabularyWireJSON.uuid))]).encode(to: encoder)
+    var json: VocabularyWireJSON {
+        .object(["protocolVersion": .number(1), "notebookId": .uuid(notebookID), "groupId": .uuid(groupID),
+            "committedSequence": .string(committedSequence.rawValue), "memberIds": .array(memberIDs.map(VocabularyWireJSON.uuid))])
     }
+    public func encode(to encoder: any Encoder) throws { try json.encode(to: encoder) }
     public func validate(for batch: VocabularyWireUploadBatch) throws {
         guard notebookID == batch.request.notebookID, groupID == batch.request.groupID,
               committedSequence > batch.baseSequence, memberIDs == batch.request.members.map(\.memberID) else { throw VocabularyWireUploadError.receiptMismatch }

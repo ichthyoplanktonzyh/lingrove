@@ -837,6 +837,46 @@ extension VocabularyWireWindowIntegrationTests {
         changed.sources[0] = .init(id: source.id, text: "replacement evidence", kind: source.kind, appBundleIdentifier: source.appBundleIdentifier, encounteredAt: source.encounteredAt)
         #expect(throws: VocabularyWireUploadError.invalidTransition) { try VocabularyWireUploadPlanner.make(local: changed, base: Self.rebaseBase(small)) }
     }
+
+    @Test("Closed positive and negative outcomes cross the planner/codec boundary without inventing a document or cursor")
+    func terminalOutcomeRoundTripsAndMatchesTheFrozenGroup() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var sent = original; sent.collections[0].note = "local pending"
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
+        let negative: [String: Any] = ["status":"rejected","rejection":["protocolVersion":1,
+            "notebookId":batch.request.notebookID.uuidString.lowercased(),"groupId":batch.request.groupID.uuidString.lowercased(),
+            "memberIds":batch.request.members.map { $0.memberID.uuidString.lowercased() },"reason":"cancelled"]]
+        let outcome = try JSONDecoder().decode(VocabularyWireGroupOutcome.self, from: Self.jsonData(negative))
+        try outcome.validate(for: batch)
+        #expect(try JSONDecoder().decode(VocabularyWireGroupOutcome.self, from: JSONEncoder().encode(outcome)) == outcome)
+        let positive = VocabularyWireGroupOutcome.committed(try Self.uploadReceipt(batch))
+        try positive.validate(for: batch)
+        #expect(try JSONDecoder().decode(VocabularyWireGroupOutcome.self, from: JSONEncoder().encode(positive)) == positive)
+        var mixed = negative; mixed["receipt"] = try Self.jsonObject(JSONEncoder().encode(Self.uploadReceipt(batch)))
+        #expect(throws: (any Error).self) { try JSONDecoder().decode(VocabularyWireGroupOutcome.self, from: Self.jsonData(mixed)) }
+        #expect(throws: (any Error).self) { try JSONDecoder().decode(VocabularyWireGroupOutcome.self, from: Self.jsonData(["code":"NOTEBOOK_ENTITY_CONFLICT"])) }
+    }
+
+    @Test("Negative confirmations reject missing/reordered members, foreign identities, unknown reasons and extra fields")
+    func terminalOutcomeRejectsUnmatchedOrOpenEndedConfirmation() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        var sent = original; sent.collections[0].note = "pending note"; sent.catalog[0].senses[0].meaning = "pending meaning"
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
+        let valid: [String: Any] = ["protocolVersion":1,"notebookId":batch.request.notebookID.uuidString.lowercased(),
+            "groupId":batch.request.groupID.uuidString.lowercased(),"memberIds":batch.request.members.map { $0.memberID.uuidString.lowercased() },"reason":"entity_conflict"]
+        let malformed: [[String: Any]] = [["memberIds":[]],["reason":"retryable"],["protocolVersion":2],["unexpected":true],["committedSequence":"2"]]
+        for change in malformed {
+            let bad = valid.merging(change, uniquingKeysWith: { _,new in new })
+            #expect(throws: (any Error).self) { try JSONDecoder().decode(VocabularyWireGroupRejection.self, from: Self.jsonData(bad)) }
+        }
+        let mismatched: [[String: Any]] = [["memberIds":Array(batch.request.members.map { $0.memberID.uuidString.lowercased() }.reversed())],
+                                    ["memberIds":[batch.request.members[0].memberID.uuidString.lowercased()]],
+                                    ["notebookId":UUID().uuidString.lowercased()],["groupId":UUID().uuidString.lowercased()]]
+        for change in mismatched {
+            let bad = try JSONDecoder().decode(VocabularyWireGroupRejection.self, from: Self.jsonData(valid.merging(change, uniquingKeysWith: { _,new in new })))
+            #expect(throws: VocabularyWireUploadError.receiptMismatch) { try bad.validate(for: batch) }
+        }
+    }
 }
 
 private extension VocabularyWireWindowIntegrationTests {
