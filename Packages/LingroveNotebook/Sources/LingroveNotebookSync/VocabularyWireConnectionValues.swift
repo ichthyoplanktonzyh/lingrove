@@ -4,8 +4,13 @@ import Foundation
 /// lane this version can safely consume; unsupported servers remain unavailable
 /// rather than falling through to legacy Card synchronization.
 public nonisolated struct VocabularyWireCapabilities: Decodable, Sendable {
+    public let stagedUploads: VocabularyWireStagedCapabilities?
     public init(from decoder: any Decoder) throws {
-        var f = try VocabularyWireFields(VocabularyWireJSON(from: decoder))
+        guard case var .object(values) = try VocabularyWireJSON(from: decoder) else { throw VocabularyWireError.invalidRecord }
+        // Only this named extension is optional. All other unknown fields still
+        // fail closed, and an older response without it keeps direct transport.
+        stagedUploads = try values.removeValue(forKey: "stagedUploads").map(VocabularyWireStagedCapabilities.init)
+        var f = VocabularyWireFields(values)
         guard try f.string("lane") == "lingrove.corpus", try f.integer("protocolVersion") == 1,
               try f.integer("documentVersion") == 8, try f.bool("terminalGroups"), try f.bool("readWindows"), try f.bool("readOnlyCatalog"),
               try f.integer("maximumGroupBytes") == 2 * 1024 * 1024, try f.integer("maximumGroupMembers") == 10_000,
@@ -16,6 +21,29 @@ public nonisolated struct VocabularyWireCapabilities: Decodable, Sendable {
         guard kinds.count == VocabularyWireEntityKind.allCases.count,
               Set(kinds) == Set(VocabularyWireEntityKind.allCases.map(\.rawValue)) else { throw VocabularyWireError.invalidRecord }
         try f.finish()
+    }
+}
+
+/// Negotiated admission, not a resource guarantee at the declaration ceiling.
+/// Chunk framing, permanent closures and complete paged confirmations are one
+/// protocol: a server advertising only part of that contract cannot be used.
+public nonisolated struct VocabularyWireStagedCapabilities: Sendable {
+    public let maximumBodyBytes: Int
+    public let maximumMembers: Int
+    init(_ json: VocabularyWireJSON) throws {
+        var f = try VocabularyWireFields(json)
+        guard try f.integer("protocolVersion") == 1, try f.bool("permanentClosures"), try f.bool("pagedConfirmations"),
+              try f.integer("chunkBytes") == VocabularyWireStagedLimits.chunkBytes,
+              try f.integer("confirmationMembersPerPage") == VocabularyWireStagedLimits.confirmationMembersPerPage,
+              try f.integer("lifetimeMilliseconds") == 900_000 else { throw VocabularyWireError.invalidRecord }
+        maximumBodyBytes = try f.integer("maximumBodyBytes", maximum: VocabularyWireStagedLimits.maximumBodyBytes, minimum: 1)
+        maximumMembers = try f.integer("maximumMembers", maximum: VocabularyWireStagedLimits.maximumMembers, minimum: 1)
+        try f.finish()
+    }
+    public func validate(bodyBytes: Int, members: Int) throws {
+        guard bodyBytes > 0, bodyBytes <= maximumBodyBytes, members > 0, members <= maximumMembers else {
+            throw VocabularyWireUploadError.requestTooLarge
+        }
     }
 }
 

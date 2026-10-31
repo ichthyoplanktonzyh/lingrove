@@ -691,10 +691,10 @@ Callbacks recheck the account generation and frozen identity without reparsing t
 Positive covering apply retires exact captured journals; negative apply retains every journal.
 Both atomically replace the frozen body/pages with a compact manifest ledger. Existing direct
 digests remain unchanged; staged digests use a separate domain to detect transport-mode changes.
-The staged URLSession methods are not called by the production runner. Only the explicit
-`privateStagedTransport` server composition option mounts their routes for loopback acceptance;
-production composition and capability negotiation do not enable them. Production scheduling
-and rollout/resource gates remain separate work.
+The application runner now calls staged URLSession methods after explicit capability negotiation.
+Only the server-owned `privateStagedTransport` composition option mounts their routes for
+loopback acceptance; production composition leaves that option disabled. Production rollout
+and maximum-size resource qualification remain separate work.
 
 Schema 34 adds `LingroveNotebookUploadClosureStore` and its required staged child state. The
 shared `VocabularyWireStagedClosure` binds an aborted/expired transport to the original envelope;
@@ -704,7 +704,29 @@ authorization, while automatic unblocking commits only with a new freeze or veri
 `VocabularyWirePublicIntent` classifies local saves through the public projection, excluding
 `updatedAt` and private tool data; the journal's `has_public_change` flag distinguishes such new
 intent from background pulls or private bookkeeping. Cancellation changes also invalidate a
-prepared apply. Production staged scheduling and resource admission remain separate work.
+prepared apply. Production rollout and maximum-size resource admission remain separate work.
+
+Schema 35 adds `LingroveNotebookRetryStore` and its required per-ticket cancellation revision.
+`LingroveNotebookRetryAuthorization` captures only the completed groups and exact live cancel
+visible at the user's click. Background authorization can follow that group into its compact
+closure ledger, while a newer Cancel revokes it. This keeps retry intent durable across an
+offline attempt without granting permission to future cancellations or another account.
+
+`Cloud/Notebook/LingroveNotebookSyncIO` runs graph reads, freeze/restore, page verification and
+apply on operation-owned connections to the same primary file. Original-Core checks fence the
+UI/network continuation; transaction-local generations and CAS fence persistence. A dispatched
+operation can commit after the original connection closes, matching `LingroveNotebookIO`'s
+lifetime contract. `LingroveNotebookStagedTransfer` owns one frozen ticket's bounded network
+state machine; its `existing` reload cannot accidentally freeze another group. HTTP body
+reading/decoding and chunk preparation run away from MainActor with their original byte limits.
+
+New clients request `X-Lingrove-Corpus-Features: staged-upload-v1`; only the server-owned staging
+option plus ready SQL can advertise the named extension. The default response stays unchanged
+for strict older decoders. New oversized intents may fall back after the direct planner's
+`requestTooLarge`; frozen direct tickets keep their transport. Existing proof/closure may finish
+through an ordinary pull even if staging support disappears. Production rollout and maximum-size
+resource qualification remain separate work. The existing one-minute scheduled media worker now
+calls `notebook/maintenance`, including bounded private-upload cleanup across disconnected clients.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
