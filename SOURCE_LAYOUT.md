@@ -598,6 +598,13 @@ a second primary store. Source
 provenance, the retained UI experiment and current implementation boundaries are documented in
 `docs/NIBOMO_INTEGRATION.md`.
 
+Root `scripts/run_nibomo_validation_backend.py` owns the explicit baseline/vendored source
+choice and isolated API process environment. It borrows configuration validation from
+`prepare_nibomo_validation.py`, fingerprints WIP code and both launcher helpers, and records
+launch attempts under the ignored validation workspace. It does not apply database migrations
+or establish API readiness; runtime validation checks the actual process and database response.
+The current-source procedure and schema boundary live in `docs/NIBOMO_BASELINE.md`.
+
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
 Nibomo's same primary file. It borrows PNG helpers from Storage without instantiating the Mac
