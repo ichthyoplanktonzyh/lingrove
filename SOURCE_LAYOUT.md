@@ -759,6 +759,19 @@ multi-screen editor sheet. `LingroveNotebookEntryDraft` keeps the exact saved ba
 copy, explicit collection selection and uncommitted image bytes; only Save calls the app-owned
 library. Manual sense creation does not claim the historical standalone capture slot. The draft
 overlays the complete document so evidence, other entries, knowledge and tool state survive.
+`Database/NotebookStore/LingroveNotebookBackupStore` reads the complete document and
+its workspace-owned original PNGs in one SQLite read transaction. It borrows the persisted
+local identity generation from `LingroveNotebookWindowStore` without requiring cloud membership;
+metadata checks reject changed revisions, account/workspace ABA and a closed original Core.
+`Notebook/LingroveNotebookBackupExport` owns one asynchronous export, its unique private temporary
+directory and native activity lease. `LingroveNotebookIO` collects bytes on a worker, releases the
+read transaction before JSON encoding/file writes, and checks the binding again before return.
+`Notebook/UI/LingroveNotebookBackupExportSheet` presents the existing system activity sheet;
+only activity completion releases a shared file. The portable `VocabularyBackup` contains the
+corpus and original images, while native Card/review storage remains a separate backup concern.
+`FlashcardsTests/Notebook/LingroveNotebookBackupExportIntegrationTests` crosses those real
+SQLite, file, shared-archive and activity-lifetime boundaries.
+
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
 and reproducible generator live under Nibomo's Apple scripts directory.
