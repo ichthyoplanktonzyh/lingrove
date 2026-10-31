@@ -72,6 +72,12 @@ typed equality ignores dictionary/set JSON ordering. Decode verifies identity, o
 and index/payload agreement. Each host chooses physical tables and scope columns. This product
 owns no SQL, files or network, and its local tool metadata must not become a remote wire payload.
 
+`LingroveNotebookSync` maps the complete graph to explicit public wire entities, preserving
+device-private tool state separately. It also verifies raw-byte read windows and validates the
+resulting confirmed server shadow. The host owns download storage, pending local edits, account
+adoption and the final atomic commit; see the [wire contract](../../docs/NOTEBOOK_SYNC_CONTRACT.md)
+and [native integration evidence](../../docs/NIBOMO_INTEGRATION.md#原生读取窗口校验与-sqlite-暂存).
+
 `LingroveNotebookStorage` owns the Mac SQLite connections, schema migration, private
 file locks and PNG normalization/verification. Its public database is an ordinary non-Sendable
 class held by the archive actor; image storage also remains actor-owned. Production consumers

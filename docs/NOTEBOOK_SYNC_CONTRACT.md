@@ -100,5 +100,11 @@ bootstrap 回退，目前不会悄悄跳过旧 key。
 不能清空已有本地书。十五分钟 lease 到期后拒绝读取；membership 删除立即级联清理。
 维护任务每批最多处理 128 页（32 MiB）和 100 个已空 header，不清活窗口。代码复用
 既有每分钟任务，尚未部署；失败会保留重试，同时继续原媒体工作负载，不上传语料遥测。
-单次物化仍持有书锁，内存包含当前实体及其 JSON/UTF-8 表示；没有宣称大规模吞吐、
-原生下载恢复或真实多设备同步已验收。
+单次服务端物化仍持有书锁，内存包含当前实体及其 JSON/UTF-8 表示；没有宣称大规模
+吞吐或真实多设备同步已验收。
+
+原生 `VocabularyWireWindowAccumulator` 只验证分块与记录 framing，返回不可自行构造
+的 `VocabularyWireVerifiedWindow`。`VocabularyWireServerShadow` 另行验证增量基线、
+已知身份/字段时钟单调性与最终完整图；它不是本地编辑文档。iOS schema 29 的
+`LingroveNotebookWindowStore` 仅持久暂存页，完成后复核绑定 generation 和租约；
+该返回值不代表本地 apply、book 采用、pending 确认或游标已经提交。

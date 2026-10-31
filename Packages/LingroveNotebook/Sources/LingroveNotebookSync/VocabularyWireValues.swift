@@ -105,6 +105,22 @@ public nonisolated struct VocabularyWireMaterialization: Sendable {
 }
 
 extension VocabularyWireJSON {
+    /// Wire clocks describe literal values. Swift String equality folds Unicode
+    /// normalization, which must not make changed source bytes look unchanged.
+    func hasSameWireValue(as other: Self) -> Bool {
+        switch (self, other) {
+        case (.null, .null): return true
+        case let (.bool(a), .bool(b)): return a == b
+        case let (.number(a), .number(b)): return a.bitPattern == b.bitPattern
+        case let (.string(a), .string(b)): return a.utf8.elementsEqual(b.utf8)
+        case let (.array(a), .array(b)): return a.count == b.count && zip(a, b).allSatisfy { $0.hasSameWireValue(as: $1) }
+        case let (.object(a), .object(b)):
+            if a.count != b.count { return false }
+            let right = Dictionary(uniqueKeysWithValues: b.map { (Data($0.key.utf8), $0.value) })
+            return a.allSatisfy { key, value in right[Data(key.utf8)].map { value.hasSameWireValue(as: $0) } ?? false }
+        default: return false
+        }
+    }
     // Historical local validation does not constrain every Date. Check the
     // entire public value before returning a projection so no in-memory NaN or
     // infinite date escapes as an entity that JSON/server validation cannot use.

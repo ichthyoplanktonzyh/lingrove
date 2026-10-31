@@ -626,7 +626,7 @@ and fixed read windows. `corpus/windows/store.ts` owns one transaction per immut
 coverage and hashes without cross-language JSON canonicalization. Migration 0236 owns leases,
 pages, membership erasure and bounded expiry. `windows/expiry.ts` exposes only the fixed purge
 routine to the existing minute-based maintenance handler; it has no caller-selected SQL scope.
-The native host still owns shadow/staging/pending overlays and the final local commit.
+The native host owns durable shadow/pending overlays and the final local commit.
 
 Shared `LingroveNotebookSync` maps a strictly valid canonical document to the explicit remote
 entities and reconstructs only a host-verified complete snapshot. `VocabularyWireEncoding` and
@@ -637,6 +637,16 @@ plans. `VocabularyWireProjectionCodec` is the stateless public boundary; its pro
 private-state results are deliberately not Codable. The host still owns scope/adoption, transport
 coverage, durable private storage and the atomic document/window commit. It borrows no SQLite
 row codec, network service, app lifecycle or UI ownership.
+
+`VocabularyWireWindowValues` and `VocabularyWireCorpusRecord` decode lease metadata and typed
+versioned records; `VocabularyWireWindowAccumulator` verifies ordered raw-byte pages and returns
+a framing proof. `VocabularyWireServerShadow` applies that proof to confirmed remote values,
+retaining clocks/tombstones and validating the resulting graph before materialization. It owns
+no persistence or local pending edits. The iOS `LingroveNotebookWindowStore`, owned by
+`LocalDatabase`, stages resumable pages in the existing SQLite connection. Schema 29 rotates
+an account/workspace generation in SQL so late responses cannot recreate a discarded stage.
+Completion rechecks the lease and binding after decoding, and returns only the framing proof;
+the future apply transaction still owns adoption, private overlay, pending rebase and cursor.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
