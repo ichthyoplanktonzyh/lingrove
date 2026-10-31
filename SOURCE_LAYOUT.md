@@ -693,8 +693,18 @@ Both atomically replace the frozen body/pages with a compact manifest ledger. Ex
 digests remain unchanged; staged digests use a separate domain to detect transport-mode changes.
 The staged URLSession methods are not called by the production runner. Only the explicit
 `privateStagedTransport` server composition option mounts their routes for loopback acceptance;
-production composition and capability negotiation do not enable them. Transport closure recovery
+production composition and capability negotiation do not enable them. Production scheduling
 and rollout/resource gates remain separate work.
+
+Schema 34 adds `LingroveNotebookUploadClosureStore` and its required staged child state. The
+shared `VocabularyWireStagedClosure` binds an aborted/expired transport to the original envelope;
+it cannot become a group outcome. Covering apply retains journals and records a body-free closure
+ledger. Local cancellation provenance controls a durable retry gate; explicit resume is a durable
+authorization, while automatic unblocking commits only with a new freeze or verified no-upload settlement.
+`VocabularyWirePublicIntent` classifies local saves through the public projection, excluding
+`updatedAt` and private tool data; the journal's `has_public_change` flag distinguishes such new
+intent from background pulls or private bookkeeping. Cancellation changes also invalidate a
+prepared apply. Production staged scheduling and resource admission remain separate work.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
