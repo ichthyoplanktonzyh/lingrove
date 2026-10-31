@@ -609,8 +609,16 @@ Vendored backend `src/notebook/groupContract.ts` owns immutable group values and
 request digests; `operationGroups.ts` borrows the existing database/workspace lifecycle to commit
 trusted typed writers with a complete durable receipt. Migration 0234 owns workspace book identity,
 commit cursor and append-only group/member ledgers in a separate `notebook` schema. These are
-private foundations, not an HTTP/agent SQL mutation surface; future domain writers own entity
+private foundations, not an HTTP/agent SQL mutation surface; typed domain writers own entity
 validation and wire DTOs. Local corpus journals stay held until the complete sync lane is built.
+
+Backend `src/notebook/corpus/fields.ts` defines explicit remote content values, excluding private
+tool receipts; `contract.ts` owns typed mutations and stable relationship identities. `graph.ts`
+validates the complete candidate lexical/meaning/classification graph with transaction-local
+indexes. `store.ts` borrows the existing group executor to combine field-version merging,
+tombstones, canonical writes and key-only commit coverage. It does not send data to legacy Card
+sync or enroll review. Native projection, transport windows and media bytes remain separate work;
+the internal contract and retention decision live in `docs/NOTEBOOK_SYNC_CONTRACT.md` and ADR0002.
 
 Native `Notebook/LingroveNotebookBackupImport` validates a frozen backup before preview;
 `LingroveNotebookIO` runs bounded file/PNG work off MainActor and owns temporary connections to
