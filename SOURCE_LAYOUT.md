@@ -787,6 +787,18 @@ review-plan/Anki-link loss. Native participation, Card/FSRS state and review eve
 `LingroveNotebookCollectionIntegrationTests` compares complete documents and complete persisted
 review/queue rows; UI tests cover the collection filter, cancellation, recollection and relaunch.
 
+`Notebook/LingroveNotebookOrganizationDraft` pins the original document/revision/generation and
+owns detached semantic/classification edits. Meaning, category and mapping drafts retain hidden
+metadata; child pickers return values without SQL, and only the outer form calls the library/IO
+fenced save. Shared classification assignment confirms only explicitly adopted proposals while
+preserving authorship; built-in category definitions remain immutable behind local locale overlays.
+`LingroveNotebookOrganizationPresentation` resolves saved labels and overlays for the interface
+locale without model inference. `Notebook/UI/Organization` uses the Cards navigation stack and
+native List/Form/pickers for meaning/category browsing, mapping edits and whole-sense association.
+`LingroveNotebookOrganizationIntegrationTests` exercises the real worker/SQLite path, whole-document
+retention, rated native memory, stale drafts and journal rollback; the UI journey crosses nested
+Cancel/Save and relaunch before returning from category to meaning to the original lexical sense.
+
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
 and reproducible generator live under Nibomo's Apple scripts directory.

@@ -4,12 +4,17 @@ import Foundation
 /// owns graph integrity, draft reconciliation and unique descendant aggregation, never file IO.
 public nonisolated enum VocabularyClassificationPolicy {
     /// A checked set replaces this meaning's draft memberships, retaining other meanings and
-    /// stable link IDs. The archive's merge still protects concurrent additions to the baseline.
-    public static func assign(nodeID: UUID, categories: Set<UUID>, in index: inout VocabularyClassificationIndex) {
+    /// stable link IDs. `adopting` scopes explicit confirmation; nil retains the
+    /// existing caller contract of adopting all selected proposals. The archive's merge still protects concurrent additions to the baseline.
+    public static func assign(nodeID: UUID, categories: Set<UUID>, adopting: Set<UUID>? = nil,
+                              in index: inout VocabularyClassificationIndex) {
         index.memberships.removeAll { $0.nodeID == nodeID && !categories.contains($0.categoryID) }
         for position in index.memberships.indices where index.memberships[position].nodeID == nodeID &&
-            index.memberships[position].provenance.status == .proposed {
-            index.memberships[position].provenance = .init(origin: .user, status: .confirmed)
+            index.memberships[position].provenance.status == .proposed &&
+            (adopting?.contains(index.memberships[position].categoryID) ?? true) {
+            // Adoption is independent of authorship. Keep the model/import source
+            // and confidence that explain where this relationship came from.
+            index.memberships[position].provenance.status = .confirmed
         }
         for categoryID in categories where !index.memberships.contains(where: { $0.nodeID == nodeID && $0.categoryID == categoryID }) {
             index.memberships.append(.init(id: UUID(), nodeID: nodeID, categoryID: categoryID))
