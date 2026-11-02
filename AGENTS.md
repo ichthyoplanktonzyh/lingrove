@@ -442,9 +442,14 @@ those reviewer/test agents do not write implementation or test code.
 - Leads proactively deliver their branch/commit IDs, completed scope, actual validation evidence,
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
-- Read the current wave contract in `docs/MOBILE_WAVE_2.md` (Wave 1 is historical). Separate worktrees isolate source,
+- Read the current wave contract in `docs/MOBILE_WAVE_3.md` (Waves 1 and 2 are historical). Separate worktrees isolate source,
   not simulators or host resources. All Xcode/simulator operations acquire the shared validation
   lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
+- The user confirmed on 2026-11-02 that Lingrove has no user data. Current work does not need
+  legacy development-snapshot, schema, backup, or Anki-binding migration compatibility. Simplify
+  related implementation where useful; do not spend this module on unrelated compatibility removal.
+  Future user operations still require correct persistence, account isolation, idempotency, and
+  retention of review history/manual edits. This supersedes older compatibility acceptance clauses.
 
 ## Git And Worktree Safety
 
