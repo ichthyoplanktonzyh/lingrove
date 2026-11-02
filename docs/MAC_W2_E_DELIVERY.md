@@ -153,4 +153,5 @@ SQLite suites。`validation-proof.json`、`input-manifest.json` 汇总实际结�
 DerivedData、Swift scratch/module caches、复制的 source packages/native inputs 与
 临时 validation host，`cleanup.json` 实际核对 **allAbsent=true**，没有自有宿主进程
 剩余；测试专用 preferences 也已清除。私有本地签名配置和原共享输入保留。
-准确实现提交号在收尾提交记录中列出。
+实现提交：`5e5e87af0adc0b280e4ff4bb8cc0058c7b876cde`（`Add native built-in review with scoped notebook actions`）。
+本报告收尾提交只填写提交号与已完成的清理记录，不修改上述已验证源码。
