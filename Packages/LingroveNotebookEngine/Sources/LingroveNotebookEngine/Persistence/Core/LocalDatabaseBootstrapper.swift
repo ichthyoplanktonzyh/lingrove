@@ -1,0 +1,250 @@
+import Foundation
+
+private struct DefaultWorkspaceRow {
+    let workspaceId: String
+    let wasCreated: Bool
+}
+
+public struct LocalDatabaseBootstrapper {
+    public let core: DatabaseCore
+
+    /**
+     Ensures the local default rows exist.
+
+     Returns the workspace id when this run inserted the very first local
+     workspace row, and `nil` when a workspace row was already present. That
+     signal is the only "this device is brand new" moment the local database
+     ever observes, so the first-launch onboarding seed hangs off it.
+     */
+    public func ensureDefaultState() throws -> String? {
+        if try self.defaultStateNeedsInitialization() == false {
+            return nil
+        }
+
+        return try self.core.inTransaction {
+            let installationId = try self.ensureAppLocalSettingsRow()
+            let defaultWorkspace = try self.ensureDefaultWorkspaceRow(installationId: installationId)
+            try self.ensureActiveWorkspaceReference(defaultWorkspaceId: defaultWorkspace.workspaceId)
+            try self.ensureSyncStateRow(workspaceId: defaultWorkspace.workspaceId)
+            try self.ensureUserSettingsRow(workspaceId: defaultWorkspace.workspaceId)
+            return defaultWorkspace.wasCreated ? defaultWorkspace.workspaceId : nil
+        }
+    }
+
+    private func defaultStateNeedsInitialization() throws -> Bool {
+        let appSettingsCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM app_local_settings",
+            values: []
+        )
+        if appSettingsCount == 0 {
+            return true
+        }
+
+        let workspaceCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM workspaces",
+            values: []
+        )
+        if workspaceCount == 0 {
+            return true
+        }
+
+        let userSettingsCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM user_settings",
+            values: []
+        )
+        if userSettingsCount == 0 {
+            return true
+        }
+
+        guard let activeWorkspaceId = try self.core.scalarOptionalText(
+            sql: "SELECT active_workspace_id FROM app_local_settings WHERE settings_id = 1",
+            values: []
+        ) else {
+            return true
+        }
+
+        let hasActiveWorkspace = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM workspaces WHERE workspace_id = ?",
+            values: [.text(activeWorkspaceId)]
+        ) > 0
+        if hasActiveWorkspace == false {
+            return true
+        }
+
+        let hasSyncState = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM sync_state WHERE workspace_id = ?",
+            values: [.text(activeWorkspaceId)]
+        ) > 0
+        return hasSyncState == false
+    }
+
+    private func ensureAppLocalSettingsRow() throws -> String {
+        let appSettingsCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM app_local_settings",
+            values: []
+        )
+        if appSettingsCount == 0 {
+            let installationId = UUID().uuidString.lowercased()
+            try self.core.execute(
+                sql: """
+                INSERT INTO app_local_settings (
+                    settings_id,
+                    installation_id,
+                    cloud_state,
+                    linked_user_id,
+                    linked_workspace_id,
+                    active_workspace_id,
+                    linked_email,
+                    onboarding_completed,
+                    updated_at
+                )
+                VALUES (1, ?, 'disconnected', NULL, NULL, NULL, NULL, 0, ?)
+                """,
+                values: [
+                    .text(installationId),
+                    .text(nowIsoTimestamp())
+                ]
+            )
+            return installationId
+        }
+
+        return try self.core.scalarText(
+            sql: "SELECT installation_id FROM app_local_settings WHERE settings_id = 1",
+            values: []
+        )
+    }
+
+    private func ensureDefaultWorkspaceRow(installationId: String) throws -> DefaultWorkspaceRow {
+        let usableWorkspace = try self.core.query(
+            sql: "SELECT workspace_id FROM workspaces WHERE workspace_id IN (\(LingroveNotebookAccountStore.visibleWorkspaceSQL)) ORDER BY CASE WHEN workspace_id=(SELECT active_workspace_id FROM app_local_settings WHERE settings_id=1) THEN 0 ELSE 1 END,created_at LIMIT 1",
+            values: []
+        ) { DatabaseCore.columnText(statement: $0, index: 0) }.first
+
+        if usableWorkspace == nil {
+            let now = nowIsoTimestamp()
+            let operationId = UUID().uuidString.lowercased()
+            let workspaceId = UUID().uuidString.lowercased()
+            try self.core.execute(
+                sql: """
+                INSERT INTO workspaces (
+                    workspace_id,
+                    name,
+                    created_at,
+                    fsrs_client_updated_at,
+                    fsrs_last_modified_by_replica_id,
+                    fsrs_last_operation_id,
+                    fsrs_updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                values: [
+                    .text(workspaceId),
+                    .text("Personal"),
+                    .text(now),
+                    .text(now),
+                    .text(installationId),
+                    .text(operationId),
+                    .text(now)
+                ]
+            )
+            try self.core.execute(
+                sql: """
+                UPDATE app_local_settings
+                SET active_workspace_id = ?, updated_at = ?
+                WHERE settings_id = 1
+                """,
+                values: [
+                    .text(workspaceId),
+                    .text(nowIsoTimestamp())
+                ]
+            )
+            return DefaultWorkspaceRow(workspaceId: workspaceId, wasCreated: true)
+        }
+
+        guard let existingWorkspaceId = usableWorkspace else { throw LingroveNotebookAccountError.ownerMismatch }
+        return DefaultWorkspaceRow(workspaceId: existingWorkspaceId, wasCreated: false)
+    }
+
+    private func ensureActiveWorkspaceReference(defaultWorkspaceId: String) throws {
+        let activeWorkspaceId = try self.core.scalarOptionalText(
+            sql: "SELECT active_workspace_id FROM app_local_settings WHERE settings_id = 1",
+            values: []
+        )
+        let hasActiveWorkspace: Bool
+        if let activeWorkspaceId {
+            hasActiveWorkspace = try self.core.scalarInt(
+                sql: "SELECT COUNT(*) FROM workspaces WHERE workspace_id = ?",
+                values: [.text(activeWorkspaceId)]
+            ) > 0
+        } else {
+            hasActiveWorkspace = false
+        }
+
+        if hasActiveWorkspace == false {
+            try self.core.execute(
+                sql: """
+                UPDATE app_local_settings
+                SET active_workspace_id = ?, updated_at = ?
+                WHERE settings_id = 1
+                """,
+                values: [
+                    .text(defaultWorkspaceId),
+                    .text(nowIsoTimestamp())
+                ]
+            )
+        }
+    }
+
+    private func ensureSyncStateRow(workspaceId: String) throws {
+        let syncStateCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM sync_state WHERE workspace_id = ?",
+            values: [.text(workspaceId)]
+        )
+        if syncStateCount == 0 {
+            try self.core.execute(
+                sql: """
+                INSERT INTO sync_state (
+                    workspace_id,
+                    last_applied_hot_change_id,
+                    last_applied_review_sequence_id,
+                    has_hydrated_hot_state,
+                    has_hydrated_review_history,
+                    pending_review_history_import,
+                    updated_at
+                )
+                VALUES (?, 0, 0, 0, 0, 0, ?)
+                """,
+                values: [
+                    .text(workspaceId),
+                    .text(nowIsoTimestamp())
+                ]
+            )
+        }
+    }
+
+    private func ensureUserSettingsRow(workspaceId: String) throws {
+        let userSettingsCount = try self.core.scalarInt(
+            sql: "SELECT COUNT(*) FROM user_settings",
+            values: []
+        )
+        if userSettingsCount == 0 {
+            let locale = Locale.current.language.languageCode?.identifier ?? "en"
+            try self.core.execute(
+                sql: """
+                INSERT INTO user_settings (user_id, workspace_id, email, locale, created_at)
+                VALUES (?, ?, NULL, ?, ?)
+                """,
+                values: [
+                    .text("local-user"),
+                    .text(workspaceId),
+                    .text(locale),
+                    .text(nowIsoTimestamp())
+                ]
+            )
+        }
+    }
+
+    public init(core: DatabaseCore) {
+        self.core = core
+    }
+}

@@ -1,0 +1,281 @@
+import Foundation
+
+extension CardStore {
+    public func validateCardInput(input: CardEditorInput) throws {
+        let frontText = input.frontText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if frontText.isEmpty {
+            throw LocalStoreError.validation("Card front text must not be empty")
+        }
+    }
+
+    public func saveCard(
+        workspaceId: String,
+        input: CardEditorInput,
+        initialMetadata: CardMetadata?,
+        cardId: String?,
+        installationId: String,
+        operationId: String,
+        now: String,
+        newCardID: String? = nil
+    ) throws -> Card {
+        let normalizedInput = CardEditorInput(
+            frontText: input.frontText.trimmingCharacters(in: .whitespacesAndNewlines),
+            backText: input.backText.trimmingCharacters(in: .whitespacesAndNewlines),
+            tags: input.tags
+        )
+        let tagsJson = try self.core.encodeJsonString(value: normalizedInput.tags)
+
+        if let cardId {
+            let currentCard = try self.loadCard(workspaceId: workspaceId, cardId: cardId)
+            let metadataJson = try self.core.encodeJsonString(
+                value: cardMetadataAfterAuthoredEdit(card: currentCard, input: normalizedInput)
+            )
+            let updatedRows = try self.core.execute(
+                sql: """
+                UPDATE cards
+                SET front_text = ?, back_text = ?, tags_json = ?, metadata_json = ?, client_updated_at = ?, last_modified_by_replica_id = ?, last_operation_id = ?, updated_at = ?
+                WHERE workspace_id = ? AND card_id = ? AND deleted_at IS NULL
+                """,
+                values: [
+                    .text(normalizedInput.frontText),
+                    .text(normalizedInput.backText),
+                    .text(tagsJson),
+                    .text(metadataJson),
+                    .text(now),
+                    .text(installationId),
+                    .text(operationId),
+                    .text(now),
+                    .text(workspaceId),
+                    .text(cardId)
+                ]
+            )
+
+            if updatedRows == 0 {
+                throw LocalStoreError.notFound("Card not found")
+            }
+
+            try self.replaceCardTagsReadModel(
+                workspaceId: workspaceId,
+                cardId: cardId,
+                tags: normalizedInput.tags
+            )
+
+            return try self.loadCard(workspaceId: workspaceId, cardId: cardId)
+        }
+
+        let newCardId = newCardID ?? UUID().uuidString.lowercased()
+        let metadataJson = try self.core.encodeJsonString(value: initialMetadata ?? makeDefaultCardMetadata(createdAt: now))
+        try self.core.execute(
+            sql: """
+            INSERT INTO cards (
+                card_id,
+                workspace_id,
+                front_text,
+                back_text,
+                card_type,
+                metadata_json,
+                tags_json,
+                due_at,
+                due_at_millis,
+                created_at,
+                reps,
+                lapses,
+                fsrs_card_state,
+                fsrs_step_index,
+                fsrs_stability,
+                fsrs_difficulty,
+                fsrs_last_reviewed_at,
+                fsrs_last_reviewed_at_millis,
+                fsrs_scheduled_days,
+                client_updated_at,
+                last_modified_by_replica_id,
+                last_operation_id,
+                updated_at,
+                deleted_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 0, 0, 'new', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?, NULL)
+            """,
+            values: [
+                .text(newCardId),
+                .text(workspaceId),
+                .text(normalizedInput.frontText),
+                .text(normalizedInput.backText),
+                .text(basicCardType),
+                .text(metadataJson),
+                .text(tagsJson),
+                .text(now),
+                .text(now),
+                .text(installationId),
+                .text(operationId),
+                .text(now)
+            ]
+        )
+        try self.replaceCardTagsReadModel(
+            workspaceId: workspaceId,
+            cardId: newCardId,
+            tags: normalizedInput.tags
+        )
+
+        return try self.loadCard(workspaceId: workspaceId, cardId: newCardId)
+    }
+
+    public func deleteCard(
+        workspaceId: String,
+        cardId: String,
+        installationId: String,
+        operationId: String,
+        now: String
+    ) throws -> Card {
+        let updatedRows = try self.core.execute(
+            sql: """
+            UPDATE cards
+            SET deleted_at = ?, client_updated_at = ?, last_modified_by_replica_id = ?, last_operation_id = ?, updated_at = ?
+            WHERE workspace_id = ? AND card_id = ? AND deleted_at IS NULL
+            """,
+            values: [
+                .text(now),
+                .text(now),
+                .text(installationId),
+                .text(operationId),
+                .text(now),
+                .text(workspaceId),
+                .text(cardId)
+            ]
+        )
+
+        if updatedRows == 0 {
+            throw LocalStoreError.notFound("Card not found")
+        }
+
+        try self.replaceCardTagsReadModel(
+            workspaceId: workspaceId,
+            cardId: cardId,
+            tags: []
+        )
+
+        return try self.loadCardIncludingDeleted(workspaceId: workspaceId, cardId: cardId)
+    }
+
+    public func appendReviewEvent(
+        workspaceId: String,
+        cardId: String,
+        rating: ReviewRating,
+        reviewedAtClient: String,
+        reviewedTimeZone: String?,
+        installationId: String,
+        reviewEventId: String,
+        clientEventId: String,
+        reviewedAtServer: String
+    ) throws -> ReviewEvent {
+        try self.core.execute(
+            sql: """
+            INSERT INTO review_events (
+                review_event_id,
+                workspace_id,
+                card_id,
+                replica_id,
+                client_event_id,
+                rating,
+                reviewed_at_client,
+                reviewed_time_zone,
+                reviewed_at_server
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            values: [
+                .text(reviewEventId),
+                .text(workspaceId),
+                .text(cardId),
+                .text(installationId),
+                .text(clientEventId),
+                .integer(Int64(rating.rawValue)),
+                .text(reviewedAtClient),
+                reviewedTimeZone.map(SQLiteValue.text) ?? .null,
+                .text(reviewedAtServer)
+            ]
+        )
+
+        return ReviewEvent(
+            reviewEventId: reviewEventId,
+            workspaceId: workspaceId,
+            cardId: cardId,
+            replicaId: installationId,
+            clientEventId: clientEventId,
+            rating: rating,
+            reviewedAtClient: reviewedAtClient,
+            reviewedTimeZone: reviewedTimeZone,
+            reviewedAtServer: reviewedAtServer
+        )
+    }
+
+    public func applyReviewSchedule(
+        workspaceId: String,
+        cardId: String,
+        reviewSubmission: ReviewSubmission,
+        schedule: ReviewSchedule,
+        installationId: String,
+        operationId: String,
+        reviewedAtServer: String
+    ) throws -> Card {
+        let dueAtText = formatIsoTimestamp(date: schedule.dueAt)
+        let updatedRows = try self.core.execute(
+            sql: """
+            UPDATE cards
+            SET due_at = ?, due_at_millis = ?, reps = ?, lapses = ?, fsrs_card_state = ?, fsrs_step_index = ?, fsrs_stability = ?, fsrs_difficulty = ?, fsrs_last_reviewed_at = ?, fsrs_last_reviewed_at_millis = ?, fsrs_scheduled_days = ?, client_updated_at = ?, last_modified_by_replica_id = ?, last_operation_id = ?, updated_at = ?
+            WHERE workspace_id = ? AND card_id = ? AND deleted_at IS NULL
+            """,
+            values: [
+                .text(dueAtText),
+                .integer(epochMillis(date: schedule.dueAt)),
+                .integer(Int64(schedule.reps)),
+                .integer(Int64(schedule.lapses)),
+                .text(schedule.fsrsCardState.rawValue),
+                schedule.fsrsStepIndex.map { stepIndex in
+                    SQLiteValue.integer(Int64(stepIndex))
+                } ?? .null,
+                .real(schedule.fsrsStability),
+                .real(schedule.fsrsDifficulty),
+                .text(formatIsoTimestamp(date: schedule.fsrsLastReviewedAt)),
+                .integer(epochMillis(date: schedule.fsrsLastReviewedAt)),
+                .integer(Int64(schedule.fsrsScheduledDays)),
+                .text(reviewSubmission.reviewedAtClient),
+                .text(installationId),
+                .text(operationId),
+                .text(reviewedAtServer),
+                .text(workspaceId),
+                .text(cardId)
+            ]
+        )
+
+        if updatedRows == 0 {
+            throw LocalStoreError.notFound("Card not found")
+        }
+
+        return try self.loadCard(workspaceId: workspaceId, cardId: cardId)
+    }
+
+    public func replaceCardTagsReadModel(
+        workspaceId: String,
+        cardId: String,
+        tags: [String]
+    ) throws {
+        try self.core.execute(
+            sql: """
+            DELETE FROM card_tags
+            WHERE workspace_id = ? AND card_id = ?
+            """,
+            values: [.text(workspaceId), .text(cardId)]
+        )
+
+        for tag in tags where tag.isEmpty == false {
+            try self.core.execute(
+                sql: """
+                INSERT INTO card_tags (workspace_id, card_id, tag)
+                VALUES (?, ?, ?)
+                """,
+                values: [.text(workspaceId), .text(cardId), .text(tag)]
+            )
+        }
+    }
+}

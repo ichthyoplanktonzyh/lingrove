@@ -1,0 +1,397 @@
+import Foundation
+
+public let cardStoreSelectColumnsSQL: String = """
+    card_id,
+    workspace_id,
+    front_text,
+    back_text,
+    card_type,
+    metadata_json,
+    tags_json,
+    due_at,
+    created_at,
+    reps,
+    lapses,
+    fsrs_card_state,
+    fsrs_step_index,
+    fsrs_stability,
+    fsrs_difficulty,
+    fsrs_last_reviewed_at,
+    fsrs_scheduled_days,
+    client_updated_at,
+    last_modified_by_replica_id,
+    last_operation_id,
+    updated_at,
+    deleted_at
+"""
+
+/// Only managed corpus exercises consult enrollment. Independent Cards retain their native
+/// behavior. The correlated predicate runs before queue LIMIT/OFFSET and is shared with due
+/// counts/schedule buckets, so pausing a sense cannot leave misleading counts or empty pages.
+public let cardStoreNotebookReviewEligibilitySQL: String = """
+NOT EXISTS (
+    SELECT 1 FROM notebook_review_exercises AS notebook_exercise
+    LEFT JOIN notebook_review_enrollments AS notebook_enrollment
+        ON notebook_enrollment.workspace_id=notebook_exercise.workspace_id
+        AND notebook_enrollment.enrollment_id=notebook_exercise.enrollment_id
+    WHERE notebook_exercise.workspace_id=cards.workspace_id
+        AND notebook_exercise.card_id=cards.card_id
+        AND (notebook_enrollment.status IS NULL OR notebook_enrollment.status<>'active'
+            OR NOT EXISTS(SELECT 1 FROM notebook_card_links link WHERE link.workspace_id=notebook_exercise.workspace_id
+                AND link.link_id=notebook_exercise.link_id AND link.deleted_at IS NULL)
+            OR EXISTS(SELECT 1 FROM notebook_review_material_state material WHERE material.workspace_id=notebook_exercise.workspace_id
+                AND material.card_id=notebook_exercise.card_id AND material.status NOT IN ('ready','retained')))
+)
+"""
+
+public let cardStoreActiveReviewDueEligibilitySQL: String = """
+\(cardStoreNotebookReviewEligibilitySQL) AND
+(
+    due_at IS NULL
+    OR (
+        due_at IS NOT NULL
+        AND due_at_millis IS NOT NULL
+        AND due_at_millis <= ?
+    )
+)
+"""
+
+public let cardStoreActiveDueBucketOrderSQL: String = "due_at_millis ASC, created_at ASC, card_id ASC"
+
+private enum ActiveReviewQueueSQLBucket {
+    case recentDue(cutoffMillis: Int64, nowMillis: Int64)
+    case oldDue(cutoffMillis: Int64, nowMillis: Int64)
+    case new
+}
+
+private func makeActiveReviewQueueBucketSQL(bucket: ActiveReviewQueueSQLBucket) -> ReviewQuerySQL {
+    switch bucket {
+    case .recentDue(let cutoffMillis, let nowMillis):
+        return ReviewQuerySQL(
+            clause: """
+             AND due_at IS NOT NULL
+             AND due_at_millis IS NOT NULL
+             AND due_at_millis <= ?
+             AND fsrs_last_reviewed_at_millis IS NOT NULL
+             AND fsrs_last_reviewed_at_millis >= ?
+             AND fsrs_last_reviewed_at_millis <= ?
+            """,
+            values: [
+                .integer(nowMillis),
+                .integer(cutoffMillis),
+                .integer(nowMillis)
+            ]
+        )
+    case .oldDue(let cutoffMillis, let nowMillis):
+        return ReviewQuerySQL(
+            clause: """
+             AND due_at IS NOT NULL
+             AND due_at_millis IS NOT NULL
+             AND due_at_millis <= ?
+             AND (
+                fsrs_last_reviewed_at_millis IS NULL
+                OR fsrs_last_reviewed_at_millis < ?
+                OR fsrs_last_reviewed_at_millis > ?
+             )
+            """,
+            values: [
+                .integer(nowMillis),
+                .integer(cutoffMillis),
+                .integer(nowMillis)
+            ]
+        )
+    case .new:
+        return ReviewQuerySQL(
+            clause: " AND due_at IS NULL",
+            values: []
+        )
+    }
+}
+
+private func makeActiveReviewQueueBucketOrderSQL(bucket: ActiveReviewQueueSQLBucket) -> String {
+    switch bucket {
+    case .recentDue, .oldDue:
+        return cardStoreActiveDueBucketOrderSQL
+    case .new:
+        return "created_at ASC, card_id ASC"
+    }
+}
+
+private func makeActiveReviewQueueBucketTableSQL(bucket: ActiveReviewQueueSQLBucket) -> String {
+    switch bucket {
+    case .recentDue:
+        return "cards INDEXED BY idx_cards_workspace_fsrs_last_reviewed_millis_due_active"
+    case .oldDue:
+        return "cards INDEXED BY idx_cards_workspace_due_millis_active"
+    case .new:
+        return "cards INDEXED BY idx_cards_workspace_new_due_active"
+    }
+}
+
+extension CardStore {
+    public func makeReviewQuerySQL(reviewQueryDefinition: ReviewQueryDefinition) throws -> ReviewQuerySQL {
+        let filter = try self.makeReviewFilterSQL(reviewQueryDefinition: reviewQueryDefinition)
+        return .init(clause: " AND " + cardStoreNotebookReviewEligibilitySQL + filter.clause, values: filter.values)
+    }
+
+    private func makeReviewFilterSQL(reviewQueryDefinition: ReviewQueryDefinition) throws -> ReviewQuerySQL {
+        switch reviewQueryDefinition {
+        case .allCards:
+            return ReviewQuerySQL(clause: "", values: [])
+        case .tag(let exactTagNames):
+            if exactTagNames.isEmpty {
+                return ReviewQuerySQL(clause: " AND 0 = 1", values: [])
+            }
+            let tagPlaceholders = Array(
+                repeating: "?",
+                count: exactTagNames.count
+            ).joined(separator: ", ")
+            return ReviewQuerySQL(
+                clause: """
+                 AND EXISTS (
+                    SELECT 1
+                    FROM card_tags
+                    WHERE card_tags.workspace_id = cards.workspace_id
+                        AND card_tags.card_id = cards.card_id
+                        AND card_tags.tag IN (\(tagPlaceholders))
+                )
+                """,
+                values: exactTagNames.map { tag in
+                    .text(tag)
+                }
+            )
+        case .deck(let filterDefinition):
+            var predicates: [String] = []
+            var values: [SQLiteValue] = []
+
+            if filterDefinition.tags.isEmpty == false {
+                let tagPlaceholders = Array(
+                    repeating: "?",
+                    count: filterDefinition.tags.count
+                ).joined(separator: ", ")
+                predicates.append(
+                    """
+                    EXISTS (
+                        SELECT 1
+                        FROM card_tags
+                        WHERE card_tags.workspace_id = cards.workspace_id
+                            AND card_tags.card_id = cards.card_id
+                            AND card_tags.tag IN (\(tagPlaceholders))
+                    )
+                    """
+                )
+                values.append(contentsOf: filterDefinition.tags.map { tag in
+                    .text(tag)
+                })
+            }
+
+            guard predicates.isEmpty == false else {
+                return ReviewQuerySQL(clause: "", values: [])
+            }
+
+            return ReviewQuerySQL(
+                clause: " AND " + predicates.joined(separator: " AND "),
+                values: values
+            )
+        }
+    }
+
+    public func makeCardsListQuerySQL(
+        searchText: String,
+        filter: CardFilter?,
+        storedTagNames: [String]
+    ) throws -> ReviewQuerySQL {
+        var predicates: [String] = []
+        var values: [SQLiteValue] = []
+        let normalizedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if normalizedSearchText.isEmpty == false {
+            predicates.append("(LOWER(front_text) LIKE ? OR LOWER(back_text) LIKE ?)")
+            let pattern = "%\(normalizedSearchText.lowercased())%"
+            values.append(.text(pattern))
+            values.append(.text(pattern))
+        }
+
+        if let filter, filter.tags.isEmpty == false {
+            let exactTagNames = resolveExactStoredTagNames(
+                requestedTagNames: filter.tags,
+                storedTagNames: storedTagNames
+            )
+            guard exactTagNames.isEmpty == false else {
+                predicates.append("0 = 1")
+                return ReviewQuerySQL(
+                    clause: " AND " + predicates.joined(separator: " AND "),
+                    values: values
+                )
+            }
+
+            let tagPlaceholders = Array(repeating: "?", count: exactTagNames.count).joined(separator: ", ")
+            predicates.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM card_tags
+                    WHERE card_tags.workspace_id = cards.workspace_id
+                        AND card_tags.card_id = cards.card_id
+                        AND card_tags.tag IN (\(tagPlaceholders))
+                )
+                """
+            )
+            values.append(contentsOf: exactTagNames.map { tag in
+                .text(tag)
+            })
+        }
+
+        guard predicates.isEmpty == false else {
+            return ReviewQuerySQL(clause: "", values: [])
+        }
+
+        return ReviewQuerySQL(
+            clause: " AND " + predicates.joined(separator: " AND "),
+            values: values
+        )
+    }
+
+    public func makeDeckStatsQuerySQL(filterDefinition: DeckFilterDefinition) throws -> ReviewQuerySQL {
+        var predicates: [String] = []
+        var values: [SQLiteValue] = []
+
+        if filterDefinition.tags.isEmpty == false {
+            let tagPlaceholders = Array(repeating: "?", count: filterDefinition.tags.count).joined(separator: ", ")
+            predicates.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM card_tags
+                    WHERE card_tags.workspace_id = cards.workspace_id
+                        AND card_tags.card_id = cards.card_id
+                        AND card_tags.tag IN (\(tagPlaceholders))
+                )
+                """
+            )
+            values.append(contentsOf: filterDefinition.tags.map { tag in
+                .text(tag)
+            })
+        }
+
+        guard predicates.isEmpty == false else {
+            return ReviewQuerySQL(clause: "", values: [])
+        }
+
+        return ReviewQuerySQL(
+            clause: " AND " + predicates.joined(separator: " AND "),
+            values: values
+        )
+    }
+
+    public func loadReviewQueueRows(
+        workspaceId: String,
+        reviewQueryDefinition: ReviewQueryDefinition,
+        now: Date,
+        limit: Int,
+        excludedCardIds: Set<String>
+    ) throws -> [Card] {
+        let querySQL = try self.makeReviewQuerySQL(reviewQueryDefinition: reviewQueryDefinition)
+        let excludedCardIdsClause: String
+        let excludedCardValues: [SQLiteValue]
+        if excludedCardIds.isEmpty {
+            excludedCardIdsClause = ""
+            excludedCardValues = []
+        } else {
+            let placeholders = Array(repeating: "?", count: excludedCardIds.count).joined(separator: ", ")
+            excludedCardIdsClause = " AND card_id NOT IN (\(placeholders))"
+            excludedCardValues = excludedCardIds.sorted().map(SQLiteValue.text)
+        }
+
+        // Keep SQLite review queue ordering aligned with:
+        // - apps/ios/Flashcards/Flashcards/Review/Queue/Query/ReviewQuerySupport.swift::compareCardsForReviewOrder
+        // Ordering contract: recently reviewed due cards within the inclusive one-hour fsrsLastReviewedAt
+        // window first, then other due cards, then nil dueAt new cards. Future and malformed dueAt
+        // values are excluded from the active queue. Cards in the same bucket and due-time position
+        // use older created_at first.
+        // When this contract changes, coordinate matching review-order updates for supported clients.
+        let targetLimit = limit + 1
+        let nowMillis = epochMillis(date: now)
+        let cutoffMillis = epochMillis(date: now.addingTimeInterval(-recentDuePriorityWindow))
+        var rows: [Card] = []
+
+        for bucket in [
+            ActiveReviewQueueSQLBucket.recentDue(
+                cutoffMillis: cutoffMillis,
+                nowMillis: nowMillis
+            ),
+            ActiveReviewQueueSQLBucket.oldDue(
+                cutoffMillis: cutoffMillis,
+                nowMillis: nowMillis
+            ),
+            ActiveReviewQueueSQLBucket.new
+        ] {
+            let remainingLimit = targetLimit - rows.count
+            guard remainingLimit > 0 else {
+                break
+            }
+
+            rows += try self.loadActiveReviewQueueBucketRows(
+                workspaceId: workspaceId,
+                querySQL: querySQL,
+                excludedCardIdsClause: excludedCardIdsClause,
+                excludedCardValues: excludedCardValues,
+                bucket: bucket,
+                limit: remainingLimit
+            )
+        }
+
+        return rows
+    }
+
+    private func loadActiveReviewQueueBucketRows(
+        workspaceId: String,
+        querySQL: ReviewQuerySQL,
+        excludedCardIdsClause: String,
+        excludedCardValues: [SQLiteValue],
+        bucket: ActiveReviewQueueSQLBucket,
+        limit: Int
+    ) throws -> [Card] {
+        let bucketSQL = makeActiveReviewQueueBucketSQL(bucket: bucket)
+        return try self.loadActiveReviewQueueRowsMatchingBucketSQL(
+            workspaceId: workspaceId,
+            querySQL: querySQL,
+            excludedCardIdsClause: excludedCardIdsClause,
+            excludedCardValues: excludedCardValues,
+            bucketSQL: bucketSQL,
+            tableSQL: makeActiveReviewQueueBucketTableSQL(bucket: bucket),
+            orderSQL: makeActiveReviewQueueBucketOrderSQL(bucket: bucket),
+            limit: limit
+        )
+    }
+
+    private func loadActiveReviewQueueRowsMatchingBucketSQL(
+        workspaceId: String,
+        querySQL: ReviewQuerySQL,
+        excludedCardIdsClause: String,
+        excludedCardValues: [SQLiteValue],
+        bucketSQL: ReviewQuerySQL,
+        tableSQL: String,
+        orderSQL: String,
+        limit: Int
+    ) throws -> [Card] {
+        return try self.core.query(
+            sql: """
+            SELECT
+            \(cardStoreSelectColumnsSQL)
+            FROM \(tableSQL)
+            WHERE workspace_id = ?
+                AND deleted_at IS NULL\(bucketSQL.clause)\(querySQL.clause)\(excludedCardIdsClause)
+            ORDER BY \(orderSQL)
+            LIMIT ?
+            """,
+            values: [
+                .text(workspaceId)
+            ] + bucketSQL.values + querySQL.values + excludedCardValues + [
+                .integer(Int64(limit))
+            ]
+        ) { statement in
+            try self.mapCard(statement: statement)
+        }
+    }
+}
