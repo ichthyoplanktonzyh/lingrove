@@ -1,7 +1,8 @@
 # 语料实体同步契约（内部验证阶段）
 
-当前实现包含服务端带类型的语料写入/读取模块与原生纯值转换模块，尚未开放 HTTP/MCP，
-也未接入移动端网络上传、分页拉取或账户迁移。完整目标仍按 [移动计划](MOBILE_NOTEBOOK_PLAN.md) 推进。
+当前实现包含带类型的语料写入/读取、原生上传/固定窗口、账户归属与冲突恢复、PNG 资源
+通道和 opt-in MCP 工具。已完成本地模块验证的范围见第二波交付与集成记录；生产门控
+保持关闭，真实 ChatGPT/双设备操作仍须单独确认。完整目标按 [移动计划](MOBILE_NOTEBOOK_PLAN.md) 推进。
 字段定义以 [`fields.ts`](../Nibomo/apps/backend/src/notebook/corpus/fields.ts) 为准，修改
 与身份契约以 [`contract.ts`](../Nibomo/apps/backend/src/notebook/corpus/contract.ts) 为准。
 它们没有复用 SQLite codec 的 opaque payload、索引或整本备份格式。
@@ -32,6 +33,14 @@ revision 继续独立保护本机提交。
 计划所有修改，再校验包含未修改记录的最终图，最后一起写入规范实体、变更身份和
 确认。创建不能覆盖已有身份或复活删除记录；删除要求完整的当前实体版本。旧原文
 和 occurrence 保持不可变，修正内容通过新的证据身份及明确的引用变更表达。
+
+`restore` 是固定个人关系的显式重新采用，只允许 collection、selectedInterpretation、
+mappingEvidence、categoryOverride、reviewDraft。请求携带同一稳定身份、完整字段与
+精确墓碑版本；仅当前仍是该版本墓碑时接受，所有字段时钟/reset 从本次提交重新开始。
+身份/owner 和最终整图仍由原校验器验证。普通 create 继续拒绝全部墓碑，词条、义项、
+来源、occurrence 和 interpretation 不可恢复。MCP 由原 typed 命令规划此操作，不提供
+任意实体恢复入口。原生 shadow 只接受跨越删除时钟的较新 canonical 关系；已观察到的
+同版本墓碑之后新建的本地关系保持待上传，新的远端删除则要求新鲜、版本绑定的选择。
 
 普通字段按服务器字段版本合并：旧版本请求能修改未被另一端修改的字段，同字段
 不同值则冲突。`updatedAt` 只是时间来源信息，不能把编辑器对其他义项的时间戳更新

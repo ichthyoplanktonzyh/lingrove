@@ -444,7 +444,7 @@ struct VocabularyWireWindowIntegrationTests {
         }
     }
 
-    @Test("Bootstrap cannot omit known tombstones, roll records backward, or revive deleted identities")
+    @Test("Bootstrap cannot omit tombstones, roll records backward, or restore a relation with a missing owner")
     func bootstrapPreservesIdentityAndTombstones() throws {
         let projection = try VocabularyWireProjectionCodec.project(
             VocabularyWireTestFixture.document(), notebookID: VocabularyWireTestFixture.notebookID
@@ -492,7 +492,7 @@ struct VocabularyWireWindowIntegrationTests {
         let revived = try Self.verify(Self.window(
             records: revivedRows, scope: Self.scope, highWaterSequence: "2", initialized: true
         ))
-        #expect(throws: VocabularyWireWindowError.invalidShadow) {
+        #expect(throws: VocabularyWireError.invalidRecord) {
             _ = try known.applying(revived, now: Self.now)
         }
     }
@@ -576,7 +576,7 @@ struct VocabularyWireWindowIntegrationTests {
         try Self.assertUnchangedClockRejectsCanonicalEquivalentText(in: rows)
     }
 
-    @Test("Incremental windows cannot resurrect a tombstone")
+    @Test("Incremental windows accept versioned personal relation restoration and reject pre-deletion clocks")
     func deltaCannotReviveTombstone() throws {
         let projection = try VocabularyWireProjectionCodec.project(
             VocabularyWireTestFixture.document(), notebookID: VocabularyWireTestFixture.notebookID
@@ -599,8 +599,13 @@ struct VocabularyWireWindowIntegrationTests {
             records: [revived], scope: Self.scope, mode: .incremental,
             afterSequence: "2", highWaterSequence: "3", initialized: true
         ))
+        let restored = try shadow.applying(window, now: Self.now)
+        #expect(restored.records.contains { $0.entity.entityType == .categoryOverride && !$0.deleted })
+        revived["fieldResets"] = try Self.stringDictionary(categoryOverride["fieldResets"])
+        let invalid = try Self.verify(Self.window(records: [revived], scope: Self.scope, mode: .incremental,
+            afterSequence: "2", highWaterSequence: "3", initialized: true))
         #expect(throws: VocabularyWireWindowError.invalidShadow) {
-            _ = try shadow.applying(window, now: Self.now)
+            _ = try shadow.applying(invalid, now: Self.now)
         }
     }
 }
@@ -724,6 +729,54 @@ extension VocabularyWireWindowIntegrationTests {
 }
 
 extension VocabularyWireWindowIntegrationTests {
+    @Test("Explicit membership re-adoption crosses planner, frozen codec and canonical shadow without reviving content")
+    func relationshipRestorationRoundTrip() throws {
+        let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
+        let kinds = ["categoryOverride"]
+        let removed = try base.records.filter { kinds.contains($0.entity.entityType.rawValue) }.map {
+            Self.tombstone(entityType: $0.entity.entityType.rawValue, entityID: $0.entity.entityID, version: "2")
+        }
+        let deletion = try Self.verify(Self.window(records: removed, scope: Self.scope, mode: .incremental,
+            afterSequence: "1", highWaterSequence: "2", initialized: true))
+        let tombstones = try base.applying(deletion, now: Self.now)
+        let batch = try #require(try VocabularyWireUploadPlanner.make(local: original, base: tombstones))
+        #expect(batch.request.members.count == removed.count)
+        #expect(batch.request.members.allSatisfy { member in
+            if case .restore = member.change.action { return member.change.baseVersion.rawValue == "2" }; return false
+        })
+        let bytes = try batch.encodedBody()
+        let reopened = try VocabularyWireUploadPlanner.restore(body: bytes, targetEntities: batch.targetEntities,
+            expectedBaseSequence: tombstones.sequence, base: tombstones)
+        #expect(try reopened.encodedBody() == bytes)
+        let restoredRows = try batch.targetEntities.filter { kinds.contains($0.entityType.rawValue) }.map { try Self.row(from: $0, version: "3") }
+        let restoredWindow = try Self.verify(Self.window(records: restoredRows, scope: Self.scope, mode: .incremental,
+            afterSequence: "2", highWaterSequence: "3", initialized: true))
+        let canonical = try tombstones.applying(restoredWindow, now: Self.now)
+        #expect(try VocabularyWireUploadPlanner.make(local: original, base: canonical) == nil)
+        let deletedDocument = try tombstones.materialize().document
+        let deleting = try #require(try VocabularyWireUploadPlanner.make(local: deletedDocument, base: base))
+        let deletionACK = try VocabularyWireUploadAcknowledgement(batch: deleting, receipt: Self.uploadReceipt(deleting))
+        let coveringRestore = try Self.verify(Self.window(records: restoredRows, scope: Self.scope, mode: .incremental,
+            afterSequence: "1", highWaterSequence: "3", initialized: true))
+        let acknowledged = try VocabularyWireRebase.prepare(local: deletedDocument, base: base,
+            window: coveringRestore, acknowledging: deletionACK, now: Self.now)
+        #expect(try VocabularyWireUploadPlanner.make(local: acknowledged.materialization.document, base: acknowledged.shadow) == nil)
+        // A new local membership after a known deletion remains pending intent.
+        let unchanged = try Self.verify(Self.window(records: [], scope: Self.scope, mode: .incremental,
+            afterSequence: "2", highWaterSequence: "2", initialized: true))
+        let rebased = try VocabularyWireRebase.prepare(local: original, base: tombstones, window: unchanged, now: Self.now)
+        #expect(try VocabularyWireUploadPlanner.make(local: rebased.materialization.document, base: rebased.shadow) != nil)
+        let newerDeletion = try Self.verify(Self.window(records: removed.map { value in
+            var row = value; row["version"] = "4"; return row
+        }, scope: Self.scope, mode: .incremental, afterSequence: "2", highWaterSequence: "4", initialized: true))
+        do {
+            _ = try VocabularyWireRebase.prepare(local: original, base: tombstones, window: newerDeletion, now: Self.now)
+            Issue.record("A later tombstone must require a fresh explicit choice")
+        } catch let VocabularyWireRebaseError.conflicts(conflicts) {
+            #expect(conflicts.contains { $0.reason == .retiredIdentity })
+        }
+    }
+
     @Test("Initial upload encodes every public family, excludes private tool state, and restores the same frozen request")
     func uploadInitialPublicGraphAndRestore() throws {
         let original = try VocabularyWireTestFixture.document(), base = VocabularyWireServerShadow.empty(scope: Self.scope)

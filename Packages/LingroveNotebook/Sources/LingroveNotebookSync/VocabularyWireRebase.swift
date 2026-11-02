@@ -91,7 +91,7 @@ public nonisolated enum VocabularyWireRebase {
                 guard let index = matches.first else { conflicts.append(item); return nil }
                 let selection = selections[index]
                 guard same(selection.local, l), same(selection.remote, r), selection.remoteVersion == newRecords[key]?.version,
-                      !(selection.choice == .local && newRecords[key]?.deleted == true) else {
+                      !(selection.choice == .local && newRecords[key]?.deleted == true && !VocabularyWireMutationPolicy.canRestore(identity.entityType)) else {
                     throw VocabularyWireRebaseError.staleResolution
                 }
                 consumed.insert(index)
@@ -106,7 +106,13 @@ public nonisolated enum VocabularyWireRebase {
             }
             if same(l, b) { if let r { merged.append(r) }; continue }
             if l != nil, newRecords[key]?.deleted == true {
-                if try conflict(.retiredIdentity) == .remote, let r { merged.append(r) }; continue
+                // Re-adoption after a deletion already present in our ancestor
+                // is new local intent. A later deletion needs a fresh choice;
+                // never silently rebind an old restore to its newer version.
+                if VocabularyWireMutationPolicy.canRestore(identity.entityType), oldRecords[key]?.deleted == true,
+                   oldRecords[key]?.version == newRecords[key]?.version, let l { merged.append(l) }
+                else if let choice = try conflict(.retiredIdentity), let value = choice == .local ? l : r { merged.append(value) }
+                continue
             }
             if same(l, r) { if let l { merged.append(l) }; continue }
             guard let b else {

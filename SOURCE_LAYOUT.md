@@ -927,6 +927,31 @@ their automation gaps do not imply that a product interaction has failed. The co
 `scripts/mobile/validate-offline-corpus.py` and original export runner
 `scripts/validation/validate-study-export.py` acquire the wave-wide Apple validation lock.
 
+### Mobile account, media and agent boundaries
+
+`LingroveNotebookAccountStore` owns durable owner/endpoint scope, retained source proposals and
+first-connection recovery copies. Account/session adapters reuse the existing workspace/Card fork
+instead of changing a frozen notebook request's owner. `LingroveNotebookConflictStore` persists
+value/version-bound choices; the recovery IO and screen expose those choices through the existing
+library. The network runner checks scope around suspension and applies the selected result in the
+same SQLite transaction as the document, shadow and journal. Account recovery copies remain
+independent media consumers after the active document changes.
+
+`Cloud/Notebook/Media` owns PNG transfer coordination and the network boundary. Its queue store
+holds durable attempts, revisions, cancellation, pins and release debt; the process-local transfer
+index only cancels live work. Existing media storage continues owning workspace-authorized bytes.
+Uploads precede the frozen corpus submission; a verified incoming candidate obtains its images
+before document apply. Backend `notebook/media` borrows the existing blob writer/lifecycle and
+workspace locks. Logical release does not delete the shared physical cache or generic registry.
+
+Backend `notebook/agent` translates typed MCP business commands to the same corpus transaction.
+It owns bounded reads, version-bound cursors and durable idempotent decisions; registry specs and
+MCP adapters own tool presentation. The four notebook tools are opt-in and MCP-only. Fixed-owner
+relationship re-adoption uses a shared explicit `restore` mutation with the exact tombstone version;
+native upload, canonical shadow, rebase and receipt coverage implement the same boundary. Original
+content identities stay retired. No new generic SQL/patch writer or implicit review enrollment is
+introduced. Wave reports distinguish local protocol/storage evidence from real client operation.
+
 ## Local vocabulary CLI
 
 `LingroveCLI/` is a separate executable target, embedded by `scripts/embed_cli.sh` in both app

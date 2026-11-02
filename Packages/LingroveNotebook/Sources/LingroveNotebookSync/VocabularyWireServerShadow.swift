@@ -38,8 +38,13 @@ public nonisolated struct VocabularyWireServerShadow: Sendable {
         for record in window.records {
             if let old = prior[record.key] {
                 // Canonical identities are retained as tombstones. A bootstrap
-                // cannot revive one, roll back a row or rewrite an equal version.
-                guard record.version >= old.version, !old.deleted || record.deleted,
+                // cannot revive content, roll back a row or rewrite an equal version.
+                // A canonical relation restore must cross the deletion boundary
+                // in every field/reset clock, including after later patches.
+                guard record.version >= old.version,
+                      !old.deleted || record.deleted || (VocabularyWireMutationPolicy.canRestore(record.entity.entityType)
+                        && record.version > old.version && record.fieldVersions.values.allSatisfy { $0 > old.version }
+                        && record.fieldResets.values.allSatisfy { $0 > old.version }),
                       record.version != old.version || record.hasSameWireValue(as: old) else { throw VocabularyWireWindowError.invalidShadow }
                 if !old.deleted && !record.deleted {
                     for (field, clock) in old.fieldVersions {

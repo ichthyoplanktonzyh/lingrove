@@ -100,7 +100,12 @@ public nonisolated enum VocabularyWireUploadPlanner {
                 }
                 continue
             }
-            if previous?.deleted == true { throw VocabularyWireUploadError.retiredIdentity }
+            if let previous, previous.deleted {
+                guard VocabularyWireMutationPolicy.canRestore(entity.entityType) else { throw VocabularyWireUploadError.retiredIdentity }
+                result.append(.init(entityType: entity.entityType, entityID: entity.entityID,
+                    baseVersion: previous.version, action: .restore(entity.fields)))
+                continue
+            }
             guard let previous else {
                 result.append(.init(entityType: entity.entityType, entityID: entity.entityID, baseVersion: .zero, action: .create(entity.fields)))
                 continue
@@ -145,11 +150,20 @@ public nonisolated struct VocabularyWireUploadAcknowledgement: Sendable {
         let prior = Dictionary(uniqueKeysWithValues: base.records.map { ($0.key, $0) })
         for member in batch.request.members {
             guard let row = records[member.change.key], row.version >= receipt.committedSequence else { throw VocabularyWireUploadError.incompleteReceiptCoverage }
-            if case .delete = member.change.action, !row.deleted { throw VocabularyWireUploadError.incompleteReceiptCoverage }
+            if case .delete = member.change.action, !row.deleted {
+                // Another replica may explicitly re-adopt the relation after
+                // our deletion committed. Its entire canonical row must cross
+                // the receipt boundary; an equal/older live row is not coverage.
+                guard VocabularyWireMutationPolicy.canRestore(row.entity.entityType), row.version > receipt.committedSequence,
+                      row.fieldVersions.values.allSatisfy({ $0 > receipt.committedSequence }),
+                      row.fieldResets.values.allSatisfy({ $0 > receipt.committedSequence }) else {
+                    throw VocabularyWireUploadError.incompleteReceiptCoverage
+                }
+            }
             guard !row.deleted else { continue } // A later deletion remains authoritative.
             let set: [String: VocabularyWireJSON], add: [String: VocabularyWireJSON]
             switch member.change.action {
-            case let .create(fields): set = fields; add = [:]
+            case let .create(fields), let .restore(fields): set = fields; add = [:]
             case let .patch(values, additions): set = values; add = additions
             case .delete: continue
             }

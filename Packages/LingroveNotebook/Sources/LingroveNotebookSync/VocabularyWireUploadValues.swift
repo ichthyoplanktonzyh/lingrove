@@ -11,6 +11,7 @@ public nonisolated enum VocabularyWireUploadError: Error, Equatable, Sendable {
 public nonisolated struct VocabularyWireMutation: Codable, Sendable {
     public enum Action: Sendable {
         case create([String: VocabularyWireJSON])
+        case restore([String: VocabularyWireJSON])
         case patch(set: [String: VocabularyWireJSON], add: [String: VocabularyWireJSON])
         case delete
     }
@@ -34,6 +35,9 @@ public nonisolated struct VocabularyWireMutation: Codable, Sendable {
         case "create":
             guard baseVersion == .zero else { throw VocabularyWireUploadError.invalidRequest }
             action = .create(try object(f.take("fields")))
+        case "restore":
+            guard baseVersion > .zero, VocabularyWireMutationPolicy.canRestore(kind) else { throw VocabularyWireUploadError.invalidRequest }
+            action = .restore(try object(f.take("fields")))
         case "patch":
             guard baseVersion > .zero else { throw VocabularyWireUploadError.invalidRequest }
             let set = try object(f.take("set")), add = try object(f.take("add"))
@@ -53,6 +57,7 @@ public nonisolated struct VocabularyWireMutation: Codable, Sendable {
             "entityId": .string(entityID), "baseVersion": .string(baseVersion.rawValue)]
         switch action {
         case let .create(values): fields["action"] = .string("create"); fields["fields"] = .object(values)
+        case let .restore(values): fields["action"] = .string("restore"); fields["fields"] = .object(values)
         case let .patch(set, add): fields["action"] = .string("patch"); fields["set"] = .object(set); fields["add"] = .object(add)
         case .delete: fields["action"] = .string("delete")
         }
@@ -61,7 +66,7 @@ public nonisolated struct VocabularyWireMutation: Codable, Sendable {
     public func encode(to encoder: any Encoder) throws { try json.encode(to: encoder) }
     var writtenFields: Set<String> {
         switch action {
-        case let .create(fields): Set(fields.keys)
+        case let .create(fields), let .restore(fields): Set(fields.keys)
         case let .patch(set, add): Set(set.keys).union(add.keys)
         case .delete: []
         }
@@ -166,6 +171,12 @@ public nonisolated struct VocabularyWireGroupReceipt: Codable, Equatable, Sendab
 /// server owns final validation; this small policy only distinguishes append
 /// intent from a deliberate replacement/removal in a native request.
 nonisolated enum VocabularyWireMutationPolicy {
+    /// Only fixed-owner personal relationships may be re-adopted. Their exact
+    /// tombstone version is sent; content/evidence deletions remain final.
+    static func canRestore(_ kind: VocabularyWireEntityKind) -> Bool {
+        [.collection, .selectedInterpretation, .mappingEvidence, .categoryOverride, .reviewDraft].contains(kind)
+    }
+
     static func isAdditive(_ kind: VocabularyWireEntityKind, _ field: String) -> Bool {
         switch kind {
         case .sense: ["mergedFrom", "standaloneMeanings", "alternateMeanings"].contains(field)
