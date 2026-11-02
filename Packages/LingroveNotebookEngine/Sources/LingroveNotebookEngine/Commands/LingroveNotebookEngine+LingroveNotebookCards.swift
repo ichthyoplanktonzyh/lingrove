@@ -108,17 +108,19 @@ extension LingroveNotebookEngine {
             let proposed = LingroveNotebookCardMaterial.refreshed(current: content, previous: expected.generatedContent,
                 latest: material.content, replacingManualContent: replacingManualContent)
             let nextGenerated: CardEditorInput? = expected.generatedContent == nil && !replacingManualContent ? nil : material.content
-            if content == proposed, expected.sourceRevision == current.revision, expected.generatedContent == nextGenerated {
+            let changesCard = !LingroveNotebookCardMaterial.sameStoredBytes(content, proposed)
+            if !changesCard, expected.sourceRevision == current.revision,
+               LingroveNotebookCardMaterial.sameStoredBytes(expected.generatedContent, nextGenerated) {
                 return original
             }
             let card: Card
-            if content != proposed {
+            if changesCard {
                 let settings = try self.workspaceSettingsStore.loadCloudSettings()
                 card = try self.persistCardMutation(workspaceId: expected.source.workspaceId, input: proposed,
                     initialMetadata: nil, cardId: original.cardId, cloudSettings: settings, now: nowIsoTimestamp())
             } else { card = original }
             _ = try self.lingroveNotebookCardLinkStore.update(expected, generatedContent: nextGenerated,
-                sourceRevision: current.revision, cardOperationId: content == proposed ? nil : card.lastOperationId)
+                sourceRevision: current.revision, cardOperationId: changesCard ? card.lastOperationId : nil)
             return card
         }
     }

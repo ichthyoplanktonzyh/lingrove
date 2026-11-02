@@ -26,7 +26,8 @@ public nonisolated struct BoundedHTTPClient: Sendable {
     }
 
     @concurrent
-    public func response(for original: URLRequest, maximumBytes: Int, errorMaximumBytes: Int? = nil)
+    public func response(for original: URLRequest, maximumBytes: Int, errorMaximumBytes: Int? = nil,
+                         acceptedStatusCodes: Range<Int> = 200..<300)
         async throws -> (Data, HTTPURLResponse) {
         try Task.checkCancellation()
         guard maximumBytes >= 0, errorMaximumBytes.map({ $0 >= 0 }) ?? true else { throw BoundedHTTPError.invalidResponse }
@@ -36,7 +37,9 @@ public nonisolated struct BoundedHTTPClient: Sendable {
         let (stream, response) = try await session.bytes(for: request, delegate: CloudRedirectFence())
         defer { stream.task.cancel() }
         guard let http = response as? HTTPURLResponse, http.url == request.url else { throw BoundedHTTPError.invalidResponse }
-        let allowed = (200..<300).contains(http.statusCode) ? maximumBytes : (errorMaximumBytes ?? maximumBytes)
+        // Some versioned protocols accept exactly 200. A different 2xx is still an error there
+        // and must receive the small error-body budget, rather than a multi-MiB success budget.
+        let allowed = acceptedStatusCodes.contains(http.statusCode) ? maximumBytes : (errorMaximumBytes ?? maximumBytes)
         guard http.expectedContentLength <= Int64(allowed) else { throw BoundedHTTPError.responseTooLarge }
         var data = Data()
         data.reserveCapacity(min(allowed, 16_384))

@@ -12,15 +12,18 @@ public nonisolated struct NotebookAccount: Sendable {
     public let authorizationHeaderValue: String
     public let isAutomation: Bool
     public let isTestDistribution: Bool
+    /// Existing mobile guest sessions retain their storage scope kind. This value never creates
+    /// a guest or authorizes one; native Mac supplies bearer authorization and leaves it false.
+    public let isGuest: Bool
     public init(userID: String, workspaceID: UUID, apiBaseURL: String, authorizationHeaderValue: String,
-                isAutomation: Bool, isTestDistribution: Bool) {
+                isAutomation: Bool, isTestDistribution: Bool, isGuest: Bool = false) {
         userId = userID; workspaceId = workspaceID.uuidString.lowercased(); apiBaseUrl = apiBaseURL
         self.authorizationHeaderValue = authorizationHeaderValue
-        self.isAutomation = isAutomation; self.isTestDistribution = isTestDistribution
+        self.isAutomation = isAutomation; self.isTestDistribution = isTestDistribution; self.isGuest = isGuest
     }
     func matches(_ other: Self) -> Bool {
         userId.utf8.elementsEqual(other.userId.utf8) && workspaceId == other.workspaceId
-            && apiBaseUrl == other.apiBaseUrl
+            && apiBaseUrl == other.apiBaseUrl && isGuest == other.isGuest
     }
 }
 

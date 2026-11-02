@@ -94,6 +94,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/test/leak':
             STATE['leaks'] += 1; self.reply({'ok': True}); return
         mode = STATE['mode']
+        if path == '/test/non-200-success':
+            self.reply(b'x' * 16384, 206)
+            return
         if path == '/auth/api/send-code':
             email = body['email']
             if email.startswith('redirect'):

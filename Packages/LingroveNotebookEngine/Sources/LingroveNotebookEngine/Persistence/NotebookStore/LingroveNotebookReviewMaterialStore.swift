@@ -21,9 +21,11 @@ public struct LingroveNotebookReviewMaterialStore {
             let current = CardEditorInput(frontText: card.frontText, backText: card.backText, tags: card.tags)
             let proposed = LingroveNotebookCardMaterial.refreshed(current: current, previous: link.generatedContent, latest: material.content)
             let generated = link.generatedContent == nil ? nil : material.content
-            guard current != proposed || link.generatedContent != generated || link.sourceRevision != snapshot.revision else { continue }
+            let changesCard = !LingroveNotebookCardMaterial.sameStoredBytes(current, proposed)
+            guard changesCard || !LingroveNotebookCardMaterial.sameStoredBytes(link.generatedContent, generated)
+                    || link.sourceRevision != snapshot.revision else { continue }
             var operationID: String?
-            if current != proposed {
+            if changesCard {
                 let now = nowIsoTimestamp(), id = UUID().uuidString.lowercased()
                 let next = try cards.saveCard(workspaceId: card.workspaceId, input: proposed, initialMetadata: nil,
                     cardId: card.cardId, installationId: settings.installationId, operationId: id, now: now)

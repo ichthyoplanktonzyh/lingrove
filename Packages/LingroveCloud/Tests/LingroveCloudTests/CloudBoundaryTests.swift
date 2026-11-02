@@ -8,6 +8,16 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct CloudBoundaryTests {
+    @Test func unexpectedSuccessStatusKeepsTheProtocolErrorBodyBudget() async throws {
+        let peer = try CloudLoopback(); defer { peer.stop() }
+        let base = try peer.configuration.apiBaseURL.deletingLastPathComponent()
+        let request = URLRequest(url: base.appendingPathComponent("test/non-200-success"))
+        await #expect(throws: BoundedHTTPError.responseTooLarge) {
+            try await BoundedHTTPClient().response(for: request, maximumBytes: 8 * 1024 * 1024,
+                errorMaximumBytes: 8192, acceptedStatusCodes: 200..<201)
+        }
+    }
+
     @Test func otpRefreshAndTrustedMeUseBoundedRedirectFencedHTTP() async throws {
         let peer = try CloudLoopback(); defer { peer.stop() }
         let client = AccountAPIClient(), config = try peer.configuration

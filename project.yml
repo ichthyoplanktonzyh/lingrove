@@ -10,6 +10,10 @@ options:
   groupSortPosition: top
   xcodeVersion: "2600"
 packages:
+  LingroveNotebookEngine:
+    path: Packages/LingroveNotebookEngine
+  LingroveNotebookCloud:
+    path: Packages/LingroveNotebookCloud
   LingroveCloud:
     path: Packages/LingroveCloud
   LingroveNotebook:
@@ -128,6 +132,10 @@ targetTemplates:
     dependencies:
       - package: LingroveCloud
         product: LingroveCloud
+      - package: LingroveNotebookEngine
+        product: LingroveNotebookEngine
+      - package: LingroveNotebookCloud
+        product: LingroveNotebookCloud
       - package: LingroveNotebook
         product: LingroveTextRules
       - package: LingroveNotebook

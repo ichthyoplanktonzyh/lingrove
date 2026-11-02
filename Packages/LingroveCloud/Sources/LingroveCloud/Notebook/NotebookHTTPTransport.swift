@@ -154,7 +154,7 @@ public struct NotebookHTTPTransport {
         if stagedFeature { request.setValue("staged-upload-v1", forHTTPHeaderField: "X-Lingrove-Corpus-Features") }
         let data: Data
         let response: HTTPURLResponse
-        do { (data, response) = try await http.response(for: request, maximumBytes: limit, errorMaximumBytes: 8192) }
+        do { (data, response) = try await http.response(for: request, maximumBytes: limit, errorMaximumBytes: 8192, acceptedStatusCodes: 200..<201) }
         catch BoundedHTTPError.responseTooLarge { throw NotebookNetworkError.replyTooLarge }
         catch BoundedHTTPError.invalidResponse { throw NotebookNetworkError.invalidReply }
         guard response.statusCode == 200 else {

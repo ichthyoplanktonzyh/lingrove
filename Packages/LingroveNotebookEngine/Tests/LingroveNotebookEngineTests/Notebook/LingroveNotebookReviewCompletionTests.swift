@@ -135,7 +135,7 @@ struct LingroveNotebookReviewCompletionTests {
             _ = try f.db.submitReview(workspaceId: f.workspace, reviewSubmission: .init(cardId: card, rating: .again,
                 reviewedAtClient: formatIsoTimestamp(date: start.addingTimeInterval(Double(index))), reviewedTimeZone: "UTC"))
         }
-        try f.db.undoLastNotebookRating(workspaceId: f.workspace, cardId: card)
+        try f.db.undoLastNotebookRating(workspaceId: f.workspace, cardId: card, generation: f.db.loadLingroveNotebook(workspaceId: f.workspace).generation)
         let request = try LingroveNotebookReviewSyncStore(core: f.db.core).request(f.binding())
         // One initial Card plus 199 complete rating/event pairs. The last
         // unpaired event waits with its schedule instead of filling slot 400.

@@ -38,6 +38,12 @@ struct EngineScopedCommandIntegrationTests {
         let rated = try f.db.submitNotebookRating(.init(cardId: cardID, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: fresh)
         #expect(rated.reps == 1)
+        #expect(throws: CancellationError.self) {
+            try f.db.undoLastNotebookRating(workspaceId: f.workspace, cardId: cardID, generation: saved.generation)
+        }
+        #expect(try f.db.loadActiveCard(workspaceId: f.workspace, cardId: cardID).reps == 1)
+        try f.db.undoLastNotebookRating(workspaceId: f.workspace, cardId: cardID, generation: fresh.generation)
+        #expect(try f.db.loadActiveCard(workspaceId: f.workspace, cardId: cardID).reps == 0)
     }
 
     @Test("Cancelled corpus and rating commands leave their SQLite journals unchanged")
@@ -189,6 +195,30 @@ struct EngineScopedCommandIntegrationTests {
         card = try f.db.loadActiveCard(workspaceId: f.workspace, cardId: cardID)
         #expect(card.backText.utf8.elementsEqual(authored.utf8))
         #expect(card.reps == 0)
+    }
+
+    @Test("Generated Unicode spelling and its baseline advance together across repeated source edits")
+    func generatedCanonicalSpellingRemainsSourceOwned() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let now = Date()
+        let sense = VocabularySense(id: UUID(), meaning: "caf\u{00e9}", meaningLanguage: .english,
+            meaningOrigin: .user, isSavedWithoutContext: true, createdAt: now, updatedAt: now)
+        let doc = VocabularyDocument(entries: [.init(id: UUID(), expression: "coffee", dictionaryForm: "coffee",
+            language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now)])
+        var saved = try f.db.saveLingroveNotebook(doc, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
+            selection: .init(entryID: saved.document.entries[0].id, senseID: sense.id))
+        let enrollment = try #require(try f.db.enrollNotebookSenses([draft], basedOn: saved).first)
+        let exercise = try #require(try f.db.lingroveNotebookReviewStore.exercises(enrollment).first)
+        for meaning in ["cafe\u{0301}", "caf\u{00e9} updated"] {
+            var changed = saved.document
+            changed.entries[0].senses[0].meaning = meaning
+            saved = try f.db.saveLingroveNotebook(changed, basedOn: saved, restoringBackup: true)
+            let card = try f.db.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId)
+            let link = try #require(try f.db.lingroveNotebookCardLinkStore.find(workspaceId: f.workspace, id: exercise.linkId))
+            #expect(card.backText.utf8.elementsEqual(try #require(link.generatedContent).backText.utf8))
+            #expect(card.backText.contains(meaning) && card.reps == 0)
+        }
     }
 
     private func counts(_ engine: LingroveNotebookEngine) throws -> [Int] {

@@ -95,7 +95,7 @@ nonisolated public struct NotebookMediaTransport: Sendable {
         guard limit >= 0, limit <= 4 * 1024 * 1024 else { throw NotebookMediaError.invalidDescriptor }
         let bytes: Data
         let response: HTTPURLResponse
-        do { (bytes, response) = try await http.response(for: request, maximumBytes: limit, errorMaximumBytes: 8192) }
+        do { (bytes, response) = try await http.response(for: request, maximumBytes: limit, errorMaximumBytes: 8192, acceptedStatusCodes: 200..<201) }
         catch BoundedHTTPError.responseTooLarge { throw NotebookNetworkError.replyTooLarge }
         catch BoundedHTTPError.invalidResponse { throw NotebookNetworkError.invalidReply }
         guard response.statusCode == 200 else {

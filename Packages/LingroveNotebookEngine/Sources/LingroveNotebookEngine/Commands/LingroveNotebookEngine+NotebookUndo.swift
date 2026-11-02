@@ -4,11 +4,13 @@ import Foundation
 /// only scheduler columns preserves later authored faces. A subsequent rating supersedes this
 /// local affordance; the server also checks the causal target before restoring a remote head.
 extension LingroveNotebookEngine {
-    public func undoLastNotebookRating(workspaceId: String, cardId: String, generation: String? = nil) throws {
+    public func undoLastNotebookRating(workspaceId: String, cardId: String, generation: String) throws {
+        try Task.checkCancellation()
         try core.inTransaction {
+            try Task.checkCancellation()
             let snapshot = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
             try lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: workspaceId, notebookId: snapshot.notebookId)
-            if let generation, snapshot.generation != generation { throw CancellationError() }
+            guard snapshot.generation == generation else { throw CancellationError() }
             let rows = try core.query(sql: "SELECT event_id,operation_id,previous_card_json FROM notebook_review_last_rating WHERE workspace_id=? AND card_id=?", values: [.text(workspaceId), .text(cardId)]) {
                 (DatabaseCore.columnText(statement: $0, index: 0), DatabaseCore.columnText(statement: $0, index: 1), DatabaseCore.columnText(statement: $0, index: 2))
             }

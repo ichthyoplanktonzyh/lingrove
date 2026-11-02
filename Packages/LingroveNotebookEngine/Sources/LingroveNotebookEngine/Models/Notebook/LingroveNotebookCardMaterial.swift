@@ -77,6 +77,20 @@ extension LingroveNotebookCardMaterial {
             backText: input.backText.trimmingCharacters(in: .whitespacesAndNewlines), tags: input.tags)
     }
 
+    /// Generated baselines and their Card write gate must use the same literal ownership rule.
+    /// Advancing an NFD baseline while skipping its canonically equivalent Card write would make
+    /// that still-generated field look manually edited on the next refresh.
+    static func sameStoredBytes(_ lhs: CardEditorInput?, _ rhs: CardEditorInput?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil): return true
+        case let (.some(a), .some(b)):
+            return a.frontText.utf8.elementsEqual(b.frontText.utf8)
+                && a.backText.utf8.elementsEqual(b.backText.utf8)
+                && a.tags.elementsEqual(b.tags, by: { $0.utf8.elementsEqual($1.utf8) })
+        default: return false
+        }
+    }
+
     /// Hash sorted JSON of values, not Swift's per-process randomized Hasher. This identifies an
     /// exact creation request across retries; it is neither a remote version nor a credential.
     public static func fingerprint<T: Encodable>(_ value: T) throws -> String {

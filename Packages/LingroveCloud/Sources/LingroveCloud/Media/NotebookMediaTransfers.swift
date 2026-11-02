@@ -13,7 +13,7 @@ public final class NotebookMediaTransfers {
     }
     private var active: [String: Active] = [:]
 
-    func perform(_ job: NotebookMediaJob, operation: @escaping @MainActor () async throws -> Void) async throws {
+    public func perform(_ job: NotebookMediaJob, operation: @escaping @MainActor () async throws -> Void) async throws {
         guard let attemptID = job.attemptID, active[job.id] == nil else { throw NotebookMediaError.busy }
         let task = Task { try await operation() }
         active[job.id] = Active(attemptID: attemptID, task: task)
