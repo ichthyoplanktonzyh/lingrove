@@ -110,6 +110,8 @@ Mac UI 操作单独确认。真实云账户、邮箱、真实双设备与权限�
 - 使用 `NotebookSyncCoordinator` + 同一个 `cloudStorage`/`NotebookMediaTransfers`，
   支持 corpus/media/review 分别状态、明确 Retry/取消、断网/恢复和重启。corpus 成功
   与 review unavailable 分别展示；没有服务/权限时不能声称同步成功。
+  工作区调度设置也按已有服务契约读取/同步，E 从同一 engine settings 查询；不能让
+  Mac 对同一工作区默默使用另一组 FSRS 默认参数，也不因此搬入无关 generic Card UI。
 - Mac 只提供既有邮箱 OTP；Apple/Google 真正应用登记/账号和服务部署不在本轮，
   不能破坏 mobile 既有 provider。没有默认 Nibomo 请求/guest/遥测或额外托管输入。
 - 验证实际私有测试 Keychain/会话（未改部分复用证据）、SQLite 两账户/明确接纳与
