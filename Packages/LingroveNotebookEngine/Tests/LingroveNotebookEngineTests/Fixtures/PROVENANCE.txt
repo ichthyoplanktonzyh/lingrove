@@ -1,0 +1,6 @@
+The fsrs-full-vectors.json file is copied byte-for-byte from Nibomo/tests/fsrs-full-vectors.json
+at the Mac wave 1 baseline 9351fd93b697a145ded9ded6bb008420b864b5d8.
+It is the existing official ts-fsrs 5.2.3 parity corpus, including the baseline fixture order.
+The XCTest parity source and storage suites are derived from the same baseline mobile tests;
+legacy development-schema migration/UI/service-graph cases remain in the native host target.
+Synthetic SQLite fixtures in this target are created in disposable temporary directories.
