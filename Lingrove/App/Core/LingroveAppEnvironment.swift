@@ -1,4 +1,5 @@
 import LingroveCloud
+import LingroveNotebook
 import AppKit
 import Combine
 import Foundation
@@ -23,6 +24,7 @@ final class LingroveAppEnvironment {
     /// Optional debug artifacts share one bounded disk writer across all visual-context sessions.
     let debugScreenshotWriter: DebugScreenshotWriter?
     let vocabularyStore: VocabularyStore
+    let notebookServices: MacNotebookAppServices
     let vocabularySearch: VocabularySearchController
     let vocabularyCLI: CLIMailboxServer?
     let cliInstallation: CLIInstallationModel?
@@ -267,19 +269,22 @@ final class LingroveAppEnvironment {
         // Typing history owns its own encrypted archive. Inside the XCTest host it starts empty and
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
         let isTestHost = LingroveCompatibility.processEnvironment["XCTestConfigurationFilePath"] != nil
-        let vocabularyURL = BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
-            .appendingPathComponent("Vocabulary/learning-library.sqlite")
-        // SQLite starts a fresh library as requested. Retired JSON files/media remain untouched;
-        // Dev and production still use distinct support roots, and tests use in-memory SQLite.
-        let vocabularyStore = VocabularyStore(archive: VocabularyArchive(url: isTestHost ? nil : vocabularyURL,
-            installsBundledClassification: !isTestHost))
+        let supportURL = isTestHost
+            ? FileManager.default.temporaryDirectory.appendingPathComponent("Lingrove-Host-\(UUID().uuidString)")
+            : BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
+        // A fresh shared engine is the only durable notebook. Old development archives remain
+        // untouched; no migration or fallback copy can silently become a second source of truth.
+        let notebookURL = supportURL.appendingPathComponent("Notebook")
+        let notebookServices = MacNotebookAppServices(databaseURL: notebookURL.appendingPathComponent("primary.sqlite"),
+            mediaDirectoryURL: notebookURL.appendingPathComponent("Media"), account: accountService, speech: speechController)
+        let vocabularyStore = notebookServices.vocabulary
         let vocabularySearch = VocabularySearchController(store: vocabularyStore,
             directoryURL: isTestHost ? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
                 : VocabularySearchCatalog.directoryURL,
             cacheURL: isTestHost ? nil : VocabularySearchCatalog.cacheURL)
         let cliInstallation = isTestHost ? nil : CLIInstallationModel()
         let vocabularyCLI: CLIMailboxServer? = isTestHost ? nil : CLIMailboxServer(
-            root: vocabularyURL.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Automation")) {
+            root: supportURL.appendingPathComponent("Automation")) {
                 await vocabularyStore.executeCLI($0)
             }
         let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
@@ -304,18 +309,9 @@ final class LingroveAppEnvironment {
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
             learningSettings: suggestionSettings.languageLearning, review: reviewController, search: vocabularySearch)
-        vocabularyStore.enrichCapture = { [weak explainer = learningModels.explainer] capture in
-            explainer?.enrich(capture) ?? capture
-        }
-        learningModels.explainer.loadPersisted = { [weak vocabularyStore] input, language in
-            await vocabularyStore?.load()
-            return vocabularyStore?.explanation(for: input, language: language)
-        }
-        learningModels.explainer.lookupSaved = { [weak vocabularyStore] input, language in
-            vocabularyStore?.explanation(for: input, language: language)
-        }
-        learningModels.explainer.didExplain = { [weak vocabularyStore] record in
-            Task { await vocabularyStore?.saveExplanation(record) }
+        vocabularyStore.connectExplanations(to: learningModels.explainer)
+        notebookServices.builtInReview?.onOpenSource = { [weak vocabularyWindow] selection in
+            vocabularyWindow?.show(selectedID: selection.entryID, senseID: selection.senseID)
         }
         modelDownloadManager.protectedModelFilenames = { [weak runtimeModel, weak suggestionSettings] in
             guard let suggestionSettings else { return [] }
@@ -349,6 +345,7 @@ final class LingroveAppEnvironment {
         )
         let settingsCoordinator = SettingsCoordinator(
             accountService: accountService,
+            notebookSync: notebookServices.synchronization,
             cli: cliInstallation,
             learningModels: learningModels,
             speech: speechController,
@@ -562,6 +559,7 @@ final class LingroveAppEnvironment {
         self.ocrRuntime = ocrRuntime
         self.debugScreenshotWriter = debugScreenshotWriter
         self.vocabularyStore = vocabularyStore
+        self.notebookServices = notebookServices
         self.vocabularySearch = vocabularySearch
         self.vocabularyCLI = vocabularyCLI
         self.cliInstallation = cliInstallation

@@ -253,11 +253,14 @@ struct BuiltInNotebookReviewIntegrationTests {
         try engine.saveRetainedBuiltInNotebookMaterial(link: retainedLink, card: baseline,
             input: .init(frontText: "Saved material edit", backText: baseline.backText, tags: baseline.tags),
             action: .init(content: content, selection: selection))
-        let returned = try engine.saveLingroveNotebook(changed.document, basedOn: removed, restoringBackup: true)
+        var returningDocument = changed.document
+        returningDocument.entries[0].senses[0].meaning = "answer after source returns"
+        let returned = try engine.saveLingroveNotebook(returningDocument, basedOn: removed, restoringBackup: true)
         try fixture.reopen()
         content = try fixture.db.loadBuiltInNotebookReview(scope: returned, now: now)
         let restored = try #require(content.review.groups[selection.senseID]?.cards.first)
         #expect(restored.frontText == "Saved material edit" && restored.reps == rated.reps && restored.dueAt == rated.dueAt)
+        #expect(restored.backText == "answer after source returns")
         #expect(content.statistics.ratingRecords == 1 && content.eligibleCardIDs.contains(card.cardId))
         #expect(try fixture.db.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
     }

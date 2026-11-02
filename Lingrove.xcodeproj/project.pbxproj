@@ -165,6 +165,7 @@
 		10A1C0C952BFD19F06CA5314 /* LearningDictionarySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D65FC5EC05AAAB85C4E6AB1 /* LearningDictionarySettings.swift */; };
 		10E309A9AA9ACCC4982D05F7 /* VocabularyCategoryGuidanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BD18983A864BC38224B880 /* VocabularyCategoryGuidanceTests.swift */; };
 		10FA0B733197FE7FEB7631F0 /* LocalModelPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE229CD1FB07F599069F33A4 /* LocalModelPresentationTests.swift */; };
+		110ECE1D471D03AB3BEA0BE5 /* MacNotebookAppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A77DCE39A974E8CC4109847 /* MacNotebookAppServices.swift */; };
 		111FC4997CE74042D9C727B9 /* EmojiPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58197AFC74244A266C0F6E22 /* EmojiPickerView.swift */; };
 		11224E74C30600BBE39085DD /* OnboardingTemplateFeatureList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D3C8183A40C9A9C3597093 /* OnboardingTemplateFeatureList.swift */; };
 		11357CEEE6A98E5E8778E974 /* LearningLookupReplyRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F9637F37CCD0320F8264BD /* LearningLookupReplyRegressionTests.swift */; };
@@ -431,6 +432,7 @@
 		30F15EBA0BE5CA4C47799E4B /* MenuBarRecoveryPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A0F21AC546E6AF394F58CE /* MenuBarRecoveryPolicyTests.swift */; };
 		30F36D3A93867B91A21E1956 /* ModelRequestMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB5F83A278A0E818379916B3 /* ModelRequestMetrics.swift */; };
 		3125FD822BE6EAAD450E207A /* LearningTranslationStyleSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D6859DFDA6FAEBD67CCF2F /* LearningTranslationStyleSection.swift */; };
+		314F53E62C414AE009CE3EDC /* MacNotebookAppServicesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F531AA5BD72DF5C8099B069A /* MacNotebookAppServicesTests.swift */; };
 		319A3016B98DB83F8C48BFDF /* Vocabulary.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F630EF4A8D1D28778C051927 /* Vocabulary.xcstrings */; };
 		319CDD3AE88406B2F05C8E0D /* PerformanceMetricsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD460C7F938E1184CD9A497A /* PerformanceMetricsStoreTests.swift */; };
 		31B37B0789B5D7170CC33AA6 /* PostExhaustionAcceptanceStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 057751CC57D51620BDF76D84 /* PostExhaustionAcceptanceStateTests.swift */; };
@@ -1222,6 +1224,7 @@
 		90458B2E1A7267CFE5B99D9B /* LearningDictionarySources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E68F3B9CB14BB3189FD19E /* LearningDictionarySources.swift */; };
 		9056F08FCEA3A9FFF577A5A3 /* TypingSessionEvalScoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804279F42DAE26C2C12CB10 /* TypingSessionEvalScoringTests.swift */; };
 		905C1EB8E25E3D9469B93039 /* TypefaceEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF70165D9AFBEFA4258DC003 /* TypefaceEvidence.swift */; };
+		90777F208C78ADEDEB544E9C /* MacNotebookAppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A77DCE39A974E8CC4109847 /* MacNotebookAppServices.swift */; };
 		907E48B22CAE4BFA993390F6 /* GhostTextPixelAlignmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26F077AE1F3F2061534079E /* GhostTextPixelAlignmentTests.swift */; };
 		90B0444EA591725DA99B2AF0 /* VocabularyMeaningMappingEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DD0E36471326FEABB07E1A /* VocabularyMeaningMappingEditor.swift */; };
 		90EA27457C71F41462EF0059 /* ContextLivePreviewField.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA16482307BDC0E438E2069D /* ContextLivePreviewField.swift */; };
@@ -2733,6 +2736,7 @@
 		797DEB1A01C1B40B7CD55927 /* LearningExpressionService+Sentence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LearningExpressionService+Sentence.swift"; sourceTree = "<group>"; };
 		79E93655ADEB41F1B41770CF /* SpeechEndpointClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechEndpointClientTests.swift; sourceTree = "<group>"; };
 		79FFB9411A4953BC877B47C4 /* VocabularySearchRelevanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySearchRelevanceTests.swift; sourceTree = "<group>"; };
+		7A77DCE39A974E8CC4109847 /* MacNotebookAppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNotebookAppServices.swift; sourceTree = "<group>"; };
 		7ABB927322CBCEA3C48DA13C /* AXReadingSelectedBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXReadingSelectedBlock.swift; sourceTree = "<group>"; };
 		7AC90CCE24F20FE287F0A932 /* VocabularyClassificationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyClassificationPolicy.swift; sourceTree = "<group>"; };
 		7B2900F6D5A1C8D236DD5570 /* ChromiumInlineAutocompleteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromiumInlineAutocompleteTests.swift; sourceTree = "<group>"; };
@@ -3362,6 +3366,7 @@
 		F4EB0422BF8A74E63BE7214B /* LearningDictionaryContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningDictionaryContentView.swift; sourceTree = "<group>"; };
 		F51E0B0F51135FD1B6541122 /* NOTICE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = NOTICE.md; sourceTree = "<group>"; };
 		F53113DC2102C28A30911FE8 /* LearningWindowInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningWindowInteractionTests.swift; sourceTree = "<group>"; };
+		F531AA5BD72DF5C8099B069A /* MacNotebookAppServicesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNotebookAppServicesTests.swift; sourceTree = "<group>"; };
 		F54B63278B417D1519761145 /* VisualContextIdleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualContextIdleTests.swift; sourceTree = "<group>"; };
 		F6054B37E1A1512F0A34A0E8 /* CotypistExportImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CotypistExportImporter.swift; sourceTree = "<group>"; };
 		F630EF4A8D1D28778C051927 /* Vocabulary.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Vocabulary.xcstrings; sourceTree = "<group>"; };
@@ -3773,6 +3778,7 @@
 		1AE8195F06C22298113FD548 /* Notebook */ = {
 			isa = PBXGroup;
 			children = (
+				F531AA5BD72DF5C8099B069A /* MacNotebookAppServicesTests.swift */,
 				DF1B9C53AB1D97ED1CFD9007 /* MacNotebookSyncControllerTests.swift */,
 				705E410D6AEA9EA8F3EFF23E /* MacNotebookSyncTestSupport.swift */,
 			);
@@ -5523,6 +5529,7 @@
 				42290250473C8605A8DDF4F4 /* ApplicationRelauncher.swift */,
 				66111E597FE40A2838E94501 /* LingroveApp.swift */,
 				FF828A2D79FF6A53035ACE63 /* LingroveAppEnvironment.swift */,
+				7A77DCE39A974E8CC4109847 /* MacNotebookAppServices.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -7445,6 +7452,7 @@
 				2A2DD1763DCB112C27B7A9A5 /* LocalSpeechRuntimeTests.swift in Sources */,
 				A3A6F4B644AD4DC46061A426 /* LocalizationResourceTests.swift in Sources */,
 				B962D5D30737C9D875F914A8 /* LowPowerModeMonitorTests.swift in Sources */,
+				314F53E62C414AE009CE3EDC /* MacNotebookAppServicesTests.swift in Sources */,
 				68A234D8451045BB31798031 /* MacNotebookSyncControllerTests.swift in Sources */,
 				70BE6D4428C431C7A0356302 /* MacNotebookSyncPaneRenderingTests.swift in Sources */,
 				457B087350CA1E2F73B949A2 /* MacNotebookSyncTestSupport.swift in Sources */,
@@ -8072,6 +8080,7 @@
 				ECAA4FE903A32BDBB8F0D7C7 /* LocalSpeechRuntime.swift in Sources */,
 				AD2B26F0615EB3FD385DDF4F /* LowPowerModeMonitor.swift in Sources */,
 				49A1AA04E1EA6287C2DF0B92 /* MDictLibraryService.swift in Sources */,
+				110ECE1D471D03AB3BEA0BE5 /* MacNotebookAppServices.swift in Sources */,
 				2F72878CBC7852A5058F02B8 /* MacNotebookRepository.swift in Sources */,
 				F1E5AD2778992AB9FC2867F3 /* MacNotebookSyncConsentStore.swift in Sources */,
 				9C7CEA70289954599E45E058 /* MacNotebookSyncController.swift in Sources */,
@@ -8821,6 +8830,7 @@
 				36E2CBB724395F46A87C4DF8 /* LocalSpeechRuntime.swift in Sources */,
 				62B631A574A0E52D440AC835 /* LowPowerModeMonitor.swift in Sources */,
 				7852E3B096AC8711E2E294AF /* MDictLibraryService.swift in Sources */,
+				90777F208C78ADEDEB544E9C /* MacNotebookAppServices.swift in Sources */,
 				537002C594B0C9C2E725A73C /* MacNotebookRepository.swift in Sources */,
 				F32B5B8D666DEDC74486DD37 /* MacNotebookSyncConsentStore.swift in Sources */,
 				E06910DEE44B80D7048A4A18 /* MacNotebookSyncController.swift in Sources */,

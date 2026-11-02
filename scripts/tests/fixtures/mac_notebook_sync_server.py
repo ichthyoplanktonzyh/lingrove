@@ -138,6 +138,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'userId': owner, 'canonicalAccountId': 'canonical-' + account,
                         'selectedWorkspaceId': WORKSPACES[account], 'profile': {'email': account + '@example.invalid'}}); return
         if path == '/api/workspaces':
+            if STATE['mode'] == 'delay-workspaces': time.sleep(0.6)
             workspaces = [{'workspaceId': WORKSPACES[account], 'name': 'Synthetic ' + account,
                 'createdAt': '2025-01-01T00:00:00.000Z', 'isSelected': True, 'isVisible': True}]
             if account == 'a': workspaces.append({**workspaces[0], 'workspaceId': OTHER_WORKSPACE, 'name': 'Second workspace', 'isSelected': False})

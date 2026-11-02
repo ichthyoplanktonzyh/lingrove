@@ -37,7 +37,10 @@ extension LingroveNotebookEngine {
             let current = try lingroveNotebookStore.readSnapshot(workspaceId: snapshot.workspaceId)
             let card = try loadActiveCard(workspaceId: snapshot.workspaceId, cardId: baselineCard.cardId)
             guard current == snapshot, card.lastOperationId == baselineCard.lastOperationId else { throw VocabularyError.editConflict }
-            _ = try lingroveNotebookCardLinkStore.update(expected, generatedContent: nil, sourceRevision: current.revision, allowingUnavailableMaterial: true)
+            // Retention grants use while the source is missing; it does not transfer ownership
+            // of every field to the user. Keep the baseline for three-way refresh on source return.
+            _ = try lingroveNotebookCardLinkStore.update(expected, generatedContent: expected.generatedContent,
+                sourceRevision: current.revision, allowingUnavailableMaterial: true)
             try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(current)
         }
     }

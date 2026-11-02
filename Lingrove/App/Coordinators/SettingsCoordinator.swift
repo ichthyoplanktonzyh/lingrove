@@ -14,6 +14,8 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let cli: CLIInstallationModel?
     /// Borrowed from the app environment; window reopening never creates an authentication service.
     let accountService: AccountSessionService?
+    let notebookSync: MacNotebookSyncController?
+    var onQuit: () -> Void = { NSApplication.shared.terminate(nil) }
     private let learningModels: LearningModelCollection?
     /// Borrow the app-owned speaker so settings previews share playback with the learning cards.
     /// Reopening this window must never create a second synthesizer or a separate voice preference.
@@ -76,6 +78,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
 
     init(
         accountService: AccountSessionService? = nil,
+        notebookSync: MacNotebookSyncController? = nil,
         cli: CLIInstallationModel? = nil,
         learningModels: LearningModelCollection? = nil,
         speech: LearningSpeechController? = nil,
@@ -99,6 +102,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         typingHistoryStore: TypingHistoryStore
     ) {
         self.accountService = accountService
+        self.notebookSync = notebookSync
         self.cli = cli
         self.learningModels = learningModels
         self.speech = speech
@@ -145,6 +149,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
             rootView: AnyView(
                 SettingsContainerView(
                     accountService: accountService,
+                    notebookSync: notebookSync,
                     cli: cli,
                     learningModels: learningModels,
                     speech: speech,
@@ -168,7 +173,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                     onRestart: { [applicationRelauncher] in try applicationRelauncher.restart() },
                     clearEmojiHistory: clearEmojiHistory,
                     typingHistoryStore: typingHistoryStore,
-                    onQuit: { NSApplication.shared.terminate(nil) }, navigation: navigation
+                    onQuit: { [weak self] in self?.onQuit() }, navigation: navigation
                 )
             )
         )

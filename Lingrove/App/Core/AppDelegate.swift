@@ -47,6 +47,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var environment = LingroveAppEnvironment()
     private var cancellables = Set<AnyCancellable>()
     private var didStartServices = false
+    private var terminationTask: Task<Void, Never>?
+
+    /// App commands, the menu and corpus actions all reuse the same native review facade.
+    func showBuiltInReview() { environment.notebookServices.builtInReview?.show() }
+
+    /// Our own Quit commands drain app-owned storage before asking AppKit to terminate. System
+    /// Quit & Reopen bypasses this preparation and retains the immediate TCC handoff below.
+    func requestQuit() {
+        guard !Self.isRunningForPreviews, !Self.isRunningUnderXCTest, terminationTask == nil else { return }
+        // Protect the pending review writer even if the CLI takes time to drain and the
+        // user closes its window during that first await. Scope retirement still happens last.
+        environment.notebookServices.builtInReview?.prepareForShutdown()
+        menuBarController?.shutdown()
+        terminationTask = Task {
+            await environment.vocabularyCLI?.stop()
+            await environment.notebookServices.shutdown()
+            NSApplication.shared.terminate(nil)
+        }
+    }
 
     override init() {
         super.init()
@@ -168,6 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onOpenVocabulary: { [weak self] in self?.vocabularyWindow.show() },
             onOpenReview: { [weak self] in Task { await self?.reviewController.openReviewFromMenu() } },
+            onOpenBuiltInReview: environment.notebookServices.builtInReview.map { review in
+                { [weak review] in review?.show() }
+            },
+            onQuit: { [weak self] in self?.requestQuit() },
             onOpenDestination: { [weak self] in self?.settingsCoordinator.showSettings(at: $0) },
             presentation: presentation)
         let controller = MenuBarController(presentation: presentation, content: AnyView(content),
@@ -190,9 +213,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         startMenuBar()
+        settingsCoordinator.onQuit = { [weak self] in self?.requestQuit() }
         // Account restoration is independent of local writing/learning startup. The service
         // performs no network work without an explicit connection and a saved authorized session.
         environment.accountService.start()
+        environment.notebookServices.start()
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         Task {
@@ -286,10 +311,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// before Metal teardown. The 1.5s autocomplete grace period never permits freeing live native
     /// work. Ordinary decoding exits promptly; already-started model loading can delay termination.
     func applicationWillTerminate(_ notification: Notification) {
-        guard !Self.isRunningForPreviews else { return }
+        guard !Self.isRunningForPreviews, !Self.isRunningUnderXCTest else { return }
         // Read-aloud works in Settings even before Accessibility/input services are allowed.
         // Retire its request and playback on every quit path, independently of that startup gate.
         menuBarController?.shutdown()
+        environment.notebookServices.stop()
         environment.accountService.shutdown()
         environment.speechController.shutdown()
         environment.ocrRuntime.shutdown()

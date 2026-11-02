@@ -14,6 +14,12 @@ struct LingroveApp: App {
     var body: some Scene {
         Settings { EmptyView() }
         .commands {
+            CommandGroup(replacing: .appTermination) {
+                Button(String(localized: "Quit") + " " + ProductIdentity.appDisplayName) {
+                    appDelegate.requestQuit()
+                }
+                .keyboardShortcut("q")
+            }
             // Route the standard command to the same app-owned Settings window as the status item;
             // the command scene must not create a second set of settings or services.
             CommandGroup(replacing: .appSettings) {
@@ -27,6 +33,10 @@ struct LingroveApp: App {
                 Button(String(localized: "Vocabulary", table: "Vocabulary")) {
                     guard !AppDelegate.isRunningForPreviews else { return }
                     appDelegate.vocabularyWindow.show()
+                }
+                Button(BuiltInReviewCopy.text("title")) {
+                    guard !AppDelegate.isRunningForPreviews else { return }
+                    appDelegate.showBuiltInReview()
                 }
             }
         }

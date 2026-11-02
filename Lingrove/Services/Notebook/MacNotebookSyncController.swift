@@ -273,6 +273,10 @@ final class MacNotebookSyncController: ObservableObject {
                 if enabled { synchronize() }
             }
         case .offline(let identity):
+            // A response admitted while online must not publish Ready after a failed `/me`.
+            // Retained identity still permits local browsing, so revoke this metadata ticket
+            // rather than making offline identity unusable throughout the storage layer.
+            cancelMetadata()
             isolateUnlessOwned(by: identity, configuration: value.configuration)
             stopNetwork(advanceGeneration: false)
             corpusStatus = .offline; mediaStatus = .offline; reviewStatus = .offline

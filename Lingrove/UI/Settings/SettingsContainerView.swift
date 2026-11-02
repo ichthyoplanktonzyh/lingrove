@@ -13,6 +13,7 @@ import SwiftUI
 /// the first sidebar pick doesn't always re-render the detail column.
 struct SettingsContainerView: View {
     var accountService: AccountSessionService?
+    var notebookSync: MacNotebookSyncController?
     var cli: CLIInstallationModel?
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
@@ -138,7 +139,7 @@ struct SettingsContainerView: View {
                 attentionCategories: attentionCategories
             )
         case .account:
-            if let accountService { AccountPaneView(account: accountService) }
+            if let accountService { AccountPaneView(account: accountService, syncController: notebookSync) }
         case .general:
             GeneralPaneView(
                 cli: cli,

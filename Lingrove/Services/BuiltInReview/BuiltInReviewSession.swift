@@ -32,6 +32,7 @@ final class BuiltInReviewSession: ObservableObject {
     private var readIdentity = UUID()
     private var writeIdentity = UUID()
     private var isVisible = false
+    private var isShuttingDown = false
     private var isPublishing = false
 
     var isBusy: Bool { isRefreshing || isMutating }
@@ -48,6 +49,7 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     func open(selection: VocabularySelection?) {
+        guard !isShuttingDown else { return }
         close()
         isVisible = true
         route = selection.map(BuiltInReviewRoute.sense) ?? .overview
@@ -59,10 +61,11 @@ final class BuiltInReviewSession: ObservableObject {
         lifetime = UUID()
         writeIdentity = UUID()
         readTask?.cancel()
-        writeTask?.cancel()
+        // A window can close while explicit Quit awaits the admitted writer. Hide its UI and
+        // revoke presentation identity, but keep that writer alive for the app's drain owner.
+        if !isShuttingDown { writeTask?.cancel(); writeTask = nil }
         imageTask?.cancel()
         readTask = nil
-        writeTask = nil
         imageTask = nil
         draft = nil
         practice = nil
@@ -242,6 +245,17 @@ final class BuiltInReviewSession: ObservableObject {
         await imageTask?.value
     }
 
+    /// Unlike Cancel/close, explicit application Quit waits for the already-admitted writer.
+    /// The flag prevents another click from enqueuing a second write during this actor await.
+    func prepareForShutdown() { isShuttingDown = true }
+
+    func shutdownAfterDraining() async {
+        prepareForShutdown()
+        await writeTask?.value
+        writeTask = nil
+        close()
+    }
+
     private func mutate(_ command: BuiltInReviewIO.Command, scope: LingroveNotebookSnapshot,
                         destination: BuiltInReviewRoute, preferredCardID: String? = nil) {
         guard canAct(in: scope) else { return }
@@ -278,7 +292,7 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func canAct(in scope: LingroveNotebookSnapshot) -> Bool {
-        guard isVisible, !isBusy else { return false }
+        guard isVisible, !isBusy, !isShuttingDown else { return false }
         guard (try? repository.snapshot()) == scope else {
             clearUnsavedSession(cancelWrite: true)
             message = BuiltInReviewCopy.text("message.changed")

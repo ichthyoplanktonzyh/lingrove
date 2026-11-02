@@ -16,6 +16,7 @@ struct MenuBarLearningControls: View {
     let screenRecordingGranted: Bool
     let open: (MenuBarSettingsDestination) -> Void
     let review: () -> Void
+    var builtInReview: (() -> Void)?
     @State private var explanationExpanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -184,8 +185,13 @@ struct MenuBarLearningControls: View {
                     open(.learning(.dictionary))
                 }
 
+                if let builtInReview {
+                    MenuBarActionRow(title: BuiltInReviewCopy.text("title"),
+                        systemImage: "rectangle.stack.badge.play", iconTint: .indigo, action: builtInReview)
+                }
+
                 MenuBarActionRow(
-                    title: String(localized: "Review", table: "Vocabulary"),
+                    title: "Anki",
                     systemImage: "rectangle.stack.badge.play",
                     iconTint: .indigo
                 ) {

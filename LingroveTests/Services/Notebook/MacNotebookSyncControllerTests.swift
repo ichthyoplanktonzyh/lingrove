@@ -12,6 +12,24 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(3)))
 @MainActor
 struct MacNotebookSyncControllerTests {
+    @Test func lateMetadataCannotReplaceOfflineStatus() async throws {
+        let f = try MacNotebookSyncFixture(); defer { f.cleanup() }
+        f.start(); try await f.signIn()
+        let count = try await f.server.stats().paths.filter { $0 == "/api/workspaces" }.count
+        try await f.server.mode("delay-workspaces")
+        f.sync.refreshWorkspaces()
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while try await f.server.stats().paths.filter({ $0 == "/api/workspaces" }).count == count {
+            try #require(ContinuousClock.now < deadline)
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try await f.server.mode("me-offline")
+        _ = try? await f.account.confirmedIdentity(recheck: true)
+        try await Task.sleep(for: .milliseconds(700))
+        #expect(f.sync.workspaceStatus == .offline && !f.sync.canAccessWorkspaces)
+        #expect(!f.sync.isLoadingWorkspaces)
+    }
+
     @Test func loginDoesNotSelectAdoptOrUploadAndRetainCanLaterBeExplicitlyAccepted() async throws {
         let f = try MacNotebookSyncFixture(); defer { f.cleanup() }
         let original = try f.saveLocal(withReview: true)

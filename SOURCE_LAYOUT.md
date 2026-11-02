@@ -1059,10 +1059,30 @@ short-lived same-file background connections. Review ACK and cursor commit atomi
 media attempts/pins preserve their durable identities. Mobile runner facades invoke the same
 public runners through this adapter, retaining app-owned CloudSessionRuntime and cancel controls.
 
-`Services/Notebook/MacNotebookRepository` prepares one native resource reference with the engine,
-cloud ports and committed-change notifications. Wave 2 connects capture/CLI, account/sync and
-built-in review to this same app-owned reference. At the Wave 1 checkpoint the existing desktop
-vocabulary archive has **not** yet been switched; native account is the already-live Mac feature.
+`App/Core/MacNotebookAppServices` is the notebook branch of `LingroveAppEnvironment`: it owns one
+`Services/Notebook/MacNotebookRepository`, `VocabularyStore`, `MacNotebookSyncController` and
+`BuiltInReviewController`. The physical `Notebook/primary.sqlite` and `Notebook/Media` root are
+shared by native capture/CLI, sync and review; actor IO uses short connections to those same files.
+The old Mac-only SQLite implementation is retired, and historical storage descriptions above do
+not describe the current app path. An opening failure yields a nonwriting unavailable store,
+preserves original bytes and leaves autocomplete/translation available.
+
+`VocabularyStore.connectExplanations` binds each persistence callback to the request's original
+scope. Corpus toolbar/sense actions open the app-owned built-in review window without enrollment;
+the reverse source callback opens the existing vocabulary window. The menu keeps Anki separate.
+`SettingsCoordinator` and `SettingsContainerView` lend the same sync controller to the account pane;
+views never start another service graph. AppDelegate starts sync after account restoration. Its
+own Quit commands asynchronously drain the CLI, corpus and pending review writer, then retire
+sync and close the primary handle before requesting normal termination. System termination keeps
+the immediate synchronous runtime cleanup required by TCC Quit & Reopen; it never returns
+terminateLater. Ordinary window closure does not stop these app-lifetime services.
+
+The fresh engine schema is 38; `LingroveNotebookCLIStore` commits a bounded idempotency receipt
+with its notebook write. Existing-object CLI writes carry the original workspace/notebook/generation.
+`Commands/+MacAccountLifecycle` handles native metadata/ownership and real remote FSRS settings;
+`+BuiltInReview` and `Queries/+BuiltInReviewRead` fence native commands/reads with exact saved
+scope, cards, links and enrollment state. Retained material keeps its generated baseline so a
+returning source updates untouched fields without replacing authored text or scheduling history.
 `docs/MAC_WAVE_2.md` freezes the hooks and assigns AppEnvironment/menus to the final integrator,
 so feature worktrees do not construct competing long-lived service graphs.
 

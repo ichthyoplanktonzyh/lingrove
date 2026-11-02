@@ -29,6 +29,8 @@ struct MenuBarView: View {
     let onReportFeedback: () -> Void
     var onOpenVocabulary: () -> Void = {}
     var onOpenReview: () -> Void = {}
+    var onOpenBuiltInReview: (() -> Void)?
+    var onQuit: () -> Void = { NSApplication.shared.terminate(nil) }
     var onOpenDestination: (MenuBarSettingsDestination) -> Void = { _ in }
 
     @ObservedObject var presentation: MenuBarPresentationModel
@@ -63,7 +65,10 @@ struct MenuBarView: View {
                                 speech: speech,
                                 screenRecordingGranted: permissionManager.screenRecordingGranted,
                                 open: openDestination,
-                                review: openReview
+                                review: openReview,
+                                builtInReview: onOpenBuiltInReview.map { action in
+                                    { presentation.dismiss(); action() }
+                                }
                             )
                             .padding(.bottom, 10)
                             permissionsCard
@@ -460,7 +465,7 @@ struct MenuBarView: View {
                 Spacer(minLength: 0)
 
                 Button("Quit") {
-                    NSApplication.shared.terminate(nil)
+                    onQuit()
                 }
                 .buttonStyle(MenuBarInteractiveRowButtonStyle(horizontalPadding: 6, verticalPadding: 3, cornerRadius: 5))
                 .keyboardShortcut("q")
