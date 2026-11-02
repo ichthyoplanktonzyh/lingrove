@@ -72,6 +72,16 @@ typed equality ignores dictionary/set JSON ordering. Decode verifies identity, o
 and index/payload agreement. Each host chooses physical tables and scope columns. This product
 owns no SQL, files or network, and its local tool metadata must not become a remote wire payload.
 
+`LingroveStudyExport` owns the portable learning-material projection extracted from the Mac
+exporter: exact sense selection, options, versioned JSON, TXT, CSV and bounded stored PNG ZIPs.
+It imports only the notebook values and Foundation/zlib; host stores must freeze the selected
+entries and authorized image bytes together. It is separate from `VocabularyBackup`: exported
+learning JSON contains a chosen subset, not a restorable notebook, settings or review history.
+Mac aliases preserve existing call sites; iOS uses the same public types directly. Resource labels
+live in this product's bundle, with all 50 mobile locales plus the Mac's Spanish/Traditional
+Chinese compatibility localizations. The 16,000-byte preview is explicitly abbreviated; rendered
+files fail above the 64 MiB content limit rather than silently truncating material.
+
 `LingroveNotebookSync` maps the complete graph to explicit public wire entities, preserving
 device-private tool state separately. It also verifies raw-byte read windows and validates the
 resulting confirmed server shadow. The host owns download storage, pending local edits, account

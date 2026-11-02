@@ -5,8 +5,10 @@ import PackageDescription
 // lets both Apple apps render them without giving persistence a SwiftUI import.
 let package = Package(
     name: "LingroveNotebook",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14), .iOS(.v18)],
     products: [
+        .library(name: "LingroveStudyExport", targets: ["LingroveStudyExport"]),
         .library(name: "LingroveTextRules", targets: ["LingroveTextRules"]),
         .library(name: "LingroveNotebook", targets: ["LingroveNotebook"]),
         .library(name: "LingroveNotebookUI", targets: ["LingroveNotebookUI"]),
@@ -15,6 +17,7 @@ let package = Package(
         .library(name: "LingroveNotebookStorage", targets: ["LingroveNotebookStorage"])
     ],
     targets: [
+        .target(name: "LingroveStudyExport", dependencies: ["LingroveNotebook"], resources: [.process("Resources")], linkerSettings: [.linkedLibrary("z")]),
         .target(name: "LingroveTextRules"),
         .target(name: "LingroveNotebook", dependencies: ["LingroveTextRules"], resources: [.process("Resources")]),
         .target(name: "LingroveNotebookUI", dependencies: ["LingroveNotebook"]),
@@ -25,6 +28,7 @@ let package = Package(
             dependencies: ["LingroveNotebook", "LingroveNotebookPersistenceCodec"],
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
+        .testTarget(name: "LingroveStudyExportTests", dependencies: ["LingroveStudyExport", "LingroveNotebook"]),
         .testTarget(
             name: "LingroveNotebookTests",
             dependencies: ["LingroveNotebook", "LingroveTextRules"],
