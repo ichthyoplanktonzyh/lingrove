@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import LingroveNotebook
 import SwiftUI
 
@@ -13,6 +14,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let search: VocabularySearchController?
     private let preferences: UserDefaults
     private let learningSettings: LanguageLearningSettings
+    private var scopeSubscription: AnyCancellable?
 
     init(store: VocabularyStore, speech: LearningSpeechController, explanationService: LearningExplanationService? = nil,
          dictionaryProvider: any LearningDictionaryProviding, learningSettings: LanguageLearningSettings,
@@ -27,6 +29,9 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
             settings: learningSettings.dictionary)
         super.init(window: nil)
         store.openSelection = { [weak self] in self?.show(selectedID: $0?.entryID, senseID: $0?.senseID) }
+        // A closed window may not receive a SwiftUI onAppear until after resume(). Retire the
+        // saved reading target directly so reopening cannot issue a lookup for the prior owner.
+        scopeSubscription = store.$scopeIdentity.dropFirst().sink { [weak self] _ in self?.learning.reset() }
     }
 
     required init?(coder: NSCoder) { nil }

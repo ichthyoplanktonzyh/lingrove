@@ -16,14 +16,16 @@ final class VocabularyWordListImportSession: ObservableObject {
     @Published private(set) var failure: String?
     private let store: VocabularyStore
     private var work: Task<Void, Never>?
+    private let notebookScope: VocabularyOperationScope?
     private var generation = UUID()
 
-    init(store: VocabularyStore) { self.store = store }
+    init(store: VocabularyStore) { self.store = store; notebookScope = store.operationScope }
 
     func load(_ source: URL, language: LearningLanguage) async {
         do {
             let table = try await store.readWordList(at: source)
             try Task.checkCancellation()
+            guard store.matches(notebookScope) else { throw VocabularyError.editConflict }
             self.table = table
             configuration = VocabularyWordListPolicy.configuration(for: table, language: language)
         } catch is CancellationError { return } catch { failure = error.localizedDescription; preparing = false }
@@ -37,9 +39,9 @@ final class VocabularyWordListImportSession: ObservableObject {
         guard let table else { return }
         preparing = true
         let configuration = configuration
-        work = Task { [weak self, store] in
+        work = Task { [weak self, store, notebookScope] in
             do {
-                let preview = try await store.previewWordList(table, configuration: configuration)
+                let preview = try await store.previewWordList(table, configuration: configuration, scope: notebookScope)
                 guard !Task.isCancelled, let self, self.generation == id else { return }
                 self.preview = preview; self.preparing = false
             } catch {
@@ -53,7 +55,9 @@ final class VocabularyWordListImportSession: ObservableObject {
         guard !preparing, !saving, let preview, preview.result.hasChanges else { return nil }
         saving = true; failure = nil
         defer { saving = false }
-        do { return try await store.addEntries(preview.inputs) } catch { failure = error.localizedDescription; return nil }
+        do {
+            return try await store.addEntries(preview.inputs, scope: notebookScope)
+        } catch { failure = error.localizedDescription; return nil }
     }
 
     func cancel() { work?.cancel(); generation = UUID(); preview = nil; preparing = false }

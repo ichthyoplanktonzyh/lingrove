@@ -5,7 +5,7 @@ extension VocabularyArchive {
     /// Full records give an external agent enough context to maintain explicit links. Paging
     /// and an encoded byte budget bound mailbox output; personal Anki bindings never enter the
     /// resource projection. A read returns the same revision used by later compare-and-swap.
-    func readCLIResources(_ request: CLIRequest, snapshot: VocabularySnapshot) throws -> CLIJSON {
+    func readCLIResources(_ request: CLIRequest, snapshot: VocabularyArchiveSnapshot) throws -> CLIJSON {
         guard let resource = request.resource else { throw CLIError.invalid("A resource name is required.") }
         let records = try VocabularyCLIResources.records(resource, in: snapshot.document)
         if request.command == .resourceGet {

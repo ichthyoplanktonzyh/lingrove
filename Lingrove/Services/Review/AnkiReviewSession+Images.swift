@@ -37,7 +37,7 @@ extension AnkiReviewSession {
     func uploadImages(_ content: ReviewCardContent, connection: AnkiConnection, profile: String) async throws {
         for image in Set(VocabularyContentPolicy.images(content.senseContent)) {
             try Task.checkCancellation()
-            guard let data = await controller.store.image(image) else {
+            guard let data = await controller.store.image(image, scope: notebookScope) else {
                 throw AnkiReviewError.message(String(localized: "An explanation image is missing. Add it again before sending.",
                     table: "Vocabulary"))
             }

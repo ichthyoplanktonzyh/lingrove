@@ -154,7 +154,13 @@ struct VocabularyNotebookView: View {
 
     private var browserContent: some View {
         ZStack {
-            if let search, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !store.isAvailable {
+                ContentUnavailableView {
+                    Label(String(localized: "Vocabulary", table: "Vocabulary"), systemImage: "externaldrive.badge.exclamationmark")
+                } description: {
+                    Text(String(localized: "The notebook is unavailable. Your original data has been preserved.", table: "Vocabulary"))
+                }
+            } else if let search, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 NavigationSplitView {
                     VStack(spacing: 0) {
                         sidebarFilterBar
@@ -232,6 +238,13 @@ struct VocabularyNotebookView: View {
                 }
                 .help(String(localized: "Select senses", table: "Vocabulary"))
 
+                if let openReview = store.onRequestBuiltInReview {
+                    Button { openReview(nil) } label: {
+                        Label(String(localized: "Built-in review", table: "Vocabulary"), systemImage: "rectangle.stack.badge.play")
+                    }
+                    .help(String(localized: "Built-in review", table: "Vocabulary"))
+                    .accessibilityIdentifier("vocabularyBuiltInReview")
+                }
                 if let review {
                     Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
                         .help(String(localized: "Review in Anki", table: "Vocabulary"))
@@ -419,7 +432,7 @@ struct VocabularyNotebookView: View {
             get: { restoreURL != nil }, set: { if !$0 { restoreURL = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { restoreURL = nil }
                 Button(String(localized: "Restore", table: "Vocabulary"), role: .destructive) {
-                    if let url = restoreURL { Task { await store.restore(from: url) } }
+                    if let url = restoreURL { Task { [scope = store.operationScope] in await store.restore(from: url, scope: scope) } }
                     restoreURL = nil
                 }
             } message: { Text(String(localized: "Replace this notebook with the selected backup, including images and Anki associations.",
@@ -428,7 +441,8 @@ struct VocabularyNotebookView: View {
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
                 Button(String(localized: "Cancel"), role: .cancel) { deleting = nil }
                 Button(String(localized: "Delete"), role: .destructive) {
-                    if let target = deleting { Task { _ = await store.removeSense(entryID: target.entryID, senseID: target.senseID) } }
+                    if let target = deleting { Task { [scope = store.operationScope] in
+                        _ = await store.removeSense(entryID: target.entryID, senseID: target.senseID, scope: scope) } }
                     deleting = nil
                 }
             }
@@ -624,6 +638,11 @@ struct VocabularyNotebookView: View {
                         .padding(.vertical, isDetailedList ? 4 : 2.5)
                         .tag(singleSense.id)
                         .contextMenu {
+                            if let openReview = store.onRequestBuiltInReview {
+                                Button(String(localized: "Built-in review", table: "Vocabulary")) {
+                                    openReview(.init(entryID: entry.id, senseID: singleSense.id))
+                                }
+                            }
                             Button(String(localized: "Export this sense…", table: "Vocabulary")) {
                                 beginExport(single: .init(entryID: entry.id, senseID: singleSense.id))
                             }
@@ -655,6 +674,11 @@ struct VocabularyNotebookView: View {
                                 .padding(.vertical, 3)
                                 .tag(sense.id)
                                 .contextMenu {
+                                    if let openReview = store.onRequestBuiltInReview {
+                                        Button(String(localized: "Built-in review", table: "Vocabulary")) {
+                                            openReview(.init(entryID: entry.id, senseID: sense.id))
+                                        }
+                                    }
                                     Button(String(localized: "Export this sense…", table: "Vocabulary")) {
                                         beginExport(single: .init(entryID: entry.id, senseID: sense.id))
                                     }
@@ -1226,10 +1250,11 @@ struct VocabularyNotebookView: View {
             VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
                 edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
                 newSense: {
-                    Task { if let id = await store.createSense(entryID: entry.id) { showSense(id) } }
+                    Task { [scope = store.operationScope] in
+                        if let id = await store.createSense(entryID: entry.id, scope: scope) { showSense(id) } }
                 }, merge: { target in
-                    Task {
-                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target) { showSense(target) }
+                    Task { [scope = store.operationScope] in
+                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target, scope: scope) { showSense(target) }
                     }
                 }, selectSense: { id in
                     withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1.0)) {
@@ -1273,20 +1298,22 @@ struct VocabularyNotebookView: View {
     }
 
     private func backup() {
+        let scope = store.operationScope
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "lingrove") ?? .data]
         panel.nameFieldStringValue = "Lingrove-vocabulary.lingrove"
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            Task { await store.backup(to: url) }
+            Task { await store.backup(to: url, scope: scope) }
         }
     }
 
     private func chooseBackup() {
+        let identity = store.scopeIdentity
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "lingrove") ?? .data]
         panel.allowsMultipleSelection = false
-        panel.begin { response in if response == .OK { restoreURL = panel.url } }
+        panel.begin { response in if response == .OK, identity == store.scopeIdentity { restoreURL = panel.url } }
     }
 }
 
@@ -1349,6 +1376,12 @@ struct VocabularyEntryDetail: View {
         }
         .toolbar {
             ToolbarItemGroup {
+                if let openReview = store.onRequestBuiltInReview {
+                    Button(String(localized: "Built-in review", table: "Vocabulary")) {
+                        openReview(.init(entryID: entry.id, senseID: sense.id))
+                    }
+                    .accessibilityIdentifier("vocabularySenseBuiltInReview")
+                }
                 Button(String(localized: "Edit", table: "Vocabulary"), action: edit)
                 Button(action: newSense) { Image(systemName: "plus") }
                     .help(String(localized: "New sense", table: "Vocabulary"))
@@ -1649,7 +1682,8 @@ struct VocabularyEntryDetail: View {
     }
 
     private func move(_ example: VocabularyExample, to target: UUID?) {
-        Task { _ = await store.moveExample(entryID: entry.id, exampleID: example.id, source: sense.id, target: target) }
+        Task { [scope = store.operationScope] in
+            _ = await store.moveExample(entryID: entry.id, exampleID: example.id, source: sense.id, target: target, scope: scope) }
     }
 
     private func speaker(text: String, item: String, language: LearningLanguage?) -> some View {

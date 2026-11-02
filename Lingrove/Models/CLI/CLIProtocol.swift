@@ -27,7 +27,19 @@ nonisolated struct CLIBatch: Codable, Sendable {
     var version: Int
     var idempotencyKey: String
     var expectedRevision: UInt64?
+    /// Reads return this complete identity. Existing-record writes retain it instead of rebinding
+    /// a delayed command to whichever account happens to be active when the mailbox runs.
+    var notebookScope: CLINotebookScope?
     var operations: [CLIChange]
+}
+
+nonisolated struct CLINotebookScope: Codable, Equatable, Sendable {
+    let workspaceID: String
+    let notebookID: UUID
+    let generation: String
+
+    static let shape = CLIResourceContract.Shape(fields: ["workspaceID": .text(200), "notebookID": .uuid,
+        "generation": .text(200)], required: ["workspaceID", "notebookID", "generation"])
 }
 
 nonisolated struct CLIChange: Codable, Sendable {

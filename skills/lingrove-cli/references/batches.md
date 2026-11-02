@@ -1,5 +1,7 @@
 # Vocabulary batch material
 
+For edits that refer to existing records, retain `result.notebookScope` from the same read and include it as top-level `notebookScope` alongside the original revision. This applies to append/update/resource changes, capture with existing sense/meaning IDs, and any `expectedRevision`. It contains `workspaceID`, `notebookID`, and `generation`; never refresh only that scope on an old draft after an account change. Pure new captures may omit it.
+
 Read the installed client's `schema` for wire shape and `status` for supported language/kind
 values. These examples illustrate version 1; replace example keys with a fresh key per intended
 batch, and example IDs/revisions with values read from the chosen notebook.

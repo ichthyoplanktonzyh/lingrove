@@ -5,7 +5,8 @@ import SwiftUI
 /// on the original mapping; changing its destination cannot silently broaden its applicability.
 struct VocabularyMeaningMappingEditor: View {
     @ObservedObject var store: VocabularyStore
-    private let baseline: VocabularySemanticIndex
+    @State private var notebookScope: VocabularyOperationScope?
+    @State private var baseline: VocabularySemanticIndex
     private let original: VocabularyMeaningMapping?
     private let fixedSenseID: UUID?
     private let fixedNodeID: UUID?
@@ -21,7 +22,8 @@ struct VocabularyMeaningMappingEditor: View {
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
 
     init(store: VocabularyStore, senseID: UUID? = nil, nodeID: UUID? = nil, mapping: VocabularyMeaningMapping? = nil) {
-        self.store = store; baseline = store.semantics; original = mapping
+        _notebookScope = State(initialValue: store.operationScope)
+        self.store = store; _baseline = State(initialValue: store.semantics); original = mapping
         fixedSenseID = mapping?.senseID ?? senseID; fixedNodeID = nodeID
         _nodeID = State(initialValue: mapping?.nodeID ?? nodeID)
         _senseID = State(initialValue: mapping?.senseID ?? senseID)
@@ -132,7 +134,9 @@ struct VocabularyMeaningMappingEditor: View {
         } else { edited.mappings.append(value) }
         saving = true
         Task {
-            if await store.updateSemantics(edited, basedOn: baseline) { dismiss() } else { failure = store.errorMessage }
+            if await store.updateSemantics(edited, basedOn: baseline, scope: notebookScope) {
+                dismiss()
+            } else { failure = store.errorMessage }
             saving = false
         }
     }

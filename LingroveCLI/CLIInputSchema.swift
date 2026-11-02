@@ -12,6 +12,7 @@ enum CLIInputSchema {
             var properties = root["properties"] as? [String: Any] ?? [:]
             properties["version"] = ["enum": [1, 2]]
             properties["expectedRevision"] = ["type": "integer", "minimum": 0]
+            properties["notebookScope"] = CLINotebookScope.shape.schema
             var operations = properties["operations"] as? [String: Any] ?? [:]
             var items = operations["items"] as? [String: Any] ?? [:]
             var alternatives = items["oneOf"] as? [[String: Any]] ?? []
@@ -35,10 +36,16 @@ enum CLIInputSchema {
             root["properties"] = properties
             root["allOf"] = [["if": ["properties": ["operations": ["contains": ["anyOf": [
                 ["required": ["put"]], ["required": ["delete"]]]]]]],
-                "then": ["required": ["expectedRevision"], "properties": ["version": ["const": 2]]]]]
+                "then": ["required": ["expectedRevision", "notebookScope"], "properties": ["version": ["const": 2]]]]]
             var rules = root["allOf"] as? [[String: Any]] ?? []
             rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"]]]]],
                 "then": ["properties": ["version": ["const": 2]]]])
+            rules.append(["if": ["properties": ["operations": ["contains": ["anyOf": [
+                ["required": ["append"]], ["required": ["update"]]]]]]], "then": ["required": ["notebookScope"]]])
+            rules.append(["if": ["required": ["expectedRevision"]], "then": ["required": ["notebookScope"]]])
+            rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"],
+                "properties": ["capture": CLICaptureContract.existingReferenceCondition]]]]],
+                "then": ["required": ["notebookScope"]]])
             root["allOf"] = rules
             var definitions = root["$defs"] as? [String: Any] ?? [:]
             var example = definitions["example"] as? [String: Any] ?? [:]

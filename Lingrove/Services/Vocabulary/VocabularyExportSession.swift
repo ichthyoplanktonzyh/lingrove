@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Combine
 import LingroveStudyExport
 import Foundation
@@ -15,15 +16,16 @@ final class VocabularyExportSession: ObservableObject {
     @Published private(set) var loading = false
     @Published private(set) var saving = false
     @Published private(set) var message: String?
+    private let notebookScope: VocabularyOperationScope?
     private var generation = UUID()
     private var preparedKey: Key?
     private(set) var isActive = true
 
     init(store: VocabularyStore, request: VocabularyExportRequest) {
-        self.store = store; self.request = request; scope = request.initialScope
+        self.store = store; self.request = request; scope = request.initialScope; notebookScope = store.operationScope
     }
     var key: Key { .init(scope: scope, configuration: configuration) }
-    var canExport: Bool { isActive && !loading && !saving && package != nil && preparedKey == key }
+    var canExport: Bool { isActive && store.matches(notebookScope) && !loading && !saving && package != nil && preparedKey == key }
 
     func prepare() async {
         guard isActive else { return }
@@ -31,9 +33,10 @@ final class VocabularyExportSession: ObservableObject {
         generation = id; loading = true; message = nil; package = nil; preparedKey = nil
         defer { if generation == id { loading = false } }
         do {
-            let prepared = try await store.prepareExport(selections: request.selections(key.scope), configuration: key.configuration)
+            let prepared = try await store.prepareExport(selections: request.selections(key.scope),
+                configuration: key.configuration, scope: notebookScope)
             try Task.checkCancellation()
-            guard isActive, generation == id, self.key == key else { return }
+            guard isActive, generation == id, self.key == key, store.matches(notebookScope) else { return }
             package = prepared; preparedKey = key
         } catch {
             if isActive, generation == id, !(error is CancellationError) { message = error.localizedDescription }
@@ -45,7 +48,7 @@ final class VocabularyExportSession: ObservableObject {
         saving = true; message = nil; defer { saving = false }
         do {
             try Task.checkCancellation()
-            try await store.writeExport(package, to: url)
+            try await store.writeExport(package, to: url, scope: notebookScope)
             return true
         } catch {
             if isActive, !(error is CancellationError) { message = error.localizedDescription }

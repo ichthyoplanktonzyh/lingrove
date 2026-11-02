@@ -25,7 +25,7 @@ runner. Hosts serialize the non-Sendable facade on their own owner; no lock or t
 may span an `await`. The package retains the mobile Swift 5 language mode while exporting
 Sendable snapshots/bindings/commands already used across task boundaries.
 
-The owning initializer creates the complete current mobile schema (version 37), including
+The owning initializer creates the complete current mobile schema (version 38), including
 Card scheduling, corpus, journal, private overlay, media, staging and review tables. It accepts
 only an empty or current-version database. An unsupported version fails without erasing or
 migrating a real application directory. Mobile legacy development migration stays in its host
@@ -93,3 +93,9 @@ Nibomo code is MIT (Kirill Markin, 2026), retained in `LICENSE`. The scheduler m
 `ts-fsrs` 5.2.3 / Open Spaced Repetition; its MIT notice is retained under `LICENSES/`.
 See `Nibomo/docs/fsrs-scheduling-logic.md` for the product parity contract. This extraction
 does not change FSRS parameters, formulas, fuzzing, rebuild behavior or timezone policy.
+
+The current schema includes `notebook_cli_receipts`, a bounded installation-local ledger for
+Mac CLI batch acknowledgements. Its key cannot be reused in another workspace/owner/endpoint;
+completed replies survive journal ACK and restart. The existing corpus writer and receipt share
+one transaction through `saveNotebookCLI`; no receipt enters a public journal. Unsupported
+development schema snapshots are not migrated or erased.

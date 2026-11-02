@@ -5,6 +5,7 @@ import SwiftUI
 /// overlay; custom records and their parent edges commit together through the app-owned store.
 struct VocabularyCategoryEditor: View {
     @ObservedObject var store: VocabularyStore
+    @State private var notebookScope: VocabularyOperationScope?
     // SwiftUI may recreate this view value while a child sheet is presented. Pin the new
     // category and its label IDs to the editing lifetime, just like the text-field state.
     @State private var original: VocabularyCategory
@@ -37,6 +38,7 @@ struct VocabularyCategoryEditor: View {
         onDraftSaved: ((VocabularyClassificationIndex, UUID) -> Void)? = nil,
         onSaved: @escaping (UUID) -> Void = { _ in }
     ) {
+        _notebookScope = State(initialValue: store.operationScope)
         self.store = store
         self.onSaved = onSaved
         self.onDraftSaved = onDraftSaved
@@ -382,7 +384,7 @@ struct VocabularyCategoryEditor: View {
         if let onDraftSaved { onDraftSaved(edited, value.id); dismiss(); return }
         saving = true
         Task {
-            if await store.updateClassification(edited, basedOn: baseline) {
+            if await store.updateClassification(edited, basedOn: baseline, scope: notebookScope) {
                 onSaved(value.id)
                 dismiss()
             } else {
@@ -517,7 +519,8 @@ struct VocabularyCategoryManager: View {
                     var edited = baseline
                     do {
                         try VocabularyClassificationPolicy.removeCategory(deleting.id, from: &edited)
-                        Task { _ = await store.updateClassification(edited, basedOn: baseline) }
+                        Task { [scope = store.operationScope] in
+                            _ = await store.updateClassification(edited, basedOn: baseline, scope: scope) }
                     } catch {
                         store.errorMessage = error.localizedDescription
                     }
@@ -625,6 +628,6 @@ struct VocabularyCategoryManager: View {
         } else {
             edited.overrides.append(.init(categoryID: category.id, isHidden: !visible))
         }
-        Task { _ = await store.updateClassification(edited, basedOn: baseline) }
+        Task { [scope = store.operationScope] in _ = await store.updateClassification(edited, basedOn: baseline, scope: scope) }
     }
 }

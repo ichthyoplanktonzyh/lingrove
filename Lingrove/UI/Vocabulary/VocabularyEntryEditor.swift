@@ -6,6 +6,7 @@ import SwiftUI
 /// `VocabularyPolicy.reconciledRanges` while preserving existing translations and contextual meanings.
 struct VocabularyEntryEditor: View {
     @ObservedObject var store: VocabularyStore
+    @State private var notebookScope: VocabularyOperationScope?
     private let baseline: VocabularyEntry
     private let senseID: UUID
     @State private var draft: VocabularyEntry
@@ -18,6 +19,7 @@ struct VocabularyEntryEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     init(entry: VocabularyEntry, store: VocabularyStore, senseID: UUID? = nil) {
+        _notebookScope = State(initialValue: store.operationScope)
         self.store = store
         baseline = entry
         let resolvedSenseID = senseID ?? entry.senses.first?.id ?? UUID()
@@ -54,6 +56,7 @@ struct VocabularyEntryEditor: View {
                         TextField(String(localized: "Core meaning", table: "Vocabulary"),
                             text: $draft.senses[sense].meaning, axis: .vertical)
                         TextField(String(localized: "Notes", table: "Vocabulary"), text: $draft.senses[sense].note, axis: .vertical)
+                            .accessibilityIdentifier("vocabularyEditNote")
                     }
 
                     Section(String(localized: "Tags", table: "Vocabulary")) {
@@ -202,13 +205,14 @@ struct VocabularyEntryEditor: View {
                 guard let sense = value.senses.firstIndex(where: { $0.id == senseID }) else { saving = false; return }
                 value.senses[sense].tags = Array(Set(tagList)).sorted()
                 Task {
-                    if await store.update(value, basedOn: baseline, importedImages: importedImages) {
+                    if await store.update(value, basedOn: baseline, importedImages: importedImages, scope: notebookScope) {
                         dismiss()
                     } else { failure = store.errorMessage }
                     saving = false
                 }
             }
             .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("vocabularySaveEdit")
             .buttonStyle(.borderedProminent)
             .disabled(saving || importingImage || draft.expression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .disabled(draft.senses.first { $0.id == senseID }?.examples.contains {

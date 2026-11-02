@@ -6,7 +6,7 @@ extension VocabularyArchive {
     /// finish before the single SQL commit, so a conflict leaves neither half saved.
     func updateMeaningOrganization(_ semantics: VocabularySemanticIndex, basedOn semanticBaseline: VocabularySemanticIndex,
                                    classification: VocabularyClassificationIndex,
-                                   basedOn classificationBaseline: VocabularyClassificationIndex) throws -> VocabularySnapshot {
+                                   basedOn classificationBaseline: VocabularyClassificationIndex) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         next.semantics = try VocabularySemanticPolicy.merge(semantics, baseline: semanticBaseline, current: next.semantics)
         next.classification = try VocabularyClassificationPolicy.merge(classification, baseline: classificationBaseline,
@@ -19,7 +19,7 @@ extension VocabularyArchive {
     /// One synchronous actor transaction merges a detached sheet draft against the live index.
     /// Lexical captures arriving while the sheet is open are retained. No model or endpoint is
     /// invoked: a suggested relation can only enter this index with its provenance attached.
-    func updateSemantics(_ edited: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex) throws -> VocabularySnapshot {
+    func updateSemantics(_ edited: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         next.semantics = try VocabularySemanticPolicy.merge(edited, baseline: baseline, current: next.semantics)
         let removed = Set(baseline.nodes.map(\.id)).subtracting(next.semantics.nodes.map(\.id))
@@ -31,7 +31,7 @@ extension VocabularyArchive {
     /// The store passes detached UI drafts to the same actor as CLI transactions. A renamed
     /// category and an independently captured expression can therefore commit without clobbering.
     func updateClassification(_ edited: VocabularyClassificationIndex,
-                              basedOn baseline: VocabularyClassificationIndex) throws -> VocabularySnapshot {
+                              basedOn baseline: VocabularyClassificationIndex) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         next.classification = try VocabularyClassificationPolicy.merge(edited, baseline: baseline, current: next.classification)
         try VocabularyClassificationPolicy.validate(next.classification, nodes: next.semantics.nodes)

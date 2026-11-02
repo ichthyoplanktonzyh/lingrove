@@ -39,7 +39,18 @@ nonisolated enum CLICaptureContract {
     private static var document: Shape {
         // Header is separate from material so it cannot become stored learning data.
         .init(fields: shape.fields.merging(["version": .integer, "idempotencyKey": .text(200),
-            "expectedRevision": .integer]) { _, new in new }, required: ["version", "idempotencyKey", "entries"])
+            "expectedRevision": .integer, "notebookScope": .object(CLINotebookScope.shape)]) { _, new in new },
+            required: ["version", "idempotencyKey", "entries"])
+    }
+
+    /// These conditions mirror the optional scope's admission without making a pure new
+    /// capture depend on an account. Both published schemas reuse this same descriptor.
+    static var existingReferenceCondition: [String: Any] {
+        ["anyOf": [
+            ["required": ["meanings"], "properties": ["meanings": ["contains": ["required": ["id"]]]]],
+            ["required": ["entries"], "properties": ["entries": ["contains": ["properties": [
+                "senses": ["contains": ["required": ["id"]]]]]]]]
+        ]]
     }
 
     static var schema: [String: Any] {
@@ -47,6 +58,11 @@ nonisolated enum CLICaptureContract {
         var properties = root["properties"] as? [String: Any] ?? [:]
         properties["version"] = ["const": 1]
         root["properties"] = properties
+        root["allOf"] = [
+            ["if": ["required": ["expectedRevision"]], "then": ["required": ["notebookScope"]]],
+            ["if": existingReferenceCondition, "then": ["required": ["notebookScope"]]]
+        ]
+        root["x-existingRecordIDsRequireNotebookScope"] = true
         root["title"] = "Lingrove capture task v1"
         root["$schema"] = "https://json-schema.org/draft/2020-12/schema"
         return root
@@ -65,9 +81,15 @@ nonisolated enum CLICaptureContract {
                 guard case let .integer(number) = supplied, number >= 0 else { throw CLIError.invalid("Invalid expectedRevision.") }
                 revision = UInt64(number)
             } else { revision = nil }
+            let scope: CLINotebookScope?
+            if let supplied = fields.removeValue(forKey: "notebookScope") {
+                let value = try CLINotebookScope.shape.normalized(supplied)
+                scope = try JSONDecoder().decode(CLINotebookScope.self, from: JSONEncoder().encode(value))
+            } else { scope = nil }
             let material = try shape.normalized(.object(fields))
             let capture = try JSONDecoder().decode(CLICapture.self, from: JSONEncoder().encode(material))
-            let batch = CLIBatch(version: 2, idempotencyKey: key, expectedRevision: revision, operations: [.init(capture: capture)])
+            let batch = CLIBatch(version: 2, idempotencyKey: key, expectedRevision: revision,
+                notebookScope: scope, operations: [.init(capture: capture)])
             try CLIInputPolicy.validate(batch)
             return batch
         } catch let error as CLIError { throw error } catch {

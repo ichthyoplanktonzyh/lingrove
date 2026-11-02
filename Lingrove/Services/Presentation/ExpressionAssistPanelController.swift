@@ -595,11 +595,11 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
 
     private func toggleFavorite(for candidate: ExpressionAssistCandidate) {
         guard let vocabulary, let itemCapture = capture(for: candidate) else { return }
-        Task { @MainActor in
+        Task { @MainActor [scope = vocabulary.operationScope] in
             if vocabulary.contains(itemCapture) {
-                await vocabulary.remove(itemCapture)
+                await vocabulary.remove(itemCapture, scope: scope)
             } else {
-                await vocabulary.save(itemCapture)
+                await vocabulary.save(itemCapture, scope: scope)
             }
         }
     }

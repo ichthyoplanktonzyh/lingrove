@@ -1,4 +1,5 @@
 import LingroveNotebook
+import LingroveNotebookEngine
 import LingroveStudyExport
 import Combine
 import Foundation
@@ -17,23 +18,121 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var isLoaded = false
     @Published private(set) var mediaRevision = UUID()
     @Published var errorMessage: String?
+    /// E injects its app-owned review navigation. Merely opening it does not save or enroll.
+    var onRequestBuiltInReview: ((VocabularySelection?) -> Void)?
+    @Published private(set) var scopeIdentity = UUID()
+    @Published private(set) var operationScope: VocabularyOperationScope?
+    let isAvailable: Bool
     var openSelection: ((VocabularySelection?) -> Void)?
     /// Composition supplies cached annotations only; saving a favorite never starts a model.
     var enrichCapture: ((VocabularyCapture) -> VocabularyCapture)?
-    private let archive: VocabularyArchive
+    private let archive: VocabularyArchive?
+    private let repository: MacNotebookRepository?
+    private let unavailableError: (any Error)?
+    private var explanationScopeSubscription: AnyCancellable?
+    private var repositorySubscription: AnyCancellable?
+    private var loadIdentity = UUID()
+    private var reloadRequested = false
+    private var isShutDown = false
+    private var activeAccesses = 0
+    private var drainWaiters: [CheckedContinuation<Void, Never>] = []
     private var loadWork: Task<Void, Never>?
     private var revision: UInt64 = 0
     private var savedKeys: Set<String> = []
     private var pendingCounts: [String: Int] = [:]
     private var standaloneKeys: Set<String> = []
 
-    init(archive: VocabularyArchive) { self.archive = archive }
+    /// Standalone fixtures retain the same public surface without discovering application data.
+    init(archive: VocabularyArchive) {
+        self.archive = archive; repository = nil; unavailableError = nil; isAvailable = true
+    }
+
+    /// The composition root owns repository lifetime. The worker only receives immutable URLs;
+    /// Combine carries content-free committed-change notifications back to this UI projection.
+    init(repository: MacNotebookRepository) {
+        self.repository = repository
+        archive = VocabularyArchive(url: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL,
+            installsBundledClassification: true)
+        unavailableError = nil; isAvailable = true
+        operationScope = try? repository.snapshot()
+        repositorySubscription = repository.$changeSequence.dropFirst().sink { [weak self] _ in
+            self?.repositoryDidChange()
+        }
+    }
+
+    private init(unavailable error: any Error) {
+        archive = nil; repository = nil; unavailableError = error; isAvailable = false
+        errorMessage = String(localized: "The notebook is unavailable. Your original data has been preserved.", table: "Vocabulary")
+    }
+
+    /// Opening the shared database may fail without preventing autocomplete/translation startup.
+    /// This mode owns no replacement directory and every persistence request fails explicitly.
+    static func unavailable(_ error: any Error) -> VocabularyStore { VocabularyStore(unavailable: error) }
+
+    /// Composition calls this once in place of the old unscoped didExplain closure. Saved
+    /// annotations are optional enrichment; a translation/explanation never collects a sense.
+    func connectExplanations(to service: LearningExplanationService) {
+        service.didExplain = nil
+        service.capturePersistence = { [weak self] in
+            guard let self, isAvailable, let scope = operationScope else { return nil }
+            return { [weak self] record in
+                Task { await self?.saveExplanation(record, scope: scope) }
+            }
+        }
+        service.loadPersisted = { [weak self] input, language in
+            guard let self else { return nil }
+            let identity = scopeIdentity
+            await load()
+            guard identity == scopeIdentity else { return nil }
+            return explanation(for: input, language: language)
+        }
+        service.lookupSaved = { [weak self] input, language in self?.explanation(for: input, language: language) }
+        enrichCapture = { [weak service] capture in service?.enrich(capture) ?? capture }
+        explanationScopeSubscription = $scopeIdentity.dropFirst().sink { [weak service] _ in service?.resetNotebookScope() }
+    }
+
+    func matches(_ scope: VocabularyOperationScope?) -> Bool {
+        guard isAvailable, !isShutDown else { return false }
+        guard let scope else { return repository == nil }
+        if let repository {
+            guard let current = try? repository.snapshot() else { return false }
+            return current.hasSameOwner(as: scope)
+        }
+        return operationScope?.hasSameOwner(as: scope) == true
+    }
+
+    private func access<T: Sendable>(
+        scope: VocabularyOperationScope? = nil,
+        _ operation: @Sendable (isolated VocabularyArchive) throws -> T
+    ) async throws -> T {
+        guard !isShutDown else { throw VocabularyError.editConflict }
+        guard let archive else { throw unavailableError ?? VocabularyError.invalidArchive }
+        activeAccesses += 1
+        defer {
+            activeAccesses -= 1
+            if activeAccesses == 0 {
+                let waiters = drainWaiters; drainWaiters = []
+                for waiter in waiters { waiter.resume() }
+            }
+        }
+        let live = try repository?.snapshot()
+        let original = scope ?? live ?? operationScope
+        if let scope, let live, !scope.hasSameOwner(as: live) { throw VocabularyError.editConflict }
+        let result = try await archive.perform(basedOn: original, operation)
+        if !isShutDown, let repository, let live, let after = try? repository.snapshot(),
+           after.hasSameOwner(as: live), after.revision != live.revision { repository.publishChange() }
+        return result
+    }
 
     /// The mailbox borrows this process-wide store. Applying the archive's acknowledged snapshot
     /// refreshes an already-open notebook immediately; CLI failures stay in their JSON response.
     func executeCLI(_ request: CLIRequest) async -> CLIReply {
+        guard isAvailable else {
+            return .failure(request.id, .init(code: .unavailable,
+                message: "The notebook is unavailable; its original data has been preserved."))
+        }
         do {
-            let (result, snapshot) = try await archive.executeCLI(request)
+            let (result, snapshot) = try await access { archive in try archive.executeCLI(request) }
             apply(snapshot)
             return .init(requestID: request.id, ok: true, result: result)
         } catch let error as CLIError {
@@ -50,13 +149,19 @@ final class VocabularyStore: ObservableObject {
     }
 
     func loadIfNeeded() {
-        guard !isLoaded, loadWork == nil else { return }
-        loadWork = Task { [weak self, archive] in
+        guard isAvailable, !isShutDown, !isLoaded, loadWork == nil else { return }
+        let identity = loadIdentity
+        loadWork = Task { [weak self] in
+            guard let self else { return }
             do {
-                let snapshot = try await archive.load()
-                self?.apply(snapshot)
-            } catch { self?.report(error) }
-            self?.loadWork = nil
+                let snapshot = try await access { archive in try archive.load() }
+                guard loadIdentity == identity else { return }
+                apply(snapshot)
+            } catch { if loadIdentity == identity { report(error) } }
+            if loadIdentity == identity {
+                loadWork = nil
+                if reloadRequested { reloadRequested = false; isLoaded = false; loadIfNeeded() }
+            }
         }
     }
 
@@ -70,13 +175,13 @@ final class VocabularyStore: ObservableObject {
     }
     func isPending(_ capture: VocabularyCapture) -> Bool { pending.contains(VocabularyPolicy.captureKey(capture)) }
 
-    func save(_ capture: VocabularyCapture) async {
+    func save(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         let enriched = enrichCapture?(capture) ?? capture
-        await change(capture) { try await self.archive.save(enriched) }
+        await change(capture) { try await self.access(scope: scope) { archive in try archive.save(enriched) } }
     }
 
-    func saveExplanation(_ record: LearningExplanationRecord) async {
-        do { apply(try await archive.saveExplanation(record)) } catch { report(error) }
+    func saveExplanation(_ record: LearningExplanationRecord, scope: VocabularyOperationScope? = nil) async {
+        do { apply(try await access(scope: scope) { archive in try archive.saveExplanation(record) }) } catch { report(error) }
     }
 
     func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
@@ -87,7 +192,9 @@ final class VocabularyStore: ObservableObject {
     /// In particular, two usages with different translation languages must not alias on adoption.
     func explanationDestination(_ capture: VocabularyCapture) -> VocabularyExplanationDestination? {
         guard let entry = entries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }) else { return nil }
-        return VocabularySensePolicy.destination(capture, in: entry)
+        var destination = VocabularySensePolicy.destination(capture, in: entry)
+        destination?.scope = operationScope
+        return destination
     }
 
     func userMeaning(at destination: VocabularyExplanationDestination) -> String? {
@@ -101,7 +208,7 @@ final class VocabularyStore: ObservableObject {
     }
 
     func adoptExplanation(_ record: LearningExplanationRecord, at destination: VocabularyExplanationDestination) async -> Bool {
-        guard let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
+        guard matches(destination.scope), let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
         var edited = original
         if let exampleID = destination.exampleID {
             // A move can finish while the model runs. Stable usage identity resolves its current
@@ -122,126 +229,168 @@ final class VocabularyStore: ObservableObject {
             edited.senses[owner].meaningLanguage = record.language
             edited.senses[owner].meaningOrigin = .user
         }
-        return await update(edited, basedOn: original)
+        return await update(edited, basedOn: original, scope: destination.scope)
     }
 
-    func mergeSenses(entryID: UUID, source: UUID, target: UUID) async -> Bool {
-        do {
-            apply(try await archive.mergeSenses(entryID: entryID, source: source, target: target))
-            return true
-        } catch { report(error); return false }
+    /// Bool-returning UI commands keep failures on the observable store; throwing import/Anki
+    /// commands below return their errors to the requesting sheet or structured CLI response.
+    private func mutation(
+        scope: VocabularyOperationScope? = nil,
+        _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveSnapshot
+    ) async -> Bool {
+        do { apply(try await access(scope: scope, operation)); return true } catch { report(error); return false }
     }
 
-    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) async -> Bool {
-        do {
-            apply(try await archive.moveExample(entryID: entryID, exampleID: exampleID, source: source, target: target))
-            return true
-        } catch { report(error); return false }
+    func mergeSenses(entryID: UUID, source: UUID, target: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
+        await mutation(scope: scope) { archive in
+            try archive.mergeSenses(entryID: entryID, source: source, target: target)
+        }
     }
 
-    func createSense(entryID: UUID) async -> UUID? {
+    func moveExample(
+        entryID: UUID, exampleID: UUID, source: UUID, target: UUID?, scope: VocabularyOperationScope? = nil
+    ) async -> Bool {
+        await mutation(scope: scope) { archive in
+            try archive.moveExample(entryID: entryID, exampleID: exampleID, source: source, target: target)
+        }
+    }
+
+    func createSense(entryID: UUID, scope: VocabularyOperationScope? = nil) async -> UUID? {
         let id = UUID()
-        do { apply(try await archive.createSense(entryID: entryID, senseID: id)); return id } catch { report(error); return nil }
+        let saved = await mutation(scope: scope) { archive in try archive.createSense(entryID: entryID, senseID: id) }
+        return saved ? id : nil
     }
 
-    /// Manual creation and imports share one append-only transaction. Failures stay in the
-    /// requesting sheet; publication happens only after durable SQLite acknowledgement.
-    func addEntries(_ inputs: [VocabularyEntryInput]) async throws -> VocabularyEntryImportResult {
-        let (snapshot, result) = try await archive.addEntries(inputs)
+    /// Confirmation plans against the current document in the original business lifetime.
+    /// A stale field merge or SQL CAS failure publishes no partial import or relationship.
+    func addEntries(
+        _ inputs: [VocabularyEntryInput], scope: VocabularyOperationScope? = nil
+    ) async throws -> VocabularyEntryImportResult {
+        let (snapshot, result) = try await access(scope: scope) { archive in try archive.addEntries(inputs) }
         apply(snapshot)
         return result
     }
 
-    func readWordList(at source: URL) async throws -> VocabularyWordList { try await archive.readWordList(at: source) }
+    func readWordList(at source: URL) async throws -> VocabularyWordList {
+        try await access { archive in try archive.readWordList(at: source) }
+    }
 
     func previewWordList(
-        _ table: VocabularyWordList, configuration: VocabularyWordListConfiguration
+        _ table: VocabularyWordList, configuration: VocabularyWordListConfiguration, scope: VocabularyOperationScope? = nil
     ) async throws -> VocabularyWordListPreview {
-        try await archive.previewWordList(table, configuration: configuration)
+        try await access(scope: scope) { archive in try archive.previewWordList(table, configuration: configuration) }
     }
 
-    func removeSense(entryID: UUID, senseID: UUID) async -> Bool {
-        do { apply(try await archive.removeSense(entryID: entryID, senseID: senseID)); return true } catch { report(error); return false }
+    func removeSense(entryID: UUID, senseID: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
     }
 
-    func updateSemantics(_ value: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex) async -> Bool {
-        do { apply(try await archive.updateSemantics(value, basedOn: baseline)); return true } catch { report(error); return false }
+    func updateSemantics(
+        _ value: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex, scope: VocabularyOperationScope? = nil
+    ) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.updateSemantics(value, basedOn: baseline) }
     }
 
-    func updateMeaningOrganization(_ semantics: VocabularySemanticIndex, basedOn semanticBaseline: VocabularySemanticIndex,
-                                   classification: VocabularyClassificationIndex,
-                                   basedOn classificationBaseline: VocabularyClassificationIndex) async -> Bool {
-        do {
-            apply(try await archive.updateMeaningOrganization(semantics, basedOn: semanticBaseline,
-                classification: classification, basedOn: classificationBaseline))
-            return true
-        } catch { report(error); return false }
+    func updateMeaningOrganization(
+        _ semantics: VocabularySemanticIndex, basedOn semanticBaseline: VocabularySemanticIndex,
+        classification: VocabularyClassificationIndex, basedOn classificationBaseline: VocabularyClassificationIndex,
+        scope: VocabularyOperationScope? = nil
+    ) async -> Bool {
+        await mutation(scope: scope) { archive in
+            try archive.updateMeaningOrganization(semantics, basedOn: semanticBaseline,
+                classification: classification, basedOn: classificationBaseline)
+        }
     }
 
-    func updateClassification(_ value: VocabularyClassificationIndex, basedOn baseline: VocabularyClassificationIndex) async -> Bool {
-        do { apply(try await archive.updateClassification(value, basedOn: baseline)); return true } catch { report(error); return false }
+    func updateClassification(
+        _ value: VocabularyClassificationIndex, basedOn baseline: VocabularyClassificationIndex, scope: VocabularyOperationScope? = nil
+    ) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.updateClassification(value, basedOn: baseline) }
     }
 
-    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
-                    importedImages: [String: Data] = [:]) async throws {
-        apply(try await archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected, cardID: cardID,
-            importedImages: importedImages))
+    func saveReview(
+        entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
+        importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
+    ) async throws {
+        apply(try await access(scope: scope) { archive in
+            try archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected,
+                cardID: cardID, importedImages: importedImages)
+        })
     }
 
-    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil) async throws {
-        apply(try await archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID))
+    func recordAnkiBinding(
+        entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil, scope: VocabularyOperationScope? = nil
+    ) async throws {
+        apply(try await access(scope: scope) { archive in
+            try archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID)
+        })
     }
 
-    func removeReview(entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview) async throws {
-        apply(try await archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected))
+    func removeReview(
+        entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview, scope: VocabularyOperationScope? = nil
+    ) async throws {
+        apply(try await access(scope: scope) { archive in
+            try archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected)
+        })
     }
 
-    func saveTemplate(_ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:]) async throws {
-        apply(try await archive.saveTemplate(template, importedImages: importedImages))
+    func saveTemplate(
+        _ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
+    ) async throws {
+        apply(try await access(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) })
     }
 
-    func removeTemplate(_ id: UUID) async throws {
-        apply(try await archive.removeTemplate(id))
+    func removeTemplate(_ id: UUID, scope: VocabularyOperationScope? = nil) async throws {
+        apply(try await access(scope: scope) { archive in try archive.removeTemplate(id) })
     }
 
-    func remove(_ capture: VocabularyCapture) async {
+    func remove(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         LingroveLogger.learning.debug("Vocabulary remove requested")
-        await change(capture) { try await self.archive.remove(capture) }
+        await change(capture) { try await self.access(scope: scope) { archive in try archive.remove(capture) } }
     }
 
-    func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry, importedImages: [String: Data] = [:]) async -> Bool {
-        do {
-            apply(try await archive.update(entry, basedOn: baseline, importedImages: importedImages)); return true
-        } catch { report(error); return false }
+    func update(
+        _ entry: VocabularyEntry, basedOn baseline: VocabularyEntry, importedImages: [String: Data] = [:],
+        scope: VocabularyOperationScope? = nil
+    ) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.update(entry, basedOn: baseline, importedImages: importedImages) }
     }
 
-    func prepareImage(_ data: Data) async throws -> VocabularyPreparedImage { try await archive.prepareImage(data) }
-    func prepareImage(at url: URL) async throws -> VocabularyPreparedImage { try await archive.prepareImage(at: url) }
-    func image(_ reference: VocabularyImageReference) async -> Data? { try? await archive.image(reference) }
-
-    func backup(to url: URL) async { do { try await archive.backup(to: url) } catch { report(error) } }
-    func restore(from url: URL) async {
-        do { apply(try await archive.restore(from: url)); mediaRevision = UUID() } catch { report(error) }
+    func prepareImage(_ data: Data) async throws -> VocabularyPreparedImage {
+        try await access { archive in try archive.prepareImage(data) }
+    }
+    func prepareImage(at url: URL) async throws -> VocabularyPreparedImage {
+        try await access { archive in try archive.prepareImage(at: url) }
+    }
+    func image(_ reference: VocabularyImageReference, scope: VocabularyOperationScope? = nil) async -> Data? {
+        try? await access(scope: scope) { archive in try archive.image(reference) }
     }
 
-    func remove(id: UUID) async -> Bool {
-        do { apply(try await archive.remove(id: id)); return true } catch { report(error); return false }
+    func backup(to url: URL, scope: VocabularyOperationScope? = nil) async {
+        do { try await access(scope: scope) { archive in try archive.backup(to: url) } } catch { report(error) }
+    }
+    func restore(from url: URL, scope: VocabularyOperationScope? = nil) async {
+        if await mutation(scope: scope, { archive in try archive.restore(from: url) }) { mediaRevision = UUID() }
+    }
+
+    func remove(id: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.remove(id: id) }
     }
 
     func prepareExport(
-        selections: [VocabularySelection], configuration: VocabularyExportConfiguration
+        selections: [VocabularySelection], configuration: VocabularyExportConfiguration, scope: VocabularyOperationScope? = nil
     ) async throws -> VocabularyExportPackage {
-        try await archive.prepareExport(selections: selections, configuration: configuration)
+        try await access(scope: scope) { archive in try archive.prepareExport(selections: selections, configuration: configuration) }
     }
 
-    func writeExport(_ package: VocabularyExportPackage, to url: URL) async throws {
-        try await archive.writeExport(package, to: url)
+    func writeExport(_ package: VocabularyExportPackage, to url: URL, scope: VocabularyOperationScope? = nil) async throws {
+        try await access(scope: scope) { archive in try archive.writeExport(package, to: url) }
         LingroveLogger.learning.info("Vocabulary exported", metadata: ["format": .string(package.configuration.format.rawValue),
             "senses": .stringConvertible(package.senseCount), "with_images": .stringConvertible(package.configuration.includesImages)])
     }
 
-    func export(to url: URL) async {
-        do { try await archive.export(to: url) } catch { report(error) }
+    func export(to url: URL, scope: VocabularyOperationScope? = nil) async {
+        do { try await access(scope: scope) { archive in try archive.export(to: url) } } catch { report(error) }
     }
 
     func show(_ capture: VocabularyCapture) {
@@ -253,19 +402,35 @@ final class VocabularyStore: ObservableObject {
         openSelection?(selection)
     }
 
-    private func change(_ capture: VocabularyCapture, operation: () async throws -> VocabularySnapshot) async {
+    private func change(_ capture: VocabularyCapture, operation: () async throws -> VocabularyArchiveSnapshot) async {
+        let identity = scopeIdentity
         let key = VocabularyPolicy.captureKey(capture)
         pendingCounts[key, default: 0] += 1
         if pendingCounts[key] == 1 { pending.insert(key) }
         defer {
-            let remaining = (pendingCounts[key] ?? 1) - 1
-            if remaining == 0 { pendingCounts.removeValue(forKey: key); pending.remove(key) } else { pendingCounts[key] = remaining }
+            if identity == scopeIdentity {
+                let remaining = (pendingCounts[key] ?? 1) - 1
+                if remaining == 0 { pendingCounts.removeValue(forKey: key); pending.remove(key) } else { pendingCounts[key] = remaining }
+            }
         }
         do { apply(try await operation()) } catch { report(error) }
     }
 
-    private func apply(_ snapshot: VocabularySnapshot) {
-        guard !isLoaded || snapshot.revision >= revision else { return }
+    private func apply(_ snapshot: VocabularyArchiveSnapshot) {
+        guard !isShutDown else { return }
+        if let scope = snapshot.scope {
+            if let repository {
+                guard let current = try? repository.snapshot(), current.hasSameOwner(as: scope) else { return }
+                if current.revision > scope.revision {
+                    reloadRequested = true; isLoaded = false
+                    if loadWork == nil { reloadRequested = false; loadIfNeeded() }
+                    return
+                }
+            }
+            if let old = operationScope, !old.hasSameOwner(as: scope) { resetScope(to: scope) }
+        }
+        guard snapshot.revision >= revision else { return }
+        if let scope = snapshot.scope { operationScope = scope }
         entries = snapshot.document.collectedEntries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
@@ -282,8 +447,45 @@ final class VocabularyStore: ObservableObject {
         LingroveLogger.learning.debug("Vocabulary updated", metadata: ["entry_count": .stringConvertible(entries.count)])
     }
 
+    /// App termination (and isolated test fixtures) drains workers before the repository closes
+    /// or its files are removed. Closing an ordinary vocabulary window never calls this method.
+    func shutdown() async {
+        isShutDown = true
+        repositorySubscription = nil; explanationScopeSubscription = nil
+        loadWork?.cancel()
+        await loadWork?.value
+        loadWork = nil
+        if activeAccesses > 0 {
+            await withCheckedContinuation { continuation in drainWaiters.append(continuation) }
+        }
+    }
+
+    /// Scope identity is independent of a revision counter: a different account can start at
+    /// revision zero. Rebuilding the window subtree discards all unsaved sheets and selections.
+    private func resetScope(to scope: VocabularyOperationScope?) {
+        loadIdentity = UUID(); loadWork?.cancel(); loadWork = nil; reloadRequested = false
+        operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
+        entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
+        savedKeys = []; standaloneKeys = []; pending = []; pendingCounts = [:]
+        mediaRevision = UUID(); errorMessage = nil
+    }
+
+    private func repositoryDidChange() {
+        do {
+            guard let current = try repository?.snapshot() else { return }
+            if operationScope?.hasSameOwner(as: current) != true { resetScope(to: current) }
+            // Keep the complete saved draft scope until a fresh read is acknowledged. Same-scope
+            // edits can merge; a late response from another generation is rejected by apply().
+            isLoaded = false
+            if loadWork != nil { reloadRequested = true } else { loadIfNeeded() }
+            mediaRevision = UUID()
+        } catch { resetScope(to: nil); report(error) }
+    }
+
     private func report(_ error: Error) {
-        errorMessage = error.localizedDescription
+        guard !isShutDown else { return }
+        errorMessage = isAvailable ? error.localizedDescription : String(
+            localized: "The notebook is unavailable. Your original data has been preserved.", table: "Vocabulary")
         LingroveLogger.learning.error("Vocabulary operation failed", metadata: ["error_type": .string(String(describing: type(of: error)))])
     }
 }

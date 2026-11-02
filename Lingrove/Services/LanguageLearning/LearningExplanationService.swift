@@ -26,13 +26,18 @@ final class LearningExplanationService: LearningLookupGenerating {
     }
     private var lookupCache: [LookupKey: LearningLookupRecord] = [:]
     private var detailCache: [LookupKey: LearningExplanationRecord] = [:]
+    /// The content adapter captures an optional persistence destination before the first await.
+    /// Model work knows only a closure, never a database/account object or an editable draft.
+    var capturePersistence: (() -> ((LearningExplanationRecord) -> Void)?)?
+    private var notebookEpoch = UUID()
+    private let notebookChanges = PassthroughSubject<Void, Never>()
     var didExplain: ((LearningExplanationRecord) -> Void)?
     var configure: (() -> Void)?
     var loadPersisted: ((LearningExplanationInput, LearningLanguage) async -> LearningExplanationRecord?)?
     func loadSaved(for input: LearningExplanationInput) async -> LearningExplanationRecord? {
-        let language = language
+        let language = language, epoch = notebookEpoch
         let record = await loadPersisted?(input, language) ?? savedRecord(for: input)
-        return self.language == language ? record : nil
+        return self.language == language && notebookEpoch == epoch ? record : nil
     }
     var lookupSaved: ((LearningExplanationInput, LearningLanguage) -> LearningExplanationRecord?)?
 
@@ -41,7 +46,7 @@ final class LearningExplanationService: LearningLookupGenerating {
     init(settings: LanguageLearningSettings, model: LearningModelController, telemetry: LearningRequestTelemetry) {
         self.settings = settings; self.model = model; self.telemetry = telemetry
     }
-    var changes: AnyPublisher<Void, Never> { settings.explanationChanges }
+    var changes: AnyPublisher<Void, Never> { settings.explanationChanges.merge(with: notebookChanges).eraseToAnyPublisher() }
     var language: LearningLanguage { settings.resolvedExplanationLanguage }
     var isConfigured: Bool {
         let profile = model.profile.snapshot
@@ -66,17 +71,22 @@ final class LearningExplanationService: LearningLookupGenerating {
     func generate(_ input: LearningExplanationInput, requestID: String,
                   refresh: Bool = false) async throws -> LearningExplanationRecord {
         guard LearningExplanationPolicy.isValid(input) else { throw VocabularyError.invalidContent }
-        let profile = model.profile.snapshot, language = language
+        let profile = model.profile.snapshot, language = language, epoch = notebookEpoch
+        let persist = capturePersistence.map { $0() } ?? didExplain
         let key = Key(input: input, language: language, profile: profile)
         if !refresh {
             if let result = await loadSaved(for: input) ?? cache[key] {
                 try Task.checkCancellation()
-                guard model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
+                guard model.profile.snapshot == profile, self.language == language, notebookEpoch == epoch else {
+                    throw CancellationError()
+                }
                 return result
             }
         }
         try Task.checkCancellation()
-        guard model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
+        guard model.profile.snapshot == profile, self.language == language, notebookEpoch == epoch else {
+                    throw CancellationError()
+                }
         let lease = model.reserveInstructionRequest()
         return try await LearningRequestTrace.$requestID.withValue(requestID) {
             try await telemetry.perform(source: .explanation, profile: profile) {
@@ -91,7 +101,9 @@ final class LearningExplanationService: LearningLookupGenerating {
                 @MainActor func validate() throws {
                     try self.model.validateInstructionRequest(lease)
                     try Task.checkCancellation()
-                    guard self.model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
+                    guard self.model.profile.snapshot == profile, self.language == language, self.notebookEpoch == epoch else {
+                        throw CancellationError()
+                    }
                 }
                 try validate()
                 var bytes = 0
@@ -112,7 +124,7 @@ final class LearningExplanationService: LearningLookupGenerating {
                 while self.cacheOrder.count > 48 || self.cacheBytes > 4 * 1_024 * 1_024 {
                     self.cache.removeValue(forKey: self.cacheOrder.removeFirst())
                 }
-                self.didExplain?(record)
+                persist?(record)
                 return record
             }
         }
@@ -120,12 +132,13 @@ final class LearningExplanationService: LearningLookupGenerating {
     /// Basic and detail keys include their task and accepted pair. A detail for a previous
     /// interpretation cannot leak through the legacy target-only explanation cache.
     func lookup(_ input: LearningLookupInput, requestID: String, refresh: Bool) async throws -> LearningLookupRecord {
-        let profile = model.profile.snapshot, language = language
+        let profile = model.profile.snapshot, language = language, epoch = notebookEpoch
         let key = LookupKey(input: input, language: language, profile: profile)
         if !refresh, let record = lookupCache[key] { try Task.checkCancellation(); return record }
         let result = try await lookupValue(input, basic: nil, requestID: requestID) {
             try LearningLookupPolicy.parse($0, input: input)
         }
+        guard notebookEpoch == epoch else { throw CancellationError() }
         let record = LearningLookupRecord(input: input, language: language, result: result,
             model: profile.backend == .local ? profile.localModel : profile.endpointModel, createdAt: Date())
         lookupCache[key] = record
@@ -135,23 +148,25 @@ final class LearningExplanationService: LearningLookupGenerating {
 
     func explainLookup(_ basic: LearningLookupRecord, requestID: String, refresh: Bool) async throws -> LearningExplanationRecord {
         guard basic.language == language else { throw CancellationError() }
-        let profile = model.profile.snapshot
+        let profile = model.profile.snapshot, epoch = notebookEpoch
+        let persist = capturePersistence.map { $0() } ?? didExplain
         let key = LookupKey(input: basic.input, language: language, profile: profile, basic: basic.result)
         if !refresh, let record = detailCache[key] { try Task.checkCancellation(); return record }
         let text = try await lookupValue(basic.input, basic: basic.result, requestID: requestID,
             parse: LearningLookupPolicy.parseDetails)
+        guard notebookEpoch == epoch else { throw CancellationError() }
         let record = LearningExplanationRecord(id: UUID(), input: basic.input.target, language: basic.language,
             result: .init(meaning: basic.result.meaning, explanation: text),
             model: profile.backend == .local ? profile.localModel : profile.endpointModel, createdAt: Date())
         detailCache[key] = record
         if detailCache.count > 48 || detailCacheBytes > 4 * 1_024 * 1_024 { detailCache = [key: record] }
-        didExplain?(record)
+        persist?(record)
         return record
     }
 
     private func lookupValue<Value>(_ input: LearningLookupInput, basic: LearningLookupResult?, requestID: String,
                                     parse: (String) throws -> Value) async throws -> Value {
-        let profile = model.profile.snapshot, language = language
+        let profile = model.profile.snapshot, language = language, epoch = notebookEpoch
         try Task.checkCancellation()
         let lease = model.reserveInstructionRequest()
         return try await LearningRequestTrace.$requestID.withValue(requestID) {
@@ -167,7 +182,9 @@ final class LearningExplanationService: LearningLookupGenerating {
                 @MainActor func validate() throws {
                     try self.model.validateInstructionRequest(lease)
                     try Task.checkCancellation()
-                    guard self.model.profile.snapshot == profile, self.language == language else { throw CancellationError() }
+                    guard self.model.profile.snapshot == profile, self.language == language, self.notebookEpoch == epoch else {
+                        throw CancellationError()
+                    }
                 }
                 try validate()
                 var bytes = 0
@@ -186,6 +203,14 @@ final class LearningExplanationService: LearningLookupGenerating {
                 return value
             }
         }
+    }
+
+    /// An account switch invalidates ephemeral context as well as saved drafts. An in-flight
+    /// model may finish physically, but epoch checks prevent its result from entering a new cache.
+    func resetNotebookScope() {
+        notebookEpoch = UUID()
+        cache = [:]; cacheOrder = []; lookupCache = [:]; detailCache = [:]
+        notebookChanges.send()
     }
 
     private var lookupCacheBytes: Int {

@@ -68,6 +68,9 @@ nonisolated struct CLICapture: Codable, Sendable {
         var note: String?
         var status: String?
     }
+    var referencesExistingRecords: Bool {
+        meanings?.contains(where: { $0.id != nil }) == true || entries.contains { $0.senses.contains { $0.id != nil } }
+    }
     var defaults: Defaults?
     var meanings: [Meaning]?
     var entries: [Entry]

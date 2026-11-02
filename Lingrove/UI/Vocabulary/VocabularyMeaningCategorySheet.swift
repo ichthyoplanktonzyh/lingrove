@@ -135,8 +135,9 @@ struct VocabularyMeaningCategoryControl: View {
 /// while preserving conflict-checked baseline commits.
 struct VocabularyMeaningCategorySheet: View {
     @ObservedObject var store: VocabularyStore
+    @State private var notebookScope: VocabularyOperationScope?
     private let node: VocabularyMeaningNode
-    private let originalIndex: VocabularyClassificationIndex
+    @State private var originalIndex: VocabularyClassificationIndex
     private let onSaveDraft: ((VocabularyClassificationIndex, Set<UUID>) -> Void)?
     private var nodeID: UUID { node.id }
     @State private var baseline: VocabularyClassificationIndex
@@ -161,7 +162,8 @@ struct VocabularyMeaningCategorySheet: View {
     init(store: VocabularyStore, node: VocabularyMeaningNode, index: VocabularyClassificationIndex,
          selection: Set<UUID>, axis: VocabularyCategory.Axis,
          onSave: ((VocabularyClassificationIndex, Set<UUID>) -> Void)?) {
-        self.store = store; self.node = node; originalIndex = index; onSaveDraft = onSave
+        _notebookScope = State(initialValue: store.operationScope)
+        self.store = store; self.node = node; _originalIndex = State(initialValue: index); onSaveDraft = onSave
         _baseline = State(initialValue: index); _selectedIDs = State(initialValue: selection)
         _expanded = State(initialValue: VocabularyClassificationProjection.expansionPaths(
             for: selection, in: index, includeHidden: true))
@@ -447,7 +449,7 @@ struct VocabularyMeaningCategorySheet: View {
         VocabularyClassificationPolicy.assign(nodeID: nodeID, categories: selectedIDs, in: &edited)
         saving = true
         Task {
-            if await store.updateClassification(edited, basedOn: originalIndex) {
+            if await store.updateClassification(edited, basedOn: originalIndex, scope: notebookScope) {
                 dismiss()
             } else {
                 failure = store.errorMessage

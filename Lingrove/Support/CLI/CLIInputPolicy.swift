@@ -22,7 +22,11 @@ nonisolated enum CLIInputPolicy {
     /// Validate the untyped envelope before Codable can silently ignore an unknown field. These
     /// helpers share no state; each owns one nesting level and retains its original error path.
     private static func validateShape(_ value: Any) throws {
-        let root = try object(value, keys: ["version", "idempotencyKey", "expectedRevision", "operations"], at: "batch")
+        let root = try object(value, keys: ["version", "idempotencyKey", "expectedRevision", "notebookScope", "operations"], at: "batch")
+        if let scope = root["notebookScope"] {
+            let data = try JSONSerialization.data(withJSONObject: scope)
+            _ = try CLINotebookScope.shape.normalized(JSONDecoder().decode(CLIJSON.self, from: data))
+        }
         guard let operations = root["operations"] as? [Any], !operations.isEmpty, operations.count <= 100 else {
             throw CLIError.invalid("Provide 1–100 operations.")
         }
@@ -98,12 +102,19 @@ nonisolated enum CLIInputPolicy {
 
     /// Runs before either process reads/decodes images. Byte limits alone do not bound how many
     /// empty or tiny file paths an otherwise small JSON document could ask us to open.
+    private static func validateNotebookScope(_ scope: CLINotebookScope?) throws {
+        guard let scope else { return }
+        _ = try CLINotebookScope.shape.normalized(.value(scope))
+        guard !scope.workspaceID.isEmpty, !scope.generation.isEmpty else { throw CLIError.invalid("Invalid notebookScope.") }
+    }
+
     static func validate(_ batch: CLIBatch) throws {
         guard (1...2).contains(batch.version), (1...200).contains(batch.idempotencyKey.utf8.count),
               !batch.idempotencyKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               (1...100).contains(batch.operations.count) else {
             throw CLIError.invalid("Invalid batch header or operation count.")
         }
+        try validateNotebookScope(batch.notebookScope)
         var images = 0, blocks = 0, examples = 0, imageBytes = 0
         for operation in batch.operations {
             guard [operation.add != nil, operation.append != nil, operation.update != nil,

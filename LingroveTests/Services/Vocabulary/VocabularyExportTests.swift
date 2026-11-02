@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveNotebookEngine
 import LingroveStudyExport
 import AppKit
 import SwiftUI
@@ -197,7 +198,7 @@ struct VocabularyExportTests {
         let (entries, image) = try fixture()
         _ = try await archive.commitWithImages(.init(entries: entries), supplied: [image.reference.filename: image.data])
         let original = try Data(contentsOf: url)
-        let media = url.appendingPathExtension("media").appendingPathComponent(image.reference.filename)
+        let media = url.appendingPathExtension("media").appendingPathComponent(try mediaBlobCacheRelativePath(sha256: image.reference.digest))
         try FileManager.default.removeItem(at: media)
         var options = VocabularyExportConfiguration(); options.images = true
         await #expect(throws: VocabularyExportError.self) {

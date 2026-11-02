@@ -473,7 +473,7 @@ struct VocabularyMeaningMappingSummary: View {
     }
     private func submit(_ edited: VocabularySemanticIndex, baseline: VocabularySemanticIndex) {
         saving = true
-        Task { _ = await store.updateSemantics(edited, basedOn: baseline); saving = false }
+        Task { [scope = store.operationScope] in _ = await store.updateSemantics(edited, basedOn: baseline, scope: scope); saving = false }
     }
 }
 

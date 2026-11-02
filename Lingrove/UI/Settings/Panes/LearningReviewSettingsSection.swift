@@ -51,7 +51,8 @@ struct LearningReviewSettingsSection: View {
                 HStack {
                     Text(template.name)
                     Spacer()
-                    Button(role: .destructive) { Task { try? await store.removeTemplate(template.id) } } label: {
+                    Button(role: .destructive) { Task { [scope = store.operationScope] in
+                        try? await store.removeTemplate(template.id, scope: scope) } } label: {
                         Image(systemName: "trash")
                     }.buttonStyle(.borderless).help(String(localized: "Delete", table: "Vocabulary"))
                 }
