@@ -1035,6 +1035,37 @@ content; it never trusts a request snapshot or rebuilds scheduling from events. 
 checks are in `FlashcardsTests/Notebook`, backend HTTP/PG checks in `notebook/review`, and the bounded
 acceptance supervisor is `scripts/validation/validate-notebook-review.py`.
 
+### Portable notebook and native Mac foundation
+
+`Packages/LingroveNotebookEngine` now owns the shared corpus/Card/review SQLite implementation,
+not the mobile import shims. Its owning facade accepts explicit SQL/media locations; mobile
+`LocalDatabase` borrows its existing Core and forwards compound commands to the same connection.
+The extracted schema, account/window generation, media pins, journal/shadow/rebase, exact ACK,
+source/material refresh, FSRS, immutable rating/undo and statistics remain together where their
+transactions require it. Raw handles are internal; no network wait holds a transaction. Source
+Card write gates and generated ownership use the same literal UTF-8 comparison. Notebook undo
+requires the caller's original generation. The package README and extraction manifest map every
+old file to its implementation or host adapter.
+
+`Packages/LingroveCloud` owns portable account authentication/session and bounded network
+transport/orchestration. Hosts inject private credentials/configuration and explicit service/scope
+authorization. Storage ports carry immutable stages, never generic SQL; corpus and review failure
+states remain separate. Exact-200 notebook/media protocols apply their small error budget to
+other 2xx responses as well as ordinary errors.
+
+`Packages/LingroveNotebookCloud` is the integration seam. `NotebookEngineStorage` implements the
+corpus/media/review ports with canonical engine commands, exact frozen bytes, binding checks and
+short-lived same-file background connections. Review ACK and cursor commit atomically in SQLite;
+media attempts/pins preserve their durable identities. Mobile runner facades invoke the same
+public runners through this adapter, retaining app-owned CloudSessionRuntime and cancel controls.
+
+`Services/Notebook/MacNotebookRepository` prepares one native resource reference with the engine,
+cloud ports and committed-change notifications. Wave 2 connects capture/CLI, account/sync and
+built-in review to this same app-owned reference. At the Wave 1 checkpoint the existing desktop
+vocabulary archive has **not** yet been switched; native account is the already-live Mac feature.
+`docs/MAC_WAVE_2.md` freezes the hooks and assigns AppEnvironment/menus to the final integrator,
+so feature worktrees do not construct competing long-lived service graphs.
+
 ## Local vocabulary CLI
 
 `LingroveCLI/` is a separate executable target, embedded by `scripts/embed_cli.sh` in both app
