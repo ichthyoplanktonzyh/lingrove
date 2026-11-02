@@ -442,7 +442,7 @@ those reviewer/test agents do not write implementation or test code.
 - Leads proactively deliver their branch/commit IDs, completed scope, actual validation evidence,
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
-- Read the current wave contract in `docs/MOBILE_WAVE_1.md`. Separate worktrees isolate source,
+- Read the current wave contract in `docs/MOBILE_WAVE_2.md` (Wave 1 is historical). Separate worktrees isolate source,
   not simulators or host resources. All Xcode/simulator operations acquire the shared validation
   lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
 
