@@ -12,6 +12,8 @@ import SwiftUI
 @MainActor
 final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let cli: CLIInstallationModel?
+    /// Borrowed from the app environment; window reopening never creates an authentication service.
+    let accountService: AccountSessionService?
     private let learningModels: LearningModelCollection?
     /// Borrow the app-owned speaker so settings previews share playback with the learning cards.
     /// Reopening this window must never create a second synthesizer or a separate voice preference.
@@ -73,6 +75,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     }
 
     init(
+        accountService: AccountSessionService? = nil,
         cli: CLIInstallationModel? = nil,
         learningModels: LearningModelCollection? = nil,
         speech: LearningSpeechController? = nil,
@@ -95,6 +98,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         clearEmojiHistory: @escaping () -> Void,
         typingHistoryStore: TypingHistoryStore
     ) {
+        self.accountService = accountService
         self.cli = cli
         self.learningModels = learningModels
         self.speech = speech
@@ -140,6 +144,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         let hostingController = NSHostingController(
             rootView: AnyView(
                 SettingsContainerView(
+                    accountService: accountService,
                     cli: cli,
                     learningModels: learningModels,
                     speech: speech,

@@ -36,6 +36,8 @@ final class LingroveAppEnvironment {
     let permissionGuidanceController: PermissionGuidanceController
     let suggestionSettings: SuggestionSettingsModel
     let interfaceLanguageSettings: InterfaceLanguageSettingsModel
+    /// One account/session owner serves every Settings window; local features do not depend on it.
+    let accountService: AccountSessionService
     let openAICompatibleConnectionModel: OpenAICompatibleConnectionModel
     let foundationModelAvailabilityService: FoundationModelAvailabilityService
     let powerSourceMonitor: PowerSourceMonitor
@@ -84,6 +86,10 @@ final class LingroveAppEnvironment {
         // precedes that migration, so refresh before power subscriptions can replay a profile.
         runtimeModel.refreshAvailableModels()
         let interfaceLanguageSettings = InterfaceLanguageSettingsModel()
+        let accountService = AccountSessionService(client: AccountAPIClient(),
+            credentials: KeychainAccountCredentialStore(
+                bundleIdentifier: Bundle.main.bundleIdentifier ?? "io.ichthyoplanktonzyh.lingrove"),
+            settings: AccountConfigurationStore())
         let openAICompatibleClient = OpenAICompatibleAPIClient()
         let openAICompatibleConnectionModel = OpenAICompatibleConnectionModel(
             client: openAICompatibleClient
@@ -341,6 +347,7 @@ final class LingroveAppEnvironment {
             endpointConnection: openAICompatibleConnectionModel, searchService: huggingFaceSearchService
         )
         let settingsCoordinator = SettingsCoordinator(
+            accountService: accountService,
             cli: cliInstallation,
             learningModels: learningModels,
             speech: speechController,
@@ -567,6 +574,7 @@ final class LingroveAppEnvironment {
         self.permissionGuidanceController = permissionGuidanceController
         self.suggestionSettings = suggestionSettings
         self.interfaceLanguageSettings = interfaceLanguageSettings
+        self.accountService = accountService
         self.openAICompatibleConnectionModel = openAICompatibleConnectionModel
         self.foundationModelAvailabilityService = foundationModelAvailabilityService
         self.powerSourceMonitor = powerSourceMonitor

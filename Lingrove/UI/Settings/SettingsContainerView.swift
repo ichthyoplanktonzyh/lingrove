@@ -12,6 +12,7 @@ import SwiftUI
 /// on the detail body is the documented workaround for the macOS 14 split-view selection bug where
 /// the first sidebar pick doesn't always re-render the detail column.
 struct SettingsContainerView: View {
+    var accountService: AccountSessionService?
     var cli: CLIInstallationModel?
     var learningModels: LearningModelCollection?
     var speech: LearningSpeechController?
@@ -136,6 +137,8 @@ struct SettingsContainerView: View {
                 openAICompatibleConnectionModel: openAICompatibleConnectionModel,
                 attentionCategories: attentionCategories
             )
+        case .account:
+            if let accountService { AccountPaneView(account: accountService) }
         case .general:
             GeneralPaneView(
                 cli: cli,

@@ -33,6 +33,7 @@ Lingrove/
 │       ├── SettingsCoordinator.swift
 │       └── WelcomeCoordinator.swift
 ├── Models/
+│   ├── Account/                      explicit service pair, verified identity, private session values and SDK seams
 │   ├── CLI/                          app/client wire requests, batch input, replies and stable errors
 │   ├── ProductIdentity.swift         localized brand names and independent project destinations
 │   ├── Context/                      bounded context and visual-context values
@@ -55,6 +56,7 @@ Lingrove/
 │       ├── Result/                   engine result and client error values
 │       └── Session/                  active, paused, and presented session values
 ├── Services/
+│   ├── Account/                      app-owned native email authentication, private Keychain and connection persistence
 │   ├── CLI/                          passive mailbox consumption and user-level executable installation
 │   ├── Context/                      live clipboard acquisition
 │   ├── ExpressionAssist/             shared general-model generation and verified editor adapter
@@ -82,6 +84,7 @@ Lingrove/
 │   ├── Updates/                      manual release checks
 │   └── Visual/                       capture, OCR admission/helper lifetime, and visual-context sessions
 ├── Support/
+│   ├── Account/                      connection validation/scoping and safe localized account presentation
 │   ├── Accessibility/                pure AX and secure-surface policies
 │   ├── Context/                      sanitization, relevance, and OCR hygiene
 │   ├── Emoji/
@@ -173,6 +176,58 @@ LingroveTests/App/Coordinators/Suggestion/SuggestionCoordinatorPredictionTests.s
 
 Tests that exercise several production values may stay at the nearest shared subsystem root. Evals
 remain under `LingroveTests/Evals`, and shared fixtures remain under `LingroveTests/TestSupport`.
+
+## Native Mac account session
+
+`Models/Account/AccountModels.swift` separates the explicit API/auth service pair, private token
+values, server-confirmed identity, OTP secrets and safe observable states. `AccountContracts.swift`
+is the narrow authentication/storage seam for a future shared account SDK. Neither interface
+imports a notebook, workspace, sync runner or mobile store. Identity comes from authenticated
+`GET /me`; a JWT subject is not the product's surrogate account ID.
+
+`Support/Account/AccountConfigurationPolicy.swift` validates HTTPS (or explicit loopback HTTP),
+canonicalizes the selected base paths and hashes both services for Keychain scoping. It owns the
+same rules for typed and restored settings. `AccountOTPExpiryPolicy.swift` reads only a display-time
+hint from the fixed signed envelope, so resend suppression cannot renew an older challenge's local
+deadline. It cannot authenticate a token or create an identity. `AccountPresentation.swift` maps only fixed state/error
+categories to `Resources/Account.xcstrings`; raw service errors and tokens never become UI copy.
+The independent catalog keeps all existing Mac interface languages without changing upstream copy.
+
+`Services/Account/AccountAPIClient.swift` adapts the existing native Nibomo email OTP, refresh and
+account-identity wire contracts. The fixed mobile implementation depends on Flashcards logging,
+error helpers and database-derived account types, so the Mac adapter carries only the small wire
+values rather than importing `FlashcardsStore`/`CloudSessionRuntime`. Its ephemeral URLSession
+refuses redirects and cookie replay. Base paths such as `/v1` remain explicit in configuration.
+`KeychainAccountCredentialStore.swift` stores nonsynchronizing records in the Mac login Keychain,
+with an explicit ACL trusting only the creating application's code requirement. That fits the
+existing nonsandboxed host without requiring a new provisioning profile or shared Keychain group.
+Bundle identity, namespace and both selected services isolate production, Dev and synthetic tests.
+Silent access refuses authorization prompts. There is no file or UserDefaults fallback.
+
+`AccountConfigurationStore.swift` persists nonsecret connection URLs and a restore-permission bit.
+Logout closes that bit before clearing Keychain, preventing an unavailable Keychain from reviving
+the departed session on relaunch. `AccountSessionService.swift` owns login/challenge timers,
+server identity checks, session recovery and one shared refresh flight. It persists rotation before
+the next network suspension. Generation checks after each await retire old callbacks on Cancel,
+logout, shutdown or service changes. Network failures retain a pending/offline session; invalid
+credentials or a changed account fail closed. Native logout clears this Mac's session under the
+existing local-signout semantics and makes no promise about other devices.
+
+`LingroveAppEnvironment` builds one service; `AppDelegate` starts restoration, resumes an expired
+session on activation and cancels tasks on shutdown. No connection/default account is supplied and
+no cloud guest is created. `SettingsCoordinator` and `SettingsContainerView` pass the same reference
+to `UI/Settings/Panes/AccountPaneView.swift`. That pane owns only form drafts and observes safe
+state; closing/reopening a window does not recreate authentication. Account/search navigation uses
+the existing sidebar, native Form scaffold and row anchors. The signed-in label confirms identity
+only and cannot claim sync, local corpus adoption or review availability.
+
+Tests mirror the boundary in `LingroveTests/Services/Account`, `Support/Account` and
+`UI/Settings/AccountPaneRenderingTests.swift`. A small owned loopback fixture under
+`scripts/tests/fixtures/account_auth_server.py` exercises real URLSession/native request bodies,
+identity confirmation and rotation; real Keychain checks use unique synthetic namespaces and
+clean them. Race fixtures intentionally deliver replies after cancellation. Native render checks
+host only synthetic forms and optionally write their own PNGs, without screen capture or real
+preferences. They do not establish real Cognito/mailbox/provider acceptance.
 
 ## Per-App Settings
 

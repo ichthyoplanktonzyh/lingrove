@@ -190,6 +190,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         startMenuBar()
+        // Account restoration is independent of local writing/learning startup. The service
+        // performs no network work without an explicit connection and a saved authorized session.
+        environment.accountService.start()
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         Task {
@@ -236,6 +239,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Waking/reactivating Settings reuses the app-owned refresh flight when a saved token expired
+    /// during sleep. It cannot initiate login for a signed-out or unconfigured installation.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        guard !Self.isRunningForPreviews, !Self.isRunningUnderXCTest else { return }
+        environment.accountService.resumeIfNeeded()
+    }
+
     /// Launch Services sends a reopen event when the user explicitly opens Lingrove while it is
     /// already running. Route every such request through the existing Settings owner so the app
     /// responds whether its status item is visible, Settings is closed, or Settings is minimized.
@@ -280,6 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Read-aloud works in Settings even before Accessibility/input services are allowed.
         // Retire its request and playback on every quit path, independently of that startup gate.
         menuBarController?.shutdown()
+        environment.accountService.shutdown()
         environment.speechController.shutdown()
         environment.ocrRuntime.shutdown()
         environment.debugScreenshotWriter?.shutdown()

@@ -13,6 +13,7 @@ import SwiftUI
 enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
     case home
     case general
+    case account
     case appearance
     case emoji
     case writing
@@ -31,6 +32,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return String(localized: "Home")
         case .general: return String(localized: "General")
+        case .account: return String(localized: "Account", table: "Account")
         case .appearance: return String(localized: "Appearance")
         case .emoji: return String(localized: "Emoji")
         case .writing: return String(localized: "Writing")
@@ -50,6 +52,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return "house.fill"
         case .general: return "gearshape.fill"
+        case .account: return "person.crop.circle.fill"
         case .appearance: return "paintbrush.fill"
         case .emoji: return "face.smiling"
         case .writing: return "square.and.pencil"
@@ -71,6 +74,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return .blue
         case .general: return .gray
+        case .account: return .blue
         case .appearance: return .purple
         case .emoji: return .yellow
         case .writing: return .indigo
@@ -90,6 +94,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .home: return String(localized: "Overview and search")
         case .general: return String(localized: "Core toggles and behavior")
+        case .account: return String(localized: "Sign-in and account connection", table: "Account")
         case .appearance: return String(localized: "Ghost text style and display")
         case .emoji: return String(localized: "The inline emoji picker")
         case .writing: return String(localized: "Length, profile, and corrections")
@@ -110,7 +115,7 @@ enum SettingsCategory: String, CaseIterable, Hashable, Identifiable {
     /// pins that invariant so a new pane cannot silently vanish from the sidebar.
     static let sidebarGroups: [[SettingsCategory]] = [
         [.home],
-        [.general, .appearance, .emoji],
+        [.general, .account, .appearance, .emoji],
         [.writing, .languageLearning, .context, .engineAndModel],
         [.shortcuts, .apps, .permissions],
         [.performance, .about]
