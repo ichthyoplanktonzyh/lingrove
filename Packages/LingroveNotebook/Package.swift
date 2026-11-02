@@ -16,7 +16,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "LingroveTextRules"),
-        .target(name: "LingroveNotebook", dependencies: ["LingroveTextRules"]),
+        .target(name: "LingroveNotebook", dependencies: ["LingroveTextRules"], resources: [.process("Resources")]),
         .target(name: "LingroveNotebookUI", dependencies: ["LingroveNotebook"]),
         .target(name: "LingroveNotebookPersistenceCodec", dependencies: ["LingroveNotebook"]),
         .target(name: "LingroveNotebookSync", dependencies: ["LingroveNotebook"]),

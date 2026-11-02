@@ -118,3 +118,16 @@ work. The [source map](../../SOURCE_LAYOUT.md) documents responsibilities that s
 Mac app.
 The [Nibomo integration](../../docs/NIBOMO_INTEGRATION.md) describes the maintained downstream
 source and use of shared Core/Codec values with Nibomo's own database/transaction owner.
+
+## Offline corpus management
+
+The shared target also owns the existing Mac sense merge/move rules, bounded CSV/TXT parser and
+append planner, ordinary saved-field/meaning browsing, graph values/projection and deterministic
+layout. The native hosts retain transaction, presentation, media and account ownership. Graph
+edges come only from lexical ownership, declared taxonomy and confirmed meaning assertions.
+
+The classification installer reads packaged catalog assets. These are generated copies of
+`Lingrove/Resources/VocabularyClassificationCatalog.json`, its notice and the existing license;
+run `python3 scripts/notebook_catalog/generate.py --write` after an authored catalog or shared-rule
+change and review the generated source receipt. The static catalog check verifies byte equality.
+Install/upgrade preserves key-derived UUIDs, local overlays, custom children and retired identities.

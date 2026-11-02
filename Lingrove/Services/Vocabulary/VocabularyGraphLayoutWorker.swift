@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import LingroveGraphLayout
+import LingroveNotebook
 
 /// One notebook window owns this actor. Grape's mutable native buffers never leave it: the
 /// main actor receives copied positions and controls exactly when another physics step is needed.
