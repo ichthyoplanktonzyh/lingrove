@@ -107,7 +107,7 @@ public nonisolated struct VocabularyWireMaterialization: Sendable {
 extension VocabularyWireJSON {
     /// Wire clocks describe literal values. Swift String equality folds Unicode
     /// normalization, which must not make changed source bytes look unchanged.
-    func hasSameWireValue(as other: Self) -> Bool {
+    public func hasSameWireValue(as other: Self) -> Bool {
         switch (self, other) {
         case (.null, .null): return true
         case let (.bool(a), .bool(b)): return a == b

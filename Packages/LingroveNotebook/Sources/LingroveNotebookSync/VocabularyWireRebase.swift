@@ -4,19 +4,41 @@ import LingroveNotebook
 /// A conflict names only public identity/field metadata, never source content.
 /// The host can present a resolution flow while retaining the old document,
 /// shadow and pending journal. No partial candidate is returned on failure.
-public nonisolated struct VocabularyWireConflict: Equatable, Sendable {
-    public enum Reason: String, Sendable {
-        case concurrentCreation, changedDeletion, retiredIdentity, fieldChanged
+public nonisolated struct VocabularyWireConflict: Equatable, Codable, Sendable {
+    public enum Reason: String, Codable, Sendable {
+        case concurrentCreation, changedDeletion, retiredIdentity, fieldChanged, relationshipChanged
     }
     public let entityType: VocabularyWireEntityKind
     public let entityID: String
     public let field: String?
     public let reason: Reason
+    public init(entityType: VocabularyWireEntityKind, entityID: String, field: String?, reason: Reason) {
+        self.entityType = entityType; self.entityID = entityID; self.field = field; self.reason = reason
+    }
+}
+
+/// A user's choice is bound to the exact values and server version they saw.
+/// Hosts persist these locally; they are never an alternate server write API.
+/// A changed value, even one restored to the same text later, requires review.
+public nonisolated struct VocabularyWireConflictSelection: Codable, Sendable {
+    public enum Choice: String, Codable, Sendable { case local, remote }
+    public let conflict: VocabularyWireConflict
+    public let local: VocabularyWireEntity?
+    public let remote: VocabularyWireEntity?
+    public let remoteVersion: VocabularyWireSequence?
+    public let choice: Choice
+
+    public init(conflict: VocabularyWireConflict, local: VocabularyWireEntity?, remote: VocabularyWireEntity?,
+                remoteVersion: VocabularyWireSequence?, choice: Choice) {
+        self.conflict = conflict; self.local = local; self.remote = remote
+        self.remoteVersion = remoteVersion; self.choice = choice
+    }
 }
 
 public nonisolated enum VocabularyWireRebaseError: Error, Equatable, Sendable {
     case conflicts([VocabularyWireConflict])
     case invalidMergedGraph
+    case staleResolution
 }
 
 /// An immutable candidate for the host's CAS-protected local transaction. It
@@ -36,6 +58,7 @@ public nonisolated enum VocabularyWireRebase {
         local: VocabularyDocument, base: VocabularyWireServerShadow,
         window: VocabularyWireVerifiedWindow, retaining privateState: VocabularyWirePrivateState? = nil,
         acknowledging acknowledgement: VocabularyWireUploadAcknowledgement? = nil,
+        resolving selections: [VocabularyWireConflictSelection] = [],
         now: Date
     ) throws -> VocabularyWireRebaseResult {
         let remote = try base.applying(window, now: now)
@@ -56,21 +79,40 @@ public nonisolated enum VocabularyWireRebase {
         })
         var merged: [VocabularyWireEntity] = []
         var conflicts: [VocabularyWireConflict] = []
+        var consumed = Set<Int>()
         let keys = Set(before.keys).union(local.keys).union(incoming.keys)
         for key in keys.sorted() {
             let b = before[key], l = local[key], r = incoming[key]
             guard let identity = l ?? r ?? b else { throw VocabularyWireRebaseError.invalidMergedGraph }
-            func conflict(_ reason: VocabularyWireConflict.Reason, field: String? = nil) {
-                conflicts.append(.init(entityType: identity.entityType, entityID: identity.entityID, field: field, reason: reason))
+            func conflict(_ reason: VocabularyWireConflict.Reason, field: String? = nil) throws -> VocabularyWireConflictSelection.Choice? {
+                let item = VocabularyWireConflict(entityType: identity.entityType, entityID: identity.entityID, field: field, reason: reason)
+                let matches = selections.indices.filter { selections[$0].conflict == item }
+                guard matches.count <= 1 else { throw VocabularyWireRebaseError.staleResolution }
+                guard let index = matches.first else { conflicts.append(item); return nil }
+                let selection = selections[index]
+                guard same(selection.local, l), same(selection.remote, r), selection.remoteVersion == newRecords[key]?.version,
+                      !(selection.choice == .local && newRecords[key]?.deleted == true) else {
+                    throw VocabularyWireRebaseError.staleResolution
+                }
+                consumed.insert(index)
+                return selection.choice
+            }
+            // Graph conflicts are explicit entity choices, used only after the
+            // ordinary field merge proved that relationships cannot coexist.
+            if selections.contains(where: { $0.conflict.entityType == identity.entityType && $0.conflict.entityID == identity.entityID && $0.conflict.reason == .relationshipChanged }) {
+                let choice = try conflict(.relationshipChanged)
+                if let value = choice == .local ? l : r { merged.append(value) }
+                continue
             }
             if same(l, b) { if let r { merged.append(r) }; continue }
             if l != nil, newRecords[key]?.deleted == true {
-                conflict(.retiredIdentity); continue
+                if try conflict(.retiredIdentity) == .remote, let r { merged.append(r) }; continue
             }
             if same(l, r) { if let l { merged.append(l) }; continue }
             guard let b else {
                 if r == nil, let l { merged.append(l) }
-                else { conflict(.concurrentCreation) }
+                else if let l, let r, sameDirectoryDefinition(l, r) { merged.append(r) }
+                else if let choice = try conflict(.concurrentCreation), let value = choice == .local ? l : r { merged.append(value) }
                 continue
             }
             guard let l, let r else {
@@ -78,7 +120,7 @@ public nonisolated enum VocabularyWireRebase {
                 // even if a later edit happened to restore its earlier content.
                 let boundary = acknowledgedFields[key] == nil ? oldRecords[key]?.version : acknowledgement?.receipt.committedSequence
                 if l == nil, same(r, b), boundary == newRecords[key]?.version { continue }
-                conflict(.changedDeletion); continue
+                if let choice = try conflict(.changedDeletion), let value = choice == .local ? local[key] : incoming[key] { merged.append(value) }; continue
             }
             var fields: [String: VocabularyWireJSON] = [:]
             for field in Set(b.fields.keys).union(l.fields.keys).union(r.fields.keys).sorted() {
@@ -95,20 +137,38 @@ public nonisolated enum VocabularyWireRebase {
                           let joined = appendOnly(base: bv, local: lv, remote: rv,
                             acknowledgedAdd: acknowledgedAdditions[key]?.contains(field) == true, originalBase: oldRecords[key]?.entity.fields[field]) {
                     fields[field] = joined
-                } else { conflict(.fieldChanged, field: field) }
+                } else if let choice = try conflict(.fieldChanged, field: field) { fields[field] = choice == .local ? lv : rv }
             }
             merged.append(.init(entityType: identity.entityType, entityID: identity.entityID, fields: fields))
         }
         guard conflicts.isEmpty else { throw VocabularyWireRebaseError.conflicts(conflicts) }
+        guard consumed.count == selections.count else { throw VocabularyWireRebaseError.staleResolution }
         let material: VocabularyWireMaterialization
         do {
             material = try VocabularyWireProjectionCodec.materializeComplete(merged, notebookID: base.scope.notebookID, preserving: projection.privateState)
-        } catch { throw VocabularyWireRebaseError.invalidMergedGraph }
+        } catch {
+            let related = keys.sorted().compactMap { key -> VocabularyWireConflict? in
+                guard !same(local[key], incoming[key]), let entity = local[key] ?? incoming[key] else { return nil }
+                return .init(entityType: entity.entityType, entityID: entity.entityID, field: nil, reason: .relationshipChanged)
+            }
+            guard !related.isEmpty else { throw VocabularyWireRebaseError.invalidMergedGraph }
+            throw VocabularyWireRebaseError.conflicts(related)
+        }
         return .init(shadow: remote, materialization: material)
     }
 
     private static func keyed(_ entities: [VocabularyWireEntity]) -> [String: VocabularyWireEntity] {
         Dictionary(uniqueKeysWithValues: entities.map { ($0.entityType.rawValue + ":" + $0.entityID, $0) })
+    }
+    /// Independent first installations can offset directory ranks around local
+    /// custom rows. Equal official definitions share identity; ordering is not
+    /// permission to patch or replace a definition from either device.
+    private static func sameDirectoryDefinition(_ lhs: VocabularyWireEntity, _ rhs: VocabularyWireEntity) -> Bool {
+        guard lhs.entityType == rhs.entityType, lhs.entityID == rhs.entityID,
+              [.classificationFramework, .category, .categoryParent].contains(lhs.entityType) else { return false }
+        if lhs.entityType == .category, lhs.fields["frameworkId"] == .null { return false }
+        return VocabularyWireJSON.object(lhs.fields.filter { $0.key != "rank" }).hasSameWireValue(as:
+            .object(rhs.fields.filter { $0.key != "rank" }))
     }
     private static func same(_ lhs: VocabularyWireEntity?, _ rhs: VocabularyWireEntity?) -> Bool {
         switch (lhs, rhs) {
