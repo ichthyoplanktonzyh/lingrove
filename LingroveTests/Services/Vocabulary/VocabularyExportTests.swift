@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveStudyExport
 import AppKit
 import SwiftUI
 import Testing

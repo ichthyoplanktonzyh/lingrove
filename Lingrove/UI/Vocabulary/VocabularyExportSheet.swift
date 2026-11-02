@@ -1,4 +1,5 @@
 import AppKit
+import LingroveStudyExport
 import SwiftUI
 import UniformTypeIdentifiers
 
