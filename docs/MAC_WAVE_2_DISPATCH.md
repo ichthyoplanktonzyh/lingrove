@@ -71,3 +71,24 @@ AppEnvironment/AppDelegate/settings navigation/menus 与统一资源基础文件
 
 第一波的两小时提醒 `mac` 已在本次唤醒时删除，避免重复执行同一检查。第一波全部
 正式交付后已按用户授权完成整合/验证并派出这三个模块；不把停止提醒当作暂停项目。
+
+
+## 后续主动问题附记
+
+- C 提供 `async VocabularyStore.shutdown()`，停止订阅、取消并排空 archive 访问。
+  最终 app 退出先 await drain 再 repository.close；普通窗口关闭不调用。同步
+  NSApplication termination 的异步接线由 root 最后统一处理。
+- D 的真实 PG 核对发现 notebook connect 原硬编码 ios，与 macos bootstrap 身份冲突。
+  允许最小扩 shared NotebookValues/HTTPTransport、backend notebook connect 及直接
+  身份依赖，显式 `X-Client-Platform: macos`；未声明平台的 mobile 保持原 iOS，未知值
+  不当作 Mac，Mac guest 仍拒绝。平台加入同一 flight 身份判定，复用原 installation/
+  replica，不改 body/protocol 版本、RLS/授权/生产门控，同一 PG 检查覆盖实际 connect。
+- E 发现旧 CardStore.loadCard 会对无效 FSRS 边读边 reset。新 Mac 查询/围栏使用不写库
+  的 optional load + 纯 invalid-state 检查；额外允许 Commands/+Review.swift 在既有
+  writer 的 Task.checkCancellation 后、legacy load 前加 optional validateCurrentState
+  seam（新 Mac 强制传 typed fence）。评分/事件/算法 body 不变，无效状态拒绝且原行/
+  事件/journal 不变，不扩成遗留迁移或静默修复。
+- 第一波两个已合入 worktree 已归档、物理移除。必要 ignored evidence 先复制到本
+  集成树 `build/mac-w1-archived-worktrees/` 并逐文件 SHA-256 核对：A 208 文件，B 37
+  文件；映射/指纹在 `preservation.json`。代码/报告仍在当前 package/合并提交中。
+  未归档第二波活跃树、主树、移动第三波或别的会话发布树。
