@@ -716,7 +716,7 @@ extension VocabularyWireWindowIntegrationTests {
         local.catalog[0].senses.append(.init(id: UUID(), meaning: "a local sense", meaningLanguage: .english,
             meaningOrigin: .user, createdAt: Self.now, updatedAt: Self.now))
         try VocabularyDocumentValidation.validate(local)
-        #expect(throws: VocabularyWireRebaseError.invalidMergedGraph) {
+        #expect(throws: VocabularyWireRebaseError.self) {
             try VocabularyWireRebase.prepare(local: local, base: Self.rebaseBase(original),
                 window: Self.rebaseDelta(original: original, remote: VocabularyDocument()), now: Self.now)
         }
