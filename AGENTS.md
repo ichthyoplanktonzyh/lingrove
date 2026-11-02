@@ -426,6 +426,26 @@ separate from local feature checkpoints.
   Record passed checks, unresolved automation issues and remaining product risks separately.
   Completing every automation script is not the goal's completion criterion.
 
+## Mobile Wave Development Ownership
+
+The user's current wave arrangement supersedes earlier instructions that the main agent writes
+all product/test code. Each module lead uses `gpt-6.1-sol` with reasoning effort `max`, works in its
+own managed worktree, and owns the entire assigned module including necessary tests and fixes.
+The lead may delegate independent review and test execution to `gpt-6-luna` with effort `max`;
+those reviewer/test agents do not write implementation or test code.
+
+- Leads implement the complete agreed module, then validate and fix it as a batch. Keep module
+  scope fixed and follow the layered validation/timebox rules above.
+- While a lead is implementing, the main agent must not poll status, inspect its working changes,
+  send unsolicited implementation guidance or take over coding. The main agent responds only to
+  questions initiated by a lead and passively receives delivery reports.
+- Leads proactively deliver their branch/commit IDs, completed scope, actual validation evidence,
+  unresolved items and integration notes. The main agent then owns integration, necessary combined
+  verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
+- Read the current wave contract in `docs/MOBILE_WAVE_1.md`. Separate worktrees isolate source,
+  not simulators or host resources. All Xcode/simulator operations acquire the shared validation
+  lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
+
 ## Git And Worktree Safety
 
 - The worktree may already contain user edits. Never revert unrelated changes.
