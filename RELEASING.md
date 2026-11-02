@@ -17,22 +17,26 @@ installed copies discover it. App lifecycle stays in `AppUpdateManager`, packagi
   Leave it unset until the steps below are complete. The upstream Homebrew dispatch is removed.
 - Developer signing has no shared team default. Each developer uses `Config/Signing.local.xcconfig`;
   CI supplies its own distribution team and certificate.
-- The v0.7.1 build 3 test app is ad-hoc signed and packaged in a DMG for the public `v0.7.1` prerelease. It
+- The v0.7.2 build 4 test app is ad-hoc signed and packaged in a DMG for the public `v0.7.2` prerelease. It
   is not Developer ID signed, notarized, or connected to automatic updates; this does not enable
   the production release or Pages workflows.
 
 Local development can continue without a paid Apple Developer Program membership. The production
 Developer ID signing and notarization flow described here requires that membership; keep release
-jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.7.1
+jobs paused until its certificates and notarization credentials are available. The ad-hoc v0.7.2
 test package also does not require a paid membership; its test status and Gatekeeper steps
 are documented below.
 
-## 0.7.1 test release
+## 0.7.2 test release
 
-Version 0.7.1 (build 3) is packaged with `scripts/build_test_dmg.sh` and published as
-`v0.7.1`, retaining the existing ad-hoc-signed, unnotarized prerelease channel.
+Version 0.7.2 (build 4) is packaged with `scripts/build_test_dmg.sh` and published as
+`v0.7.2`, retaining the existing ad-hoc-signed, unnotarized prerelease channel.
 The universal DMG, install guide, checksums and source metadata accompany the
-[release notes](releases/lingrove-0.7.1.md). Automatic updates remain disabled.
+[release notes](releases/lingrove-0.7.2.md). Automatic updates remain disabled.
+
+The source includes the macOS changes through `c66fb60`: extensible meaning categories,
+hierarchical notebook navigation, task-shaped CLI capture, and optional local multilingual
+expression retrieval. The previous [0.7.1 release](releases/lingrove-0.7.1.md) remains available.
 
 ## Historical development checkpoints (before 0.7.1)
 
