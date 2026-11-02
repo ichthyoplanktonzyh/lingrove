@@ -1007,6 +1007,34 @@ native upload, canonical shadow, rebase and receipt coverage implement the same 
 content identities stay retired. No new generic SQL/patch writer or implicit review enrollment is
 introduced. Wave reports distinguish local protocol/storage evidence from real client operation.
 
+### Mobile managed review
+
+`Database/NotebookStore/LingroveNotebookReviewMaterialStore` projects source changes onto generated
+Card fields in the source transaction. Its saved baseline protects manual edits; it never owns FSRS.
+`LocalDatabase+NotebookPreparation` owns revision-bound material choices and explicit extra exercises.
+The existing Cards navigation presents `LingroveNotebookPreparationScreen` and the original editor.
+Merged senses retain historical owners; additional exercises follow the group's participation state.
+
+`Cloud/Notebook/LingroveNotebookReviewNetworkRunner` uses the account's existing single flight after
+corpus/media settlement. `LingroveNotebookReviewSyncStore` reads the held journal, couples dependent
+metadata/rating/event/undo operations into bounded requests, applies exact ACKs and commits one cursor.
+Corpus and review status are reported separately so a private review outage cannot hide committed
+corpus success. `LingroveNotebookAccountReviewHandoff` copies participation with the existing workspace
+fork, refreshes material against the accepted target corpus, and records an immutable history-adoption
+intent. That intent binds the target graph and a finite event manifest; origin IDs are provenance,
+never authority to read another workspace. It does not recreate a missing corpus sense.
+
+Backend `notebook/review/{contract,store}` owns the private, explicitly enabled transport, immutable
+receipts, independent content/schedule clocks and authorization under workspace RLS. `changes.ts`
+admits every review publisher's encoded delta before commit so an unreadable row cannot block later
+pages. Migration `0246` defines the fresh-install review tables and shared eligibility function.
+Generic snapshots/deletes cannot bypass managed ownership; online authoring still uses the existing
+Card editor/writer. Online ratings lock hot state, book and Card in that order, serializing eligibility
+with corpus retirement. Undo restores the server's saved predecessor schedule while preserving current
+content; it never trusts a request snapshot or rebuilds scheduling from events. Native storage/HTTP
+checks are in `FlashcardsTests/Notebook`, backend HTTP/PG checks in `notebook/review`, and the bounded
+acceptance supervisor is `scripts/validation/validate-notebook-review.py`.
+
 ## Local vocabulary CLI
 
 `LingroveCLI/` is a separate executable target, embedded by `scripts/embed_cli.sh` in both app
