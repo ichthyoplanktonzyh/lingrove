@@ -799,6 +799,18 @@ native List/Form/pickers for meaning/category browsing, mapping edits and whole-
 retention, rated native memory, stale drafts and journal rollback; the UI journey crosses nested
 Cancel/Save and relaunch before returning from category to meaning to the original lexical sense.
 
+`Notebook/LingroveNotebookStructureDraft` owns pattern/slot and meaning-role task values on the
+same organization snapshot. Child item forms return names/details under fixed UUIDs; confirmed
+role/slot deletion calls shared `VocabularySemanticPolicy` cleanup and retains the surrounding
+claims, scope, evidence and authorship. Pattern deletion removes only its restricted assertions.
+`UI/Organization/LingroveNotebookStructureEditors` can return checked child drafts to a mapping
+form without SQL; the outer Save commits roles, slots and assignments once. Mapping drafts keep
+role choices while switching nodes and publish only valid current-node/fixed-pattern assignments.
+`LingroveNotebookPatternScreen` browses source, slots and restricted associations through the Cards
+routes; exact association lookup preserves parallel claims, and multiple matches require a visible
+choice showing their conditions, evidence, authorship and role assignments. The same real SQLite
+organization suite covers structural identity, limits, explicit cleanup, CAS and rollback.
+
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
 and reproducible generator live under Nibomo's Apple scripts directory.

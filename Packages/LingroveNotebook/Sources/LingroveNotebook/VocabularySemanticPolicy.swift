@@ -229,6 +229,31 @@ public nonisolated enum VocabularySemanticPolicy {
         }
     }
 
+    /// Explicit structural deletion removes only assignments to the deleted role.
+    /// Assertions retain their scope, evidence and authorship; callers confirm this
+    /// consequence before applying it to a detached draft or a transaction.
+    public static func removeRole(_ id: UUID, nodeID: UUID, from index: inout VocabularySemanticIndex,
+                                  now: Date = Date()) throws {
+        guard let position = index.nodes.firstIndex(where: { $0.id == nodeID }),
+              index.nodes[position].roles.contains(where: { $0.id == id }) else { throw VocabularyError.editConflict }
+        index.nodes[position].roles.removeAll { $0.id == id }
+        index.nodes[position].updatedAt = now
+        for offset in index.mappings.indices where index.mappings[offset].nodeID == nodeID {
+            index.mappings[offset].roleBindings.removeAll { $0.roleID == id }
+        }
+    }
+
+    /// A slot is syntax owned by one pattern. Removing it cannot delete semantic
+    /// roles or broaden a pattern-specific assertion to the whole lexical sense.
+    public static func removeSlot(_ id: UUID, patternID: UUID, from index: inout VocabularySemanticIndex) throws {
+        guard let position = index.patterns.firstIndex(where: { $0.id == patternID }),
+              index.patterns[position].slots.contains(where: { $0.id == id }) else { throw VocabularyError.editConflict }
+        index.patterns[position].slots.removeAll { $0.id == id }
+        for offset in index.mappings.indices where index.mappings[offset].patternID == patternID {
+            index.mappings[offset].roleBindings.removeAll { $0.slotID == id }
+        }
+    }
+
     public static func removePattern(_ id: UUID, from index: inout VocabularySemanticIndex) {
         index.patterns.removeAll { $0.id == id }
         index.mappings.removeAll { $0.patternID == id }
