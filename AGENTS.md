@@ -391,6 +391,41 @@ is a regression even when its own log counters improve.
 Run targeted tests for changed pure logic when available. If validation fails, report the exact
 failure and distinguish a successful build-for-testing step from actual test execution.
 
+## Mobile Validation And Checkpoints
+
+The mobile development goal is usable software with reliable data and a few protected user
+journeys. Apply these rules to feature development in `Nibomo/`; release-specific runbooks remain
+separate from local feature checkpoints.
+
+- Put relationship integrity, deletion effects, cancellation without writes, atomic saves,
+  persistence, retries and review-history retention in focused module/storage integration tests.
+  Follow Nibomo's existing policy against adding isolated unit tests by default.
+- Keep E2E coverage to a small set of user outcomes: import and browse; edit, save and reopen;
+  explicitly enroll and complete a review. Select the affected journey for a change. Do not chain
+  field combinations, multiple nested cancellation branches and association permutations into one
+  mandatory E2E. Prepare unrelated state through a validated fixture instead of clicking through
+  several other features.
+- Use ordinary iPhone as the primary phone destination. Check iPad's important layouts and
+  operations independently. Duo is optional compatibility evidence and does not block a feature
+  checkpoint.
+- Inspect actual screenshots, app state and relevant stored results before classifying a UI
+  automation failure. A locator, viewport or animation failure does not establish a product bug.
+  Do not restructure product navigation solely to satisfy a failing automation assumption.
+- Timebox one automation-infrastructure issue to at most two corrective reruns or twenty minutes,
+  whichever comes first. Then record the failure and evidence, use bounded manual/targeted
+  verification where practical, and proceed with a scoped checkpoint. Do not keep adding gesture,
+  wait and geometry machinery to make every script green.
+- When only a UI test's locator, scrolling or waiting changes, compile the affected test and rerun
+  only its relevant journey. Do not rerun unchanged business/storage suites merely because a test
+  source fingerprint changed. Broaden validation only for changed product behavior or new evidence.
+- Data corruption, crashes and a primary journey that a user also cannot complete block declaring
+  that affected feature ready. Confirmed script-only failures and optional device issues can remain
+  documented in a checkpoint; unverified behavior must stay explicitly unverified. Never report a
+  manual pass without performing it, or build-for-testing success as executed tests.
+- Prefer a checkpoint once a coherent feature slice and its necessary data checks are complete.
+  Record passed checks, unresolved automation issues and remaining product risks separately.
+  Completing every automation script is not the goal's completion criterion.
+
 ## Git And Worktree Safety
 
 - The worktree may already contain user edits. Never revert unrelated changes.
