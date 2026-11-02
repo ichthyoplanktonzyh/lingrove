@@ -151,6 +151,9 @@ public struct NotebookHTTPTransport {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        if let platform = account.nativePlatform {
+            request.setValue(platform.rawValue, forHTTPHeaderField: "X-Client-Platform")
+        }
         if stagedFeature { request.setValue("staged-upload-v1", forHTTPHeaderField: "X-Lingrove-Corpus-Features") }
         let data: Data
         let response: HTTPURLResponse

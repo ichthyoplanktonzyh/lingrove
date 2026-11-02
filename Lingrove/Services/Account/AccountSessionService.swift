@@ -12,6 +12,12 @@ final class AccountSessionService: ObservableObject {
     @Published private(set) var state: AccountSessionState = .unconfigured
     @Published private(set) var codePrompt: AccountCodePrompt?
     @Published private(set) var issue: AccountIssue?
+    /// One atomic safe projection is the lifecycle subscription seam. Publishing generation
+    /// separately from state could briefly pair a new account boundary with an old UI value.
+    @Published private(set) var observation = MacAccountObservation()
+    /// `@Published` emits in willSet. Lifecycle consumers need the fully assigned facade before
+    /// a synchronous logout fence runs, so this stream sends only after all safe fields commit.
+    let observationChanges = PassthroughSubject<MacAccountObservation, Never>()
     private let session: AccountSession
 
     init(client: any AccountAuthenticating, credentials: any AccountCredentialStoring,
@@ -39,7 +45,10 @@ final class AccountSessionService: ObservableObject {
         try await session.authorization(forceRefresh: forceRefresh)
     }
     private func publish() {
+        observation = MacAccountObservation(configuration: session.configuration, state: session.state,
+            retainedIdentity: session.retainedIdentity, generation: session.generation)
         configuration = session.configuration; state = session.state
         codePrompt = session.codePrompt; issue = session.issue
+        observationChanges.send(observation)
     }
 }

@@ -2,7 +2,7 @@
 
 Foundation-only account and authorized notebook networking for native Mac and iOS. The package
 imports the existing `LingroveNotebook` / `LingroveNotebookSync` values and codecs. It has no
-SwiftUI, UIKit, SQLite, Card/FSRS, `FlashcardsStore`, default endpoint, guest creation, telemetry,
+SwiftUI, UIKit, SQLite, Card scheduling, `FlashcardsStore`, default endpoint, guest creation, telemetry,
 Keychain entitlement, Bundle lookup, or implicit connection on initialization.
 
 ## Ownership and data flow
@@ -20,6 +20,21 @@ The host observes safe state through `onChange`. Mac's existing `AccountSessionS
 Combine facade; its existing private Keychain and UserDefaults adapters remain local. The visible
 connection draft still uses `AccountConfigurationPolicy.matchesSavedConnection`. No secret can be
 saved through the nonsecret configuration port, and there is no plaintext credential fallback.
+
+`AccountWorkspaceClient` separately rechecks `/me.userId` against one authorization and lists
+bounded, paginated visible workspace metadata. The server-selected workspace is informational;
+the native host owns explicit selection, local retain/accept and sync consent. For a chosen Mac
+workspace it reads only the rank-zero scheduler entry from existing `/sync/bootstrap` with
+`limit: 1`, preserving remote FSRS values and clocks without downloading generic Cards/Decks.
+This is a wire DTO, not another scheduler. The engine initializes a new shell from that value and
+uses its existing LWW applier afterwards.
+
+Native Mac declares `macos` for scheduler bootstrap and `NotebookAccount.nativePlatform = .macos`
+for the existing `X-Client-Platform` connect header. The backend's 0247 constraint extension admits
+this installation/replica value; old notebook callers retain their original iOS handshake when
+this optional declaration is absent. The declaration participates in coordinator flight identity;
+unknown headers fail closed and Mac guest sync remains unavailable. No default service, provider,
+telemetry request or authorization is added by constructing these values.
 
 `NotebookSyncCoordinator` is the app-owned single-flight and retry-report owner. Constructing an
 account value does not authorize synchronization; the host calls `synchronize` only after the
