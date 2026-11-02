@@ -1,21 +1,30 @@
 import Foundation
+import LingroveNotebook
 
 /// A persisted one-step undo belongs to its original rating and survives app restart. Restoring
 /// only scheduler columns preserves later authored faces. A subsequent rating supersedes this
 /// local affordance; the server also checks the causal target before restoring a remote head.
 extension LingroveNotebookEngine {
-    public func undoLastNotebookRating(workspaceId: String, cardId: String, generation: String) throws {
+    public func undoLastNotebookRating(workspaceId: String, cardId: String, generation: String,
+        scope: LingroveNotebookSnapshot? = nil, expectedCardOperationID: String? = nil,
+        expectedRatingOperationID: String? = nil, action: NotebookBuiltInReviewAction? = nil) throws {
         try Task.checkCancellation()
         try core.inTransaction {
             try Task.checkCancellation()
             let snapshot = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
             try lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: workspaceId, notebookId: snapshot.notebookId)
             guard snapshot.generation == generation else { throw CancellationError() }
+            if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: true) }
+            if let action { try requireBuiltInReviewActionInTransaction(action) }
             let rows = try core.query(sql: "SELECT event_id,operation_id,previous_card_json FROM notebook_review_last_rating WHERE workspace_id=? AND card_id=?", values: [.text(workspaceId), .text(cardId)]) {
                 (DatabaseCore.columnText(statement: $0, index: 0), DatabaseCore.columnText(statement: $0, index: 1), DatabaseCore.columnText(statement: $0, index: 2))
             }
             guard let row = rows.first else { throw LocalStoreError.validation("No rating is available to undo") }
-            _ = try cardStore.loadCard(workspaceId: workspaceId, cardId: cardId)
+            let currentCard = try cardStore.loadCard(workspaceId: workspaceId, cardId: cardId)
+            if let expectedCardOperationID, currentCard.lastOperationId != expectedCardOperationID {
+                throw VocabularyError.editConflict
+            }
+            if let expectedRatingOperationID, row.1 != expectedRatingOperationID { throw VocabularyError.editConflict }
             let head = try core.scalarOptionalText(sql: "SELECT operation_id FROM notebook_review_schedule_heads WHERE workspace_id=? AND card_id=?", values: [.text(workspaceId), .text(cardId)])
             guard head == row.1 else { throw LocalStoreError.validation("This exercise changed after the rating") }
             let old = try core.decoder.decode(Card.self, from: Data(row.2.utf8))
