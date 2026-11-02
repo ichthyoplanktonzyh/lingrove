@@ -442,7 +442,9 @@ those reviewer/test agents do not write implementation or test code.
 - Leads proactively deliver their branch/commit IDs, completed scope, actual validation evidence,
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
-- Read the current wave contract in `docs/MOBILE_WAVE_3.md` (Waves 1 and 2 are historical). Separate worktrees isolate source,
+- Mobile Wave 3 is delivered; its contract remains in `docs/MOBILE_WAVE_3.md`. Active native Mac
+  work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_1.md` (then `docs/MAC_WAVE_2.md`).
+  Those Mac contracts supersede historical mobile-only scope exclusions. Separate worktrees isolate source,
   not simulators or host resources. All Xcode/simulator operations acquire the shared validation
   lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
 - The user confirmed on 2026-11-02 that Lingrove has no user data. Current work does not need
