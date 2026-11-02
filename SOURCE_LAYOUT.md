@@ -811,6 +811,14 @@ routes; exact association lookup preserves parallel claims, and multiple matches
 choice showing their conditions, evidence, authorship and role assignments. The same real SQLite
 organization suite covers structural identity, limits, explicit cleanup, CAS and rollback.
 
+`Notebook/LingroveNotebookCueDraft` edits one meaning's retrieval-cue assignment on the same
+frozen organization snapshot. Shared `replaceCues` forks an edited phrase when other meanings
+still use it; target identity, conditions and authorship remain separate from the phrase. Unlinking
+removes only that assignment. `UI/Organization/LingroveNotebookCueEditor` owns native form/focus
+state, while its reading section receives values from the meaning detail and delegates sheet
+opening to that owner. The library remains the only save boundary. `OrganizationPresentation`
+joins adopted cue targets once per ordinary meaning query; it does not run vector/model search.
+
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
 Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
 and reproducible generator live under Nibomo's Apple scripts directory.
