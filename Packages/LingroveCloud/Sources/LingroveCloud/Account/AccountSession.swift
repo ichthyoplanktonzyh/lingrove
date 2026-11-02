@@ -21,7 +21,10 @@ public final class AccountSession {
     private let settings: any AccountConfigurationStoring
     private var savedSession: AccountStoredSession?
     private var challenge: AccountOTPChallenge?
-    public private(set) var generation: UInt64 = 0
+    public private(set) var generation: UInt64 = 0 { didSet { onChange?() } }
+    /// A safe cached identity permits the host to keep an already-owned local workspace visible
+    /// during offline restore. It never authorizes a request; only `authorization` does that.
+    public var retainedIdentity: AccountIdentity? { savedSession?.identity }
     private var operation: Task<Void, Never>?
     private var recovery: Task<AccountIdentity, Error>?
     private var recoveryID: UUID?
@@ -29,8 +32,10 @@ public final class AccountSession {
     private var challengeTimer: Task<Void, Never>?
     private var didStart = false
 
-    public init(client: any AccountAuthenticating, credentials: any AccountCredentialStoring,
-         settings: any AccountConfigurationStoring) {
+    public init(
+        client: any AccountAuthenticating, credentials: any AccountCredentialStoring,
+        settings: any AccountConfigurationStoring
+    ) {
         self.client = client
         self.credentials = credentials
         self.settings = settings
@@ -221,6 +226,9 @@ public final class AccountSession {
     public func retrySession() {
         guard configuration != nil, operation == nil, recovery == nil, codePrompt == nil else { return }
         let ticket = generation
+        // Publish restoration before scheduling its task. A host starting beside us must not
+        // mistake the short scheduling gap for an explicit sign-out of the retained local scope.
+        if savedSession != nil { state = .working(.restoring) }
         operation = Task { [weak self] in
             guard let self else { return }
             _ = try? await confirmedIdentity(recheck: true)
@@ -241,6 +249,7 @@ public final class AccountSession {
     /// token. A cancelling consumer cannot cancel the app-owned flight for all other consumers.
     public func confirmedIdentity(recheck: Bool = false, forceRefresh: Bool = false) async throws -> AccountIdentity {
         try Task.checkCancellation()
+        let ticket = generation
         // An SDK consumer cannot turn a pending email challenge into restoration. Login owns
         // its own commit path until `/me` succeeds, even if another feature asks for identity.
         guard codePrompt == nil, state != .working(.sendingCode), state != .working(.verifyingCode) else {
@@ -248,13 +257,12 @@ public final class AccountSession {
         }
         if let recovery {
             let identity = try await recovery.value
-            try Task.checkCancellation()
+            try check(ticket)
             return identity
         }
         if !recheck, !forceRefresh, case .signedIn(let identity) = state,
            let savedSession, savedSession.credentials.expiresAt > Date().addingTimeInterval(60) { return identity }
         guard let configuration else { throw AccountIssue.invalidConfiguration }
-        let ticket = generation
         let identifier = UUID()
         let task = Task { [weak self] () throws -> AccountIdentity in
             guard let self else { throw AccountIssue.cancelled }
@@ -272,7 +280,7 @@ public final class AccountSession {
         recoveryID = identifier
         recovery = task
         let identity = try await task.value
-        try Task.checkCancellation()
+        try check(ticket)
         return identity
     }
 
@@ -280,9 +288,15 @@ public final class AccountSession {
     /// This does not select a workspace or authorize corpus adoption. The captured generation
     /// must still be compared by the host when a response returns.
     public func authorization(forceRefresh: Bool = false) async throws -> AccountAuthorization {
+        let ticket = generation
+        let expectedConfiguration = configuration
         let identity = try await confirmedIdentity(forceRefresh: forceRefresh)
-        try Task.checkCancellation()
-        guard let savedSession, case .signedIn = state else { throw AccountIssue.cancelled }
+        try check(ticket)
+        // The waiter itself can resume after logout + another login, even when the shared
+        // recovery task finished before logout. Never pair that old identity with newer tokens.
+        guard let savedSession, case .signedIn(let currentIdentity) = state,
+              savedSession.configuration == expectedConfiguration,
+              savedSession.identity == identity, currentIdentity == identity else { throw AccountIssue.cancelled }
         return AccountAuthorization(configuration: savedSession.configuration, identity: identity,
             idToken: savedSession.credentials.idToken, expiresAt: savedSession.credentials.expiresAt, generation: generation)
     }

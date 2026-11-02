@@ -6,6 +6,7 @@ import SwiftUI
 /// state therefore survives Settings closure, while passwords/tokens never enter the view tree.
 struct AccountPaneView: View {
     @ObservedObject var account: AccountSessionService
+    var syncController: MacNotebookSyncController?
     @State private var api = ""
     @State private var auth = ""
     @State private var email = ""
@@ -32,14 +33,18 @@ struct AccountPaneView: View {
                 Text(String(localized: "Account", table: "Account"))
             } footer: {
                 Text(String(localized: """
-                    Signing in confirms your identity only. Your local library stays on this Mac; account sync is not \
-                    connected.
-                    """, table: "Account"))
+                    Signing in only confirms your identity. Choose a workspace, decide what to do with \
+                    local material, then enable sync.
+                    """, table: "NotebookSync"))
             }
             .settingsItem(.accountSession)
 
             if showsSignIn {
                 signInSection
+            }
+
+            if let syncController {
+                AccountNotebookSyncSection(controller: syncController)
             }
 
             Section {
