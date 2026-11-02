@@ -1,15 +1,13 @@
 import Foundation
+import LingroveCloud
 
 /// Stores only nonsecret connection settings and permission to restore a saved session. The
 /// restore bit is cleared *before* logout's Keychain deletion: even a locked/unavailable Keychain
 /// cannot revive the old account after relaunch. The app environment owns this store indirectly
 /// through its one account service; test suites inject isolated UserDefaults domains.
 @MainActor
-final class AccountConfigurationStore {
-    struct Record: Codable, Equatable {
-        let configuration: AccountServiceConfiguration
-        var allowsSessionRestore: Bool
-    }
+final class AccountConfigurationStore: AccountConfigurationStoring {
+    typealias Record = AccountConnectionRecord
 
     private let defaults: UserDefaults
     private let key = "lingroveAccountConnectionV1"

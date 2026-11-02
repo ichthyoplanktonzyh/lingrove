@@ -10,6 +10,8 @@ options:
   groupSortPosition: top
   xcodeVersion: "2600"
 packages:
+  LingroveCloud:
+    path: Packages/LingroveCloud
   LingroveNotebook:
     path: Packages/LingroveNotebook
   LingroveGraphLayout:
@@ -124,6 +126,8 @@ targetTemplates:
       - path: Lingrove/Resources/DictionaryNotices/MDict-NOTICE.md
         buildPhase: resources
     dependencies:
+      - package: LingroveCloud
+        product: LingroveCloud
       - package: LingroveNotebook
         product: LingroveTextRules
       - package: LingroveNotebook
