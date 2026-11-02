@@ -851,8 +851,9 @@ from the worker, and `UI/LingroveNotebookWordListImportSheet` retains that exact
 Save/Cancel. CSV/TXT parsing, preview and confirmation use the same portable import rules.
 
 `LingroveNotebookUITestSupport` is DEBUG-only: automation copies a Mac-generated backup into
-Documents for real Files-picker tests without pre-seeding notebook rows. Its fixture provenance
-and reproducible generator live under Nibomo's Apple scripts directory.
+Documents for real Files-picker tests without pre-seeding notebook rows. It also writes a small
+CSV and UTF-16 text list for the real word-list picker; none of these fixtures writes notebook
+rows. Its fixture provenance and reproducible generator live under Nibomo's Apple scripts directory.
 
 Native `Notebook/LingroveNotebookReviewEnrollment` holds immutable participation and exercise
 mapping values, separate from collection and Card scheduling. `Database/NotebookStore` owns the
@@ -911,12 +912,20 @@ lifetime; the screen supplies its existing result projection without creating an
 `Database/NotebookStore/LingroveNotebookStudyExportStore` borrows the backup store's exact
 revision/generation admission and reads selected entries plus owned PNGs in one SQLite read
 transaction. `LingroveNotebookStudyExportIO` formats and writes on a worker, then both connections
-recheck admission before sharing. A system activity pins that UUID directory until its matching
-completion callback, even after account invalidation. Storage/module tests live in
+recheck admission before sharing. A system consumer pins that UUID directory until its matching
+completion callback or actual dismissal, even after account invalidation. The sheet holds its
+lease through dismissal so a late callback cannot finish a newly presented consumer.
+`UI/LingroveNotebookFileExportSheet` adapts UIKit's native document exporter: the system copies
+the prepared URL to the user's provider while the model owns the original. The existing activity
+sheet remains available for sharing. Prepared outer filenames include the date and a short UUID,
+so separate exports do not silently replace earlier files. Storage/module tests live in
 `FlashcardsTests/Notebook/LingroveNotebookStudyExportIntegrationTests`; shared format/receiver
-checks live in `Packages/LingroveNotebook/Tests/LingroveStudyExportTests`. The existing notebook
-UI test class has one preview → system Files save journey. The bounded validation script is
-`scripts/validation/validate-study-export.py` and acquires the wave-wide Apple validation lock.
+checks live in `Packages/LingroveNotebook/Tests/LingroveStudyExportTests`. The notebook UI test
+class protects preview → native Files save as the primary export journey. Separate supplemental
+checks cover cancellation, sharing, system import/photo pickers and a few tablet layouts;
+their automation gaps do not imply that a product interaction has failed. The combined runner
+`scripts/mobile/validate-offline-corpus.py` and original export runner
+`scripts/validation/validate-study-export.py` acquire the wave-wide Apple validation lock.
 
 ## Local vocabulary CLI
 
