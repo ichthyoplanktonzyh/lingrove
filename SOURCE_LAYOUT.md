@@ -863,15 +863,29 @@ uploads media to the verified Anki profile. The preview uses that same markup an
 Legacy preset gap fronts require an explicit template upgrade before including sense content.
 Arbitrary HTML and animated blocks are deferred.
 
-`VocabularyExportModels` defines the sheet's scope/options and a versioned portable projection.
-`VocabularyExportPolicy` selects exact sense IDs and separates primary values from language
-variants; `VocabularyExportFormatter` renders TXT learning notes/expression lists, CSV usage rows,
-and structured JSON. `VocabularyExportZIP` wraps optional hash-named PNGs in a bounded stored ZIP.
+Shared `LingroveStudyExport` owns the export model, exact sense projection, TXT learning
+notes/expression lists, CSV usage rows, versioned JSON and bounded stored PNG ZIPs. The Mac's
+`VocabularyExportModels`, `VocabularyExportPolicy`, `VocabularyExportFormatter` and
+`VocabularyExportZIP` files preserve compatibility aliases. Shared resources resolve through
+the export product's own bundle; the formatter has no platform UI, database or image decoder.
 `VocabularyArchive+Export` freezes metadata and media bytes on the archive actor, then atomically
 writes that prepared package. The window-owned `VocabularyExportSession` discards stale previews
 and owns cancellation; `VocabularyExportSheet` reuses a native grouped form and save panel.
 Export opens from the notebook toolbar, batch selection or a sense's context menu. It never
 queries a model, dictionary, TTS or Anki; full `.lingrove` backup/restore remains a separate path.
+
+Native `Notebook/StudyExport/` owns the iPhone/iPad sheet, option/UUID capture, preview and file
+lifetime. `LingroveNotebookLibrary` owns one `LingroveNotebookStudyExport` for the application's
+lifetime; the screen supplies its existing result projection without creating another store.
+`Database/NotebookStore/LingroveNotebookStudyExportStore` borrows the backup store's exact
+revision/generation admission and reads selected entries plus owned PNGs in one SQLite read
+transaction. `LingroveNotebookStudyExportIO` formats and writes on a worker, then both connections
+recheck admission before sharing. A system activity pins that UUID directory until its matching
+completion callback, even after account invalidation. Storage/module tests live in
+`FlashcardsTests/Notebook/LingroveNotebookStudyExportIntegrationTests`; shared format/receiver
+checks live in `Packages/LingroveNotebook/Tests/LingroveStudyExportTests`. The existing notebook
+UI test class has one preview → system Files save journey. The bounded validation script is
+`scripts/validation/validate-study-export.py` and acquires the wave-wide Apple validation lock.
 
 ## Local vocabulary CLI
 

@@ -569,6 +569,7 @@
 		431AEBC5572871B81A6AA6B5 /* LearningExplanationCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4BD9C38533D057DBC22CBE /* LearningExplanationCardTests.swift */; };
 		434BADC853F7780EA47F3BC9 /* AXHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD99E09B7424538273072EA1 /* AXHelper.swift */; };
 		436DF0906FEEFA88643D3061 /* FocusTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A59B032D97E90FCBC870D1D /* FocusTracker.swift */; };
+		437836F32902321333A30901 /* LingroveStudyExport in Frameworks */ = {isa = PBXBuildFile; productRef = 365B7226A87C1FFBC1804628 /* LingroveStudyExport */; };
 		43C443D62D422EB09B459615 /* TickMarkSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D7575183C4CDC95750ABF7 /* TickMarkSlider.swift */; };
 		43DC1D6168083E87AFF33E4F /* CredentialFieldDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B788F240DEBB75CB88609E42 /* CredentialFieldDetectorTests.swift */; };
 		43EBCA9D7404AD7DD6175171 /* SuggestionRequestFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB20D3B3A84D4BD333748242 /* SuggestionRequestFactory.swift */; };
@@ -942,6 +943,7 @@
 		70AFE5212962BDC03397B0AC /* VocabularyCLIResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EBD1104F0836B602321104B /* VocabularyCLIResources.swift */; };
 		70C24995BAE6509523E1B76E /* ModelDownloadTransferControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27168C1F2B0768BFF23B50B8 /* ModelDownloadTransferControls.swift */; };
 		70CA88FA0B4BD7D4EDC46650 /* learning-expressions.NOTICE.md in Resources */ = {isa = PBXBuildFile; fileRef = 15631B017C2DA005B15650EB /* learning-expressions.NOTICE.md */; };
+		71408AE1958A2060922F04B9 /* LingroveStudyExport in Frameworks */ = {isa = PBXBuildFile; productRef = 18642C4E8743449A3C02BC5D /* LingroveStudyExport */; };
 		71458AAB68D366665C06AF5B /* SettingsAdvancedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD3C7289906C3014358D5AA /* SettingsAdvancedSections.swift */; };
 		714EF0AECF6E4BE43064129F /* SuggestionSettingsModelDoubleTapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD3ACC45FD0868237393B24 /* SuggestionSettingsModelDoubleTapTests.swift */; };
 		7186DCE17F2B6FDFE065F536 /* SystemResourceSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953EAC6564C6E56C62A82CCC /* SystemResourceSamplerTests.swift */; };
@@ -1662,6 +1664,7 @@
 		CE0BEB2F77D2087A6B79D2DC /* SettingsIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF843F78BEFB0B2651AEEFEE /* SettingsIndex.swift */; };
 		CE0E89C3C766D735138CF225 /* NativeLlamaSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52A476EE6C584548956DBFD /* NativeLlamaSession.swift */; };
 		CE232705EDCC495CBBD0AB5B /* InterfaceLanguageSettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C09E0A333A4BE9861FB340 /* InterfaceLanguageSettingsModel.swift */; };
+		CF2C9C963D436A3D15372256 /* LingroveStudyExport in Frameworks */ = {isa = PBXBuildFile; productRef = AC237C31F6B84537C6977F4A /* LingroveStudyExport */; };
 		CF63666F0ACCFB64BC1B4F29 /* CompletionContentPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70718717E838574FAF9AE81A /* CompletionContentPolicy.swift */; };
 		CF7D643AD0A6516CC6D8AE05 /* LlamaRuntimeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2DD65AC29918D9CB382233 /* LlamaRuntimeModels.swift */; };
 		CF85211E43EEACF3FF164921 /* VocabularyImageStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F34A3EFECECA14135583A9 /* VocabularyImageStorage.swift */; };
@@ -3304,6 +3307,7 @@
 				891BD0C0A25FC076514B8CE2 /* InMemoryLogging in Frameworks */,
 				34A665D3BCA94BCE11BBDCC3 /* Logging in Frameworks */,
 				E51E1A8FBAAB6726AFE6C4DD /* LaunchAtLogin in Frameworks */,
+				71408AE1958A2060922F04B9 /* LingroveStudyExport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3314,6 +3318,7 @@
 				A4FA94601216B14854DBE618 /* LingroveNotebook in Frameworks */,
 				84F2FB5245A81BB4E34D2C5A /* LingroveNotebookStorage in Frameworks */,
 				3635CA1ECA20541EC5E72847 /* LingroveTextRules in Frameworks */,
+				437836F32902321333A30901 /* LingroveStudyExport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3332,6 +3337,7 @@
 				050347AF1126A4EC7B365950 /* InMemoryLogging in Frameworks */,
 				4212DC6C679406BAE4F7499A /* Logging in Frameworks */,
 				89623FDB2EE8E487479F2A8F /* LaunchAtLogin in Frameworks */,
+				CF2C9C963D436A3D15372256 /* LingroveStudyExport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6430,6 +6436,7 @@
 				FAFB045FCCB6271A3B7C52C8 /* InMemoryLogging */,
 				79D9612285A5B930C49D9479 /* Logging */,
 				2A5CA52987E9428E9AF2912B /* LaunchAtLogin */,
+				AC237C31F6B84537C6977F4A /* LingroveStudyExport */,
 			);
 			productName = Lingrove;
 			productReference = 9182335D95BFF95BEFDB557C /* Lingrove.app */;
@@ -6453,6 +6460,7 @@
 				08DF39110CF410BF551F46F9 /* LingroveNotebook */,
 				E5AB3D7B86C4B0A7538B7528 /* LingroveNotebookStorage */,
 				4B7DDC269BF4864C1ADF305E /* LingroveTextRules */,
+				365B7226A87C1FFBC1804628 /* LingroveStudyExport */,
 			);
 			productName = LingroveTests;
 			productReference = 156670D56DF99DD050947A9D /* LingroveTests.xctest */;
@@ -6505,6 +6513,7 @@
 				72A05F6679BC6336E3A2192A /* InMemoryLogging */,
 				C229EB0B8D57AE688EB16E2F /* Logging */,
 				901F195B78FE11455F1D194C /* LaunchAtLogin */,
+				18642C4E8743449A3C02BC5D /* LingroveStudyExport */,
 			);
 			productName = "Lingrove Dev";
 			productReference = 9ED53A22AC03C3F60390EB03 /* Lingrove Dev.app */;
@@ -9290,6 +9299,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = LingroveNotebook;
 		};
+		18642C4E8743449A3C02BC5D /* LingroveStudyExport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LingroveStudyExport;
+		};
 		24A7C67B205D1CC0EB2B2595 /* LingroveNotebookStorage */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LingroveNotebookStorage;
@@ -9302,6 +9315,10 @@
 		2FB7568CFB15B3A85A582CE5 /* LingroveTextRules */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LingroveTextRules;
+		};
+		365B7226A87C1FFBC1804628 /* LingroveStudyExport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LingroveStudyExport;
 		};
 		4B7DDC269BF4864C1ADF305E /* LingroveTextRules */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -9352,6 +9369,10 @@
 		A925FED71F49AABAF8F8C89A /* LingroveNotebookUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LingroveNotebookUI;
+		};
+		AC237C31F6B84537C6977F4A /* LingroveStudyExport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LingroveStudyExport;
 		};
 		C1753B1E97B9498C4998E5C4 /* MDictReader */ = {
 			isa = XCSwiftPackageProductDependency;

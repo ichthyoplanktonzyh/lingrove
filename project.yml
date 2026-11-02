@@ -148,6 +148,8 @@ targetTemplates:
         product: Logging
       - package: LaunchAtLogin
         product: LaunchAtLogin
+      - package: LingroveNotebook
+        product: LingroveStudyExport
     postBuildScripts:
       - name: Embed command-line client
         script: '"${SRCROOT}/scripts/embed_cli.sh"'
@@ -277,6 +279,8 @@ targets:
         product: LingroveNotebookStorage
       - package: LingroveNotebook
         product: LingroveTextRules
+      - package: LingroveNotebook
+        product: LingroveStudyExport
     settings:
       base:
         BUNDLE_LOADER: $(TEST_HOST)
