@@ -11,6 +11,7 @@ final class AnkiReviewSession: ObservableObject {
     let entryID: UUID
     let senseID: UUID
     let cardID: UUID?
+    let notebookScope: VocabularyOperationScope?
     @Published var importedImages: [String: Data] = [:]
     @Published var importingImage = false
     let audio: ReviewAudioPreparation
@@ -51,6 +52,7 @@ final class AnkiReviewSession: ObservableObject {
     init(controller: AnkiReviewController, entry: VocabularyEntry, sense: VocabularySense, defaults: ReviewOperationScope? = nil,
          cardID: UUID? = nil) {
         self.controller = controller; entryID = entry.id; senseID = sense.id; self.cardID = cardID
+        notebookScope = defaults?.notebookScope ?? controller.store.operationScope
         initialDefaultDeck = defaults?.defaultDeck ?? controller.settings.deck
         initialDefaultRecognition = defaults?.defaultRecognition ?? controller.settings.defaultRecognition
         initialDefaultGap = defaults?.defaultGap ?? controller.settings.defaultGap
@@ -73,7 +75,10 @@ final class AnkiReviewSession: ObservableObject {
         audioSubscription = audio.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
-    var current: (entry: VocabularyEntry, sense: VocabularySense)? { try? controller.current(entryID: entryID, senseID: senseID) }
+    var current: (entry: VocabularyEntry, sense: VocabularySense)? {
+        guard controller.store.matches(notebookScope) else { return nil }
+        return try? controller.current(entryID: entryID, senseID: senseID)
+    }
     var binding: AnkiNoteBinding? { baseline?.bindings.first { $0.id == bindingID } }
     var model: String { binding?.model ?? (cardID == nil ? controller.settings.model : ReviewLayoutPolicy.model) }
     var savedReview: VocabularyReview? { current?.sense.reviewValue(cardID) }
@@ -179,6 +184,7 @@ final class AnkiReviewSession: ObservableObject {
     }
 
     private func savePlan() async throws {
+        guard controller.store.matches(notebookScope) else { throw VocabularyError.editConflict }
         let current = try controller.current(entryID: entryID, senseID: senseID)
         guard current.sense.reviewValue(cardID) == baseline else { throw VocabularyError.editConflict }
         if cardID != nil, plan.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
@@ -193,7 +199,7 @@ final class AnkiReviewSession: ObservableObject {
             next.bindings[index].deck = deck
         }
         try await controller.store.saveReview(entryID: entryID, senseID: senseID, value: next, expected: baseline, cardID: cardID,
-            importedImages: importedImages)
+            importedImages: importedImages, scope: notebookScope)
         baseline = next
         importedImages = [:]
     }
@@ -201,7 +207,7 @@ final class AnkiReviewSession: ObservableObject {
     /// Every retry searches the explicit identity field before creating a note. This recovers
     /// an addNote whose acknowledgement was lost, without trusting expression/first-field text.
     func send(recreateMissing: Bool = false, expectedScope: ReviewOperationScope? = nil) async -> Bool {
-        guard !busy else { return false }
+        guard !busy, controller.store.matches(notebookScope) else { return false }
         do { try controller.begin(senseID, cardID: cardID) } catch { message = error.localizedDescription; return false }
         busy = true; message = nil
         defer { busy = false; sendScope = nil }
@@ -210,11 +216,11 @@ final class AnkiReviewSession: ObservableObject {
             guard let sendScope else { throw VocabularyError.editConflict }
             try await controller.verify(sendScope)
             let result = try await synchronize(recreateMissing: recreateMissing)
-            controller.finish(senseID, cardID: cardID, wrote: result)
+            controller.finish(senseID, cardID: cardID, wrote: result, scope: notebookScope)
             return result
         } catch {
             message = error is CancellationError ? nil : error.localizedDescription
-            controller.finish(senseID, cardID: cardID, error: error, missingNote: missingNote)
+            controller.finish(senseID, cardID: cardID, error: error, missingNote: missingNote, scope: notebookScope)
             return false
         }
     }
@@ -249,7 +255,8 @@ final class AnkiReviewSession: ObservableObject {
             let intent = AnkiNoteBinding(originSenseID: identity, endpoint: connection.endpoint.absoluteString,
                 profile: profile, noteID: nil, model: model, deck: deck, identityField: identityField,
                 mapping: mapping, fields: desired, syncedAt: nil)
-            try await controller.store.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: intent, cardID: cardID)
+            try await controller.store.recordAnkiBinding(entryID: entryID, senseID: senseID,
+                binding: intent, cardID: cardID, scope: notebookScope)
             baseline = try controller.current(entryID: entryID, senseID: senseID).sense.reviewValue(cardID)
             bindingID = intent.id
             existing = intent
@@ -279,7 +286,8 @@ final class AnkiReviewSession: ObservableObject {
         let receipt = AnkiNoteBinding(id: existing?.id ?? UUID(), originSenseID: identity,
             endpoint: connection.endpoint.absoluteString, profile: profile, noteID: noteID, model: model, deck: deck,
             identityField: identityField, mapping: mapping, fields: desired, syncedAt: Date())
-        try await controller.store.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: receipt, cardID: cardID)
+        try await controller.store.recordAnkiBinding(entryID: entryID, senseID: senseID,
+            binding: receipt, cardID: cardID, scope: notebookScope)
         baseline = try controller.current(entryID: entryID, senseID: senseID).sense.reviewValue(cardID)
         rememberDefaults(sendScope)
         missingNote = false; conflicts = []
@@ -303,6 +311,7 @@ final class AnkiReviewSession: ObservableObject {
     }
 
     private func sendingContent() throws -> ReviewCardContent {
+        guard controller.store.matches(notebookScope) else { throw VocabularyError.editConflict }
         let source = try controller.current(entryID: entryID, senseID: senseID)
         let content = try ReviewCardPolicy.content(entry: source.entry, sense: source.sense, plan: plan)
         if let binding, AnkiReviewPolicy.removesExistingCard(plan, binding: binding) {
@@ -423,6 +432,7 @@ final class AnkiReviewSession: ObservableObject {
     }
 
     func validateCurrent(_ content: ReviewCardContent, connection: AnkiConnection) throws {
+        guard controller.store.matches(notebookScope) else { throw VocabularyError.editConflict }
         let current = try controller.current(entryID: entryID, senseID: senseID)
         guard current.sense.reviewValue(cardID) == baseline, sendScope.map(controller.matches) ?? false,
               try controller.settings.connection() == connection,

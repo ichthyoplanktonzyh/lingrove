@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveNotebookEngine
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -87,8 +88,8 @@ nonisolated struct VocabularyContentTests {
         await #expect(throws: (any Error).self) {
             try await archive.update(edited, basedOn: original, importedImages: [image.reference.filename: image.data])
         }
-        await #expect(throws: VocabularyError.self) { _ = try await archive.load() }
-        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(image.reference.filename)
+        await #expect(throws: LocalStoreError.self) { _ = try await archive.load() }
+        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(try mediaBlobCacheRelativePath(sha256: image.reference.digest))
         #expect(!FileManager.default.fileExists(atPath: mediaURL.path))
     }
 
@@ -173,7 +174,7 @@ nonisolated struct VocabularyContentTests {
         try await archive.backup(to: backup)
         let attributes = try FileManager.default.attributesOfItem(atPath: backup.path)
         #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
-        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(image.reference.filename)
+        let mediaURL = folder.appendingPathComponent("notebook.sqlite.media").appendingPathComponent(try mediaBlobCacheRelativePath(sha256: image.reference.digest))
         try Data("damaged".utf8).write(to: mediaURL)
         await #expect(throws: (any Error).self) { try await archive.image(image.reference) }
         _ = try await archive.restore(from: backup)

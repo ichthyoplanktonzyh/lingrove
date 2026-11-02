@@ -5,6 +5,7 @@ import SwiftUI
 /// Save waits for the shared store's atomic addition and returns the exact sense to reveal.
 struct VocabularyEntryCreationSheet: View {
     @ObservedObject var store: VocabularyStore
+    @State private var notebookScope: VocabularyOperationScope?
     let onSaved: (VocabularyEntryImportResult) -> Void
     @State private var input: VocabularyEntryInput
     @State private var tags = ""
@@ -15,6 +16,7 @@ struct VocabularyEntryCreationSheet: View {
 
     init(store: VocabularyStore, language: LearningLanguage = .english,
          onSaved: @escaping (VocabularyEntryImportResult) -> Void) {
+        _notebookScope = State(initialValue: store.operationScope)
         self.store = store
         self.onSaved = onSaved
         _input = State(initialValue: .init(language: language))
@@ -77,7 +79,7 @@ struct VocabularyEntryCreationSheet: View {
         Task {
             defer { saving = false }
             do {
-                let result = try await store.addEntries([value])
+                let result = try await store.addEntries([value], scope: notebookScope)
                 onSaved(result); dismiss()
             } catch { failure = error.localizedDescription }
         }

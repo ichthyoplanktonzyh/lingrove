@@ -155,7 +155,7 @@ struct VocabularySenseSemanticSection: View {
                         guard let pattern = deletingPattern else { return }
                         let baseline = store.semantics; var edited = baseline
                         VocabularySemanticPolicy.removePattern(pattern.id, from: &edited)
-                        Task { _ = await store.updateSemantics(edited, basedOn: baseline) }
+                        Task { [scope = store.operationScope] in _ = await store.updateSemantics(edited, basedOn: baseline, scope: scope) }
                         deletingPattern = nil
                     }
                 }
@@ -281,6 +281,6 @@ struct VocabularySenseSemanticSection: View {
     private func removeMapping(_ mapping: VocabularyMeaningMapping) {
         let baseline = store.semantics; var edited = baseline
         edited.mappings.removeAll { $0.id == mapping.id }
-        Task { _ = await store.updateSemantics(edited, basedOn: baseline) }
+        Task { [scope = store.operationScope] in _ = await store.updateSemantics(edited, basedOn: baseline, scope: scope) }
     }
 }

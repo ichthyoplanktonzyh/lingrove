@@ -9,6 +9,7 @@ import Foundation
 final class AnkiReviewBatchSession: ObservableObject {
     let controller: AnkiReviewController
     let emptySenseCount: Int
+    private let notebookScope: VocabularyOperationScope?
     @Published private(set) var items: [ReviewBatchItem]
     @Published private(set) var busy = false
     @Published private(set) var message: String?
@@ -16,7 +17,7 @@ final class AnkiReviewBatchSession: ObservableObject {
     private var preparationBaselines: [UUID: (sense: VocabularySense, expression: String)] = [:]
 
     init(controller: AnkiReviewController, selections: [VocabularySelection], flexible: Bool = false) {
-        self.controller = controller
+        self.controller = controller; notebookScope = controller.store.operationScope
         emptySenseCount = flexible ? Set(selections).filter { selection in
             guard let entry = controller.store.entries.first(where: { $0.id == selection.entryID }),
                   let index = VocabularySensePolicy.index(selection.senseID, in: entry) else { return true }
@@ -40,7 +41,8 @@ final class AnkiReviewBatchSession: ObservableObject {
     }
     var completeCount: Int { items.filter { $0.status == .synced }.count }
     func resolve(_ item: ReviewBatchItem) -> (VocabularyEntry, VocabularySense)? {
-        guard let entry = controller.store.entries.first(where: { $0.id == item.selection.entryID }),
+        guard controller.store.matches(notebookScope),
+              let entry = controller.store.entries.first(where: { $0.id == item.selection.entryID }),
               let index = VocabularySensePolicy.index(item.selection.senseID, in: entry) else { return nil }
         let sense = entry.senses[index]
         guard item.cardID == nil || sense.reviewValue(item.cardID) != nil else { return nil }
@@ -105,11 +107,17 @@ final class AnkiReviewBatchSession: ObservableObject {
             }
     }
 
+    private func validateNotebookScope() throws {
+        guard controller.store.matches(notebookScope) else { throw VocabularyError.editConflict }
+    }
+
     private func run(only id: UUID?) async {
         defer { busy = false; work = nil }
         message = nil
         do {
+            try validateNotebookScope()
             let scope = try await controller.operationScope()
+            try validateNotebookScope()
             let decks = try controller.strings(await controller.call("deckNames", [:], scope.connection))
             let defaultDeck = !scope.hadSavedDeck && !decks.contains(scope.defaultDeck)
                 ? decks.first ?? scope.defaultDeck : scope.defaultDeck

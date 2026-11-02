@@ -73,7 +73,7 @@ public struct LingroveNotebookStore {
             requireActiveWorkspace: true, operationId: operationID)
     }
 
-    private func saveInTransaction(_ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
+    func saveInTransaction(_ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
                                    restoringBackup: Bool, staged: Set<VocabularyImageReference>,
                                    requireActiveWorkspace: Bool, operationId: String) throws -> LingroveNotebookSnapshot {
             let media = LingroveNotebookMediaStore(core: core)

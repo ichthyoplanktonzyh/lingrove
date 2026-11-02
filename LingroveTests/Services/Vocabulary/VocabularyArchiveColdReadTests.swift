@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveNotebookEngine
 import LingroveStudyExport
 import Foundation
 import Testing
@@ -20,8 +21,10 @@ struct VocabularyArchiveColdReadTests {
     /// Seed through the storage boundary so the tested archive instance is genuinely new and
     /// has never loaded or cached this committed document.
     private func seed(_ document: VocabularyDocument, at url: URL) throws -> UInt64 {
-        let database = try VocabularySQLiteDatabase(url: url)
-        return try database.write(document, previous: .init(), expectedRevision: 0)
+        let database = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: url.appendingPathExtension("media"))
+        defer { try? database.close() }
+        let workspace = try database.workspaceSettingsStore.loadWorkspace().workspaceId
+        return try database.saveLingroveNotebook(document, basedOn: database.loadLingroveNotebook(workspaceId: workspace)).revision
     }
 
     @Test func backupFromColdArchivePersistsBundledClassificationBeforeSharedRead() async throws {

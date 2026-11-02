@@ -48,6 +48,13 @@ struct VocabularyNotebookSessionTests {
         #expect(learning.dictionary.unit == nil)
         learning.select(nil)
         #expect(learning.explanations.isEmpty)
+        learning.select(entry, senseID: entry.senses[0].id)
+        learning.showDictionary(entry)
+        await settle { learning.dictionary.content != .loading }
+        learning.reset()
+        #expect(learning.entryID == nil && learning.senseID == nil && learning.explanations.isEmpty)
+        learning.resume()
+        #expect(learning.dictionary.unit == nil, "Reopening cannot query a hidden window's retired account destination")
     }
 
     private func settle(_ predicate: () -> Bool) async {

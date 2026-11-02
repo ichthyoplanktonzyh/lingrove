@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveNotebookEngine
 import LingroveStudyExport
 import Foundation
 import Testing
@@ -49,13 +50,14 @@ struct VocabularySemanticTests {
         let archive = VocabularyArchive(url: url)
         _ = try await archive.commit(document)
         #expect(try await VocabularyArchive(url: url).load().document == document)
-        let database = try VocabularySQLiteDatabase(url: url)
-        #expect(try database.connection.rows("PRAGMA foreign_key_check").isEmpty)
+        let database = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: url.appendingPathExtension("media"))
+        defer { try? database.close() }
+        #expect(try database.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
         for (table, count) in [("sources", 1), ("occurrences", 1), ("meaning_nodes", 2), ("meaning_labels", 3),
                                ("meaning_roles", 1), ("usage_patterns", 1),
                                ("pattern_slots", 1), ("meaning_mappings", 3), ("mapping_roles", 1),
                                ("mapping_evidence", 1), ("retrieval_cues", 1), ("cue_targets", 2)] {
-            #expect(try database.connection.rows("SELECT count(*) FROM " + table) == [[.integer(Int64(count))]])
+            #expect(try database.core.scalarInt(sql: "SELECT count(*) FROM notebook_" + table, values: []) == count)
         }
         let backup = folder.appendingPathComponent("backup.lingrove")
         try await archive.backup(to: backup)
@@ -236,9 +238,10 @@ struct VocabularySemanticTests {
         occurrence.ranges = [.init((occurrence.text as NSString).range(of: "meeting"))]
         document.entries[1].senses[0].examples = [occurrence]
         _ = try await archive.commit(document)
-        let db = try VocabularySQLiteDatabase(url: url)
-        #expect(try db.connection.rows("SELECT count(*) FROM sources") == [[.integer(1)]])
-        #expect(try db.connection.rows("SELECT count(*) FROM occurrences") == [[.integer(2)]])
+        let db = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: url.appendingPathExtension("media"))
+        defer { try? db.close() }
+        #expect(try db.core.scalarInt(sql: "SELECT count(*) FROM notebook_sources", values: []) == 1)
+        #expect(try db.core.scalarInt(sql: "SELECT count(*) FROM notebook_occurrences", values: []) == 2)
         let baseline = document.entries[1]
         var edited = baseline
         edited.senses[0].examples[0].text = "The meeting was moved to Saturday."

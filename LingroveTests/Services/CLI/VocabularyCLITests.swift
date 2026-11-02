@@ -1,5 +1,6 @@
 @testable import LingroveNotebookStorage
 import LingroveNotebook
+import LingroveNotebookEngine
 import Foundation
 import Testing
 @testable import Lingrove
@@ -135,8 +136,13 @@ struct VocabularyCLITests {
                     ]]
                 ], "relations": [["from": "finance", "to": "water", "kind": "related", "note": "同形词，不是同义关系"]]]
             func capture(_ value: [String: Any], dry: Bool = false) async throws -> (Int32, [String: Any]) {
-                try await fixture.call(["vocab", "capture", "--stdin"] + (dry ? ["--dry-run"] : []),
-                    stdin: JSONSerialization.data(withJSONObject: value))
+                var scoped = value
+                if scoped["expectedRevision"] != nil, let scope = try await fixture.archive.load().scope {
+                    scoped["notebookScope"] = ["workspaceID": scope.workspaceId, "notebookID": scope.notebookId.uuidString,
+                        "generation": scope.generation]
+                }
+                return try await fixture.call(["vocab", "capture", "--stdin"] + (dry ? ["--dry-run"] : []),
+                    stdin: JSONSerialization.data(withJSONObject: scoped))
             }
             let preview = try await capture(input, dry: true)
             #expect(preview.0 == 0)
@@ -345,7 +351,12 @@ struct VocabularyCLITests {
             return (result.0, object)
         }
         func apply(_ object: [String: Any], dry: Bool = false) async throws -> (Int32, [String: Any]) {
-            let data = try JSONSerialization.data(withJSONObject: object)
+            var scoped = object
+            if scoped["notebookScope"] == nil, let saved = try await archive.load().scope {
+                scoped["notebookScope"] = ["workspaceID": saved.workspaceId, "notebookID": saved.notebookId.uuidString,
+                    "generation": saved.generation]
+            }
+            let data = try JSONSerialization.data(withJSONObject: scoped)
             return try await call(["vocab", "apply", "--stdin"] + (dry ? ["--dry-run"] : []), stdin: data)
         }
     }
@@ -477,7 +488,8 @@ struct VocabularyCLITests {
             let dry = try await fixture.apply(input, dry: true)
             #expect(dry.0 == 0); #expect(try result(dry.1)["dryRun"] as? Bool == true)
             #expect(try await fixture.archive.load().document.entries.isEmpty)
-            #expect(!FileManager.default.fileExists(atPath: fixture.directory.appendingPathComponent("notebook.sqlite.media").path))
+            #expect(try FileManager.default.contentsOfDirectory(
+                atPath: fixture.directory.appendingPathComponent("notebook.sqlite.media").path).isEmpty)
             let committed = try await fixture.apply(input)
             #expect(committed.0 == 0); #expect(fixture.store.entries.count == 1)
             let outcomes = try #require(try result(committed.1)["operations"] as? [[String: Any]])
@@ -526,18 +538,22 @@ struct VocabularyCLITests {
             let missing = ["append": ["entryID": UUID().uuidString, "senseID": UUID().uuidString, "tags": ["missing"]]]
             #expect(try await fixture.apply(batch("atomic", [add(), missing])).0 == 3)
             #expect(fixture.store.entries.isEmpty)
-            let database = try VocabularySQLiteDatabase(url: fixture.directory.appendingPathComponent("notebook.sqlite"))
-            try database.connection.execute("CREATE TRIGGER reject_receipt BEFORE INSERT ON cli_receipts BEGIN SELECT RAISE(ABORT,'fixture'); END")
+            let database = try LingroveNotebookEngine(databaseURL: fixture.directory.appendingPathComponent("notebook.sqlite"),
+                mediaDirectoryURL: fixture.directory.appendingPathComponent("notebook.sqlite.media"))
+            defer { try? database.close() }
+            _ = try database.core.executeScript(sql: "CREATE TRIGGER reject_receipt BEFORE INSERT ON notebook_cli_receipts BEGIN SELECT RAISE(ABORT,'fixture'); END", errorContext: "Install synthetic rejection")
             let png = fixture.directory.appendingPathComponent("image.png"); try VocabularyImageTestFixture.png().write(to: png)
             let material = batch("receipt", [add(content: [["image": ["path": png.path]]])])
             #expect(try await fixture.apply(material).0 == 7)
             #expect(try await fixture.archive.load().document.entries.isEmpty)
-            #expect(try database.connection.rows("SELECT count(*) FROM cli_receipts") == [[.integer(0)]])
-            let media = fixture.directory.appendingPathComponent("notebook.sqlite.media")
-            #expect((try? FileManager.default.contentsOfDirectory(atPath: media.path))?.isEmpty ?? true)
-            try database.connection.execute("DROP TRIGGER reject_receipt")
+            #expect(try database.core.scalarInt(sql: "SELECT count(*) FROM notebook_cli_receipts", values: []) == 0)
+            // Staged immutable bytes may be reused, but a rollback grants no workspace mapping,
+            // document reference, journal or completed acknowledgement.
+            #expect(try database.core.scalarInt(sql: "SELECT count(*) FROM notebook_media_assets", values: []) == 0)
+            #expect(try database.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions", values: []) == 0)
+            _ = try database.core.executeScript(sql: "DROP TRIGGER reject_receipt", errorContext: "Remove synthetic rejection")
             #expect(try await fixture.apply(material).0 == 0)
-            #expect(try database.connection.rows("SELECT count(*) FROM cli_receipts") == [[.integer(1)]])
+            #expect(try database.core.scalarInt(sql: "SELECT count(*) FROM notebook_cli_receipts", values: []) == 1)
         } catch { await fixture.close(); throw error }; await fixture.close()
     }
 
@@ -612,7 +628,7 @@ struct VocabularyCLITests {
         let url = directory.appendingPathComponent("notebook.sqlite")
         let database = try VocabularySQLiteDatabase(url: url)
         try database.connection.execute("PRAGMA user_version=2")
-        await #expect(throws: VocabularyError.unsupportedVersion) { try await VocabularyArchive(url: url).load() }
+        await #expect(throws: LocalStoreError.self) { try await VocabularyArchive(url: url).load() }
         #expect(try database.connection.rows("PRAGMA user_version") == [[.integer(2)]])
     }
 

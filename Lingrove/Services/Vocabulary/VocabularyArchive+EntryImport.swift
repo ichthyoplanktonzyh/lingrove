@@ -24,7 +24,7 @@ extension VocabularyArchive {
         return .init(inputs: inputs, result: plan.result)
     }
 
-    func addEntries(_ inputs: [VocabularyEntryInput]) throws -> (VocabularySnapshot, VocabularyEntryImportResult) {
+    func addEntries(_ inputs: [VocabularyEntryInput]) throws -> (VocabularyArchiveSnapshot, VocabularyEntryImportResult) {
         try storageAccess(write: true) {
             try Task.checkCancellation()
             let snapshot = try load()

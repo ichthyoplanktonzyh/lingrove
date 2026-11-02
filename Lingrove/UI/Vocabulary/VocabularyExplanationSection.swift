@@ -35,9 +35,9 @@ struct VocabularyExplanationSection: View {
                 }
                 LearningExplanationView(session: session,
                     configure: { (session.service as? LearningExplanationService)?.configure?() },
-                    adopt: { record in
+                    adopt: { [scope = store.operationScope] record in
                         Task { _ = await store.adoptExplanation(record,
-                            at: .init(entryID: entry.id, senseID: sense.id, exampleID: example?.id)) }
+                            at: .init(entryID: entry.id, senseID: sense.id, exampleID: example?.id, scope: scope)) }
                     }, presentation: .contextual,
                     meaning: displayedMeaning)
             }

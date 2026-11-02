@@ -8,7 +8,7 @@ extension VocabularyArchive {
         try VocabularyReviewValidation.validateCards(cards, ids: &ids)
     }
 
-    func removeReview(entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview) throws -> VocabularySnapshot {
+    func removeReview(entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview) throws -> VocabularyArchiveSnapshot {
         var document = try load().document
         guard let entry = document.entries.firstIndex(where: { $0.id == entryID }),
               let sense = document.entries[entry].senses.firstIndex(where: { $0.id == senseID }),
@@ -17,7 +17,7 @@ extension VocabularyArchive {
         return try commit(document)
     }
 
-    func saveTemplate(_ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:]) throws -> VocabularySnapshot {
+    func saveTemplate(_ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         try Task.checkCancellation()
         var document = try load().document
         var templates = document.reviewTemplates ?? []
@@ -29,7 +29,7 @@ extension VocabularyArchive {
         return try commitWithImages(document, supplied: importedImages)
     }
 
-    func removeTemplate(_ id: UUID) throws -> VocabularySnapshot {
+    func removeTemplate(_ id: UUID) throws -> VocabularyArchiveSnapshot {
         var document = try load().document
         document.reviewTemplates?.removeAll { $0.id == id }
         return try commit(document)

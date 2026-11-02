@@ -1,50 +1,76 @@
-import LingroveNotebookStorage
+import LingroveNotebookEngine
 import LingroveNotebook
 import Darwin
 import Foundation
 import Logging
 
-/// One actor owns one local SQLite notebook. Synchronous transactions serialize read/modify/commit
-/// away from MainActor; cached state advances only after the SQL commit succeeds. This is
-/// user-triggered work, with no observer, model runtime, or per-keystroke disk activity.
+/// The app-owned vocabulary store borrows the repository's explicit file locations. Each
+/// synchronous command opens one short-lived engine on that same physical SQLite file and
+/// closes it before returning; the actor never receives the MainActor engine or a raw handle.
+/// Its cached baseline exists only to preserve CAS between pure preparation and commit.
 actor VocabularyArchive {
     let url: URL?
-    var images: VocabularyImageStorage
-    private var document: VocabularyDocument?
-    private var revision: UInt64 = 0
-    private var database: VocabularySQLiteDatabase?
+    let mediaDirectoryURL: URL
+    private let temporaryDirectory: URL?
+    private var engine: LingroveNotebookEngine?
+    private var saved: LingroveNotebookSnapshot?
+    private var expectedScope: VocabularyOperationScope?
     private let installsBundledClassification: Bool
     private var classificationCatalog: VocabularyClassificationCatalog?
 
-    /// nil is an isolated in-memory notebook for tests; it never probes the user's real archive.
-    init(url: URL?, installsBundledClassification: Bool = false) {
-        self.url = url; images = VocabularyImageStorage(notebook: url)
+    /// nil creates a disposable fixture, never a discovery path into the user's application.
+    /// Production receives both immutable repository URLs through VocabularyStore(repository:).
+    init(url: URL?, mediaDirectoryURL: URL? = nil, installsBundledClassification: Bool = false) {
+        let database: URL
+        if let url { database = url; temporaryDirectory = nil } else {
+            let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-notebook-" + UUID().uuidString)
+            temporaryDirectory = temporary; database = temporary.appendingPathComponent("notebook.sqlite")
+        }
+        self.url = database
+        self.mediaDirectoryURL = mediaDirectoryURL ?? database.deletingLastPathComponent()
+            .appendingPathComponent(database.lastPathComponent + ".media")
         self.installsBundledClassification = installsBundledClassification
     }
 
-    func load() throws -> VocabularySnapshot {
-        let snapshot = try readSnapshot()
-        // A failed first catalog load must remain retryable even when the database snapshot
-        // was already cached. The installer's version receipt makes subsequent checks cheap.
-        var next = snapshot.document
-        if try installClassification(in: &next) { return try commit(next) }
-        return snapshot
+    deinit { if let temporaryDirectory { try? FileManager.default.removeItem(at: temporaryDirectory) } }
+
+    /// The isolated parameter lets the caller compose existing synchronous archive methods
+    /// without transferring their connection. No await is possible inside this command body.
+    func perform<T: Sendable>(
+        basedOn scope: VocabularyOperationScope?,
+        _ operation: @Sendable (isolated VocabularyArchive) throws -> T
+    ) throws -> T {
+        let previous = expectedScope
+        expectedScope = scope
+        defer { expectedScope = previous }
+        return try storageAccess(write: false) {
+            _ = try readSnapshot()
+            return try operation(self)
+        }
     }
 
-    /// Read an existing committed snapshot without installing catalog resources. A backup
-    /// may hold a shared media lock here; silently upgrading it to write would deadlock or
-    /// fail. The caller first runs load() outside that lock when installation is needed.
-    func readSnapshot() throws -> VocabularySnapshot {
-        let database = try persistence()
-        let snapshot: VocabularySnapshot
-        if let document, try database.revision() == revision {
-            snapshot = .init(revision: revision, document: document)
-        } else {
-            snapshot = try database.read()
-            try validate(snapshot.document)
-            document = snapshot.document; revision = snapshot.revision
+    func load() throws -> VocabularyArchiveSnapshot {
+        try storageAccess(write: false) {
+            let snapshot = try readSnapshot()
+            var next = snapshot.document
+            if try installClassification(in: &next) { return try commit(next) }
+            return snapshot
         }
-        return snapshot
+    }
+
+    /// Re-reading can advance an ordinary field merge, but can never change the command's
+    /// original workspace/notebook/generation. The actual writer checks this token again.
+    func readSnapshot() throws -> VocabularyArchiveSnapshot {
+        try storageAccess(write: false) {
+            let engine = try persistence()
+            guard let workspace = try engine.workspaceSettingsStore.loadCloudSettings().activeWorkspaceId else {
+                throw VocabularyError.editConflict
+            }
+            let current = try engine.loadLingroveNotebook(workspaceId: workspace, requireActiveWorkspace: true)
+            if let expectedScope, !expectedScope.hasSameOwner(as: current) { throw VocabularyError.editConflict }
+            saved = current
+            return .init(current)
+        }
     }
 
     private func installClassification(in document: inout VocabularyDocument) throws -> Bool {
@@ -53,41 +79,37 @@ actor VocabularyArchive {
         return try classificationCatalog?.install(in: &document.classification, nodes: document.semantics.nodes) ?? false
     }
 
-    func persistence() throws -> VocabularySQLiteDatabase {
-        if let database { return database }
-        let value = try VocabularySQLiteDatabase(url: url, onDiagnostic: { diagnostic in
-            // The app owns log routing; the storage layer reports only an operation kind
-            // and numeric SQLite code, never its C handles or notebook content.
-            switch diagnostic {
-            case let .connectionFailed(code):
-                LingroveLogger.learning.error("Vocabulary SQLite connection failed", metadata: ["sqlite_code": .stringConvertible(code)])
-            case let .operationFailed(code):
-                LingroveLogger.learning.error("Vocabulary SQLite operation failed", metadata: ["sqlite_code": .stringConvertible(code)])
-            }
-        })
-        database = value
-        return value
+    func persistence() throws -> LingroveNotebookEngine {
+        guard let engine else { throw VocabularyError.invalidArchive }
+        return engine
     }
 
-    /// A mutation has already built its candidate from this cached revision. Refreshing here
-    /// would disguise an intervening writer as the candidate's baseline and lose its changes.
-    func transactionBaseline() throws -> VocabularySnapshot {
-        if let document { return .init(revision: revision, document: document) }
-        return try load()
+    func transactionBaseline() throws -> LingroveNotebookSnapshot {
+        if let saved { return saved }
+        _ = try readSnapshot()
+        guard let saved else { throw VocabularyError.invalidArchive }
+        return saved
     }
 
+    /// This owns a connection lifetime, not a second transaction implementation. Public engine
+    /// commands own BEGIN/CAS/COMMIT; nested archive helpers reuse only this synchronous handle.
     func storageAccess<T>(write: Bool, _ operation: () throws -> T) throws -> T {
-        try persistence().access(write: write, operation)
+        if engine != nil { return try operation() }
+        guard let url else { throw VocabularyError.invalidArchive }
+        let connection = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: mediaDirectoryURL)
+        engine = connection
+        defer { engine = nil; try? connection.close() }
+        return try operation()
     }
 
-    func save(_ capture: VocabularyCapture) throws -> VocabularySnapshot {
+    func save(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         _ = try VocabularyPolicy.save(capture, in: &next, now: Date())
         return try commit(next)
     }
 
     func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
-                importedImages: [String: Data] = [:]) throws -> VocabularySnapshot {
+                importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entry.id }) else { throw VocabularyError.invalidContent }
         let original = next.entries[index]
@@ -224,19 +246,19 @@ actor VocabularyArchive {
 
     /// Notebook deletion removes personal membership. Catalog identities, raw evidence and
     /// interpretations remain addressable to an agent until an explicit resource deletion.
-    func remove(id: UUID) throws -> VocabularySnapshot {
+    func remove(id: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         let senseIDs = Set(next.catalog.first { $0.id == id }?.senses.map(\.id) ?? [])
         next.collections.removeAll { senseIDs.contains($0.senseID) }
         return try commit(next)
     }
 
-    func remove(_ capture: VocabularyCapture) throws -> VocabularySnapshot {
+    func remove(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let entry = next.collectedEntries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
               let destination = VocabularySensePolicy.destination(capture, in: entry),
               let index = next.collections.firstIndex(where: { $0.senseID == destination.senseID }) else {
-            return .init(revision: revision, document: next)
+            return .init(try transactionBaseline())
         }
         if let id = destination.exampleID { next.collections[index].interpretationIDs.removeAll { $0 == id } } else {
             next.collections[index].isSavedWithoutContext = false
@@ -250,7 +272,7 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularySnapshot {
+    func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
         let selected = next.collections.first { $0.senseID == source }?.interpretationIDs ?? []
@@ -259,7 +281,7 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularySnapshot {
+    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
         let wasCollected = next.collections.first { $0.senseID == source }?.interpretationIDs.contains(exampleID) == true
@@ -268,7 +290,7 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func createSense(entryID: UUID, senseID: UUID) throws -> VocabularySnapshot {
+    func createSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
         let now = Date()
@@ -277,7 +299,7 @@ actor VocabularyArchive {
         return try commit(next)
     }
 
-    func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularySnapshot {
+    func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard next.catalog.contains(where: { $0.id == entryID && $0.senses.contains { $0.id == senseID } }) else {
             throw VocabularyError.invalidContent
@@ -289,7 +311,8 @@ actor VocabularyArchive {
     /// Review drafts use compare-and-swap rather than whole-entry replacement. A sheet cannot
     /// overwrite a newly merged binding or another window's review edits while HTTP is pending.
     func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview,
-                    expected: VocabularyReview?, cardID: UUID? = nil, importedImages: [String: Data] = [:]) throws -> VocabularySnapshot {
+                    expected: VocabularyReview?, cardID: UUID? = nil,
+                    importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard next.collections.contains(where: { $0.senseID == senseID }),
               let entry = next.entries.firstIndex(where: { $0.id == entryID }),
@@ -302,7 +325,9 @@ actor VocabularyArchive {
 
     /// A merge may finish during a network write. Resolve the retired sense ID, keep the latest
     /// draft intact, and append the verified receipt. Deleted senses are never resurrected.
-    func recordAnkiBinding(entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil) throws -> VocabularySnapshot {
+    func recordAnkiBinding(
+        entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil
+    ) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
               let sense = VocabularySensePolicy.index(senseID, in: next.entries[entry]),
@@ -322,40 +347,51 @@ actor VocabularyArchive {
         try writeAtomically(data, to: destination)
     }
 
-    func saveExplanation(_ record: LearningExplanationRecord) throws -> VocabularySnapshot {
+    func saveExplanation(_ record: LearningExplanationRecord) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.accepts(record, entry: $0) }) else {
-            return .init(revision: revision, document: next)
+        // Uncollecting retains catalog evidence. That historical knowledge is not permission
+        // to persist a new floating explanation: only a currently saved destination may receive it.
+        guard let collected = next.collectedEntries.first(where: { VocabularyPolicy.accepts(record, entry: $0) }),
+              let index = next.entries.firstIndex(where: { $0.id == collected.id }) else {
+            return .init(try transactionBaseline())
         }
         VocabularyPolicy.storeExplanation(record, in: &next.entries[index])
         return try commit(next)
     }
 
     func commit(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt? = nil,
-                restoringBackup: Bool = false) throws -> VocabularySnapshot {
-        try storageAccess(write: true) { try commitUnlocked(document, receipt: receipt, restoringBackup: restoringBackup) }
+                restoringBackup: Bool = false) throws -> VocabularyArchiveSnapshot {
+        try commitWithImages(document, supplied: [:], receipt: receipt, restoringBackup: restoringBackup)
     }
 
-    private func commitUnlocked(_ document: VocabularyDocument, receipt: VocabularyCLIReceipt?,
-                                restoringBackup: Bool) throws -> VocabularySnapshot {
-        // Fixtures/restores may commit before browsing has loaded the notebook. Establish the
-        // same baseline and durable revision that ordinary card/editor operations use.
-        let baseline = try transactionBaseline()
-        guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
-        var next = document
-        _ = try installClassification(in: &next)
-        // Both hosts use the same pure preparation/validation boundary. The actor still owns
-        // the exact transaction baseline and advances its cache only after the SQL CAS succeeds.
-        next = try VocabularyDocumentValidation.prepare(next, previous: baseline.document, restoringBackup: restoringBackup)
-        // SQL stores entity rows, not a document-version row. Keep the cached envelope canonical
-        // with reconstruction, including after the last unknown-language entry is removed.
-        let nextRevision = try persistence().write(next, previous: baseline.document, expectedRevision: baseline.revision, receipt: receipt)
-        let previousImages = Self.imageReferences(self.document ?? VocabularyDocument())
-        let retained = Set(Self.imageReferences(next).map(\.filename))
-        self.document = next
-        revision = nextRevision
-        for image in previousImages where !retained.contains(image.filename) { images.remove(image) }
-        return .init(revision: revision, document: next)
+    /// The engine performs normalization, relationship validation, media authorization, journal
+    /// and built-in material refresh in its existing transaction. We advance no UI cache on error.
+    func commitUsingEngine(
+        _ document: VocabularyDocument, images: [String: Data], receipt: VocabularyCLIReceipt?, restoringBackup: Bool
+    ) throws -> VocabularyArchiveSnapshot {
+        try storageAccess(write: true) {
+            let baseline = try transactionBaseline()
+            if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
+            var next = document
+            _ = try installClassification(in: &next)
+            let result: LingroveNotebookSnapshot
+            if let receipt {
+                result = try persistence().saveNotebookCLI(next, basedOn: baseline, images: images, receipt: receipt).snapshot
+            } else {
+                result = try persistence().saveLingroveNotebook(next, basedOn: baseline, restoringBackup: restoringBackup,
+                    images: images, requireActiveWorkspace: true)
+            }
+            saved = result
+            return .init(result)
+        }
+    }
+
+    func commitCLI(
+        _ document: VocabularyDocument, images: [String: Data], receipt: VocabularyCLIReceipt
+    ) throws -> LingroveNotebookCLICommit {
+        let result = try persistence().saveNotebookCLI(document, basedOn: transactionBaseline(), images: images, receipt: receipt)
+        saved = result.snapshot
+        return result
     }
 
     /// The shared rule walks the complete graph without performing IO or selecting a tool.
@@ -392,8 +428,22 @@ actor VocabularyArchive {
         try handle.synchronize()
         try handle.close()
         if cancellable { try Task.checkCancellation() }
-        guard Darwin.rename(temporary.path, url.path) == 0 else {
-            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        func publishFile() throws {
+            guard Darwin.rename(temporary.path, url.path) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
         }
+        if expectedScope != nil {
+            // Encoding/fsync above hold no SQL transaction. Only the final scope check and
+            // atomic rename borrow the writer lock, so account retirement cannot interleave
+            // between authorization and publishing bytes from a prepared old-account export.
+            guard let current = try readSnapshot().scope else { throw VocabularyError.editConflict }
+            let core = try persistence().core
+            try core.inTransaction {
+                try LingroveNotebookBackupStore(core: core).checkInTransaction(.init(workspaceId: current.workspaceId,
+                    notebookId: current.notebookId, revision: current.revision, generation: current.generation))
+                try publishFile()
+            }
+        } else { try publishFile() }
     }
 }

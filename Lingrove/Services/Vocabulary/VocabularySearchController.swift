@@ -38,6 +38,16 @@ final class VocabularySearchController: ObservableObject {
             .debounce(for: .milliseconds(40), scheduler: DispatchQueue.main).sink { [weak self] _, _ in
             self?.refresh()
         }.store(in: &subscriptions)
+        store.$scopeIdentity.dropFirst().sink { [weak self] identity in
+            guard let self else { return }
+            epoch = UUID(); queryEpoch = UUID(); indexing?.cancel(); searching?.cancel()
+            documents = []; results = []; isSearching = false; query = ""; language = nil; tag = ""
+            Task { [weak self, index = self.index] in
+                await index.unload(removingCache: true)
+                guard let self, store.scopeIdentity == identity else { return }
+                refresh()
+            }
+        }.store(in: &subscriptions)
         self.downloads.$modelStates.map { $0[VocabularySearchCatalog.model.id] }.removeDuplicates()
             .receive(on: DispatchQueue.main).sink { [weak self] _ in
             guard let self else { return }

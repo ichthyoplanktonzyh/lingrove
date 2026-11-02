@@ -1,7 +1,7 @@
 import Foundation
 
 public enum LocalDatabaseSchema {
-    public static let currentVersion: Int = 37
+    public static let currentVersion: Int = 38
 
     public static var baseMigrationSQL: String {
         let defaultEnableFuzzValue: Int = defaultSchedulerSettingsConfig.enableFuzz ? 1 : 0

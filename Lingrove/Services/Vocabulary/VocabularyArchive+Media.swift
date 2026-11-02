@@ -1,10 +1,11 @@
 import LingroveNotebookStorage
+import LingroveNotebookEngine
 import LingroveNotebook
 import Foundation
 
-/// Media operations share the archive actor's transaction ordering. Encoding/decoding, image
-/// normalization and file IO therefore never run on MainActor. Immutable resources are written
-/// first, the SQL transaction is the commit point, and failure removes only newly introduced resources.
+/// The archive handles bounded file decoding away from MainActor. Media reads and registration
+/// borrow the engine's workspace authorization and content-addressed cache. An image's digest
+/// alone grants no access, and removing one collection cannot delete another workspace's bytes.
 extension VocabularyArchive {
     static let maximumBackupBytes = VocabularyDocumentValidation.maximumBackupBytes
     static let maximumMediaBytes = VocabularyDocumentValidation.maximumMediaBytes
@@ -24,73 +25,38 @@ extension VocabularyArchive {
     }
 
     func image(_ reference: VocabularyImageReference) throws -> Data {
-        try storageAccess(write: false) { try images.read(reference) }
+        try storageAccess(write: false) {
+            let snapshot = try load()
+            guard let scope = snapshot.scope else { throw VocabularyError.editConflict }
+            guard Self.imageReferences(snapshot.document).contains(reference) else { throw VocabularyError.invalidContent }
+            return try LingroveNotebookMediaStore(core: persistence().core).image(reference, scope: scope, requireActiveWorkspace: true)
+        }
     }
 
     func commitWithImages(
         _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt? = nil, restoringBackup: Bool = false
-    ) throws -> VocabularySnapshot {
-        try storageAccess(write: true) {
-            try stageImagesAndCommit(next, supplied: supplied, receipt: receipt, restoringBackup: restoringBackup)
-        }
-    }
-
-    private func stageImagesAndCommit(
-        _ next: VocabularyDocument, supplied: [String: Data], receipt: VocabularyCLIReceipt?, restoringBackup: Bool
-    ) throws -> VocabularySnapshot {
-        // An edited sentence still carries its old explanation until commit normalizes it.
-        // Validate media before staging, then let commit prune stale AI records and validate
-        // the complete graph. Premature whole-document validation rejects legitimate edits.
-        try validateMediaContent(next)
-        let references = Self.imageReferences(next)
-        guard Set(references).reduce(0, { $0 + $1.byteCount }) <= Self.maximumMediaBytes else { throw VocabularyError.oversizedArchive }
-        let existing = Set(Self.imageReferences(try transactionBaseline().document))
-        var written: [VocabularyImageReference] = []
-        do {
-            for image in Set(references) {
-                try Task.checkCancellation()
-                if let data = supplied[image.filename] {
-                    if try images.write(data, image: image) { written.append(image) }
-                } else if !existing.contains(image) {
-                    _ = try images.read(image)
-                }
-            }
-            // Cancellation is honored until the atomic metadata commit begins. Staged new
-            // files are rolled back below; an acknowledged SQL commit is never undone.
-            try Task.checkCancellation()
-            return try commit(next, receipt: receipt, restoringBackup: restoringBackup)
-        } catch {
-            for image in written { images.remove(image) }
-            throw error
-        }
-    }
-
-    private func validateMediaContent(_ next: VocabularyDocument) throws {
-        try VocabularyDocumentValidation.validateMediaContent(next)
+    ) throws -> VocabularyArchiveSnapshot {
+        try Task.checkCancellation()
+        return try commitUsingEngine(next, images: supplied, receipt: receipt, restoringBackup: restoringBackup)
     }
 
     func backup(to destination: URL) throws {
         try validateBackupDestination(destination)
-        _ = try load() // Catalog installation may write; finish it before the shared read lock.
-        let snapshot = try storageAccess(write: false) { try backupSnapshot() }
-        // Bytes are owned now. Encoding and fsync need not hold a cross-process media lock.
-        let data = try JSONEncoder().encode(snapshot)
+        let backup = try storageAccess(write: false) {
+            guard let scope = try load().scope else { throw VocabularyError.editConflict }
+            let backupStore = LingroveNotebookBackupStore(core: try persistence().core)
+            return try backupStore.read(backupStore.capture(scope))
+        }
+        let data = try JSONEncoder().encode(backup)
         guard data.count <= Self.maximumBackupBytes else { throw VocabularyError.oversizedArchive }
-        try writeAtomically(data, to: destination)
+        try Task.checkCancellation()
+        try writeAtomically(data, to: destination, cancellable: true)
     }
 
-    private func backupSnapshot() throws -> VocabularyBackup {
-        let document = try readSnapshot().document
-        var media: [String: Data] = [:]
-        for image in Set(Self.imageReferences(document)) { media[image.filename] = try images.read(image) }
-        guard media.values.reduce(0, { $0 + $1.count }) <= Self.maximumMediaBytes else { throw VocabularyError.oversizedArchive }
-        return VocabularyBackup(document: document, images: media)
-    }
-
-    /// The UI confirms replacement before entering this synchronous actor transaction. Validate
-    /// the whole package before writing anything, so malformed/missing media leaves the current
-    /// notebook intact. Stable sense IDs and Anki receipts are restored together with the content.
-    func restore(from source: URL) throws -> VocabularySnapshot {
+    /// Restore validates a complete portable backup before saving. The replacement leaves the
+    /// notebook intact on failure. Stable sense IDs and optional Anki receipts return with the content; the
+    /// engine refreshes built-in material without replacing its scheduling/history tables.
+    func restore(from source: URL) throws -> VocabularyArchiveSnapshot {
         let values = try source.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
         guard values.isRegularFile == true, let count = values.fileSize, count <= Self.maximumBackupBytes else {
             throw VocabularyError.oversizedArchive
@@ -119,8 +85,8 @@ extension VocabularyArchive {
                 }
             }
         }
-        if let directory = images.directory?.resolvingSymlinksInPath().standardizedFileURL.path,
-           path == directory || path.hasPrefix(directory + "/") { throw VocabularyError.invalidContent }
+        let directory = mediaDirectoryURL.resolvingSymlinksInPath().standardizedFileURL.path
+        if path == directory || path.hasPrefix(directory + "/") { throw VocabularyError.invalidContent }
     }
 
     /// Resolving symlinks does not detect hard links. Replacing a live database or WAL through

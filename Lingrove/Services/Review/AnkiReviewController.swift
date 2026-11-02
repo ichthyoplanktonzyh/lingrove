@@ -24,6 +24,7 @@ final class AnkiReviewController: ObservableObject {
     @Published private(set) var failures: [UUID: String] = [:]
     @Published private(set) var missing: Set<UUID> = []
     @Published private(set) var unresolved: Set<UUID> = []
+    private var scopeSubscription: AnyCancellable?
     var updatingTemplate = false
     var configure: (() -> Void)?
 
@@ -47,6 +48,9 @@ final class AnkiReviewController: ObservableObject {
          }) {
         self.settings = settings; self.store = store; self.client = client
         self.speech = speech; self.activateAnki = activateAnki
+        scopeSubscription = store.$scopeIdentity.dropFirst().sink { [weak self] _ in
+            self?.failures = [:]; self?.missing = []; self?.unresolved = []
+        }
     }
 
     func testConnection(model selectedModel: String? = nil) async {
@@ -79,19 +83,21 @@ final class AnkiReviewController: ObservableObject {
     }
 
     func operationScope() async throws -> ReviewOperationScope {
+        let notebookScope = store.operationScope
         let connection = try settings.connection(), model = settings.model, mapping = settings.effectiveMapping
         let speechID = speech?.exportConfigurationID
         let deck = settings.deck, hadSavedDeck = settings.hasSavedDeck
         let recognition = settings.defaultRecognition, gap = settings.defaultGap
         let profile = try await profile(connection)
-        let value = ReviewOperationScope(connection: connection, profile: profile, model: model, mapping: mapping,
+        let value = ReviewOperationScope(notebookScope: notebookScope, connection: connection, profile: profile,
+            model: model, mapping: mapping,
             speechID: speechID, defaultDeck: deck, hadSavedDeck: hadSavedDeck,
             defaultRecognition: recognition, defaultGap: gap)
         guard matches(value) else { throw VocabularyError.editConflict }
         return value
     }
     func matches(_ scope: ReviewOperationScope) -> Bool {
-        (try? settings.connection()) == scope.connection && settings.model == scope.model &&
+        store.matches(scope.notebookScope) && (try? settings.connection()) == scope.connection && settings.model == scope.model &&
             settings.effectiveMapping == scope.mapping && speech?.exportConfigurationID == scope.speechID
     }
     func verify(_ scope: ReviewOperationScope) async throws {
@@ -248,9 +254,13 @@ final class AnkiReviewController: ObservableObject {
         let key = cardID ?? id
         sendingSenseID = id; sendingReviewID = key; failures[key] = nil
     }
-    func finish(_ id: UUID, cardID: UUID? = nil, error: Error? = nil, missingNote: Bool = false, wrote: Bool = true) {
+    func finish(
+        _ id: UUID, cardID: UUID? = nil, error: Error? = nil, missingNote: Bool = false, wrote: Bool = true,
+        scope: VocabularyOperationScope? = nil
+    ) {
         let key = cardID ?? id
         if sendingReviewID == key { sendingSenseID = nil; sendingReviewID = nil }
+        guard store.matches(scope) else { return }
         let cancelled = error is CancellationError
         failures[key] = cancelled ? nil : error?.localizedDescription
         if error == nil && !wrote { unresolved.insert(key) } else if error == nil { unresolved.remove(key) }

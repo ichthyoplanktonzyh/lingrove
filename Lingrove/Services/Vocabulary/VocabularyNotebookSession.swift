@@ -76,4 +76,11 @@ final class VocabularyNotebookSession: ObservableObject {
         for session in explanations.values { session.cancel() }
         dictionary.close()
     }
+
+    /// A hidden reusable window can outlive its account. Ordinary Close retains its reading
+    /// destination for Resume; scope retirement must instead discard every destination/cache.
+    func reset() {
+        cancel()
+        explanations = [:]; dictionaryEntry = nil; entryID = nil; senseID = nil
+    }
 }

@@ -1,4 +1,5 @@
 import LingroveNotebookStorage
+import LingroveNotebookEngine
 import LingroveStudyExport
 import Foundation
 import LingroveNotebook
@@ -6,38 +7,16 @@ import LingroveNotebook
 /// The archive serializes snapshot and media reads with edits/GC. The returned immutable package
 /// owns all selected bytes, so later source deletion cannot change a preview or its saved file.
 extension VocabularyArchive {
-    /// One frozen selection keeps media and semantic associations on the same revision while
-    /// the exporter works after releasing the archive's cross-process read lock.
-    private struct ExportSnapshot {
-        let entries: [VocabularyEntry]
-        let media: [String: Data]
-        let semantics: VocabularySemanticIndex
-        let classification: VocabularyClassificationIndex
-    }
     func prepareExport(selections: [VocabularySelection], configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
-        _ = try load() // A first catalog installation cannot upgrade the shared export lock.
-        let snapshot = try storageAccess(write: false) { try exportSnapshot(selections: selections, configuration: configuration) }
-        var package = try VocabularyExportPolicy.package(snapshot.entries, configuration: configuration,
-            semantics: snapshot.semantics, classification: snapshot.classification)
-        package.images = snapshot.media
-        try Task.checkCancellation()
-        return package
-    }
-
-    private func exportSnapshot(
-        selections: [VocabularySelection], configuration: VocabularyExportConfiguration
-    ) throws -> ExportSnapshot {
-        let document = try readSnapshot().document
-        let selected = try VocabularyExportPolicy.selected(document.collectedEntries, selections: selections)
-        var media: [String: Data] = [:]
-        let references = VocabularyExportPolicy.images(selected, configuration: configuration)
-        guard references.reduce(0, { $0 + $1.byteCount }) <= Self.maximumMediaBytes else { throw VocabularyExportError.tooLarge }
-        for reference in references {
+        try storageAccess(write: false) {
+            guard let scope = try load().scope else { throw VocabularyError.editConflict }
+            let core = try persistence().core
+            let binding = try LingroveNotebookBackupStore(core: core).capture(scope)
+            let package = try LingroveNotebookStudyExportStore(core: core).read(binding: binding, selections: selections,
+                collectedOnly: true, configuration: configuration)
             try Task.checkCancellation()
-            do { media[reference.filename] = try images.read(reference) } catch { throw VocabularyExportError.missingImage }
+            return package
         }
-        try Task.checkCancellation()
-        return .init(entries: selected, media: media, semantics: document.semantics, classification: document.classification)
     }
 
     func writeExport(_ package: VocabularyExportPackage, to destination: URL) throws {

@@ -1,4 +1,5 @@
 import LingroveNotebookStorage
+import LingroveNotebookEngine
 import LingroveStudyExport
 import LingroveNotebook
 import Foundation
@@ -7,7 +8,7 @@ import Foundation
 /// without Anki credentials/receipts. A batch's media, content and idempotency receipt share the
 /// existing transaction boundary; no CLI code interprets SQL or invokes an AI provider.
 extension VocabularyArchive {
-    func executeCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularySnapshot) {
+    func executeCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
         guard request.version == 1, request.expiresAt > Date() else {
             throw CLIError(code: .timeout, message: "Request expired or protocol version is unsupported.")
         }
@@ -18,7 +19,7 @@ extension VocabularyArchive {
         let result: CLIJSON
         switch request.command {
         case .status:
-            result = .object(["storage": .string("sqlite"), "schemaVersion": .integer(VocabularySQLiteDatabase.schemaVersion),
+            result = .object(["storage": .string("sqlite"), "schemaVersion": .integer(Int64(LocalDatabaseSchema.currentVersion)),
                 "revision": .integer(Int64(snapshot.revision)), "entryCount": .integer(Int64(snapshot.document.collectedEntries.count)),
                 "catalogEntryCount": .integer(Int64(snapshot.document.catalog.count)),
                 "sourceCount": .integer(Int64(snapshot.document.sources.count)),
@@ -63,18 +64,19 @@ extension VocabularyArchive {
         case .resourceList, .resourceGet: result = try readCLIResources(request, snapshot: snapshot)
         case .apply: preconditionFailure("Handled before the read path")
         }
-        return (result, snapshot)
+        return (try addingScope(to: result, snapshot: snapshot), snapshot)
     }
 
     private static func cliSummary(_ value: String) -> String {
         String(String.UnicodeScalarView(value.unicodeScalars.prefix(200)))
     }
 
-    private func applyCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularySnapshot) {
+    private func applyCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
         guard let batch = request.batch else { throw CLIError.invalid("The apply command needs a batch.") }
         try CLIInputPolicy.validate(batch)
         let snapshot = try load(), fingerprint = try VocabularyCLIPlan.fingerprint(batch)
-        if let receipt = try persistence().receipt(key: batch.idempotencyKey) {
+        guard let scope = snapshot.scope else { throw VocabularyError.editConflict }
+        if let receipt = try persistence().notebookCLIReceipt(key: batch.idempotencyKey, basedOn: scope) {
             guard receipt.fingerprint == fingerprint else {
                 throw CLIError(code: .conflict, message: "Idempotency key was already used for different content.")
             }
@@ -83,22 +85,50 @@ extension VocabularyArchive {
             }
             result["replayed"] = .bool(true)
             result["currentRevision"] = .integer(Int64(snapshot.revision))
-            return (.object(result), snapshot)
+            return (try addingScope(to: .object(result), snapshot: snapshot), snapshot)
         }
+        try validateCLIScope(batch, current: scope)
         guard request.dryRun || snapshot.revision < UInt64(Int64.max) else {
             throw CLIError(code: .conflict, message: "Notebook revision cannot advance.")
         }
         let prepared = try prepareCLIImages(in: batch)
-        let plan = try VocabularyCLIPlan(batch: batch, snapshot: snapshot, fingerprint: fingerprint, prepared: prepared, now: Date())
+        let plan = try VocabularyCLIPlan(batch: batch, snapshot: snapshot.portable, fingerprint: fingerprint,
+            prepared: prepared, now: Date())
         do { try validate(plan.document) } catch {
-            throw CLIError.invalid("Invalid resource relationships or content. Check references, accepted claims and graph constraints.")
+            throw CLIError.invalid(
+                "Invalid resource relationships or content. Check references, accepted claims and graph constraints.")
         }
         guard request.expiresAt > Date() else { throw CLIError(code: .timeout, message: "Request expired before commit.") }
         let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision) + (request.dryRun ? 0 : 1)),
             "dryRun": .bool(request.dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes)])
-        if request.dryRun { return (result, snapshot) }
+        if request.dryRun { return (try addingScope(to: result, snapshot: snapshot), snapshot) }
         let receipt = VocabularyCLIReceipt(key: batch.idempotencyKey, fingerprint: fingerprint, result: try JSONEncoder().encode(result))
-        return (result, try commitWithImages(plan.document, supplied: plan.images, receipt: receipt))
+        let committed = try commitCLI(plan.document, images: plan.images, receipt: receipt)
+        guard case var .object(acknowledgement) = try JSONDecoder().decode(CLIJSON.self, from: committed.receipt.result) else {
+            throw VocabularyError.invalidArchive
+        }
+        acknowledgement["replayed"] = .bool(committed.replayed)
+        let saved = VocabularyArchiveSnapshot(committed.snapshot)
+        return (try addingScope(to: .object(acknowledgement), snapshot: saved), saved)
+    }
+
+    private func validateCLIScope(_ batch: CLIBatch, current scope: VocabularyOperationScope) throws {
+        if let supplied = batch.notebookScope {
+            guard supplied == CLINotebookScope(workspaceID: scope.workspaceId, notebookID: scope.notebookId,
+                generation: scope.generation) else { throw VocabularyError.editConflict }
+        } else if batch.expectedRevision != nil || batch.operations.contains(where: {
+            $0.append != nil || $0.update != nil || $0.put != nil || $0.delete != nil || $0.capture?.referencesExistingRecords == true
+        }) {
+            throw CLIError(code: .conflict,
+                message: "Read the notebook again and include its notebookScope when editing existing records.")
+        }
+    }
+
+    private func addingScope(to value: CLIJSON, snapshot: VocabularyArchiveSnapshot) throws -> CLIJSON {
+        guard case var .object(object) = value, let scope = snapshot.scope else { return value }
+        object["notebookScope"] = try .value(CLINotebookScope(workspaceID: scope.workspaceId,
+            notebookID: scope.notebookId, generation: scope.generation))
+        return .object(object)
     }
 
     /// Media preparation stays inside the archive's storage-access scope and after receipt replay.

@@ -129,9 +129,9 @@ struct VocabularyReviewSection: View {
             get: { removing != nil }, set: { if !$0 { removing = nil } })) {
                 Button(String(localized: "Remove local card", table: "Vocabulary"), role: .destructive) {
                     guard let card = removing else { return }; removing = nil
-                    Task {
+                    Task { [scope = controller.store.operationScope] in
                         do { try await controller.store.removeReview(entryID: entry.id, senseID: sense.id, cardID: card.plan.id,
-                            expected: card) } catch { failure = error.localizedDescription }
+                            expected: card, scope: scope) } catch { failure = error.localizedDescription }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 # Meaning categories
 
+For edits that refer to existing records, retain `result.notebookScope` from the same read and include it as top-level `notebookScope` alongside the original revision. This applies to append/update/resource changes, capture with existing sense/meaning IDs, and any `expectedRevision`. It contains `workspaceID`, `notebookID`, and `generation`; never refresh only that scope on an old draft after an account change. Pure new captures may omit it.
+
 Categories group reusable semantic meaning nodes; mappings connect those nodes to lexical senses.
 Inspect `schema` and discover existing categories before creating a custom one.
 

@@ -5,7 +5,8 @@ import SwiftUI
 /// bindings are maintained by semantic tools; ordinary edits keep them and their source intact.
 struct VocabularyUsagePatternEditor: View {
     @ObservedObject var store: VocabularyStore
-    private let baseline: VocabularySemanticIndex
+    @State private var notebookScope: VocabularyOperationScope?
+    @State private var baseline: VocabularySemanticIndex
     @State private var pattern: VocabularyUsagePattern
     @State private var collocations: String
     @State private var showingDetails = false
@@ -14,7 +15,8 @@ struct VocabularyUsagePatternEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     init(store: VocabularyStore, senseID: UUID, pattern: VocabularyUsagePattern? = nil) {
-        self.store = store; baseline = store.semantics
+        _notebookScope = State(initialValue: store.operationScope)
+        self.store = store; _baseline = State(initialValue: store.semantics)
         let value = pattern ?? .init(senseID: senseID, template: "")
         _pattern = State(initialValue: value)
         _collocations = State(initialValue: value.collocations.joined(separator: "\n"))
@@ -56,7 +58,9 @@ struct VocabularyUsagePatternEditor: View {
         } else { edited.patterns.append(value) }
         saving = true
         Task {
-            if await store.updateSemantics(edited, basedOn: baseline) { dismiss() } else { failure = store.errorMessage }
+            if await store.updateSemantics(edited, basedOn: baseline, scope: notebookScope) {
+                dismiss()
+            } else { failure = store.errorMessage }
             saving = false
         }
     }

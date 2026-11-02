@@ -1,5 +1,7 @@
 # Capture language material and meaning organization
 
+For edits that refer to existing records, retain `result.notebookScope` from the same read and include it as top-level `notebookScope` alongside the original revision. This applies to append/update/resource changes, capture with existing sense/meaning IDs, and any `expectedRevision`. It contains `workspaceID`, `notebookID`, and `generation`; never refresh only that scope on an old draft after an account change. Pure new captures may omit it.
+
 Use `vocab capture` for ordinary entry/example/meaning capture. Read `schema capture` rather than
 learning every resource record. Keep the selected CLI and `--app` fixed throughout the task.
 The capture-task format uses `version: 1`.

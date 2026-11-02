@@ -69,7 +69,7 @@ struct VocabularyMeaningDetail: View {
                 Button(String(localized: "Delete meaning", table: "Vocabulary"), role: .destructive) {
                     let baseline = store.semantics; var edited = baseline
                     VocabularySemanticPolicy.removeNode(node.id, from: &edited)
-                    Task { _ = await store.updateSemantics(edited, basedOn: baseline) }
+                    Task { [scope = store.operationScope] in _ = await store.updateSemantics(edited, basedOn: baseline, scope: scope) }
                 }
             }
     }
@@ -335,7 +335,7 @@ struct VocabularyMeaningDetail: View {
     private func removeMapping(_ mapping: VocabularyMeaningMapping) {
         let baseline = store.semantics; var edited = baseline
         edited.mappings.removeAll { $0.id == mapping.id }
-        Task { _ = await store.updateSemantics(edited, basedOn: baseline) }
+        Task { [scope = store.operationScope] in _ = await store.updateSemantics(edited, basedOn: baseline, scope: scope) }
     }
 
     @ViewBuilder

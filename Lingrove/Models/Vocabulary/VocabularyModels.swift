@@ -1,5 +1,6 @@
 import Foundation
 import LingroveNotebook
+import LingroveNotebookEngine
 
 /// Durable learning content is independent of translation requests and Anki. The app-owned
 /// vocabulary store persists these values; cards supply immutable captures and never AX handles.
@@ -65,7 +66,36 @@ nonisolated struct VocabularyCapture: Equatable, Sendable {
 /// stores its entities separately; this version describes the portable representation only.
 typealias VocabularyDocument = LingroveNotebook.VocabularyDocument
 
+/// An archive reply keeps the portable document beside the durable owner that produced it.
+/// Pure CLI planners can still construct an unscoped value; every engine-backed reply carries
+/// its full saved scope so MainActor can discard a late result after an account ABA switch.
 typealias VocabularySnapshot = LingroveNotebook.VocabularySnapshot
+
+nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
+    let revision: UInt64
+    let document: VocabularyDocument
+    let scope: VocabularyOperationScope?
+
+    init(revision: UInt64, document: VocabularyDocument, scope: VocabularyOperationScope? = nil) {
+        self.revision = revision; self.document = document; self.scope = scope
+    }
+
+    init(_ saved: LingroveNotebookSnapshot) {
+        revision = saved.revision; document = saved.document; scope = saved
+    }
+
+    var portable: VocabularySnapshot { .init(revision: revision, document: document) }
+}
+
+/// Sheets and asynchronous commands retain this saved value rather than asking the store for
+/// a new account at Save time. Revision is a merge baseline; generation prevents ABA reuse.
+typealias VocabularyOperationScope = LingroveNotebookSnapshot
+
+extension LingroveNotebookSnapshot {
+    nonisolated func hasSameOwner(as other: LingroveNotebookSnapshot) -> Bool {
+        workspaceId == other.workspaceId && notebookId == other.notebookId && generation == other.generation
+    }
+}
 
 /// Storage destination is separate from semantic input: two saved translations can share one
 /// explanation while still owning independently editable meanings.
@@ -73,4 +103,5 @@ nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
     let entryID: UUID
     let senseID: UUID
     let exampleID: UUID?
+    var scope: VocabularyOperationScope?
 }

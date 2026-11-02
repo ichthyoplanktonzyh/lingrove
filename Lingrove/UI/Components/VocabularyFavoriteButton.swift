@@ -32,8 +32,8 @@ struct VocabularyFavoriteButton: View {
         Button {
             interact()
             if store.contains(capture) { menu.wrappedValue = true } else {
-                Task {
-                    await store.save(capture)
+                Task { [scope = store.operationScope] in
+                    await store.save(capture, scope: scope)
                     failure = store.errorMessage
                 }
             }
@@ -58,6 +58,7 @@ struct VocabularyFavoriteButton: View {
         .accessibilityValue(store.contains(capture)
             ? String(localized: "Saved", table: "Vocabulary") : String(localized: "Not saved", table: "Vocabulary"))
         .task { store.loadIfNeeded() }
+        .onChange(of: store.scopeIdentity) { _, _ in menu.wrappedValue = false; failure = nil }
         .popover(isPresented: menu) {
             VStack(alignment: .leading, spacing: 12) {
                 Button(String(localized: "Show in vocabulary", table: "Vocabulary")) {
@@ -66,7 +67,7 @@ struct VocabularyFavoriteButton: View {
                 }
                 Button(String(localized: "Remove this saved usage", table: "Vocabulary")) {
                     menu.wrappedValue = false
-                    Task { await store.remove(capture); failure = store.errorMessage }
+                    Task { [scope = store.operationScope] in await store.remove(capture, scope: scope); failure = store.errorMessage }
                 }
             }.buttonStyle(.plain).padding(14)
         }

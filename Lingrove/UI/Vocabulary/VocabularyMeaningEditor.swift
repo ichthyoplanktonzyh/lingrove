@@ -5,6 +5,7 @@ import SwiftUI
 /// pickers only return values; the app-owned store saves both indexes atomically on the final Save.
 struct VocabularyMeaningEditor: View {
     @ObservedObject var store: VocabularyStore
+    @State private var notebookScope: VocabularyOperationScope?
     @State private var draft: VocabularyMeaningDraft
     private let onSaved: (UUID) -> Void
     private let linking: VocabularySelection?
@@ -22,6 +23,7 @@ struct VocabularyMeaningEditor: View {
          categoryID: UUID? = nil,
          preferredLanguages: [LearningLanguage] = VocabularyMeaningLabelPolicy.preferredLanguages(),
          onSaved: @escaping (UUID) -> Void = { _ in }) {
+        _notebookScope = State(initialValue: store.operationScope)
         self.store = store; self.linking = linking; self.onSaved = onSaved
         let draft = VocabularyMeaningDraft(semantics: store.semantics, classification: store.classification,
             node: node, categoryID: categoryID, senseID: linking?.senseID, languages: preferredLanguages)
@@ -108,7 +110,7 @@ struct VocabularyMeaningEditor: View {
         saving = true
         Task {
             if await store.updateMeaningOrganization(value.semantics, basedOn: draft.semanticBaseline,
-                classification: value.classification, basedOn: draft.classificationBaseline) {
+                classification: value.classification, basedOn: draft.classificationBaseline, scope: notebookScope) {
                 onSaved(draft.original.id); dismiss()
             } else { failure = store.errorMessage }
             saving = false

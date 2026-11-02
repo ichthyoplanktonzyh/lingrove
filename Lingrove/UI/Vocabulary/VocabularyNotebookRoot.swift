@@ -5,7 +5,7 @@ import SwiftUI
 /// No view creates a settings store or changes the languages attached to saved expressions.
 struct VocabularyNotebookRoot: View {
     @ObservedObject var settings: LanguageLearningSettings
-    let store: VocabularyStore
+    @ObservedObject var store: VocabularyStore
     let speech: LearningSpeechController
     var selectedID: UUID?
     var selectedSenseID: UUID?
@@ -17,6 +17,8 @@ struct VocabularyNotebookRoot: View {
     var body: some View {
         VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID, selectedSenseID: selectedSenseID,
             learning: learning, review: review, search: search, preferences: preferences)
+            .id(store.scopeIdentity)
+            .onChange(of: store.scopeIdentity) { _, _ in learning.reset() }
             .environment(\.vocabularyMeaningLanguages,
                 VocabularyMeaningLabelPolicy.preferredLanguages(explanation: settings.explanationLanguage))
     }

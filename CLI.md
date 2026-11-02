@@ -31,6 +31,9 @@ lingrove vocab get ENTRY_UUID
 ```
 
 `status` reports the notebook revision, supported study languages and expression kinds.
+Notebook reads also return `result.notebookScope` with `workspaceID`, `notebookID` and
+`generation`. Keep that exact object with any draft that modifies existing records. An account
+or workspace change invalidates the draft even if the new notebook has the same revision.
 `schema` describes batch input; `schema capture` describes capture input. Run schema, help and
 version commands without request options. The installed schema is the authority for available fields.
 
@@ -99,6 +102,21 @@ See [capture fields and examples](skills/lingrove-cli/references/capture.md).
 
 Use batch `version: 1` for `add`/`append`/`update`; resource batches use `version: 2` and a
 batch-level `expectedRevision`. Both require a fresh `idempotencyKey` for each new intent.
+`append`, `update`, resource operations and any batch/capture with `expectedRevision` also
+include the unchanged `notebookScope` returned by the read that the edit is based on:
+
+```json
+"notebookScope": {
+  "workspaceID": "WORKSPACE_FROM_READ",
+  "notebookID": "NOTEBOOK_UUID_FROM_READ",
+  "generation": "GENERATION_FROM_READ"
+}
+```
+
+Pure new v1 captures/additions without existing sense/meaning IDs can omit scope; the app captures the active notebook once when
+it admits that command. A completed key remains bound to its first business owner and notebook,
+so retrying it in a different account fails. Retrying the identical completed request in its own
+business scope returns its original acknowledgement without collecting again.
 `put` preserves omitted fields, replaces arrays and clears nullable fields with null.
 Creation requirements are listed in schema under `x-requiredOnCreate`.
 

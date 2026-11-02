@@ -121,7 +121,7 @@ struct VocabularyReviewLayoutEditor: View {
                     defer { operation = nil }
                     do {
                         try await store.saveTemplate(.init(name: name, layout: ReviewLayoutPolicy.portable(snapshot)),
-                            importedImages: images)
+                            importedImages: images, scope: session.notebookScope)
                     } catch is CancellationError { } catch { failure = error.localizedDescription }
                 }
             }.disabled(templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

@@ -5,6 +5,9 @@ import Foundation
 /// every subsequent single-sense transaction must use this scope rather than rereading a newly
 /// selected profile/model partway through the queue.
 nonisolated struct ReviewOperationScope: Equatable, Sendable {
+    /// The same explicit send can await Anki and speech. Retain the notebook lifetime too;
+    /// a reply from an old account must not bind a note in the newly visible library.
+    var notebookScope: VocabularyOperationScope?
     let connection: AnkiConnection
     let profile: String
     let model: String
