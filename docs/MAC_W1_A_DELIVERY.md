@@ -1,7 +1,7 @@
 # Mac Wave 1 A delivery — portable corpus and built-in review persistence
 
 2026-11-03。固定基线 `9351fd93b697a145ded9ded6bb008420b864b5d8`（包含移动第三波
-`e523fc81`）。工作分支 `codex/mac-wave1-notebook-core`；实现提交见本报告末尾的提交记录。
+`e523fc81`）。工作分支 `codex/mac-wave1-notebook-core`；实现提交 `945d43c715f2bda1012c8e203c71bc34db2bd74a`；文档收尾提交随后追加。
 本模块已完整实现并通过下述实际检查，可进入第一波 A/B 集成 checkpoint；尚未接第二波
 Mac 产品服务图，也未声称真实 provider、服务器或双设备旅程通过。
 
@@ -138,11 +138,12 @@ SQLite 后等待 HTTP，返回后再使用原 binding 进行 apply/ACK。不要�
 
 ## 环境清理与提交记录
 
-最终清理记录见 `build/mac-w1-a/cleanup.json`：应确认 `build/DerivedData`、SwiftPM scratch
+最终清理记录见 `build/mac-w1-a/cleanup.json`：已确认 `build/DerivedData`、SwiftPM scratch
 `build/notebook-engine`、本树复制输入 `build/mac-w1-a-source-packages` 均已移除；原共享
 `/Users/shadow/lingrove/build/nibomo-validation/source-packages` 保持原位。日志、xcresult、
 manifest、验证脚本和恢复证据保留；没有后台 server、Docker 项目、可见模拟器、部署、push
 或 main/兄弟分支合并。
 
-提交记录将在实现提交后补充。本报告归 A；共享总计划/SOURCE_LAYOUT/AGENTS 和 A/B 接线由
-主智能体集成。
+实现提交：`945d43c715f2bda1012c8e203c71bc34db2bd74a`（`Extract shared notebook storage and built-in review engine`）。
+本文档收尾提交只补充提交号/已完成清理，不修改已验证实现。工作树以此报告为交付入口；
+共享总计划/SOURCE_LAYOUT/AGENTS 和 A/B 接线由主智能体集成。
