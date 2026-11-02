@@ -3,10 +3,15 @@ import LingroveNotebook
 
 extension LingroveNotebookEngine {
     // Keep in sync with apps/backend/src/cards/review/reviews.ts::submitReview.
-    public func submitReview(workspaceId: String, reviewSubmission: ReviewSubmission, scope: LingroveNotebookSnapshot? = nil, expectedCardOperationID: String? = nil, onTransaction: (() throws -> Void)? = nil) throws -> Card {
+    public func submitReview(workspaceId: String, reviewSubmission: ReviewSubmission, scope: LingroveNotebookSnapshot? = nil,
+        expectedCardOperationID: String? = nil, validateCurrentState: (() throws -> Void)? = nil,
+        onTransaction: (() throws -> Void)? = nil) throws -> Card {
         try Task.checkCancellation()
         return try self.core.inTransaction {
             try Task.checkCancellation()
+            // A native saved-screen fence must run before legacy Card reads can normalize an
+            // invalid row. This hook borrows the same writer lock; it never spans an await.
+            try validateCurrentState?()
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: false) }
             let card = try self.cardStore.loadCard(workspaceId: workspaceId, cardId: reviewSubmission.cardId)
             if let expectedCardOperationID, card.lastOperationId != expectedCardOperationID { throw VocabularyError.editConflict }

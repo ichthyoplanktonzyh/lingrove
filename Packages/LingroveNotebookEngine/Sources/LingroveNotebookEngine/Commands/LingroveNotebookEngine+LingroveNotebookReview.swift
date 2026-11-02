@@ -17,7 +17,8 @@ extension LingroveNotebookEngine {
 
     /// All selected senses commit together. A failure in a later projection rolls back earlier
     /// enrollments as well, so a multi-select action never silently enrolls only part of a list.
-    public func enrollLingroveNotebookSenses(_ drafts: [LingroveNotebookCardDraft], scope: LingroveNotebookSnapshot? = nil) throws -> [LingroveNotebookReviewEnrollment] {
+    public func enrollLingroveNotebookSenses(_ drafts: [LingroveNotebookCardDraft], scope: LingroveNotebookSnapshot? = nil,
+        preparedInputs: [UUID: CardEditorInput] = [:], action: NotebookBuiltInReviewAction? = nil) throws -> [LingroveNotebookReviewEnrollment] {
         try Task.checkCancellation()
         guard let first = drafts.first, Set(drafts.map(\.id)).count == drafts.count,
               Set(drafts.map { $0.source.senseId }).count == drafts.count,
@@ -29,10 +30,12 @@ extension LingroveNotebookEngine {
             try self.lingroveNotebookCardLinkStore.requireActiveScope(first.source)
             let snapshot = try self.lingroveNotebookStore.readSnapshot(workspaceId: first.source.workspaceId)
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: true) }
+            if let action { try requireCurrentScopeInTransaction(action.scope, requireRevision: true) }
             var result: [LingroveNotebookReviewEnrollment] = []
             var seen = Set<UUID>()
             for draft in drafts {
-                for value in try self.persistNotebookEnrollment(draft, snapshot: snapshot) where seen.insert(value.id).inserted {
+                for value in try self.persistNotebookEnrollment(draft, snapshot: snapshot,
+                    input: preparedInputs[draft.id], action: action) where seen.insert(value.id).inserted {
                     result.append(value)
                 }
             }
@@ -41,13 +44,20 @@ extension LingroveNotebookEngine {
     }
 
     private func persistNotebookEnrollment(
-        _ draft: LingroveNotebookCardDraft, snapshot: LingroveNotebookSnapshot
+        _ draft: LingroveNotebookCardDraft, snapshot: LingroveNotebookSnapshot, input: CardEditorInput?,
+        action: NotebookBuiltInReviewAction?
     ) throws -> [LingroveNotebookReviewEnrollment] {
         try Task.checkCancellation()
-        let fingerprint = try LingroveNotebookCardMaterial.fingerprint(draft)
+        let fingerprint = try input.map {
+            try LingroveNotebookCardMaterial.fingerprint(NotebookPreparedEnrollment(draft: draft, input: $0))
+        } ?? LingroveNotebookCardMaterial.fingerprint(draft)
         if let replay = try self.lingroveNotebookReviewStore.replay(workspaceId: draft.source.workspaceId,
             requestId: draft.id, fingerprint: fingerprint) { return replay }
+        // Scope/generation was checked before replay. An exact committed intent is a read of
+        // its current result, while a new intent must still match every displayed review row.
+        if let action { try requireBuiltInReviewActionInTransaction(action) }
         try self.lingroveNotebookCardLinkStore.validate(draft, against: snapshot)
+        if let input { try cardStore.validateCardInput(input: input) }
         var enrollments = try self.lingroveNotebookReviewStore.matching(source: draft.source, snapshot: snapshot)
         let now = nowIsoTimestamp()
         if enrollments.isEmpty {
@@ -69,7 +79,7 @@ extension LingroveNotebookEngine {
             let exerciseDraft = LingroveNotebookCardDraft(id: linkID, source: draft.source,
                 sourceRevision: draft.sourceRevision, generatedContent: draft.generatedContent)
             let card = try self.persistNewLingroveNotebookCard(draft: exerciseDraft,
-                input: exerciseDraft.generatedContent, mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, newCardID: cardID)
+                input: input ?? exerciseDraft.generatedContent, mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, newCardID: cardID)
             enrollments[ownerIndex] = try self.lingroveNotebookReviewStore.attach(cardId: card.cardId, linkId: exerciseDraft.id,
                 to: enrollments[ownerIndex], now: now)
         }
@@ -85,7 +95,7 @@ extension LingroveNotebookEngine {
     @discardableResult
     public func setLingroveNotebookReviewStatus(
         _ status: LingroveNotebookReviewStatus, enrollments expected: [LingroveNotebookReviewEnrollment],
-        requestId: UUID = UUID(), scope: LingroveNotebookSnapshot? = nil
+        requestId: UUID = UUID(), scope: LingroveNotebookSnapshot? = nil, action: NotebookBuiltInReviewAction? = nil
     ) throws -> [LingroveNotebookReviewEnrollment] {
         try Task.checkCancellation()
         guard let first = expected.first,
@@ -99,8 +109,10 @@ extension LingroveNotebookEngine {
             try Task.checkCancellation()
             try self.lingroveNotebookCardLinkStore.requireActiveScope(first.source)
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: false) }
+            if let action { try requireCurrentScopeInTransaction(action.scope, requireRevision: true) }
             if let replay = try self.lingroveNotebookReviewStore.replay(workspaceId: first.workspaceId,
                 requestId: requestId, fingerprint: fingerprint) { return replay }
+            if let action { try requireBuiltInReviewActionInTransaction(action) }
             let snapshot = try self.lingroveNotebookStore.readSnapshot(workspaceId: first.workspaceId)
             if LingroveNotebookCardMaterial.resolvedSelection(source: first.source, snapshot: snapshot) != nil {
                 let group = try self.lingroveNotebookReviewStore.matching(source: first.source, snapshot: snapshot)
@@ -133,6 +145,13 @@ extension LingroveNotebookEngine {
 private struct NotebookReviewStatusIntent: Encodable {
     let status: LingroveNotebookReviewStatus
     let expected: [LingroveNotebookReviewEnrollment]
+}
+
+/// Authored initial faces are part of the explicit enrollment intent, while the draft retains
+/// the generated source baseline for future three-way refresh. A retry cannot silently change it.
+private struct NotebookPreparedEnrollment: Encodable {
+    let draft: LingroveNotebookCardDraft
+    let input: CardEditorInput
 }
 
 extension LingroveNotebookEngine {
