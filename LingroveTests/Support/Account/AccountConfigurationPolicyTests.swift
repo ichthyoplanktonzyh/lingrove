@@ -21,6 +21,20 @@ struct AccountConfigurationPolicyTests {
     }
 
     @Test
+    func authenticationRequiresTheVisibleConnectionToBeSaved() throws {
+        let saved = try AccountConfigurationPolicy.configuration(api: "https://api.example.invalid/v1",
+            auth: "https://auth.example.invalid")
+        #expect(AccountConfigurationPolicy.matchesSavedConnection(api: " HTTPS://API.EXAMPLE.INVALID:443/v1/ ",
+            auth: "https://auth.example.invalid/", saved: saved))
+        #expect(!AccountConfigurationPolicy.matchesSavedConnection(api: "https://other.example.invalid/v1",
+            auth: "https://auth.example.invalid", saved: saved))
+        #expect(!AccountConfigurationPolicy.matchesSavedConnection(api: saved.apiBaseURL.absoluteString,
+            auth: "https://other.example.invalid", saved: saved))
+        #expect(!AccountConfigurationPolicy.matchesSavedConnection(api: "invalid", auth: "", saved: saved))
+        #expect(!AccountConfigurationPolicy.matchesSavedConnection(api: "", auth: "", saved: nil))
+    }
+
+    @Test
     func resentOTPEnvelopeCannotRenewItsOriginalExpiryOrProveIdentity() throws {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         let data = try JSONEncoder().encode(["t": start.timeIntervalSince1970 * 1_000])

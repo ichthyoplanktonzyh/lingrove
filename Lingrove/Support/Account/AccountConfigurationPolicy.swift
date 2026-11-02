@@ -8,6 +8,15 @@ nonisolated enum AccountConfigurationPolicy {
         AccountServiceConfiguration(apiBaseURL: try baseURL(api), authBaseURL: try baseURL(auth))
     }
 
+    /// A connection form is only a draft until it matches the saved service pair. In particular,
+    /// a failed Keychain clear keeps the old pair active; typing a new URL must not authorize
+    /// sending an email/code to that old service while the window shows the new destination.
+    static func matchesSavedConnection(api: String, auth: String,
+                                       saved: AccountServiceConfiguration?) -> Bool {
+        guard let saved, let draft = try? configuration(api: api, auth: auth) else { return false }
+        return draft == saved
+    }
+
     static func baseURL(_ input: String) throws -> URL {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var components = URLComponents(string: trimmed),

@@ -95,6 +95,10 @@ struct AccountPaneView: View {
         }
     }
 
+    private var connectionIsSaved: Bool {
+        AccountConfigurationPolicy.matchesSavedConnection(api: api, auth: auth, saved: account.configuration)
+    }
+
     @ViewBuilder
     private var sessionControls: some View {
         switch account.state {
@@ -135,19 +139,23 @@ struct AccountPaneView: View {
 
     private var signInSection: some View {
         Section {
+            if !connectionIsSaved {
+                Label(String(localized: "Save connection", table: "Account"), systemImage: "exclamationmark.circle")
+                    .foregroundStyle(.secondary)
+            }
             if let prompt = account.codePrompt {
                 LabeledContent(String(localized: "Email", table: "Account"), value: prompt.email)
                 SecureField(String(localized: "Eight-digit code", table: "Account"), text: $code)
                     .textContentType(.oneTimeCode)
                     .accessibilityIdentifier("account.code")
-                    .onSubmit { account.submitCode(code) }
-                    .disabled(account.state.isBusy || prompt.isExpired)
+                    .onSubmit { if connectionIsSaved { account.submitCode(code) } }
+                    .disabled(account.state.isBusy || prompt.isExpired || !connectionIsSaved)
                 HStack {
                     Button(String(localized: "Verify and sign in", table: "Account")) { account.submitCode(code) }
-                        .disabled(account.state.isBusy || prompt.isExpired || code.isEmpty)
+                        .disabled(account.state.isBusy || prompt.isExpired || code.isEmpty || !connectionIsSaved)
                         .accessibilityIdentifier("account.verify")
                     Button(String(localized: "Resend code", table: "Account")) { code = ""; account.resendCode() }
-                        .disabled(account.state.isBusy)
+                        .disabled(account.state.isBusy || !connectionIsSaved)
                         .accessibilityIdentifier("account.resend")
                     Button(String(localized: "Cancel sign-in", table: "Account")) { account.cancelSignIn(); code = "" }
                         .accessibilityIdentifier("account.cancel")
@@ -156,11 +164,11 @@ struct AccountPaneView: View {
                 TextField(String(localized: "Email", table: "Account"), text: $email)
                     .textContentType(.emailAddress)
                     .accessibilityIdentifier("account.email")
-                    .disabled(account.state.isBusy)
-                    .onSubmit { account.requestCode(email: email) }
+                    .disabled(account.state.isBusy || !connectionIsSaved)
+                    .onSubmit { if connectionIsSaved { account.requestCode(email: email) } }
                 HStack {
                     Button(String(localized: "Send sign-in code", table: "Account")) { account.requestCode(email: email) }
-                        .disabled(account.state.isBusy || email.isEmpty)
+                        .disabled(account.state.isBusy || email.isEmpty || !connectionIsSaved)
                         .accessibilityIdentifier("account.sendCode")
                     if account.state.isBusy {
                         Button(String(localized: "Cancel sign-in", table: "Account")) { account.cancelSignIn() }

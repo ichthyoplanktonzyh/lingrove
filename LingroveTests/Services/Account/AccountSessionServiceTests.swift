@@ -127,6 +127,9 @@ struct AccountSessionServiceTests {
         #expect(fixture.service.configuration == fixture.configuration)
         #expect(fixture.service.issue == .secureStorage)
         #expect(try fixture.settings.load()?.allowsSessionRestore == false)
+        #expect(!AccountConfigurationPolicy.matchesSavedConnection(api: "https://other.example.invalid/v1",
+            auth: "https://auth.other.example.invalid", saved: fixture.service.configuration),
+            "Authentication controls must stay disabled while the visible destination differs from the retained connection")
         #expect(!fixture.service.removeConfiguration())
         #expect(fixture.service.configuration == fixture.configuration)
         fixture.credentials.failsClear = false
