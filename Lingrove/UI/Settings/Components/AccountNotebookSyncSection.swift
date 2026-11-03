@@ -4,12 +4,15 @@ import LingroveNotebookEngine
 import LingroveNotebookSync
 import SwiftUI
 
+// Workspace chooser/status UI extracted from Nibomo AccountStatusView and CloudWorkspaceSelectionSheet (MIT).
+// Copyright (c) 2026 Kirill Markin. License: Lingrove/Resources/NibomoUI-LICENSE.txt.
+
 /// This settings fragment borrows the process-owned sync controller. Picker/conflict choices are
 /// view drafts only; the controller captures the saved SQL proposal and validates it on commit.
 /// Reopening Settings observes the same tasks, consent and independently reported sync lanes.
 struct AccountNotebookSyncSection: View {
     @ObservedObject var controller: MacNotebookSyncController
-    @State private var workspaceID = ""
+    @State private var choosingWorkspace = false
     @State private var conflictChoices: [Int: VocabularyWireConflictSelection.Choice] = [:]
 
     var body: some View {
@@ -22,16 +25,11 @@ struct AccountNotebookSyncSection: View {
                 Spacer()
                 Text(MacNotebookSyncPresentation.title(controller.workspaceStatus)).foregroundStyle(.secondary)
             }
-            Picker(String(localized: "Workspace", table: "NotebookSync"), selection: $workspaceID) {
-                Text(String(localized: "Choose a workspace", table: "NotebookSync")).tag("")
-                ForEach(controller.workspaces) { workspace in Text(workspace.name).tag(workspace.id) }
+            Button(LingroveNibomoAccountCopy.text("settings.currentWorkspace.chooseWorkspaceTitle")) {
+                choosingWorkspace = true
             }
-            .disabled(!controller.canAccessWorkspaces || controller.isChoosingWorkspace)
+            .disabled(!controller.canAccessWorkspaces || controller.isChoosingWorkspace || controller.workspaces.isEmpty)
             .accessibilityIdentifier("account.sync.workspace")
-            Button(String(localized: "Connect workspace", table: "NotebookSync")) { controller.chooseWorkspace(workspaceID) }
-                .disabled(!controller.canAccessWorkspaces || controller.isChoosingWorkspace
-                    || !controller.workspaces.contains(where: { $0.id == workspaceID }))
-                .accessibilityIdentifier("account.sync.connect")
             if let workspace = controller.selectedWorkspace {
                 LabeledContent(String(localized: "Workspace", table: "NotebookSync"), value: workspace.name)
             }
@@ -84,9 +82,8 @@ struct AccountNotebookSyncSection: View {
         .onChange(of: controller.ownershipProposal?.generation) { _, _ in conflictChoices = [:] }
         .onChange(of: controller.ownershipProposal?.source.revision) { _, _ in conflictChoices = [:] }
         .onChange(of: controller.ownershipProposal?.target.revision) { _, _ in conflictChoices = [:] }
-        .onChange(of: controller.workspaces.map(\.id)) { _, ids in
-            if !ids.contains(workspaceID) { workspaceID = "" }
-        }
+        .sheet(isPresented: $choosingWorkspace) { LingroveAccountWorkspaceSelectionSheet(controller: controller) }
+
     }
 
     @ViewBuilder private var ownershipControls: some View {
@@ -114,10 +111,10 @@ struct AccountNotebookSyncSection: View {
                         Text("—").tag(Optional<VocabularyWireConflictSelection.Choice>.none)
                         Text(String(localized: """
                             Local copy
-                            """, table: "NotebookSync"))
+                            """, table: "NotebookSync")).tag(Optional(VocabularyWireConflictSelection.Choice.local))
                         Text(String(localized: """
                             Account copy
-                            """, table: "NotebookSync"))
+                            """, table: "NotebookSync")).tag(Optional(VocabularyWireConflictSelection.Choice.remote))
                     }
                 }
             }
@@ -138,7 +135,7 @@ struct AccountNotebookSyncSection: View {
     }
 
     private func lane(_ title: String.LocalizationValue, status: MacNotebookSyncStatus, identifier: String) -> some View {
-        LabeledContent(String(localized: title, table: "NotebookSync"), value: MacNotebookSyncPresentation.title(status))
+        LabeledContent(String(localized: title, table: "NotebookSync")) { LingroveSyncStatusIndicator(status: status) }
             .accessibilityIdentifier("account.sync.\(identifier)")
     }
 }

@@ -1,194 +1,138 @@
+// Account page structure adapted from Nibomo AccountStatusView.swift (MIT).
+// Copyright (c) 2026 Kirill Markin. License: Lingrove/Resources/NibomoUI-LICENSE.txt.
 import LingroveCloud
 import SwiftUI
 
-/// Native account settings borrows the process-owned session service. Only editable form drafts
-/// live in `@State`; no view creates a transport, reads Keychain, or owns a refresh task. Observable
-/// state therefore survives Settings closure, while passwords/tokens never enter the view tree.
+/// Settings owns this navigation/draft lifetime and borrows the process-owned account and sync
+/// facades. Nibomo’s status, server and sign-in screens remain separate. Unsaved endpoint drafts
+/// never grant a request to the saved destination; no view creates a transport or reads Keychain.
 struct AccountPaneView: View {
     @ObservedObject var account: AccountSessionService
     var syncController: MacNotebookSyncController?
     @State private var api = ""
     @State private var auth = ""
-    @State private var email = ""
-    @State private var code = ""
+    @State private var loadedDraft = false
+    @State private var signingIn = false
+    @State private var confirmingSignOut = false
 
-    var body: some View {
-        SettingsPaneScaffold {
-            Section {
-                HStack {
-                    if account.state.isBusy { ProgressView().controlSize(.small) }
-                    Text(AccountPresentation.title(account.state))
-                        .font(.headline)
-                        .accessibilityIdentifier("account.status")
-                    Spacer()
-                }
-                if let issue = account.issue {
-                    Text(AccountPresentation.message(issue))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("account.issue")
-                }
-                sessionControls
-            } header: {
-                Text(String(localized: "Account", table: "Account"))
-            } footer: {
-                Text(String(localized: """
-                    Signing in only confirms your identity. Choose a workspace, decide what to do with \
-                    local material, then enable sync.
-                    """, table: "NotebookSync"))
-            }
-            .settingsItem(.accountSession)
-
-            if showsSignIn {
-                signInSection
-            }
-
-            if let syncController {
-                AccountNotebookSyncSection(controller: syncController)
-            }
-
-            Section {
-                TextField(String(localized: "API base URL (including /v1)", table: "Account"), text: $api,
-                    prompt: Text(verbatim: "https://api.example.com/v1"))
-                    .textContentType(.URL)
-                    .accessibilityIdentifier("account.apiURL")
-                TextField(String(localized: "Authentication base URL", table: "Account"), text: $auth,
-                    prompt: Text(verbatim: "https://auth.example.com"))
-                    .textContentType(.URL)
-                    .accessibilityIdentifier("account.authURL")
-                HStack {
-                    Button(String(localized: "Save connection", table: "Account")) {
-                        if account.configure(api: api, auth: auth) { code = "" }
-                    }
-                    .accessibilityIdentifier("account.saveConnection")
-                    if account.configuration != nil {
-                        Button(String(localized: "Remove connection", table: "Account")) {
-                            if account.removeConfiguration() {
-                                api = ""
-                                auth = ""
-                                code = ""
-                            }
-                        }
-                    }
-                }
-            } header: {
-                Text(String(localized: "Account service", table: "Account"))
-            } footer: {
-                Text(String(localized: """
-                    Choose services you trust. Email, codes and session tokens go to the authentication service; the API \
-                    confirms your identity. Changing the connection signs out on this Mac. No service is contacted until \
-                    you sign in or restore a saved session.
-                    """, table: "Account"))
-            }
-            .settingsItem(.accountConnection)
-        }
-        .onAppear {
-            api = account.configuration?.apiBaseURL.absoluteString ?? ""
-            auth = account.configuration?.authBaseURL.absoluteString ?? ""
-            email = account.codePrompt?.email ?? ""
-        }
-        .onChange(of: account.codePrompt?.email) { _, newEmail in
-            if let newEmail { email = newEmail }
-            code = ""
-        }
-    }
-
-    private var showsSignIn: Bool {
-        guard account.configuration != nil else { return false }
-        return switch account.state {
-        case .signedOut, .credentialsInvalid, .awaitingCode, .working(.sendingCode), .working(.verifyingCode): true
-        default: false
-        }
-    }
-
+    private enum Destination: Hashable { case server, sync }
     private var connectionIsSaved: Bool {
         AccountConfigurationPolicy.matchesSavedConnection(api: api, auth: auth, saved: account.configuration)
     }
 
-    @ViewBuilder
-    private var sessionControls: some View {
-        switch account.state {
-        case .signedIn(let identity):
-            Text(identity.email ?? identity.userID).textSelection(.enabled)
-            signOutButton
-        case .offline(let identity):
-            if let identity { Text(identity.email ?? identity.userID).textSelection(.enabled) }
-            Text(String(localized: """
-                Your saved session is not confirmed online. Local writing and learning remain available.
-                """, table: "Account"))
-                .foregroundStyle(.secondary)
-            HStack {
-                Button(String(localized: "Retry session", table: "Account")) { account.retrySession() }
-                    .accessibilityIdentifier("account.retrySession")
-                signOutButton
+    var body: some View {
+        NavigationStack {
+            LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
+                Form {
+                    Section(LingroveNibomoAccountCopy.text("settings.account.status.section.accountStatus")) {
+                        LabeledContent(LingroveNibomoAccountCopy.text("settings.account.status.state")) {
+                            HStack(spacing: 8) {
+                                if account.state.isBusy { ProgressView().controlSize(.small) }
+                                Text(AccountPresentation.title(account.state)).accessibilityIdentifier("account.status")
+                            }
+                        }
+                        if let identity = account.observation.retainedIdentity {
+                            LabeledContent(LingroveNibomoAccountCopy.text("settings.account.status.linkedEmail")) {
+                                Text(identity.email ?? identity.userID).textSelection(.enabled)
+                            }
+                        }
+                        if let configuration = account.configuration {
+                            LabeledContent(LingroveNibomoAccountCopy.text("settings.account.server.apiUrl")) {
+                                Text(configuration.apiBaseURL.absoluteString).font(.caption.monospaced())
+                                    .multilineTextAlignment(.trailing).textSelection(.enabled)
+                            }
+                        }
+                        if let issue = account.issue {
+                            Text(AccountPresentation.message(issue)).foregroundStyle(.red)
+                                .accessibilityIdentifier("account.issue")
+                        }
+                        Text(String(localized: """
+                            Signing in only confirms your identity. Choose a workspace, decide what to do with \
+                            local material, then enable sync.
+                            """, table: "NotebookSync"))
+                            .foregroundStyle(.secondary)
+                        if account.configuration != nil, !connectionIsSaved {
+                            Label(String(localized: "Save connection", table: "Account"), systemImage: "exclamationmark.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                        sessionControls
+                    }.settingsItem(.accountSession)
+                    Section {
+                        NavigationLink(value: Destination.server) {
+                            Label(String(localized: "Account service", table: "Account"), systemImage: "server.rack")
+                        }.settingsItem(.accountConnection).accessibilityIdentifier("account.server")
+                        if syncController != nil {
+                            NavigationLink(value: Destination.sync) {
+                                Label(String(localized: "Notebook sync", table: "NotebookSync"), systemImage: "arrow.triangle.2.circlepath")
+                            }.accessibilityIdentifier("account.sync.open")
+                        }
+                    }
+                    Section {
+                        Text(BuiltInReviewCopy.text("description.offline")).foregroundStyle(.secondary)
+                    }
+                }.formStyle(.grouped)
             }
-        case .working(.restoring), .working(.refreshing):
+            .navigationTitle(LingroveNibomoAccountCopy.text("settings.account.status.title"))
+            .navigationDestination(for: Destination.self) { destination in
+                switch destination {
+                case .server: LingroveAccountServerView(account: account, api: $api, auth: $auth)
+                case .sync:
+                    if let syncController {
+                        Form {
+                            if !connectionIsSaved {
+                                Label(String(localized: "Save connection", table: "Account"), systemImage: "exclamationmark.circle")
+                            }
+                            AccountNotebookSyncSection(controller: syncController).disabled(!connectionIsSaved)
+                        }.formStyle(.grouped).navigationTitle(String(localized: "Notebook sync", table: "NotebookSync"))
+                    }
+                }
+            }
+        }
+        .tint(.orange).preferredColorScheme(.dark)
+        .sheet(isPresented: $signingIn) {
+            LingroveAccountSignInSheet(account: account, connectionIsSaved: connectionIsSaved)
+        }
+        .alert(String(localized: "Sign out on this Mac", table: "Account"), isPresented: $confirmingSignOut) {
+            Button(String(localized: "Cancel", table: "ReviewCards"), role: .cancel) { }
+            Button(String(localized: "Sign out on this Mac", table: "Account"), role: .destructive) { account.signOut() }
+                .accessibilityIdentifier("account.signOut.confirm")
+        } message: {
+            Text(String(localized: """
+                This clears this Mac's session. It does not delete your account or sign out other devices.
+                """, table: "Account"))
+        }
+        .onAppear {
+            guard !loadedDraft else { return }
+            loadedDraft = true
+            api = account.configuration?.apiBaseURL.absoluteString ?? ""
+            auth = account.configuration?.authBaseURL.absoluteString ?? ""
+        }
+    }
+
+    @ViewBuilder private var sessionControls: some View {
+        switch account.state {
+        case .signedIn:
+            if let syncController {
+                Button(LingroveNibomoAccountCopy.text("settings.account.status.syncNow")) { syncController.retry() }
+                    .disabled(!connectionIsSaved || !syncController.enabled)
+            }
             signOutButton
-        case .signedOut where account.issue == .secureStorage:
-            // A failed Keychain clear is retryable even though the durable restore gate is shut.
+        case .offline:
+            Button(String(localized: "Retry session", table: "Account")) { account.retrySession() }
+                .disabled(!connectionIsSaved).accessibilityIdentifier("account.retrySession")
             signOutButton
+        case .working(.restoring), .working(.refreshing): signOutButton
+        case .signedOut where account.issue == .secureStorage: signOutButton
         default:
-            EmptyView()
+            if account.configuration != nil {
+                Button(LingroveNibomoAccountCopy.text("settings.account.status.signIn")) { signingIn = true }
+                    .disabled(!connectionIsSaved).accessibilityIdentifier("account.signIn")
+            }
         }
     }
 
     private var signOutButton: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Button(String(localized: "Sign out on this Mac", table: "Account")) { account.signOut(); code = "" }
-                .accessibilityIdentifier("account.signOut")
-            Text(String(localized: """
-                This clears this Mac's session. It does not delete your account or sign out other devices.
-                """, table: "Account"))
-                .font(.caption).foregroundStyle(.secondary)
-        }
-    }
-
-    private var signInSection: some View {
-        Section {
-            if !connectionIsSaved {
-                Label(String(localized: "Save connection", table: "Account"), systemImage: "exclamationmark.circle")
-                    .foregroundStyle(.secondary)
-            }
-            if let prompt = account.codePrompt {
-                LabeledContent(String(localized: "Email", table: "Account"), value: prompt.email)
-                SecureField(String(localized: "Eight-digit code", table: "Account"), text: $code)
-                    .textContentType(.oneTimeCode)
-                    .accessibilityIdentifier("account.code")
-                    .onSubmit { if connectionIsSaved { account.submitCode(code) } }
-                    .disabled(account.state.isBusy || prompt.isExpired || !connectionIsSaved)
-                HStack {
-                    Button(String(localized: "Verify and sign in", table: "Account")) { account.submitCode(code) }
-                        .disabled(account.state.isBusy || prompt.isExpired || code.isEmpty || !connectionIsSaved)
-                        .accessibilityIdentifier("account.verify")
-                    Button(String(localized: "Resend code", table: "Account")) { code = ""; account.resendCode() }
-                        .disabled(account.state.isBusy || !connectionIsSaved)
-                        .accessibilityIdentifier("account.resend")
-                    Button(String(localized: "Cancel sign-in", table: "Account")) { account.cancelSignIn(); code = "" }
-                        .accessibilityIdentifier("account.cancel")
-                }
-            } else {
-                TextField(String(localized: "Email", table: "Account"), text: $email)
-                    .textContentType(.emailAddress)
-                    .accessibilityIdentifier("account.email")
-                    .disabled(account.state.isBusy || !connectionIsSaved)
-                    .onSubmit { if connectionIsSaved { account.requestCode(email: email) } }
-                HStack {
-                    Button(String(localized: "Send sign-in code", table: "Account")) { account.requestCode(email: email) }
-                        .disabled(account.state.isBusy || email.isEmpty || !connectionIsSaved)
-                        .accessibilityIdentifier("account.sendCode")
-                    if account.state.isBusy {
-                        Button(String(localized: "Cancel sign-in", table: "Account")) { account.cancelSignIn() }
-                            .accessibilityIdentifier("account.cancel")
-                    }
-                }
-            }
-        } header: {
-            Text(String(localized: "Email sign-in", table: "Account"))
-        } footer: {
-            Text(String(localized: """
-                Codes expire after three minutes. Resend may return the code already sent; the service checks its \
-                remaining validity.
-                """, table: "Account"))
-        }
+        Button(String(localized: "Sign out on this Mac", table: "Account"), role: .destructive) { confirmingSignOut = true }
+            .accessibilityIdentifier("account.signOut")
     }
 }

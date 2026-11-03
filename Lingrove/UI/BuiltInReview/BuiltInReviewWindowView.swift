@@ -3,11 +3,14 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// A presentation-only native root. The app graph supplies its single session; selecting a
-/// row changes navigation, while explicit buttons pass the displayed saved value to commands.
+/// The existing window borrows one app-owned session. This root binds Nibomo’s review column,
+/// filter/header and queue sheets to that session; it never constructs a mobile store or owns
+/// account/sync services. Sheet choices remain navigation until an explicit enrollment command.
 struct BuiltInReviewWindowView: View {
     @ObservedObject var session: BuiltInReviewSession
     @State private var choosingSense = false
+    @State private var showingQueue = false
+    @State private var showingHistory = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,20 +23,15 @@ struct BuiltInReviewWindowView: View {
                     Spacer(minLength: 0)
                     Button(BuiltInReviewCopy.text("action.refresh")) { session.reload() }.disabled(session.isBusy)
                 }.font(.callout).padding(12).background(.quaternary)
-                Divider()
             }
             if let content = session.content {
-                HSplitView {
-                    sidebar(content).frame(minWidth: 205, idealWidth: 235, maxWidth: 300)
-                    destination(content).frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
-                }
+                destination(content).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ContentUnavailableView {
                     Label(BuiltInReviewCopy.text(session.isRefreshing ? "state.loading" : "state.unavailable"),
                           systemImage: session.isRefreshing ? "hourglass" : "exclamationmark.triangle")
-                } description: {
-                    Text(BuiltInReviewCopy.text("description.offline"))
-                } actions: {
+                } description: { Text(BuiltInReviewCopy.text("description.offline")) }
+                actions: {
                     if session.isRefreshing { ProgressView() } else {
                         Button(BuiltInReviewCopy.text("action.refresh")) { session.reload() }
                     }
@@ -41,89 +39,79 @@ struct BuiltInReviewWindowView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .tint(.orange).preferredColorScheme(.dark)
         .frame(minWidth: 760, minHeight: 560)
         .sheet(isPresented: $choosingSense) {
             if let content = session.content {
                 BuiltInReviewSenseChooser(content: content) { selection in
                     choosingSense = false
+                    session.endPractice()
                     session.route = .sense(selection)
                 }
             }
+        }
+        .sheet(isPresented: $showingQueue) {
+            if let content = session.content {
+                BuiltInReviewQueuePreviewView(content: content, currentCardID: session.practice?.phase.context?.card.cardId)
+            }
+        }
+        .sheet(isPresented: $showingHistory) {
+            if let content = session.content { BuiltInReviewHistoryView(session: session, content: content) }
         }
         .sheet(item: $session.draft) { draft in BuiltInReviewPreparationView(session: session, draft: draft) }
         .accessibilityIdentifier("builtinReview.window")
     }
 
+    /// Mirrors ReviewView.reviewCompanionHeader: filter left, centered title, trailing actions.
+    /// Lingrove’s sense participation replaces the mobile Deck filter, leaving its structure intact.
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "rectangle.on.rectangle.angled").font(.title2).foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(BuiltInReviewCopy.text("title")).font(.headline)
-                Text(BuiltInReviewCopy.text("description.selection")).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            if session.isBusy { ProgressView().controlSize(.small).accessibilityLabel(BuiltInReviewCopy.text("state.loading")) }
-            Button(BuiltInReviewCopy.text("action.choose"), systemImage: "plus") { choosingSense = true }
-                .disabled(session.isBusy || session.content == nil || session.route == .practice)
-                .accessibilityIdentifier("builtinReview.choose")
-            Button { session.reload() } label: { Image(systemName: "arrow.clockwise") }
-                .help(BuiltInReviewCopy.text("action.refresh")).disabled(session.isBusy)
-                .accessibilityLabel(BuiltInReviewCopy.text("action.refresh"))
-        }.padding(16)
-    }
-
-    private func sidebar(_ content: NotebookBuiltInReviewSnapshot) -> some View {
-        List {
-            Button { session.endPractice() } label: {
-                Label(BuiltInReviewCopy.text("nav.overview"), systemImage: "chart.bar")
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
-            }.buttonStyle(.plain).accessibilityIdentifier("builtinReview.overview")
-            Section(BuiltInReviewCopy.text("nav.selected")) {
-                ForEach(groups(content), id: \.selection.senseID) { group in
+            HStack(spacing: 8) {
+                if session.route == .practice {
+                    Button(BuiltInReviewCopy.text("action.finish")) { session.endPractice() }
+                        .accessibilityIdentifier("builtinReview.finish")
+                } else {
                     Button {
-                        session.endPractice()
-                        session.route = .sense(group.selection)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(sourceTitle(group, content: content)).font(.body.weight(.medium)).lineLimit(2)
-                            if let source = BuiltInReviewSource.value(group.selection, in: content.scope) {
-                                Text(source.sense.meaning).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            }
-                            Text(BuiltInReviewCopy.status(group.status)).font(.caption2).foregroundStyle(.secondary)
-                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
-                    }.buttonStyle(.plain)
-                        .accessibilityIdentifier("builtinReview.sense." + group.selection.senseID.uuidString)
+                        if session.content?.queue.isEmpty == false { session.start() } else { session.endPractice() }
+                    } label: { Image(systemName: "chevron.left") }
+                        .help(String(localized: "Review", table: "ReviewCards"))
                 }
-            }
-        }.listStyle(.sidebar).disabled(session.isBusy)
+                Button { choosingSense = true } label: {
+                    Label(BuiltInReviewCopy.text("nav.selected"), systemImage: "line.3.horizontal.decrease")
+                }.lingroveNativeActionButtonStyle().accessibilityIdentifier("builtinReview.choose")
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Text(String(localized: "Review", table: "ReviewCards"))
+                .font(.headline).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: .infinity).accessibilityAddTraits(.isHeader)
+            HStack(spacing: 14) {
+                if session.isBusy { ProgressView().controlSize(.small) }
+                if let undo = session.latestUndo {
+                    Button { session.undo(undo) } label: { Image(systemName: "arrow.uturn.backward") }
+                        .help(BuiltInReviewCopy.text("action.undo")).accessibilityIdentifier("builtinReview.session.undo")
+                }
+                Button { showingQueue = true } label: { Image(systemName: "list.bullet") }
+                    .help(String(localized: "Review", table: "ReviewCards"))
+                    .accessibilityIdentifier("builtinReview.queue")
+                Button { showingHistory = true } label: { Image(systemName: "clock.arrow.circlepath") }
+                    .help(BuiltInReviewCopy.text("history.title"))
+                Button { session.reload() } label: { Image(systemName: "arrow.clockwise") }
+                    .help(BuiltInReviewCopy.text("action.refresh"))
+            }.buttonStyle(.plain).font(.title3).frame(maxWidth: .infinity, alignment: .trailing)
+        }.padding(.horizontal, 20).padding(.vertical, 14)
+            .disabled(session.isBusy || session.content == nil)
     }
 
-    @ViewBuilder
-    private func destination(_ content: NotebookBuiltInReviewSnapshot) -> some View {
+    @ViewBuilder private func destination(_ content: NotebookBuiltInReviewSnapshot) -> some View {
         switch session.route {
         case .overview: BuiltInReviewOverviewView(session: session, content: content)
         case let .sense(selection): BuiltInReviewSenseView(session: session, selection: selection, content: content)
         case .practice: BuiltInReviewPracticeView(session: session, content: content)
         }
     }
-
-    private func groups(_ content: NotebookBuiltInReviewSnapshot) -> [LingroveNotebookReviewGroup] {
-        content.review.groups.values.sorted { lhs, rhs in
-            let left = sourceTitle(lhs, content: content)
-            let right = sourceTitle(rhs, content: content)
-            if left != right { return left.localizedStandardCompare(right) == .orderedAscending }
-            return lhs.selection.senseID.uuidString < rhs.selection.senseID.uuidString
-        }
-    }
-
-    private func sourceTitle(_ group: LingroveNotebookReviewGroup, content: NotebookBuiltInReviewSnapshot) -> String {
-        BuiltInReviewSource.value(group.selection, in: content.scope)?.entry.expression
-            ?? BuiltInReviewCopy.text("state.missingSource")
-    }
 }
 
-/// The source projection is used only for labels and navigation. Historical review identity
-/// stays on enrollments/links, so a moved example cannot retarget a practice record.
+/// Label/navigation projection only. The actual enrollment and Card source keep their frozen
+/// identity, so a moved example or renamed expression cannot silently retarget a practice record.
 enum BuiltInReviewSource {
     static func value(_ selection: VocabularySelection, in scope: LingroveNotebookSnapshot)
         -> (entry: VocabularyEntry, sense: VocabularySense)? {
