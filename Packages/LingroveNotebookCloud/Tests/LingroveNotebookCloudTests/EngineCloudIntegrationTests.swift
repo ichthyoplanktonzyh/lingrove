@@ -60,6 +60,36 @@ struct EngineCloudIntegrationTests {
         #expect(restored.body == next.body)
     }
 
+    @Test func pendingMaterialMediaRemainsWorkUntilExactVersion2Acknowledgment() async throws {
+        let f = try EngineCloudFixture(); defer { f.cleanUp() }
+        let saved = try f.engine.saveLingroveNotebook(Self.document(), basedOn: f.engine.loadLingroveNotebook(workspaceId: f.workspace))
+        let entry = saved.document.entries[0]
+        var bytes = Data("RIFF".utf8); bytes.append(contentsOf: [36, 0, 0, 0]); bytes.append(Data("WAVE".utf8)); bytes.append(Data(repeating: 0, count: 32))
+        let reference = ReviewMaterialMediaReference(digest: ReviewMaterialMediaReference.digest(bytes), mimeType: "audio/wav", byteCount: bytes.count)
+        let prepared = ReviewMaterialPreparedMedia(reference: reference, data: bytes)
+        let plan = ReviewMaterialPlan(layout: .init(front: [.init(source: .expressionAudio)], back: [.init(source: .meaning)]),
+            audio: [.expression: .init(reference: reference, textHash: ReviewMaterialAudio.textHash(entry.expression), fingerprint: String(repeating: "a", count: 64))])
+        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: .init(entryID: entry.id, senseID: entry.senses[0].id), materialPlan: plan)
+        _ = try f.engine.enrollLingroveNotebookSenses([draft], scope: saved, media: [prepared])
+        let storage = NotebookEngineStorage(engine: f.engine), binding = try storage.capture(scope: f.scope)
+        let request = try await storage.request(binding)
+        let canonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: request.body)
+        #expect(request.hasWork && canonical.protocolVersion == 2 && canonical.media == [prepared])
+        #expect(canonical.enrollments.isEmpty && canonical.links.isEmpty && canonical.operations.isEmpty)
+        func reply(version: Int, digests: [String]) throws -> Data {
+            try JSONSerialization.data(withJSONObject: ["protocolVersion": version,
+                "notebookId": f.scope.notebookID.uuidString, "replicaId": f.scope.replicaID.uuidString,
+                "acknowledged": [], "acknowledgedMedia": digests, "confirmed": [], "afterSequence": canonical.afterSequence,
+                "hasMore": false, "changes": []] as [String: Any])
+        }
+        await #expect(throws: (any Error).self) { try await storage.apply(reply(version: 1, digests: []), request: request, binding: binding) }
+        #expect(try await storage.request(binding).body == request.body)
+        _ = try await storage.apply(reply(version: 2, digests: [reference.digest]), request: request, binding: binding)
+        let next = try await storage.request(binding)
+        let nextCanonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: next.body)
+        #expect(next.hasWork && nextCanonical.media == nil && nextCanonical.links.first?.value.materialPlan == plan)
+    }
+
     @Test func retiredBindingsAndClosedOriginalConnectionCannotWriteThroughPorts() async throws {
         let f = try EngineCloudFixture(); defer { f.cleanUp() }
         let saved = try f.engine.saveLingroveNotebook(Self.document(),

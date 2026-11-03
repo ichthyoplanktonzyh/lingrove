@@ -40,3 +40,9 @@ its executed evidence is recorded separately in `docs/MAC_WORKSPACE.md`.
 The adapter derives from Lingrove and the existing Nibomo storage IO at checkpoint `9351fd93`.
 Lingrove additions use the repository license; the original upstream MIT notice is retained in
 `UPSTREAM-MIT-LICENSE`. No new endpoint, guest bootstrap, telemetry or production switch is added.
+
+The review adapter also preserves the engine's version-2 material/media envelope and counts its
+pending resource messages as work. The existing runner transports the exact bounded body and
+cannot report settlement until the engine has validated version, exact digest ACKs and operation
+ACKs. Old servers leave rich material pending with a protocol failure. The backend adoption and
+unverified real-server boundary are documented in `../LingroveNotebookEngine/README.md`.

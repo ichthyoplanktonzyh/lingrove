@@ -25,12 +25,12 @@ runner. Hosts serialize the non-Sendable facade on their own owner; no lock or t
 may span an `await`. The package retains the mobile Swift 5 language mode while exporting
 Sendable snapshots/bindings/commands already used across task boundaries.
 
-The owning initializer creates the complete current mobile schema (version 38), including
-Card scheduling, corpus, journal, private overlay, media, staging and review tables. It accepts
-only an empty or current-version database. An unsupported version fails without erasing or
-migrating a real application directory. Mobile legacy development migration stays in its host
-initializer and calls the same shared schema/bootstrap. There is one SQLite truth, not a
-JSON mirror or separate review database.
+The owning initializer creates schema 39, including Card scheduling, corpus, journal, private
+snapshot, media, staging and review tables. It also upgrades the immediately preceding live
+schema 38 in one transaction, adding the optional material recipe and review-media table without
+rewriting corpus, authored Card faces or ratings. Other unsupported versions fail without erasing
+or rewriting data. A borrowing host must adopt this schema through its own reviewed initializer.
+There is one SQLite truth, not a JSON mirror or separate review database.
 
 | Responsibility | Files and collaborators | Flow and invariant |
 | --- | --- | --- |
@@ -40,6 +40,7 @@ JSON mirror or separate review database.
 | Upload, conflict, retry | upload/staged/closure/terminal/retry/conflict stores | local journal → frozen bounded public request → exact receipt/rejection → rebase/apply; later edits and unsent operations remain pending |
 | Media | media and media queue stores | validated PNG bytes in injected root → workspace authorization map/pins → durable queued/claimed/control state; live leases and pending journal/ownership references prevent premature cleanup |
 | Review admission | `Commands/*LingroveNotebookReview.swift`, Card/link/enrollment stores | explicit saved sense draft → one transaction for enrollment, Card, provenance, hold and journals; collect/prepare alone never enrolls |
+| Review resource ownership | `LingroveNotebookReviewMediaStore` | prepared PNG/WAV/MP3 bytes → validated workspace-owned SQLite rows + native asset metadata in the same save transaction; no pre-save file publication or legacy media upload |
 | Material refresh | `LingroveNotebookReviewMaterialStore`, `LingroveNotebookCardMaterial` | old generated + current authored + new source material → field-wise three-way update; literal UTF-8 spelling preserves manual ownership; scheduling/history are untouched |
 | Scheduling and queue | `Review/Scheduling`, `Review/Queue`, Card read/write SQL | current persisted Card + settings + rating → existing FSRS-6 schedule; queue ordering, strict timestamps and timezone rules remain the mobile implementation |
 | Rating, undo, history | `Commands/*Review.swift`, `*NotebookUndo.swift`, `Review/Sync` | immutable rating event and schedule journal commit together; undo targets the persisted causal schedule head and restores scheduling fields while retaining authored faces and history |
@@ -76,6 +77,58 @@ pin/prune; review request/apply with typed `LingroveNotebookReviewRequest/Respon
 code must freeze/encode data while borrowing these synchronous boundaries and release them
 before waiting for HTTP. A failed review lane does not change the corpus cursor. B-to-A port
 adapters and app lifecycle wiring belong to the integration checkpoint, not this package.
+
+## Shared review material
+
+`LingroveNotebook.ReviewMaterialPlan` owns an ordered `ReviewLayout`, stable selected example,
+optional name and typed audio descriptors. It contains no Anki deck, field mapping, filename or
+receipt. `ReviewMaterialResolver` reads saved entry/sense values and resolves text, content blocks,
+gap prompts and audio kinds identically for both targets. Anki chooses safe HTML; the engine's
+`LingroveNotebookCardMaterial.render(entry:sense:plan:workspaceID:)` chooses safe native Markdown
+and scoped `fcasset:` IDs. Source text is escaped before markup; custom block formatting remains
+explicit. Audio hashes exact source UTF-8 bytes, so a changed expression/sentence requires fresh
+recording rather than silently playing an old one.
+
+A draft and durable `LingroveNotebookCardLink.materialPlan` retain that recipe. Create, prepare,
+retained edit, source refresh, remote apply, card-ID repair and explicit account ownership copy
+preserve it. The generated front/back/tags baseline remains separate from edited Card fields.
+Refresh updates a field only when its literal stored bytes still equal that baseline; scheduler
+fields and immutable events remain owned by the Card writer. A missing source/example/block or
+stale recording blocks ordinary queue admission; explicitly retained saved faces remain usable.
+
+Hosts hold `[ReviewMaterialPreparedMedia]` in their editor until the explicit command. Native
+`enrollBuiltInNotebookSense`, atomic `enrollBuiltInNotebookSenses(_:inputs:media:actions:)`,
+`addBuiltInNotebookExercise`, `prepareNotebookExercise` and `saveRetainedBuiltInNotebookMaterial`
+accept those bytes. Every selected batch group supplies its own frozen action, and one failure
+rolls back the complete batch. The media store verifies digest, bounded type/size and PNG decoding
+or audio signatures. Source image reuse additionally requires the same workspace's corpus map.
+A cancelled/failed save creates no review-media rows or files. Native reads borrow the existing
+exact saved-context transaction and call `media(assetID:workspaceID:)`; a source URL or arbitrary
+filesystem path never enters rendering. Saved review resources remain retained with workspace
+ownership, including hidden generated media and histories; workspace deletion removes them.
+
+## Review wire version 2
+
+Rich recipes and their resources require the existing held review lane's **version 2** contract.
+A pending resource is sent first as one bounded `media` item (`reference` plus base64 `data`), with
+no dependent Card operations in that request. The response must use version 2 and provide exactly
+the sent digest set in `acknowledgedMedia`. The same transaction stores that ACK and the review
+cursor. Later recipe/Card requests retain version 2 and their ordinary exact operation ACKs.
+Plain existing workspaces may still request version 1; an updated server may answer version 2
+when delivering rich material. A version 2 request can never accept a version 1 response.
+
+Incoming version 2 responses may include bounded `media` before `exercise` changes. The engine
+validates and registers those workspace-owned bytes with the recipe/Card/ACK/cursor transaction.
+Each reference is at most 4 MiB; a recipe holds at most 16 MiB, requests at most 7 MiB encoded,
+and the transport retains its 8 MiB response limit. Images use PNG dimensions; audio uses only
+`audio/wav` or `audio/mpeg`. No credentials, local path, Anki receipt, endpoint or voice credential
+is serialized. Unsupported protocol/format, absent media ACKs or missing owned bytes fail and
+leave requests pending; an old server cannot silently discard recipe/audio and report sync success.
+
+The independent backend/mobile repository must explicitly adopt this contract and the schema-39
+shared snapshot before real rich-material synchronization is available. Local cross-database
+codec/apply tests are evidence for this boundary, not a deployed server or physical-device pass.
+No service endpoint, hosting configuration, consent rule or production deployment changes here.
 
 ## Validation and provenance
 

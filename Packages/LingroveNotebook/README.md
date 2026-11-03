@@ -146,3 +146,14 @@ and validate it there, import the reviewed shared snapshot into lingrove-mobile,
 `scripts/notebook_catalog/generate.py --write` and review the source receipt. The mobile static
 catalog check verifies byte equality. Mac does not need the backend exporter to build.
 Install/upgrade preserves key-derived UUIDs, local overlays, custom children and retired identities.
+
+## Target-neutral review preparation
+
+`ReviewMaterial.swift` owns the durable recipe, ordered resolved values and content-addressed
+prepared media. `ReviewMaterialResolver.swift` owns pure source selection, Unicode-safe selected
+spans, template rebinding and typed missing-content failures. Built-in review and Anki borrow these
+values; rendering, generation, persistence and export remain at their own boundaries. A plan is
+independent of an Anki connection and independent of a Card schedule. Preparing it enrolls nothing.
+Audio bytes stay in transient `ReviewMaterialPreparedMedia` values until explicit save/export;
+a source text hash prevents reusing speech for edited wording. The engine owns saved built-in
+resources and the optional linked recipe; this package performs no IO or model request.
