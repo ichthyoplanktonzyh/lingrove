@@ -1,18 +1,23 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W4_PROGRESS_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_PROGRESS_UI_REUSE.md.
 import SwiftUI
 import LingroveNotebookEngine
 
-// Shared card chrome for every Progress screen section.
-/// Shared extracted Progress card chrome; it applies only inside the new Progress destination.
+/// Every Progress section borrows this small native card treatment from its destination.
+/// Semantic control backgrounds and separators resolve at render time for the owning window;
+/// this modifier carries no theme state and does not affect other hosting subtrees.
 struct NotebookProgressCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
+            .padding(20)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
             )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
+            }
     }
 }

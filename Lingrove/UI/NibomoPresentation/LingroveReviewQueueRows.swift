@@ -1,11 +1,12 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import SwiftUI
 import LingroveNotebookEngine
 
 private let reviewCardsStringsTableName = "ReviewCards"
 
-/// Extracted Nibomo queue row. Its parent supplies a frozen shared-engine Card and current flag.
+/// A read-only native queue card receives a frozen engine Card and current flag from its parent.
+/// Source text remains selectable; status uses a written badge as well as the inherited accent.
 struct LingroveReviewQueuePreviewCardRow: View {
     let card: Card
     let isCurrent: Bool
@@ -15,6 +16,7 @@ struct LingroveReviewQueuePreviewCardRow: View {
             HStack(alignment: .top, spacing: 12) {
                 Text(card.frontText)
                     .font(.headline)
+                    .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if isCurrent {
@@ -32,6 +34,7 @@ struct LingroveReviewQueuePreviewCardRow: View {
 
             Text(card.backText)
                 .font(.subheadline)
+                .textSelection(.enabled)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
@@ -45,11 +48,11 @@ struct LingroveReviewQueuePreviewCardRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(
-                    .tint.opacity(isCurrent ? 0.35 : 0),
+                    isCurrent ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor).opacity(0.45),
                     lineWidth: 1
                 )
         }

@@ -5,14 +5,24 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// A native adaptation of Nibomo’s material form and separate front/back editor screens. This
-/// sheet owns the original value draft, including its CAS baseline. Navigation, preview and
-/// Cancel do not write; Save passes that same draft to the existing session/IO writer.
+/// The sheet owns one value draft and an original editable projection for discard protection.
+/// Front/back navigation and preview share that draft; only Save hands its unchanged CAS baseline
+/// to the existing session writer. Native form and sheet chrome inherit the workspace appearance.
 struct BuiltInReviewPreparationView: View {
     @ObservedObject var session: BuiltInReviewSession
     @State var draft: BuiltInReviewDraft
     @State private var preview = false
+    @State private var confirmingDiscard = false
     @Environment(\.dismiss) private var dismiss
+    private let original: BuiltInReviewDraftPresentationSnapshot
+
+    init(session: BuiltInReviewSession, draft: BuiltInReviewDraft) {
+        self.session = session
+        _draft = State(initialValue: draft)
+        original = .init(draft)
+    }
+
+    private var hasEdits: Bool { BuiltInReviewDraftPresentationSnapshot(draft) != original }
 
     private var source: (entry: VocabularyEntry, sense: VocabularySense)? {
         BuiltInReviewSource.value(draft.selection, in: draft.snapshot)
@@ -42,7 +52,8 @@ struct BuiltInReviewPreparationView: View {
             LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
                 Form {
                     Section {
-                        Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource")).font(.headline)
+                        Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"))
+                            .font(.headline).textSelection(.enabled)
                         Text(BuiltInReviewCopy.text("description.preparation")).foregroundStyle(.secondary)
                     }
                     if let source {
@@ -77,7 +88,7 @@ struct BuiltInReviewPreparationView: View {
                             BuiltInReviewFace(text: draft.back, images: session.images)
                         }
                     }
-                }.formStyle(.grouped).disabled(session.isBusy)
+                }.formStyle(.grouped).padding(.top, 8).disabled(session.isBusy)
             }
             .navigationTitle(title)
             .navigationDestination(for: LingroveReviewEditorField.self) { field in
@@ -85,7 +96,9 @@ struct BuiltInReviewPreparationView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel", table: "ReviewCards")) { session.draft = nil; dismiss() }
+                    Button(String(localized: "Cancel", table: "ReviewCards")) {
+                        if hasEdits { confirmingDiscard = true } else { discard() }
+                    }
                         .keyboardShortcut(.cancelAction).disabled(session.isMutating)
                         .accessibilityIdentifier("builtinReview.prepare.cancel")
                 }
@@ -97,9 +110,21 @@ struct BuiltInReviewPreparationView: View {
                         .accessibilityIdentifier("builtinReview.prepare.save")
                 }
             }
-        }.frame(width: 620, height: 650).tint(.orange).preferredColorScheme(.dark)
-            .interactiveDismissDisabled(session.isMutating)
+        }
+            .frame(minWidth: 540, idealWidth: 620, minHeight: 520, idealHeight: 650)
+            .interactiveDismissDisabled(session.isMutating || hasEdits)
+            .alert(BuiltInReviewCopy.text("draft.discardTitle"), isPresented: $confirmingDiscard) {
+                Button(BuiltInReviewCopy.text("draft.keepEditing"), role: .cancel) { }
+                    .accessibilityIdentifier("builtinReview.prepare.keepEditing")
+                Button(BuiltInReviewCopy.text("draft.discard"), role: .destructive) { discard() }
+                    .accessibilityIdentifier("builtinReview.prepare.discard")
+            } message: { Text(BuiltInReviewCopy.text("draft.discardDetail")) }
             .accessibilityIdentifier("builtinReview.preparation")
+    }
+
+    private func discard() {
+        session.draft = nil
+        dismiss()
     }
 }
 
@@ -127,9 +152,9 @@ struct LingroveReviewTextPreviewRow: View {
     }
 }
 
-/// Extracted CardTextEditorScreen’s text area. The native TextEditor edits a binding owned by
-/// the preparation sheet; it owns focus only. Media import/telemetry/mobile store are omitted
-/// because this screen edits already saved corpus material rather than creating remote assets.
+/// The native editor borrows the preparation sheet's binding and owns only field focus.
+/// Its native text background resolves with the host; returning to the form retains both edits
+/// and the parent's original discard baseline without saving anything.
 struct LingroveReviewTextEditorScreen: View {
     let field: LingroveReviewEditorField
     @Binding var text: String
@@ -140,7 +165,10 @@ struct LingroveReviewTextEditorScreen: View {
             TextEditor(text: $text)
                 .font(.body).scrollContentBackground(.hidden).focused($focused)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor).opacity(0.5))
+                }
                 .accessibilityIdentifier(field == .front ? "builtinReview.prepare.front" : "builtinReview.prepare.back")
         }.padding(.vertical, 16)
             .navigationTitle(String(localized: field == .front ? "Front" : "Back", table: "ReviewCards"))

@@ -1,5 +1,5 @@
 // Native port of Nibomo ReviewCardTextSelectionSheet.swift; Copyright (c) 2026 Kirill Markin (MIT).
-// License: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// License: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import AppKit
 import SwiftUI
 
@@ -11,8 +11,9 @@ struct LingroveReviewTextSelection: Identifiable {
     let sourceText: String
 }
 
-/// Nibomo’s complete-source selection sheet with UITextView mechanically replaced by an
-/// AppKit text view. Native text selection retains keyboard copy, including Markdown source.
+/// Complete-source selection borrows the selected face's immutable source. The native text
+/// view inherits its sheet's appearance and retains standard selection and keyboard copying,
+/// including Markdown source; it does not create another editable material draft.
 struct LingroveReviewTextSelectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     let selection: LingroveReviewTextSelection
@@ -25,9 +26,10 @@ struct LingroveReviewTextSelectionSheet: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(String(localized: "Done", table: "ReviewCards")) { dismiss() }
                             .keyboardShortcut(.cancelAction)
+                            .accessibilityIdentifier("builtinReview.textSelection.done")
                     }
                 }
-        }.frame(width: 620, height: 460)
+        }.frame(minWidth: 540, idealWidth: 620, minHeight: 360, idealHeight: 460)
     }
 }
 

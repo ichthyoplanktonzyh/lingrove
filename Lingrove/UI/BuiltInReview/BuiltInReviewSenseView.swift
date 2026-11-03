@@ -4,9 +4,9 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// Binds Nibomo’s native material List/Section flow to one explicitly selected sense. The
-/// session owns commands and frozen snapshots; this view only supplies the group it displays.
-/// Several exercises, source recovery and history remain separate from participation status.
+/// The native grouped form displays one sense and its exercises. The app-owned session owns
+/// commands and frozen snapshots; this view only projects participation and material, keeping
+/// enrollment, source recovery and practice as separately named user actions.
 struct BuiltInReviewSenseView: View {
     @ObservedObject var session: BuiltInReviewSession
     let selection: VocabularySelection
@@ -70,7 +70,8 @@ struct BuiltInReviewSenseView: View {
                 } else {
                     Text(BuiltInReviewCopy.text(source == nil ? "error.source" : "state.saveFirst")).foregroundStyle(.secondary)
                 }
-            }.formStyle(.grouped).disabled(session.isBusy)
+            }
+            .formStyle(.grouped).padding(.top, 8).disabled(session.isBusy)
         }.accessibilityIdentifier("builtinReview.sense.detail")
     }
 

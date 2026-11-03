@@ -1,14 +1,14 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W4_PROGRESS_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_PROGRESS_UI_REUSE.md.
 /// Extracted personal chart formatting and palette. Notebook copy uses its own Mac catalog;
 /// network/leaderboard formatting and the mobile store are outside this module.
 import Foundation
 import SwiftUI
 import LingroveNotebookEngine
 
-/// The upstream AccentColor asset is orange. A destination-local value prevents the Mac's
-/// system accent from changing the extracted calendar while leaving the corpus UI untouched.
-nonisolated let notebookProgressAccent = Color(red: 1, green: 0.404, blue: 0.098)
+/// Calendar emphasis follows Lingrove's existing accent. Chart categories below retain their
+/// own semantic palette, so changing the accent never erases rating or scheduling distinctions.
+nonisolated let notebookProgressAccent = Color.accentColor
 
 nonisolated let progressReviewRatingChartOrder: [ReviewRating] = [.again, .hard, .good, .easy]
 
@@ -16,13 +16,19 @@ nonisolated func progressReviewChartPageDateRange(
     page: NotebookProgressReviewChartPage,
     calendar: Calendar
 ) -> String {
+    progressDateRangeLabel(from: page.startDate, to: page.endDate, calendar: calendar)
+}
+
+/// Calendar and chart captions share one civil-date formatter, so their visible range uses
+/// the same locale and frozen query timezone rather than the machine's current timezone.
+nonisolated func progressDateRangeLabel(from start: Date, to end: Date, calendar: Calendar) -> String {
     let formatter = DateIntervalFormatter()
     formatter.calendar = calendar
     formatter.locale = Locale.autoupdatingCurrent
     formatter.timeZone = calendar.timeZone
     formatter.dateStyle = .medium
     formatter.timeStyle = .none
-    return formatter.string(from: page.startDate, to: page.endDate)
+    return formatter.string(from: start, to: end)
 }
 
 nonisolated func progressReviewChartDateLabel(date: Date, calendar: Calendar) -> String {
@@ -70,13 +76,13 @@ nonisolated func progressReviewRatingTitle(rating: ReviewRating) -> String {
 nonisolated func progressReviewRatingColor(rating: ReviewRating) -> Color {
     switch rating {
     case .again:
-        return Color(red: 0xD7 / 255, green: 0x26 / 255, blue: 0x3D / 255)
+        return .red
     case .hard:
-        return Color(red: 0xE6 / 255, green: 0x9F / 255, blue: 0x00 / 255)
+        return .orange
     case .good:
-        return Color(red: 0x2B / 255, green: 0xB6 / 255, blue: 0x73 / 255)
+        return .green
     case .easy:
-        return Color(red: 0x3F / 255, green: 0x7C / 255, blue: 0xC8 / 255)
+        return .blue
     }
 }
 
@@ -166,27 +172,26 @@ nonisolated func progressReviewScheduleBucketTitle(key: ReviewScheduleBucketKey)
     }
 }
 
-// Palette decisions: docs/progress-pie-palette.md. Keep the hex values in sync with
-// apps/android/feature/progress/src/main/java/com/flashcardsopensourceapp/feature/progress/sections/NotebookProgressReviewScheduleSection.kt::reviewScheduleBucketColors
-// and apps/web/src/screens/progress/reviewSchedule/progressReviewScheduleModel.ts::reviewScheduleBucketColors.
+// These eight category colors remain independent of accent. Native semantic variants adapt
+// to Aqua/darkAqua, and every wedge is also named and counted in the selectable legend.
 nonisolated func progressReviewScheduleBucketColor(key: ReviewScheduleBucketKey) -> Color {
     switch key {
     case .new:
-        return Color(red: 0xF4 / 255, green: 0xC4 / 255, blue: 0x30 / 255)
+        return .yellow
     case .today:
-        return Color(red: 0xD7 / 255, green: 0x26 / 255, blue: 0x3D / 255)
+        return .red
     case .days1To7:
-        return Color(red: 0x1F / 255, green: 0xB5 / 255, blue: 0xC1 / 255)
+        return .cyan
     case .days8To30:
-        return Color(red: 0x8E / 255, green: 0x5B / 255, blue: 0xD9 / 255)
+        return .purple
     case .days31To90:
-        return Color(red: 0x2B / 255, green: 0xB6 / 255, blue: 0x73 / 255)
+        return .green
     case .days91To360:
-        return Color(red: 0xE6 / 255, green: 0x9F / 255, blue: 0x00 / 255)
+        return .orange
     case .years1To2:
-        return Color(red: 0x3F / 255, green: 0x7C / 255, blue: 0xC8 / 255)
+        return .blue
     case .later:
-        return Color(red: 0x7A / 255, green: 0x80 / 255, blue: 0x88 / 255)
+        return .gray
     }
 }
 

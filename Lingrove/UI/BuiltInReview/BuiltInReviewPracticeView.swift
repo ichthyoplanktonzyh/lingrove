@@ -1,11 +1,11 @@
 // Card structure adapted from Nibomo ReviewView.swift; Copyright (c) 2026 Kirill Markin (MIT).
-// License: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// License: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import LingroveNotebookEngine
 import SwiftUI
 
-/// Native binding for Nibomo’s card column and fixed bottom answer bar. The app-owned session
-/// supplies one frozen question; these views only reveal, edit or submit that same question.
-/// Speech and local images come from existing Lingrove services, never a new mobile store.
+/// This scrolling card column borrows one frozen question from the app-owned session. The
+/// answer bar stays outside the scroller, while source, image, selection and speech actions
+/// continue to use that same question identity rather than a fresh repository lookup.
 struct BuiltInReviewPracticeView: View {
     @ObservedObject var session: BuiltInReviewSession
     let content: NotebookBuiltInReviewSnapshot
@@ -41,6 +41,16 @@ struct BuiltInReviewPracticeView: View {
                         Text(BuiltInReviewCopy.text("error.write")).foregroundStyle(.red).padding()
                     }
                 }
+            } else if case .finished = session.practice?.phase {
+                ContentUnavailableView {
+                    Label(BuiltInReviewCopy.text("session.finished"), systemImage: "checkmark.circle")
+                } description: {
+                    Text(BuiltInReviewCopy.text("session.scheduled"))
+                } actions: {
+                    LabeledContent(BuiltInReviewCopy.text("session.answered"),
+                        value: (session.practice?.answered ?? 0).formatted())
+                        .frame(maxWidth: 320)
+                }
             } else {
                 BuiltInReviewOverviewView(session: session, content: content)
             }
@@ -56,19 +66,23 @@ struct BuiltInReviewPracticeView: View {
                 HStack(spacing: 12) {
                     Label(context.card.tags.isEmpty ? String(localized: "No tags", table: "ReviewCards")
                         : context.card.tags.joined(separator: ", "), systemImage: "tag")
-                    Label(context.card.reps.formatted(), systemImage: "arrow.clockwise")
+                    Label {
+                        Text(BuiltInReviewCopy.text("count.cardReviews") + ": " + context.card.reps.formatted())
+                    } icon: { Image(systemName: "arrow.clockwise") }
                 }.layoutPriority(1)
                 Spacer(minLength: 12)
                 Button {
                     session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content)
-                } label: { Image(systemName: "pencil.circle.fill").font(.title3) }
-                    .buttonStyle(.plain).accessibilityLabel(String(localized: "Edit card", table: "ReviewCards"))
+                } label: { Image(systemName: "pencil") }
+                    .buttonStyle(.bordered).accessibilityLabel(String(localized: "Edit card", table: "ReviewCards"))
+                    .help(String(localized: "Edit card", table: "ReviewCards"))
                     .accessibilityIdentifier("builtinReview.practice.edit")
             }.font(.subheadline).foregroundStyle(.secondary)
             if session.onOpenSource != nil, BuiltInReviewSource.value(context.group.selection, in: context.snapshot) != nil {
                 Button { session.openSource(context) } label: {
                     Label(BuiltInReviewCopy.text("action.source"), systemImage: "arrow.up.forward.square")
-                }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }.buttonStyle(.bordered).controlSize(.small)
+                    .accessibilityIdentifier("builtinReview.practice.source")
             }
             face(context, answer: false).id("front")
             if isAnswerVisible { face(context, answer: true).id("back") }

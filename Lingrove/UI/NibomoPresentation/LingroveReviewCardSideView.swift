@@ -1,14 +1,14 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import SwiftUI
 import AppKit
 
 private let reviewCardsStringsTableName: String = "ReviewCards"
-let lingroveReviewContentSurfaceCornerRadius: CGFloat = 24
+let lingroveReviewContentSurfaceCornerRadius: CGFloat = 12
 
-/// Extracted Nibomo card surface. The review view owns it for one pinned face and injects
-/// local image bytes and speech actions. AppKit replaces only UIKit copying; no remote loader
-/// or AI companion is imported to render the source-owned material.
+/// One pinned face borrows source text, local image bytes and speech closures from practice.
+/// The card owns only temporary copy feedback. Native semantic surfaces keep the same material
+/// legible in either host appearance without changing the window or another destination.
 struct LingroveReviewCardSideView: View {
     let label: String
     let content: [BuiltInReviewSavedImage]
@@ -47,7 +47,7 @@ struct LingroveReviewCardSideView: View {
             Button(action: self.onSelectText) {
                 Text(self.label)
                     .font(.caption)
-                    .textCase(.uppercase)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -93,13 +93,8 @@ struct LingroveReviewCardSideView: View {
                     Image(systemName: self.hasCopied ? "checkmark" : "square.on.square")
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .padding(6)
-                        .frame(minWidth: 32, minHeight: 32)
-                        .background(.thinMaterial, in: Capsule())
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier(self.surfaceStyle == .front
                     ? "builtinReview.front.copy" : "builtinReview.back.copy")
                 .accessibilityLabel(Text(self.copyActionLabel) + Text(", ") + Text(self.label))
@@ -110,13 +105,10 @@ struct LingroveReviewCardSideView: View {
                         Image(systemName: self.isSpeechPlaying ? "speaker.wave.2.fill" : "speaker.wave.2")
                             .font(.callout.weight(.semibold))
                             .foregroundStyle(.secondary)
-                            .padding(6)
-                            .frame(minWidth: 32, minHeight: 32)
-                            .background(.thinMaterial, in: Capsule())
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier(self.surfaceStyle == .front
+                        ? "builtinReview.front.speech" : "builtinReview.back.speech")
                     .accessibilityLabel(
                         self.isSpeechPlaying
                             ? String(
@@ -139,6 +131,10 @@ struct LingroveReviewCardSideView: View {
             self.hasCopied = false
         }
         .background(backgroundStyle, in: RoundedRectangle(cornerRadius: lingroveReviewContentSurfaceCornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: lingroveReviewContentSurfaceCornerRadius, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
+        }
         .alert(
             String(localized: "Copy", table: reviewCardsStringsTableName),
             isPresented: Binding(
@@ -163,12 +159,12 @@ struct LingroveReviewCardSideView: View {
     private var backgroundStyle: AnyShapeStyle {
         switch surfaceStyle {
         case .front:
-            return AnyShapeStyle(.thinMaterial)
+            return AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
         case .back:
-            return AnyShapeStyle(.regularMaterial)
+            return AnyShapeStyle(Color(nsColor: .textBackgroundColor))
         }
     }
 }
 
-/// The surface role chooses Nibomo’s original material contrast, not a separate Card model.
+/// The face role chooses native surface contrast and accessibility IDs for one displayed card.
 enum LingroveReviewCardSurfaceStyle { case front, back }

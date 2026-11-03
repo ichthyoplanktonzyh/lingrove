@@ -1,5 +1,5 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W4_PROGRESS_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_PROGRESS_UI_REUSE.md.
 import Charts
 import SwiftUI
 import LingroveNotebookEngine
@@ -37,8 +37,9 @@ private struct ProgressReviewRatingLegendEntry: Identifiable {
     }
 }
 
-/// Nibomo’s paged stacked chart and day/rating selection, with macOS colors and notebook data.
-/// Its parent owns the immutable series; selection lives only for this visible destination.
+/// The parent supplies an immutable daily series; this section owns only week and day/rating
+/// selection. Native paging and legend buttons keep the complete stacked distribution usable
+/// with keyboard navigation, while chart gestures remain available for choosing a day.
 struct NotebookProgressReviewsSection: View {
     let chartDays: [NotebookProgressChartDay]
     let chartCalendar: Calendar
@@ -234,10 +235,9 @@ struct NotebookProgressReviewsSection: View {
                         Button(action: self.showPreviousPage) {
                             Image(systemName: "chevron.backward")
                                 .font(.body.weight(.semibold))
-                                .frame(minWidth: 44, minHeight: 44)
-                                .contentShape(Rectangle())
                         }
                         .disabled(self.selectedPageIndex == 0)
+                        .accessibilityIdentifier("notebook.progress.reviews.previous")
                         .accessibilityLabel(
                             String(
                                 localized: "progress.screen.reviews.previous_week",
@@ -250,10 +250,9 @@ struct NotebookProgressReviewsSection: View {
                         Button(action: self.showNextPage) {
                             Image(systemName: "chevron.forward")
                                 .font(.body.weight(.semibold))
-                                .frame(minWidth: 44, minHeight: 44)
-                                .contentShape(Rectangle())
                         }
                         .disabled(self.selectedPageIndex >= self.chartPages.count - 1)
+                        .accessibilityIdentifier("notebook.progress.reviews.next")
                         .accessibilityLabel(
                             String(
                                 localized: "progress.screen.reviews.next_week",
@@ -262,7 +261,7 @@ struct NotebookProgressReviewsSection: View {
                                 comment: "Accessibility label for the next reviews week button"
                             )
                         )
-                    }
+                    }.buttonStyle(.bordered).controlSize(.regular)
                 }
             }
 
@@ -339,8 +338,9 @@ struct NotebookProgressReviewsSection: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .frame(height: progressChartHeight)
+                .accessibilityIdentifier("notebook.progress.reviews.chart")
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(self.visibleRatingLegendEntries) { entry in
                         ProgressReviewsRatingLegendRow(
                             entry: entry,
@@ -432,47 +432,45 @@ private struct ProgressReviewsRatingLegendRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(progressReviewRatingColor(rating: self.entry.rating))
-                .overlay(
-                    Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                )
-                .frame(
-                    width: progressReviewsLegendMarkerSize,
-                    height: progressReviewsLegendMarkerSize
-                )
-                .accessibilityHidden(true)
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(progressReviewRatingColor(rating: self.entry.rating))
+                    .overlay(
+                        Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .frame(
+                        width: progressReviewsLegendMarkerSize,
+                        height: progressReviewsLegendMarkerSize
+                    )
+                    .accessibilityHidden(true)
 
-            Text(progressReviewRatingTitle(rating: self.entry.rating))
-                .font(.subheadline)
-                .foregroundStyle(.primary)
+                Text(progressReviewRatingTitle(rating: self.entry.rating))
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
 
-            Spacer(minLength: 12)
+                Spacer(minLength: 12)
 
-            Text(self.detailText)
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(.tint.opacity(self.isSelected ? 0.12 : 0))
-                .padding(.horizontal, -8)
-                .padding(.vertical, -4)
-        )
-        .opacity(self.isAnyRatingSelected && self.isSelected == false ? 0.35 : 1.0)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard self.entry.count > 0 else {
-                return
+                Text(self.detailText)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-
-            self.onTap()
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.tint.opacity(self.isSelected ? 0.12 : 0))
+            )
+            .opacity(self.isAnyRatingSelected && self.isSelected == false ? 0.5 : 1.0)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(self.entry.count == 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(self.entry.count > 0 ? .isButton : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityLabel(progressReviewRatingTitle(rating: self.entry.rating))
         .accessibilityValue(self.detailText)
+        .help(progressReviewRatingTitle(rating: entry.rating) + ": " + detailText)
+        .accessibilityIdentifier("notebook.progress.rating." + String(entry.rating.rawValue))
     }
 
     private var detailText: String {

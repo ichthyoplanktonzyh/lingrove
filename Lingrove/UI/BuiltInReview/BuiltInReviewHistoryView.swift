@@ -1,9 +1,9 @@
 import LingroveNotebookEngine
 import SwiftUI
 
-/// History is an additional Lingrove business surface because Nibomo’s whole Progress tab is
-/// outside this extraction. It reads the same append-only engine records and sends the exact
-/// displayed undo identity back to the session; no view-maintained progress ledger is created.
+/// This native sheet reads the same append-only records as the app-owned review session. It
+/// displays historical and undone ratings separately and returns the exact displayed undo
+/// identity to that session; the view creates no separate statistics or write authority.
 struct BuiltInReviewHistoryView: View {
     @ObservedObject var session: BuiltInReviewSession
     let content: NotebookBuiltInReviewSnapshot
@@ -17,10 +17,14 @@ struct BuiltInReviewHistoryView: View {
                     LabeledContent(BuiltInReviewCopy.text("count.undos"), value: content.statistics.undoneRatings.formatted())
                 }
                 Section(BuiltInReviewCopy.text("history.title")) {
+                    if content.recentHistory.isEmpty {
+                        Text(BuiltInReviewCopy.text("history.empty")).foregroundStyle(.secondary)
+                    }
                     ForEach(content.recentHistory) { event in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text(BuiltInReviewCopy.rating(event.rating)).fontWeight(.semibold)
+                                Label(BuiltInReviewCopy.rating(event.rating), systemImage: event.rating.symbolName)
+                                    .fontWeight(.semibold).foregroundStyle(lingroveReviewRatingColor(event.rating))
                                 Spacer()
                                 if event.wasUndone { Text(BuiltInReviewCopy.text("history.undone")).foregroundStyle(.secondary) }
                                 if let undo = session.undoAction(cardID: event.cardID, basedOn: content),
@@ -42,6 +46,8 @@ struct BuiltInReviewHistoryView: View {
                         Button(String(localized: "Close", table: "ReviewCards")) { dismiss() }.keyboardShortcut(.cancelAction)
                     }
                 }
-        }.frame(width: 620, height: 520).preferredColorScheme(.dark).tint(.orange)
+        }
+        .frame(minWidth: 540, idealWidth: 620, minHeight: 440, idealHeight: 520)
+        .accessibilityIdentifier("builtinReview.historySheet")
     }
 }
