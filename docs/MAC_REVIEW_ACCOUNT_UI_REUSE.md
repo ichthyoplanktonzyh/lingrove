@@ -1,6 +1,6 @@
 # Native review and account UI source adoption
 
-Frozen source: `8a796f9d9cca57b75208e3636b24c9edf188a44e`. `Nibomo/` remains read-only.
+Frozen source: `8a796f9d9cca57b75208e3636b24c9edf188a44e`. The former `Nibomo/` paths below are historical extraction origins; current source is in the private mobile repository.
 The selected code is MIT, Copyright (c) 2026 Kirill Markin; the application bundles
 `Lingrove/Resources/NibomoUI-LICENSE.txt`. New native types use Lingrove names.
 

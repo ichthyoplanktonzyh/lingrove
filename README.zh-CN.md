@@ -186,7 +186,7 @@ open build/lingrove-dependencies/Lingrove.xcworkspace
 
 - [**FAQ.md**](FAQ.md) — 关于安装、离线使用、权限与更新机制的常见问题解答
 - [**docs/LANGUAGE_LEARNING.md**](docs/LANGUAGE_LEARNING.md) — 翻译交互细节、多源词典机制、TTS 生命周期与模型 Token 预算说明
-- [**移动生词本实施计划**](docs/MOBILE_NOTEBOOK_PLAN.md) — 共享 UI、iPhone 与 iPad 适配、同步、MCP 及后续复习的阶段计划与验收标准
+- [**仓库职责与移动端**](docs/REPOSITORY_BOUNDARIES.md) — 原生 Mac、共享核心和独立移动端私有仓库
 - [**ARCHITECTURE.md**](ARCHITECTURE.md) & [**SOURCE_LAYOUT.md**](SOURCE_LAYOUT.md) — 架构边界设计与源码目录导航
 - [**CONTRIBUTING.md**](CONTRIBUTING.md) & [**CODE_OF_CONDUCT.md**](CODE_OF_CONDUCT.md) — 参与贡献、运行评测套件与提交 Issue / PR 指南
 

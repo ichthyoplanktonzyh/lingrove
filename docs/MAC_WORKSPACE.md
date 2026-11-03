@@ -97,7 +97,7 @@ autocomplete context and screen content do not enter corpus sync.
 
 - [Review and account component sources](MAC_REVIEW_ACCOUNT_UI_REUSE.md).
 - [Personal Progress component sources](MAC_PROGRESS_UI_REUSE.md).
-- The app bundles Resources/NibomoUI-LICENSE.txt. Upstream Nibomo sources remain unchanged.
+- The app bundles Resources/NibomoUI-LICENSE.txt. Upstream source attribution is retained; the original mobile tree now lives in the private mobile repository.
 
 Review uses the extracted cards, answer controls, queue and material editor. Progress uses the
 original streak/calendar, paged stacked-rating chart and selectable schedule donut/legend.

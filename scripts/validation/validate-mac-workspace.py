@@ -203,6 +203,12 @@ def cleanup():
         ROOT / "build/lingrove-dependencies", ROOT / "build/tts-native", ROOT / "build/dictionary-native",
         ROOT / "build/ocr-native", BASE / "host", user_library / "Application Support" / HOST_NAME,
         user_library / "Caches" / HOST_ID, user_library / "Saved Application State" / (HOST_ID + ".savedState"), *orphan_data]
+    # This script also runs in the canonical checkout that supplies the fixed caches.
+    # A worktree owns its copied inputs; the canonical cache remains reusable by other
+    # checkouts and must not be removed just because source and destination coincide.
+    fixed_inputs = {CACHE / "lingrove-dependencies", CACHE / "tts-native"}
+    protected_inputs = [path for path in paths if path in fixed_inputs]
+    paths = [path for path in paths if path not in fixed_inputs]
     for path in paths:
         if path.exists():
             shutil.rmtree(path)
@@ -215,6 +221,7 @@ def cleanup():
             path.unlink()
     (BASE / "cleanup.json").write_text(json.dumps({
         "removed": [str(path) for path in paths], "allAbsent": all(not path.exists() for path in paths),
+        "fixedInputCachesPreserved": [str(path) for path in protected_inputs],
         "ownedPreferencesAbsent": not preferences.exists(), "sharedInputsUntouched": True,
         "interruptedFixtureDataAbsent": all(not path.exists() for path in orphan_data),
         "interruptedFixturePreferencesAbsent": all(not path.exists() for path in orphan_preferences),

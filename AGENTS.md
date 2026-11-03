@@ -391,23 +391,20 @@ is a regression even when its own log counters improve.
 Run targeted tests for changed pure logic when available. If validation fails, report the exact
 failure and distinguish a successful build-for-testing step from actual test execution.
 
-## Mobile Validation And Checkpoints
+## Feature Validation And Checkpoints
 
-The mobile development goal is usable software with reliable data and a few protected user
-journeys. Apply these rules to feature development in `Nibomo/`; release-specific runbooks remain
-separate from local feature checkpoints.
+The development goal is usable software with reliable data and a few protected user journeys.
+Apply these rules to native Mac and shared-core feature checkpoints. Mobile-specific work lives
+in the private lingrove-mobile repository; see docs/REPOSITORY_BOUNDARIES.md. Release-specific
+runbooks remain separate from local checkpoints.
 
 - Put relationship integrity, deletion effects, cancellation without writes, atomic saves,
   persistence, retries and review-history retention in focused module/storage integration tests.
-  Follow Nibomo's existing policy against adding isolated unit tests by default.
 - Keep E2E coverage to a small set of user outcomes: import and browse; edit, save and reopen;
   explicitly enroll and complete a review. Select the affected journey for a change. Do not chain
   field combinations, multiple nested cancellation branches and association permutations into one
   mandatory E2E. Prepare unrelated state through a validated fixture instead of clicking through
   several other features.
-- Use ordinary iPhone as the primary phone destination. Check iPad's important layouts and
-  operations independently. Duo is optional compatibility evidence and does not block a feature
-  checkpoint.
 - Inspect actual screenshots, app state and relevant stored results before classifying a UI
   automation failure. A locator, viewport or animation failure does not establish a product bug.
   Do not restructure product navigation solely to satisfy a failing automation assumption.
@@ -426,7 +423,7 @@ separate from local feature checkpoints.
   Record passed checks, unresolved automation issues and remaining product risks separately.
   Completing every automation script is not the goal's completion criterion.
 
-## Mobile Wave Development Ownership
+## Wave Development Ownership
 
 The user's current wave arrangement supersedes earlier instructions that the main agent writes
 all product/test code. Each module lead uses `gpt-6.1-sol` with reasoning effort `max`, works in its

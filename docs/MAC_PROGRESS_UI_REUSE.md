@@ -1,7 +1,7 @@
 # Native personal Progress UI source adoption
 
 Baseline: `a151c519369ea7dd4bb423ba127713e7e8e62348`. Upstream refers to the checked-in,
-read-only `Nibomo/apps/ios/Flashcards/Flashcards/Progress/` tree at that baseline.
+historical `Nibomo/apps/ios/Flashcards/Flashcards/Progress/` tree at that baseline. The current upstream-derived tree is in the private mobile repository.
 MIT attribution remains in every extracted source header and the already bundled
 `Lingrove/Resources/NibomoUI-LICENSE.txt` (Copyright © 2026 Kirill Markin).
 No upstream file or license is modified.

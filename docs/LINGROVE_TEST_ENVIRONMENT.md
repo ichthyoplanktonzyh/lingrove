@@ -1,17 +1,16 @@
 # Lingrove 测试环境与真实客户端验收方案
 
-2026-11-03。用户确认尚无自有 API/Auth/MCP 服务，先完成
-[本地双设备验收](MOBILE_FINAL_ACCEPTANCE.md)，再选择测试环境。本方案基于当前源码，
-不是部署记录。方案编写时未创建云资源、域名、公开转发或 OpenAI tunnel，未开启生产服务。
-后续已在用户授权下完成[真实 ChatGPT 私有 Tunnel 读写与撤销验收](PRIVATE_MCP_LIVE_ACCEPTANCE.md)；
-并已补齐[ChatGPT 写入后在普通 iPhone 模拟器同步、浏览和重开的旅程](PRIVATE_MCP_MOBILE_ACCEPTANCE_INTEGRATION.md)。
-真实身份提供方、物理设备和自有 HTTPS 环境仍未验收。
+2026-11-03。独立移动端与服务代码现位于私有 lingrove-mobile 仓库，见
+[仓库职责](REPOSITORY_BOUNDARIES.md)。本地双模拟器接续及真实 ChatGPT 私有 Tunnel
+写入后普通 iPhone 同步/浏览/重开已执行；当前证据和边界集中在该仓库的
+[产品与验收说明](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/docs/lingrove-product.md)。
+真实身份提供方、物理设备和自有 HTTPS 环境仍未验收；本文件是未来服务接线方案。
 
 ## 按验收结果分三步
 
 | 步骤 | 需要取得的证据 | 所需环境 |
 | --- | --- | --- |
-| 本地 iPhone/iPad 接续 | 两个真实 simulator app 经同一后台接续语料/图片/参与/评分 | 独立 loopback API、PG 和 synthetic 身份；[本地接续已交付](MOBILE_FINAL_ACCEPTANCE_INTEGRATION.md) |
+| 本地 iPhone/iPad 接续 | 两个真实 simulator app 经同一后台接续语料/图片/参与/评分 | 独立 loopback API、PG 和 synthetic 身份；[本地接续已交付](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/docs/lingrove-product.md) |
 | 真实 ChatGPT 读写 | ChatGPT 实际发现工具、读取/保存合成语料，移动端读到结果；撤销后拒绝访问 | 可达的 MCP 服务与 ChatGPT 连接；可选私有 Secure MCP Tunnel 或自有 HTTPS |
 | 真实账户及设备接续 | 实际登录、token 恢复/失效、跨端接续，账户与媒体权限正确 | 自有 API/Auth、真实测试身份提供方、数据库/对象存储、必要 HTTPS |
 
@@ -63,9 +62,9 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
 授权/token URL 和 MCP resource/audience 必须相互匹配。浏览器回调需与动态注册的
 `redirect_uri` 精确匹配，但无需与 API/Auth/MCP 同域。不能依赖重定向纠正配置。
 当前实现见
-[Lambda MCP](../Nibomo/apps/backend/src/entrypoints/lambda-mcp.ts)、
-[OAuth metadata](../Nibomo/apps/auth/src/routes/oauth/metadata.ts)和
-[Auth 服务](../Nibomo/docs/auth-service.md)。
+[Lambda MCP](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/entrypoints/lambda-mcp.ts)、
+[OAuth metadata](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/auth/src/routes/oauth/metadata.ts)和
+[Auth 服务](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/docs/auth-service.md)。
 
 真实账户优先复用既有 Cognito/邮箱认证路径，只配置测试用户与测试 provider，不另写
 认证系统。首轮不把 Apple/Google、社区、计费、AI 生成和应用商店发布串入这条验收；
@@ -74,7 +73,7 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
 ## 从当前代码到可用测试服务还需要的接线
 
 1. **部署入口。** 当前根 `.github/workflows` 没有 Lingrove backend/AWS 发布任务。
-   `Nibomo/.github/workflows/aws-web-release.yml` 是 vendored 上游方案，路径、stack、
+   `lingrove-mobile/.github/workflows/aws-web-release.yml` 是保留的上游方案（仅手动触发），路径、stack、
    域名和 secrets 都不能当作本项目已经配置的 CI。若选择 AWS，按本项目建立独立
    staging CI；遵守 Nibomo 规定，不在本机构建 AWS bundles 或直接执行 AWS 部署。
 2. **普通 corpus。** `createApp` 已挂载 corpus/media，能力通过 schema 就绪检查，
@@ -97,9 +96,9 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
    写内部产品分析库，并非直接发到 Sentry；仅关闭 Sentry 不能实现零产品遥测。
    部署前需做有界的 Lingrove 服务组合/配置改造，确认不向 Sentry 等第三方发送数据，
    不收集产品行为遥测；只保留必要、脱敏的服务运维错误与授权诊断。当前代码证据：
-   [backend config](../Nibomo/apps/backend/src/observability/sentry/config.ts)、
-   [auth config](../Nibomo/apps/auth/src/server/sentry.ts)、
-   [review events](../Nibomo/apps/backend/src/productAnalytics/serverFacts/reviewAnswers.ts)。
+   [backend config](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/observability/sentry/config.ts)、
+   [auth config](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/auth/src/server/sentry.ts)、
+   [review events](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/productAnalytics/serverFacts/reviewAnswers.ts)。
 
 这些是代码核对得到的部署差距，不表示要在本地双设备模块内顺带重做托管服务。
 无用户数据，测试环境使用新建库，不安排旧开发数据库或 Anki 历史兼容迁移。
@@ -112,6 +111,5 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
 结果后，再进行对应环境操作；当前未创建或更改任何外部资源。
 
 
-私有 MCP 本地服务、SDK/HTTP/PG 验证、官方客户端与最终隔离修正现已交付，见
-[私有 MCP 整合](PRIVATE_MCP_INTEGRATION.md)。这不等于真实 Tunnel 或 ChatGPT 已连接；
-后续账户授权与运行步骤按该记录执行。
+私有 MCP 的当前工具、接线和限制见移动仓库 docs/lingrove-mcp.md。此前真实连接的
+授权不扩展为新部署或新身份系统的授权。

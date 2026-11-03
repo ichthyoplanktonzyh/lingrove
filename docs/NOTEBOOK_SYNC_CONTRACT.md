@@ -2,9 +2,9 @@
 
 当前实现包含带类型的语料写入/读取、原生上传/固定窗口、账户归属与冲突恢复、PNG 资源
 通道和 opt-in MCP 工具。已完成本地模块验证的范围见第二波交付与集成记录；生产门控
-保持关闭，真实 ChatGPT/双设备操作仍须单独确认。完整目标按 [移动计划](MOBILE_NOTEBOOK_PLAN.md) 推进。
-字段定义以 [`fields.ts`](../Nibomo/apps/backend/src/notebook/corpus/fields.ts) 为准，修改
-与身份契约以 [`contract.ts`](../Nibomo/apps/backend/src/notebook/corpus/contract.ts) 为准。
+保持关闭，真实 ChatGPT/双设备操作仍须单独确认。完整目标按 [移动计划](REPOSITORY_BOUNDARIES.md) 推进。
+字段定义以 [`fields.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/fields.ts) 为准，修改
+与身份契约以 [`contract.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/contract.ts) 为准。
 它们没有复用 SQLite codec 的 opaque payload、索引或整本备份格式。
 
 ## 身份、顺序与材料
@@ -29,7 +29,7 @@ revision 继续独立保护本机提交。
 
 ## 提交与冲突
 
-[`store.ts`](../Nibomo/apps/backend/src/notebook/corpus/store.ts) 在现有完整操作组事务中
+[`store.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/store.ts) 在现有完整操作组事务中
 计划所有修改，再校验包含未修改记录的最终图，最后一起写入规范实体、变更身份和
 确认。创建不能覆盖已有身份或复活删除记录；删除要求完整的当前实体版本。旧原文
 和 occurrence 保持不可变，修正内容通过新的证据身份及明确的引用变更表达。
@@ -89,7 +89,7 @@ UUID 仍合法。转换成功也不替代服务端组大小、权限、版本与
 
 ## 固定读取窗口
 
-[`windows/store.ts`](../Nibomo/apps/backend/src/notebook/corpus/windows/store.ts) 在与写入相同
+[`windows/store.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/windows/store.ts) 在与写入相同
 的生词本锁内捕获当前值与高水位。bootstrap 返回全部规范记录，包括 tombstone；
 incremental 返回 `(afterSequence, highWaterSequence]` 内受影响身份的当前记录，每个
 身份只出现一次。只含 key 的日志从不充当历史正文。未来日志裁剪须另加保留水位与
@@ -103,7 +103,7 @@ bootstrap 回退，目前不会悄悄跳过旧 key。
 
 页 SHA 使用原始 bytes。顺序描述符是 `ordinal:sha256:byteCount` 加一个换行，按从零
 开始的连续 ordinal 拼接后求 SHA256。manifest 使用
-[`contract.ts`](../Nibomo/apps/backend/src/notebook/corpus/windows/contract.ts) 中固定 ASCII
+[`contract.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/windows/contract.ts) 中固定 ASCII
 行顺序，包含账户（UTF-8 base64url）、工作区、生词本、replica、窗口身份、模式、起止
 游标、initialized、到期毫秒、记录/页/字节总数和描述符 SHA；最后也有换行。全部页和
 完整 manifest 校验成功之前，不得推进本地游标。相同参数的未过期窗口可以重放，
@@ -209,7 +209,7 @@ schema 34 增加必备的传输状态子行和独立关闭 ledger，关闭不生
 后即使在新冻结前重启也可继续。取消/过期后的 apply 使用普通三方合并，保留全部日志，
 只在最终事务清理旧身份并保留紧凑关闭记录。确认与关闭互斥，取消晚于已提交请求时
 仍须读取并完整核对正向确认。资源准入及生产接入仍待完成。具体运行证据见
-[集成记录](NIBOMO_INTEGRATION.md)。
+[集成记录](REPOSITORY_BOUNDARIES.md)。
 
 ## 协商后的应用调度与后台存储
 
@@ -299,8 +299,8 @@ actor 不能复用该 group。数据库触发器同样阻止旧内部接口或�
 
 服务端已注册工作区下的 notebook capabilities、open、groups/apply、groups/cancel
 及 windows/open、page、release 路由；具体请求形状与上限以
-[`httpContract.ts`](../Nibomo/apps/backend/src/notebook/httpContract.ts) 和
-[`routes/notebook.ts`](../Nibomo/apps/backend/src/routes/notebook.ts) 为准。每次先复用
+[`httpContract.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/httpContract.ts) 和
+[`routes/notebook.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/routes/notebook.ts) 为准。每次先复用
 认证/CSRF、实际 membership 和 schema readiness，再读取有字节上限的 UTF-8 JSON。
 所有响应 no-store；数据库操作沿用请求 deadline。用户身份来自认证结果，公开 writer
 固定没有通用目录安装权限；完整官方目录的原样创建仅按前述受限导入规则处理。
