@@ -445,7 +445,9 @@ those reviewer/test agents do not write implementation or test code.
   review and progress. Review and Progress reuse Nibomo components with local business adapters.
 - Completed dispatch notes and delivery reports are temporary. Consolidate lasting requirements,
   source attribution, validation results and unresolved limits into maintained documentation,
-  then remove redundant process records and update links. Git retains the historical reports.
+  then remove redundant process records and update links. Git retains historical Mac reports;
+  mobile-only history was explicitly purged. Never merge pre-cleanup mobile/subtree histories
+  back into this Mac repository; follow docs/REPOSITORY_BOUNDARIES.md.
 - Separate worktrees isolate source, not host resources. All Xcode/simulator/native operations
   hold `/tmp/lingrove-mobile-validation.lock`; each checkout keeps DD under `build/DerivedData`
   and removes it and copied caches after validation.

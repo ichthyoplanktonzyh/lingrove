@@ -129,7 +129,8 @@ accessibility compatibility on those minimum systems.
 The Mac repository's SOURCE_LAYOUT.md and docs/MAC_WORKSPACE.md describe current host and
 portable-engine ownership. The independent private lingrove-mobile repository maintains its
 own native adapters, validation and explicit shared-source snapshot manifest. Completed phase
-plans and delivery reports remain in Mac Git history; they are not current maintenance docs.
+Mac plans and delivery reports remain in Mac Git history. Mobile-only history was purged from
+Mac on 2026-11-03; its maintained source is the private mobile repository.
 
 ## Offline corpus management
 

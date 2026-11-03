@@ -17,11 +17,18 @@ there is no live subtree, submodule or sibling-path build requirement here. The 
 retains the inherited account/sync/review infrastructure with Lingrove's corpus model. MIT and
 other third-party attribution is preserved there. Creating/pushing it does not deploy services.
 
-The extraction source is 59f2542f4984ffcde94c7c6fc4b60900c059fa04, which includes all delivered
-main-chat/mobile and native Mac work through Wave 4 and the existing macOS 0.7.2 preparation.
-Completed plans, dispatch/delivery notes and integration journals are consolidated into
-maintained docs; their original records remain in this repository's Git history. Ignored local
-validation evidence is retained separately in build/, not copied into the private source repo.
+The independent repository retains the extracted mobile application and services. On 2026-11-03,
+mobile-only paths, their upstream squash root and local recovery references were purged from
+this Mac repository's Git history. Historical mobile commits are intentionally unavailable here;
+the private mobile repository is their maintenance source. Its shared/core-source.json records
+a valid current Mac core revision. Completed Mac wave reports remain in Mac Git history; mobile
+phase records were purged together with mobile source. Ignored local validation evidence stays
+outside Git and is not a substitute for the maintained private repository.
+
+Do not merge or restore pre-cleanup Mac histories, old mobile worktrees or old subtree snapshots
+into this repository. Consume mobile features in the private repository; shared changes flow from
+the authoritative Mac packages through an explicit reviewed snapshot. Public origin references
+were inspected and did not contain the removed mobile paths; this cleanup did not force-push them.
 
 ## Shared source and wire contracts
 
