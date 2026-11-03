@@ -13,11 +13,12 @@ public struct LingroveNotebookReviewMaterialStore {
         let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
         for link in try links.load(workspaceId: snapshot.workspaceId) {
             guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: snapshot.workspaceId, cardId: link.cardId), card.deletedAt == nil else { continue }
-            let material = LingroveNotebookCardMaterial.resolve(source: link.source, snapshot: snapshot)
+            let material = LingroveNotebookCardMaterial.resolve(source: link.source, snapshot: snapshot, materialPlan: link.materialPlan)
             let state = material == nil && link.allowsUnavailableMaterial ? "retained" : material == nil ? (LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: snapshot) == nil ? "sourceMissing" : "exampleMissing") : "ready"
             try core.execute(sql: "INSERT INTO notebook_review_material_state(workspace_id,card_id,status) VALUES(?,?,?) ON CONFLICT(workspace_id,card_id) DO UPDATE SET status=excluded.status",
                 values: [.text(snapshot.workspaceId), .text(card.cardId), .text(state)])
             guard let material else { continue }
+            try LingroveNotebookReviewMediaStore(core: core).register(plan: link.materialPlan, source: link.source, snapshot: snapshot, supplied: [])
             let current = CardEditorInput(frontText: card.frontText, backText: card.backText, tags: card.tags)
             let proposed = LingroveNotebookCardMaterial.refreshed(current: current, previous: link.generatedContent, latest: material.content)
             let generated = link.generatedContent == nil ? nil : material.content

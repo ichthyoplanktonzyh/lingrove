@@ -8,7 +8,7 @@ import SQLite3
 public struct LingroveNotebookCardLinkStore {
     public let core: DatabaseCore
 
-    private static let columns = "workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material"
+    private static let columns = "workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json"
 
     public func load(workspaceId: String, cardId: String? = nil, includingDeleted: Bool = false) throws -> [LingroveNotebookCardLink] {
         let cardClause = cardId == nil ? "" : " AND card_id=?"
@@ -36,9 +36,9 @@ public struct LingroveNotebookCardLinkStore {
     public func validate(_ draft: LingroveNotebookCardDraft, against snapshot: LingroveNotebookSnapshot) throws {
         guard snapshot.workspaceId == draft.source.workspaceId, snapshot.notebookId == draft.source.notebookId,
               snapshot.revision == draft.sourceRevision,
-              let current = LingroveNotebookCardMaterial.resolve(source: draft.source, snapshot: snapshot),
+              let current = LingroveNotebookCardMaterial.resolve(source: draft.source, snapshot: snapshot, materialPlan: draft.materialPlan),
               current.selection == VocabularySelection(entryID: draft.source.entryId, senseID: draft.source.senseId),
-              current.content == draft.generatedContent else { throw VocabularyError.editConflict }
+              LingroveNotebookCardMaterial.sameStoredBytes(current.content, draft.generatedContent) else { throw VocabularyError.editConflict }
     }
 
     public func requireActiveScope(_ source: LingroveNotebookCardSource) throws {
@@ -58,9 +58,9 @@ public struct LingroveNotebookCardLinkStore {
     ) throws -> LingroveNotebookCardLink {
         let link = LingroveNotebookCardLink(id: draft.id, source: draft.source, cardId: cardId,
             generatedContent: generatedContent, sourceRevision: draft.sourceRevision, creationFingerprint: fingerprint,
-            revision: 1, createdAt: now, updatedAt: now, deletedAt: nil)
+            revision: 1, createdAt: now, updatedAt: now, deletedAt: nil, materialPlan: draft.materialPlan)
         try self.core.execute(sql: """
-            INSERT INTO notebook_card_links(\(Self.columns)) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO notebook_card_links(\(Self.columns)) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, values: try self.values(link))
         try self.record(link: link, baseRevision: 0, cardOperationId: cardOperationId)
         return link
@@ -68,20 +68,20 @@ public struct LingroveNotebookCardLinkStore {
 
     public func update(
         _ expected: LingroveNotebookCardLink, generatedContent: CardEditorInput?, sourceRevision: UInt64,
-        cardId: String? = nil, source: LingroveNotebookCardSource? = nil, allowingUnavailableMaterial: Bool? = nil, deleting: Bool = false, cardOperationId: String? = nil
+        cardId: String? = nil, source: LingroveNotebookCardSource? = nil, allowingUnavailableMaterial: Bool? = nil, materialPlan: ReviewMaterialPlan? = nil, deleting: Bool = false, cardOperationId: String? = nil
     ) throws -> LingroveNotebookCardLink {
         guard expected.deletedAt == nil, expected.revision < UInt64(Int64.max),
               sourceRevision <= UInt64(Int64.max) else { throw VocabularyError.editConflict }
         let now = max(nowIsoTimestamp(), formatIsoTimestamp(date: (parseIsoTimestamp(value: expected.updatedAt) ?? .distantPast).addingTimeInterval(0.001)))
         let next = LingroveNotebookCardLink(id: expected.id, source: source ?? expected.source, cardId: cardId ?? expected.cardId,
             generatedContent: generatedContent, sourceRevision: sourceRevision, creationFingerprint: expected.creationFingerprint,
-            revision: expected.revision + 1, createdAt: expected.createdAt, updatedAt: now, deletedAt: deleting ? now : nil, allowsUnavailableMaterial: allowingUnavailableMaterial ?? expected.allowsUnavailableMaterial)
+            revision: expected.revision + 1, createdAt: expected.createdAt, updatedAt: now, deletedAt: deleting ? now : nil, allowsUnavailableMaterial: allowingUnavailableMaterial ?? expected.allowsUnavailableMaterial, materialPlan: materialPlan ?? expected.materialPlan)
         let contentJSON = try generatedContent.map { try self.core.encodeJsonString(value: $0) }
         let count = try self.core.execute(sql: """
-            UPDATE notebook_card_links SET example_id=?,card_id=?,generated_content_json=?,source_revision=?,revision=?,updated_at=?,deleted_at=?,allows_unavailable_material=?
+            UPDATE notebook_card_links SET example_id=?,card_id=?,generated_content_json=?,source_revision=?,revision=?,updated_at=?,deleted_at=?,allows_unavailable_material=?,material_plan_json=?
             WHERE workspace_id=? AND link_id=? AND revision=? AND deleted_at IS NULL
             """, values: [next.source.exampleId.map { .text($0.uuidString) } ?? .null, .text(next.cardId), contentJSON.map(SQLiteValue.text) ?? .null,
-                .integer(Int64(sourceRevision)), .integer(Int64(next.revision)), .text(now), next.deletedAt.map(SQLiteValue.text) ?? .null, .integer(next.allowsUnavailableMaterial ? 1 : 0),
+                .integer(Int64(sourceRevision)), .integer(Int64(next.revision)), .text(now), next.deletedAt.map(SQLiteValue.text) ?? .null, .integer(next.allowsUnavailableMaterial ? 1 : 0), try next.materialPlan.map { .text(try self.core.encodeJsonString(value: $0)) } ?? .null,
                 .text(expected.source.workspaceId), .text(expected.id.uuidString), .integer(Int64(expected.revision))])
         guard count == 1 else { throw VocabularyError.editConflict }
         try self.record(link: next, baseRevision: expected.revision, cardOperationId: cardOperationId)
@@ -125,7 +125,7 @@ public struct LingroveNotebookCardLinkStore {
             let next = LingroveNotebookCardLink(id: link.id, source: link.source, cardId: newId,
                 generatedContent: link.generatedContent, sourceRevision: link.sourceRevision,
                 creationFingerprint: link.creationFingerprint, revision: link.revision + 1,
-                createdAt: link.createdAt, updatedAt: now, deletedAt: link.deletedAt, allowsUnavailableMaterial: link.allowsUnavailableMaterial)
+                createdAt: link.createdAt, updatedAt: now, deletedAt: link.deletedAt, allowsUnavailableMaterial: link.allowsUnavailableMaterial, materialPlan: link.materialPlan)
             try self.core.execute(sql: "UPDATE notebook_card_links SET card_id=?,revision=?,updated_at=? WHERE workspace_id=? AND link_id=?",
                 values: [.text(newId), .integer(Int64(next.revision)), .text(now), .text(workspaceId), .text(link.id.uuidString)])
             try self.record(link: next, baseRevision: link.revision, cardOperationId: nil)
@@ -148,7 +148,7 @@ public struct LingroveNotebookCardLinkStore {
             .text(link.source.entryId.uuidString), .text(link.source.senseId.uuidString), link.source.exampleId.map { .text($0.uuidString) } ?? .null,
             .text(link.cardId), content.map(SQLiteValue.text) ?? .null, .integer(Int64(link.sourceRevision)),
             .text(link.creationFingerprint), .integer(Int64(link.revision)), .text(link.createdAt), .text(link.updatedAt),
-            link.deletedAt.map(SQLiteValue.text) ?? .null, .integer(link.allowsUnavailableMaterial ? 1 : 0)]
+            link.deletedAt.map(SQLiteValue.text) ?? .null, .integer(link.allowsUnavailableMaterial ? 1 : 0), try link.materialPlan.map { .text(try self.core.encodeJsonString(value: $0)) } ?? .null]
     }
 
     private func decode(_ statement: OpaquePointer) throws -> LingroveNotebookCardLink {
@@ -173,7 +173,8 @@ public struct LingroveNotebookCardLinkStore {
             cardId: DatabaseCore.columnText(statement: statement, index: 6), generatedContent: content,
             sourceRevision: UInt64(sourceRevision), creationFingerprint: DatabaseCore.columnText(statement: statement, index: 9),
             revision: UInt64(revision), createdAt: DatabaseCore.columnText(statement: statement, index: 11),
-            updatedAt: DatabaseCore.columnText(statement: statement, index: 12), deletedAt: DatabaseCore.columnOptionalText(statement: statement, index: 13), allowsUnavailableMaterial: DatabaseCore.columnInt64(statement: statement, index: 14) != 0)
+            updatedAt: DatabaseCore.columnText(statement: statement, index: 12), deletedAt: DatabaseCore.columnOptionalText(statement: statement, index: 13), allowsUnavailableMaterial: DatabaseCore.columnInt64(statement: statement, index: 14) != 0,
+            materialPlan: try DatabaseCore.columnOptionalText(statement: statement, index: 15).map { try self.core.decoder.decode(ReviewMaterialPlan.self, from: Data($0.utf8)) })
     }
 
     public init(core: DatabaseCore) {

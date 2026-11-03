@@ -67,6 +67,7 @@ public enum LingroveNotebookSchema {
         statements.append(LingroveNotebookCLIStore.createSQL)
         statements.append(mediaSQL)
         statements.append(LingroveNotebookCardLinkSchema.createSQL)
+        statements.append(LingroveNotebookReviewMediaStore.createSQL)
         statements.append(LingroveNotebookReviewSchema.createSQL)
         statements.append(LingroveNotebookWindowSchema.createSQL)
         statements.append(LingroveNotebookSyncSchema.createSQL)
@@ -98,7 +99,7 @@ public enum LingroveNotebookSchema {
         """
 
     public static var resetSQL: String {
-        LingroveNotebookCLIStore.resetSQL + "\n" + LingroveNotebookMediaQueueSchema.resetSQL + "\n" + LingroveNotebookAccountStore.resetSQL + "\n" + LingroveNotebookConflictStore.resetSQL + "\n" + LingroveNotebookRetrySchema.resetSQL + "\n" + LingroveNotebookUploadClosureSchema.resetSQL + "\n" + LingroveNotebookStagedUploadSchema.resetSQL + "\n" + LingroveNotebookTerminalSchema.resetSQL + "\n" + LingroveNotebookUploadSchema.resetSQL + "\n" + LingroveNotebookSyncSchema.resetSQL + "\n" + LingroveNotebookWindowSchema.resetSQL + "\n" + LingroveNotebookReviewSchema.resetSQL + "\n" + LingroveNotebookCardLinkSchema.resetSQL + "\n" +
+        LingroveNotebookCLIStore.resetSQL + "\n" + LingroveNotebookMediaQueueSchema.resetSQL + "\n" + LingroveNotebookAccountStore.resetSQL + "\n" + LingroveNotebookConflictStore.resetSQL + "\n" + LingroveNotebookRetrySchema.resetSQL + "\n" + LingroveNotebookUploadClosureSchema.resetSQL + "\n" + LingroveNotebookStagedUploadSchema.resetSQL + "\n" + LingroveNotebookTerminalSchema.resetSQL + "\n" + LingroveNotebookUploadSchema.resetSQL + "\n" + LingroveNotebookSyncSchema.resetSQL + "\n" + LingroveNotebookWindowSchema.resetSQL + "\n" + LingroveNotebookReviewSchema.resetSQL + "\n" + LingroveNotebookReviewMediaStore.resetSQL + "\n" + LingroveNotebookCardLinkSchema.resetSQL + "\n" +
         (["DROP TABLE IF EXISTS notebook_media_assets;", "DROP TABLE IF EXISTS notebook_pending_rows;", "DROP TABLE IF EXISTS notebook_pending_transactions;"] +
             VocabularyPersistenceEntity.allCases.reversed().map { "DROP TABLE IF EXISTS \(table($0));" } +
             ["DROP TABLE IF EXISTS notebook_state;"]).joined(separator: "\n")

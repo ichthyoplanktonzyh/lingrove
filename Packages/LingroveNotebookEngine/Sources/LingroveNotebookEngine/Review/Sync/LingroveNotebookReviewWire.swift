@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 import LingroveNotebookSync
 
 /// Typed held-lane envelope. It reuses native Card and ReviewEvent contracts while keeping
@@ -83,12 +84,13 @@ public nonisolated struct LingroveNotebookReviewRequest: Codable, Sendable {
     public let undos: [LingroveNotebookReviewUndo]
     public let confirmations: [Confirmation]
     public let historyAdoptions: [HistoryAdoption]
+    public let media: [ReviewMaterialPreparedMedia]?
     public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, installationId: UUID, afterSequence: Int64, sourceSequence: String,
          enrollments: [Enrollment], links: [Link], operations: [Operation], undos: [LingroveNotebookReviewUndo],
-         confirmations: [Confirmation], historyAdoptions: [HistoryAdoption] = []) {
+         confirmations: [Confirmation], historyAdoptions: [HistoryAdoption] = [], media: [ReviewMaterialPreparedMedia]? = nil) {
         self.protocolVersion = protocolVersion; self.notebookId = notebookId; self.replicaId = replicaId; self.installationId = installationId
         self.afterSequence = afterSequence; self.sourceSequence = sourceSequence; self.enrollments = enrollments; self.links = links
-        self.operations = operations; self.undos = undos; self.confirmations = confirmations; self.historyAdoptions = historyAdoptions
+        self.operations = operations; self.undos = undos; self.confirmations = confirmations; self.historyAdoptions = historyAdoptions; self.media = media
     }
 }
 
@@ -130,8 +132,10 @@ public nonisolated struct LingroveNotebookReviewResponse: Decodable, Sendable {
     public let afterSequence: Int64
     public let hasMore: Bool
     public let changes: [Change]
+    public let media: [ReviewMaterialPreparedMedia]?
+    public let acknowledgedMedia: [String]?
 
-    public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, acknowledged: [String], confirmed: [String], afterSequence: Int64, hasMore: Bool, changes: [Change]) {
+    public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, acknowledged: [String], confirmed: [String], afterSequence: Int64, hasMore: Bool, changes: [Change], media: [ReviewMaterialPreparedMedia]? = nil, acknowledgedMedia: [String]? = nil) {
         self.protocolVersion = protocolVersion
         self.notebookId = notebookId
         self.replicaId = replicaId
@@ -140,5 +144,6 @@ public nonisolated struct LingroveNotebookReviewResponse: Decodable, Sendable {
         self.afterSequence = afterSequence
         self.hasMore = hasMore
         self.changes = changes
+        self.media = media; self.acknowledgedMedia = acknowledgedMedia
     }
 }

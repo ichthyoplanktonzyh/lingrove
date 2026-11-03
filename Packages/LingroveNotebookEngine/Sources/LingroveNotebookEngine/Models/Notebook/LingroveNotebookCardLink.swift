@@ -29,12 +29,14 @@ public nonisolated struct LingroveNotebookCardDraft: Codable, Hashable, Sendable
     public let source: LingroveNotebookCardSource
     public let sourceRevision: UInt64
     public let generatedContent: CardEditorInput
+    public let materialPlan: ReviewMaterialPlan?
 
-    public init(id: UUID, source: LingroveNotebookCardSource, sourceRevision: UInt64, generatedContent: CardEditorInput) {
+    public init(id: UUID, source: LingroveNotebookCardSource, sourceRevision: UInt64, generatedContent: CardEditorInput, materialPlan: ReviewMaterialPlan? = nil) {
         self.id = id
         self.source = source
         self.sourceRevision = sourceRevision
         self.generatedContent = generatedContent
+        self.materialPlan = materialPlan
     }
 }
 
@@ -47,6 +49,7 @@ public nonisolated struct LingroveNotebookCardLink: Codable, Hashable, Sendable,
     public let source: LingroveNotebookCardSource
     public let cardId: String
     public let generatedContent: CardEditorInput?
+    public let materialPlan: ReviewMaterialPlan?
     public let sourceRevision: UInt64
     public let creationFingerprint: String
     public let revision: UInt64
@@ -55,7 +58,7 @@ public nonisolated struct LingroveNotebookCardLink: Codable, Hashable, Sendable,
     public let deletedAt: String?
     public var allowsUnavailableMaterial: Bool = false
 
-    public init(id: UUID, source: LingroveNotebookCardSource, cardId: String, generatedContent: CardEditorInput?, sourceRevision: UInt64, creationFingerprint: String, revision: UInt64, createdAt: String, updatedAt: String, deletedAt: String?, allowsUnavailableMaterial: Bool = false) {
+    public init(id: UUID, source: LingroveNotebookCardSource, cardId: String, generatedContent: CardEditorInput?, sourceRevision: UInt64, creationFingerprint: String, revision: UInt64, createdAt: String, updatedAt: String, deletedAt: String?, allowsUnavailableMaterial: Bool = false, materialPlan: ReviewMaterialPlan? = nil) {
         self.id = id
         self.source = source
         self.cardId = cardId
@@ -67,6 +70,7 @@ public nonisolated struct LingroveNotebookCardLink: Codable, Hashable, Sendable,
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
         self.allowsUnavailableMaterial = allowsUnavailableMaterial
+        self.materialPlan = materialPlan
     }
 }
 

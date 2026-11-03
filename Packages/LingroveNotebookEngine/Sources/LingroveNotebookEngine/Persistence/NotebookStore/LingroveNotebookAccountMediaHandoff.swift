@@ -11,6 +11,11 @@ extension MediaTransferStore {
             guard let asset = try assets.loadOptionalMediaAssetIncludingDeleted(workspaceId: source, mediaAssetId: old) else {
                 throw LingroveNotebookAccountError.unavailableSource
             }
+            if let prepared = try LingroveNotebookReviewMediaStore(core: core).media(assetID: old, workspaceID: source) {
+                guard new == LingroveNotebookCardMaterial.mediaAssetID(reference: prepared.reference, workspaceID: target) else { throw LingroveNotebookAccountError.ownerMismatch }
+                try LingroveNotebookReviewMediaStore(core: core).insert(prepared, workspaceID: target)
+                continue
+            }
             let digest = asset.sha256
             let queue = try core.query(sql: "SELECT kind,sha256 FROM media_transfer_queue WHERE workspace_id=? AND media_asset_id=?",
                 values: [.text(source), .text(old)]) { (DatabaseCore.columnText(statement: $0, index: 0), DatabaseCore.columnText(statement: $0, index: 1)) }

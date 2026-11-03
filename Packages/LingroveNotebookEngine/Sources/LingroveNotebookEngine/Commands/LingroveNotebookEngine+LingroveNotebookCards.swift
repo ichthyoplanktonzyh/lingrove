@@ -12,13 +12,14 @@ extension LingroveNotebookEngine {
     }
 
     public func saveNewLingroveNotebookCard(
-        draft: LingroveNotebookCardDraft, input: CardEditorInput, mediaAssetIdsReadyForUpload: Set<String>
+        draft: LingroveNotebookCardDraft, input: CardEditorInput, mediaAssetIdsReadyForUpload: Set<String>,
+        media: [ReviewMaterialPreparedMedia] = []
     ) throws -> Card {
         try Task.checkCancellation()
         return try self.core.inTransaction {
             try Task.checkCancellation()
             return try self.persistNewLingroveNotebookCard(draft: draft, input: input,
-                mediaAssetIdsReadyForUpload: mediaAssetIdsReadyForUpload)
+                mediaAssetIdsReadyForUpload: mediaAssetIdsReadyForUpload, media: media)
         }
     }
 
@@ -26,7 +27,7 @@ extension LingroveNotebookEngine {
     /// A separate helper avoids nested BEGINs while keeping the public save boundary atomic.
     public func persistNewLingroveNotebookCard(
         draft: LingroveNotebookCardDraft, input: CardEditorInput, mediaAssetIdsReadyForUpload: Set<String>,
-        validatedSnapshot: LingroveNotebookSnapshot? = nil, newCardID: String? = nil
+        validatedSnapshot: LingroveNotebookSnapshot? = nil, newCardID: String? = nil, media: [ReviewMaterialPreparedMedia] = []
     ) throws -> Card {
         try self.cardStore.validateCardInput(input: input)
         let normalized = LingroveNotebookCardMaterial.normalized(input)
@@ -42,13 +43,17 @@ extension LingroveNotebookEngine {
             ) else { throw LocalStoreError.notFound("Card not found") }
             return card
         }
+        let snapshot: LingroveNotebookSnapshot
         if let validatedSnapshot {
+            snapshot = validatedSnapshot
             // Only compound writers supply a snapshot read under their current writer lock.
             // This still validates exact source/projection, without decoding the book per Card.
             try self.lingroveNotebookCardLinkStore.validate(draft, against: validatedSnapshot)
         } else {
-            _ = try self.lingroveNotebookCardLinkStore.validate(draft)
+            snapshot = try self.lingroveNotebookCardLinkStore.validate(draft)
         }
+        try LingroveNotebookReviewMediaStore(core: core).register(plan: draft.materialPlan, source: draft.source,
+            snapshot: snapshot, supplied: media)
         try Task.checkCancellation()
         let now = nowIsoTimestamp()
         let settings = try self.workspaceSettingsStore.loadCloudSettings()
@@ -100,7 +105,7 @@ extension LingroveNotebookEngine {
             let current = try self.lingroveNotebookStore.readSnapshot(workspaceId: expected.source.workspaceId)
             guard current.notebookId == baseline.notebookId, current.workspaceId == baseline.workspaceId,
                   current.revision == baseline.revision, current.generation == baseline.generation,
-                  let material = LingroveNotebookCardMaterial.resolve(source: expected.source, snapshot: current) else {
+                  let material = LingroveNotebookCardMaterial.resolve(source: expected.source, snapshot: current, materialPlan: expected.materialPlan) else {
                 throw VocabularyError.editConflict
             }
             let original = try self.loadActiveCard(workspaceId: expected.source.workspaceId, cardId: expected.cardId)
@@ -149,7 +154,7 @@ extension LingroveNotebookEngine {
         draft: LingroveNotebookCardDraft, input: CardEditorInput?, cardId: String?, mediaAssetIds: Set<String>
     ) throws -> String {
         try LingroveNotebookCardMaterial.fingerprint(NotebookCardCreationIdentity(source: draft.source,
-            sourceRevision: draft.sourceRevision, generated: draft.generatedContent, input: input,
+            sourceRevision: draft.sourceRevision, generated: draft.generatedContent, materialPlan: draft.materialPlan, input: input,
             cardId: cardId, mediaAssetIds: mediaAssetIds.sorted()))
     }
 }
@@ -160,6 +165,7 @@ private struct NotebookCardCreationIdentity: Encodable {
     let source: LingroveNotebookCardSource
     let sourceRevision: UInt64
     let generated: CardEditorInput
+    let materialPlan: ReviewMaterialPlan?
     let input: CardEditorInput?
     let cardId: String?
     let mediaAssetIds: [String]

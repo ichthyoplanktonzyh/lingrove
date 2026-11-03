@@ -7,6 +7,7 @@ import LingroveNotebook
 extension LingroveNotebookEngine {
     public func prepareNotebookExercise(link expected: LingroveNotebookCardLink, card baselineCard: Card,
         snapshot: LingroveNotebookSnapshot, exampleID: UUID?, input: CardEditorInput,
+        materialPlan: ReviewMaterialPlan? = nil, media: [ReviewMaterialPreparedMedia] = [],
         action: NotebookBuiltInReviewAction? = nil) throws {
         try Task.checkCancellation()
         try core.inTransaction {
@@ -18,12 +19,16 @@ extension LingroveNotebookEngine {
                   card.lastOperationId == baselineCard.lastOperationId, card.deletedAt == nil else { throw VocabularyError.editConflict }
             let source = LingroveNotebookCardSource(workspaceId: expected.source.workspaceId, notebookId: expected.source.notebookId,
                 entryId: expected.source.entryId, senseId: expected.source.senseId, exampleId: exampleID)
-            guard let material = LingroveNotebookCardMaterial.resolve(source: source, snapshot: current) else { throw VocabularyError.editConflict }
+            var plan = materialPlan ?? expected.materialPlan
+            plan?.exampleID = exampleID
+            guard let material = LingroveNotebookCardMaterial.resolve(source: source, snapshot: current, materialPlan: plan) else { throw VocabularyError.editConflict }
+            try LingroveNotebookReviewMediaStore(core: core).register(plan: plan, source: source, snapshot: current, supplied: media)
+            try Task.checkCancellation()
             let settings = try workspaceSettingsStore.loadCloudSettings()
             let next = try persistCardMutation(workspaceId: current.workspaceId, input: input, initialMetadata: nil,
                 cardId: card.cardId, cloudSettings: settings, now: nowIsoTimestamp())
             _ = try lingroveNotebookCardLinkStore.update(expected, generatedContent: material.content,
-                sourceRevision: current.revision, source: source, allowingUnavailableMaterial: false, cardOperationId: next.lastOperationId)
+                sourceRevision: current.revision, source: source, allowingUnavailableMaterial: false, materialPlan: plan, cardOperationId: next.lastOperationId)
             try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(current)
         }
     }
@@ -46,7 +51,7 @@ extension LingroveNotebookEngine {
     }
 
     public func addNotebookExercise(_ draft: LingroveNotebookCardDraft, scope: LingroveNotebookSnapshot? = nil,
-        input: CardEditorInput? = nil, action: NotebookBuiltInReviewAction? = nil) throws -> Card {
+        input: CardEditorInput? = nil, media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction? = nil) throws -> Card {
         try core.inTransaction {
             try Task.checkCancellation()
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: true) }
@@ -58,7 +63,7 @@ extension LingroveNotebookEngine {
             // exercise inherits the same resolved group state that UI presents.
             if try lingroveNotebookCardLinkStore.find(workspaceId: snapshot.workspaceId, id: draft.id) != nil {
                 return try persistNewLingroveNotebookCard(draft: draft, input: input ?? draft.generatedContent,
-                    mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot)
+                    mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, media: media)
             }
             if let action { try requireBuiltInReviewActionInTransaction(action) }
             let status: LingroveNotebookReviewStatus = group.contains { $0.status == .active } ? .active : (group.contains { $0.status == .paused } ? .paused : .withdrawn)
@@ -66,7 +71,7 @@ extension LingroveNotebookEngine {
                 ?? lingroveNotebookReviewStore.insert(source: draft.source, now: nowIsoTimestamp())
             let enrollment = try lingroveNotebookReviewStore.update(owner, status: status)
             let card = try persistNewLingroveNotebookCard(draft: draft, input: input ?? draft.generatedContent,
-                mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot)
+                mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, media: media)
             _ = try lingroveNotebookReviewStore.attach(cardId: card.cardId, linkId: draft.id, to: enrollment, now: nowIsoTimestamp())
             try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(snapshot)
             return card

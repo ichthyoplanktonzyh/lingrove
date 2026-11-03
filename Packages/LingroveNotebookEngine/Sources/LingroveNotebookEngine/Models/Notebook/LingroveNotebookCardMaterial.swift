@@ -8,21 +8,26 @@ import LingroveNotebook
 extension LingroveNotebookCardMaterial {
     public static func draft(
         snapshot: LingroveNotebookSnapshot, selection: VocabularySelection, exampleId: UUID? = nil,
-        intentId: UUID = UUID()
+        intentId: UUID = UUID(), materialPlan: ReviewMaterialPlan? = nil
     ) throws -> LingroveNotebookCardDraft {
         let source = LingroveNotebookCardSource(workspaceId: snapshot.workspaceId, notebookId: snapshot.notebookId,
-            entryId: selection.entryID, senseId: selection.senseID, exampleId: exampleId)
-        guard let material = resolve(source: source, snapshot: snapshot), material.selection == selection else {
+            entryId: selection.entryID, senseId: selection.senseID, exampleId: materialPlan == nil ? exampleId : materialPlan?.exampleID)
+        guard let material = resolve(source: source, snapshot: snapshot, materialPlan: materialPlan), material.selection == selection else {
             throw VocabularyError.editConflict
         }
-        return .init(id: intentId, source: source, sourceRevision: snapshot.revision, generatedContent: material.content)
+        return .init(id: intentId, source: source, sourceRevision: snapshot.revision, generatedContent: material.content, materialPlan: materialPlan)
     }
 
-    public static func resolve(source: LingroveNotebookCardSource, snapshot: LingroveNotebookSnapshot) -> Self? {
+    public static func resolve(source: LingroveNotebookCardSource, snapshot: LingroveNotebookSnapshot, materialPlan: ReviewMaterialPlan? = nil) -> Self? {
         guard source.workspaceId == snapshot.workspaceId, source.notebookId == snapshot.notebookId else { return nil }
         for entry in snapshot.document.entries {
             for sense in entry.senses {
                 guard sense.id == source.senseId || sense.mergedFrom.contains(source.senseId) else { continue }
+                if let materialPlan {
+                    guard materialPlan.exampleID == source.exampleId,
+                          let content = try? render(entry: entry, sense: sense, plan: materialPlan, workspaceID: source.workspaceId) else { return nil }
+                    return .init(selection: .init(entryID: entry.id, senseID: sense.id), exampleId: materialPlan.exampleID, content: content)
+                }
                 let example: VocabularyExample?
                 if let id = source.exampleId {
                     guard let found = sense.examples.first(where: { $0.id == id }) else { return nil }
@@ -111,7 +116,7 @@ extension LingroveNotebookCardMaterial {
         return UUID(uuidString: value)!
     }
 
-    private static func plainMarkdown(_ text: String) -> String {
+    static func plainMarkdown(_ text: String) -> String {
         // Notebook fields are plain text; copying their Markdown punctuation verbatim could turn
         // source evidence into a remote image or HTML instead of showing the captured wording.
         // Brackets and dollars use character references: their backslash escapes are ALSO

@@ -18,7 +18,8 @@ extension LingroveNotebookEngine {
     /// All selected senses commit together. A failure in a later projection rolls back earlier
     /// enrollments as well, so a multi-select action never silently enrolls only part of a list.
     public func enrollLingroveNotebookSenses(_ drafts: [LingroveNotebookCardDraft], scope: LingroveNotebookSnapshot? = nil,
-        preparedInputs: [UUID: CardEditorInput] = [:], action: NotebookBuiltInReviewAction? = nil) throws -> [LingroveNotebookReviewEnrollment] {
+        preparedInputs: [UUID: CardEditorInput] = [:], media: [ReviewMaterialPreparedMedia] = [],
+        actions: [NotebookBuiltInReviewAction] = [], action: NotebookBuiltInReviewAction? = nil) throws -> [LingroveNotebookReviewEnrollment] {
         try Task.checkCancellation()
         guard let first = drafts.first, Set(drafts.map(\.id)).count == drafts.count,
               Set(drafts.map { $0.source.senseId }).count == drafts.count,
@@ -35,7 +36,7 @@ extension LingroveNotebookEngine {
             var seen = Set<UUID>()
             for draft in drafts {
                 for value in try self.persistNotebookEnrollment(draft, snapshot: snapshot,
-                    input: preparedInputs[draft.id], action: action) where seen.insert(value.id).inserted {
+                    input: preparedInputs[draft.id], media: media, action: actions.first(where: { $0.selection.senseID == draft.source.senseId }) ?? action) where seen.insert(value.id).inserted {
                     result.append(value)
                 }
             }
@@ -45,7 +46,7 @@ extension LingroveNotebookEngine {
 
     private func persistNotebookEnrollment(
         _ draft: LingroveNotebookCardDraft, snapshot: LingroveNotebookSnapshot, input: CardEditorInput?,
-        action: NotebookBuiltInReviewAction?
+        media: [ReviewMaterialPreparedMedia], action: NotebookBuiltInReviewAction?
     ) throws -> [LingroveNotebookReviewEnrollment] {
         try Task.checkCancellation()
         let fingerprint = try input.map {
@@ -77,9 +78,9 @@ extension LingroveNotebookEngine {
             let linkID = LingroveNotebookCardMaterial.stableID("link" + suffix, workspace: draft.source.workspaceId, sense: draft.source.senseId)
             let cardID = LingroveNotebookCardMaterial.stableID("card" + suffix, workspace: draft.source.workspaceId, sense: draft.source.senseId).uuidString.lowercased()
             let exerciseDraft = LingroveNotebookCardDraft(id: linkID, source: draft.source,
-                sourceRevision: draft.sourceRevision, generatedContent: draft.generatedContent)
+                sourceRevision: draft.sourceRevision, generatedContent: draft.generatedContent, materialPlan: draft.materialPlan)
             let card = try self.persistNewLingroveNotebookCard(draft: exerciseDraft,
-                input: input ?? exerciseDraft.generatedContent, mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, newCardID: cardID)
+                input: input ?? exerciseDraft.generatedContent, mediaAssetIdsReadyForUpload: [], validatedSnapshot: snapshot, newCardID: cardID, media: media)
             enrollments[ownerIndex] = try self.lingroveNotebookReviewStore.attach(cardId: card.cardId, linkId: exerciseDraft.id,
                 to: enrollments[ownerIndex], now: now)
         }

@@ -24,6 +24,7 @@ public enum LingroveNotebookCardLinkSchema {
             updated_at TEXT NOT NULL,
             deleted_at TEXT,
             allows_unavailable_material INTEGER NOT NULL DEFAULT 0 CHECK(allows_unavailable_material IN (0,1)),
+            material_plan_json TEXT,
             PRIMARY KEY(workspace_id,link_id)
         );
         CREATE UNIQUE INDEX IF NOT EXISTS notebook_card_link_live_source_card

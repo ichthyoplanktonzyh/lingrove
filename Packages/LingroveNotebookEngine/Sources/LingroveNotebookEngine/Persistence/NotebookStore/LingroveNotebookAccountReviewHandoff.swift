@@ -6,7 +6,7 @@ import LingroveNotebook
 /// sense. Historical journals and frozen requests remain in the source scope.
 public nonisolated struct LingroveNotebookAccountReviewHandoff {
     public let core: DatabaseCore
-    public func copyInTransaction(source: String, target: String, notebookID: UUID, cardIDs: [String: String]) throws {
+    public func copyInTransaction(source: String, target: String, notebookID: UUID, cardIDs: [String: String], assetIDs: [String: String] = [:]) throws {
         let enrollments = try core.query(sql: "SELECT enrollment_id,sense_id FROM notebook_review_enrollments WHERE workspace_id=?", values: [.text(source)]) {
             (DatabaseCore.columnText(statement: $0, index: 0), DatabaseCore.columnText(statement: $0, index: 1))
         }
@@ -35,10 +35,16 @@ public nonisolated struct LingroveNotebookAccountReviewHandoff {
             for link in links {
                 let replacement = forkedNotebookLinkID(source: source, target: target, original: link)
                 try core.execute(sql: """
-                INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material)
-                SELECT ?,?,?,entry_id,sense_id,example_id,?,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material
+                INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json)
+                SELECT ?,?,?,entry_id,sense_id,example_id,?,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json
                 FROM notebook_card_links WHERE workspace_id=? AND link_id=?
                 """, values: [.text(target), .text(replacement), .text(notebookID.uuidString), .text(new), .text(source), .text(link)])
+                if let value = try LingroveNotebookCardLinkStore(core: core).find(workspaceId: target, id: UUID(uuidString: replacement)!), let generated = value.generatedContent {
+                    let rewritten = CardEditorInput(frontText: markdownByRewritingManagedMediaAssetIds(text: generated.frontText, mediaAssetIdsBySourceId: assetIDs),
+                        backText: markdownByRewritingManagedMediaAssetIds(text: generated.backText, mediaAssetIdsBySourceId: assetIDs), tags: generated.tags)
+                    try core.execute(sql: "UPDATE notebook_card_links SET generated_content_json=? WHERE workspace_id=? AND link_id=?",
+                        values: [.text(try core.encodeJsonString(value: rewritten)), .text(target), .text(replacement)])
+                }
             }
             try core.execute(sql: """
                 INSERT INTO notebook_card_sync_holds(workspace_id,card_id,notebook_id,creation_operation_id,created_at)

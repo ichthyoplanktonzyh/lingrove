@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 import LingroveNotebookSync
 
 /// This adapter borrows notebook's account generation and SQLite transaction. It never
@@ -22,6 +23,17 @@ public struct LingroveNotebookReviewSyncStore {
             let workspace = binding.scope.workspaceID.uuidString.lowercased()
             let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
             guard let installation = UUID(uuidString: settings.installationId) else { throw LingroveNotebookNetworkError.identityMismatch }
+            let pendingMedia = try LingroveNotebookReviewMediaStore(core: core).pending(workspaceID: workspace)
+            if !pendingMedia.isEmpty {
+                // A finite media envelope is acknowledged before dependent plans/Cards. Keeping
+                // this independent avoids a large recording starving every later Card operation.
+                let value = LingroveNotebookReviewRequest(protocolVersion: 2, notebookId: binding.scope.notebookID,
+                    replicaId: binding.scope.replicaID, installationId: installation, afterSequence: try cursor(workspace),
+                    sourceSequence: "0", enrollments: [], links: [], operations: [], undos: [], confirmations: [], media: pendingMedia)
+                guard try core.encoder.encode(value).count <= 7 * 1024 * 1024 else { throw LingroveNotebookNetworkError.replyTooLarge }
+                return value
+            }
+            let richProtocol = try core.scalarInt(sql: "SELECT EXISTS(SELECT 1 FROM notebook_card_links WHERE workspace_id=? AND material_plan_json IS NOT NULL)", values: [.text(workspace)]) != 0
             let enrollments = try core.query(sql: """
                 SELECT operation_id,payload_json FROM (SELECT operation_id,payload_json,created_at,ROW_NUMBER() OVER(PARTITION BY enrollment_id ORDER BY revision DESC) ordinal
                 FROM notebook_review_operations WHERE workspace_id=?) WHERE ordinal=1 ORDER BY created_at,operation_id LIMIT 200
@@ -100,7 +112,7 @@ public struct LingroveNotebookReviewSyncStore {
             let adoptions = try core.query(sql: "SELECT payload_json FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1 ORDER BY operation_id",
                 values: [.text(workspace)]) { try core.decoder.decode(LingroveNotebookReviewRequest.HistoryAdoption.self,
                     from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8)) }
-            return try bounded(.init(protocolVersion: 1, notebookId: binding.scope.notebookID, replicaId: binding.scope.replicaID, installationId: installation,
+            return try bounded(.init(protocolVersion: richProtocol ? 2 : 1, notebookId: binding.scope.notebookID, replicaId: binding.scope.replicaID, installationId: installation,
                 afterSequence: try cursor(workspace), sourceSequence: sourceSequence, enrollments: enrollments, links: Array(admittedLinks), operations: Array(admittedOperations), undos: admittedUndos, confirmations: confirmations, historyAdoptions: adoptions))
         }
     }
@@ -109,9 +121,20 @@ public struct LingroveNotebookReviewSyncStore {
         try core.inTransaction {
             try LingroveNotebookWindowStore(core: core).checkBindingInTransaction(binding)
             let workspace = binding.scope.workspaceID.uuidString.lowercased()
-            guard response.protocolVersion == 1, response.notebookId == binding.scope.notebookID, response.replicaId == binding.scope.replicaID,
+            guard [1, 2].contains(request.protocolVersion), (response.protocolVersion == request.protocolVersion || request.protocolVersion == 1 && response.protocolVersion == 2), response.notebookId == binding.scope.notebookID, response.replicaId == binding.scope.replicaID,
                   try cursor(workspace) == request.afterSequence, response.afterSequence >= request.afterSequence else { throw LingroveNotebookNetworkError.invalidReply }
             let local = try LingroveNotebookStore(core: core).readSnapshot(workspaceId: workspace)
+            let sentMedia = request.media ?? [], receivedMedia = response.media ?? []
+            let acknowledgedMedia = response.acknowledgedMedia ?? []
+            guard response.protocolVersion == 2 || (sentMedia.isEmpty && receivedMedia.isEmpty && acknowledgedMedia.isEmpty),
+                  Set(acknowledgedMedia) == Set(sentMedia.map { $0.reference.digest }),
+                  Set(acknowledgedMedia).count == acknowledgedMedia.count,
+                  receivedMedia.count <= 128, receivedMedia.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else {
+                throw LingroveNotebookNetworkError.invalidReply
+            }
+            let resources = LingroveNotebookReviewMediaStore(core: core)
+            for prepared in receivedMedia { try resources.insert(prepared, workspaceID: workspace, acknowledged: true) }
+            try resources.acknowledge(acknowledgedMedia, workspaceID: workspace)
             guard Set(response.confirmed).isSubset(of: Set(request.confirmations.map(\.cardId))) else { throw LingroveNotebookNetworkError.invalidReply }
             for value in request.confirmations where response.confirmed.contains(value.cardId) {
                 try core.execute(sql: "INSERT INTO notebook_review_material_confirmations(workspace_id,card_id,source_sequence,link_revision,card_operation_id) VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,card_id) DO UPDATE SET source_sequence=excluded.source_sequence,link_revision=excluded.link_revision,card_operation_id=excluded.card_operation_id", values: [.text(workspace), .text(value.cardId), .text(request.sourceSequence), .integer(Int64(value.linkRevision)), .text(value.cardOperationId)])
@@ -148,15 +171,19 @@ public struct LingroveNotebookReviewSyncStore {
                     guard value.card.workspaceId == workspace, value.link.source.workspaceId == workspace,
                           value.link.source.notebookId == binding.scope.notebookID, value.link.cardId == value.card.cardId else { throw LingroveNotebookNetworkError.identityMismatch }
                     let link = remote(value.link, book: local.notebookId, sourceRevision: local.revision)
+                    if let plan = link.materialPlan {
+                        guard response.protocolVersion == 2, plan.exampleID == link.source.exampleId else { throw LingroveNotebookNetworkError.invalidReply }
+                        try resources.register(plan: plan, source: link.source, snapshot: local, supplied: [])
+                    }
                     let pendingLink = try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_card_link_operations WHERE workspace_id=? AND link_id=?", values: [.text(workspace), .text(link.id.uuidString)])
                     if pendingLink == 0 {
                         try core.execute(sql: """
-                            INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,link_id) DO UPDATE SET example_id=excluded.example_id,generated_content_json=excluded.generated_content_json,
-                            source_revision=excluded.source_revision,revision=excluded.revision,updated_at=excluded.updated_at,deleted_at=excluded.deleted_at,allows_unavailable_material=excluded.allows_unavailable_material
+                            INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json)
+                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,link_id) DO UPDATE SET example_id=excluded.example_id,generated_content_json=excluded.generated_content_json,
+                            source_revision=excluded.source_revision,revision=excluded.revision,updated_at=excluded.updated_at,deleted_at=excluded.deleted_at,allows_unavailable_material=excluded.allows_unavailable_material,material_plan_json=excluded.material_plan_json
                             """, values: [.text(workspace), .text(link.id.uuidString), .text(local.notebookId.uuidString), .text(link.source.entryId.uuidString), .text(link.source.senseId.uuidString),
                                 link.source.exampleId.map { .text($0.uuidString) } ?? .null, .text(link.cardId), try link.generatedContent.map { .text(try core.encodeJsonString(value: $0)) } ?? .null,
-                                .integer(Int64(link.sourceRevision)), .text(link.creationFingerprint), .integer(Int64(link.revision)), .text(link.createdAt), .text(link.updatedAt), link.deletedAt.map(SQLiteValue.text) ?? .null, .integer(link.allowsUnavailableMaterial ? 1 : 0)])
+                                .integer(Int64(link.sourceRevision)), .text(link.creationFingerprint), .integer(Int64(link.revision)), .text(link.createdAt), .text(link.updatedAt), link.deletedAt.map(SQLiteValue.text) ?? .null, .integer(link.allowsUnavailableMaterial ? 1 : 0), try link.materialPlan.map { .text(try core.encodeJsonString(value: $0)) } ?? .null])
                     }
                     try core.execute(sql: "INSERT INTO notebook_review_exercises(workspace_id,enrollment_id,card_id,link_id,created_at) VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,card_id) DO NOTHING",
                         values: [.text(workspace), .text(value.enrollmentId.uuidString), .text(value.card.cardId), .text(link.id.uuidString), .text(link.createdAt)])
@@ -255,7 +282,7 @@ public struct LingroveNotebookReviewSyncStore {
         .init(id: value.id, source: .init(workspaceId: value.source.workspaceId, notebookId: book, entryId: value.source.entryId,
             senseId: value.source.senseId, exampleId: value.source.exampleId), cardId: value.cardId, generatedContent: value.generatedContent,
             sourceRevision: sourceRevision ?? value.sourceRevision, creationFingerprint: value.creationFingerprint, revision: value.revision,
-            createdAt: value.createdAt, updatedAt: value.updatedAt, deletedAt: value.deletedAt, allowsUnavailableMaterial: value.allowsUnavailableMaterial)
+            createdAt: value.createdAt, updatedAt: value.updatedAt, deletedAt: value.deletedAt, allowsUnavailableMaterial: value.allowsUnavailableMaterial, materialPlan: value.materialPlan)
     }
 
     public init(core: DatabaseCore) {

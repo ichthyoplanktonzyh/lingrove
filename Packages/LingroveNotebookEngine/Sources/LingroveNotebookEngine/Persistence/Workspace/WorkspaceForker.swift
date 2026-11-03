@@ -68,7 +68,7 @@ public struct WorkspaceForker {
         }
         try insertForkedReviewEvents(sourceWorkspaceId: sourceWorkspaceID, destinationWorkspaceId: targetWorkspaceID, forkMappings: mappings)
         try LingroveNotebookAccountReviewHandoff(core: core).copyInTransaction(source: sourceWorkspaceID, target: targetWorkspaceID,
-            notebookID: notebookID, cardIDs: cards)
+            notebookID: notebookID, cardIDs: cards, assetIDs: mappings.mediaAssetIdsBySourceId)
         let installation = try workspaceSettingsStore.loadCloudSettings().installationId
         let outbox = OutboxStore(core: core), cardStore = CardStore(core: core)
         let now = nowIsoTimestamp()
@@ -268,15 +268,18 @@ public struct WorkspaceForker {
                     )
                 )
             }),
-            mediaAssetIdsBySourceId: Dictionary(uniqueKeysWithValues: mediaAssetIds.map { mediaAssetId in
-                (
-                    mediaAssetId,
-                    forkedMediaAssetIdForWorkspace(
+            mediaAssetIdsBySourceId: Dictionary(uniqueKeysWithValues: try mediaAssetIds.map { mediaAssetId in
+                let destination: String
+                if let prepared = try LingroveNotebookReviewMediaStore(core: core).media(assetID: mediaAssetId, workspaceID: sourceWorkspaceId) {
+                    destination = LingroveNotebookCardMaterial.mediaAssetID(reference: prepared.reference, workspaceID: destinationWorkspaceId)
+                } else {
+                    destination = forkedMediaAssetIdForWorkspace(
                         sourceWorkspaceId: sourceWorkspaceId,
                         destinationWorkspaceId: destinationWorkspaceId,
                         sourceMediaAssetId: mediaAssetId
                     )
-                )
+                }
+                return (mediaAssetId, destination)
             }),
             reviewEventIdsBySourceId: Dictionary(uniqueKeysWithValues: reviewEventIds.map { reviewEventId in
                 (
