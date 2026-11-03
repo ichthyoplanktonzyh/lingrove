@@ -1,7 +1,8 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import Foundation
 import LingroveNotebookEngine
+import SwiftUI
 
 private let reviewAnswerPresentationOrder: [ReviewRating] = [.again, .hard, .good, .easy]
 private let reviewCardsStringsTableName: String = "ReviewCards"
@@ -35,6 +36,17 @@ func lingroveLocalizedReviewRatingTitle(rating: ReviewRating) -> String {
         return String(localized: "Good", table: reviewCardsStringsTableName)
     case .easy:
         return String(localized: "Easy", table: reviewCardsStringsTableName)
+    }
+}
+
+/// Ratings carry meaning independently of the application accent. Native semantic colors
+/// resolve for both appearances; each control also keeps its written rating and symbol.
+func lingroveReviewRatingColor(_ rating: ReviewRating) -> Color {
+    switch rating {
+    case .again: .red
+    case .hard: .orange
+    case .good: .green
+    case .easy: .blue
     }
 }
 

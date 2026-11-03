@@ -3,9 +3,9 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// The existing window borrows one app-owned session. This root binds Nibomo’s review column,
-/// filter/header and queue sheets to that session; it never constructs a mobile store or owns
-/// account/sync services. Sheet choices remain navigation until an explicit enrollment command.
+/// The workspace borrows one app-owned session. This root owns only destination chrome and
+/// transient sheets; the session continues to own the pinned question, writer and source links.
+/// Appearance is inherited from the native host so a sheet and its parent resolve together.
 struct BuiltInReviewWindowView: View {
     @ObservedObject var session: BuiltInReviewSession
     @State private var choosingSense = false
@@ -22,7 +22,10 @@ struct BuiltInReviewWindowView: View {
                     Text(message).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Button(BuiltInReviewCopy.text("action.refresh")) { session.reload() }.disabled(session.isBusy)
-                }.font(.callout).padding(12).background(.quaternary)
+                }
+                .font(.callout).padding(12)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .accessibilityIdentifier("builtinReview.message")
             }
             if let content = session.content {
                 destination(content).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -39,15 +42,13 @@ struct BuiltInReviewWindowView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        // Color scheme is a subtree value: preferredColorScheme would change the hosting
-        // window, including the untouched corpus/sidebar when this view is embedded.
-        .tint(.orange).environment(\.colorScheme, .dark)
-        .frame(minWidth: 760, minHeight: 560)
+        .frame(minWidth: 560, minHeight: 500)
         .sheet(isPresented: $choosingSense) {
             if let content = session.content {
                 BuiltInReviewSenseChooser(content: content) { selection in
                     choosingSense = false
-                    session.endPractice()
+                    // Choosing material is navigation. Ending a practice has its own visible
+                    // action, and the chooser is unavailable while that practice is on screen.
                     session.route = .sense(selection)
                 }
             }
@@ -64,43 +65,73 @@ struct BuiltInReviewWindowView: View {
         .accessibilityIdentifier("builtinReview.window")
     }
 
-    /// Mirrors ReviewView.reviewCompanionHeader: filter left, centered title, trailing actions.
-    /// Lingrove’s sense participation replaces the mobile Deck filter, leaving its structure intact.
+    /// Titles use the same native hierarchy as Progress. At narrow widths the action row wraps
+    /// as a unit instead of squeezing the title or hiding the explicit end-practice action.
     private var header: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 20) {
+                heading
+                Spacer(minLength: 16)
+                actions
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                heading
+                actions.frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 24).padding(.vertical, 16)
+    }
+
+    private var heading: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                if session.route == .practice {
-                    Button(BuiltInReviewCopy.text("action.finish")) { session.endPractice() }
-                        .accessibilityIdentifier("builtinReview.finish")
-                } else {
-                    Button {
-                        if session.content?.queue.isEmpty == false { session.start() } else { session.endPractice() }
-                    } label: { Image(systemName: "chevron.left") }
-                        .help(String(localized: "Review", table: "ReviewCards"))
+            if case .sense = session.route {
+                Button { session.route = .overview } label: {
+                    Label(BuiltInReviewCopy.text("nav.overview"), systemImage: "chevron.left")
                 }
+                .help(BuiltInReviewCopy.text("nav.overview"))
+                .accessibilityIdentifier("builtinReview.back")
+                .disabled(session.isBusy)
+            }
+            Text(String(localized: "Review", table: "ReviewCards"))
+                .font(.title2.weight(.semibold))
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 8) {
+            if session.isBusy { ProgressView().controlSize(.small) }
+            if session.route == .practice {
+                Button(BuiltInReviewCopy.text("action.endPractice")) { session.endPractice() }
+                    .accessibilityIdentifier("builtinReview.finish")
+            } else {
                 Button { choosingSense = true } label: {
                     Label(BuiltInReviewCopy.text("nav.selected"), systemImage: "line.3.horizontal.decrease")
-                }.lingroveNativeActionButtonStyle().accessibilityIdentifier("builtinReview.choose")
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            Text(String(localized: "Review", table: "ReviewCards"))
-                .font(.headline).lineLimit(1).fixedSize(horizontal: true, vertical: false)
-                .frame(maxWidth: .infinity).accessibilityAddTraits(.isHeader)
-            HStack(spacing: 14) {
-                if session.isBusy { ProgressView().controlSize(.small) }
-                if let undo = session.latestUndo {
-                    Button { session.undo(undo) } label: { Image(systemName: "arrow.uturn.backward") }
-                        .help(BuiltInReviewCopy.text("action.undo")).accessibilityIdentifier("builtinReview.session.undo")
                 }
-                Button { showingQueue = true } label: { Image(systemName: "list.bullet") }
-                    .help(String(localized: "Review", table: "ReviewCards"))
-                    .accessibilityIdentifier("builtinReview.queue")
-                Button { showingHistory = true } label: { Image(systemName: "clock.arrow.circlepath") }
-                    .help(BuiltInReviewCopy.text("history.title"))
-                Button { session.reload() } label: { Image(systemName: "arrow.clockwise") }
-                    .help(BuiltInReviewCopy.text("action.refresh"))
-            }.buttonStyle(.plain).font(.title3).frame(maxWidth: .infinity, alignment: .trailing)
-        }.padding(.horizontal, 20).padding(.vertical, 14)
-            .disabled(session.isBusy || session.content == nil)
+                .accessibilityIdentifier("builtinReview.choose")
+            }
+            if let undo = session.latestUndo {
+                Button { session.undo(undo) } label: { Image(systemName: "arrow.uturn.backward") }
+                    .help(BuiltInReviewCopy.text("action.undo"))
+                    .accessibilityLabel(BuiltInReviewCopy.text("action.undo"))
+                    .accessibilityIdentifier("builtinReview.session.undo")
+            }
+            Button { showingQueue = true } label: { Image(systemName: "list.bullet") }
+                .help(BuiltInReviewCopy.text("queue.title"))
+                .accessibilityLabel(BuiltInReviewCopy.text("queue.title"))
+                .accessibilityIdentifier("builtinReview.queue")
+            Button { showingHistory = true } label: { Image(systemName: "clock.arrow.circlepath") }
+                .help(BuiltInReviewCopy.text("history.title"))
+                .accessibilityLabel(BuiltInReviewCopy.text("history.title"))
+                .accessibilityIdentifier("builtinReview.history")
+            Button { session.reload() } label: { Image(systemName: "arrow.clockwise") }
+                .help(BuiltInReviewCopy.text("action.refresh"))
+                .accessibilityLabel(BuiltInReviewCopy.text("action.refresh"))
+                .accessibilityIdentifier("builtinReview.refresh")
+        }
+        .buttonStyle(.bordered).controlSize(.regular)
+        .disabled(session.isBusy || session.content == nil)
     }
 
     @ViewBuilder private func destination(_ content: NotebookBuiltInReviewSnapshot) -> some View {

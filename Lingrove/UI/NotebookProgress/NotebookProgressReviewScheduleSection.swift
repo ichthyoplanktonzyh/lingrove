@@ -1,5 +1,5 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W4_PROGRESS_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_PROGRESS_UI_REUSE.md.
 import Charts
 import SwiftUI
 import LingroveNotebookEngine
@@ -10,8 +10,9 @@ import LingroveNotebookEngine
 private let progressReviewScheduleChartHeight: CGFloat = 220
 private let progressReviewScheduleLegendMarkerSize: CGFloat = 10
 
-/// Nibomo’s interactive schedule donut and eight-bucket legend. The parent supplies only
-/// currently admitted corpus exercises; this view never reads or changes scheduling.
+/// The destination supplies only currently eligible exercises to this eight-bucket forecast.
+/// Donut and native legend buttons share transient selection; adapting the layout never reads
+/// or changes scheduling, and every color retains a written category, count and percentage.
 struct NotebookProgressReviewScheduleSection: View {
     let schedule: UserReviewSchedule
 
@@ -41,43 +42,14 @@ struct NotebookProgressReviewScheduleSection: View {
             .font(.headline)
 
             if self.schedule.totalCards > 0 {
-                Chart {
-                    ForEach(self.nonEmptyBuckets) { bucket in
-                        SectorMark(
-                            angle: .value("Cards", bucket.count),
-                            innerRadius: .ratio(0.62),
-                            outerRadius: .ratio(self.outerRadiusRatio(for: bucket.key))
-                        )
-                        .foregroundStyle(progressReviewScheduleBucketColor(key: bucket.key))
-                        .opacity(self.segmentOpacity(for: bucket.key))
-                        .accessibilityLabel(progressReviewScheduleBucketTitle(key: bucket.key))
-                        .accessibilityValue(
-                            progressReviewScheduleBucketAccessibilityValue(
-                                bucket: bucket,
-                                totalCards: self.schedule.totalCards
-                            )
-                        )
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 24) {
+                        scheduleChart.frame(width: 220)
+                        legend.frame(minWidth: 260)
                     }
-                }
-                .chartLegend(.hidden)
-                .chartAngleSelection(value: self.$selectedAngle)
-                .frame(height: progressReviewScheduleChartHeight)
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(progressReviewScheduleChartAccessibilityLabel())
-                .accessibilityValue(self.chartAccessibilityValue)
-                .onChange(of: self.selectedAngle) { _, newValue in
-                    self.handleChartAngleSelection(newValue)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(self.buckets) { bucket in
-                        ProgressReviewScheduleLegendRow(
-                            bucket: bucket,
-                            totalCards: self.schedule.totalCards,
-                            isSelected: self.selectedBucketKey == bucket.key,
-                            isAnySelected: self.selectedBucketKey != nil,
-                            onTap: { self.toggleSelection(for: bucket.key) }
-                        )
+                    VStack(spacing: 16) {
+                        scheduleChart
+                        legend
                     }
                 }
             } else {
@@ -103,6 +75,64 @@ struct NotebookProgressReviewScheduleSection: View {
                     self.selectedBucketKey = nil
                 }
         )
+        .onChange(of: schedule) { _, _ in
+            // A refresh can replace the forecast while this view survives. Selection belongs
+            // to the displayed snapshot, so a vanished bucket must not leave every wedge dim.
+            selectedBucketKey = nil
+            selectedAngle = nil
+        }
+    }
+
+    private var scheduleChart: some View {
+        Chart {
+            ForEach(self.nonEmptyBuckets) { bucket in
+                SectorMark(
+                    angle: .value("Cards", bucket.count),
+                    innerRadius: .ratio(0.68),
+                    outerRadius: .ratio(self.outerRadiusRatio(for: bucket.key))
+                )
+                .foregroundStyle(progressReviewScheduleBucketColor(key: bucket.key))
+                .opacity(self.segmentOpacity(for: bucket.key))
+                .accessibilityLabel(progressReviewScheduleBucketTitle(key: bucket.key))
+                .accessibilityValue(progressReviewScheduleBucketAccessibilityValue(bucket: bucket, totalCards: self.schedule.totalCards))
+            }
+        }
+        .chartLegend(.hidden)
+        .chartAngleSelection(value: self.$selectedAngle)
+        .frame(height: progressReviewScheduleChartHeight)
+        .overlay {
+            VStack(spacing: 4) {
+                Text((selectedBucket?.count ?? schedule.totalCards).formatted())
+                    .font(.title2.weight(.semibold)).monospacedDigit()
+                Text(selectedBucket.map { progressReviewScheduleBucketTitle(key: $0.key) }
+                    ?? NotebookProgressCopy.text("metric.exercises"))
+                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: 130).allowsHitTesting(false).accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(progressReviewScheduleChartAccessibilityLabel())
+        .accessibilityValue(self.chartAccessibilityValue)
+        .accessibilityIdentifier("notebook.progress.schedule.chart")
+        .onChange(of: self.selectedAngle) { _, newValue in self.handleChartAngleSelection(newValue) }
+    }
+
+    private var selectedBucket: ReviewScheduleBucket? {
+        buckets.first { $0.key == selectedBucketKey }
+    }
+
+    private var legend: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(self.buckets) { bucket in
+                ProgressReviewScheduleLegendRow(
+                    bucket: bucket,
+                    totalCards: self.schedule.totalCards,
+                    isSelected: self.selectedBucketKey == bucket.key,
+                    isAnySelected: self.selectedBucketKey != nil,
+                    onTap: { self.toggleSelection(for: bucket.key) }
+                )
+            }
+        }
     }
 
     private var chartAccessibilityValue: String {
@@ -188,44 +218,41 @@ private struct ProgressReviewScheduleLegendRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(progressReviewScheduleBucketColor(key: self.bucket.key))
-                .overlay(
-                    Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                )
-                .frame(
-                    width: progressReviewScheduleLegendMarkerSize,
-                    height: progressReviewScheduleLegendMarkerSize
-                )
-                .accessibilityHidden(true)
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(progressReviewScheduleBucketColor(key: self.bucket.key))
+                    .overlay(
+                        Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .frame(
+                        width: progressReviewScheduleLegendMarkerSize,
+                        height: progressReviewScheduleLegendMarkerSize
+                    )
+                    .accessibilityHidden(true)
 
-            Text(progressReviewScheduleBucketTitle(key: self.bucket.key))
-                .font(.subheadline)
-                .foregroundStyle(.primary)
+                Text(progressReviewScheduleBucketTitle(key: self.bucket.key))
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
 
-            Spacer(minLength: 12)
+                Spacer(minLength: 12)
 
-            Text(self.detailText)
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(.tint.opacity(self.isSelected ? 0.12 : 0))
-                .padding(.horizontal, -8)
-                .padding(.vertical, -4)
-        )
-        .opacity(self.isAnySelected && self.isSelected == false ? 0.35 : 1.0)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard self.bucket.count > 0 else {
-                return
+                Text(self.detailText)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-            self.onTap()
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.tint.opacity(self.isSelected ? 0.12 : 0))
+            )
+            .opacity(self.isAnySelected && self.isSelected == false ? 0.5 : 1.0)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(self.bucket.count == 0)
         .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(self.bucket.count > 0 ? .isButton : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityLabel(progressReviewScheduleBucketTitle(key: self.bucket.key))
         .accessibilityValue(
             progressReviewScheduleBucketAccessibilityValue(
@@ -233,6 +260,8 @@ private struct ProgressReviewScheduleLegendRow: View {
                 totalCards: self.totalCards
             )
         )
+        .help(progressReviewScheduleBucketTitle(key: bucket.key) + ": " + detailText)
+        .accessibilityIdentifier("notebook.progress.bucket." + bucket.key.rawValue)
     }
 
     private var detailText: String {

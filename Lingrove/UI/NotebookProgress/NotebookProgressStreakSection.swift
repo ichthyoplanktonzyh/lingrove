@@ -1,5 +1,5 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W4_PROGRESS_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_PROGRESS_UI_REUSE.md.
 import SwiftUI
 import LingroveNotebookEngine
 
@@ -7,8 +7,9 @@ private let progressStreakCalendarColumnSpacing: CGFloat = 10
 private let progressStreakCalendarHeaderSpacing: CGFloat = 10
 private let progressStreakCalendarWeekSpacing: CGFloat = 12
 
-/// Extracted five-week personal streak calendar. The destination owns its immutable summary;
-/// the badge retains Nibomo's reviewed-today treatment, without a server freeze-bank feature.
+/// The destination supplies this five-week calendar and its immutable streak summary together.
+/// Native accent marks activity, while dates and accessible review counts keep the calendar
+/// understandable without color. No view-owned streak or reward state is introduced.
 struct NotebookProgressStreakSection: View {
     let summary: ProgressSummary
     let weeks: [NotebookProgressCalendarWeek]
@@ -21,15 +22,16 @@ struct NotebookProgressStreakSection: View {
             HStack {
                 HStack(spacing: 3) {
                     Image(systemName: summary.hasReviewedToday ? "flame.fill" : "flame")
-                        .foregroundStyle(summary.hasReviewedToday ? notebookProgressAccent : .gray)
-                    Text(summary.currentStreakDays > 99 ? "99+" : summary.currentStreakDays.formatted())
+                        .foregroundStyle(summary.hasReviewedToday ? notebookProgressAccent : .secondary)
+                    Text(summary.currentStreakDays.formatted())
                         .monospacedDigit()
                 }
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, 8)
                 .frame(minHeight: 34)
-                .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
-                .overlay(Capsule().strokeBorder(summary.hasReviewedToday ? notebookProgressAccent.opacity(0.55) : .gray.opacity(0.35)))
+                .background(Capsule().fill(Color(nsColor: .textBackgroundColor)))
+                .overlay(Capsule().strokeBorder(summary.hasReviewedToday
+                    ? notebookProgressAccent.opacity(0.55) : Color(nsColor: .separatorColor)))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(NotebookProgressCopy.format(summary.hasReviewedToday ? "streak.reviewed_today" : "streak.pending_today",
                     summary.currentStreakDays.formatted()))
@@ -37,6 +39,10 @@ struct NotebookProgressStreakSection: View {
                 Text(NotebookProgressCopy.format("streak.longest", summary.longestStreakDays.formatted()))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let first = weeks.first?.days.first, let last = weeks.last?.days.last {
+                Text(progressDateRangeLabel(from: first.date, to: last.date, calendar: calendar))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             NotebookProgressStreakCalendarGrid(headerDays: weeks.first?.days ?? [], weeks: weeks, calendar: calendar)
         }
@@ -142,7 +148,7 @@ private struct NotebookProgressStreakDayCell: View {
         }
 
         if self.isActiveFlameDay {
-            return notebookProgressAccent
+            return notebookProgressAccent.opacity(0.16)
         }
 
         return Color(nsColor: .controlBackgroundColor)
@@ -170,7 +176,7 @@ private struct NotebookProgressStreakDayCell: View {
         }
 
         if self.isActiveFlameDay {
-            return .white
+            return .primary
         }
 
         if self.day.isToday {
