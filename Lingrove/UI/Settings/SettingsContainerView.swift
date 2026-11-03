@@ -139,7 +139,9 @@ struct SettingsContainerView: View {
                 attentionCategories: attentionCategories
             )
         case .account:
-            if let accountService { AccountPaneView(account: accountService, syncController: notebookSync) }
+            if let accountService {
+                AccountPaneView(account: accountService, syncController: notebookSync, navigation: navigation.account)
+            }
         case .general:
             GeneralPaneView(
                 cli: cli,

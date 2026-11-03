@@ -51,6 +51,15 @@ enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
 /// pane switch cancels it immediately.
 @MainActor
 final class SettingsNavigationModel: ObservableObject {
+    /// The coordinator retains account drafts independently of the mounted detail pane. A child
+    /// observable keeps URL keystrokes local while external navigation can still reset its path.
+    let account = AccountSettingsNavigation()
+
+    func openAccount() {
+        showsUsageGuide = false
+        open(.account)
+    }
+
     /// The settings window owns one read-only guide sheet. Closing it never changes a feature.
     @Published var showsUsageGuide = false
 
@@ -133,6 +142,7 @@ final class SettingsNavigationModel: ObservableObject {
         inspectedCompletionEngine = nil
         modelManagerTask = nil
         cancelHighlight()
+        if category == .account { account.showOverview() }
         selectCategory(category)
     }
 
@@ -163,6 +173,13 @@ final class SettingsNavigationModel: ObservableObject {
     func reveal(_ item: SettingsItem) {
         inspectedCompletionEngine = nil
         modelManagerTask = nil
+        if item.category == .account {
+            switch item {
+            case .accountConnection: account.show(.service)
+            case .accountSync: account.show(.sync)
+            default: account.showOverview()
+            }
+        }
         // Existing engine search anchors belong to the original completion page. A prior visit
         // to translation must not leave those search hits scrolling an unrelated learning form.
         if item.category == .engineAndModel {

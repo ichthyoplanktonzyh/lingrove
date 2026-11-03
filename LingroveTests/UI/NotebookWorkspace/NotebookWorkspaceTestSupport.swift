@@ -22,15 +22,15 @@ final class NotebookWorkspaceFixture {
     let search: VocabularySearchController
     let window: VocabularyWindowController
     let progress = NotebookWorkspaceProgressProbe()
-    private var settings: SettingsCoordinator?
+    private(set) var settings: SettingsCoordinator?
     private(set) var settingsWindow: NSWindow?
 
-    init(usesRealProgress: Bool = false) throws {
+    init(usesRealProgress: Bool = false, accountService: AccountSessionService? = nil) throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-workspace-" + UUID().uuidString)
         defaults = try workspaceRequire(UserDefaults(suiteName: suite))
         repository = try .init(databaseURL: directory.appendingPathComponent("primary.sqlite"),
             mediaDirectoryURL: directory.appendingPathComponent("media"))
-        account = .init(client: AccountAPIClient(), credentials: KeychainAccountCredentialStore(bundleIdentifier: suite),
+        account = accountService ?? .init(client: AccountAPIClient(), credentials: KeychainAccountCredentialStore(bundleIdentifier: suite),
             settings: AccountConfigurationStore(defaults: defaults))
         sync = .init(repository: repository, account: account, consentStore: MacNotebookSyncConsentStore(defaults: defaults))
         store = VocabularyStore(repository: repository)

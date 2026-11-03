@@ -42,7 +42,8 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     private let applicationRelauncher = ApplicationRelauncher()
 
     private var settingsWindowController: NSWindowController?
-    private let navigation = SettingsNavigationModel()
+    /// One window-lifetime route owner also retains account drafts while a pane is unmounted.
+    let navigation = SettingsNavigationModel()
 
     func showLearningModel(_ role: LearningModelRole) {
         navigation.openLearningModel(role)
@@ -57,8 +58,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     /// The notebook footer reuses this exact settings owner and its existing account page.
     /// Navigation carries no authentication or workspace side effect.
     func showAccount() {
-        navigation.showsUsageGuide = false
-        navigation.open(.account)
+        navigation.openAccount()
         showSettings()
     }
 
@@ -185,6 +185,9 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
                 )
             )
         )
+        // The owning host inherits the same system-resolved appearance as every existing pane.
+        // Account subpages and sheets must not publish a color-scheme preference to this window.
+        hostingController.view.appearance = nil
         // Sized so the native split view opens with a readable sidebar, a comfortable grouped
         // detail form, and room for the Home pane's status-card row to breathe. The user can still
         // resize from here; the sidebar provides its own range.

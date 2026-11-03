@@ -78,7 +78,7 @@ private final class NativeReuseHost<Content: View> {
     let window: NSWindow
 
     init(_ content: Content, width: CGFloat, height: CGFloat) {
-        view = NSHostingView(rootView: AnyView(content.preferredColorScheme(.dark).tint(.orange)))
+        view = NSHostingView(rootView: AnyView(content))
         window = NSWindow(contentRect: .init(x: -3000, y: -3000, width: width, height: height),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

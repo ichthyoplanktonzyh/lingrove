@@ -28,13 +28,18 @@ struct NotebookWorkspaceIntegrationTests {
             let scope = try fixture.repository.snapshot()
             fixture.window.navigate(to: .review)
             await fixture.review.session.waitForIdle()
+            workspaceExpect(window.title == NotebookWorkspaceCopy.title(.review))
+            workspaceExpect(window.contentViewController?.view.appearance == nil,
+                "Workspace navigation keeps the split host's inherited appearance")
             workspaceExpect(window.toolbar == nil, "Hidden corpus editing actions must leave the window toolbar")
             workspaceExpect(try fixture.repository.engine.loadActiveCardCount(workspaceId: scope.workspaceId) == 0,
                 "Entering review is not enrollment")
             fixture.window.navigate(to: .progress)
+            workspaceExpect(window.title == NotebookWorkspaceCopy.title(.progress))
             workspaceExpect(window.toolbar == nil, "Progress must not retain hidden corpus actions")
             workspaceExpect(fixture.progress.visibility == [true])
             fixture.window.navigate(to: .corpus)
+            workspaceExpect(window.title == NotebookWorkspaceCopy.title(.corpus))
             workspaceExpect(fixture.progress.visibility == [true, false])
             workspaceExpect(fixture.window.corpusHost === original)
             workspaceExpect(original.rootView.learning.senseID == selection.senseID)

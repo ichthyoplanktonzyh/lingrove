@@ -40,7 +40,9 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(rootView: BuiltInReviewWindowView(session: session))
-        window.contentView?.appearance = NSAppearance(named: .darkAqua)
+        // Standalone and embedded review both inherit their owning native window. Applying a
+        // local dark appearance here would disagree with Settings/corpus and with system changes.
+        window.contentView?.appearance = nil
         window.setFrameAutosaveName("LingroveBuiltInReview")
         window.center()
         self.window = window

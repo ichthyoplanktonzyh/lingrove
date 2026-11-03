@@ -1,3 +1,4 @@
+import LingroveCloud
 import SwiftUI
 
 /// Only the outside of the original corpus page is new. This sidebar borrows the window's
@@ -12,18 +13,12 @@ struct NotebookWorkspaceSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            List {
+            List(selection: Binding(get: { navigation.destination }, set: navigation.request)) {
                 ForEach(NotebookWorkspaceDestination.allCases) { destination in
-                    Button { navigation.request(destination) } label: {
-                        Label(NotebookWorkspaceCopy.title(destination), systemImage: NotebookWorkspaceCopy.symbol(destination))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 5)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(navigation.destination == destination ? Color.accentColor.opacity(0.15) : Color.clear)
-                    .accessibilityAddTraits(navigation.destination == destination ? .isSelected : [])
-                    .accessibilityIdentifier("notebookWorkspace.nav." + destination.rawValue)
+                    Label(NotebookWorkspaceCopy.title(destination), systemImage: NotebookWorkspaceCopy.symbol(destination))
+                        .padding(.vertical, 5)
+                        .tag(destination)
+                        .accessibilityIdentifier("notebookWorkspace.nav." + destination.rawValue)
                 }
             }
             .listStyle(.sidebar)
@@ -38,7 +33,7 @@ struct NotebookWorkspaceSidebar: View {
                     NotebookWorkspaceAccountButton(account: account, sync: sync, action: openAccount)
                 } else {
                     Button(action: openAccount) {
-                        Label(String(localized: "Account", table: "Account"), systemImage: "person.crop.circle")
+                        Label(String(localized: "Local only", table: "NotebookSync"), systemImage: "person.crop.circle")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }.accessibilityIdentifier("notebookWorkspace.account")
                 }
@@ -50,8 +45,8 @@ struct NotebookWorkspaceSidebar: View {
     }
 }
 
-/// A separate observed fragment keeps account changes local to the footer. It reads only the
-/// existing public state, and deliberately uses the same copy as the original account page.
+/// A separate observed fragment keeps account changes local to the footer. A confirmed identity
+/// is displayed verbatim; otherwise local use stays explicit. No navigation action grants consent.
 private struct NotebookWorkspaceAccountButton: View {
     @ObservedObject var account: AccountSessionService
     let sync: MacNotebookSyncController?
@@ -60,14 +55,34 @@ private struct NotebookWorkspaceAccountButton: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "person.crop.circle")
+                Image(systemName: "person.crop.circle").imageScale(.large).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(AccountPresentation.title(account.state)).font(.callout)
-                    if let sync { NotebookWorkspaceSyncStatus(controller: sync) }
+                    Text(account.observation.retainedIdentity?.email ?? title)
+                        .font(.callout).lineLimit(1).truncationMode(.middle)
+                    if let sync, account.observation.retainedIdentity != nil {
+                        NotebookWorkspaceSyncStatus(controller: sync)
+                    } else {
+                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer(minLength: 0)
             }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        }.accessibilityIdentifier("notebookWorkspace.account")
+        }
+        .help(String(localized: "Account", table: "Account"))
+        .accessibilityIdentifier("notebookWorkspace.account")
+    }
+
+    private var title: String {
+        account.observation.retainedIdentity == nil
+            ? NotebookWorkspaceCopy.text("account.localTitle") : AccountPresentation.title(account.state)
+    }
+
+    private var detail: String {
+        switch account.state {
+        case .unconfigured, .signedOut: String(localized: "Local only", table: "NotebookSync")
+        default: AccountPresentation.title(account.state)
+        }
     }
 }
 

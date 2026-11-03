@@ -3,8 +3,9 @@ import SwiftUI
 
 /// The notebook window retains this native split host. Each destination has its own hosting
 /// controller, so the original corpus keeps SwiftUI's selection, filters, graph and toolbar
-/// state while another destination is visible. No ancestor applies review's dark/orange style
-/// to the corpus. Removing a child view also retires its SwiftUI appearance-bound work.
+/// state while another destination is visible. Every destination inherits the owning window's
+/// appearance; navigation never changes the window or another subtree's resolved color scheme.
+/// Removing a child view also retires its SwiftUI appearance-bound work.
 @MainActor
 final class NotebookWorkspaceHostController: NSSplitViewController {
     private let sidebar: NSViewController
@@ -28,6 +29,9 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
     static func destinationHost<Content: View>(rootView: Content) -> NSHostingController<Content> {
         let controller = NSHostingController(rootView: rootView)
         controller.sceneBridgingOptions = [.toolbars]
+        // A nil local appearance follows the native parent even when the window's appearance
+        // changes while this destination is detached. Views supply semantic colors, not a theme.
+        controller.view.appearance = nil
         return controller
     }
 

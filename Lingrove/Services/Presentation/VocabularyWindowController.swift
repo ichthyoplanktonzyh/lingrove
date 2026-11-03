@@ -84,7 +84,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         guard window == nil else { return }
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 1240, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = String(localized: "Vocabulary", table: "Vocabulary")
+        window.title = NotebookWorkspaceCopy.title(.corpus)
         window.identifier = .init("LingroveVocabulary")
         window.minSize = CGSize(width: 1000, height: 620)
         window.isReleasedWhenClosed = false
@@ -175,6 +175,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func display(_ destination: NotebookWorkspaceDestination) {
+        window?.title = NotebookWorkspaceCopy.title(destination)
         if navigation.destination != destination {
             // Clear a focused corpus field editor before review becomes visible. A later
             // number/Space belongs to practice only after the original editor has resigned.
@@ -196,9 +197,6 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
                 if reviewHost == nil {
                     let reviewHost = NotebookWorkspaceHostController.destinationHost(
                         rootView: BuiltInReviewWindowView(session: builtInReview.session))
-                    // Appearance is a host-local boundary. A preference on the split root would
-                    // make the untouched corpus page dark after visiting the review destination.
-                    reviewHost.view.appearance = NSAppearance(named: .darkAqua)
                     self.reviewHost = reviewHost
                 }
                 if let reviewHost { host?.show(reviewHost) }
