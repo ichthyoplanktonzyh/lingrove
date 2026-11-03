@@ -446,7 +446,8 @@ those reviewer/test agents do not write implementation or test code.
   work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_3.md`: save-internal optimization
   and direct reuse of Nibomo account/review UI in two independent complete modules. Keep the
   upstream interaction/visual design; only necessary platform and business adapters are in scope.
-  Mac Waves 1/2 are integrated; evidence and remaining limits are in their integration reports.
+  Mac Waves 1/2/3 are integrated; evidence and remaining limits are in their integration reports,
+  including `docs/MAC_WAVE_3_INTEGRATION.md` for the save/UI wave and its explicit Progress statistics gap.
   Those Mac contracts supersede historical mobile-only scope exclusions. Separate worktrees isolate source,
   not simulators or host resources. All Xcode/simulator operations acquire the shared validation
   lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.

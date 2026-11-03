@@ -55,3 +55,8 @@ persisted result and undo journey executed successfully. Real mouse presses and 
 contrast remain explicit integration checks; no product navigation/style was changed to make
 the automation pass. Native execution details and exact evidence are in `MAC_W3_B_DELIVERY.md`.
 
+Root subsequently completed an actual visible mouse reveal/rating journey and inspected the
+compositor-rendered card/rating controls and account server page. That closes this delivery's
+mouse/glass gap for the checked native window, without changing the historical failed results.
+See `MAC_WAVE_3_INTEGRATION.md` for the persisted result and remaining platform/rendering limits.
+

@@ -57,6 +57,7 @@ Lingrove/
 │       └── Session/                  active, paused, and presented session values
 ├── Services/
 │   ├── Account/                      app-owned native email authentication, private Keychain and connection persistence
+│   ├── BuiltInReview/                window/session ownership, frozen review commands and asynchronous IO
 │   ├── CLI/                          passive mailbox consumption and user-level executable installation
 │   ├── Context/                      live clipboard acquisition
 │   ├── ExpressionAssist/             shared general-model generation and verified editor adapter
@@ -68,6 +69,7 @@ Lingrove/
 │   ├── Input/                        event taps and input-source monitoring
 │   ├── LanguageLearning/             native/Endpoint tasks, offline lexicon, dictionary sessions, telemetry and editor captures
 │   ├── ModelManagement/              model discovery, download, and validation
+│   ├── Notebook/                     shared repository, account ownership and app-owned sync lifecycle
 │   ├── Permission/
 │   │   └── Guidance/                 permission overlay and System Settings guidance
 │   ├── Power/                        power-source observation
@@ -82,9 +84,11 @@ Lingrove/
 │   ├── Suggestion/
 │   │   └── State/                    work identity and mutable interaction state
 │   ├── Updates/                      manual release checks
+│   ├── Vocabulary/                   corpus archive actor, capture/edit/import and media operations
 │   └── Visual/                       capture, OCR admission/helper lifetime, and visual-context sessions
 ├── Support/
 │   ├── Account/                      connection validation/scoping and safe localized account presentation
+│   ├── BuiltInReview/                window-local keyboard admission and original Nibomo answer presentation
 │   ├── Accessibility/                pure AX and secure-surface policies
 │   ├── Context/                      sanitization, relevance, and OCR hygiene
 │   ├── Emoji/
@@ -97,7 +101,7 @@ Lingrove/
 │   │   └── Capability/               supported-field capability resolution
 │   ├── History/                      history retrieval, phrase prediction, scrubbing, import
 │   ├── Input/                        composition, key-label, and selection helpers
-│   ├── Vocabulary/                   capture identity, graph projection, local example extraction, merge and search rules
+│   ├── Vocabulary/                   capture identity, graph projection, local examples, literal merge and search rules
 │   ├── LanguageLearning/             exact unit recognition, correspondence projection, pair parsing, prompts and preview/write rules
 │   ├── Logging/                      debug options, request IDs, and JSONL handlers
 │   ├── Macros/
@@ -128,7 +132,9 @@ Lingrove/
 │   │   └── Streaming/                partial coalescing, monotonic text, presentation timing
 │   └── Utilities/                    small cross-subsystem value helpers
 └── UI/
+    ├── BuiltInReview/                native notebook enrollment, material editor, practice, queue and history
     ├── Components/                   application-wide reusable views
+    ├── NibomoPresentation/           extracted Nibomo card surfaces, answer controls, layout and AppKit adapters
     ├── Previews/                     Debug-only Canvas hosts and isolated card fixtures; renders the real InlineFeatures views
     ├── InlineFeatures/               emoji picker, macro reference and native expression candidate rows
     ├── Components/CurrentShortcutRow.swift read-only shortcut labels shared by help and setup
@@ -141,6 +147,7 @@ Lingrove/
     │   └── Welcome/                  resumable setup with shared task forms, language/shortcut preferences and configuration status
     ├── Overlays/                     SwiftUI overlay content
     └── Settings/
+        ├── Account/                  original Nibomo server/email/code/workspace page structure with native bindings
         ├── ProductUsageGuideView.swift window-owned scenario guide, live shortcut labels and explicit shared examples
         ├── Components/
         │   ├── Controls/              settings editors, pickers, and previews
@@ -228,6 +235,37 @@ identity confirmation and rotation; real Keychain checks use unique synthetic na
 clean them. Race fixtures intentionally deliver replies after cancellation. Native render checks
 host only synthetic forms and optionally write their own PNGs, without screen capture or real
 preferences. They do not establish real Cognito/mailbox/provider acceptance.
+
+## Corpus save and reused review presentation
+
+`Services/Vocabulary/VocabularyArchive.swift` owns one serialized engine connection until shutdown
+drains accepted saves. `VocabularyPolicy.entryForSave` prepares a single joined entry; the archive
+returns a committed immutable snapshot to the UI-facing store. It does not create a second corpus.
+`Support/Vocabulary/VocabularySaveLiteralEquality.swift` keeps the editor's three-way comparisons
+byte-sensitive while normalizing unordered collection encodings.
+
+In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
+creates restricted single-entry changes. `LingroveNotebookPersistenceCodec/VocabularyEntryRowProjection`
+converts those changes to row deltas. The engine's `Persistence/NotebookStore/LingroveNotebookSaveCache`
+owns these derived values per SQLite connection, guarded by scope/revision/generation and both
+external and local SQL change tokens. `Commands/LingroveNotebookEngine+EntrySave.swift` accepts only
+the restricted entry intent and uses the existing atomic CAS/journal/media/review-refresh tail.
+Generic structural, import, restore and remote operations retain full validation. The cache is
+disposable derived state, never a caller-supplied authority or an account boundary.
+
+`UI/NibomoPresentation` contains the MIT-licensed extracted Nibomo layout, card surfaces, answer
+controls and queue rows. Parent views supply immutable content, local image bytes and closures;
+these components own neither storage nor authentication. `UI/Settings/Account` ports the original
+server/email/code/workspace pages to the app-owned account/sync services. `UI/BuiltInReview` binds
+the original preparation, front/back editing and practice structure to `BuiltInReviewSession`.
+The session retains frozen scope/card/link identity and drains accepted writes; closing a view
+does not recreate the app service graph. See `docs/MAC_W3_UI_REUSE_MAP.md` for exact provenance and
+the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`.
+
+Tests mirror the storage and UI boundaries. `UI/Settings/MacWave3OnscreenAcceptanceTests.swift` is
+explicitly opt-in: it exposes disposable SQLite-backed production windows for a bounded computer-use
+handoff, then checks the rating and source-following persistence. Ordinary test runs skip that
+onscreen fixture; keyboard/data checks remain independently executable.
 
 ## Per-App Settings
 
