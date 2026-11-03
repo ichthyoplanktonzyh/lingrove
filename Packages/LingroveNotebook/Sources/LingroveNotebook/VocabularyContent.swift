@@ -4,7 +4,7 @@ import Foundation
 /// copies until Save.
 /// This shared representation keeps identity and the existing Codable shape
 /// independent of a window, mobile screen, image decoder or model runtime.
-public nonisolated struct VocabularyContentBlock: Codable, Equatable, Identifiable, Sendable {
+public nonisolated struct VocabularyContentBlock: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var content: Content
 
@@ -15,7 +15,7 @@ public nonisolated struct VocabularyContentBlock: Codable, Equatable, Identifiab
 
     /// Images are references to archive-owned bytes. Their caption belongs to
     /// the block, so two uses of the same image can retain different captions.
-    public enum Content: Codable, Equatable, Sendable {
+    public enum Content: Codable, Hashable, Sendable {
         case text(VocabularyTextContent)
         case image(VocabularyImageReference, caption: String)
     }
@@ -24,7 +24,7 @@ public nonisolated struct VocabularyContentBlock: Codable, Equatable, Identifiab
 /// Plain text and a small formatting vocabulary serve native views and export.
 /// User text remains data rather than HTML, and editing a copy starts no model
 /// request. Both platforms persist these same fields under the existing keys.
-public nonisolated struct VocabularyTextContent: Codable, Equatable, Sendable {
+public nonisolated struct VocabularyTextContent: Codable, Hashable, Sendable {
     public enum Style: String, Codable, CaseIterable, Sendable { case paragraph, heading, bullet }
     public var text: String
     public var style: Style
@@ -42,7 +42,7 @@ public nonisolated struct VocabularyTextContent: Codable, Equatable, Sendable {
 /// An immutable PNG identity survives process and platform changes. The archive
 /// validates and owns the bytes; views borrow this hash and its decoding bounds.
 /// The filename policy is unchanged so existing local media stays addressable.
-public nonisolated struct VocabularyImageReference: Codable, Equatable, Hashable, Sendable {
+public nonisolated struct VocabularyImageReference: Codable, Hashable, Sendable {
     public let digest: String
     public let width: Int
     public let height: Int

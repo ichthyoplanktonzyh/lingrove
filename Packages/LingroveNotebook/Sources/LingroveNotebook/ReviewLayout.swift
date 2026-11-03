@@ -2,7 +2,7 @@ import Foundation
 
 /// A card owns an ordered pair of layouts. Parts either follow notebook content by stable ID
 /// or own card-only rich content. The same value feeds the editor, preview, backup and Anki.
-public nonisolated struct ReviewLayout: Codable, Equatable, Sendable {
+public nonisolated struct ReviewLayout: Codable, Hashable, Sendable {
     public var front: [ReviewCardPart] = []
     public var back: [ReviewCardPart] = []
     public var parts: [ReviewCardPart] { front + back }
@@ -28,7 +28,7 @@ public nonisolated struct ReviewLayout: Codable, Equatable, Sendable {
 
 /// References never infer an image from its caption or an example from array position. A nil
 /// block ID is a template slot awaiting a concrete selection when applied to another sense.
-public nonisolated struct ReviewCardPart: Codable, Equatable, Identifiable, Sendable {
+public nonisolated struct ReviewCardPart: Codable, Hashable, Identifiable, Sendable {
     public var id = UUID()
     public var source: ReviewContentSource
     public var blockID: UUID?
@@ -58,7 +58,7 @@ public nonisolated enum ReviewContentSource: String, Codable, CaseIterable, Iden
 
 /// Templates are reusable layouts, not remote Anki note types. Each application creates fresh
 /// part IDs and binds source slots to the destination sense; existing cards remain independent.
-public nonisolated struct ReviewLayoutTemplate: Codable, Equatable, Identifiable, Sendable {
+public nonisolated struct ReviewLayoutTemplate: Codable, Hashable, Identifiable, Sendable {
     public var id = UUID()
     public var name: String
     public var layout: ReviewLayout
