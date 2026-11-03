@@ -54,6 +54,14 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         showSettings()
     }
 
+    /// The notebook footer reuses this exact settings owner and its existing account page.
+    /// Navigation carries no authentication or workspace side effect.
+    func showAccount() {
+        navigation.showsUsageGuide = false
+        navigation.open(.account)
+        showSettings()
+    }
+
     func showVocabularySearchModels() {
         navigation.openEngineTask(.vocabularySearch)
         showSettings()

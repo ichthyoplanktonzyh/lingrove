@@ -308,7 +308,11 @@ final class LingroveAppEnvironment {
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
-            learningSettings: suggestionSettings.languageLearning, review: reviewController, search: vocabularySearch)
+            learningSettings: suggestionSettings.languageLearning, review: reviewController, search: vocabularySearch,
+            builtInReview: notebookServices.builtInReview, account: accountService, sync: notebookServices.synchronization)
+        // Menu/corpus review hooks keep their original facade and now land in this one reusable
+        // window. No view creates a second review session, repository or key monitor.
+        notebookServices.builtInReview?.onShow = { [weak vocabularyWindow] in vocabularyWindow?.showReview(selection: $0) }
         vocabularyStore.connectExplanations(to: learningModels.explainer)
         notebookServices.builtInReview?.onOpenSource = { [weak vocabularyWindow] selection in
             vocabularyWindow?.show(selectedID: selection.entryID, senseID: selection.senseID)
@@ -371,6 +375,8 @@ final class LingroveAppEnvironment {
             typingHistoryStore: typingHistoryStore
         )
         welcomeCoordinator.openSettings = { [weak settingsCoordinator] in settingsCoordinator?.showSettings(revealing: $0) }
+        vocabularyWindow.onShowSettings = { [weak settingsCoordinator] in settingsCoordinator?.showSettings() }
+        vocabularyWindow.onShowAccount = { [weak settingsCoordinator] in settingsCoordinator?.showAccount() }
         welcomeCoordinator.openUsageGuide = { [weak settingsCoordinator] in settingsCoordinator?.showUsageGuide() }
         welcomeCoordinator.openVocabulary = { [weak vocabularyWindow] in vocabularyWindow?.show() }
         reviewController.configure = { [weak settingsCoordinator] in settingsCoordinator?.showReviewSettings() }
