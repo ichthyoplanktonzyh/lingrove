@@ -107,3 +107,8 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
 自有域名、云项目/账号和地域、可用测试邮箱，以及哪些设备参与真实操作。凭据通过
 本机受限存储或 CI secrets 使用。具体资源、成本、配置 diff 和运行步骤准备成可审查
 结果后，再进行对应环境操作；当前未创建或更改任何外部资源。
+
+
+私有 MCP 本地服务、SDK/HTTP/PG 验证、官方客户端与最终隔离修正现已交付，见
+[私有 MCP 整合](PRIVATE_MCP_INTEGRATION.md)。这不等于真实 Tunnel 或 ChatGPT 已连接；
+后续账户授权与运行步骤按该记录执行。

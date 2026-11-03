@@ -1045,6 +1045,16 @@ ordinary cloud routes to the existing private fixture with a default-off option.
 shared Apple locking, source/config proof, stage evidence, per-device restoration and cleanup;
 its offline auditor compares captured target-workspace rows with explicit local event metadata rules.
 
+`testSupport/privateMcpHTTP` is an explicit local composition over the existing MCP registry/token
+resolver and native API fixture, with one disposable account and shared PG corpus. It checks a
+supervisor-owned database marker and runtime role through a read-only connection before generic
+fixture provisioning. `privateMcpJourney` owns the real SDK HTTP/PG command/idempotency/revocation
+check; it supplies no alternate business writer. `private-mcp-local.py` owns the host lock, random
+fixture credentials, Compose/listeners and resource cleanup. `private-mcp-tunnel.py` owns official
+client provenance and environment-reference configuration; unauthenticated doctor is deliberately
+incomplete. Its template is inert until the operator supplies a confirmed tunnel and runtime key.
+
+
 
 ### Portable notebook and native Mac foundation
 
