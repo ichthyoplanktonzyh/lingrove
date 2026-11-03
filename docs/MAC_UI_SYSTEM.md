@@ -224,7 +224,16 @@ source conflicts. Independent read-only review found no actionable account issue
 bundles and postconditions were preserved with SHA256 hashes in the canonical checkout's
 `build/mac-account-login-validation/`; `integration-proof.json` distinguishes the module's executed
 tests from root's source-only integration checks. At the user's request, root did not build,
-launch or replace an application or rerun native tests for this integration.
+launch or replace an application or rerun native tests during that source integration.
+
+The subsequently authorized Dev update built arm64 Release 0.7.2 from `68a3d30a`, passed strict
+signature and existing-installation requirement checks, and replaced the same Dev bundle after
+a normal CUA Quit and a local database/media/preferences backup. Startup retained schema 39,
+all 37 protected corpus/review table fingerprints and every existing preference value. CUA
+observed the installed login sheet and its truthful missing-service explanation; email entry
+and code sending remain disabled until a service is configured. No mailbox/provider acceptance
+is claimed. `build/account-dev-update/` holds build, installation, UI and cleanup evidence;
+DerivedData and the copied package/module caches were removed, with fixed inputs preserved.
 
 The initial repository-wide localization check reported 70 format mismatches because it treated
 NotebookProgress's symbolic identifiers as English format strings. The existing translations
