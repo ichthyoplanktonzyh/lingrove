@@ -16,7 +16,7 @@ public nonisolated struct VocabularyPersistenceRow: Equatable, Sendable {
         }
     }
 
-    fileprivate let record: VocabularyDatabaseRecord
+    let record: VocabularyDatabaseRecord
     public var entity: VocabularyPersistenceEntity { record.table }
     public var id: String { record.id }
     public var parentID: String? { record.parentID }
@@ -41,7 +41,7 @@ public nonisolated struct VocabularyPersistenceRow: Equatable, Sendable {
             extra: entity.indexKeys.map { indexValues[$0] ?? nil })
     }
 
-    fileprivate init(record: VocabularyDatabaseRecord) throws {
+    init(record: VocabularyDatabaseRecord) throws {
         guard record.extra.count == record.table.indexKeys.count else { throw VocabularyError.invalidArchive }
         self.record = record
     }

@@ -19,23 +19,8 @@ nonisolated enum VocabularyDatabaseProjection {
             rows.append(.init(table: .occurrences, id: occurrence.id.uuidString, parentID: occurrence.sourceID.uuidString,
                 position: position, payload: .occurrence(occurrence)))
         }
-        for (position, claim) in document.interpretations.enumerated() {
-            var header = claim; header.explanations = []
-            rows.append(.init(table: .usages, id: claim.id.uuidString, parentID: nil, position: position,
-                payload: .usage(header), extra: [claim.occurrenceID.uuidString, claim.senseID?.uuidString, claim.status.rawValue]))
-            append(claim.explanations, parent: claim.id.uuidString, table: .usageExplanations, to: &rows)
-        }
-        for (position, entry) in document.catalog.enumerated() {
-            var header = entry; header.senses = []
-            rows.append(.init(table: .entries, id: entry.id.uuidString, parentID: nil, position: position, payload: .entry(header),
-                extra: [VocabularyIdentityPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
-            for (position, sense) in entry.senses.enumerated() {
-                var header = sense; header.explanations = []
-                rows.append(.init(table: .senses, id: sense.id.uuidString, parentID: entry.id.uuidString,
-                    position: position, payload: .sense(header), extra: [sense.meaning]))
-                append(sense.explanations, parent: sense.id.uuidString, table: .senseExplanations, to: &rows)
-            }
-        }
+        for (position, claim) in document.interpretations.enumerated() { append(claim, position: position, to: &rows) }
+        for (position, entry) in document.catalog.enumerated() { append(entry, position: position, to: &rows) }
         for (position, collection) in document.collections.enumerated() { append(collection, position: position, to: &rows) }
         for (position, template) in (document.reviewTemplates ?? []).enumerated() {
             rows.append(.init(table: .templates, id: template.id.uuidString, parentID: nil,
@@ -49,7 +34,26 @@ nonisolated enum VocabularyDatabaseProjection {
         return Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
     }
 
-    private static func append(_ collection: VocabularyCollectionItem, position: Int, to rows: inout [Row]) {
+    static func append(_ claim: VocabularyInterpretation, position: Int, to rows: inout [Row]) {
+        var header = claim; header.explanations = []
+        rows.append(.init(table: .usages, id: claim.id.uuidString, parentID: nil, position: position,
+            payload: .usage(header), extra: [claim.occurrenceID.uuidString, claim.senseID?.uuidString, claim.status.rawValue]))
+        append(claim.explanations, parent: claim.id.uuidString, table: .usageExplanations, to: &rows)
+    }
+
+    static func append(_ entry: VocabularyEntry, position: Int, to rows: inout [Row]) {
+        var header = entry; header.senses = []
+        rows.append(.init(table: .entries, id: entry.id.uuidString, parentID: nil, position: position, payload: .entry(header),
+            extra: [VocabularyIdentityPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
+        for (position, sense) in entry.senses.enumerated() {
+            var header = sense; header.explanations = []
+            rows.append(.init(table: .senses, id: sense.id.uuidString, parentID: entry.id.uuidString,
+                position: position, payload: .sense(header), extra: [sense.meaning]))
+            append(sense.explanations, parent: sense.id.uuidString, table: .senseExplanations, to: &rows)
+        }
+    }
+
+    static func append(_ collection: VocabularyCollectionItem, position: Int, to rows: inout [Row]) {
         let id = collection.id.uuidString
         var header = collection
         header.interpretationIDs = []; header.review = nil

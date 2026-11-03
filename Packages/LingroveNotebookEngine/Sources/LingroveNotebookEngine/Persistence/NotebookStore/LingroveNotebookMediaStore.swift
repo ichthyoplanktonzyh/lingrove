@@ -40,6 +40,11 @@ public struct LingroveNotebookMediaStore {
     ) throws {
         let references = Set(VocabularyDocumentValidation.imageReferences(document))
         let existing = Set(VocabularyDocumentValidation.imageReferences(previous))
+        // Narrow saves stage only their edited subtree before taking the writer. The complete
+        // owned reference set still has the same aggregate bound as a full document save.
+        guard references.reduce(0, { $0 + $1.byteCount }) <= VocabularyDocumentValidation.maximumMediaBytes else {
+            throw VocabularyError.oversizedArchive
+        }
         for reference in references {
             try Task.checkCancellation()
             let mapped = try self.assetId(reference, workspaceId: workspaceId)

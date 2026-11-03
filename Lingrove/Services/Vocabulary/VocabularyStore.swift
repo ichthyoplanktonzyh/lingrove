@@ -461,6 +461,7 @@ final class VocabularyStore: ObservableObject {
         if activeAccesses > 0 {
             await withCheckedContinuation { continuation in drainWaiters.append(continuation) }
         }
+        await archive?.shutdown()
     }
 
     /// Scope identity is independent of a revision counter: a different account can start at

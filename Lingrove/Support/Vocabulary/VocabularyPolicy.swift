@@ -105,6 +105,34 @@ nonisolated enum VocabularyPolicy {
             startsAtBoundary: window.location == 0, endsAtBoundary: NSMaxRange(window) == text.length, app: app)
     }
 
+    /// Ordinary capture prepares one joined entry plus its memberships. It does not repeatedly
+    /// round-trip the complete document through `entries`' computed getter/setter. The engine
+    /// reconstructs this bounded edit from its own current SQL state and validates relationships.
+    static func entryForSave(_ input: VocabularyCapture, in document: VocabularyDocument, now: Date)
+        throws -> (entry: VocabularyEntry, collections: [VocabularyCollectionItem]) {
+        try validate(input)
+        var capture = input
+        let header = document.catalog.first { entryKey($0) == entryKey(capture) }
+        var entry: VocabularyEntry
+        if let header, let joined = VocabularyNotebookProjection.entry(header.id, in: document) { entry = joined } else {
+            guard capture.senseID == nil else { throw VocabularyError.invalidContent }
+            entry = .init(id: UUID(), expression: capture.expression, dictionaryForm: capture.dictionaryForm,
+                language: capture.language, kind: capture.kind, senses: [], createdAt: now, updatedAt: now)
+        }
+        let oldSenses = Set(entry.senses.map(\.id))
+        if let example = capture.example, document.interpretations.contains(where: {
+            $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
+        }) { capture.example = example.copiedWithNewID() }
+        try VocabularySensePolicy.save(capture, in: &entry, now: now)
+        var membership = VocabularyDocument()
+        membership.collections = document.collections.filter { oldSenses.contains($0.senseID) }
+        if let destination = VocabularySensePolicy.destination(capture, in: entry) {
+            VocabularyNotebookProjection.collect(senseID: destination.senseID, interpretationID: destination.exampleID,
+                withoutContext: capture.example == nil, in: &membership, now: now)
+        }
+        return (entry, membership.collections)
+    }
+
     static func save(_ capture: VocabularyCapture, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         try validate(capture)
         if capture.language == nil, document.schemaVersion == 3 { document.schemaVersion = 4 }
@@ -197,7 +225,6 @@ nonisolated enum VocabularyPolicy {
         records.append(record)
         records = Array(records.suffix(24))
     }
-
 
 }
 

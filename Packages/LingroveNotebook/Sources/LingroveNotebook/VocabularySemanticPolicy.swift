@@ -166,7 +166,13 @@ public nonisolated enum VocabularySemanticPolicy {
     /// validation rather than being silently discarded. Moving evidence does not move a claim.
     public static func reconcile(_ index: inout VocabularySemanticIndex, previous: VocabularyDocument,
                           entries: [VocabularyEntry]) {
-        let previousEntries = previous.entries
+        reconcile(&index, previous: previous, previousEntries: previous.entries, entries: entries)
+    }
+
+    /// The validated save state already owns this joined baseline. Reusing it avoids rebuilding
+    /// every source/claim join while reconciling one edited entry's evidence citations.
+    static func reconcile(_ index: inout VocabularySemanticIndex, previous: VocabularyDocument,
+                          previousEntries: [VocabularyEntry], entries: [VocabularyEntry]) {
         let oldSenses = Set(previousEntries.flatMap { $0.senses.map(\.id) })
         let senses = entries.flatMap(\.senses)
         let live = Set(senses.map(\.id))
