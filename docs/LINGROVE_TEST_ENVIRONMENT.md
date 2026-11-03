@@ -4,7 +4,8 @@
 [本地双设备验收](MOBILE_FINAL_ACCEPTANCE.md)，再选择测试环境。本方案基于当前源码，
 不是部署记录。方案编写时未创建云资源、域名、公开转发或 OpenAI tunnel，未开启生产服务。
 后续已在用户授权下完成[真实 ChatGPT 私有 Tunnel 读写与撤销验收](PRIVATE_MCP_LIVE_ACCEPTANCE.md)；
-该阶段只核对了 native HTTP 同库结果，仍需补齐 ChatGPT 写入后在移动界面浏览的旅程。
+并已补齐[ChatGPT 写入后在普通 iPhone 模拟器同步、浏览和重开的旅程](PRIVATE_MCP_MOBILE_ACCEPTANCE_INTEGRATION.md)。
+真实身份提供方、物理设备和自有 HTTPS 环境仍未验收。
 
 ## 按验收结果分三步
 
