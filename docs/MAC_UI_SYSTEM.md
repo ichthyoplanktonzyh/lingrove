@@ -218,3 +218,17 @@ workspaceSelected=false, ownershipProposed=false and syncEnabled=false after ide
 These are separate executions of two journey definitions, not an aggregate claim about historical
 attempts. Evidence is build/mac-account-login-validation/; real mailbox/service acceptance remains
 deferred with deployment. No installed app/data, real account, TCC or system appearance was changed.
+
+Root integrated the account module with main's shared-review checkpoint (`177d9e8c`) without
+source conflicts. Independent read-only review found no actionable account issues. Module result
+bundles and postconditions were preserved with SHA256 hashes in the canonical checkout's
+`build/mac-account-login-validation/`; `integration-proof.json` distinguishes the module's executed
+tests from root's source-only integration checks. At the user's request, root did not build,
+launch or replace an application or rerun native tests for this integration.
+
+The initial repository-wide localization check reported 70 format mismatches because it treated
+NotebookProgress's symbolic identifiers as English format strings. The existing translations
+matched their explicit English text. Export, import and validation now share that English
+reference while preserving literal-key format contracts. Nine focused Python regressions and
+the full catalog check passed: 2,086 source keys across ten catalogs and 15 languages. This
+resolves the tooling reports without changing the translated product text.

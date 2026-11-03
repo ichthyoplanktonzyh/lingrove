@@ -83,8 +83,26 @@ def english_forms(key, entry):
     return {form: node['stringUnit']['value'] for form, node in plural.items()} if plural else None
 
 
+def english_source(key, entry):
+    """Resolve rendered source text without treating a stable catalog ID as English.
+
+    Xcode catalogs can use either literal English keys or symbolic identifiers. Export,
+    import and validation must share this reference so translators receive the words and
+    format arguments users actually see. Literal keys still protect their compiled format
+    contract even if an explicit English localization accidentally drops an argument.
+    """
+    english = entry.get('localizations', {}).get('en', {})
+    forms = english_forms(key, entry)
+    source = forms['other'] if forms else english.get('stringUnit', {}).get('value', key)
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError('English source must be a nonempty string: ' + key)
+    if placeholders(key) or any(marker in key for marker in ('¦', '\n', '%%')):
+        check_value(key, source)
+    return source
+
+
 def export_catalogs(catalogs):
-    return {path.stem: {key: dict(source=key, comment=entry.get('comment', ''),
+    return {path.stem: {key: dict(source=english_source(key, entry), comment=entry.get('comment', ''),
                                  **({'plural': english_forms(key, entry)} if english_forms(key, entry) else {}))
                         for key, entry in sorted(translatable(catalog).items())}
             for path, catalog in catalogs}
@@ -111,14 +129,15 @@ def merge(catalogs, language, payload):
             raise ValueError(f'{path.stem}: missing {len(missing)} keys, extra {len(extra)} keys')
         for key, entry in expected.items():
             value = translated[key]
+            source = english_source(key, entry)
             if english_forms(key, entry):
                 if not isinstance(value, dict) or set(value) != set(PLURAL_FORMS[language]):
                     raise ValueError('Incorrect plural forms: ' + key)
                 for text in value.values():
-                    check_value(key, text)
+                    check_value(source, text)
                 localization = {'variations': {'plural': {f: unit(v) for f, v in value.items()}}}
             else:
-                check_value(key, value)
+                check_value(source, value)
                 localization = unit(value)
             changes.append((entry, localization))
     for entry, localization in changes:
@@ -151,7 +170,7 @@ def validate(catalogs):
                         string_unit = item['stringUnit']
                         if string_unit['state'] != 'translated':
                             raise ValueError('translation not complete')
-                        check_value(key, string_unit['value'])
+                        check_value(english_source(key, entry), string_unit['value'])
                 except (ValueError, KeyError) as error:
                     errors.append(f'{path.stem}/{language}/{key}: {error}')
     if errors:

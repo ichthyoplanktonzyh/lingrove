@@ -499,6 +499,9 @@ Jobs contain one object per catalog, mapping exact source keys to translated str
 entries use the locale's plural-category object. Import validates complete coverage, format
 argument types and positions, escaped percent signs, line breaks, and preview markers before
 writing. Separate language jobs may run in parallel; only the integration step edits catalogs.
+Catalog keys can be literal English or stable identifiers. Export preserves those keys and
+provides the explicit English text as the translation reference when available; import and
+validation use that same reference for format arguments.
 Translations are authored by language agents without local inference or translation services;
 native-speaker review remains welcome. Check long labels and right-to-left layouts visually
 before release, as a structurally valid translation can still be awkward or clipped.
