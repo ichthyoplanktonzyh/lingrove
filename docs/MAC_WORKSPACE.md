@@ -19,9 +19,15 @@ dark appearance. The original corpus page and menu bar remain the visual/interac
 
 The footer opens the existing Settings window; the account action selects its existing Account
 page. It observes the app-owned account/sync state rather than constructing another service.
-Saving material never enrolls it for review. A sense is explicitly enrolled; examples provide
+Saving corpus material never enrolls it for review. A sense is explicitly enrolled; examples provide
 material. Local corpus, review and statistics work without an account. Anki remains optional
 and its history/scheduling are separate from built-in review.
+
+Review now contains equal-level Lingrove / Anki choices. Lingrove provides Today and Review
+content; ordinary navigation shows the overview without starting a round. Corpus details show
+each target's state/actions, and multi-selection provides explicit built-in enrollment or Anki
+preparation. Settings and Home use the same target distinction. User-facing text is limited to
+actions, status and necessary errors/confirmations; developer ownership explanations stay here.
 
 ## Ownership and data flow
 
@@ -38,6 +44,43 @@ The corpus page source stays under UI/Vocabulary. The outer sidebar is UI/Notebo
 Progress is UI/NotebookProgress. Services/Presentation owns native hosting. Query/aggregation
 values live in the shared engine, independent of AppKit or SwiftUI. SOURCE_LAYOUT.md records
 the physical placement; package READMEs describe the shared storage and cloud interfaces.
+
+### Shared card authoring and material ownership
+
+The same `ReviewMaterialEditor` serves Lingrove and Anki. Its sheet-owned bindings contain the
+ordered layout, selected example, optional name and temporary image/audio preparation. The view
+borrows the existing VocabularyStore for source images/templates and an adapter-provided speech
+action. It never owns an Anki connection or decides enrollment. `VocabularyReviewLayoutEditor`
+is now only the Anki-plan adapter; profile/deck/fields/conflicts and receipts remain Anki-owned.
+
+| Boundary | Lifetime, collaborators and flow |
+| --- | --- |
+| LingroveNotebook ReviewMaterialPlan / ReviewMaterialResolver | Portable recipe values and deterministic source resolution. Both adapters consume the same ordered text/block/audio result; gap and template source selection have one implementation. |
+| BuiltInReviewDraft / BuiltInReviewDraftPresentationSnapshot | One preparation sheet copies the frozen scope, recipe, authored faces, generated baseline and temporary media. Recipe edits refresh only untouched generated faces; Cancel/discard has no enrollment or media write. |
+| BuiltInReviewMaterialPreparation | Sheet-lifetime audio generation/audition and image staging. It borrows the app's existing speech owner and returns immutable prepared bytes; it does not create another speech service or publish files. |
+| BuiltInReviewSession / BuiltInReviewIO | One app-owned session and serial IO worker. Frozen commands cross to short shared-engine connections; accepted writers survive ordinary Close and drain on Quit. Scoped reads return saved image/audio bytes and corpus participation status. |
+| LingroveNotebookCardLink / LingroveNotebookReviewMediaStore | Durable recipe/source/generated ownership and workspace-owned PNG/WAV/MP3 bytes. One transaction commits material, media, Card and participation, or rolls all of them back. |
+| BuiltInReviewFace | Generated faces render ordered shared parts natively; authored/retained faces retain saved Markdown. Only fenced local media bytes are used; mounting a face neither downloads a resource nor generates speech. |
+| NotebookReviewDestinationModel / NotebookReviewDestinationView | The existing corpus window retains tool selection. Switching to Anki suspends built-in reading, speech and keyboard admission, without moving participation or history. |
+| BuiltInReviewOverviewState / BuiltInReviewSource | Pure projections of immutable facts, shared by presentation and services. Overview has no completed-round state; source resolution stays outside SwiftUI. |
+| VocabularyBuiltInReviewSection / BuiltInReviewBatchView | Source detail reads target state and navigates; batch confirmation retains frozen actions/intent IDs. The engine resumes existing groups and commits the complete selection atomically without duplicating history. |
+| HomeLearningBuiltInReviewDemo | One mounted sample owns its uniquely named synthetic repository and production review session/editor. It drains writes and removes only its own state on disappearance. |
+
+First preparation commits through the explicit **Add to review** action, atomically creating
+material and participation. Editing an existing exercise uses **Save**, retaining participation,
+scheduling and ratings. There is no separate durable unenrolled preparation-draft store. Saving
+a template is its own explicit operation and does not save or enroll the open card draft.
+
+The engine creates schema 39 and transactionally upgrades live schema 38 without rewriting corpus,
+authored faces or ratings. Recipe and hidden/generated media follow explicit account ownership
+copy and retained history. Source/example/block loss or stale source audio blocks ordinary queue
+admission; the user can repair material or explicitly continue using retained saved faces.
+
+Rich material uses the existing review lane's version-2 wire contract, including exact media ACKs
+and bounded resource envelopes. Unsupported old-service replies leave pending work intact. The
+independent backend/mobile repository must adopt the reviewed shared snapshot, schema and wire
+contract before real rich-material cross-device sync is available. Local codec/apply tests do
+not establish server adoption or physical-device acceptance; no service was deployed here.
 
 ### Window and review lifecycle
 
@@ -136,6 +179,37 @@ leaderboards, provider-management UI, rewards, premium and telemetry are outside
 Full UIKit/MarkdownUI/RaTeX math/table rendering parity is not implemented.
 
 ## Validation and practical limits
+
+The shared-authoring integration is recorded in `build/review-integration-validation/`. The
+four shared commits and Mac delivery `7862606e` were applied to main after `19d4ccbe`; root
+`44f76173` also distinguishes search misses and fully enrolled corpus from an empty corpus.
+The signed arm64 Debug build-for-testing passed. The combined selection executed 11 test
+definitions / 12 parameter cases, with no failures or skips: rich material save/reopen and
+authored faces, image/audio bytes, batch resume/history, explicit overview/round states,
+practice editing, inherited-appearance editor/tool navigation, retained corpus/sheets/source,
+navigation during rating refresh, Anki authored fields and the existing Anki sample.
+
+The Mac module separately executed 33 definitions / 46 cases, then a presentation-only rerun
+in two appearances. Its actual CUA journey completed edit → Cancel/Discard → explicit enroll →
+Start → reveal → Good → scoped completion/next due → Progress → source return. Stored results
+confirmed one exercise/rating, reps=1 and Progress reviews=1. These executions overlap with the
+combined selection and are not added as unique tests. Core final model/engine/cloud logs retain
+18 focused passes plus 11 existing material/history passes. The core lead additionally delivered
+18 earlier CardLink/enrollment passes whose original log had been overwritten; the delivery's
+reported 47 distinct passes are distinguished from the retained final logs.
+
+Strict production SwiftLint passed; the 125 BuiltInReview keys and existing workspace/progress
+catalogs have complete 15-locale and placeholder checks. Module reports, useful result bundles,
+final screens and logs were copied and SHA256-verified before worktree archival. Combined
+`integration-proof.json`, `catalog-proof.json`, `evidence-sha256.json` and `cleanup.json` retain
+the precise counts, inputs and boundaries. DerivedData, copied package/module caches and the
+private validation host/preferences were removed and verified absent; canonical pinned inputs
+remain available. No installed application or real user data was accessed or replaced.
+
+Backend/mobile version-2 adoption, real Anki, physical audio/system voice, VoiceOver and every
+locale's visual layout remain separate acceptance limits. Pointer image/audio import, every
+management/Settings control and Keep editing were not newly accepted by the visible journey.
+No new Release latency, production deployment or installed-app claim is made by this checkpoint.
 
 Run scripts/validation/validate-mac-workspace.py for bounded native build/test/onscreen checks.
 It copies approved fixed dependencies into this checkout and uses a disposable host, SQLite

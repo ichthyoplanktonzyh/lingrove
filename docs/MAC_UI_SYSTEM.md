@@ -52,9 +52,9 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
 
 ### Shared card authoring and review journey contract
 
-The next review checkpoint includes both the entry/journey changes and content/editor changes
-accepted in PRODUCT_MODEL.md. Shared authoring is a prerequisite for those changes, not a
-replacement for either batch. These requirements do not assert completed validation.
+The shared-authoring checkpoint includes both the entry/journey changes and content/editor
+changes accepted in PRODUCT_MODEL.md. Shared authoring supports both batches. Executed evidence
+and remaining limits are recorded separately below and in MAC_WORKSPACE.md.
 
 - The outer destinations remain Personal corpus, Review and Progress. Inside Review, Lingrove
   and Anki are equally discoverable targets, while participation and scheduling remain separate.
@@ -92,6 +92,8 @@ implementation. Shared material authoring has its own persistence and protocol v
 | AccountPaneView / account sheets / AccountNotebookSyncSection | Borrow the existing services. Native scaffold, row labels, callouts and confirmation present identity, service, workspace, ownership, sync opt-in and recovery as distinct actions. |
 | BuiltInReviewWindowView and related views | Borrow the existing frozen session. Overview/Back and End review have explicit meanings; material/source/queue/history sheets inherit native appearance. |
 | BuiltInReviewDraftPresentationSnapshot | A sheet-lifetime value of editable material fields. Navigation/preview alone is not dirty; edited Cancel asks Keep editing/Discard. The original scoped draft remains the writer input. |
+| ReviewMaterialEditor / VocabularyReviewLayoutEditor | The shared editor borrows neutral recipe/media bindings and source values. The Anki wrapper translates only its plan; source selection, ordered parts, templates and native preview have one implementation. |
+| NotebookReviewDestinationView / BuiltInReviewContentView | Equal Lingrove/Anki choices and separate Today/content management. Search misses, no corpus, all content already added, unenrolled, scheduled and unavailable states remain truthful; target switches suspend hidden review work. |
 | NotebookProgressDestination and sections | Present the existing visibility-scoped model and immutable statistics. Native cards, adaptable forecast layout, labeled semantic rating/bucket colors and chart interactions retain data meaning. |
 | LingroveReadableContentLayout / LingroveNativeActionButtonStyles | Keep their extracted interface names while supplying Lingrove-native widths and bordered/prominent controls. They own no theme manager or service. |
 
@@ -102,6 +104,11 @@ and menu-bar sources unchanged; the shared-authoring checkpoint may adapt their 
 points while preserving the corpus navigation and existing native appearance.
 Source provenance remains in MAC_REVIEW_ACCOUNT_UI_REUSE.md and MAC_PROGRESS_UI_REUSE.md; their
 extraction tables describe origin, while this document defines current presentation.
+
+The explicit first-save action is Add to review. Existing-material Save does not change
+participation. Completed-round feedback requires a started round with accepted answers, names
+its actual scope, and offers Today/Progress navigation. Preparation Cancel asks before discarding
+edits and publishes no Card/media/enrollment writes. There is no persistent unenrolled-draft UI.
 
 ## Validation and user-data protection
 
@@ -134,6 +141,21 @@ unmodified storage/FSRS suites for cosmetic changes. Automation infrastructure r
 to two corrective reruns or 20 minutes per issue, then retain evidence and state the gap.
 
 ## Current checkpoint evidence
+
+The newer shared-authoring checkpoint is integrated into main with both planned batches. It
+adds the shared editor and typed media persistence, Lingrove/Anki destinations, Today/content
+management, corpus/batch actions, explicit round completion and concise Settings/Home surfaces.
+The original appearance checkpoint below remains historical evidence, not a claim that the
+new material persistence was unchanged. Current ownership and exact counts are maintained in
+MAC_WORKSPACE.md and `build/review-integration-validation/integration-proof.json`.
+
+The Mac delivery passed 33 definitions / 46 cases and an actual synthetic CUA journey through
+Discard, enrollment, rating, completion, Progress and source return. Final module presentation
+ran in both appearances. Main's signed Debug build-for-testing and 11-definition / 12-case
+combined selection passed without failures/skips after the content empty-state correction.
+The 125-key review catalog has all 15 locales; strict production SwiftLint passed. Useful native
+screens and module evidence are preserved beside the combined proof. Physical audio, real Anki,
+VoiceOver and the protocol-v2 backend/mobile rollout remain explicitly outside this acceptance.
 
 The completed two-module wave was integrated from baseline 6873de80. Temporary dispatch/delivery
 records were consolidated here and removed. Module A executed 61 test definitions / 64 concrete

@@ -88,7 +88,7 @@ Lingrove/
 │   └── Visual/                       capture, OCR admission/helper lifetime, and visual-context sessions
 ├── Support/
 │   ├── Account/                      connection validation/scoping and safe localized account presentation
-│   ├── BuiltInReview/                window-local keyboard admission and original Nibomo answer presentation
+│   ├── BuiltInReview/                landing-state/source projections, draft dirty tracking, keyboard admission and answer presentation
 │   ├── Accessibility/                pure AX and secure-surface policies
 │   ├── Context/                      sanitization, relevance, and OCR hygiene
 │   ├── Emoji/
@@ -132,7 +132,7 @@ Lingrove/
 │   │   └── Streaming/                partial coalescing, monotonic text, presentation timing
 │   └── Utilities/                    small cross-subsystem value helpers
 └── UI/
-    ├── BuiltInReview/                native notebook enrollment, material editor, practice, queue and history
+    ├── BuiltInReview/                Lingrove/Anki destinations, Today/content, atomic enrollment, material editor, practice and history
     ├── Components/                   application-wide reusable views
     ├── NibomoPresentation/           extracted Nibomo card surfaces, answer controls, layout and AppKit adapters
     ├── NotebookWorkspace/            outer corpus/review/progress sidebar; original corpus page stays intact
@@ -862,6 +862,43 @@ shared card measurement preference formerly colocated with the removed alignment
 Historical performance records still decode their `analysis` source, which is excluded from the
 selectable task list. Existing alignment preferences and downloaded files are not deleted or read.
 
+## Shared review material and authoring
+
+`Packages/LingroveNotebook/Sources/LingroveNotebook/ReviewMaterial.swift` owns `ReviewMaterialPlan`,
+typed media/audio references and ordered resolved content. Its sibling `ReviewMaterialResolver.swift` resolves stable sources,
+gap spans and template slots without a renderer, database or review-tool connection. Both target
+adapters consume it; `Support/Review/ReviewMaterialCopy.swift` localizes finite material errors.
+
+`UI/Vocabulary/ReviewMaterialEditor.swift` borrows one sheet's neutral recipe, source values and
+temporary image/audio bindings. It reuses VocabularyStore templates/image normalization and an
+adapter-supplied audio action. `VocabularyReviewLayoutEditor` adapts an Anki plan rather than
+owning another implementation. `Models/BuiltInReview/BuiltInReviewDraft` retains recipe, source,
+generated baseline and authored faces; `Services/BuiltInReview/BuiltInReviewMaterialPreparation`
+returns prepared media values using the app-owned speech service, with no pre-save persistence.
+
+Engine `Models/Notebook/LingroveNotebookRichMaterial.swift` converts the same ordered material
+to safe native Markdown and scoped `fcasset:` references. `LingroveNotebookCardLink.materialPlan`
+persists its editable recipe. `Persistence/NotebookStore/LingroveNotebookReviewMediaStore.swift`
+commits validated workspace-owned PNG/WAV/MP3 bytes in the existing SQLite transaction, including
+hidden generated resources needed by retained recipes. Schema 39 upgrades live 38 transactionally.
+Version-2 review envelopes/strict ACKs preserve recipe and media through the shared wire; old
+backend support is insufficient for rich sync and remains an explicit adoption boundary.
+
+`UI/BuiltInReview/NotebookReviewDestinationView.swift` owns window-retained tool selection and
+borrows existing Anki/built-in controllers. `BuiltInReviewOverviewView` presents Today and a
+content browser. Pure `Support/BuiltInReview/BuiltInReviewOverviewState.swift` keeps no-corpus,
+unenrolled, due, paused, scheduled and unavailable facts distinct from round completion;
+`BuiltInReviewSource.swift` supplies source identity outside SwiftUI.
+`UI/Vocabulary/VocabularyBuiltInReviewSection.swift` reads source participation and navigates;
+`UI/BuiltInReview/BuiltInReviewBatchView.swift` confirms frozen selections for an atomic command.
+`UI/Onboarding/HomeLearningBuiltInReviewDemo.swift` owns a disposable sample repository and uses
+the production editor/session, draining and deleting only sample state on disappearance.
+
+`LingroveTests/Services/BuiltInReview/BuiltInReviewExperienceTests.swift` validates the complete
+native adapter with synthetic repositories/speech, recipe reopen/manual ownership, batch/history,
+explicit round states and inherited-appearance destination/editor rendering. Shared pure tests
+live in the notebook package; engine persistence/media/migration/wire tests mirror their module.
+
 ## Anki review
 
 `Models/Review` owns review-only plans, durable pending/confirmed Anki bindings, connection
@@ -914,8 +951,9 @@ opens Anki's deck overview, using a linked note's current deck, and leaves sched
 
 `ReviewLayout` models independent cards under `VocabularySense.reviewCards` and reusable layouts
 under `VocabularyDocument.reviewTemplates`. Each card uses its plan UUID for remote identity;
-legacy review records are not migrated into cards. `ReviewLayoutPolicy` resolves ordered typed
-sources into the same safe HTML for preview and Anki. References follow stable usage/block IDs;
+legacy review records are not migrated into cards. `ReviewLayoutPolicy` delegates ordered source
+resolution to the shared resolver and owns the Anki HTML adapter. The common editor previews
+the same parts natively. References follow stable usage/block IDs;
 card-only rich content belongs to the card. Missing sources block sending without discarding drafts.
 
 `VocabularyArchive+ReviewCards` keeps per-card CAS and template transactions inside the notebook
