@@ -12,6 +12,34 @@ import SwiftUI
 @Suite(.serialized)
 @MainActor
 struct VocabularyUnifiedRepositoryTests {
+    @Test func cachedArchiveSeesExternalCommitsAndRejectsRetiredGenerationWithoutNotification() async throws {
+        try await withFixture { f in
+            await f.store.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
+                meaning: "a financial institution", meaningLanguage: .english))
+            let original = try f.repository.snapshot()
+            let archive = VocabularyArchive(url: f.repository.databaseURL, mediaDirectoryURL: f.repository.mediaDirectoryURL)
+            #expect(try await archive.load().scope == original)
+            let other = try LingroveNotebookEngine(databaseURL: f.repository.databaseURL,
+                mediaDirectoryURL: f.repository.mediaDirectoryURL)
+            defer { try? other.close() }
+            var edited = original.document
+            edited.entries[0].senses[0].note = "committed by another connection"
+            let changed = try other.saveLingroveNotebook(edited, basedOn: original)
+            #expect(try await archive.load().scope == changed)
+            try other.updateCloudSettings(cloudState: .linked, linkedUserId: "new-synthetic-owner",
+                linkedWorkspaceId: original.workspaceId, activeWorkspaceId: original.workspaceId, linkedEmail: nil)
+            let fresh = try f.repository.snapshot()
+            #expect(fresh.revision == changed.revision && fresh.generation != changed.generation)
+            #expect(try await archive.load().scope == fresh)
+            await #expect(throws: VocabularyError.editConflict) {
+                try await archive.perform(basedOn: LingroveNotebookVersion(changed)) { try $0.load() }
+            }
+            await f.store.save(.init(expression: "must not write", dictionaryForm: "must not write",
+                language: .english, kind: .word), scope: original)
+            #expect(try f.repository.snapshot() == fresh)
+        }
+    }
+
     @Test func explicitCaptureDraftMergeMediaBackupAndRestartUseTheSameEngine() async throws {
         try await withFixture { f in
             await f.store.load()

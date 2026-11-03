@@ -8,6 +8,26 @@ import Testing
 /// Every fixture owns a disposable connection and synthetic account identity.
 @MainActor
 struct EngineScopedCommandIntegrationTests {
+    @Test("Metadata reads preserve generation fences without decoding or accepting invalid corpus content")
+    func notebookVersionSeparatesAdmissionFromContentValidation() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let saved = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
+            basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        #expect(try f.db.currentNotebookVersion() == LingroveNotebookVersion(saved))
+        try f.db.updateCloudSettings(cloudState: .disconnected, linkedUserId: nil,
+            linkedWorkspaceId: nil, activeWorkspaceId: f.workspace, linkedEmail: nil)
+        let version = try #require(try f.db.currentNotebookVersion())
+        #expect(version.revision == saved.revision && version.notebookId == saved.notebookId)
+        #expect(!version.hasSameOwner(as: saved))
+        let current = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
+        try f.db.core.execute(sql: "UPDATE notebook_senses SET payload_json='invalid-json' WHERE workspace_id=?",
+            values: [.text(f.workspace)])
+        #expect(try f.db.currentNotebookVersion() == version)
+        #expect(throws: (any Error).self) { try f.db.loadLingroveNotebook(workspaceId: f.workspace) }
+        #expect(throws: (any Error).self) { try f.db.saveLingroveNotebook(current.document, basedOn: current) }
+        #expect(try f.db.currentNotebookVersion() == version)
+    }
+
     @Test("A saved screen cannot enroll, rate or replay participation after an account ABA switch")
     func scopedCommandsRejectRetiredGeneration() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }

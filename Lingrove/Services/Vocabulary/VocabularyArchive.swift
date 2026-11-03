@@ -14,7 +14,7 @@ actor VocabularyArchive {
     private let temporaryDirectory: URL?
     private var engine: LingroveNotebookEngine?
     private var saved: LingroveNotebookSnapshot?
-    private var expectedScope: VocabularyOperationScope?
+    private var expectedScope: LingroveNotebookVersion?
     private let installsBundledClassification: Bool
     private var classificationCatalog: VocabularyClassificationCatalog?
 
@@ -37,7 +37,7 @@ actor VocabularyArchive {
     /// The isolated parameter lets the caller compose existing synchronous archive methods
     /// without transferring their connection. No await is possible inside this command body.
     func perform<T: Sendable>(
-        basedOn scope: VocabularyOperationScope?,
+        basedOn scope: LingroveNotebookVersion?,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> T
     ) throws -> T {
         let previous = expectedScope
@@ -63,8 +63,19 @@ actor VocabularyArchive {
     func readSnapshot() throws -> VocabularyArchiveSnapshot {
         try storageAccess(write: false) {
             let engine = try persistence()
-            guard let workspace = try engine.workspaceSettingsStore.loadCloudSettings().activeWorkspaceId else {
+            let version = try engine.currentNotebookVersion()
+            if let version, let expectedScope, !expectedScope.hasSameOwner(as: version) {
                 throw VocabularyError.editConflict
+            }
+            // Restore the old revision cache, extended with book/account generation so an ABA
+            // switch cannot reuse another lifetime's data. The writer still checks CAS in SQL.
+            if let version, let saved, version == LingroveNotebookVersion(saved) { return .init(saved) }
+            let workspace: String
+            if let version { workspace = version.workspaceId } else {
+                guard let active = try engine.workspaceSettingsStore.loadCloudSettings().activeWorkspaceId else {
+                    throw VocabularyError.editConflict
+                }
+                workspace = active
             }
             let current = try engine.loadLingroveNotebook(workspaceId: workspace, requireActiveWorkspace: true)
             if let expectedScope, !expectedScope.hasSameOwner(as: current) { throw VocabularyError.editConflict }

@@ -95,7 +95,7 @@ final class VocabularyStore: ObservableObject {
         guard isAvailable, !isShutDown else { return false }
         guard let scope else { return repository == nil }
         if let repository {
-            guard let current = try? repository.snapshot() else { return false }
+            guard let current = try? repository.version() else { return false }
             return current.hasSameOwner(as: scope)
         }
         return operationScope?.hasSameOwner(as: scope) == true
@@ -115,11 +115,11 @@ final class VocabularyStore: ObservableObject {
                 for waiter in waiters { waiter.resume() }
             }
         }
-        let live = try repository?.snapshot()
-        let original = scope ?? live ?? operationScope
-        if let scope, let live, !scope.hasSameOwner(as: live) { throw VocabularyError.editConflict }
+        let live = try repository?.version()
+        let original = scope.map(LingroveNotebookVersion.init) ?? live ?? operationScope.map(LingroveNotebookVersion.init)
+        if let scope, let live, !live.hasSameOwner(as: scope) { throw VocabularyError.editConflict }
         let result = try await archive.perform(basedOn: original, operation)
-        if !isShutDown, let repository, let live, let after = try? repository.snapshot(),
+        if !isShutDown, let repository, let live, let after = try? repository.version(),
            after.hasSameOwner(as: live), after.revision != live.revision { repository.publishChange() }
         return result
     }
@@ -152,7 +152,10 @@ final class VocabularyStore: ObservableObject {
         guard isAvailable, !isShutDown, !isLoaded, loadWork == nil else { return }
         let identity = loadIdentity
         loadWork = Task { [weak self] in
-            guard let self else { return }
+            guard let self, loadIdentity == identity else { return }
+            // A local commit can apply its acknowledged snapshot before its own notification's
+            // queued reload starts. That result already contains the saved content and revision.
+            guard !isLoaded else { loadWork = nil; reloadRequested = false; return }
             do {
                 let snapshot = try await access { archive in try archive.load() }
                 guard loadIdentity == identity else { return }
@@ -420,7 +423,7 @@ final class VocabularyStore: ObservableObject {
         guard !isShutDown else { return }
         if let scope = snapshot.scope {
             if let repository {
-                guard let current = try? repository.snapshot(), current.hasSameOwner(as: scope) else { return }
+                guard let current = try? repository.version(), current.hasSameOwner(as: scope) else { return }
                 if current.revision > scope.revision {
                     reloadRequested = true; isLoaded = false
                     if loadWork == nil { reloadRequested = false; loadIfNeeded() }
@@ -472,8 +475,9 @@ final class VocabularyStore: ObservableObject {
 
     private func repositoryDidChange() {
         do {
-            guard let current = try repository?.snapshot() else { return }
-            if operationScope?.hasSameOwner(as: current) != true { resetScope(to: current) }
+            guard let current = try repository?.version() else { return }
+            if operationScope.map({ current.hasSameOwner(as: $0) }) != true { resetScope(to: nil) }
+            if current.revision == revision, operationScope != nil { return }
             // Keep the complete saved draft scope until a fresh read is acknowledged. Same-scope
             // edits can merge; a late response from another generation is rejected by apply().
             isLoaded = false

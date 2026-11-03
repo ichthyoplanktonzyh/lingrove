@@ -1077,6 +1077,13 @@ sync and close the primary handle before requesting normal termination. System t
 the immediate synchronous runtime cleanup required by TCC Quit & Reopen; it never returns
 terminateLater. Ordinary window closure does not stop these app-lifetime services.
 
+`Queries/+NotebookVersion` supplies a content-free workspace/book/revision/generation fence in
+one deferred read transaction. `MacNotebookRepository.version()` serves UI admission and change
+checks without decoding the corpus on MainActor. The archive actor reuses its acknowledged full
+snapshot only while all four version fields match; external commits and account ABA invalidate
+that cache. The existing transactional writer still checks its full baseline and CAS. A local
+commit's already-applied result also suppresses its queued duplicate UI reload.
+
 The fresh engine schema is 38; `LingroveNotebookCLIStore` commits a bounded idempotency receipt
 with its notebook write. Existing-object CLI writes carry the original workspace/notebook/generation.
 `Commands/+MacAccountLifecycle` handles native metadata/ownership and real remote FSRS settings;

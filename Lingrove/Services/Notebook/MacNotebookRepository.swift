@@ -32,6 +32,13 @@ final class MacNotebookRepository: ObservableObject {
         return try engine.lingroveNotebookStore.load(workspaceId: workspace, requireActiveWorkspace: true)
     }
 
+    /// Admission and change notifications consume only metadata. A fresh workspace creates its
+    /// empty notebook once; ordinary saves never decode the corpus on MainActor for these checks.
+    func version() throws -> LingroveNotebookVersion {
+        if let version = try engine.currentNotebookVersion() { return version }
+        return try LingroveNotebookVersion(snapshot())
+    }
+
     /// Hosts call this only after a durable commit. It carries no content and does not authorize
     /// another write; the receiving screen must capture the new workspace/revision/generation.
     func publishChange() { changeSequence &+= 1 }
