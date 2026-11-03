@@ -89,6 +89,13 @@ struct BuiltInReviewContentView: View {
         }
     }
 
+    // An empty filtered list is not evidence that the corpus is empty. Keep search misses
+    // and an already-enrolled corpus distinct from the first-use state.
+    private var emptyTitleKey: String {
+        guard available else { return "state.noSelection" }
+        return content.scope.document.collectedEntries.isEmpty ? "state.noCorpus" : "state.allAdded"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Picker(BuiltInReviewCopy.text("nav.content"), selection: $available) {
@@ -117,7 +124,11 @@ struct BuiltInReviewContentView: View {
             .listStyle(.inset).searchable(text: $search, prompt: BuiltInReviewCopy.text("field.search"))
             .overlay {
                 if selections.isEmpty {
-                    ContentUnavailableView(BuiltInReviewCopy.text(available ? "state.noCorpus" : "state.noSelection"), systemImage: "tray")
+                    if !search.isEmpty {
+                        ContentUnavailableView.search(text: search)
+                    } else {
+                        ContentUnavailableView(BuiltInReviewCopy.text(emptyTitleKey), systemImage: "tray")
+                    }
                 }
             }
         }
