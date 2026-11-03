@@ -443,9 +443,11 @@ those reviewer/test agents do not write implementation or test code.
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
 - Mobile Wave 3 is delivered; its contract remains in `docs/MOBILE_WAVE_3.md`. Active native Mac
-  work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_3.md`: save-internal optimization
-  and direct reuse of Nibomo account/review UI in two independent complete modules. Keep the
-  upstream interaction/visual design; only necessary platform and business adapters are in scope.
+  work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_4.md`: extend the existing corpus
+  window with only corpus/review/progress navigation, preserve the entire corpus page, embed the
+  existing review UI, and extract Nibomo personal Progress UI with real local statistics.
+  Menu bar and existing settings/account UI remain unchanged; links reuse their existing window.
+  Keep upstream review/progress interaction and visual design for this first version.
   Mac Waves 1/2/3 are integrated; evidence and remaining limits are in their integration reports,
   including `docs/MAC_WAVE_3_INTEGRATION.md` for the save/UI wave and its explicit Progress statistics gap.
   Those Mac contracts supersede historical mobile-only scope exclusions. Separate worktrees isolate source,
