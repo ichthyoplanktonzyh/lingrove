@@ -85,11 +85,14 @@ files fail above the 64 MiB content limit rather than silently truncating materi
 `LingroveNotebookSync` maps the complete graph to explicit public wire entities, preserving
 device-private tool state separately. It also verifies raw-byte read windows and validates the
 resulting confirmed server shadow. The host owns download storage, pending local edits, account
-adoption and the final atomic commit; see the [wire contract](../../docs/NOTEBOOK_SYNC_CONTRACT.md)
-and [native integration evidence](../../docs/NIBOMO_INTEGRATION.md#原生读取窗口校验与-sqlite-暂存).
+adoption and the final atomic commit; see the [wire contract](../../docs/NOTEBOOK_SYNC_CONTRACT.md).
+Current native integration evidence is maintained in the Mac repository’s docs/MAC_WORKSPACE.md;
+mobile architecture and validation live in the independent private lingrove-mobile repository.
 
-`LingroveNotebookStorage` owns the Mac SQLite connections, schema migration, private
-file locks and PNG normalization/verification. Its public database is an ordinary non-Sendable
+`LingroveNotebookStorage` retains the standalone schema-5 SQLite adapter, private
+file locks and PNG normalization/verification. Current Mac/mobile production storage is owned by
+LingroveNotebookEngine; this adapter remains a historical format/storage boundary. Its public
+database is an ordinary non-Sendable
 class held by the archive actor; image storage also remains actor-owned. Production consumers
 cannot access the C connection or schema helpers. The synchronous `access` closure
 lets media staging and the SQL commit share one cross-process lock without suspending or
@@ -123,11 +126,10 @@ isolation. Fixture provenance is retained alongside the synthetic test data.
 The package declares macOS 14 and iOS 18; cross-compilation alone does not establish runtime or
 accessibility compatibility on those minimum systems.
 
-The [mobile plan](../../docs/MOBILE_NOTEBOOK_PLAN.md) tracks the remaining extraction and platform
-work. The [source map](../../SOURCE_LAYOUT.md) documents responsibilities that still belong to the
-Mac app.
-The [Nibomo integration](../../docs/NIBOMO_INTEGRATION.md) describes the maintained downstream
-source and use of shared Core/Codec values with Nibomo's own database/transaction owner.
+The Mac repository's SOURCE_LAYOUT.md and docs/MAC_WORKSPACE.md describe current host and
+portable-engine ownership. The independent private lingrove-mobile repository maintains its
+own native adapters, validation and explicit shared-source snapshot manifest. Completed phase
+plans and delivery reports remain in Mac Git history; they are not current maintenance docs.
 
 ## Offline corpus management
 
@@ -138,6 +140,8 @@ edges come only from lexical ownership, declared taxonomy and confirmed meaning 
 
 The classification installer reads packaged catalog assets. These are generated copies of
 `Lingrove/Resources/VocabularyClassificationCatalog.json`, its notice and the existing license;
-run `python3 scripts/notebook_catalog/generate.py --write` after an authored catalog or shared-rule
-change and review the generated source receipt. The static catalog check verifies byte equality.
+the Mac repository owns those canonical sources. After a catalog/shared-rule change, commit
+and validate it there, import the reviewed shared snapshot into lingrove-mobile, then run its
+`scripts/notebook_catalog/generate.py --write` and review the source receipt. The mobile static
+catalog check verifies byte equality. Mac does not need the backend exporter to build.
 Install/upgrade preserves key-derived UUIDs, local overlays, custom children and retired identities.

@@ -136,3 +136,11 @@ Real cloud/mailbox/provider, physical dual-device cloud UI, VoiceOver, real Anki
 old macOS and every locale's visual layout were not newly accepted in this checkpoint. No
 latency benchmark or Instruments result is claimed. Build/signature/artifact and cleanup results
 are recorded separately in dev-app-proof.json and cleanup.json beside the integration proof.
+
+After the mobile repository split, the canonical Mac checkout independently completed a native
+build-for-testing and six workspace/validation-host tests (0 failures/skips), plus 121 repository
+tool checks. An arm64 Release Lingrove Dev 0.7.2 build and strict signature verification passed;
+the preserved preview is build/mac-main-preview/Lingrove Dev.app. This adds no new mouse-journey
+claim. Split/build evidence lives in build/repository-split/ and build/mac-workspace-validation/;
+completed wave evidence remains separate. The snapshot shared-code owner and private mobile
+repository are described in [REPOSITORY_BOUNDARIES.md](REPOSITORY_BOUNDARIES.md).

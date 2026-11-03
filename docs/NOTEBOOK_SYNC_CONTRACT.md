@@ -1,8 +1,10 @@
 # 语料实体同步契约（内部验证阶段）
 
-当前实现包含带类型的语料写入/读取、原生上传/固定窗口、账户归属与冲突恢复、PNG 资源
-通道和 opt-in MCP 工具。已完成本地模块验证的范围见第二波交付与集成记录；生产门控
-保持关闭，真实 ChatGPT/双设备操作仍须单独确认。完整目标按 [移动计划](REPOSITORY_BOUNDARIES.md) 推进。
+当前实现包含带类型的语料读写、原生上传/固定窗口、账户隔离/冲突恢复、PNG 资源及
+opt-in MCP 工具。双模拟器本地接续和真实 ChatGPT 私有 Tunnel → 普通 iPhone 已执行；
+它们不等于真实用户身份/物理设备或正式服务验收，当前没有部署。仓库分工和现状见
+[仓库职责](REPOSITORY_BOUNDARIES.md)。下文记录技术契约及其演进；历史 schema 数字不是
+新安装版本承诺，当前结构与路由以相应代码和共享包为准。
 字段定义以 [`fields.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/fields.ts) 为准，修改
 与身份契约以 [`contract.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/contract.ts) 为准。
 它们没有复用 SQLite codec 的 opaque payload、索引或整本备份格式。
@@ -208,8 +210,8 @@ schema 34 增加必备的传输状态子行和独立关闭 ledger，关闭不生
 解除与下一次冻结/无差异收口原子提交，失败保留门槛。显式重试本身是持久授权，成功
 后即使在新冻结前重启也可继续。取消/过期后的 apply 使用普通三方合并，保留全部日志，
 只在最终事务清理旧身份并保留紧凑关闭记录。确认与关闭互斥，取消晚于已提交请求时
-仍须读取并完整核对正向确认。资源准入及生产接入仍待完成。具体运行证据见
-[集成记录](REPOSITORY_BOUNDARIES.md)。
+仍须读取并完整核对正向确认。资源准入已有本地实现；真实服务接入仍需独立验收。当前记录见
+[仓库职责](REPOSITORY_BOUNDARIES.md)。
 
 ## 协商后的应用调度与后台存储
 
