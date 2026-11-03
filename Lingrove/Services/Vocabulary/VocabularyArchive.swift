@@ -5,14 +5,15 @@ import Foundation
 import Logging
 
 /// The app-owned vocabulary store borrows the repository's explicit file locations. Each
-/// synchronous command opens one short-lived engine on that same physical SQLite file and
-/// closes it before returning; the actor never receives the MainActor engine or a raw handle.
-/// Its cached baseline exists only to preserve CAS between pure preparation and commit.
+/// actor owns one private engine connection on that same physical SQLite file until shutdown;
+/// it never receives the MainActor engine or a raw handle. Connection-owned, SQL-verified save
+/// state can survive between commands, while the archive baseline still supplies explicit CAS.
 actor VocabularyArchive {
     let url: URL?
     let mediaDirectoryURL: URL
     private let temporaryDirectory: URL?
     private var engine: LingroveNotebookEngine?
+    private var isShutDown = false
     private var saved: LingroveNotebookSnapshot?
     private var expectedScope: LingroveNotebookVersion?
     private let installsBundledClassification: Bool
@@ -67,9 +68,9 @@ actor VocabularyArchive {
             if let version, let expectedScope, !expectedScope.hasSameOwner(as: version) {
                 throw VocabularyError.editConflict
             }
-            // Restore the old revision cache, extended with book/account generation so an ABA
-            // switch cannot reuse another lifetime's data. The writer still checks CAS in SQL.
-            if let version, let saved, version == LingroveNotebookVersion(saved) { return .init(saved) }
+            // The connection's cache verifies data_version/total_changes as well as the header.
+            // A version-only actor cache would hide an external repair/corruption that did not
+            // advance the notebook revision and let an editor prepare from stale content.
             let workspace: String
             if let version { workspace = version.workspaceId } else {
                 guard let active = try engine.workspaceSettingsStore.loadCloudSettings().activeWorkspaceId else {
@@ -87,7 +88,13 @@ actor VocabularyArchive {
     private func installClassification(in document: inout VocabularyDocument) throws -> Bool {
         guard installsBundledClassification else { return false }
         if classificationCatalog == nil { classificationCatalog = try .bundled() }
-        return try classificationCatalog?.install(in: &document.classification, nodes: document.semantics.nodes) ?? false
+        guard let catalog = classificationCatalog else { return false }
+        // This process-owned manifest was decoded once. An installed current framework needs no
+        // repeated manifest-key set construction or definition work on every capture/commit.
+        let frameworkID = VocabularyClassificationCatalog.identifier(catalog.key)
+        if let current = document.classification.frameworks.first(where: { $0.id == frameworkID }),
+           current.key == catalog.key, current.version >= catalog.version { return false }
+        return try catalog.install(in: &document.classification, nodes: document.semantics.nodes)
     }
 
     func persistence() throws -> LingroveNotebookEngine {
@@ -102,35 +109,52 @@ actor VocabularyArchive {
         return saved
     }
 
-    /// This owns a connection lifetime, not a second transaction implementation. Public engine
-    /// commands own BEGIN/CAS/COMMIT; nested archive helpers reuse only this synchronous handle.
+    /// One actor-isolated connection retains trusted derived state. Commands are synchronous
+    /// while it is borrowed; SQLite still owns transactions and checks external write tokens.
+    /// App shutdown drains all accepted commands before retiring this connection.
     func storageAccess<T>(write: Bool, _ operation: () throws -> T) throws -> T {
-        if engine != nil { return try operation() }
-        guard let url else { throw VocabularyError.invalidArchive }
-        let connection = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: mediaDirectoryURL)
-        engine = connection
-        defer { engine = nil; try? connection.close() }
+        guard !isShutDown else { throw VocabularyError.editConflict }
+        if engine == nil {
+            guard let url else { throw VocabularyError.invalidArchive }
+            engine = try LingroveNotebookEngine(databaseURL: url, mediaDirectoryURL: mediaDirectoryURL)
+        }
         return try operation()
     }
 
+    func shutdown() {
+        isShutDown = true
+        try? engine?.close()
+        engine = nil; saved = nil
+    }
+
     func save(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        _ = try VocabularyPolicy.save(capture, in: &next, now: Date())
-        return try commit(next)
+        let document = try load().document
+        let edit = try VocabularyPolicy.entryForSave(capture, in: document, now: Date())
+        return try commitEntry(edit.entry, collections: edit.collections)
+    }
+
+    private func commitEntry(_ entry: VocabularyEntry, collections: [VocabularyCollectionItem],
+                             images: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
+        try storageAccess(write: true) {
+            let baseline = try transactionBaseline()
+            if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
+            let result = try persistence().saveNotebookEntry(entry, collections: collections, basedOn: baseline, images: images)
+            saved = result
+            return .init(result)
+        }
     }
 
     func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
                 importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        guard let index = next.entries.firstIndex(where: { $0.id == entry.id }) else { throw VocabularyError.invalidContent }
-        let original = next.entries[index]
-        try validatePersonalEdit(entry, baseline: baseline, collections: next.collections)
+        let document = try load().document
+        guard let original = VocabularyNotebookProjection.entry(entry.id, in: document) else { throw VocabularyError.invalidContent }
+        try validatePersonalEdit(entry, baseline: baseline, collections: document.collections)
         guard baseline.id == entry.id,
               Set(entry.senses.map(\.id)).count == entry.senses.count,
               Set(entry.examples.map(\.id)).count == entry.examples.count else { throw VocabularyError.invalidContent }
         guard entry.language == original.language, entry.kind == original.kind,
               !VocabularyPolicy.normalized(entry.expression).isEmpty else { throw VocabularyError.invalidContent }
-        guard !next.entries.contains(where: { $0.id != entry.id && VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(entry) })
+        guard !document.catalog.contains(where: { $0.id != entry.id && VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(entry) })
         else { throw VocabularyError.invalidContent }
         var merged = original
         merged.expression = try merge(baseline.expression, original.expression, entry.expression)
@@ -142,17 +166,41 @@ actor VocabularyArchive {
             values.count <= 1 || values.count <= (priorOccurrences[key]?.count ?? 0)
         }) else { throw VocabularyError.editConflict }
         merged.updatedAt = Date()
-        next.entries[index] = merged
-        for before in baseline.senses {
-            guard let edited = entry.senses.first(where: { $0.id == before.id }) else {
-                next.collections.removeAll { $0.senseID == before.id }; continue
+        let collections = editorCollections(merged, baseline: baseline, edited: entry, original: original, document: document)
+        return try commitEntry(merged, collections: collections, images: importedImages)
+    }
+
+    /// Personal membership is independent of lexical retention. Merge keeps uncollected senses
+    /// addressable, while newly authored examples/senses receive the editor's intended membership.
+    private func editorCollections(_ merged: VocabularyEntry, baseline: VocabularyEntry, edited: VocabularyEntry,
+                                   original: VocabularyEntry, document: VocabularyDocument) -> [VocabularyCollectionItem] {
+        let senseIDs = Set(original.senses.map(\.id))
+        let priorClaims = Set(document.interpretations.filter { $0.status == .accepted && $0.senseID != nil }.map(\.id))
+        var collections = document.collections.filter { senseIDs.contains($0.senseID) }
+        for sense in merged.senses {
+            if !senseIDs.contains(sense.id) {
+                collections.append(.init(senseID: sense.id, interpretationIDs: sense.examples.map(\.id),
+                    isSavedWithoutContext: sense.isSavedWithoutContext, savedAt: sense.createdAt))
             }
-            let removed = Set(before.examples.map(\.id)).subtracting(edited.examples.map(\.id))
-            if let collection = next.collections.firstIndex(where: { $0.senseID == before.id }) {
-                next.collections[collection].interpretationIDs.removeAll { removed.contains($0) }
+            guard let index = collections.firstIndex(where: { $0.senseID == sense.id }) else { continue }
+            let selected = Set(collections[index].interpretationIDs)
+            collections[index].interpretationIDs = sense.examples.filter {
+                selected.contains($0.id) || !priorClaims.contains($0.id)
+            }.map(\.id)
+            collections[index].note = sense.note; collections[index].tags = sense.tags
+            collections[index].content = sense.content; collections[index].review = sense.review
+            collections[index].reviewCards = sense.reviewCards
+        }
+        for before in baseline.senses {
+            guard let value = edited.senses.first(where: { $0.id == before.id }) else {
+                collections.removeAll { $0.senseID == before.id }; continue
+            }
+            let removed = Set(before.examples.map(\.id)).subtracting(value.examples.map(\.id))
+            if let collection = collections.firstIndex(where: { $0.senseID == before.id }) {
+                collections[collection].interpretationIDs.removeAll { removed.contains($0) }
             }
         }
-        return try commitWithImages(next, supplied: importedImages)
+        return collections
     }
 
     /// A sheet edits one sense while cards may append another. Merge by stable IDs and fields;
@@ -167,7 +215,7 @@ actor VocabularyArchive {
                 }
                 result.append(value); continue
             }
-            guard value != before else { continue }
+            guard try !VocabularySaveLiteralEquality.equal(value, before) else { continue }
             guard let index = result.firstIndex(where: { $0.id == value.id }) else { throw VocabularyError.editConflict }
             let live = result[index]
             var merged = live
@@ -175,9 +223,10 @@ actor VocabularyArchive {
                 VocabularyMeaning(text: live.meaning, language: live.meaningLanguage),
                 VocabularyMeaning(text: value.meaning, language: value.meaningLanguage))
             merged.meaning = meaning.text; merged.meaningLanguage = meaning.language
-            if merged.isSavedWithoutContext, value.meaning != before.meaning || value.meaningLanguage != before.meaningLanguage,
+            if merged.isSavedWithoutContext,
+               !value.meaning.utf8.elementsEqual(before.meaning.utf8) || value.meaningLanguage != before.meaningLanguage,
                !merged.standaloneMeanings.contains(meaning) { merged.standaloneMeanings.append(meaning) }
-            if value.meaning != before.meaning || value.meaningLanguage != before.meaningLanguage ||
+            if !value.meaning.utf8.elementsEqual(before.meaning.utf8) || value.meaningLanguage != before.meaningLanguage ||
                 value.meaningOrigin == .user && before.meaningOrigin != .user { merged.meaningOrigin = .user }
             merged.note = try merge(before.note, live.note, value.note)
             merged.tags = try merge(before.tags, live.tags, value.tags)
@@ -187,15 +236,19 @@ actor VocabularyArchive {
             result[index] = merged
         }
         for before in baseline where !edited.contains(where: { $0.id == before.id }) {
-            if let live = result.first(where: { $0.id == before.id }), live != before { throw VocabularyError.editConflict }
+            if let live = result.first(where: { $0.id == before.id }), try !VocabularySaveLiteralEquality.equal(live, before) {
+                throw VocabularyError.editConflict
+            }
             // An editor removes a personal collection relationship, not the catalog sense.
         }
         return result
     }
 
-    private func merge<Value: Equatable>(_ baseline: Value, _ current: Value, _ edited: Value) throws -> Value {
-        guard edited != baseline else { return current }
-        guard current == baseline || current == edited else { throw VocabularyError.editConflict }
+    private func merge<Value: Equatable & Encodable>(_ baseline: Value, _ current: Value, _ edited: Value) throws -> Value {
+        guard try !VocabularySaveLiteralEquality.equal(edited, baseline) else { return current }
+        guard try VocabularySaveLiteralEquality.equal(current, baseline) || VocabularySaveLiteralEquality.equal(current, edited) else {
+            throw VocabularyError.editConflict
+        }
         return edited
     }
 
@@ -206,7 +259,8 @@ actor VocabularyArchive {
         let ids = Set(collections.map(\.senseID))
         guard entry.senses.contains(where: { ids.contains($0.id) }) else { throw VocabularyError.editConflict }
         for sense in entry.senses {
-            if let before = baseline.senses.first(where: { $0.id == sense.id }), sense != before, !ids.contains(sense.id) {
+            if let before = baseline.senses.first(where: { $0.id == sense.id }),
+               try !VocabularySaveLiteralEquality.equal(sense, before), !ids.contains(sense.id) {
                 throw VocabularyError.editConflict
             }
         }
@@ -224,20 +278,22 @@ actor VocabularyArchive {
                 }
                 continue
             }
-            guard example != before else { continue }
+            guard try !VocabularySaveLiteralEquality.equal(example, before) else { continue }
             guard let index = merged.firstIndex(where: { $0.id == example.id }) else { throw VocabularyError.editConflict }
             var editedExample = correctedEvidence(example, before: before)
-            if example.text != before.text, example.meaning.isEmpty {
+            if !example.text.utf8.elementsEqual(before.text.utf8), example.meaning.isEmpty {
                 // The editor clears a stale sense when the source changes. That automatic clear
                 // is not a user-authored blank; a new explanation may fill the new occurrence.
                 editedExample.meaningOrigin = .captured
-            } else if example.meaning != before.meaning || example.meaningLanguage != before.meaningLanguage {
+            } else if !example.meaning.utf8.elementsEqual(before.meaning.utf8) || example.meaningLanguage != before.meaningLanguage {
                 editedExample.meaningOrigin = .user
             }
             merged[index] = try merge(before, merged[index], editedExample)
         }
         for before in baseline where !edited.contains(where: { $0.id == before.id }) {
-            if let item = merged.first(where: { $0.id == before.id }), item != before { throw VocabularyError.editConflict }
+            if let item = merged.first(where: { $0.id == before.id }), try !VocabularySaveLiteralEquality.equal(item, before) {
+                throw VocabularyError.editConflict
+            }
             // Uncollect below the entry merge; keep the interpretation available to agents.
         }
         return merged
@@ -248,7 +304,7 @@ actor VocabularyArchive {
     /// other interpretations continue citing the original immutable snapshot.
     private func correctedEvidence(_ example: VocabularyExample, before: VocabularyExample) -> VocabularyExample {
         var result = example
-        if example.text != before.text || example.appBundleIdentifier != before.appBundleIdentifier {
+        if !example.text.utf8.elementsEqual(before.text.utf8) || example.appBundleIdentifier != before.appBundleIdentifier {
             result.sourceID = UUID(); result.sourceKind = .authored; result.occurrenceID = UUID()
         }
         if example.ranges != before.ranges { result.occurrenceID = UUID() }

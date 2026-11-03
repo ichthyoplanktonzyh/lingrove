@@ -24,6 +24,9 @@ public final class DatabaseCore {
     /// device that is not new.
     public private(set) var createdDefaultWorkspaceId: String?
     private var isClosed: Bool
+    // Stores created from this Core share one derived snapshot, not separate authority. Every
+    // access is inside withConnectionAccess or a transaction holding the same recursive lock.
+    var notebookSaveCache: LingroveNotebookSaveCache?
     /// SQLite's own mutex dies with the connection, so it cannot protect a caller arriving after
     /// close. This longer-lived lock serializes native access with close. It is recursive because
     /// transactions call the same query/execute methods while already holding connection ownership.
@@ -71,6 +74,7 @@ public final class DatabaseCore {
         }
 
         self.isClosed = true
+        self.notebookSaveCache = nil
     }
 
     public func encodeJsonString<T: Encodable>(value: T) throws -> String {
@@ -178,6 +182,22 @@ public final class DatabaseCore {
         return value
     }
 
+    /// The notebook reader composes guarded native calls while retaining cache ownership. This
+    /// does not create a SQL transaction; its caller still owns the read/write snapshot boundary.
+    func withConnectionAccess<T>(_ body: () throws -> T) throws -> T {
+        connectionLock.lock()
+        defer { connectionLock.unlock() }
+        try requireOpenConnection()
+        return try body()
+    }
+
+    func notebookCacheToken() throws -> LingroveNotebookCacheToken {
+        try withConnectionAccess {
+            .init(externalVersion: try scalarInt(sql: "PRAGMA data_version", values: []),
+                connectionChanges: sqlite3_total_changes64(connection))
+        }
+    }
+
     public func inTransaction<T>(_ body: () throws -> T) throws -> T {
         try self.runTransaction(beginStatement: "BEGIN IMMEDIATE TRANSACTION", body)
     }
@@ -215,6 +235,10 @@ public final class DatabaseCore {
             return result
         } catch {
             sqlite3_exec(connection, "ROLLBACK TRANSACTION", nil, nil, nil)
+            // A nested store may have published a prepared snapshot before its outer CLI/account
+            // transaction failed. No rolled-back state can survive as a cache hit, even if its
+            // document revision happened to match the durable header.
+            notebookSaveCache = nil
             throw error
         }
     }

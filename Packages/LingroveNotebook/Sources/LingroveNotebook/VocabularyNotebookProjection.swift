@@ -5,11 +5,23 @@ import Foundation
 /// state. It performs no IO, classification or graph construction and is owned by no UI object.
 public nonisolated enum VocabularyNotebookProjection {
     public static func entries(_ document: VocabularyDocument, collectedOnly: Bool) -> [VocabularyEntry] {
+        entries(document.catalog, in: document, collectedOnly: collectedOnly)
+    }
+
+    /// Entry editors/captures need one join, not a copy of every joined entry. Evidence remains
+    /// owned by the canonical document; this short-lived value carries only the requested view.
+    public static func entry(_ id: UUID, in document: VocabularyDocument) -> VocabularyEntry? {
+        guard let header = document.catalog.first(where: { $0.id == id }) else { return nil }
+        return entries([header], in: document, collectedOnly: false).first
+    }
+
+    private static func entries(_ catalog: [VocabularyEntry], in document: VocabularyDocument,
+                                collectedOnly: Bool) -> [VocabularyEntry] {
         let sources = Dictionary(document.sources.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let occurrences = Dictionary(document.occurrences.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let collections = Dictionary(document.collections.map { ($0.senseID, $0) }, uniquingKeysWith: { first, _ in first })
         let claims = Dictionary(grouping: document.interpretations.filter { $0.status == .accepted }, by: \.senseID)
-        return document.catalog.compactMap { header in
+        return catalog.compactMap { header in
             var entry = header
             entry.senses = header.senses.compactMap { header in
                 let collection = collections[header.id]
@@ -85,6 +97,38 @@ public nonisolated enum VocabularyNotebookProjection {
         }
     }
 
+    /// A save command replaces one lexical subtree. Unrelated catalog/claim/collection values
+    /// are never projected back through an editor, so their literal bytes and ownership survive.
+    /// Sources and occurrences are immutable evidence: retain can only reuse them or append new
+    /// identities. The validated entry-save boundary checks all resulting relationships.
+    static func replaceEntry(_ entry: VocabularyEntry, in document: inout VocabularyDocument) {
+        let previous = document.catalog.first { $0.id == entry.id }
+        let oldSenses = Set(previous?.senses.map(\.id) ?? [])
+        let senses = Set(entry.senses.map(\.id)), claims = Set(entry.examples.map(\.id))
+        document.collections.removeAll { oldSenses.contains($0.senseID) && !senses.contains($0.senseID) }
+        document.interpretations.removeAll {
+            $0.status == .accepted && $0.senseID.map(oldSenses.contains) == true && !claims.contains($0.id)
+        }
+        for index in document.interpretations.indices {
+            if let id = document.interpretations[index].senseID, oldSenses.contains(id), !senses.contains(id) {
+                document.interpretations[index].senseID = nil
+                document.interpretations[index].status = .candidate
+            }
+        }
+        var header = entry
+        header.senses = entry.senses.map { sense in
+            var value = sense
+            value.examples = []; value.note = ""; value.tags = []; value.isSavedWithoutContext = false
+            value.content = nil; value.review = nil; value.reviewCards = nil
+            return value
+        }
+        upsert(header, in: &document.catalog, id: \.id)
+        var offsets = Offsets(document)
+        for sense in entry.senses {
+            for example in sense.examples { retain(example, senseID: sense.id, in: &document, offsets: &offsets) }
+        }
+    }
+
     /// One reconciliation indexes each table once. A word-list import can contain thousands
     /// of examples; repeated full-array identity scans would make a pure adapter quadratic.
     private struct Offsets {
@@ -106,8 +150,8 @@ public nonisolated enum VocabularyNotebookProjection {
         var example = input
         if let offset = offsets.sources[example.sourceID] {
             let source = document.sources[offset]
-            if source.text != example.text || source.kind != example.sourceKind ||
-                source.appBundleIdentifier != example.appBundleIdentifier {
+            if !source.text.utf8.elementsEqual(example.text.utf8) || source.kind != example.sourceKind ||
+                !literal(source.appBundleIdentifier, example.appBundleIdentifier) {
                 example.sourceID = UUID()
             }
         }
@@ -130,6 +174,14 @@ public nonisolated enum VocabularyNotebookProjection {
             translationVariants: example.translationVariants, completeness: example.completeness, provenance: provenance,
             explanations: example.explanations, createdAt: example.createdAt)
         upsert(claim, in: &document.interpretations, offsets: &offsets.claims, id: \.id)
+    }
+
+    private static func literal(_ lhs: String?, _ rhs: String?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil): true
+        case let (lhs?, rhs?): lhs.utf8.elementsEqual(rhs.utf8)
+        default: false
+        }
     }
 
     public static func collect(senseID: UUID, interpretationID: UUID?, withoutContext: Bool = false,

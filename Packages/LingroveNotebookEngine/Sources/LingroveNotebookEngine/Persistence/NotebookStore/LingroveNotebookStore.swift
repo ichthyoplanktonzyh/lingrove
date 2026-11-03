@@ -90,6 +90,15 @@ public struct LingroveNotebookStore {
             // canonical normalization, just as the remote apply path does.
             let changes = try self.replaceRows(document: next, previous: current.document, workspaceId: current.workspaceId,
                 preservingLiteralPayloads: true)
+            return try finishSave(next, current: current, changed: changes.changed, removed: changes.removed,
+                publicChange: publicChange, operationId: operationId)
+    }
+
+    /// Both full and narrow saves finish through the same CAS/header/journal/review transaction.
+    /// Scheduling and append-only review history stay with the existing material adapter.
+    func finishSave(_ next: VocabularyDocument, current: LingroveNotebookSnapshot,
+                    changed: [VocabularyPersistenceRow], removed: [VocabularyPersistenceRow],
+                    publicChange: Bool, operationId: String) throws -> LingroveNotebookSnapshot {
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
             let count = try self.core.execute(sql: """
@@ -98,7 +107,7 @@ public struct LingroveNotebookStore {
                 """, values: [.integer(Int64(revision)), .integer(next.reviewTemplates == nil ? 0 : 1), .text(now),
                     .text(current.workspaceId), .text(current.notebookId.uuidString), .integer(Int64(current.revision))])
             guard count == 1 else { throw VocabularyError.editConflict }
-            try self.recordPending(current: current, revision: revision, changed: changes.changed, removed: changes.removed,
+            try self.recordPending(current: current, revision: revision, changed: changed, removed: removed,
                 reviewTemplatesPresent: next.reviewTemplates != nil, publicChange: publicChange, operationId: operationId, now: now)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
             try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved)
@@ -126,10 +135,15 @@ public struct LingroveNotebookStore {
             return preservingLiteralPayloads ? try old.encodedPayload() != row.encodedPayload() : false
         }
         let removed = before.values.filter { after[$0.key] == nil }
+        try writeRows(changed: changed, removed: removed, workspaceId: workspaceId)
+        return (changed, removed)
+    }
+
+    func writeRows(changed: [VocabularyPersistenceRow], removed: [VocabularyPersistenceRow], workspaceId: String) throws {
         // Deferred NO ACTION relationships let final-valid owners leave and
         // return without cascading into unchanged children. Remove old owners
         // before inserting replacements so unique-key swaps are order independent.
-        let retiring = removed + changed.filter { before[$0.key] != nil }
+        let retiring = removed + changed
         for entity in VocabularyPersistenceEntity.allCases.reversed() {
             for row in retiring where row.entity == entity {
                 try core.execute(sql: "DELETE FROM \(LingroveNotebookSchema.table(entity)) WHERE workspace_id=? AND id=?",
@@ -139,10 +153,9 @@ public struct LingroveNotebookStore {
         for entity in VocabularyPersistenceEntity.allCases {
             for row in changed where row.entity == entity { try upsert(row, workspaceId: workspaceId) }
         }
-        return (changed, removed)
     }
 
-    private func checkActiveWorkspace(_ workspaceId: String, required: Bool) throws {
+    func checkActiveWorkspace(_ workspaceId: String, required: Bool) throws {
         if required {
             guard try self.core.scalarOptionalText(sql: "SELECT active_workspace_id FROM app_local_settings WHERE settings_id=1",
                 values: []) == workspaceId else { throw VocabularyError.editConflict }
@@ -159,6 +172,15 @@ public struct LingroveNotebookStore {
     /// Compound Card/link writers call this only inside the same Core transaction. Unlike load,
     /// it neither opens a nested transaction nor creates a missing notebook implicitly.
     public func readSnapshot(workspaceId: String) throws -> LingroveNotebookSnapshot {
+        try core.withConnectionAccess { try readSnapshotWithConnection(workspaceId: workspaceId) }
+    }
+
+    private func readSnapshotWithConnection(workspaceId: String) throws -> LingroveNotebookSnapshot {
+        // A deferred reader can overlap another connection's commit. Capture the token before
+        // the first header read and require it to stay stable before reusing content. If it did
+        // change, the full read is stamped with the earlier token: a later call conservatively
+        // reloads rather than attaching a future commit's token to this transaction's snapshot.
+        let token = try core.notebookCacheToken()
         let headers = try self.core.query(sql: "SELECT notebook_id,revision,has_templates FROM notebook_state WHERE workspace_id=?",
             values: [.text(workspaceId)]) { statement -> (UUID, UInt64, Bool) in
             guard let id = UUID(uuidString: try Self.requiredText(statement, 0)),
@@ -169,6 +191,13 @@ public struct LingroveNotebookStore {
             return (id, UInt64(revision), templates == 1)
         }
         guard let header = headers.first else { throw VocabularyError.editConflict }
+        let generation = try LingroveNotebookLocalScopeStore(core: core).generationInTransaction()
+        let stableToken = try core.notebookCacheToken() == token
+        if stableToken, let cached = core.notebookSaveCache, cached.token == token,
+           cached.snapshot.workspaceId == workspaceId, cached.snapshot.notebookId == header.0,
+           cached.snapshot.revision == header.1, cached.snapshot.generation == generation {
+            return cached.snapshot
+        }
         var rows: [VocabularyPersistenceRow] = []
         for entity in VocabularyPersistenceEntity.allCases {
             let columns = ["id", "parent_id", "position", "payload_json"] + entity.indexKeys.map(\.rawValue)
@@ -186,9 +215,12 @@ public struct LingroveNotebookStore {
             }
         }
         let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: header.2))
-        try VocabularyDocumentValidation.validate(document)
-        return .init(workspaceId: workspaceId, notebookId: header.0, revision: header.1, document: document,
-            generation: try LingroveNotebookLocalScopeStore(core: core).generationInTransaction())
+        let state = try VocabularyEntrySaveState(validating: document)
+        let snapshot = LingroveNotebookSnapshot(workspaceId: workspaceId, notebookId: header.0,
+            revision: header.1, document: document, generation: generation)
+        core.notebookSaveCache = .init(snapshot: snapshot, state: state,
+            projection: try .init(.init(rows: rows, reviewTemplatesPresent: header.2)), token: token, lineage: UUID())
+        return snapshot
     }
 
     private func upsert(_ row: VocabularyPersistenceRow, workspaceId: String) throws {

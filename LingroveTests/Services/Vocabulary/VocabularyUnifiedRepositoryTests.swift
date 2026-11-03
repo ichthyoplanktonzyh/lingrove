@@ -40,6 +40,38 @@ struct VocabularyUnifiedRepositoryTests {
         }
     }
 
+    @Test func narrowCaptureAndLiteralEditorRetainOtherEntriesAndNewMemberships() async throws {
+        try await withFixture { f in
+            await f.store.load()
+            for word in ["coffee", "river"] {
+                await f.store.save(.init(expression: word, dictionaryForm: word, language: .english, kind: .word,
+                    meaning: "meaning of " + word, meaningLanguage: .english))
+            }
+            let before = try f.repository.snapshot()
+            let original = try #require(f.store.entries.first { $0.expression == "coffee" })
+            let other = try #require(f.store.entries.first { $0.expression == "river" })
+            var edited = original
+            edited.senses[0].note = "caf\u{00e9}"
+            #expect(await f.store.update(edited, basedOn: original))
+            let baseline = try #require(f.store.entries.first { $0.id == original.id })
+            var literal = baseline
+            literal.senses[0].note = "cafe\u{0301}"
+            literal.senses[0].examples.append(.init(id: UUID(), sourceKind: .authored, text: "I like coffee.",
+                translation: "A fixture", ranges: [], completeness: .sentence, meaning: "", createdAt: Date()))
+            literal.senses.append(.init(id: UUID(), meaning: "a second meaning", note: "a new personal sense",
+                createdAt: Date(), updatedAt: Date()))
+            #expect(await f.store.update(literal, basedOn: baseline))
+            let saved = try f.repository.snapshot()
+            let coffee = try #require(saved.document.collectedEntries.first { $0.id == original.id })
+            #expect(coffee.senses[0].note.utf8.elementsEqual("cafe\u{0301}".utf8))
+            #expect(coffee.senses[0].examples.count == 1)
+            #expect(coffee.senses.last?.note == "a new personal sense")
+            #expect(saved.document.collectedEntries.first { $0.id == other.id } == other)
+            #expect(saved.document.classification == before.document.classification)
+            #expect(try f.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
+        }
+    }
+
     @Test func explicitCaptureDraftMergeMediaBackupAndRestartUseTheSameEngine() async throws {
         try await withFixture { f in
             await f.store.load()

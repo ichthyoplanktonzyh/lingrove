@@ -42,65 +42,99 @@ public nonisolated enum VocabularyDocumentValidation {
     /// Keep the historical identity scopes and insertion order. Expanding this namespace to
     /// explanation, binding or template IDs would reject previously valid notebooks.
     public static func validate(_ document: VocabularyDocument) throws {
+        _ = try validate(document, entries: document.entries)
+    }
+
+    static func validate(_ document: VocabularyDocument, entries: [VocabularyEntry]) throws -> [UUID: Set<UUID>] {
         guard document.schemaVersion == VocabularyDocument.currentVersion,
-              document.schemaVersion >= VocabularyDocument.requiredVersion(for: document.entries),
-              Set(document.entries.map(VocabularyIdentityPolicy.entryKey)).count == document.entries.count else {
+              document.schemaVersion >= VocabularyDocument.requiredVersion(for: entries),
+              Set(entries.map(VocabularyIdentityPolicy.entryKey)).count == entries.count else {
             throw VocabularyError.invalidArchive
         }
         try VocabularyLifecyclePolicy.validate(document)
         try VocabularyReviewValidation.validateTemplates(document.reviewTemplates ?? [])
+        var allIDs = Set<UUID>(), identifiers: [UUID: Set<UUID>] = [:]
+        for entry in entries {
+            let ids = try entryIdentifiers(entry)
+            guard allIDs.isDisjoint(with: ids) else { throw VocabularyError.invalidArchive }
+            allIDs.formUnion(ids); identifiers[entry.id] = ids
+        }
+        try VocabularySemanticPolicy.validate(document.semantics, entries: entries)
+        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
+        return identifiers
+    }
+
+    /// IDs retain the historical cross-entry namespace; explanation and binding IDs stay local.
+    static func entryIdentifiers(_ entry: VocabularyEntry) throws -> Set<UUID> {
         var ids = Set<UUID>()
-        for entry in document.entries {
-            guard ids.insert(entry.id).inserted, !VocabularyIdentityPolicy.normalized(entry.expression).isEmpty else {
-                throw VocabularyError.invalidArchive
+        guard ids.insert(entry.id).inserted, !VocabularyIdentityPolicy.normalized(entry.expression).isEmpty else {
+            throw VocabularyError.invalidArchive
+        }
+        for sense in entry.senses {
+            try VocabularyContentPolicy.validate(sense.content ?? [])
+            for block in sense.content ?? [] {
+                guard ids.insert(block.id).inserted else { throw VocabularyError.invalidArchive }
             }
-            for sense in entry.senses {
-                try VocabularyContentPolicy.validate(sense.content ?? [])
-                for block in sense.content ?? [] {
-                    guard ids.insert(block.id).inserted else { throw VocabularyError.invalidArchive }
-                }
-                if let review = sense.review { try VocabularyReviewValidation.validate(review) }
-                try VocabularyReviewValidation.validateCards(sense.reviewCards ?? [], ids: &ids)
-                let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: nil)
-                guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
-                      sense.explanations.count <= 128,
-                      sense.explanations.allSatisfy({
+            if let review = sense.review { try VocabularyReviewValidation.validate(review) }
+            try VocabularyReviewValidation.validateCards(sense.reviewCards ?? [], ids: &ids)
+            let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: nil)
+            guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
+                  sense.explanations.count <= 128,
+                  sense.explanations.allSatisfy({
+                      VocabularyExplanationValidation.isValid($0.input) && VocabularyExplanationValidation.isValid($0.result) &&
+                          $0.input == input
+                  }) else { throw VocabularyError.invalidArchive }
+            for usage in sense.examples {
+                let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: usage)
+                guard ids.insert(usage.id).inserted, !usage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      usage.text.utf8.count <= 262_144,
+                      usage.ranges.allSatisfy({ UTF16TextRangePolicy.isValid($0.nsRange, in: usage.text) }),
+                      usage.explanations.count <= 24, usage.explanations.allSatisfy({
                           VocabularyExplanationValidation.isValid($0.input) && VocabularyExplanationValidation.isValid($0.result) &&
                               $0.input == input
                       }) else { throw VocabularyError.invalidArchive }
-                for usage in sense.examples {
-                    let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: usage)
-                    guard ids.insert(usage.id).inserted, !usage.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                          usage.text.utf8.count <= 262_144,
-                          usage.ranges.allSatisfy({ UTF16TextRangePolicy.isValid($0.nsRange, in: usage.text) }),
-                          usage.explanations.count <= 24, usage.explanations.allSatisfy({
-                              VocabularyExplanationValidation.isValid($0.input) && VocabularyExplanationValidation.isValid($0.result) &&
-                                  $0.input == input
-                          }) else { throw VocabularyError.invalidArchive }
-                }
             }
         }
-        try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
-        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
+        return ids
+    }
+
+    static func pruningExplanations(_ entry: VocabularyEntry) -> VocabularyEntry {
+        var next = entry
+        for index in entry.senses.indices {
+            let sense = entry.senses[index]
+            let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: nil)
+            next.senses[index].explanations = sense.explanations.filter { $0.input == input }
+            for usage in sense.examples.indices {
+                let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: sense.examples[usage])
+                next.senses[index].examples[usage].explanations = sense.examples[usage].explanations.filter { $0.input == input }
+            }
+        }
+        return next
     }
 
     public static func imageReferences(_ document: VocabularyDocument) -> [VocabularyImageReference] {
-        let senseImages = document.entries.flatMap { $0.senses.flatMap { sense in
-            VocabularyContentPolicy.images(sense.content ?? []) + sense.reviewLayouts.flatMap {
+        let personal = document.collections.flatMap { collection in
+            VocabularyContentPolicy.images(collection.content ?? []) + collectionLayouts(collection).flatMap {
                 VocabularyContentPolicy.images($0.customContent)
             }
-        } }
-        return senseImages + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
+        }
+        return personal + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
+    }
+
+    /// Media belongs to collection records, not a second joined copy of every lexical entry.
+    /// Retained plans still participate, including hidden layouts and independent card drafts.
+    private static func collectionLayouts(_ collection: VocabularyCollectionItem) -> [ReviewLayout] {
+        ([collection.review].compactMap { $0 } + (collection.reviewCards ?? [])).flatMap {
+            ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
+        }
     }
 
     /// Image staging precedes whole-document preparation. Checking only media here preserves
     /// legitimate edits that still carry stale explanation snapshots until prepare prunes them.
     public static func validateMediaContent(_ next: VocabularyDocument) throws {
-        for entry in next.entries {
-            for sense in entry.senses {
-                try VocabularyContentPolicy.validate(sense.content ?? [])
-                for layout in sense.reviewLayouts { try VocabularyReviewValidation.validate(layout) }
-            }
+        for collection in next.collections {
+            try VocabularyContentPolicy.validate(collection.content ?? [])
+            for layout in collectionLayouts(collection) { try VocabularyReviewValidation.validate(layout) }
         }
         try VocabularyReviewValidation.validateTemplates(next.reviewTemplates ?? [])
     }
