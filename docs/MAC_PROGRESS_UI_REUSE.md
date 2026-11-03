@@ -1,4 +1,4 @@
-# Mac Wave 4 personal Progress reuse map
+# Native personal Progress UI source adoption
 
 Baseline: `a151c519369ea7dd4bb423ba127713e7e8e62348`. Upstream refers to the checked-in,
 read-only `Nibomo/apps/ios/Flashcards/Flashcards/Progress/` tree at that baseline.
@@ -68,4 +68,4 @@ do not inherit the mobile cloud fallback's “approximate” label.
 - The original corpus/menu/settings/account pages. The workspace integrator injects only
   `NotebookProgressView(repository:isActive:)` into its optional content factory.
 
-Validation and limitations are recorded separately in `MAC_W4_B_DELIVERY.md`.
+Current ownership, validation and limitations are maintained in [MAC_WORKSPACE.md](MAC_WORKSPACE.md).

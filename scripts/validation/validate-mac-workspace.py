@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mac Wave 4 A validation: isolated notebook workspace, real local storage, one visible journey.
+"""Native Mac workspace validation: isolated storage, original corpus, review and Progress.
 
 The shared flock covers every Swift/Xcode/native operation through evidence publication.
 Only approved fixed inputs are copied; no installed user app, account or permission is changed.
@@ -20,16 +20,16 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-BASE = ROOT / "build/mac-w4-a"
+BASE = ROOT / "build/mac-workspace-validation"
 DD = ROOT / "build/DerivedData"
 CACHE = Path("/Users/shadow/lingrove/build")
-PACKAGES = ROOT / "build/mac-w4-a-source-packages"
-HOST_NAME = "Lingrove Workspace Validation W4A"
-HOST_ID = "io.ichthyoplanktonzyh.lingrove.mac.wave4.workspace.validation"
+PACKAGES = ROOT / "build/mac-workspace-source-packages"
+HOST_NAME = "Lingrove Workspace Validation"
+HOST_ID = "io.ichthyoplanktonzyh.lingrove.mac.workspace.validation"
 HOST = BASE / "host" / (HOST_NAME + ".app")
 ENV = dict(os.environ, CMAKE_OSX_ARCHITECTURES="arm64", TTS_BUILD_JOBS="4",
-           CLANG_MODULE_CACHE_PATH=str(ROOT / "build/mac-w4-a-module-cache"),
-           SWIFTPM_MODULECACHE_OVERRIDE=str(ROOT / "build/mac-w4-a-swift-module-cache"))
+           CLANG_MODULE_CACHE_PATH=str(ROOT / "build/mac-workspace-module-cache"),
+           SWIFTPM_MODULECACHE_OVERRIDE=str(ROOT / "build/mac-workspace-swift-module-cache"))
 
 
 def run(name, command, check=True):
@@ -90,6 +90,7 @@ def native_test(suffix, selectors, onscreen):
     value = plistlib.loads(info.read_bytes())
     old_id = value["CFBundleIdentifier"]
     value.update(CFBundleIdentifier=HOST_ID, CFBundleName=HOST_NAME, CFBundleDisplayName=HOST_NAME)
+    value["LingroveIsolatedValidationHost"] = True
     info.write_bytes(plistlib.dumps(value))
     signature = subprocess.run(["codesign", "-d", "--verbose=4", str(original)], cwd=ROOT,
                                capture_output=True, text=True, check=True)
@@ -126,6 +127,8 @@ def native_test(suffix, selectors, onscreen):
     runfile.write_bytes(plistlib.dumps(rewrite(plan)))
     selected = selectors or (["LingroveTests/NotebookWorkspaceOnscreenAcceptanceTests"] if onscreen else [
         "LingroveTests/NotebookWorkspaceIntegrationTests",
+        "LingroveTests/NotebookProgressModelIntegrationTests",
+        "LingroveTests/LingroveTestHostPolicyTests",
         "LingroveTests/BuiltInReviewSessionIntegrationTests",
         "LingroveTests/BuiltInReviewKeyboardPolicyTests",
         "LingroveTests/MacNotebookAppServicesTests",
@@ -196,7 +199,7 @@ def cleanup():
             subprocess.run(["defaults", "delete", domain], cwd=ROOT, capture_output=True)
             orphan_domains.append(domain)
     user_library = Path.home() / "Library"
-    paths = [DD, PACKAGES, ROOT / "build/mac-w4-a-module-cache", ROOT / "build/mac-w4-a-swift-module-cache",
+    paths = [DD, PACKAGES, ROOT / "build/mac-workspace-engine", ROOT / "build/mac-workspace-swift-cache", ROOT / "build/mac-workspace-module-cache", ROOT / "build/mac-workspace-swift-module-cache",
         ROOT / "build/lingrove-dependencies", ROOT / "build/tts-native", ROOT / "build/dictionary-native",
         ROOT / "build/ocr-native", BASE / "host", user_library / "Application Support" / HOST_NAME,
         user_library / "Caches" / HOST_ID, user_library / "Saved Application State" / (HOST_ID + ".savedState"), *orphan_data]
@@ -223,7 +226,7 @@ def cleanup():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("stage", choices=["prepare", "generate", "build", "test", "onscreen", "lint", "cleanup"])
+    parser.add_argument("stage", choices=["prepare", "generate", "build", "test", "onscreen", "lint", "engine", "catalog", "cleanup"])
     parser.add_argument("--suffix", default="1")
     parser.add_argument("--only-test", action="append", default=[])
     args = parser.parse_args()
@@ -242,6 +245,28 @@ def main():
             native_test(args.suffix, args.only_test, args.stage == "onscreen")
         elif args.stage == "lint":
             lint(args.suffix)
+        elif args.stage == "engine":
+            run("engine-" + args.suffix, ["swift", "test", "--package-path", "Packages/LingroveNotebookEngine",
+                "--scratch-path", "build/mac-workspace-engine", "--cache-path", "build/mac-workspace-swift-cache",
+                "--disable-dependency-cache", "--manifest-cache", "local", "--arch", "arm64", "--filter",
+                "NotebookProgressIntegrationTests|LingroveNotebookEntrySaveIntegrationTests"])
+        elif args.stage == "catalog":
+            import re
+            locales = {"ar", "de", "en", "es", "fr", "hi", "id", "it", "ja", "ko", "pt-BR", "ru", "tr", "zh-Hans", "zh-Hant"}
+            placeholder = re.compile(r"%(?:[1-9][0-9]*\$)?(?:lld|ld|d|@)")
+            counts = {}
+            for name in ("NotebookWorkspace", "NotebookProgress"):
+                catalog = json.loads((ROOT / "Lingrove/Resources" / (name + ".xcstrings")).read_text())["strings"]
+                for key, item in catalog.items():
+                    translations = item["localizations"]
+                    assert set(translations) == locales, key
+                    expected = sorted(placeholder.findall(translations["en"]["stringUnit"]["value"]))
+                    for locale, translation in translations.items():
+                        value = translation["stringUnit"]["value"]
+                        assert value.strip() and sorted(placeholder.findall(value)) == expected, (key, locale)
+                counts[name] = len(catalog)
+            (BASE / "catalog-proof.json").write_text(json.dumps({"keys": counts, "locales": sorted(locales), "placeholdersMatch": True}, indent=2))
+            print("catalog checks passed", flush=True)
         elif args.stage == "cleanup":
             cleanup()
 

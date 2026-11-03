@@ -4,6 +4,7 @@ import AppKit
 import Combine
 import Foundation
 import Logging
+import SwiftUI
 
 /// File overview:
 /// Builds Lingrove's long-lived dependency graph in one place. This is the app's composition model:
@@ -268,7 +269,7 @@ final class LingroveAppEnvironment {
         // that fixed text so ghost placement can be measured deterministically without a model.
         // Typing history owns its own encrypted archive. Inside the XCTest host it starts empty and
         // never opens the real archive or Keychain item, so tests cannot read or overwrite it.
-        let isTestHost = LingroveCompatibility.processEnvironment["XCTestConfigurationFilePath"] != nil
+        let isTestHost = LingroveTestHostPolicy.current
         let supportURL = isTestHost
             ? FileManager.default.temporaryDirectory.appendingPathComponent("Lingrove-Host-\(UUID().uuidString)")
             : BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
@@ -306,10 +307,16 @@ final class LingroveAppEnvironment {
         // Panels borrow it; none creates a second dictionary or recognition worker in a view.
         let learningLexicon = LearningLexiconService(resourceURL: Bundle.main.url(forResource: "learning-expressions", withExtension: "json"))
         let learningDictionary = LearningDictionaryRouter(lexicon: learningLexicon)
+        // Progress borrows the same corpus repository as capture and review. Only the visible
+        // destination starts its read model; an unavailable repository remains unavailable.
+        let notebookProgressContent: (@MainActor (Bool) -> AnyView)? = notebookServices.repository.map { repository in
+            { isActive in AnyView(NotebookProgressView(repository: repository, isActive: isActive)) }
+        }
         let vocabularyWindow = VocabularyWindowController(store: vocabularyStore, speech: speechController,
             explanationService: learningModels.explainer, dictionaryProvider: learningDictionary,
             learningSettings: suggestionSettings.languageLearning, review: reviewController, search: vocabularySearch,
-            builtInReview: notebookServices.builtInReview, account: accountService, sync: notebookServices.synchronization)
+            builtInReview: notebookServices.builtInReview, account: accountService, sync: notebookServices.synchronization,
+            progressContent: notebookProgressContent)
         // Menu/corpus review hooks keep their original facade and now land in this one reusable
         // window. No view creates a second review session, repository or key monitor.
         notebookServices.builtInReview?.onShow = { [weak vocabularyWindow] in vocabularyWindow?.showReview(selection: $0) }

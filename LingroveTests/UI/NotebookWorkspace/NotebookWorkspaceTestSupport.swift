@@ -25,7 +25,7 @@ final class NotebookWorkspaceFixture {
     private var settings: SettingsCoordinator?
     private(set) var settingsWindow: NSWindow?
 
-    init() throws {
+    init(usesRealProgress: Bool = false) throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-workspace-" + UUID().uuidString)
         defaults = try workspaceRequire(UserDefaults(suiteName: suite))
         repository = try .init(databaseURL: directory.appendingPathComponent("primary.sqlite"),
@@ -39,10 +39,14 @@ final class NotebookWorkspaceFixture {
         search = .init(store: store, directoryURL: directory.appendingPathComponent("search-models"), cacheURL: nil)
         review = .init(repository: repository, speech: speech)
         let probe = progress
+        let progressRepository = repository
         window = .init(store: store, speech: speech, dictionaryProvider: LearningLexiconService(resourceURL: nil),
             learningSettings: LanguageLearningSettings(defaults: defaults), search: search, preferences: defaults,
             builtInReview: review, account: account, sync: sync, progressContent: { active in
                 probe.visibility.append(active)
+                if usesRealProgress {
+                    return AnyView(NotebookProgressView(repository: progressRepository, isActive: active))
+                }
                 return AnyView(Text("Injected Progress fixture").frame(maxWidth: .infinity, maxHeight: .infinity))
             })
         let window = window

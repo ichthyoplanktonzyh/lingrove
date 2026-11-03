@@ -135,6 +135,8 @@ Lingrove/
     ├── BuiltInReview/                native notebook enrollment, material editor, practice, queue and history
     ├── Components/                   application-wide reusable views
     ├── NibomoPresentation/           extracted Nibomo card surfaces, answer controls, layout and AppKit adapters
+    ├── NotebookWorkspace/            outer corpus/review/progress sidebar; original corpus page stays intact
+    ├── NotebookProgress/             extracted Nibomo calendar, rating history and forecast presentation
     ├── Previews/                     Debug-only Canvas hosts and isolated card fixtures; renders the real InlineFeatures views
     ├── InlineFeatures/               emoji picker, macro reference and native expression candidate rows
     ├── Components/CurrentShortcutRow.swift read-only shortcut labels shared by help and setup
@@ -259,13 +261,40 @@ these components own neither storage nor authentication. `UI/Settings/Account` p
 server/email/code/workspace pages to the app-owned account/sync services. `UI/BuiltInReview` binds
 the original preparation, front/back editing and practice structure to `BuiltInReviewSession`.
 The session retains frozen scope/card/link identity and drains accepted writes; closing a view
-does not recreate the app service graph. See `docs/MAC_W3_UI_REUSE_MAP.md` for exact provenance and
+does not recreate the app service graph. See `docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md` for exact provenance and
 the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`.
 
 Tests mirror the storage and UI boundaries. `UI/Settings/MacWave3OnscreenAcceptanceTests.swift` is
 explicitly opt-in: it exposes disposable SQLite-backed production windows for a bounded computer-use
 handoff, then checks the rating and source-following persistence. Ordinary test runs skip that
 onscreen fixture; keyboard/data checks remain independently executable.
+
+## Native corpus workspace and personal progress
+
+`Models/NotebookWorkspace` stores the three outside destinations and temporary sheet admission.
+`UI/NotebookWorkspace` observes that navigation and the existing account/sync projection. Footer
+actions route to the original SettingsCoordinator; they do not create new settings or account UI.
+`Services/Presentation/NotebookWorkspaceHostController` mounts one retained destination host and
+detaches corpus-only toolbars from Review/Progress. `VocabularyWindowController` owns source-link
+and sheet arbitration, visibility and the existing corpus hosting controller. The original
+`UI/Vocabulary` files remain unchanged.
+
+`UI/NotebookProgress/NotebookProgressView` owns a visibility-scoped StateObject. Its model in
+`Services/NotebookProgress` observes repository changes and date/timezone notifications; the IO
+actor opens short native read-only engine connections. `Models/NotebookProgress` holds immutable
+presentation values, and `Support/NotebookProgress` contains extracted paging/date/formatting rules.
+The shared engine's `Queries/+NotebookProgress` reads scope, effective retained rating history and
+eligible future exercises in one snapshot, then `Review/Statistics/NotebookProgressAggregation`
+reduces complete history off MainActor. Source attribution lives in `docs/MAC_PROGRESS_UI_REUSE.md`.
+
+`Support/Utilities/LingroveTestHostPolicy` is the common startup/storage admission predicate for
+XCTest and explicitly marked private validation bundles. AppDelegate and AppEnvironment consume
+the same decision; reopening a validation copy after test exit cannot start login-item defaults,
+global monitors or real application startup. Ordinary bundles keep their normal path.
+
+Focused checks are under `LingroveTests/UI/NotebookWorkspace`, `Services/NotebookProgress` and
+`Support/Utilities`; engine query coverage is under the package's `Tests/.../Notebook` directory.
+Current product and validation guidance is in `docs/MAC_WORKSPACE.md`.
 
 ## Per-App Settings
 
@@ -1127,8 +1156,8 @@ not describe the current app path. An opening failure yields a nonwriting unavai
 preserves original bytes and leaves autocomplete/translation available.
 
 `VocabularyStore.connectExplanations` binds each persistence callback to the request's original
-scope. Corpus toolbar/sense actions open the app-owned built-in review window without enrollment;
-the reverse source callback opens the existing vocabulary window. The menu keeps Anki separate.
+scope. Corpus toolbar/sense actions open the app-owned review destination without enrollment;
+the reverse source callback reveals the original sense in the retained corpus destination. The menu keeps Anki separate.
 `SettingsCoordinator` and `SettingsContainerView` lend the same sync controller to the account pane;
 views never start another service graph. AppDelegate starts sync after account restoration. Its
 own Quit commands asynchronously drain the CLI, corpus and pending review writer, then retire
@@ -1149,8 +1178,8 @@ with its notebook write. Existing-object CLI writes carry the original workspace
 `+BuiltInReview` and `Queries/+BuiltInReviewRead` fence native commands/reads with exact saved
 scope, cards, links and enrollment state. Retained material keeps its generated baseline so a
 returning source updates untouched fields without replacing authored text or scheduling history.
-`docs/MAC_WAVE_2.md` freezes the hooks and assigns AppEnvironment/menus to the final integrator,
-so feature worktrees do not construct competing long-lived service graphs.
+`docs/MAC_WORKSPACE.md` describes the current app-owned composition and navigation. Feature
+views borrow that graph rather than constructing competing long-lived services.
 
 ## Local vocabulary CLI
 

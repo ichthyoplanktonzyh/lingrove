@@ -30,12 +30,12 @@ belong to the host, not this package.
 Mobile's `LingroveNotebookNetworkRunner` and `LingroveNotebookReviewNetworkRunner` now delegate
 to the public runners through these ports. Its existing CloudSessionRuntime keeps app lifetime
 and recovery orchestration. Cancel controls and shared runner borrow the same media-transfer
-registry. The native `MacNotebookRepository` exposes one engine/adapter pair for Wave 2 consumers.
+registry. The native `MacNotebookRepository` exposes one engine/adapter pair for its corpus, sync and review consumers.
 
 `EngineCloudIntegrationTests` executes actual SQLite + canonical codec/ports, exact ACK with a
 later rating, persistence/reopen, generation ABA, primary close and guest-kind retention. The
 combined native HTTP/PostgreSQL check uses the production mobile wrapper with this package;
-its executed evidence is recorded separately in `docs/MAC_WAVE_1_INTEGRATION.md`.
+its executed evidence is recorded separately in `docs/MAC_WORKSPACE.md`.
 
 The adapter derives from Lingrove and the existing Nibomo storage IO at checkpoint `9351fd93`.
 Lingrove additions use the repository license; the original upstream MIT notice is retained in

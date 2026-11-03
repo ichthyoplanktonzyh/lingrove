@@ -98,7 +98,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         window.contentViewController = host
         self.window = window
         corpusHost = makeCorpusHost()
-        if let corpusHost { host.show(corpusHost) }
+        if let corpusHost { host.show(corpusHost, preservingCorpusToolbar: true) }
         builtInReview?.attachPresentation(to: window)
         for name in [NSWindow.willBeginSheetNotification, NSWindow.didEndSheetNotification] {
             NotificationCenter.default.publisher(for: name, object: window).sink { [weak self] notification in
@@ -184,7 +184,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         }
         switch destination {
         case .corpus:
-            if let corpusHost { host?.show(corpusHost) }
+            if let corpusHost { host?.show(corpusHost, preservingCorpusToolbar: true) }
             learning.resume()
             search?.activate()
         case .review:

@@ -401,7 +401,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// polling, update checks, and the llama runtime in the host process only adds side effects and can
     /// crash before a test assertion runs. The environment variable is supplied by XCTest only.
     private static var isRunningUnderXCTest: Bool {
-        LingroveCompatibility.processEnvironment["XCTestConfigurationFilePath"] != nil
+        LingroveTestHostPolicy.current
     }
 
     static var isRunningForPreviews: Bool {

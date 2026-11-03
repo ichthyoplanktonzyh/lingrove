@@ -442,17 +442,16 @@ those reviewer/test agents do not write implementation or test code.
 - Leads proactively deliver their branch/commit IDs, completed scope, actual validation evidence,
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
-- Mobile Wave 3 is delivered; its contract remains in `docs/MOBILE_WAVE_3.md`. Active native Mac
-  work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_4.md`: extend the existing corpus
-  window with only corpus/review/progress navigation, preserve the entire corpus page, embed the
-  existing review UI, and extract Nibomo personal Progress UI with real local statistics.
-  Menu bar and existing settings/account UI remain unchanged; links reuse their existing window.
-  Keep upstream review/progress interaction and visual design for this first version.
-  Mac Waves 1/2/3 are integrated; evidence and remaining limits are in their integration reports,
-  including `docs/MAC_WAVE_3_INTEGRATION.md` for the save/UI wave and its explicit Progress statistics gap.
-  Those Mac contracts supersede historical mobile-only scope exclusions. Separate worktrees isolate source,
-  not simulators or host resources. All Xcode/simulator operations acquire the shared validation
-  lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
+- Native Mac ownership, current feature scope, component sources and validation limits are
+  maintained in `docs/MAC_WORKSPACE.md` and `SOURCE_LAYOUT.md`. The existing corpus page,
+  menu bar and settings/account UI are preserved; outer navigation contains only corpus,
+  review and progress. Review and Progress reuse Nibomo components with local business adapters.
+- Completed dispatch notes and delivery reports are temporary. Consolidate lasting requirements,
+  source attribution, validation results and unresolved limits into maintained documentation,
+  then remove redundant process records and update links. Git retains the historical reports.
+- Separate worktrees isolate source, not host resources. All Xcode/simulator/native operations
+  hold `/tmp/lingrove-mobile-validation.lock`; each checkout keeps DD under `build/DerivedData`
+  and removes it and copied caches after validation.
 - The user confirmed on 2026-11-02 that Lingrove has no user data. Current work does not need
   legacy development-snapshot, schema, backup, or Anki-binding migration compatibility. Simplify
   related implementation where useful; do not spend this module on unrelated compatibility removal.

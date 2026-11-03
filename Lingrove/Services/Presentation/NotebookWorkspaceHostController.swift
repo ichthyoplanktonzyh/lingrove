@@ -10,6 +10,9 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
     private let sidebar: NSViewController
     private let content = NSViewController()
     private(set) var visibleController: NSViewController?
+    private weak var corpusToolbarOwner: NSViewController?
+    private var corpusToolbar: NSToolbar?
+    private var visibleHasCorpusToolbar = false
 
     init(sidebar: NotebookWorkspaceSidebar) {
         self.sidebar = NSHostingController(rootView: sidebar)
@@ -43,11 +46,19 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
         addSplitViewItem(destinationItem)
     }
 
-    func show(_ controller: NSViewController) {
+    func show(_ controller: NSViewController, preservingCorpusToolbar: Bool = false) {
         loadViewIfNeeded()
         guard visibleController !== controller else { return }
+        let window = view.window
+        if visibleHasCorpusToolbar {
+            corpusToolbarOwner = visibleController
+            corpusToolbar = window?.toolbar
+        }
         visibleController?.view.removeFromSuperview()
         visibleController?.removeFromParent()
+        // SwiftUI's toolbar bridge retains the last native toolbar when the next page has no
+        // toolbar. Detach it explicitly so corpus Edit/Delete never target a hidden page.
+        window?.toolbar = nil
         content.addChild(controller)
         controller.view.translatesAutoresizingMaskIntoConstraints = false
         content.view.addSubview(controller.view)
@@ -57,6 +68,10 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
             controller.view.topAnchor.constraint(equalTo: content.view.topAnchor),
             controller.view.bottomAnchor.constraint(equalTo: content.view.bottomAnchor)
         ])
+        if preservingCorpusToolbar, corpusToolbarOwner === controller {
+            window?.toolbar = corpusToolbar
+        }
+        visibleHasCorpusToolbar = preservingCorpusToolbar
         visibleController = controller
     }
 }

@@ -1,4 +1,4 @@
-# Mac Wave 3 UI source adoption
+# Native review and account UI source adoption
 
 Frozen source: `8a796f9d9cca57b75208e3636b24c9edf188a44e`. `Nibomo/` remains read-only.
 The selected code is MIT, Copyright (c) 2026 Kirill Markin; the application bundles
@@ -34,29 +34,4 @@ boundary, so math/table rendering parity remains a documented gap rather than im
 whole mobile rendering/dependency graph. The original dark/orange appearance is applied only
 inside these owned surfaces. No remote image/CDN load, guest request or telemetry was added.
 
-## Inspected native content captures
-
-All samples are drawn by real AppKit/SwiftUI windows in the private test host, with synthetic
-values. They capture content bounds, not a complete onscreen window or mouse journey.
-
-| Capture under this worktree’s `build/mac-w3-b/native-ui/` | What was inspected and necessary difference |
-| --- | --- |
-| `extracted-server-draft.png` | Actual saved API/auth destination remains visibly separate from the editable draft URLs. Separate URLs replace Nibomo’s unsupported derived-domain/official-server choices. |
-| `extracted-otp.png` / `extracted-otp-reopened.png` | Original Email and One-time code section layout; the same service challenge survives reopening without another send. Social provider choices are absent. |
-| `extracted-workspace-chooser.png` / `extracted-sync-ownership.png` | Original workspace rows plus Lingrove’s explicit retain/accept and opt-in. Synthetic controller status is shown; chooser presentation does not connect or enable sync. |
-| `native-preparation.png` | Original material example Picker and front/back navigation rows; source meaning stays distinct from exercise draft. macOS 14 uses native TextEditor without the newer selection-binding initializer. |
-| `native-answer.png` | Original front/back material surfaces, readable column and bottom rating structure; paragraphs remain separate. Cached content images omit compositor-rendered glass backgrounds; black rating labels here do **not** establish usable onscreen contrast. |
-
-The attempted in-process accessibility press could not find the offscreen SwiftUI glass control,
-even after one corrective host rerun. That path was stopped and its failed xcresults retained.
-The final artifact-only bar capture is not mouse-interaction or glass appearance evidence (its
-standalone cached image is empty). The AppKit window-local keyboard reveal/rate/edit gating,
-persisted result and undo journey executed successfully. Real mouse presses and onscreen glass
-contrast remain explicit integration checks; no product navigation/style was changed to make
-the automation pass. Native execution details and exact evidence are in `MAC_W3_B_DELIVERY.md`.
-
-Root subsequently completed an actual visible mouse reveal/rating journey and inspected the
-compositor-rendered card/rating controls and account server page. That closes this delivery's
-mouse/glass gap for the checked native window, without changing the historical failed results.
-See `MAC_WAVE_3_INTEGRATION.md` for the persisted result and remaining platform/rendering limits.
-
+Current ownership, validation and remaining limits are maintained in [MAC_WORKSPACE.md](MAC_WORKSPACE.md).

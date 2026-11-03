@@ -14,7 +14,7 @@ struct NotebookWorkspaceOnscreenAcceptanceTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"] != nil))
     func visibleEnrollmentReviewAndSettingsJourney() async throws {
         let output = URL(fileURLWithPath: try workspaceRequire(ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"]))
-        let fixture = try NotebookWorkspaceFixture()
+        let fixture = try NotebookWorkspaceFixture(usesRealProgress: true)
         do {
             let selection = try await fixture.seed()
             let scope = try fixture.repository.snapshot()
@@ -45,6 +45,13 @@ struct NotebookWorkspaceOnscreenAcceptanceTests {
             workspaceExpect(fixture.window.navigation.destination == .corpus)
             workspaceExpect(fixture.window.corpusHost?.rootView.selectedID == selection.entryID)
             workspaceExpect(fixture.settingsWindow?.isVisible == true)
+            // This final read crosses the real Progress actor after the visible review journey.
+            // It confirms the two delivered modules describe the same persisted rating.
+            let progressFence = try fixture.repository.engine.notebookProgressReadFence()
+            let progress = try await NotebookProgressIO(databaseURL: fixture.repository.databaseURL,
+                mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
+                .load(scope: progressFence.scope, now: Date(), calendar: .current)
+            workspaceExpect(progress.snapshot.totalReviews == 1 && progress.snapshot.activeSenses == 1)
             try JSONSerialization.data(withJSONObject: [
                 "activeSenses": actual.statistics.activeSenses,
                 "exercises": actual.statistics.exercises,
@@ -54,6 +61,8 @@ struct NotebookWorkspaceOnscreenAcceptanceTests {
                 "corpusDestination": fixture.window.navigation.destination == .corpus,
                 "settingsVisible": fixture.settingsWindow?.isVisible == true,
                 "accountRequired": false,
+                "progressReviews": progress.snapshot.totalReviews,
+                "progressActiveSenses": progress.snapshot.activeSenses,
                 "originalCorpusSourceSelected": fixture.window.corpusHost?.rootView.selectedSenseID == selection.senseID
             ], options: [.prettyPrinted, .sortedKeys]).write(to: output.appendingPathComponent("stored-result.json"))
             await fixture.cleanUp()

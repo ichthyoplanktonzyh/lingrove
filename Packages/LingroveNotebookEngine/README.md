@@ -85,7 +85,7 @@ the portable facade. Existing FSRS parity cases use the exact checked-in vector 
 boundary cases cover independent media roots, borrowed connection lifetime, cancellation,
 scoped account ABA rejection, explicit ownership/history adoption and exact review ACK while
 a newer rating remains pending. Native host compilation and affected native module checks
-are recorded in `docs/MAC_W1_A_DELIVERY.md`; package tests do not claim a real provider,
+are recorded in `docs/MAC_WORKSPACE.md`; package tests do not claim a real provider,
 server or dual-device journey.
 
 The extraction manifest maps source files to their new responsibility boundary. Original
