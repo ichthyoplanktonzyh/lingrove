@@ -440,9 +440,11 @@ those reviewer/test agents do not write implementation or test code.
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
 - Native Mac ownership, current feature scope, component sources and validation limits are
-  maintained in `docs/MAC_WORKSPACE.md` and `SOURCE_LAYOUT.md`. The existing corpus page,
-  menu bar and settings/account UI are preserved; outer navigation contains only corpus,
-  review and progress. Review and Progress reuse Nibomo components with local business adapters.
+  maintained in `docs/MAC_WORKSPACE.md`, `docs/MAC_UI_SYSTEM.md` and `SOURCE_LAYOUT.md`.
+  The current UI-unification wave adapts account, sync, review and Progress to Lingrove's
+  existing navigation and system appearance. The original corpus page and menu bar remain
+  the baseline; outer navigation contains only corpus, review and progress. Existing Settings
+  ownership and business services are reused while account/sync presentation is adapted.
 - Completed dispatch notes and delivery reports are temporary. Consolidate lasting requirements,
   source attribution, validation results and unresolved limits into maintained documentation,
   then remove redundant process records and update links. Git retains historical Mac reports;
@@ -456,6 +458,10 @@ those reviewer/test agents do not write implementation or test code.
   related implementation where useful; do not spend this module on unrelated compatibility removal.
   Future user operations still require correct persistence, account isolation, idempotency, and
   retention of review history/manual edits. This supersedes older compatibility acceptance clauses.
+- The installed Dev application now contains real user data following the explicit 2026-11-03
+  migration. Module validation must use synthetic state and private hosts; do not open, reset,
+  copy or replace the user's application/data. The lack of a legacy migration requirement does
+  not authorize touching that corpus. Installation is a separate root integration step.
 
 ## Git And Worktree Safety
 

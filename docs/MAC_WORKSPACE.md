@@ -12,6 +12,11 @@ details, toolbar, editors and interactions. There are no additional outer corpus
 The menu bar retains its existing presentation and controls. Both autocomplete and language
 learning remain core capabilities; closing the corpus window does not stop the menu-bar app.
 
+The current presentation work follows [MAC_UI_SYSTEM.md](MAC_UI_SYSTEM.md): adapt account,
+sync, review and Progress to Lingrove's native appearance and navigation. Earlier extraction
+choices to preserve Nibomo's visual design are provenance, not a requirement to keep forced
+dark appearance. The original corpus page and menu bar remain the visual/interaction baseline.
+
 The footer opens the existing Settings window; the account action selects its existing Account
 page. It observes the app-owned account/sync state rather than constructing another service.
 Saving material never enrolls it for review. A sense is explicitly enrolled; examples provide
