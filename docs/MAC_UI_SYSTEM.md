@@ -50,9 +50,39 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
 
 ## Presentation ownership
 
+### Shared card authoring and review journey contract
+
+The next review checkpoint includes both the entry/journey changes and content/editor changes
+accepted in PRODUCT_MODEL.md. Shared authoring is a prerequisite for those changes, not a
+replacement for either batch. These requirements do not assert completed validation.
+
+- The outer destinations remain Personal corpus, Review and Progress. Inside Review, Lingrove
+  and Anki are equally discoverable targets, while participation and scheduling remain separate.
+- The corpus sense shows both targets' actual state and actions. Multi-selection offers explicit
+  built-in enrollment and Anki preparation; neither an ordinary corpus save nor Cancel enrolls.
+- One material editor supplies source/example selection, templates, ordered question/answer
+  content and previews to both adapters. Target connection, deck and remote conflicts remain
+  Anki-owned. Editing built-in material does not require an Anki session or connection.
+- Ordinary Review navigation opens the overview. Starting a round is explicit. Empty corpus,
+  unenrolled corpus, due work, not-yet-due work, paused participation, unavailable material and
+  a completed round have distinct primary actions and truthful status.
+- Finding material to add and managing existing participation are distinct actions. A selected
+  source is not repeated as an unselected row. Practice and completion communicate their actual
+  round/scope and provide return, source and built-in Progress navigation.
+- User-facing copy is limited to labels, actions, status and errors/confirmations needed for the
+  operation. Do not add domain-model, architecture, ownership or unrelated explanatory paragraphs
+  to the editor, overview, management screens, Settings or onboarding. Teaching belongs in source
+  comments and maintained developer documentation.
+- Light/dark native checks must inspect the actual editor, question/answer, overview and target
+  navigation. A protected synthetic journey checks save/reopen, explicit enrollment, rating and
+  completion against persisted results; screenshots alone do not establish persistence.
+
+### Existing appearance checkpoint
+
 The app environment retains one dependency graph. Presentation borrows account, sync, corpus,
 review and Progress owners; appearance work does not construct a second service graph. This
-adaptation changes no database/schema, transport, scheduling or shared-package implementation.
+earlier appearance adaptation changed no database/schema, transport, scheduling or shared-package
+implementation. Shared material authoring has its own persistence and protocol validation.
 
 | Owner | Responsibility and data flow |
 | --- | --- |
@@ -67,7 +97,9 @@ adaptation changes no database/schema, transport, scheduling or shared-package i
 
 Composition retains VocabularyWindowController.showReview(selection:), its settings/account
 callbacks, BuiltInReviewWindowView(session:), NotebookProgressView(repository:isActive:) and
-SettingsCoordinator.showAccount(). Original UI/Vocabulary and menu-bar sources were unchanged.
+SettingsCoordinator.showAccount(). The earlier appearance checkpoint left original UI/Vocabulary
+and menu-bar sources unchanged; the shared-authoring checkpoint may adapt their review entry
+points while preserving the corpus navigation and existing native appearance.
 Source provenance remains in MAC_REVIEW_ACCOUNT_UI_REUSE.md and MAC_PROGRESS_UI_REUSE.md; their
 extraction tables describe origin, while this document defines current presentation.
 
