@@ -19,6 +19,11 @@ struct LingroveReviewCardSideView: View {
     let showsSpeechButton: Bool
     let surfaceStyle: LingroveReviewCardSurfaceStyle
 
+    var material: [ReviewResolvedPart]?
+    var workspaceID: String?
+    var audio: [BuiltInReviewSavedAudio] = []
+    var onPlayAudio: ((BuiltInReviewSavedAudio) -> Void)?
+
     @State private var hasCopied: Bool = false
     @State private var copyError: String?
 
@@ -30,7 +35,9 @@ struct LingroveReviewCardSideView: View {
         isSpeechPlaying: Bool,
         onToggleSpeech: @escaping () -> Void,
         showsSpeechButton: Bool,
-        surfaceStyle: LingroveReviewCardSurfaceStyle
+        surfaceStyle: LingroveReviewCardSurfaceStyle,
+        material: [ReviewResolvedPart]? = nil, workspaceID: String? = nil,
+        audio: [BuiltInReviewSavedAudio] = [], onPlayAudio: ((BuiltInReviewSavedAudio) -> Void)? = nil
     ) {
         self.label = label
         self.content = content
@@ -40,6 +47,8 @@ struct LingroveReviewCardSideView: View {
         self.onToggleSpeech = onToggleSpeech
         self.showsSpeechButton = showsSpeechButton
         self.surfaceStyle = surfaceStyle
+        self.material = material; self.workspaceID = workspaceID
+        self.audio = audio; self.onPlayAudio = onPlayAudio
     }
 
     var body: some View {
@@ -69,7 +78,8 @@ struct LingroveReviewCardSideView: View {
                 comment: "Accessibility hint for opening a card side in the native text selection sheet"
             ))
 
-            BuiltInReviewFace(text: self.sourceText, images: self.content)
+            BuiltInReviewFace(text: self.sourceText, images: self.content, material: material,
+                workspaceID: workspaceID, audio: audio, onPlayAudio: onPlayAudio)
                 .accessibilityIdentifier(self.surfaceStyle == .front
                     ? "builtinReview.question" : "builtinReview.answer")
                 .frame(maxWidth: .infinity, alignment: .leading)

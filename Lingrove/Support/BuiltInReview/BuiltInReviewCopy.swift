@@ -3,7 +3,7 @@ import LingroveNotebookEngine
 
 /// Review owns its small catalog so new Mac wording stays independent of optional Anki copy.
 /// The host's ordinary bundle localization chooses the same fifteen supported UI languages.
-enum BuiltInReviewCopy {
+nonisolated enum BuiltInReviewCopy {
     static func text(_ key: String) -> String {
         String(localized: String.LocalizationValue(key), table: "BuiltInReview")
     }

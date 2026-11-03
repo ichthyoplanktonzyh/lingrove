@@ -8,6 +8,7 @@ import LingroveNotebookUI
 struct VocabularyContentView: View {
     let blocks: [VocabularyContentBlock]
     let store: VocabularyStore
+    var importedImages: [String: Data] = [:]
     @Environment(\.vocabularyTextSize) private var textSize
 
     var body: some View {
@@ -22,7 +23,7 @@ struct VocabularyContentView: View {
                             : textSize.font(14.5)
                     )
                 case let .image(image, caption):
-                    VocabularyImageView(reference: image, store: store)
+                    VocabularyImageView(reference: image, store: store, draftData: importedImages[image.filename])
                         .accessibilityLabel(caption.isEmpty ? String(localized: "Image", table: "Vocabulary") : caption)
                     if !caption.isEmpty {
                         Text(caption)

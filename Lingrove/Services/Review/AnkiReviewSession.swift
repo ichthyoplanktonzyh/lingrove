@@ -75,6 +75,19 @@ final class AnkiReviewSession: ObservableObject {
         audioSubscription = audio.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
+    /// The material editor cannot see Anki field overrides. A display-name edit keeps those
+    /// authored fields; changing the actual sources or composition explicitly regenerates them.
+    var materialPlan: ReviewMaterialPlan {
+        get { .init(name: plan.name, layout: plan.layout ?? .init(), exampleID: plan.exampleID) }
+        set {
+            let changesMaterial = plan.layout != newValue.layout || plan.exampleID != newValue.exampleID
+            plan.name = newValue.name
+            plan.layout = newValue.layout
+            plan.exampleID = newValue.exampleID
+            if changesMaterial { plan.fieldOverrides = [:] }
+        }
+    }
+
     var current: (entry: VocabularyEntry, sense: VocabularySense)? {
         guard controller.store.matches(notebookScope) else { return nil }
         return try? controller.current(entryID: entryID, senseID: senseID)

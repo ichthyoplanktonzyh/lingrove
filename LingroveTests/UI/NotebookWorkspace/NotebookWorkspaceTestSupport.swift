@@ -17,6 +17,7 @@ final class NotebookWorkspaceFixture {
     let store: VocabularyStore
     let account: AccountSessionService
     let sync: MacNotebookSyncController
+    let anki: AnkiReviewController
     let review: BuiltInReviewController
     let speech: LearningSpeechController
     let search: VocabularySearchController
@@ -38,10 +39,12 @@ final class NotebookWorkspaceFixture {
             modelDirectoryURL: directory.appendingPathComponent("speech-models"))
         search = .init(store: store, directoryURL: directory.appendingPathComponent("search-models"), cacheURL: nil)
         review = .init(repository: repository, speech: speech)
+        anki = .init(settings: AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil)),
+            store: store, client: ReviewFakeAnki(), speech: speech, activateAnki: {})
         let probe = progress
         let progressRepository = repository
         window = .init(store: store, speech: speech, dictionaryProvider: LearningLexiconService(resourceURL: nil),
-            learningSettings: LanguageLearningSettings(defaults: defaults), search: search, preferences: defaults,
+            learningSettings: LanguageLearningSettings(defaults: defaults), review: anki, search: search, preferences: defaults,
             builtInReview: review, account: account, sync: sync, progressContent: { active in
                 probe.visibility.append(active)
                 if usesRealProgress {
@@ -113,7 +116,7 @@ final class NotebookWorkspaceFixture {
         let permissions = PermissionManager()
         let suggestion = SuggestionSettingsModel(configuration: .standard, userDefaults: defaults)
         let downloads = ModelDownloadManager(runtimeDirectoryURL: directory.appendingPathComponent("models"))
-        return SettingsCoordinator(accountService: account, notebookSync: sync, speech: speech, vocabularySearch: search,
+        return SettingsCoordinator(accountService: account, notebookSync: sync, speech: speech, review: anki, vocabularySearch: search,
             appUpdateManager: AppUpdateManager(), permissionManager: permissions,
             permissionGuidanceController: PermissionGuidanceController(permissionManager: permissions),
             suggestionSettings: suggestion,

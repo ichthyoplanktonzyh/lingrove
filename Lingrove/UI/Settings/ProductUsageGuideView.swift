@@ -96,7 +96,7 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
         case .lookup: String(localized: "Dictionary", table: "Learning") + " · " + String(localized: "AI explanation", table: "Learning")
         case .speech: String(localized: "Read Aloud", table: "Learning")
         case .vocabulary: String(localized: "Vocabulary", table: "Vocabulary")
-        case .review: String(localized: "Anki review", table: "Vocabulary")
+        case .review: String(localized: "Review", table: "Vocabulary")
         }
     }
     var symbol: String {
@@ -152,9 +152,7 @@ private enum UsageGuideTopic: String, CaseIterable, Identifiable {
                 String(localized:
                     "Use Export in Vocabulary to save TXT, CSV, or JSON. Include images to export a ZIP package.", table: "Learning")]
         case .review:
-            [String(localized: "Open Anki with AnkiConnect, then test the connection in Review settings.", table: "Learning"),
-             String(localized: "Select a saved sense and add a card. You can also update an existing card.", table: "Learning")]
-                + instructions([.layout, .addAnki, .reviewAnki])
+            [BuiltInReviewCopy.text("guide.select"), BuiltInReviewCopy.text("guide.practice"), BuiltInReviewCopy.text("guide.anki")]
         }
     }
     private func instructions(_ actions: [HomeLearningDemoAction]) -> [String] { actions.map(\.explanation) }

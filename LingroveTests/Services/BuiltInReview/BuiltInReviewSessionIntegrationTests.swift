@@ -36,7 +36,7 @@ struct BuiltInReviewSessionIntegrationTests {
         var prepared = try #require(session.draft)
         if let example = content.scope.document.entries.first?.senses.first?.examples.first {
             prepared.chooseExample(example.id)
-            #expect(prepared.exampleID == example.id && prepared.front.contains("boat"))
+            #expect(prepared.exampleID == example.id && prepared.front == "harbor")
         }
         prepared.front = "My native prompt"
         let preparationHost = NSWindow(contentRect: .init(x: 0, y: 0, width: 620, height: 650),

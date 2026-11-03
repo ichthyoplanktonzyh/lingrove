@@ -8,6 +8,21 @@ import Testing
 /// Exercises flexible cards through the real archive/session boundaries with an isolated Anki
 /// server. Distinct cards share source content but never identity, receipts or draft CAS state.
 extension AnkiReviewTests {
+    @Test func sharedMaterialNameKeepsAuthoredAnkiFieldsUntilSourcesChange() async throws {
+        let (controller, _, defaults, name) = try await fixture()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let entry = try #require(controller.store.entries.first), sense = try #require(entry.senses.first)
+        let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense, cardID: UUID())
+        session.plan.fieldOverrides = ["Back": "My Anki answer"]
+        var material = session.materialPlan
+        material.name = "Renamed card"
+        session.materialPlan = material
+        #expect(session.plan.fieldOverrides["Back"] == "My Anki answer")
+        material.layout.back.append(.init(source: .expression))
+        session.materialPlan = material
+        #expect(session.plan.fieldOverrides.isEmpty)
+    }
+
     @Test func flexibleCardsKeepIndependentIdentityAndRecoverLostAcknowledgement() async throws {
         let (controller, fake, defaults, name) = try await fixture()
         defer { defaults.removePersistentDomain(forName: name) }

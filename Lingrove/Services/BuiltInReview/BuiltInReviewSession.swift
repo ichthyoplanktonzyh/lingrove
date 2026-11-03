@@ -10,20 +10,28 @@ import LingroveNotebookEngine
 final class BuiltInReviewSession: ObservableObject {
     // @Published tells the hosted SwiftUI root to redraw; these properties are temporary
     // presentation state. A durable change still requires an explicit shared-engine command.
+    @Published private(set) var participationRevision = UUID()
     @Published private(set) var content: NotebookBuiltInReviewSnapshot?
     @Published var route: BuiltInReviewRoute = .overview
     @Published var draft: BuiltInReviewDraft?
+    @Published var batchDraft: BuiltInReviewBatchDraft?
     @Published private(set) var practice: BuiltInReviewPractice?
     @Published private(set) var isRefreshing = false
     @Published private(set) var isMutating = false
     @Published private(set) var message: String?
     @Published private(set) var images: [BuiltInReviewSavedImage] = []
+    @Published private(set) var savedAudio: [BuiltInReviewSavedAudio] = []
     var onOpenSource: ((VocabularySelection) -> Void)?
+    var onBrowseCorpus: (() -> Void)?
+    var onOpenProgress: (() -> Void)?
+    var materialStore: VocabularyStore?
+    var materialSpeech: (any SpeechExporting)?
 
     private let repository: MacNotebookRepository
     private let io: BuiltInReviewIO
     let speech: LearningSpeechController?
     private let speechOwnerID = UUID()
+    private var savedPlaybackID: String?
     private var subscriptions = Set<AnyCancellable>()
     private var readTask: Task<Void, Never>?
     private var writeTask: Task<Void, Never>?
@@ -38,9 +46,9 @@ final class BuiltInReviewSession: ObservableObject {
     private var isActive = false
     private var isShuttingDown = false
     private var isPublishing = false
-    private var startsReviewAfterOpening = false
     private var refreshAfterOwnChange = false
     private var preferredCardAfterResume: String?
+    private var pendingBatchSelections: [VocabularySelection]?
 
     var isBusy: Bool { isRefreshing || isMutating }
     var canSpeak: Bool { speech != nil }
@@ -60,9 +68,8 @@ final class BuiltInReviewSession: ObservableObject {
         close()
         isVisible = true
         isActive = true
-        // Nibomo opens directly on its due card. This only starts a presentation session;
-        // it never creates participation, and source-targeted openings still show that sense.
-        startsReviewAfterOpening = selection == nil
+        // Opening is navigation only. A round starts from its explicit Start action, so a
+        // first visit with an empty queue can never manufacture a completed round.
         route = selection.map(BuiltInReviewRoute.sense) ?? .overview
         reload()
     }
@@ -70,7 +77,6 @@ final class BuiltInReviewSession: ObservableObject {
     func close() {
         isVisible = false
         isActive = false
-        startsReviewAfterOpening = false
         lifetime = UUID()
         readTask?.cancel()
         // Save/rating is already an explicit accepted intent. Keep its task even on ordinary
@@ -80,9 +86,12 @@ final class BuiltInReviewSession: ObservableObject {
         readTask = nil
         imageTask = nil
         draft = nil
+        batchDraft = nil
+        pendingBatchSelections = nil
         practice = nil
         content = nil
         images = []
+        savedAudio = []
         message = nil
         isRefreshing = false
         isMutating = writeTask != nil
@@ -102,6 +111,7 @@ final class BuiltInReviewSession: ObservableObject {
         imageTask?.cancel(); imageTask = nil
         isRefreshing = false
         images = []
+        savedAudio = []
         stopOwnSpeech()
     }
 
@@ -157,9 +167,9 @@ final class BuiltInReviewSession: ObservableObject {
                 }
                 self.content = value
                 self.isRefreshing = false
+                self.preparePendingBatch()
                 self.refreshAfterOwnChange = false
                 self.preferredCardAfterResume = nil
-                self.startReviewAfterOpeningIfNeeded()
                 self.restorePracticeAfterReload(ownChange: isOwnChange, preferredCardID: preferredCard)
             } catch {
                 guard let self, self.lifetime == savedLifetime, self.readIdentity == operation, !Task.isCancelled else { return }
@@ -178,6 +188,35 @@ final class BuiltInReviewSession: ObservableObject {
         }
     }
 
+    func requestBatch(_ selections: [VocabularySelection]) {
+        pendingBatchSelections = selections
+        preparePendingBatch()
+    }
+
+    private func preparePendingBatch() {
+        guard let selections = pendingBatchSelections, let content, !isBusy else { return }
+        pendingBatchSelections = nil
+        do { batchDraft = try .init(content: content, selections: selections) } catch { message = BuiltInReviewCopy.text("error.source") }
+    }
+
+    func saveBatch(_ batch: BuiltInReviewBatchDraft) {
+        guard batchDraft?.id == batch.id, !batch.drafts.isEmpty else { return }
+        mutate(.batch(batch), scope: batch.content.scope, destination: .content)
+    }
+
+    /// The corpus may inspect participation while Review is hidden. This read returns a value
+    /// to its caller and never opens a review route or starts background presentation work.
+    func inspectParticipation() async throws -> NotebookBuiltInReviewSnapshot {
+        let scope = try repository.snapshot()
+        let value = try await io.load(scope: scope, now: Date())
+        guard try repository.snapshot() == scope else { throw VocabularyError.editConflict }
+        return value
+    }
+
+    func savedMaterialMedia(_ draft: BuiltInReviewDraft) async -> [ReviewMaterialPreparedMedia] {
+        (try? await io.materialMedia(draft: draft)) ?? []
+    }
+
     func edit(card: Card, link: LingroveNotebookCardLink, selection: VocabularySelection,
               basedOn value: NotebookBuiltInReviewSnapshot) {
         guard canAct(in: value.scope) else { return }
@@ -186,7 +225,10 @@ final class BuiltInReviewSession: ObservableObject {
 
     func save(_ value: BuiltInReviewDraft) {
         guard draft?.id == value.id, value.canSave else { return }
-        mutate(.save(value), scope: value.snapshot, destination: .sense(value.selection))
+        let destination: BuiltInReviewRoute = route == .practice ? .practice : .sense(value.selection)
+        let cardID: String?
+        if case let .editing(card, _) = value.purpose { cardID = card.cardId } else { cardID = nil }
+        mutate(.save(value), scope: value.snapshot, destination: destination, preferredCardID: cardID)
     }
 
     func enrollDefault(selection: VocabularySelection, basedOn value: NotebookBuiltInReviewSnapshot) {
@@ -209,9 +251,11 @@ final class BuiltInReviewSession: ObservableObject {
 
     func start(selection: VocabularySelection? = nil) {
         guard let value = content, canAct(in: value.scope) else { return }
+        let due = dueCards(selection: selection, in: value)
+        guard !due.isEmpty else { route = .overview; return }
         draft = nil
         message = nil
-        practice = .init(selection: selection)
+        practice = .init(selection: selection, initialDueCount: due.count)
         route = .practice
         advancePractice()
     }
@@ -234,6 +278,7 @@ final class BuiltInReviewSession: ObservableObject {
         stopOwnSpeech()
         imageTask?.cancel()
         images = []
+        savedAudio = []
         practice = nil
         route = .overview
     }
@@ -253,6 +298,31 @@ final class BuiltInReviewSession: ObservableObject {
         let plain = BuiltInReviewText.plain(text)
         speech?.toggle(.init(target: speechTarget(context, answer: answer), text: plain,
             language: answer ? sense?.meaningLanguage : entry?.language))
+    }
+
+    func playSavedAudio(_ audio: BuiltInReviewSavedAudio, context: BuiltInReviewCardContext) {
+        guard isActive, practice?.phase.context?.card == context.card else { return }
+        if savedPlaybackID == audio.id, speech?.activeTarget?.ownerID == speechOwnerID,
+           speech?.activeTarget?.itemID == "review.audio" {
+            materialSpeech?.stop(ownerID: speechOwnerID)
+            savedPlaybackID = nil
+            return
+        }
+        let language = BuiltInReviewSource.value(context.group.selection, in: context.snapshot)?.entry.language ?? .english
+        do {
+            try materialSpeech?.audition(.init(data: audio.data, fileExtension: audio.fileExtension),
+                ownerID: speechOwnerID, language: language)
+            savedPlaybackID = audio.id
+        } catch { message = error.localizedDescription }
+    }
+
+    func resolvedParts(_ context: BuiltInReviewCardContext, answer: Bool) -> [ReviewResolvedPart]? {
+        let text = answer ? context.card.backText : context.card.frontText
+        let generated = answer ? context.link.generatedContent?.backText : context.link.generatedContent?.frontText
+        guard text == generated, let plan = context.link.materialPlan,
+              let source = BuiltInReviewSource.value(context.group.selection, in: context.snapshot),
+              let resolved = try? ReviewMaterialResolver.resolve(entry: source.entry, sense: source.sense, plan: plan) else { return nil }
+        return answer ? resolved.back : resolved.front
     }
 
     func isSpeaking(_ context: BuiltInReviewCardContext, answer: Bool) -> Bool {
@@ -310,38 +380,48 @@ final class BuiltInReviewSession: ObservableObject {
             do {
                 try await io.perform(command)
                 guard let self else { repository.publishChange(); return }
-                guard self.writeIdentity == operation else { repository.publishChange(); return }
-                self.isMutating = false
-                self.writeTask = nil
-                // Commit visibility belongs to the repository even if the window closed while
-                // IO completed. A late result must not resurrect the closed UI session.
-                self.isPublishing = self.lifetime == savedLifetime && self.writePresentationIdentity == operation
-                repository.publishChange()
-                self.isPublishing = false
-                guard self.isVisible, self.lifetime == savedLifetime, self.writePresentationIdentity == operation else { return }
-                self.draft = nil
-                self.route = destination
-                if case .rate = command { self.practice?.answered += 1 }
-                if case .undo = command { self.practice?.answered = max(0, (self.practice?.answered ?? 0) - 1) }
-                self.stopOwnSpeech()
-                // Keep this proof until a read actually publishes, even when Review is active.
-                // Navigation or a sync ACK may cancel that read after the rating committed; the
-                // next Resume must still advance practice rather than classify it as an external edit.
-                self.refreshAfterOwnChange = true
-                self.preferredCardAfterResume = preferredCardID
-                if self.isActive {
-                    self.reload(afterOwnChange: true, preferredCardID: preferredCardID)
-                }
+                self.committed(command, operation: operation, savedLifetime: savedLifetime,
+                    destination: destination, preferredCardID: preferredCardID)
             } catch {
-                guard let self, self.writeIdentity == operation else { return }
-                self.isMutating = false
-                self.writeTask = nil
-                guard self.isVisible, self.lifetime == savedLifetime, self.writePresentationIdentity == operation else { return }
-                self.clearUnsavedSession()
-                self.message = BuiltInReviewCopy.text(error is CancellationError ? "message.changed" : "error.write")
-                self.reload()
+                self?.failed(error, operation: operation, savedLifetime: savedLifetime, scope: scope)
             }
         }
+    }
+
+    private func committed(_ command: BuiltInReviewIO.Command, operation: UUID, savedLifetime: UUID,
+                           destination: BuiltInReviewRoute, preferredCardID: String?) {
+        guard writeIdentity == operation else { repository.publishChange(); return }
+        isMutating = false
+        writeTask = nil
+        // Commit visibility belongs to the repository even if the window closed during IO.
+        // Revoking presentation lifetime must not hide a durable write from corpus observers.
+        isPublishing = lifetime == savedLifetime && writePresentationIdentity == operation
+        repository.publishChange()
+        isPublishing = false
+        guard isVisible, lifetime == savedLifetime, writePresentationIdentity == operation else { return }
+        draft = nil
+        batchDraft = nil
+        route = destination
+        if case .rate = command { practice?.answered += 1 }
+        if case .undo = command { practice?.answered = max(0, (practice?.answered ?? 0) - 1) }
+        stopOwnSpeech()
+        // A hidden destination may cancel this next read after a rating already committed.
+        // Preserve its identity until publication, so Resume still advances the same round.
+        refreshAfterOwnChange = true
+        preferredCardAfterResume = preferredCardID
+        if isActive { reload(afterOwnChange: true, preferredCardID: preferredCardID) }
+    }
+
+    private func failed(_ error: any Error, operation: UUID, savedLifetime: UUID, scope: LingroveNotebookSnapshot) {
+        guard writeIdentity == operation else { return }
+        isMutating = false
+        writeTask = nil
+        guard isVisible, lifetime == savedLifetime, writePresentationIdentity == operation else { return }
+        // An operational failure retains the exact draft/batch intent for retry. A changed
+        // owner revokes it, because a retry must never borrow a new account or generation.
+        if error is CancellationError || (try? repository.snapshot()) != scope { clearUnsavedSession() }
+        message = BuiltInReviewCopy.text(error is CancellationError ? "message.changed" : "error.write")
+        reload()
     }
 
     private func canAct(in scope: LingroveNotebookSnapshot) -> Bool {
@@ -356,24 +436,25 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func repositoryDidChange() {
+        // Participation can change without a corpus revision. Source-detail readers observe
+        // this identity even while the review destination is suspended.
+        participationRevision = UUID()
         guard isVisible, isActive, !isPublishing else { return }
         // A notification can describe only an upload ACK. Disable actions while re-reading,
         // then discard a draft/question only if its actual scope or review rows changed.
         reload()
     }
 
-    private func startReviewAfterOpeningIfNeeded() {
-        guard startsReviewAfterOpening else { return }
-        startsReviewAfterOpening = false
-        start()
+    func dueCards(selection: VocabularySelection?, in value: NotebookBuiltInReviewSnapshot) -> [Card] {
+        value.queue.filter { card in
+            guard let selection else { return true }
+            return value.review.groups[selection.senseID]?.cards.contains { $0.cardId == card.cardId } == true
+        }
     }
 
     private func advancePractice(preferredCardID: String? = nil) {
         guard let value = content, var practice else { return }
-        let cards = value.queue.filter { card in
-            guard let selection = practice.selection else { return true }
-            return value.review.groups[selection.senseID]?.cards.contains { $0.cardId == card.cardId } == true
-        }
+        let cards = dueCards(selection: practice.selection, in: value)
         let next = preferredCardID.flatMap { id in cards.first { $0.cardId == id } } ?? cards.first
         if let next, let group = value.review.groups.values.first(where: { $0.cards.contains(next) }),
            let context = context(card: next, group: group, content: value) {
@@ -383,6 +464,7 @@ final class BuiltInReviewSession: ObservableObject {
             practice.phase = .finished
             imageTask?.cancel()
             images = []
+        savedAudio = []
         }
         self.practice = practice
     }
@@ -398,12 +480,15 @@ final class BuiltInReviewSession: ObservableObject {
     private func loadImages(_ context: BuiltInReviewCardContext) {
         imageTask?.cancel()
         images = []
+        savedAudio = []
         imageTask = Task { [weak self, io] in
             let images = (try? await io.savedImages(context: context)) ?? []
+            let audio = (try? await io.savedAudio(context: context)) ?? []
             guard let self, self.isVisible, self.isActive, !Task.isCancelled,
                   self.practice?.phase.context?.card == context.card,
                   self.practice?.phase.context?.snapshot == context.snapshot else { return }
             self.images = images
+            self.savedAudio = audio
         }
     }
 
@@ -416,9 +501,11 @@ final class BuiltInReviewSession: ObservableObject {
             isMutating = writeTask != nil
         }
         draft = nil
+        batchDraft = nil
         practice = nil
         imageTask?.cancel()
         images = []
+        savedAudio = []
         if route == .practice { route = .overview }
         stopOwnSpeech()
     }
@@ -438,6 +525,8 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func stopOwnSpeech() {
+        savedPlaybackID = nil
+        materialSpeech?.stop(ownerID: speechOwnerID)
         guard let target = speech?.activeTarget, target.ownerID == speechOwnerID else { return }
         speech?.stop(target: target)
     }

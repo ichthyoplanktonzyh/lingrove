@@ -19,7 +19,13 @@ nonisolated struct BuiltInReviewDraft: Identifiable, Sendable {
     let purpose: Purpose
     let action: NotebookBuiltInReviewAction
     let expectedEnrollments: [LingroveNotebookReviewEnrollment]
-    var exampleID: UUID?
+    var materialPlan: ReviewMaterialPlan
+    var importedImages: [String: Data] = [:]
+    var preparedMedia: [ReviewMaterialPreparedMedia] = []
+    var exampleID: UUID? {
+        get { materialPlan.exampleID }
+        set { materialPlan.exampleID = newValue }
+    }
     var front: String
     var back: String
     var tags: [String]
@@ -29,14 +35,15 @@ nonisolated struct BuiltInReviewDraft: Identifiable, Sendable {
     var canSave: Bool { !front.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     init(content: NotebookBuiltInReviewSnapshot, selection: VocabularySelection, additional: Bool = false) throws {
-        let projected = try LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: selection)
+        let plan = ReviewMaterialPlan(layout: ReviewMaterialResolver.preset(0))
+        let projected = try LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: selection, materialPlan: plan)
         id = projected.id
         snapshot = content.scope
         self.selection = selection
         purpose = additional ? .additionalExercise : .enrollment
         action = .init(content: content, selection: selection)
         expectedEnrollments = content.review.groups[selection.senseID]?.enrollments ?? []
-        exampleID = nil
+        materialPlan = plan
         generated = projected.generatedContent
         front = projected.generatedContent.frontText
         back = projected.generatedContent.backText
@@ -51,32 +58,55 @@ nonisolated struct BuiltInReviewDraft: Identifiable, Sendable {
         purpose = .editing(card, link)
         action = .init(content: content, selection: selection)
         expectedEnrollments = content.review.groups[selection.senseID]?.enrollments ?? []
-        exampleID = link.source.exampleId
+        materialPlan = link.materialPlan ?? .init(layout: ReviewMaterialResolver.preset(0), exampleID: link.source.exampleId)
         generated = link.generatedContent
         front = card.frontText
         back = card.backText
         tags = card.tags
     }
 
-    mutating func chooseExample(_ id: UUID?) {
-        let source: LingroveNotebookCardSource
-        if case let .editing(_, link) = purpose {
-            source = .init(workspaceId: snapshot.workspaceId, notebookId: snapshot.notebookId,
-                entryId: link.source.entryId, senseId: link.source.senseId, exampleId: id)
-        } else {
-            source = .init(workspaceId: snapshot.workspaceId, notebookId: snapshot.notebookId,
-                entryId: selection.entryID, senseId: selection.senseID, exampleId: id)
-        }
-        guard let material = LingroveNotebookCardMaterial.resolve(source: source, snapshot: snapshot) else { return }
-        let refreshed = LingroveNotebookCardMaterial.refreshed(current: input, previous: generated, latest: material.content)
-        exampleID = id
+    /// Three-way face ownership is reused while editing the recipe: only a face still equal
+    /// to its generated baseline follows new sources. A hand-edited face remains the user's.
+    mutating func chooseMaterial(_ plan: ReviewMaterialPlan) {
+        var plan = plan
+        plan.audio = plan.audio.filter { plan.layout.audioKinds.contains($0.key) }
+        materialPlan = plan
+        let images = VocabularyContentPolicy.images(plan.layout.customContent)
+        let filenames = Set(images.map(\.filename))
+        importedImages = importedImages.filter { filenames.contains($0.key) }
+        let media = Set(images.map(ReviewMaterialMediaReference.init(image:)) + plan.audio.values.map(\.reference))
+        preparedMedia = preparedMedia.filter { media.contains($0.reference) }
+        guard let source = BuiltInReviewSource.value(selection, in: snapshot),
+              let latest = try? LingroveNotebookCardMaterial.render(entry: source.entry, sense: source.sense,
+                  plan: plan, workspaceID: snapshot.workspaceId) else { return }
+        let refreshed = LingroveNotebookCardMaterial.refreshed(current: input, previous: generated, latest: latest)
         front = refreshed.frontText
         back = refreshed.backText
         tags = refreshed.tags
-        generated = material.content
+        generated = latest
+    }
+
+    mutating func chooseExample(_ id: UUID?) {
+        var plan = materialPlan
+        plan.exampleID = id
+        chooseMaterial(plan)
     }
 
     func creationDraft() throws -> LingroveNotebookCardDraft {
-        try LingroveNotebookCardMaterial.draft(snapshot: snapshot, selection: selection, exampleId: exampleID, intentId: id)
+        try LingroveNotebookCardMaterial.draft(snapshot: snapshot, selection: selection,
+            exampleId: exampleID, intentId: id, materialPlan: materialPlan)
+    }
+}
+
+/// A confirmed batch freezes each displayed sense group and retains intent IDs for retry.
+/// The one shared-engine command commits the entire selection or no enrollment at all.
+nonisolated struct BuiltInReviewBatchDraft: Identifiable, Sendable {
+    let id = UUID()
+    let content: NotebookBuiltInReviewSnapshot
+    let drafts: [BuiltInReviewDraft]
+
+    init(content: NotebookBuiltInReviewSnapshot, selections: [VocabularySelection]) throws {
+        self.content = content
+        drafts = try selections.map { try .init(content: content, selection: $0) }
     }
 }

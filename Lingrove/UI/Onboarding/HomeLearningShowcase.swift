@@ -271,12 +271,21 @@ private struct HomeLearningSenseDetail: View {
 /// picture. Its draft can be changed, saved and sent through the normal local sample transport.
 private struct HomeLearningAnkiScene: View {
     @ObservedObject var model: HomeLearningDemoModel
+    @State private var anki = false
     var body: some View {
-        Group {
-            if let session = model.ankiSession {
-                HomeLearningAnkiEditor(model: model, session: session, store: model.store)
-            } else { ProgressView() }
-        }.task { await model.prepareReview() }
+        VStack(spacing: 12) {
+            Picker(String(localized: "Review", table: "Vocabulary"), selection: $anki) {
+                Text("Lingrove").tag(false)
+                Text("Anki").tag(true)
+            }.pickerStyle(.segmented).labelsHidden()
+            if anki {
+                Group {
+                    if let session = model.ankiSession {
+                        HomeLearningAnkiEditor(model: model, session: session, store: model.store)
+                    } else { ProgressView() }
+                }.task { await model.prepareReview() }
+            } else { HomeLearningBuiltInReviewDemo(speech: model.speech) }
+        }
     }
 }
 

@@ -21,7 +21,7 @@ struct VocabularyReviewSection: View {
                 Image(systemName: "rectangle.stack")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(cards.isEmpty ? Color.secondary : LingroveBrand.accent)
-                Text(String(localized: "Review cards", table: "Vocabulary"))
+                Text("Anki")
                     .font(.subheadline.weight(.semibold))
                 if !cards.isEmpty {
                     Text("\(cards.count)")

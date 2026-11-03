@@ -13,6 +13,50 @@ import Testing
 @MainActor
 struct NotebookWorkspaceOnscreenAcceptanceTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"] != nil))
+    func visibleRichMaterialReviewJourney() async throws {
+        let output = URL(fileURLWithPath: try workspaceRequire(ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"]))
+        try #require(Bundle.main.object(forInfoDictionaryKey: "LingroveIsolatedValidationHost") as? Bool == true)
+        let fixture = try NotebookWorkspaceFixture(usesRealProgress: true)
+        do {
+            let selection = try await fixture.seed()
+            fixture.window.show(selectedID: selection.entryID, senseID: selection.senseID)
+            let window = try workspaceRequire(fixture.window.window)
+            window.setContentSize(.init(width: 1240, height: 760))
+            window.center()
+            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+            let done = output.appendingPathComponent("rich-done.json")
+            try? FileManager.default.removeItem(at: done)
+            try JSONSerialization.data(withJSONObject: ["pid": ProcessInfo.processInfo.processIdentifier,
+                "bundleID": Bundle.main.bundleIdentifier ?? "", "database": fixture.repository.databaseURL.path,
+                "windowTitle": window.title, "initialCards": 0, "done": done.path], options: [.prettyPrinted, .sortedKeys])
+                .write(to: output.appendingPathComponent("rich-ready.json"))
+            for _ in 0..<3000 {
+                if FileManager.default.fileExists(atPath: done.path) { break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            try workspaceRequire(FileManager.default.fileExists(atPath: done.path), "The visible rich-material handoff did not complete")
+            let final = try fixture.repository.engine.loadBuiltInNotebookReview(scope: fixture.repository.snapshot(), now: Date())
+            workspaceExpect(final.statistics.activeSenses == 1 && final.statistics.exercises == 1)
+            workspaceExpect(final.statistics.ratingRecords == 1 && final.statistics.undoneRatings == 0)
+            workspaceExpect(final.review.groups[selection.senseID]?.cards.first?.reps == 1)
+            workspaceExpect(fixture.window.navigation.destination == .corpus)
+            workspaceExpect(fixture.window.corpusHost?.rootView.selectedSenseID == selection.senseID)
+            workspaceExpect(fixture.review.session.draft == nil)
+            let fence = try fixture.repository.engine.notebookProgressReadFence()
+            let progress = try await NotebookProgressIO(databaseURL: fixture.repository.databaseURL,
+                mediaDirectoryURL: fixture.repository.mediaDirectoryURL).load(scope: fence.scope, now: Date(), calendar: .current)
+            workspaceExpect(progress.snapshot.totalReviews == 1 && progress.snapshot.activeSenses == 1)
+            try JSONSerialization.data(withJSONObject: ["activeSenses": final.statistics.activeSenses,
+                "exercises": final.statistics.exercises, "ratingRecords": final.statistics.ratingRecords,
+                "reps": final.review.groups[selection.senseID]?.cards.first?.reps ?? -1,
+                "progressReviews": progress.snapshot.totalReviews, "sourceSelected": true,
+                "draftClosed": true, "userDataTouched": false], options: [.prettyPrinted, .sortedKeys])
+                .write(to: output.appendingPathComponent("rich-stored-result.json"))
+            await fixture.cleanUp()
+        } catch { await fixture.cleanUp(); throw error }
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"] != nil))
     func visibleSettingsSidebarNavigationRemainsResponsive() async throws {
         let output = URL(fileURLWithPath: try workspaceRequire(ProcessInfo.processInfo.environment["LINGROVE_WORKSPACE_ONSCREEN"]))
         try #require(Bundle.main.object(forInfoDictionaryKey: "LingroveIsolatedValidationHost") as? Bool == true)

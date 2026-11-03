@@ -38,7 +38,6 @@ struct BuiltInReviewHistoryView: View {
                             }
                         }
                     }
-                    Text(BuiltInReviewCopy.text("description.history")).font(.caption).foregroundStyle(.secondary)
                 }
             }.navigationTitle(BuiltInReviewCopy.text("history.title"))
                 .toolbar {

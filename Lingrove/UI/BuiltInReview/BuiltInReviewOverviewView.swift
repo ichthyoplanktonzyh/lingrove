@@ -4,33 +4,39 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// The overview projects the session's immutable queue into one native landing page. It names
-/// readiness separately from participation, so opening the page never looks like enrollment.
+/// Today is a projection of the frozen queue, never a command to begin practice. Each empty
+/// state supplies one real next action; saved corpus, participation and scheduling stay distinct.
 struct BuiltInReviewOverviewView: View {
     @ObservedObject var session: BuiltInReviewSession
     let content: NotebookBuiltInReviewSnapshot
+
+    private var state: BuiltInReviewOverviewState { .init(content: content) }
 
     var body: some View {
         ScrollView {
             LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 24) {
                 VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Image(systemName: content.queue.isEmpty ? "checkmark.circle" : "rectangle.on.rectangle")
-                            .font(.system(size: 32, weight: .regular)).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Image(systemName: state.symbol).font(.system(size: 32)).foregroundStyle(.secondary)
                             .accessibilityHidden(true)
-                        Text(content.queue.isEmpty ? String(localized: "Nothing Due", table: "ReviewCards")
-                            : BuiltInReviewCopy.text("action.start"))
-                            .font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                        Text(BuiltInReviewCopy.text("description.overview")).foregroundStyle(.secondary)
-                        Text(BuiltInReviewCopy.text(statusKey)).foregroundStyle(.secondary)
-                        if !content.queue.isEmpty {
-                            Button { session.start() } label: {
-                                Label(BuiltInReviewCopy.text("action.start"), systemImage: "play.fill")
-                            }
-                            .lingroveNativeProminentActionButtonStyle()
-                            .controlSize(.large)
-                            .accessibilityIdentifier("builtinReview.start")
+                        Text(BuiltInReviewCopy.text(state.titleKey)).font(.title2.weight(.semibold))
+                            .accessibilityAddTraits(.isHeader)
+                        if let date = state.nextDue {
+                            LabeledContent(BuiltInReviewCopy.text("session.nextDue"),
+                                value: date.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
                         }
+                        Button {
+                            switch state {
+                            case .due: session.start()
+                            case .noCorpus: session.onBrowseCorpus?()
+                            default: session.route = .content
+                            }
+                        } label: {
+                            Label(BuiltInReviewCopy.text(state.actionKey), systemImage: state == .due ? "play.fill" : "arrow.right")
+                        }
+                        .lingroveNativeProminentActionButtonStyle().controlSize(.large)
+                        .accessibilityIdentifier(state == .due ? "builtinReview.start" : "builtinReview.overview.primary")
                     }
                     HStack(alignment: .top, spacing: 20) {
                         metric("count.ready", value: content.queue.count)
@@ -39,19 +45,11 @@ struct BuiltInReviewOverviewView: View {
                     }
                     .padding(20)
                     .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-                    Text(BuiltInReviewCopy.text("description.selection"))
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 32)
+                }.padding(.vertical, 32)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityIdentifier("builtinReview.overview.content")
-    }
-
-    private var statusKey: String {
-        if content.scope.document.collectedEntries.isEmpty { return "state.noCorpus" }
-        return content.review.groups.isEmpty ? "state.noSelection" : "session.scheduled"
     }
 
     private func metric(_ key: String, value: Int) -> some View {
@@ -63,81 +61,89 @@ struct BuiltInReviewOverviewView: View {
     }
 }
 
-/// The selected-sense sheet adopts Nibomo’s List/Section material browser. Participation and
-/// saved corpus stay distinct: choosing either row opens details and does not enroll a sense.
-struct BuiltInReviewSenseChooser: View {
+/// One content browser separates participation from available corpus. A sense occurs once in
+/// the current filter, including paused/withdrawn material whose recipe and history are retained.
+struct BuiltInReviewContentView: View {
     let content: NotebookBuiltInReviewSnapshot
     let onSelect: (VocabularySelection) -> Void
-    @Environment(\.dismiss) private var dismiss
     @State private var search = ""
+    @State private var available = false
 
-    private var groups: [LingroveNotebookReviewGroup] {
-        content.review.groups.values.filter {
-            let source = BuiltInReviewSource.value($0.selection, in: content.scope)
-            return matches(source?.entry.expression ?? "", source?.sense.meaning ?? "")
-        }.sorted { $0.selection.senseID.uuidString < $1.selection.senseID.uuidString }
-    }
-
-    private var hasSavedMatches: Bool {
-        content.scope.document.collectedEntries.contains { entry in
-            entry.senses.contains { matches(entry.expression, $0.meaning) }
+    private var selections: [VocabularySelection] {
+        let values: [VocabularySelection]
+        if available {
+            values = content.scope.document.collectedEntries.flatMap { entry in
+                entry.senses.filter { content.review.groups[$0.id]?.cards.isEmpty != false }
+                    .map { .init(entryID: entry.id, senseID: $0.id) }
+            }
+        } else { values = content.review.groups.values.map(\.selection) }
+        return values.filter { selection in
+            let source = BuiltInReviewSource.value(selection, in: content.scope)
+            return search.isEmpty || source?.entry.expression.localizedCaseInsensitiveContains(search) == true
+                || source?.sense.meaning.localizedCaseInsensitiveContains(search) == true
+        }.sorted { lhs, rhs in
+            let left = BuiltInReviewSource.value(lhs, in: content.scope)?.entry.expression ?? ""
+            let right = BuiltInReviewSource.value(rhs, in: content.scope)?.entry.expression ?? ""
+            return left == right ? lhs.senseID.uuidString < rhs.senseID.uuidString
+                : left.localizedStandardCompare(right) == .orderedAscending
         }
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section(BuiltInReviewCopy.text("nav.selected")) {
-                    ForEach(groups, id: \.selection.senseID) { group in
-                        let source = BuiltInReviewSource.value(group.selection, in: content.scope)
-                        Button { onSelect(group.selection) } label: {
-                            row(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"),
-                                detail: source?.sense.meaning ?? BuiltInReviewCopy.text("state.missingSource"),
-                                status: BuiltInReviewCopy.status(group.status))
-                        }.buttonStyle(.plain)
-                    }
-                }
-                Section(BuiltInReviewCopy.text("action.choose")) {
-                    Text(BuiltInReviewCopy.text("description.choose")).foregroundStyle(.secondary)
-                    ForEach(content.scope.document.collectedEntries) { entry in
-                        ForEach(entry.senses.filter { matches(entry.expression, $0.meaning) }) { sense in
-                            Button { onSelect(.init(entryID: entry.id, senseID: sense.id)) } label: {
-                                row(entry.expression, detail: sense.meaning, status: nil)
-                            }.buttonStyle(.plain)
+        VStack(spacing: 0) {
+            Picker(BuiltInReviewCopy.text("nav.content"), selection: $available) {
+                Text(BuiltInReviewCopy.text("nav.enrolled")).tag(false)
+                Text(BuiltInReviewCopy.text("action.addContent")).tag(true)
+            }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.vertical, 16)
+                .accessibilityIdentifier("builtinReview.content.filter")
+            List(selections, id: \.senseID) { selection in
+                let source = BuiltInReviewSource.value(selection, in: content.scope)
+                let group = content.review.groups[selection.senseID]
+                Button { onSelect(selection) } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"))
+                            Text(source?.sense.meaning ?? BuiltInReviewCopy.text("material.retained"))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            Text(group.map { BuiltInReviewCopy.text(
+                                $0.hasUnavailableMaterial ? "material.unavailable" : "status." + $0.status.rawValue) }
+                                ?? BuiltInReviewCopy.text("status.notSelected")).font(.caption).foregroundStyle(.secondary)
                         }
-                    }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                    }.padding(.vertical, 6).contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+            .listStyle(.inset).searchable(text: $search, prompt: BuiltInReviewCopy.text("field.search"))
+            .overlay {
+                if selections.isEmpty {
+                    ContentUnavailableView(BuiltInReviewCopy.text(available ? "state.noCorpus" : "state.noSelection"), systemImage: "tray")
                 }
             }
-                .overlay {
-                    if !search.isEmpty, groups.isEmpty, !hasSavedMatches { ContentUnavailableView.search(text: search) }
-                }
-                .listStyle(.inset).searchable(text: $search, prompt: BuiltInReviewCopy.text("field.search"))
-                .navigationTitle(BuiltInReviewCopy.text("nav.selected"))
+        }
+        .onAppear { if content.review.groups.isEmpty { available = true } }
+        .accessibilityIdentifier("builtinReview.content")
+    }
+}
+
+/// Kept as a compact host for clients that request a chooser sheet; it delegates the same
+/// content browser rather than maintaining a second enrolled/all-source list.
+struct BuiltInReviewSenseChooser: View {
+    let content: NotebookBuiltInReviewSnapshot
+    let onSelect: (VocabularySelection) -> Void
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            BuiltInReviewContentView(content: content, onSelect: onSelect)
+                .navigationTitle(BuiltInReviewCopy.text("nav.content"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(BuiltInReviewCopy.text("action.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
                             .accessibilityIdentifier("builtinReview.senseChooser.cancel")
                     }
                 }
-        }
-        .frame(minWidth: 540, idealWidth: 620, minHeight: 460, idealHeight: 560)
-        .accessibilityIdentifier("builtinReview.senseChooser")
-    }
-
-    private func row(_ title: String, detail: String, status: String?) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer()
-            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-        }.padding(.vertical, 4).contentShape(Rectangle())
-    }
-
-    private func matches(_ expression: String, _ meaning: String) -> Bool {
-        search.isEmpty || expression.localizedCaseInsensitiveContains(search) || meaning.localizedCaseInsensitiveContains(search)
+        }.frame(minWidth: 540, idealWidth: 620, minHeight: 460, idealHeight: 560)
+            .accessibilityIdentifier("builtinReview.senseChooser")
     }
 }
 

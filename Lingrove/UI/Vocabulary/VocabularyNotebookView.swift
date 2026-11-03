@@ -19,6 +19,7 @@ struct VocabularyNotebookView: View {
     let speech: LearningSpeechController
     var learning: VocabularyNotebookSession?
     var review: AnkiReviewController?
+    var builtInReview: BuiltInReviewSession?
     var search: VocabularySearchController?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
@@ -44,7 +45,8 @@ struct VocabularyNotebookView: View {
     @State private var creatingMeaning = false
 
     init(store: VocabularyStore, speech: LearningSpeechController, selectedID: UUID? = nil, selectedSenseID: UUID? = nil,
-         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil, search: VocabularySearchController? = nil,
+         learning: VocabularyNotebookSession? = nil, review: AnkiReviewController? = nil,
+         builtInReview: BuiltInReviewSession? = nil, search: VocabularySearchController? = nil,
          preferences: UserDefaults = .standard) {
         _browserMode = AppStorage(wrappedValue: "list", "vocabularyBrowserMode", store: preferences)
         _organization = AppStorage(wrappedValue: "entry", "vocabularyOrganization", store: preferences)
@@ -56,6 +58,7 @@ struct VocabularyNotebookView: View {
         self.speech = speech
         self.learning = learning
         self.review = review
+        self.builtInReview = builtInReview
         self.search = search
         let entry = store.entries.first { $0.id == selectedID }
         _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
@@ -1070,11 +1073,22 @@ struct VocabularyNotebookView: View {
                 .buttonStyle(.bordered)
                 .disabled(batchSelection.isEmpty)
 
+                if let builtInReview {
+                    Button {
+                        let selections = batchSelection.sorted { $0.senseID.uuidString < $1.senseID.uuidString }
+                        store.onRequestBuiltInReview?(nil)
+                        builtInReview.requestBatch(selections)
+                    } label: {
+                        Label(BuiltInReviewCopy.text("batch.enroll"), systemImage: "rectangle.stack.badge.plus")
+                            .font(.caption.weight(.medium)).frame(maxWidth: .infinity)
+                    }.controlSize(.small).buttonStyle(.borderedProminent).disabled(batchSelection.isEmpty)
+                        .accessibilityIdentifier("vocabulary.batch.lingrove")
+                }
                 if review != nil {
                     Button {
                         showingBatch = true
                     } label: {
-                        Label(String(localized: "Prepare selected", table: "Vocabulary"), systemImage: "rectangle.stack.badge.plus")
+                        Label(BuiltInReviewCopy.text("batch.anki"), systemImage: "arrow.up.forward.app")
                             .font(.caption.weight(.medium))
                             .frame(maxWidth: .infinity)
                     }
@@ -1247,7 +1261,8 @@ struct VocabularyNotebookView: View {
 
     @ViewBuilder private func entryDetail(breadcrumb: AnyView?) -> some View {
         if let entry = selectedEntry, let sense = selectedSense {
-            VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning, review: review,
+            VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning,
+                review: review, builtInReview: builtInReview,
                 edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
                 newSense: {
                     Task { [scope = store.operationScope] in
@@ -1328,6 +1343,7 @@ struct VocabularyEntryDetail: View {
     @ObservedObject var store: VocabularyStore
     var learning: VocabularyNotebookSession?
     var review: AnkiReviewController?
+    var builtInReview: BuiltInReviewSession?
     let edit: () -> Void
     let delete: () -> Void
     let newSense: () -> Void
@@ -1362,8 +1378,14 @@ struct VocabularyEntryDetail: View {
                     VocabularySenseSemanticSection(store: store, selection: .init(entryID: entry.id, senseID: sense.id),
                         openMeaning: openMeaning)
                 }
-                if let review {
-                    VocabularyReviewSection(entry: entry, sense: sense, controller: review)
+                if review != nil || builtInReview != nil {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(String(localized: "Review", table: "Vocabulary")).font(.headline)
+                        if let builtInReview {
+                            VocabularyBuiltInReviewSection(entry: entry, sense: sense, store: store, session: builtInReview)
+                        }
+                        if let review { VocabularyReviewSection(entry: entry, sense: sense, controller: review) }
+                    }
                 }
                 if let learning {
                     VocabularyDictionarySection(entry: entry, learning: learning)

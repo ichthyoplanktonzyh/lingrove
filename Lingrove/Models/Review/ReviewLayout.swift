@@ -17,9 +17,7 @@ typealias ReviewLayoutTemplate = LingroveNotebook.ReviewLayoutTemplate
 
 /// Resolved material contains no source IDs, so equality measures only what will be exported.
 /// Audio remains typed until serialization, avoiding unsafe placeholder replacement in user text.
-nonisolated enum ReviewResolvedPart: Equatable, Sendable {
-    case text(String), blocks([VocabularyContentBlock]), audio(ReviewAudioKind)
-}
+typealias ReviewResolvedPart = LingroveNotebook.ReviewResolvedPart
 
 extension VocabularySense {
     nonisolated func reviewValue(_ cardID: UUID?) -> VocabularyReview? {

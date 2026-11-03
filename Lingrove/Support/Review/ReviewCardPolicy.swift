@@ -39,15 +39,7 @@ nonisolated enum ReviewCardPolicy {
     /// Multiple spans preserve discontinuous expressions. Validate grapheme boundaries and
     /// nonoverlap before replacing backwards, so emoji or repeated words cannot shift a blank.
     static func gap(in text: String, ranges: [VocabularyTextRange], kind: VocabularyEntry.Kind) -> (prompt: String, answer: String)? {
-        let ordered = ranges.map(\.nsRange).sorted { $0.location < $1.location }
-        guard kind != .sentence, !ordered.isEmpty, ordered.allSatisfy({ VocabularyPolicy.valid($0, in: text) }),
-              zip(ordered, ordered.dropFirst()).allSatisfy({ NSMaxRange($0) <= $1.location }),
-              ordered.reduce(0, { $0 + $1.length }) < text.utf16.count else { return nil }
-        let source = text as NSString
-        let answer = ordered.map { source.substring(with: $0) }.joined(separator: " … ")
-        let result = NSMutableString(string: text)
-        for range in ordered.reversed() { result.replaceCharacters(in: range, with: "___") }
-        return (result as String, answer)
+        ReviewMaterialResolver.gap(in: text, ranges: ranges, kind: kind)
     }
 
     static func html(_ text: String) -> String {

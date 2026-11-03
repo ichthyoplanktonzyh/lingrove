@@ -144,7 +144,10 @@ struct HomeLearningDemoTests {
     }
 
     @Test func ankiRemainsUsableAfterFavoritingBeforeAnExplanationIsReady() async throws {
-        let model = HomeLearningDemoModel()
+        let suite = "test.home-review." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = HomeLearningDemoModel(preferences: defaults)
         defer { model.stop() }
         let early = try #require(VocabularyCaptureFactory.unit(HomeLearningDemoFixtures.unit, in: model.presentation))
         #expect(early.example?.meaning.isEmpty == true)
@@ -158,7 +161,10 @@ struct HomeLearningDemoTests {
     }
 
     @Test func ankiUsesRealSerializationAndCanUpdateThenOpenItsSavedDeck() async throws {
-        let model = HomeLearningDemoModel()
+        let suite = "test.home-review." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = HomeLearningDemoModel(preferences: defaults)
         defer { model.stop() }
         await model.prepareReview()
         let session = try #require(model.ankiSession)

@@ -51,7 +51,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
     }
 
     func showReviewSettings() {
-        navigation.openLearningTask(.review)
+        navigation.reveal(.ankiReview)
         showSettings()
     }
 

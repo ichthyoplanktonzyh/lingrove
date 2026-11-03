@@ -8,8 +8,9 @@ typealias ReviewAudioKind = LingroveNotebook.ReviewAudioKind
 /// subsequent process can reuse a successful upload without persisting temporary audio locally.
 typealias ReviewAudioReceipt = LingroveNotebook.ReviewAudioReceipt
 
-/// A preparation sheet retains only its explicitly generated audio. Closing the sheet releases
-/// the bytes; sending copies them to Anki. No WAV is written to the user's temporary directory.
+/// A preparation sheet retains only its explicitly generated audio. Its destination adapter
+/// atomically saves managed local bytes or sends them to Anki; closing releases the draft copy.
+/// No WAV is written to the user's temporary directory.
 nonisolated struct ReviewPreparedAudio: Sendable {
     let fingerprint: String
     let audio: SpeechExportAudio

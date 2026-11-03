@@ -9,6 +9,7 @@ import LingroveNotebookEngine
 actor BuiltInReviewIO {
     enum Command: Sendable {
         case save(BuiltInReviewDraft)
+        case batch(BuiltInReviewBatchDraft)
         case status(LingroveNotebookReviewStatus, NotebookBuiltInReviewAction, UUID)
         case rate(BuiltInReviewCardContext, ReviewRating, Date, String)
         case undo(BuiltInReviewUndoAction)
@@ -33,17 +34,26 @@ actor BuiltInReviewIO {
             case let .save(draft):
                 switch draft.purpose {
                 case .enrollment:
-                    _ = try engine.enrollBuiltInNotebookSense(draft.creationDraft(), input: draft.input, action: draft.action)
+                    _ = try engine.enrollBuiltInNotebookSense(draft.creationDraft(), input: draft.input,
+                        media: draft.preparedMedia, action: draft.action)
                 case .additionalExercise:
-                    _ = try engine.addBuiltInNotebookExercise(draft.creationDraft(), input: draft.input, action: draft.action)
+                    _ = try engine.addBuiltInNotebookExercise(draft.creationDraft(), input: draft.input,
+                        media: draft.preparedMedia, action: draft.action)
                 case let .editing(card, link):
                     if LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: draft.snapshot) == nil {
-                        try engine.saveRetainedBuiltInNotebookMaterial(link: link, card: card, input: draft.input, action: draft.action)
+                        try engine.saveRetainedBuiltInNotebookMaterial(link: link, card: card, input: draft.input,
+                            materialPlan: draft.materialPlan, media: draft.preparedMedia, action: draft.action)
                     } else {
                         try engine.prepareNotebookExercise(link: link, card: card, snapshot: draft.snapshot,
-                            exampleID: draft.exampleID, input: draft.input, action: draft.action)
+                            exampleID: draft.exampleID, input: draft.input, materialPlan: draft.materialPlan,
+                            media: draft.preparedMedia, action: draft.action)
                     }
                 }
+            case let .batch(batch):
+                let drafts = try batch.drafts.map { try $0.creationDraft() }
+                _ = try engine.enrollBuiltInNotebookSenses(drafts,
+                    inputs: Dictionary(uniqueKeysWithValues: zip(drafts, batch.drafts).map { ($0.id, $1.input) }),
+                    actions: batch.drafts.map(\.action))
             case let .status(status, action, requestID):
                 try engine.setBuiltInNotebookReviewStatus(status, action: action, requestID: requestID)
             case let .rate(context, rating, now, zone):
@@ -73,11 +83,21 @@ actor BuiltInReviewIO {
                 else { throw VocabularyError.editConflict }
                 let ids = managedMediaAssetIdsReferencedInMarkdown(text: context.card.frontText + "\n" + context.card.backText)
                 var result: [BuiltInReviewSavedImage] = []
-                for id in ids.sorted().prefix(8) {
+                // A recipe can combine the corpus's image allowance with card-only content.
+                // Bound the combined read as well as each blob, without hiding valid later parts.
+                var remainingBytes = Int64(VocabularyContentPolicy.maximumSenseImageBytes * 2)
+                for id in ids.sorted().prefix(128) {
                     try Task.checkCancellation()
                     guard let asset = try engine.mediaAssetStore.loadOptionalMediaAssetIncludingDeleted(
                         workspaceId: context.snapshot.workspaceId, mediaAssetId: id), asset.deletedAt == nil,
-                        asset.mimeType == "image/png", asset.sizeBytes > 0, asset.sizeBytes <= 16_777_216 else { continue }
+                        asset.mimeType == "image/png", asset.sizeBytes > 0, asset.sizeBytes <= 16_777_216,
+                        asset.sizeBytes <= remainingBytes else { continue }
+                    if let saved = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
+                        workspaceID: context.snapshot.workspaceId) {
+                        result.append(.init(id: id, data: saved.data))
+                        remainingBytes -= Int64(saved.data.count)
+                        continue
+                    }
                     let digest = try normalizedMediaSha256(sha256: asset.sha256)
                     let url = mediaDirectoryURL.appendingPathComponent(try mediaBlobCacheRelativePath(sha256: digest))
                     guard let handle = try? FileHandle(forReadingFrom: url) else { continue }
@@ -88,8 +108,52 @@ actor BuiltInReviewIO {
                           Int64(bytes.count) == asset.sizeBytes,
                           SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == digest else { continue }
                     result.append(.init(id: id, data: bytes))
+                    remainingBytes -= Int64(bytes.count)
                 }
                 return result
+            }
+        }
+    }
+
+    func savedAudio(context: BuiltInReviewCardContext) throws -> [BuiltInReviewSavedAudio] {
+        try withEngine { engine in
+            try engine.core.inReadTransaction {
+                try engine.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: context.snapshot.workspaceId,
+                    notebookId: context.snapshot.notebookId)
+                guard try engine.lingroveNotebookStore.readSnapshot(workspaceId: context.snapshot.workspaceId) == context.snapshot,
+                      try engine.cardStore.loadOptionalCardIncludingDeleted(workspaceId: context.snapshot.workspaceId,
+                          cardId: context.card.cardId) == context.card else { throw VocabularyError.editConflict }
+                let recordings = (context.link.materialPlan?.audio ?? [:]).sorted { $0.key.rawValue < $1.key.rawValue }
+                return try recordings.compactMap { kind, audio in
+                    let id = LingroveNotebookCardMaterial.mediaAssetID(reference: audio.reference,
+                        workspaceID: context.snapshot.workspaceId)
+                    guard let media = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
+                        workspaceID: context.snapshot.workspaceId) else { return nil }
+                    return .init(id: id, kind: kind, data: media.data,
+                        fileExtension: audio.reference.mimeType == "audio/mpeg" ? "mp3" : "wav")
+                }
+            }
+        }
+    }
+
+    /// A sheet may reopen card-only resources without importing them into the corpus. The same
+    /// saved scope fences this read; bytes remain in the sheet until an explicit writer uses them.
+    func materialMedia(draft: BuiltInReviewDraft) throws -> [ReviewMaterialPreparedMedia] {
+        try withEngine { engine in
+            try engine.core.inReadTransaction {
+                try engine.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: draft.snapshot.workspaceId,
+                    notebookId: draft.snapshot.notebookId)
+                guard try engine.lingroveNotebookStore.readSnapshot(workspaceId: draft.snapshot.workspaceId) == draft.snapshot else {
+                    throw VocabularyError.editConflict
+                }
+                let images = VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
+                    .map(ReviewMaterialMediaReference.init(image:))
+                let references = Set(images + draft.materialPlan.audio.values.map(\.reference))
+                return try references.compactMap { reference in
+                    let id = LingroveNotebookCardMaterial.mediaAssetID(reference: reference, workspaceID: draft.snapshot.workspaceId)
+                    return try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
+                        workspaceID: draft.snapshot.workspaceId)
+                }
             }
         }
     }

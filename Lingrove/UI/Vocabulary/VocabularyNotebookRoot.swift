@@ -11,12 +11,13 @@ struct VocabularyNotebookRoot: View {
     var selectedSenseID: UUID?
     let learning: VocabularyNotebookSession
     var review: AnkiReviewController?
+    var builtInReview: BuiltInReviewSession?
     var search: VocabularySearchController?
     var preferences: UserDefaults = .standard
 
     var body: some View {
         VocabularyNotebookView(store: store, speech: speech, selectedID: selectedID, selectedSenseID: selectedSenseID,
-            learning: learning, review: review, search: search, preferences: preferences)
+            learning: learning, review: review, builtInReview: builtInReview, search: search, preferences: preferences)
             .id(store.scopeIdentity)
             .onChange(of: store.scopeIdentity) { _, _ in learning.reset() }
             .environment(\.vocabularyMeaningLanguages,

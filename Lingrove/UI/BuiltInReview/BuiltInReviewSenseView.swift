@@ -36,9 +36,8 @@ struct BuiltInReviewSenseView: View {
                         .foregroundStyle(.secondary)
                 }
                 if let group, !group.cards.isEmpty {
-                    Section(BuiltInReviewCopy.text("nav.selected")) {
+                    Section(BuiltInReviewCopy.text("nav.lingrove")) {
                         participation(group)
-                        Text(BuiltInReviewCopy.text("description.retention")).font(.caption).foregroundStyle(.secondary)
                     }
                     Section(BuiltInReviewCopy.text("count.exercises")) {
                         ForEach(group.cards) { card in
@@ -52,7 +51,6 @@ struct BuiltInReviewSenseView: View {
                     }
                 } else if source != nil, isCollected {
                     Section(BuiltInReviewCopy.text("material.default")) {
-                        Text(BuiltInReviewCopy.text("description.enroll")).foregroundStyle(.secondary)
                         if let material = try? LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: currentSelection) {
                             BuiltInReviewFace(text: material.generatedContent.frontText, images: [])
                             Divider()
@@ -99,7 +97,8 @@ struct BuiltInReviewSenseView: View {
     private func exercise(_ context: BuiltInReviewCardContext) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             LingroveReviewQueuePreviewCardRow(card: context.card, isCurrent: false)
-            if LingroveNotebookCardMaterial.resolve(source: context.link.source, snapshot: content.scope) == nil {
+            if context.group.hasUnavailableMaterial ||
+                LingroveNotebookCardMaterial.resolve(source: context.link.source, snapshot: content.scope) == nil {
                 Label(BuiltInReviewCopy.text(context.link.allowsUnavailableMaterial ? "material.retained" : "material.unavailable"),
                     systemImage: context.link.allowsUnavailableMaterial ? "archivebox" : "exclamationmark.triangle")
                     .foregroundStyle(.secondary)

@@ -5,27 +5,31 @@ import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
-/// The sheet owns one value draft and an original editable projection for discard protection.
-/// Front/back navigation and preview share that draft; only Save hands its unchanged CAS baseline
-/// to the existing session writer. Native form and sheet chrome inherit the workspace appearance.
+/// The sheet owns one neutral recipe, authored faces and temporary media. The shared editor
+/// changes the recipe; the draft performs three-way generation; only Save admits the scoped
+/// writer. Navigation and preview do not write, and edited Cancel retains the discard guard.
 struct BuiltInReviewPreparationView: View {
     @ObservedObject var session: BuiltInReviewSession
     @State var draft: BuiltInReviewDraft
-    @State private var preview = false
+    @StateObject private var audio: ReviewAudioPreparation
+    @State private var operation: Task<Void, Never>?
+    @State private var importingImage = false
     @State private var confirmingDiscard = false
+    @State private var failure: String?
     @Environment(\.dismiss) private var dismiss
     private let original: BuiltInReviewDraftPresentationSnapshot
 
     init(session: BuiltInReviewSession, draft: BuiltInReviewDraft) {
         self.session = session
         _draft = State(initialValue: draft)
+        _audio = StateObject(wrappedValue: ReviewAudioPreparation(speech: session.materialSpeech))
         original = .init(draft)
     }
 
     private var hasEdits: Bool { BuiltInReviewDraftPresentationSnapshot(draft) != original }
-
-    private var source: (entry: VocabularyEntry, sense: VocabularySense)? {
-        BuiltInReviewSource.value(draft.selection, in: draft.snapshot)
+    private var source: (entry: VocabularyEntry, sense: VocabularySense)? { BuiltInReviewSource.value(draft.selection, in: draft.snapshot) }
+    private var plan: Binding<ReviewMaterialPlan> {
+        Binding(get: { draft.materialPlan }, set: { draft.chooseMaterial($0) })
     }
     private var title: String {
         if case .additionalExercise = draft.purpose { return BuiltInReviewCopy.text("action.addExercise") }
@@ -37,59 +41,50 @@ struct BuiltInReviewPreparationView: View {
         return String(localized: "Save", table: "ReviewCards")
     }
     private var materialIsUsable: Bool {
-        if case let .editing(_, link) = draft.purpose {
-            if source == nil { return link.allowsUnavailableMaterial }
-            let selected = LingroveNotebookCardSource(workspaceId: draft.snapshot.workspaceId,
-                notebookId: draft.snapshot.notebookId, entryId: link.source.entryId,
-                senseId: link.source.senseId, exampleId: draft.exampleID)
-            return LingroveNotebookCardMaterial.resolve(source: selected, snapshot: draft.snapshot) != nil
-        }
-        return (try? draft.creationDraft()) != nil
+        if case let .editing(_, link) = draft.purpose, source == nil { return link.allowsUnavailableMaterial }
+        guard let source else { return false }
+        return (try? ReviewMaterialResolver.resolve(entry: source.entry, sense: source.sense, plan: draft.materialPlan)) != nil
     }
+    private var busy: Bool { session.isBusy || operation != nil || importingImage || audio.generating != nil }
 
     var body: some View {
         NavigationStack {
-            LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
-                Form {
-                    Section {
-                        Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"))
-                            .font(.headline).textSelection(.enabled)
-                        Text(BuiltInReviewCopy.text("description.preparation")).foregroundStyle(.secondary)
+            Form {
+                Section {
+                    Text(source?.entry.expression ?? BuiltInReviewCopy.text("material.retained")).font(.headline).textSelection(.enabled)
+                }
+                if let source, let store = session.materialStore {
+                    ReviewMaterialEditor(plan: plan, entry: source.entry, sense: source.sense, store: store,
+                        scope: draft.snapshot, importedImages: $draft.importedImages, importingImage: $importingImage,
+                        operation: $operation, prepareAudio: { kind in
+                            draft = try await BuiltInReviewMaterialPreparation.prepare(kind, draft: draft, audio: audio, audition: true)
+                        })
+                } else if let source {
+                    Section(BuiltInReviewCopy.text("material.context")) {
+                        Picker(BuiltInReviewCopy.text("material.context"), selection: Binding(
+                            get: { draft.exampleID }, set: { draft.chooseExample($0) })) {
+                            Text(BuiltInReviewCopy.text("material.meaningOnly")).tag(Optional<UUID>.none)
+                            ForEach(source.sense.examples) { Text($0.text).tag(Optional($0.id)) }
+                        }.accessibilityIdentifier("builtinReview.prepare.context")
                     }
-                    if let source {
-                        Section(BuiltInReviewCopy.text("material.context")) {
-                            Picker(BuiltInReviewCopy.text("material.context"), selection: Binding(
-                                get: { draft.exampleID }, set: { draft.chooseExample($0) })) {
-                                Text(BuiltInReviewCopy.text("material.meaningOnly")).tag(Optional<UUID>.none)
-                                if let id = draft.exampleID, !source.sense.examples.contains(where: { $0.id == id }) {
-                                    Text(BuiltInReviewCopy.text("material.unavailable")).tag(Optional(id))
-                                }
-                                ForEach(source.sense.examples) { example in Text(example.text).tag(Optional(example.id)) }
-                            }.accessibilityIdentifier("builtinReview.prepare.context")
-                            Text(BuiltInReviewCopy.text("description.example")).font(.caption).foregroundStyle(.secondary)
-                        }
-                    } else {
-                        Section { Label(BuiltInReviewCopy.text("material.retained"), systemImage: "archivebox") }
-                    }
-                    Section(String(localized: "Text", table: "ReviewCards")) {
-                        NavigationLink(value: LingroveReviewEditorField.front) {
-                            LingroveReviewTextPreviewRow(title: String(localized: "Front", table: "ReviewCards"), text: draft.front)
-                        }.accessibilityIdentifier("builtinReview.prepare.frontRow")
-                        NavigationLink(value: LingroveReviewEditorField.back) {
-                            LingroveReviewTextPreviewRow(title: String(localized: "Back", table: "ReviewCards"), text: draft.back)
-                        }.accessibilityIdentifier("builtinReview.prepare.backRow")
-                    }
-                    Section {
-                        Toggle(BuiltInReviewCopy.text("material.preview"), isOn: $preview)
-                            .accessibilityIdentifier("builtinReview.prepare.preview")
-                        if preview {
-                            BuiltInReviewFace(text: draft.front, images: session.images)
-                            Divider()
-                            BuiltInReviewFace(text: draft.back, images: session.images)
+                }
+                Section(BuiltInReviewCopy.text("material.customText")) {
+                    NavigationLink(value: LingroveReviewEditorField.front) {
+                        LingroveReviewTextPreviewRow(title: String(localized: "Front", table: "ReviewCards"), text: draft.front)
+                    }.accessibilityIdentifier("builtinReview.prepare.frontRow")
+                    NavigationLink(value: LingroveReviewEditorField.back) {
+                        LingroveReviewTextPreviewRow(title: String(localized: "Back", table: "ReviewCards"), text: draft.back)
+                    }.accessibilityIdentifier("builtinReview.prepare.backRow")
+                    if draft.input != draft.generated {
+                        Button(BuiltInReviewCopy.text("material.useRecipe")) {
+                            if let generated = draft.generated {
+                                draft.front = generated.frontText; draft.back = generated.backText; draft.tags = generated.tags
+                            }
                         }
                     }
-                }.formStyle(.grouped).padding(.top, 8).disabled(session.isBusy)
-            }
+                }
+                if let issue = failure ?? session.message { Section { Text(issue).foregroundStyle(.red).textSelection(.enabled) } }
+            }.formStyle(.grouped).disabled(busy)
             .navigationTitle(title)
             .navigationDestination(for: LingroveReviewEditorField.self) { field in
                 LingroveReviewTextEditorScreen(field: field, text: field == .front ? $draft.front : $draft.back)
@@ -98,34 +93,61 @@ struct BuiltInReviewPreparationView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel", table: "ReviewCards")) {
                         if hasEdits { confirmingDiscard = true } else { discard() }
-                    }
-                        .keyboardShortcut(.cancelAction).disabled(session.isMutating)
+                    }.keyboardShortcut(.cancelAction).disabled(session.isMutating || importingImage)
                         .accessibilityIdentifier("builtinReview.prepare.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    if session.isMutating { ProgressView().controlSize(.small) }
-                    Button(saveTitle) { session.save(draft) }
-                        .keyboardShortcut("s", modifiers: .command)
-                        .disabled(session.isBusy || !draft.canSave || !materialIsUsable)
+                    if busy { ProgressView().controlSize(.small) }
+                    Button(saveTitle, action: save).keyboardShortcut("s", modifiers: .command)
+                        .disabled(busy || !draft.canSave || !materialIsUsable)
                         .accessibilityIdentifier("builtinReview.prepare.save")
                 }
             }
         }
-            .frame(minWidth: 540, idealWidth: 620, minHeight: 520, idealHeight: 650)
-            .interactiveDismissDisabled(session.isMutating || hasEdits)
-            .alert(BuiltInReviewCopy.text("draft.discardTitle"), isPresented: $confirmingDiscard) {
-                Button(BuiltInReviewCopy.text("draft.keepEditing"), role: .cancel) { }
-                    .accessibilityIdentifier("builtinReview.prepare.keepEditing")
-                Button(BuiltInReviewCopy.text("draft.discard"), role: .destructive) { discard() }
-                    .accessibilityIdentifier("builtinReview.prepare.discard")
-            } message: { Text(BuiltInReviewCopy.text("draft.discardDetail")) }
-            .accessibilityIdentifier("builtinReview.preparation")
+        .frame(minWidth: 600, idealWidth: 680, minHeight: 560, idealHeight: 700)
+        .interactiveDismissDisabled(busy || hasEdits)
+        .alert(BuiltInReviewCopy.text("draft.discardTitle"), isPresented: $confirmingDiscard) {
+            Button(BuiltInReviewCopy.text("draft.keepEditing"), role: .cancel) { }
+                .accessibilityIdentifier("builtinReview.prepare.keepEditing")
+            Button(BuiltInReviewCopy.text("draft.discard"), role: .destructive, action: discard)
+                .accessibilityIdentifier("builtinReview.prepare.discard")
+        }
+        .task {
+            let media = await session.savedMaterialMedia(draft)
+            guard !Task.isCancelled else { return }
+            let images = VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
+                .map(ReviewMaterialMediaReference.init(image:))
+            let referenced = Set(images + draft.materialPlan.audio.values.map(\.reference))
+            for item in media where referenced.contains(item.reference) {
+                if !draft.preparedMedia.contains(where: { $0.reference == item.reference }) { draft.preparedMedia.append(item) }
+                if let image = item.reference.image, draft.importedImages[image.filename] == nil {
+                    draft.importedImages[image.filename] = item.data
+                }
+            }
+        }
+        .onDisappear { operation?.cancel(); audio.discard() }
+        .accessibilityIdentifier("builtinReview.preparation")
     }
 
-    private func discard() {
-        session.draft = nil
-        dismiss()
+    private func save() {
+        guard operation == nil else { return }
+        operation = Task {
+            defer { operation = nil }
+            do {
+                var prepared = draft
+                for kind in prepared.materialPlan.layout.audioKinds
+                    where BuiltInReviewMaterialPreparation.needsAudio(kind, draft: prepared) {
+                    prepared = try await BuiltInReviewMaterialPreparation.prepare(kind, draft: prepared, audio: audio, audition: false)
+                }
+                try Task.checkCancellation()
+                prepared = BuiltInReviewMaterialPreparation.stageImages(prepared)
+                draft = prepared
+                session.save(prepared)
+            } catch is CancellationError { } catch { failure = error.localizedDescription }
+        }
     }
+
+    private func discard() { operation?.cancel(); session.draft = nil; dismiss() }
 }
 
 /// The field is navigation state only, as in Nibomo CardEditorDestination.text. Keeping it

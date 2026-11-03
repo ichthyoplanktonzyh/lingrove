@@ -1,3 +1,4 @@
+import LingroveNotebook
 // Card structure adapted from Nibomo ReviewView.swift; Copyright (c) 2026 Kirill Markin (MIT).
 // License: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import LingroveNotebookEngine
@@ -20,6 +21,12 @@ struct BuiltInReviewPracticeView: View {
         Group {
             if let context = session.practice?.phase.context {
                 VStack(spacing: 0) {
+                    HStack {
+                        Text(scopeTitle).lineLimit(1)
+                        Spacer()
+                        Text(BuiltInReviewCopy.text("session.answered") + ": " + (session.practice?.answered ?? 0).formatted())
+                        Text(BuiltInReviewCopy.text("count.ready") + ": " + remaining.formatted())
+                    }.font(.callout).foregroundStyle(.secondary).monospacedDigit().padding(.horizontal, 24).padding(.vertical, 12)
                     ScrollViewReader { proxy in
                         ScrollView {
                             LingroveReadableContentLayout(maxWidth: lingroveReadableContentMaxWidth, horizontalPadding: 20) {
@@ -42,15 +49,7 @@ struct BuiltInReviewPracticeView: View {
                     }
                 }
             } else if case .finished = session.practice?.phase {
-                ContentUnavailableView {
-                    Label(BuiltInReviewCopy.text("session.finished"), systemImage: "checkmark.circle")
-                } description: {
-                    Text(BuiltInReviewCopy.text("session.scheduled"))
-                } actions: {
-                    LabeledContent(BuiltInReviewCopy.text("session.answered"),
-                        value: (session.practice?.answered ?? 0).formatted())
-                        .frame(maxWidth: 320)
-                }
+                completion
             } else {
                 BuiltInReviewOverviewView(session: session, content: content)
             }
@@ -58,6 +57,44 @@ struct BuiltInReviewPracticeView: View {
         .disabled(session.isBusy)
         .sheet(item: $selection) { LingroveReviewTextSelectionSheet(selection: $0) }
         .accessibilityIdentifier("builtinReview.practice")
+    }
+
+    private var remaining: Int { session.dueCards(selection: session.practice?.selection, in: content).count }
+
+    private var scopeTitle: String {
+        guard let selection = session.practice?.selection else { return BuiltInReviewCopy.text("session.todayScope") }
+        return BuiltInReviewSource.value(selection, in: content.scope)?.entry.expression ?? BuiltInReviewCopy.text("session.selectedScope")
+    }
+
+    private var nextDue: Date? {
+        content.review.groups.values.filter { group in
+            group.status == .active && !group.hasUnavailableMaterial &&
+                (session.practice?.selection == nil || group.selection.senseID == session.practice?.selection?.senseID)
+        }.flatMap(\.cards).compactMap { $0.dueAt.flatMap { parseIsoTimestamp(value: $0) } }.min()
+    }
+
+    private var completion: some View {
+        ContentUnavailableView {
+            Label(BuiltInReviewCopy.text("session.finished"), systemImage: "checkmark.circle")
+        } description: {
+            VStack(spacing: 10) {
+                Text(scopeTitle)
+                LabeledContent(BuiltInReviewCopy.text("session.answered"), value: (session.practice?.answered ?? 0).formatted())
+                if let nextDue {
+                    LabeledContent(BuiltInReviewCopy.text("session.nextDue"),
+                        value: nextDue.formatted(date: .abbreviated, time: .shortened))
+                }
+            }.frame(maxWidth: 360)
+        } actions: {
+            HStack {
+                Button(BuiltInReviewCopy.text("action.home")) { session.endPractice() }
+                    .buttonStyle(.borderedProminent).accessibilityIdentifier("builtinReview.completed.home")
+                if session.onOpenProgress != nil {
+                    Button(BuiltInReviewCopy.text("action.progress")) { session.onOpenProgress?() }
+                        .accessibilityIdentifier("builtinReview.completed.progress")
+                }
+            }
+        }.accessibilityIdentifier("builtinReview.completed")
     }
 
     private func activeCard(_ context: BuiltInReviewCardContext) -> some View {
@@ -96,6 +133,8 @@ struct BuiltInReviewPracticeView: View {
             onSelectText: { selection = .init(title: title, sourceText: text) },
             isSpeechPlaying: session.isSpeaking(context, answer: answer),
             onToggleSpeech: { session.speak(context, answer: answer) },
-            showsSpeechButton: session.canSpeak, surfaceStyle: answer ? .back : .front)
+            showsSpeechButton: session.canSpeak, surfaceStyle: answer ? .back : .front,
+            material: session.resolvedParts(context, answer: answer), workspaceID: context.snapshot.workspaceId,
+            audio: session.savedAudio, onPlayAudio: { session.playSavedAudio($0, context: context) })
     }
 }

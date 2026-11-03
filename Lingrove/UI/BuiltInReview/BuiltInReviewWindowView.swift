@@ -8,7 +8,6 @@ import SwiftUI
 /// Appearance is inherited from the native host so a sheet and its parent resolve together.
 struct BuiltInReviewWindowView: View {
     @ObservedObject var session: BuiltInReviewSession
-    @State private var choosingSense = false
     @State private var showingQueue = false
     @State private var showingHistory = false
 
@@ -33,8 +32,7 @@ struct BuiltInReviewWindowView: View {
                 ContentUnavailableView {
                     Label(BuiltInReviewCopy.text(session.isRefreshing ? "state.loading" : "state.unavailable"),
                           systemImage: session.isRefreshing ? "hourglass" : "exclamationmark.triangle")
-                } description: { Text(BuiltInReviewCopy.text("description.offline")) }
-                actions: {
+                } actions: {
                     if session.isRefreshing { ProgressView() } else {
                         Button(BuiltInReviewCopy.text("action.refresh")) { session.reload() }
                     }
@@ -43,16 +41,6 @@ struct BuiltInReviewWindowView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 560, minHeight: 500)
-        .sheet(isPresented: $choosingSense) {
-            if let content = session.content {
-                BuiltInReviewSenseChooser(content: content) { selection in
-                    choosingSense = false
-                    // Choosing material is navigation. Ending a practice has its own visible
-                    // action, and the chooser is unavailable while that practice is on screen.
-                    session.route = .sense(selection)
-                }
-            }
-        }
         .sheet(isPresented: $showingQueue) {
             if let content = session.content {
                 BuiltInReviewQueuePreviewView(content: content, currentCardID: session.practice?.phase.context?.card.cardId)
@@ -61,6 +49,7 @@ struct BuiltInReviewWindowView: View {
         .sheet(isPresented: $showingHistory) {
             if let content = session.content { BuiltInReviewHistoryView(session: session, content: content) }
         }
+        .sheet(item: $session.batchDraft) { batch in BuiltInReviewBatchView(session: session, batch: batch) }
         .sheet(item: $session.draft) { draft in BuiltInReviewPreparationView(session: session, draft: draft) }
         .accessibilityIdentifier("builtinReview.window")
     }
@@ -85,31 +74,39 @@ struct BuiltInReviewWindowView: View {
     private var heading: some View {
         HStack(spacing: 12) {
             if case .sense = session.route {
-                Button { session.route = .overview } label: {
-                    Label(BuiltInReviewCopy.text("nav.overview"), systemImage: "chevron.left")
+                Button { session.route = .content } label: {
+                    Label(BuiltInReviewCopy.text("nav.content"), systemImage: "chevron.left")
                 }
-                .help(BuiltInReviewCopy.text("nav.overview"))
+                .help(BuiltInReviewCopy.text("nav.content"))
                 .accessibilityIdentifier("builtinReview.back")
                 .disabled(session.isBusy)
             }
-            Text(String(localized: "Review", table: "ReviewCards"))
-                .font(.title2.weight(.semibold))
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityAddTraits(.isHeader)
+            if session.route == .overview || session.route == .content {
+                Picker(BuiltInReviewCopy.text("nav.lingrove"), selection: $session.route) {
+                    Text(BuiltInReviewCopy.text("nav.today")).tag(BuiltInReviewRoute.overview)
+                    Text(BuiltInReviewCopy.text("nav.content")).tag(BuiltInReviewRoute.content)
+                }.pickerStyle(.segmented).labelsHidden()
+                    .accessibilityIdentifier("builtinReview.navigation")
+            } else {
+                Text(pageTitle)
+                    .font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
+            }
         }
+    }
+
+    private var pageTitle: String {
+        if case let .sense(selection) = session.route, let content = session.content {
+            return BuiltInReviewSource.value(selection, in: content.scope)?.entry.expression ?? BuiltInReviewCopy.text("nav.content")
+        }
+        return BuiltInReviewCopy.text("nav.practice")
     }
 
     private var actions: some View {
         HStack(spacing: 8) {
             if session.isBusy { ProgressView().controlSize(.small) }
-            if session.route == .practice {
+            if session.route == .practice, session.practice?.phase.context != nil {
                 Button(BuiltInReviewCopy.text("action.endPractice")) { session.endPractice() }
                     .accessibilityIdentifier("builtinReview.finish")
-            } else {
-                Button { choosingSense = true } label: {
-                    Label(BuiltInReviewCopy.text("nav.selected"), systemImage: "line.3.horizontal.decrease")
-                }
-                .accessibilityIdentifier("builtinReview.choose")
             }
             if let undo = session.latestUndo {
                 Button { session.undo(undo) } label: { Image(systemName: "arrow.uturn.backward") }
@@ -137,22 +134,9 @@ struct BuiltInReviewWindowView: View {
     @ViewBuilder private func destination(_ content: NotebookBuiltInReviewSnapshot) -> some View {
         switch session.route {
         case .overview: BuiltInReviewOverviewView(session: session, content: content)
+        case .content: BuiltInReviewContentView(content: content) { session.route = .sense($0) }
         case let .sense(selection): BuiltInReviewSenseView(session: session, selection: selection, content: content)
         case .practice: BuiltInReviewPracticeView(session: session, content: content)
         }
-    }
-}
-
-/// Label/navigation projection only. The actual enrollment and Card source keep their frozen
-/// identity, so a moved example or renamed expression cannot silently retarget a practice record.
-enum BuiltInReviewSource {
-    static func value(_ selection: VocabularySelection, in scope: LingroveNotebookSnapshot)
-        -> (entry: VocabularyEntry, sense: VocabularySense)? {
-        for entry in scope.document.entries {
-            if let sense = entry.senses.first(where: { $0.id == selection.senseID || $0.mergedFrom.contains(selection.senseID) }) {
-                return (entry, sense)
-            }
-        }
-        return nil
     }
 }

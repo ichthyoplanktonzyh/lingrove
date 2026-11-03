@@ -15,7 +15,7 @@ enum HomeLearningScene: String, CaseIterable, Identifiable {
         case .lookup: String(localized: "Dictionary", table: "Learning")
         case .speech: String(localized: "Read Aloud", table: "Learning")
         case .vocabulary: String(localized: "Vocabulary", table: "Vocabulary")
-        case .anki: "Anki"
+        case .anki: String(localized: "Review", table: "Vocabulary")
         }
     }
     var steps: [HomeLearningDemoAction] {
@@ -26,7 +26,7 @@ enum HomeLearningScene: String, CaseIterable, Identifiable {
         case .lookup: [.lookup, .explain, .dictionary, .sources, .favorite, .favoriteMenu]
         case .speech: [.preview, .speak, .expand]
         case .vocabulary: [.list, .sense, .graph, .headword, .sense]
-        case .anki: [.layout, .layoutBack, .addAnki, .reviewAnki]
+        case .anki: [.review]
         }
     }
 }
@@ -34,7 +34,7 @@ enum HomeLearningScene: String, CaseIterable, Identifiable {
 /// One meaningful step highlights one real control and explains its purpose outside the card.
 /// Copy and action identity stay together so automatic playback and manual stepping cannot drift.
 enum HomeLearningDemoAction: String {
-    case expressionTrigger, expressionDescribe, expressionChoose, expressionInsert
+    case expressionTrigger, expressionDescribe, expressionChoose, expressionInsert, review
     case preview, expand, collapse, explain, favorite, favoriteMenu, speak, replace, dismiss
     case lookup, dictionary, sources, select, pointer, capture, list, graph, headword, sense, layout, layoutBack, addAnki, reviewAnki
     var emphasis: LearningCardAction? {
@@ -51,6 +51,7 @@ enum HomeLearningDemoAction: String {
     }
     var title: String {
         switch self {
+        case .review: String(localized: "Review", table: "Vocabulary")
         case .expressionTrigger: String(localized: "Trigger symbols", table: "Learning")
         case .expressionDescribe: String(localized: "Describe what you mean", table: "Learning")
         case .expressionChoose: String(localized: "Select", table: "Learning")
@@ -82,6 +83,7 @@ enum HomeLearningDemoAction: String {
     }
     var explanation: String {
         switch self {
+        case .review: "Lingrove · Anki"
         case .expressionTrigger: String(localized: "Type your trigger symbols or use the expression shortcut at the caret.",
             table: "Learning")
         case .expressionDescribe: String(localized: "Describe the expression or term in the temporary input, then pause.",

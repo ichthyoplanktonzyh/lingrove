@@ -26,7 +26,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private let learningSettings: LanguageLearningSettings
     private var subscriptions = Set<AnyCancellable>()
     private var host: NotebookWorkspaceHostController?
-    private var reviewHost: NSHostingController<BuiltInReviewWindowView>?
+    private var reviewHost: NSHostingController<NotebookReviewDestinationView>?
+    let reviewNavigation = NotebookReviewDestinationModel()
     private var progressHost: NSHostingController<AnyView>?
     private var isOpen = false
     private var hasOpenedReview = false
@@ -59,6 +60,16 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
             settings: learningSettings.dictionary)
         super.init(window: nil)
         navigation.onSelect = { [weak self] in self?.navigate(to: $0) }
+        builtInReview?.session.materialStore = store
+        builtInReview?.session.materialSpeech = review?.speech ?? speech
+        builtInReview?.session.onBrowseCorpus = { [weak self] in self?.navigate(to: .corpus) }
+        builtInReview?.session.onOpenProgress = { [weak self] in self?.navigate(to: .progress) }
+        reviewNavigation.onChange = { [weak self] target in
+            guard let self, self.navigation.destination == .review else { return }
+            let active = target == .lingrove
+            self.builtInReview?.setPresentationActive(active)
+            if active { self.builtInReview?.session.resume() } else { self.builtInReview?.session.suspend() }
+        }
         store.openSelection = { [weak self] in self?.show(selectedID: $0?.entryID, senseID: $0?.senseID) }
         // A closed window may not receive SwiftUI onAppear until after resume(). Retire the
         // reading target directly so reopening cannot issue a lookup for the previous owner.
@@ -66,6 +77,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         // A draft can be opened and cancelled before AppKit has mounted a sheet. Observe its
         // binding too, so a queued external deep link never depends on an animation completing.
         builtInReview?.session.$draft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
+        builtInReview?.session.$batchDraft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -138,7 +150,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private var hasBlockingSheet: Bool {
-        window?.attachedSheet != nil || builtInReview?.session.draft != nil
+        window?.attachedSheet != nil || builtInReview?.session.draft != nil || builtInReview?.session.batchDraft != nil
     }
 
     private func open(_ request: OpenRequest) {
@@ -167,7 +179,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
             }
             display(.corpus)
         case let .review(selection):
-            if let builtInReview, !hasOpenedReview || selection != nil {
+            reviewNavigation.target = .lingrove
+            if let builtInReview {
                 builtInReview.session.open(selection: selection)
                 hasOpenedReview = true
             }
@@ -190,24 +203,28 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
             if let corpusHost { host?.show(corpusHost, preservingCorpusToolbar: true) }
             learning.resume()
             search?.activate()
-        case .review:
-            if let builtInReview {
-                if !hasOpenedReview {
-                    builtInReview.session.open(selection: nil)
-                    hasOpenedReview = true
-                } else { builtInReview.session.resume() }
-                if reviewHost == nil {
-                    let reviewHost = NotebookWorkspaceHostController.destinationHost(
-                        rootView: BuiltInReviewWindowView(session: builtInReview.session))
-                    self.reviewHost = reviewHost
-                }
-                if let reviewHost { host?.show(reviewHost) }
-                builtInReview.setPresentationActive(true)
-            } else { showUnavailable("state.reviewUnavailable") }
+        case .review: displayReview()
         case .progress:
             setProgressActive(true)
             if let progressHost { host?.show(progressHost) }
         }
+    }
+
+    private func displayReview() {
+        if let builtInReview {
+            if !hasOpenedReview {
+                builtInReview.session.open(selection: nil)
+                hasOpenedReview = true
+            } else if reviewNavigation.target == .lingrove { builtInReview.session.resume() }
+            if reviewHost == nil {
+                let reviewHost = NotebookWorkspaceHostController.destinationHost(
+                    rootView: NotebookReviewDestinationView(navigation: reviewNavigation, session: builtInReview.session, anki: review))
+                self.reviewHost = reviewHost
+            }
+            if let reviewHost { host?.show(reviewHost) }
+            builtInReview.setPresentationActive(reviewNavigation.target == .lingrove)
+            if reviewNavigation.target == .anki { builtInReview.session.suspend() }
+        } else { showUnavailable("state.reviewUnavailable") }
     }
 
     private func deactivateCurrentDestination() {
@@ -244,7 +261,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     private func makeCorpusHost(selectedID: UUID? = nil, senseID: UUID? = nil) -> NSHostingController<VocabularyNotebookRoot> {
         NotebookWorkspaceHostController.destinationHost(rootView: VocabularyNotebookRoot(
             settings: learningSettings, store: store, speech: speech,
-            selectedID: selectedID, selectedSenseID: senseID, learning: learning, review: review,
+            selectedID: selectedID, selectedSenseID: senseID, learning: learning, review: review, builtInReview: builtInReview?.session,
             search: search, preferences: preferences))
     }
 

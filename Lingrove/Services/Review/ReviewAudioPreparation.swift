@@ -3,7 +3,8 @@ import Combine
 import Foundation
 
 /// One preparation sheet/session owns these short-lived recordings and borrows the app's speech
-/// controller. Bytes are released on close. Only successful Anki filenames enter the saved plan.
+/// controller. Closing releases its bytes; the destination adapter separately commits managed
+/// local media or an acknowledged Anki upload. Preview never grants either persistence authority.
 @MainActor
 final class ReviewAudioPreparation: ObservableObject {
     let ownerID = UUID()

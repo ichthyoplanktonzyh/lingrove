@@ -4,8 +4,9 @@ import LingroveNotebookEngine
 
 /// Navigation is window-local. It never means that a sense has been enrolled, answered or
 /// paused; those choices have their own explicit, scoped database commands.
-nonisolated enum BuiltInReviewRoute: Equatable, Sendable {
+nonisolated enum BuiltInReviewRoute: Hashable, Sendable {
     case overview
+    case content
     case sense(VocabularySelection)
     case practice
 }
@@ -39,6 +40,7 @@ nonisolated struct BuiltInReviewPractice: Sendable {
     }
 
     let selection: VocabularySelection?
+    var initialDueCount = 0
     var answered = 0
     var phase: Phase = .finished
 }
@@ -55,4 +57,13 @@ nonisolated struct BuiltInReviewUndoAction: Sendable {
 nonisolated struct BuiltInReviewSavedImage: Identifiable, Sendable {
     let id: String
     let data: Data
+}
+
+/// Validated audio is borrowed by the practice face, just like images. The session's existing
+/// speech owner plays these bytes directly, without regeneration or another provider request.
+nonisolated struct BuiltInReviewSavedAudio: Identifiable, Sendable {
+    let id: String
+    let kind: ReviewAudioKind
+    let data: Data
+    let fileExtension: String
 }
