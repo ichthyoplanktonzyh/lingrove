@@ -19,6 +19,16 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
   actions should be immediately understandable; service/advanced configuration is secondary.
   Subpages have an explicit, predictable return path. External account navigation reaches its
   intended page even if Settings previously displayed another account subpage.
+- The account overview always exposes **Sign in or create an account**, including builds without
+  a deployed service. The native email -> eight-digit-code sheet supports Back, resend, errors
+  and cancellation. Missing/invalid service values show a truthful unavailable state and a route
+  to secondary service settings; opening login makes no request. No unsupported provider buttons
+  are presented. Custom service provenance stays visible without full URLs in the normal form.
+- The Mac composition root reads a paired, validated build default from Info.plist. This source
+  tree leaves both values empty. Saved custom services take precedence; saved pairs remain pinned
+  across default changes. Use app default is an explicit confirmed service switch, and removing a
+  service suppresses fallback after relaunch. Unsaved URL drafts block sending/verification/sync,
+  and account login leaves workspace selection, local ownership and sync opt-in separate.
 - Page title, selected sidebar row and visible actions agree. A back arrow performs one
   recognizable navigation action, never silently starts or ends a practice round.
 - Preserve unsaved material/sheet navigation guards, source reveal, accepted writer lifetime,
@@ -191,3 +201,20 @@ passing result bundles were copied with SHA256 checks before module worktree arc
 Dev artifact and cleanup have separate proof files there. No module or test touched the installed
 user app, corpus, real credentials, login items, TCC or macOS appearance. Root installation, when
 performed, is recorded separately and retains user data.
+
+The normal account-entry follow-up on 2026-11-03 executed 31 focused test definitions / 36 concrete
+cases with zero failures/skips, covering paired build defaults, pinned/custom precedence, logout
+restore permission, explicit reset/removal, cancellation generations, draft guards and inherited
+Aqua/darkAqua. The final consumed-code/pending-identity native UI regression also passed after the
+code-step Close control was added. Signed arm64 Debug build-for-testing and strict production
+SwiftLint passed; all 58 Account strings have all 15 locales and matching placeholders.
+
+CUA completed the previously missing account handoff using only the private .validation host and
+in-memory synthetic credentials. Missing-service login remained discoverable, disabled sending,
+and reached service settings with a working Back path. The configured journey checked unsaved
+draft/Back/blocked-login/Revert, email -> code -> Back -> retry, direct code-step Close -> reopen,
+and resend -> successful sign-in -> existing Appearance settings. Native postconditions confirmed
+workspaceSelected=false, ownershipProposed=false and syncEnabled=false after identity confirmation.
+These are separate executions of two journey definitions, not an aggregate claim about historical
+attempts. Evidence is build/mac-account-login-validation/; real mailbox/service acceptance remains
+deferred with deployment. No installed app/data, real account, TCC or system appearance was changed.

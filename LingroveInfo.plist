@@ -40,5 +40,10 @@
 	<!-- Independent updates stay opt-in until Lingrove's feed and signing key are configured. -->
 	<key>LingroveUpdatesEnabled</key>
 	<false/>
+	<!-- Empty until Lingrove's own account deployment exists. Both build values are required. -->
+	<key>LingroveAccountAPIBaseURL</key>
+	<string>$(LINGROVE_ACCOUNT_API_BASE_URL)</string>
+	<key>LingroveAccountAuthBaseURL</key>
+	<string>$(LINGROVE_ACCOUNT_AUTH_BASE_URL)</string>
 </dict>
 </plist>

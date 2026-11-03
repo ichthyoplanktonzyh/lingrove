@@ -37,9 +37,14 @@ struct AccountPaneView: View {
                     }
                 }
         }
-        .sheet(isPresented: $signingIn) {
-            LingroveAccountSignInSheet(account: account, connectionIsSaved: connectionIsSaved)
-        }
+        .sheet(isPresented: $signingIn, onDismiss: { account.cancelSignIn() }, content: {
+            LingroveAccountSignInSheet(account: account, connectionIsSaved: connectionIsSaved,
+                hasDraftChanges: hasDraftChanges, onOpenService: {
+                    account.cancelSignIn()
+                    signingIn = false
+                    navigation.show(.service)
+                })
+        })
         .alert(String(localized: "Sign out on this Mac", table: "Account"), isPresented: $confirmingSignOut) {
             Button(LingroveNibomoAccountCopy.text("common.cancel"), role: .cancel) { }
             Button(String(localized: "Sign out on this Mac", table: "Account"), role: .destructive) { account.signOut() }
@@ -95,8 +100,7 @@ struct AccountPaneView: View {
             Section {
                 NavigationLink(value: AccountSettingsPage.service) {
                     SettingsRowLabel(title: String(localized: "Account service", table: "Account"),
-                        description: account.configuration?.apiBaseURL.absoluteString
-                            ?? String(localized: "Not configured", table: "Account"),
+                        description: String(localized: "Advanced connection settings", table: "Account"),
                         systemImage: "server.rack")
                 }
                 .accessibilityIdentifier("account.server")
@@ -135,18 +139,23 @@ struct AccountPaneView: View {
                 signOutButton
             }
         case .working(.restoring), .working(.refreshing): signOutButton
-        case .signedOut where account.issue == .secureStorage: signOutButton
+        case .signedOut where account.issue == .secureStorage:
+            HStack { signInButton; Spacer(); signOutButton }
         default:
-            if account.configuration != nil {
-                HStack {
-                    Button(LingroveNibomoAccountCopy.text("settings.account.status.signIn")) { signingIn = true }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!connectionIsSaved || account.state.isBusy)
-                        .accessibilityIdentifier("account.signIn")
-                    Spacer()
-                }
+            HStack {
+                signInButton
+                Spacer()
             }
         }
+    }
+
+    private var signInButton: some View {
+        // Opening login is always available, even before a release bundles a service.
+        // The sheet explains missing configuration/drafts and gates every request.
+        Button(String(localized: "Sign in or create an account", table: "Account")) { signingIn = true }
+            .buttonStyle(.borderedProminent)
+            .disabled(account.state.isBusy)
+            .accessibilityIdentifier("account.signIn")
     }
 
     private var signOutButton: some View {

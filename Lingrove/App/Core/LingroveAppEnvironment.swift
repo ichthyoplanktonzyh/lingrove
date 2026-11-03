@@ -93,7 +93,8 @@ final class LingroveAppEnvironment {
         let accountService = AccountSessionService(client: AccountAPIClient(),
             credentials: KeychainAccountCredentialStore(
                 bundleIdentifier: Bundle.main.bundleIdentifier ?? "io.ichthyoplanktonzyh.lingrove"),
-            settings: AccountConfigurationStore())
+            settings: AccountConfigurationStore(buildConfiguration:
+                AccountBuildConfiguration(infoDictionary: Bundle.main.infoDictionary ?? [:])))
         let openAICompatibleClient = OpenAICompatibleAPIClient()
         let openAICompatibleConnectionModel = OpenAICompatibleConnectionModel(
             client: openAICompatibleClient

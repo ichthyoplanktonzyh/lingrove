@@ -196,7 +196,11 @@ imports a notebook, workspace, sync runner or mobile store. Identity comes from 
 
 `Support/Account/AccountConfigurationPolicy.swift` validates HTTPS (or explicit loopback HTTP),
 canonicalizes the selected base paths and hashes both services for Keychain scoping. It owns the
-same rules for typed and restored settings. `AccountOTPExpiryPolicy.swift` reads only a display-time
+same rules for typed and restored settings. `AccountBuildConfiguration.swift` validates the paired
+`LingroveAccountAPIBaseURL` / `LingroveAccountAuthBaseURL` Info.plist values once at composition.
+Missing, partial or invalid values provide no service; environment variables cannot override the
+production destination. `Models/Account/AccountConnectionSource.swift` records bundled/custom
+selection for truthful presentation without granting network authority. `AccountOTPExpiryPolicy.swift` reads only a display-time
 hint from the fixed signed envelope, so resend suppression cannot renew an older challenge's local
 deadline. It cannot authenticate a token or create an identity. `AccountPresentation.swift` maps only fixed state/error
 categories to `Resources/Account.xcstrings`; raw service errors and tokens never become UI copy.
@@ -215,7 +219,10 @@ Silent access refuses authorization prompts. There is no file or UserDefaults fa
 
 `AccountConfigurationStore.swift` persists nonsecret connection URLs and a restore-permission bit.
 Logout closes that bit before clearing Keychain, preventing an unavailable Keychain from reviving
-the departed session on relaunch. `AccountSessionService.swift` owns login/challenge timers,
+the departed session on relaunch. A saved pair, including a saved bundled pair, stays pinned when
+a later build changes defaults. Custom selection always wins; explicit reset to the current build
+default uses the shared session's sign-out and credential-scope fence. Explicit removal suppresses
+fallback on relaunch until a service is selected again. `AccountSessionService.swift` owns login/challenge timers,
 server identity checks, session recovery and one shared refresh flight. It persists rotation before
 the next network suspension. Generation checks after each await retire old callbacks on Cancel,
 logout, shutdown or service changes. Network failures retain a pending/offline session; invalid
@@ -223,13 +230,17 @@ credentials or a changed account fail closed. Native logout clears this Mac's se
 existing local-signout semantics and makes no promise about other devices.
 
 `LingroveAppEnvironment` builds one service; `AppDelegate` starts restoration, resumes an expired
-session on activation and cancels tasks on shutdown. No connection/default account is supplied and
-no cloud guest is created. `SettingsCoordinator` and `SettingsContainerView` pass the same reference
+session on activation and cancels tasks on shutdown. This source tree leaves the optional bundled
+service values empty and creates no cloud guest. `SettingsCoordinator` and `SettingsContainerView` pass the same reference
 to `UI/Settings/Panes/AccountPaneView.swift`. `SettingsNavigationModel` retains its child
 `UI/Settings/Account/AccountSettingsNavigation`: window-lifetime URL drafts and explicit subpage
 paths survive pane unmount and Close. The pane observes that child and safe service state; closing/reopening a window does not recreate authentication. Account/search navigation uses
 the existing sidebar, native Form scaffold and row anchors. The signed-in label confirms identity
 only and cannot claim sync, local corpus adoption or review availability.
+The overview always offers Sign in or create an account. Its email/code sheet exposes an actionable
+unconfigured state and routes to secondary service settings; it never sends with missing
+configuration or an unsaved service draft. Normal sign-in shows the custom source by host, while
+full API/auth URLs and explicit switch/reset confirmation remain in advanced settings.
 
 Tests mirror the boundary in `LingroveTests/Services/Account`, `Support/Account` and
 `UI/Settings/AccountPaneRenderingTests.swift`. A small owned loopback fixture under

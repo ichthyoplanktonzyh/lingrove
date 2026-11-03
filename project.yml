@@ -208,6 +208,9 @@ targetTemplates:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: LingroveInfo.plist
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        # Populate both only for an owned, deployed account service. No production URL fallback.
+        LINGROVE_ACCOUNT_API_BASE_URL: ""
+        LINGROVE_ACCOUNT_AUTH_BASE_URL: ""
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"

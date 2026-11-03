@@ -89,9 +89,9 @@ final class AccountTestFixture {
     let service: AccountSessionService
     let configuration: AccountServiceConfiguration
 
-    init() throws {
+    init(buildConfiguration: AccountBuildConfiguration = .missing) throws {
         defaults = try #require(UserDefaults(suiteName: suite))
-        settings = AccountConfigurationStore(defaults: defaults)
+        settings = AccountConfigurationStore(defaults: defaults, buildConfiguration: buildConfiguration)
         configuration = try AccountConfigurationPolicy.configuration(api: "http://127.0.0.1:18980/v1", auth: "http://127.0.0.1:18981")
         service = AccountSessionService(client: client, credentials: credentials, settings: settings)
     }

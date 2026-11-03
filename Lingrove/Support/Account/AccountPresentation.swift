@@ -7,7 +7,7 @@ import Foundation
 enum AccountPresentation {
     static func title(_ state: AccountSessionState) -> String {
         switch state {
-        case .unconfigured: String(localized: "Not configured", table: "Account")
+        case .unconfigured: String(localized: "Local use", table: "Account")
         case .signedOut: String(localized: "Signed out", table: "Account")
         case .awaitingCode: String(localized: "Waiting for your code", table: "Account")
         case .working(.sendingCode): String(localized: "Requesting a code…", table: "Account")
@@ -18,6 +18,25 @@ enum AccountPresentation {
         case .offline: String(localized: "Session needs recovery", table: "Account")
         case .credentialsInvalid: String(localized: "Sign in again", table: "Account")
         }
+    }
+
+    static func sourceTitle(_ source: AccountConnectionSource?) -> String {
+        switch source {
+        case .applicationDefault: String(localized: "Lingrove service", table: "Account")
+        case .custom: String(localized: "Custom service", table: "Account")
+        case nil: String(localized: "Not configured", table: "Account")
+        }
+    }
+
+    static func unavailableService(_ build: AccountBuildConfiguration) -> String {
+        if build == .invalid {
+            return String(localized: """
+                This app's default account service is invalid. You can keep using Lingrove locally or choose a custom service.
+                """, table: "Account")
+        }
+        return String(localized: """
+            No account service is configured. You can keep using Lingrove locally or choose a service in account settings.
+            """, table: "Account")
     }
 
     // An exhaustive copy map should keep one branch per closed error category.

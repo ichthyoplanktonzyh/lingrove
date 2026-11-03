@@ -91,6 +91,15 @@ Accounts (a free account is enough), then re-run the script. To set the team by 
 You do not need a paid Apple Developer account to build or run Lingrove locally; a free personal
 team can sign and launch it. The paid program is only needed to distribute notarized builds.
 
+The optional account service is injected at build time with `LINGROVE_ACCOUNT_API_BASE_URL`
+(including `/v1`) and `LINGROVE_ACCOUNT_AUTH_BASE_URL`. Xcode expands these into
+`LingroveAccountAPIBaseURL` / `LingroveAccountAuthBaseURL` in Info.plist. Both default to empty:
+this repository does not assume a deployed Lingrove cloud service. Supply both only after an
+owned deployment is ready; an absent, partial or invalid pair grants no network access. This is
+not a runtime environment-variable override. Existing saved custom settings take precedence,
+and service changes/reset require explicit confirmation in Account > Account service. Local
+corpus, review and Progress need no account; login does not enable sync or adopt local content.
+
 For everyday local work, use the **Lingrove Dev** scheme rather than `Lingrove`. It builds a separate
 app named **Lingrove Dev** (`io.ichthyoplanktonzyh.lingrove.dev`, its own icon, auto-update disabled), so the permissions you
 grant your dev build never collide with a released copy of Lingrove you have installed, and your
