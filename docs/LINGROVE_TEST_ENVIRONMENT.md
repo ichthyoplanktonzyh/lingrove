@@ -8,7 +8,7 @@
 
 | 步骤 | 需要取得的证据 | 所需环境 |
 | --- | --- | --- |
-| 本地 iPhone/iPad 接续 | 两个真实 simulator app 经同一后台接续语料/图片/参与/评分 | 独立 loopback API、PG 和 synthetic 身份；待本轮负责人交付 |
+| 本地 iPhone/iPad 接续 | 两个真实 simulator app 经同一后台接续语料/图片/参与/评分 | 独立 loopback API、PG 和 synthetic 身份；[本地接续已交付](MOBILE_FINAL_ACCEPTANCE_INTEGRATION.md) |
 | 真实 ChatGPT 读写 | ChatGPT 实际发现工具、读取/保存合成语料，移动端读到结果；撤销后拒绝访问 | 可达的 MCP 服务与 ChatGPT 连接；可选私有 Secure MCP Tunnel 或自有 HTTPS |
 | 真实账户及设备接续 | 实际登录、token 恢复/失效、跨端接续，账户与媒体权限正确 | 自有 API/Auth、真实测试身份提供方、数据库/对象存储、必要 HTTPS |
 
@@ -107,3 +107,8 @@ Auth 服务自身的 issuer 来自 `PUBLIC_AUTH_BASE_URL`，resource 可由 `MCP
 自有域名、云项目/账号和地域、可用测试邮箱，以及哪些设备参与真实操作。凭据通过
 本机受限存储或 CI secrets 使用。具体资源、成本、配置 diff 和运行步骤准备成可审查
 结果后，再进行对应环境操作；当前未创建或更改任何外部资源。
+
+
+私有 MCP 本地服务、SDK/HTTP/PG 验证、官方客户端与最终隔离修正现已交付，见
+[私有 MCP 整合](PRIVATE_MCP_INTEGRATION.md)。这不等于真实 Tunnel 或 ChatGPT 已连接；
+后续账户授权与运行步骤按该记录执行。

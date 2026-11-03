@@ -1035,6 +1035,27 @@ content; it never trusts a request snapshot or rebuilds scheduling from events. 
 checks are in `FlashcardsTests/Notebook`, backend HTTP/PG checks in `notebook/review`, and the bounded
 acceptance supervisor is `scripts/validation/validate-notebook-review.py`.
 
+`LingroveNotebookFinalAcceptanceFixture` is DEBUG-only login/media preconditioning for the dedicated
+validation bundle; it supplies no saved corpus or review state. The existing Store owns initialization,
+and the normal editor owns the unsaved PNG draft until Save. Invalid explicit fixture configuration
+uses an empty test credential namespace and is rejected before database admission. The final UI class
+splits one real phone→tablet→phone result into three stages so the Python supervisor can alternate
+apps while retaining their actual containers. `testSupport/notebookFinalAcceptanceHTTP` adds the
+ordinary cloud routes to the existing private fixture with a default-off option. The supervisor owns
+shared Apple locking, source/config proof, stage evidence, per-device restoration and cleanup;
+its offline auditor compares captured target-workspace rows with explicit local event metadata rules.
+
+`testSupport/privateMcpHTTP` is an explicit local composition over the existing MCP registry/token
+resolver and native API fixture, with one disposable account and shared PG corpus. It checks a
+supervisor-owned database marker and runtime role through a read-only connection before generic
+fixture provisioning. `privateMcpJourney` owns the real SDK HTTP/PG command/idempotency/revocation
+check; it supplies no alternate business writer. `private-mcp-local.py` owns the host lock, random
+fixture credentials, Compose/listeners and resource cleanup. `private-mcp-tunnel.py` owns official
+client provenance and environment-reference configuration; unauthenticated doctor is deliberately
+incomplete. Its template is inert until the operator supplies a confirmed tunnel and runtime key.
+
+
+
 ### Portable notebook and native Mac foundation
 
 `Packages/LingroveNotebookEngine` now owns the shared corpus/Card/review SQLite implementation,
