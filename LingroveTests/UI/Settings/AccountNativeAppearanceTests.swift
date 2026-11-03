@@ -10,6 +10,43 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(2)))
 @MainActor
 struct AccountNativeAppearanceTests {
+    @Test func consumedCodeRouteKeepsPendingIdentityConfirmationAlive() async throws {
+        let fixture = try AccountTestFixture()
+        defer { fixture.cleanup() }
+        fixture.configure()
+        fixture.service.requestCode(email: "synthetic@example.invalid")
+        try await accountEventually { fixture.service.state == .awaitingCode }
+        let host = AccountNativeAppearanceHost(
+            LingroveAccountSignInSheet(account: fixture.service, connectionIsSaved: true),
+            appearance: .aqua, width: 560, height: 500)
+        defer { host.close() }
+        try await host.checkAndCapture("account-before-verification")
+        fixture.client.holdIdentity = true
+        fixture.service.submitCode("12345678")
+        try await accountEventually { fixture.client.identityReply != nil }
+        try await host.checkAndCapture("account-identity-pending")
+        #expect(fixture.service.codePrompt == nil && fixture.service.state == .working(.verifyingCode))
+        fixture.client.identityReply?.resume(returning: fixture.client.currentIdentity)
+        fixture.client.identityReply = nil
+        try await accountEventually { fixture.service.state == .signedIn(fixture.client.currentIdentity) }
+        #expect(fixture.credentials.value?.identity == fixture.client.currentIdentity)
+    }
+
+    @Test func unavailableLoginKeepsNativeAppearanceAndDoesNotRequestAService() async throws {
+        for build in [AccountBuildConfiguration.missing, .invalid] {
+            let fixture = try AccountTestFixture(buildConfiguration: build)
+            defer { fixture.cleanup() }
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let signIn = AccountNativeAppearanceHost(
+                    LingroveAccountSignInSheet(account: fixture.service, connectionIsSaved: false, onOpenService: {}),
+                    appearance: appearance, width: 560, height: 500)
+                try await signIn.checkAndCapture(build == .missing ? "account-unconfigured" : "account-invalid-default")
+                signIn.close()
+            }
+            #expect(fixture.service.configuration == nil && fixture.client.sends == 0 && fixture.client.identities == 0)
+        }
+    }
+
     @Test func accountPagesAndAuthenticationSheetsInheritTheirNativeWindow() async throws {
         let fixture = try AccountTestFixture()
         defer { fixture.cleanup() }

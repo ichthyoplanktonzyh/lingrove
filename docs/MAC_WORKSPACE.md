@@ -99,6 +99,20 @@ have independent status and retry behavior. Network waits do not hold SQLite tra
 late account callbacks and commands retain their original generation. Unsaved translations,
 autocomplete context and screen content do not enter corpus sync.
 
+The account overview offers **Sign in or create an account** even when this app build has no
+service configured. Email and eight-digit code are the supported authentication path; no password
+or social-provider controls are implied. Back, Close, resend, expiry and errors borrow the shared
+AccountSession state machine. A missing/invalid service has an actionable explanation leading to
+secondary Account service settings, and cannot send a request. Normal login displays custom
+service provenance by host; full URLs and switch/reset consent belong to that secondary page.
+
+Only the Mac composition root reads the optional paired Info.plist build defaults. The checked-in
+defaults remain empty while deployment is deferred. A saved custom pair wins over build defaults;
+any saved pair stays pinned across later releases until an explicit switch. Returning to the app
+default signs out with the same Keychain/generation fence. Removal stays disconnected on relaunch,
+and logout's restore=false gate applies equally to default and custom services. URL drafts retain
+their window lifetime and block authentication/sync until saved or reverted.
+
 ## UI provenance and supported surface
 
 - [Review and account component sources](MAC_REVIEW_ACCOUNT_UI_REUSE.md).
@@ -159,3 +173,12 @@ The combined two-appearance native checks and the actual enrollment/rating/Progr
 journey passed. This closes the earlier main-window compositor journey gap; the separate account
 OTP handoff remains incomplete after its deadline. See MAC_UI_SYSTEM.md for exact evidence and
 remaining pointer/locale/accessibility limits.
+
+The subsequent normal account-entry checkpoint closes that account OTP handoff gap with a
+discoverable login/create-account entry, a truthful missing-service route and a native email/code
+flow. Focused account rules/lifecycle/native checks passed (31 definitions / 36 concrete cases),
+and CUA completed missing-service navigation plus configured draft, Back, Close, resend and
+synthetic sign-in journeys. Final native results retained no selected workspace or ownership
+proposal and left sync disabled. Build defaults remain empty and real mailbox/service deployment
+is deferred. MAC_UI_SYSTEM.md records the exact scope and build/mac-account-login-validation/
+holds the result bundles, renderings, postconditions and cleanup proof.

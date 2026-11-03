@@ -11,7 +11,11 @@ struct LingroveAccountServerView: View {
     @Binding var api: String
     @Binding var auth: String
     @State private var confirmingApply = false
-    @State private var removingConnection = false
+    @State private var change = ConnectionChange.custom
+
+    /// Confirmation captures the kind of change, while the session remains the authority that
+    /// validates and applies it. None of these presentation choices contacts a service.
+    private enum ConnectionChange { case custom, applicationDefault, remove }
 
     private var matchesSaved: Bool {
         AccountConfigurationPolicy.matchesSavedConnection(api: api, auth: auth, saved: account.configuration)
@@ -22,10 +26,24 @@ struct LingroveAccountServerView: View {
         SettingsPaneScaffold {
             Section(LingroveNibomoAccountCopy.text("settings.account.server.section.currentServer")) {
                 if let current = account.configuration {
+                    LabeledContent(String(localized: "Account service", table: "Account")) {
+                        Text(AccountPresentation.sourceTitle(account.connectionSource))
+                    }
                     destination(LingroveNibomoAccountCopy.text("settings.account.server.apiUrl"), current.apiBaseURL.absoluteString)
                     destination(LingroveNibomoAccountCopy.text("settings.account.server.authUrl"), current.authBaseURL.absoluteString)
                 } else {
-                    Text(AccountPresentation.title(.unconfigured)).foregroundStyle(.secondary)
+                    SettingsCalloutView(callout: .init(tone: .info,
+                        message: AccountPresentation.unavailableService(account.buildConfiguration)))
+                }
+            }
+            if account.canUseApplicationDefault {
+                Section {
+                    Button(String(localized: "Use app default", table: "Account")) {
+                        change = .applicationDefault
+                        confirmingApply = true
+                    }
+                    .disabled(account.state.isBusy)
+                    .accessibilityIdentifier("account.useDefaultConnection")
                 }
             }
             Section {
@@ -42,7 +60,7 @@ struct LingroveAccountServerView: View {
                     .textContentType(.URL).autocorrectionDisabled().accessibilityIdentifier("account.authURL")
                 HStack {
                     Button(String(localized: "Save connection", table: "Account")) {
-                        removingConnection = false
+                        change = .custom
                         confirmingApply = true
                     }
                     .buttonStyle(.borderedProminent)
@@ -54,7 +72,7 @@ struct LingroveAccountServerView: View {
                     Spacer()
                 }
             } header: {
-                Text(String(localized: "Account service", table: "Account"))
+                Text(String(localized: "Custom service", table: "Account"))
             } footer: {
                 Text(String(localized: """
                     Choose services you trust. Email, codes and session tokens go to the authentication service; the API \
@@ -65,7 +83,7 @@ struct LingroveAccountServerView: View {
             if account.configuration != nil {
                 Section {
                     Button(String(localized: "Remove connection", table: "Account"), role: .destructive) {
-                        removingConnection = true
+                        change = .remove
                         confirmingApply = true
                     }
                     .disabled(account.state.isBusy)
@@ -74,20 +92,12 @@ struct LingroveAccountServerView: View {
             }
         }
         .navigationTitle(String(localized: "Account service", table: "Account"))
-        .alert(removingConnection ? String(localized: "Remove connection", table: "Account")
-            : LingroveNibomoAccountCopy.text("settings.account.server.confirmationTitle.apply"), isPresented: $confirmingApply) {
+        .alert(confirmationTitle, isPresented: $confirmingApply) {
             Button(LingroveNibomoAccountCopy.text("common.cancel"), role: .cancel) { }
-            Button(removingConnection ? String(localized: "Remove connection", table: "Account")
-                : LingroveNibomoAccountCopy.text("settings.account.server.confirmationButton.apply"), role: .destructive) {
-                if removingConnection {
-                    if account.removeConfiguration() { revertDraft() }
-                } else if account.configure(api: api, auth: auth) {
-                    revertDraft()
-                }
-            }
+            Button(confirmationButton, role: .destructive, action: applyChange)
             .accessibilityIdentifier("account.saveConnection.confirm")
         } message: {
-            if removingConnection {
+            if change == .remove {
                 Text(String(localized: """
                     This clears this Mac's session. It does not delete your account or sign out other devices.
                     """, table: "Account"))
@@ -95,11 +105,41 @@ struct LingroveAccountServerView: View {
                 // Repeat the exact proposed services at the consent boundary. A user reviewing
                 // this alert should not have to dismiss it to discover the network destination.
                 Text(LingroveNibomoAccountCopy.text("settings.account.server.confirmationMessage")
-                    + "\n\n" + LingroveNibomoAccountCopy.text("settings.account.server.apiUrl") + ": " + api
-                    + "\n" + LingroveNibomoAccountCopy.text("settings.account.server.authUrl") + ": " + auth)
+                    + "\n\n" + LingroveNibomoAccountCopy.text("settings.account.server.apiUrl") + ": " + proposedAPI
+                    + "\n" + LingroveNibomoAccountCopy.text("settings.account.server.authUrl") + ": " + proposedAuth)
             }
         }
         .accessibilityIdentifier("account.server.screen")
+    }
+
+    private var confirmationTitle: String {
+        switch change {
+        case .remove: String(localized: "Remove connection", table: "Account")
+        case .applicationDefault: String(localized: "Use app default", table: "Account")
+        case .custom: LingroveNibomoAccountCopy.text("settings.account.server.confirmationTitle.apply")
+        }
+    }
+
+    private var confirmationButton: String {
+        change == .remove ? String(localized: "Remove connection", table: "Account")
+            : LingroveNibomoAccountCopy.text("settings.account.server.confirmationButton.apply")
+    }
+
+    private var proposedAPI: String {
+        change == .applicationDefault ? account.buildConfiguration.configuration?.apiBaseURL.absoluteString ?? "" : api
+    }
+    private var proposedAuth: String {
+        change == .applicationDefault ? account.buildConfiguration.configuration?.authBaseURL.absoluteString ?? "" : auth
+    }
+
+    private func applyChange() {
+        let applied: Bool
+        switch change {
+        case .custom: applied = account.configure(api: api, auth: auth)
+        case .applicationDefault: applied = account.useApplicationDefault()
+        case .remove: applied = account.removeConfiguration()
+        }
+        if applied { revertDraft() }
     }
 
     private func revertDraft() {

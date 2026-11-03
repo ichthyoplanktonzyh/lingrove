@@ -12,6 +12,7 @@ final class AccountSessionService: ObservableObject {
     @Published private(set) var state: AccountSessionState = .unconfigured
     @Published private(set) var codePrompt: AccountCodePrompt?
     @Published private(set) var issue: AccountIssue?
+    @Published private(set) var connectionSource: AccountConnectionSource?
     /// One atomic safe projection is the lifecycle subscription seam. Publishing generation
     /// separately from state could briefly pair a new account boundary with an old UI value.
     @Published private(set) var observation = MacAccountObservation()
@@ -19,9 +20,17 @@ final class AccountSessionService: ObservableObject {
     /// a synchronous logout fence runs, so this stream sends only after all safe fields commit.
     let observationChanges = PassthroughSubject<MacAccountObservation, Never>()
     private let session: AccountSession
+    private let settings: AccountConfigurationStore
+
+    var buildConfiguration: AccountBuildConfiguration { settings.buildConfiguration }
+    var canUseApplicationDefault: Bool {
+        guard let configuration = buildConfiguration.configuration else { return false }
+        return session.configuration != configuration || connectionSource != .applicationDefault
+    }
 
     init(client: any AccountAuthenticating, credentials: any AccountCredentialStoring,
          settings: AccountConfigurationStore) {
+        self.settings = settings
         session = AccountSession(client: client, credentials: credentials, settings: settings)
         session.onChange = { [weak self] in self?.publish() }
         publish()
@@ -29,7 +38,28 @@ final class AccountSessionService: ObservableObject {
 
     func start() { session.start() }
     func shutdown() { session.shutdown() }
-    @discardableResult func configure(api: String, auth: String) -> Bool { session.configure(api: api, auth: auth) }
+    @discardableResult func configure(api: String, auth: String) -> Bool {
+        guard let next = try? AccountConfigurationPolicy.configuration(api: api, auth: auth) else {
+            return session.configure(api: api, auth: auth)
+        }
+        let applied = settings.selecting(.custom, for: next) { session.configure(api: api, auth: auth) }
+        if applied { publish() }
+        return applied
+    }
+    /// Returning to the bundled pair is explicit and uses the same credential deletion and
+    /// generation fence as a custom switch. Even equal URLs sign out before changing source.
+    @discardableResult func useApplicationDefault() -> Bool {
+        guard let configuration = buildConfiguration.configuration else { return false }
+        if session.configuration == configuration {
+            session.signOut()
+            guard session.issue != .secureStorage else { return false }
+        }
+        let applied = settings.selecting(.applicationDefault, for: configuration) {
+            session.configure(api: configuration.apiBaseURL.absoluteString, auth: configuration.authBaseURL.absoluteString)
+        }
+        if applied { publish() }
+        return applied
+    }
     @discardableResult func removeConfiguration() -> Bool { session.removeConfiguration() }
     func requestCode(email: String) { session.requestCode(email: email) }
     func resendCode() { session.resendCode() }
@@ -49,6 +79,7 @@ final class AccountSessionService: ObservableObject {
             retainedIdentity: session.retainedIdentity, generation: session.generation)
         configuration = session.configuration; state = session.state
         codePrompt = session.codePrompt; issue = session.issue
+        connectionSource = session.configuration == nil ? nil : settings.source
         observationChanges.send(observation)
     }
 }
