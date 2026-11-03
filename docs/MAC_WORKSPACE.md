@@ -225,6 +225,19 @@ locale's visual layout remain separate acceptance limits. Pointer image/audio im
 management/Settings control and Keep editing were not newly accepted by the visible journey.
 No new Release latency, production deployment or installed-app claim is made by this checkpoint.
 
+After that checkpoint, the user explicitly requested the Dev update. Root built arm64 Release
+from `177d9e8c`, verified the existing signing requirement, used the application's own Quit to
+drain writes, and retained the previous app, Notebook directory, SQLite snapshot and preferences
+before replacing the existing installation. Normal startup upgraded the live database from 38
+to 39; hashes/counts of existing corpus/review columns matched, and configured preferences were
+unchanged after decoding JSON. Quality counters, font cache and window geometry remain ordinary
+runtime state. Startup reported all services started with no app/runtime/model errors; the actual
+installed UI showed both review targets. No review enrollment or rating was performed to verify
+the update. `build/review-dev-update/installation-proof.json` records the installed path, backup,
+binary identity, schema and preservation checks; its separate cleanup proof verifies removal of
+DerivedData/copied package/module caches. This installation is distinct from module validation
+and does not establish backend/mobile protocol-v2 adoption or new latency measurements.
+
 Run scripts/validation/validate-mac-workspace.py for bounded native build/test/onscreen checks.
 It copies approved fixed dependencies into this checkout and uses a disposable host, SQLite
 and preferences. All Swift/Xcode/native operations hold /tmp/lingrove-mobile-validation.lock.
