@@ -443,8 +443,10 @@ those reviewer/test agents do not write implementation or test code.
   unresolved items and integration notes. The main agent then owns integration, necessary combined
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
 - Mobile Wave 3 is delivered; its contract remains in `docs/MOBILE_WAVE_3.md`. Active native Mac
-  work follows `docs/MAC_INTEGRATION_PLAN.md` and active `docs/MAC_WAVE_2.md`.
-  Mac Wave 1 is integrated; its evidence and remaining limits are in `docs/MAC_WAVE_1_INTEGRATION.md`.
+  work follows `docs/MAC_INTEGRATION_PLAN.md` and `docs/MAC_WAVE_3.md`: save-internal optimization
+  and direct reuse of Nibomo account/review UI in two independent complete modules. Keep the
+  upstream interaction/visual design; only necessary platform and business adapters are in scope.
+  Mac Waves 1/2 are integrated; evidence and remaining limits are in their integration reports.
   Those Mac contracts supersede historical mobile-only scope exclusions. Separate worktrees isolate source,
   not simulators or host resources. All Xcode/simulator operations acquire the shared validation
   lock specified there, and every checkout keeps DerivedData under its own `build/DerivedData`.
