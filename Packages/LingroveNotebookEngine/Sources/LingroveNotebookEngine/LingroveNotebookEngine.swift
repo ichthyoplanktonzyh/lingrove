@@ -46,7 +46,24 @@ public final class LingroveNotebookEngine {
         try self.init(core: core, ownsConnection: false)
     }
 
-    private init(core: DatabaseCore, ownsConnection: Bool) throws {
+    /// Short-lived analytical readers use the existing schema without bootstrap or housekeeping
+    /// writes. They still receive the same guarded stores and SQL rules; the native read-only
+    /// connection rejects mutations even if a caller accidentally invokes a command on it.
+    public convenience init(readOnlyDatabaseURL: URL, mediaDirectoryURL: URL) throws {
+        let core = try DatabaseCore(readOnlyDatabaseURL: readOnlyDatabaseURL, mediaDirectoryURL: mediaDirectoryURL)
+        do {
+            let version = try core.scalarInt(sql: "PRAGMA user_version", values: [])
+            guard version == LocalDatabaseSchema.currentVersion else {
+                throw LocalStoreError.database("Unsupported notebook engine schema version: \(version)")
+            }
+            try self.init(core: core, ownsConnection: true, performsMaintenance: false)
+        } catch {
+            try? core.close()
+            throw error
+        }
+    }
+
+    private init(core: DatabaseCore, ownsConnection: Bool, performsMaintenance: Bool = true) throws {
         self.ownsConnection = ownsConnection
         self.core = core
         self.cardStore = CardStore(core: core)
@@ -62,7 +79,7 @@ public final class LingroveNotebookEngine {
         self.outboxStore = OutboxStore(core: core)
         self.syncApplier = SyncApplier(core: core)
         self.workspaceSettingsStore = WorkspaceSettingsStore(core: core)
-        try self.lingroveNotebookWindowStore.purgeExpired(now: Date())
+        if performsMaintenance { try self.lingroveNotebookWindowStore.purgeExpired(now: Date()) }
     }
 
     /// Closing a borrowed facade never retires its host's connection. The host still owns all
