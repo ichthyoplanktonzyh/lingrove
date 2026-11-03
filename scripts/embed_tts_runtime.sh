@@ -9,7 +9,11 @@ if [[ ! -x "$source_helper" ]]; then
 fi
 # Refuse a bundle whose helper cannot run on an architecture advertised by the app.
 read -r -a app_architectures <<< "$ARCHS"
-lipo "$source_helper" -verify_arch "${app_architectures[@]}"
+# Check each requested slice separately: newer lipo versions can interpret the second
+# architecture as another input file and reject an otherwise valid universal helper.
+for architecture in "${app_architectures[@]}"; do
+    lipo "$source_helper" -verify_arch "$architecture"
+done
 mkdir -p "$(dirname "$destination")"
 if [[ "${CODE_SIGNING_ALLOWED:-YES}" != NO ]]; then
     # codesign creates a temporary sibling before replacing its input. Keep those scratch writes

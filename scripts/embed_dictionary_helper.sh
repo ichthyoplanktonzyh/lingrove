@@ -3,7 +3,11 @@ set -euo pipefail
 source_helper="$SRCROOT/build/dictionary-native/lingrove-dictionary-helper"
 destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/lingrove-dictionary-helper"
 read -r -a app_architectures <<< "$ARCHS"
-lipo "$source_helper" -verify_arch "${app_architectures[@]}"
+# Check each requested slice separately: newer lipo versions can interpret the second
+# architecture as another input file and reject an otherwise valid universal helper.
+for architecture in "${app_architectures[@]}"; do
+    lipo "$source_helper" -verify_arch "$architecture"
+done
 mkdir -p "$(dirname "$destination")"
 if [[ "${CODE_SIGNING_ALLOWED:-YES}" != NO ]]; then
     # Xcode grants this sandboxed phase the final output file, not temporary siblings beside

@@ -29,7 +29,10 @@ streaming_patch="$root/patches/llama-tts-streaming.patch"
 if git -C "$source_dir" diff --exit-code --quiet HEAD --; then
     git -C "$source_dir" apply --check "$streaming_patch"
     git -C "$source_dir" apply "$streaming_patch"
-elif ! git -C "$source_dir" diff --binary | cmp -s - "$streaming_patch"; then
+# The patch records nine-character object IDs. A fresh shallow clone otherwise chooses
+# shorter IDs, so pin formatting before comparing bytes rather than mistaking it for edits.
+elif ! git -C "$source_dir" diff --no-ext-diff --no-color --binary --abbrev=9 \
+    --src-prefix=a/ --dst-prefix=b/ | cmp -s - "$streaming_patch"; then
     echo 'TTS source checkout has changes beyond the pinned streaming patch; preserve them before rebuilding.' >&2
     exit 1
 fi
