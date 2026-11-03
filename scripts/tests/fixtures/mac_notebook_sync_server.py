@@ -6,6 +6,7 @@ actual SQLite ports rather than a recording storage stub. It is deliberately not
 import base64
 import hashlib
 import json
+import os
 import socket
 import time
 import uuid
@@ -211,9 +212,10 @@ class Handler(BaseHTTPRequestHandler):
         self.reply({'code': 'UNKNOWN'}, 404)
     do_GET = do_POST = do_PUT = route
 
-for port in range(19480, 19483):
+port_min = int(os.environ.get("LINGROVE_MAC_SYNC_TEST_PORT_MIN", "19480"))
+for port in range(port_min, port_min + 3):
     try: server = ThreadingHTTPServer(('127.0.0.1', port), Handler); break
     except OSError: continue
-else: raise RuntimeError('D-owned ports are busy; no other server was stopped')
+else: raise RuntimeError('Assigned fixture ports are busy; no other server was stopped')
 print(server.server_port, flush=True)
 server.serve_forever()

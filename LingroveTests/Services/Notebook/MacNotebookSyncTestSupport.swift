@@ -100,7 +100,8 @@ final class MacNotebookLoopback {
         process.standardOutput = output; process.standardError = FileHandle.standardError
         try process.run()
         let value = String(decoding: output.fileHandleForReading.availableData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let port = Int(value), (19480...19482).contains(port), let url = URL(string: "http://127.0.0.1:\(port)") else {
+        let lowerPort = Int(ProcessInfo.processInfo.environment["LINGROVE_MAC_SYNC_TEST_PORT_MIN"] ?? "19480") ?? 19480
+        guard let port = Int(value), (lowerPort...(lowerPort + 2)).contains(port), let url = URL(string: "http://127.0.0.1:\(port)") else {
             if process.isRunning { process.terminate() }
             throw AccountIssue.invalidConfiguration
         }

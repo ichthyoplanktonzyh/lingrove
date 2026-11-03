@@ -221,6 +221,8 @@ struct BuiltInReviewSessionIntegrationTests {
     private func capture(_ window: NSWindow, name: String, minimumWidth: CGFloat = 760,
                          minimumHeight: CGFloat = 560) async throws {
         guard let path = ProcessInfo.processInfo.environment["LINGROVE_REVIEW_EVIDENCE_DIR"] else { return }
+        window.setFrameOrigin(.init(x: -3000, y: -3000))
+        window.orderFrontRegardless()
         try await Task.sleep(for: .milliseconds(150))
         let view = try #require(window.contentView)
         view.layoutSubtreeIfNeeded()

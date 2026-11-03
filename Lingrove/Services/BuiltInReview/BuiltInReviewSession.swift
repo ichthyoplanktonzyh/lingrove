@@ -34,6 +34,7 @@ final class BuiltInReviewSession: ObservableObject {
     private var isVisible = false
     private var isShuttingDown = false
     private var isPublishing = false
+    private var startsReviewAfterOpening = false
 
     var isBusy: Bool { isRefreshing || isMutating }
     var canSpeak: Bool { speech != nil }
@@ -52,12 +53,16 @@ final class BuiltInReviewSession: ObservableObject {
         guard !isShuttingDown else { return }
         close()
         isVisible = true
+        // Nibomo opens directly on its due card. This only starts a presentation session;
+        // it never creates participation, and source-targeted openings still show that sense.
+        startsReviewAfterOpening = selection == nil
         route = selection.map(BuiltInReviewRoute.sense) ?? .overview
         reload()
     }
 
     func close() {
         isVisible = false
+        startsReviewAfterOpening = false
         lifetime = UUID()
         writeIdentity = UUID()
         readTask?.cancel()
@@ -119,6 +124,7 @@ final class BuiltInReviewSession: ObservableObject {
                 }
                 self.content = value
                 self.isRefreshing = false
+                self.startReviewAfterOpeningIfNeeded()
                 if afterOwnChange, self.practice != nil { self.advancePractice(preferredCardID: preferredCardID) }
             } catch {
                 guard let self, self.lifetime == savedLifetime, self.readIdentity == operation, !Task.isCancelled else { return }
@@ -307,6 +313,12 @@ final class BuiltInReviewSession: ObservableObject {
         // A notification can describe only an upload ACK. Disable actions while re-reading,
         // then discard a draft/question only if its actual scope or review rows changed.
         reload()
+    }
+
+    private func startReviewAfterOpeningIfNeeded() {
+        guard startsReviewAfterOpening else { return }
+        startsReviewAfterOpening = false
+        start()
     }
 
     private func advancePractice(preferredCardID: String? = nil) {
