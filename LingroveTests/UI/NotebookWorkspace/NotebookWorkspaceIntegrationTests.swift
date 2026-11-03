@@ -13,6 +13,68 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct NotebookWorkspaceIntegrationTests {
+    @Test("Closing Settings revokes the sidebar's queued pane request")
+    func settingsCloseRevokesQueuedSelection() async throws {
+        let fixture = try NotebookWorkspaceFixture()
+        do {
+            fixture.window.onShowSettings?()
+            let settings = try workspaceRequire(fixture.settingsWindow)
+            let coordinator = try workspaceRequire(fixture.settings)
+            settings.setFrameOrigin(.init(x: -3000, y: -3000))
+            coordinator.navigation.open(.home)
+            coordinator.navigation.request(.appearance)
+            settings.close()
+            try await Task.sleep(for: .milliseconds(30))
+            workspaceExpect(coordinator.navigation.selection == .home)
+            await fixture.cleanUp()
+        } catch {
+            await fixture.cleanUp()
+            throw error
+        }
+    }
+
+    @Test("Sidebar selection defers review suspension and expires on Close or an explicit source link")
+    func deferredSidebarLifecycle() async throws {
+        let fixture = try NotebookWorkspaceFixture(usesRealProgress: true)
+        do {
+            let selection = try await fixture.seed()
+            fixture.review.show(selection: selection)
+            let window = try workspaceRequire(fixture.window.window)
+            window.setFrameOrigin(.init(x: -3000, y: -3000))
+            await fixture.review.session.waitForIdle()
+            var isWritingBinding = true
+            var reentrantPublications = 0
+            let subscription = fixture.review.session.objectWillChange.sink {
+                if isWritingBinding { reentrantPublications += 1 }
+            }
+            fixture.window.navigation.request(.progress)
+            workspaceExpect(fixture.window.navigation.destination == .review)
+            workspaceExpect(reentrantPublications == 0)
+            isWritingBinding = false
+            try await workspaceEventually { fixture.window.navigation.destination == .progress }
+            workspaceExpect(window.toolbar == nil)
+            try await captureWorkspace(window, name: "deferred-sidebar-progress")
+            subscription.cancel()
+
+            fixture.window.navigation.request(.review)
+            fixture.window.show(selectedID: selection.entryID, senseID: selection.senseID)
+            try await captureWorkspace(window, name: "deferred-sidebar-source")
+            workspaceExpect(fixture.window.navigation.destination == .corpus)
+            workspaceExpect(fixture.window.corpusHost?.rootView.selectedSenseID == selection.senseID)
+
+            fixture.window.navigation.request(.progress)
+            fixture.window.close()
+            fixture.window.show()
+            try await captureWorkspace(window, name: "deferred-sidebar-reopened")
+            workspaceExpect(fixture.window.navigation.destination == .corpus)
+            workspaceExpect(fixture.progress.visibility == [true, false])
+            await fixture.cleanUp()
+        } catch {
+            await fixture.cleanUp()
+            throw error
+        }
+    }
+
     @Test("Switching destinations retains the entire corpus root and scopes Progress visibility")
     func retainedCorpusAndVisibility() async throws {
         let fixture = try NotebookWorkspaceFixture()

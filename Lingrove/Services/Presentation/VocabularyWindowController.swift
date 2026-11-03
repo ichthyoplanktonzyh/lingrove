@@ -128,6 +128,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard (notification.object as? NSWindow) === window else { return }
+        navigation.cancelPendingRequest()
         deactivateCurrentDestination()
         isOpen = false
         pendingOpen = nil
@@ -175,6 +176,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func display(_ destination: NotebookWorkspaceDestination) {
+        navigation.cancelPendingRequest()
         window?.title = NotebookWorkspaceCopy.title(destination)
         if navigation.destination != destination {
             // Clear a focused corpus field editor before review becomes visible. A later

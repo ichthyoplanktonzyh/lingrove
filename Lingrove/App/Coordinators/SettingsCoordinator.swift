@@ -227,6 +227,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         }
 
         if closingWindow == settingsWindowController?.window {
+            navigation.cancelPendingRequest()
             settingsWindowController = nil
         }
     }

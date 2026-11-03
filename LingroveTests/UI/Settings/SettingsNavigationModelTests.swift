@@ -1,12 +1,85 @@
+import Combine
 import XCTest
 @testable import Lingrove
 
-/// Pins the Settings window's navigation state machine: search reveals land on the item's own pane
-/// with a transient highlight, plain pane navigation cancels that highlight so a stale pulse cannot
-/// replay, and Cmd-F routes to Home and leaves a one-shot focus request. The timed auto-clear of the
-/// highlight is deliberately not waited on here; only the synchronous transitions are asserted.
+/// Protects the Settings window's navigation state machine: exact search destinations, transient
+/// arrival pulses, one-shot search focus and sidebar requests that publish after their binding
+/// write. Explicit links and window closure must revoke older queued clicks without losing tabs.
 @MainActor
 final class SettingsNavigationModelTests: XCTestCase {
+    func test_sidebarBindingDefersAllNavigationPublications() async {
+        let model = makeModel()
+        model.reveal(.batteryModel)
+        let arrived = expectation(description: "The sidebar request opens Appearance")
+        var isWritingBinding = true
+        var reentrantPublications = 0
+        let changes = model.objectWillChange.sink { if isWritingBinding { reentrantPublications += 1 } }
+        let selection = model.$selection.dropFirst().sink { if $0 == .appearance { arrived.fulfill() } }
+        model.request(.appearance)
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.highlightedItem, .batteryModel)
+        XCTAssertEqual(reentrantPublications, 0)
+        isWritingBinding = false
+        await fulfillment(of: [arrived], timeout: 2)
+        XCTAssertEqual(model.selection, .appearance)
+        XCTAssertNil(model.highlightedItem)
+        changes.cancel()
+        selection.cancel()
+    }
+
+    func test_sidebarRapidSelectionsKeepOnlyTheLatestIntent() async {
+        let model = makeModel()
+        let arrived = expectation(description: "Only the final sidebar selection is published")
+        var selections: [SettingsCategory] = []
+        let subscription = model.$selection.dropFirst().sink {
+            selections.append($0)
+            if $0 == .about { arrived.fulfill() }
+        }
+        model.request(.appearance)
+        model.request(.about)
+        await fulfillment(of: [arrived], timeout: 2)
+        XCTAssertEqual(selections, [.about])
+        subscription.cancel()
+    }
+
+    func test_searchAndExplicitNavigationSupersedeQueuedSidebarClicks() async throws {
+        let model = makeModel()
+        model.request(.about)
+        model.reveal(.translationModel)
+        try await Task.sleep(for: .milliseconds(30))
+        XCTAssertEqual(model.selection, .engineAndModel)
+        XCTAssertEqual(model.highlightedItem, .translationModel)
+        model.request(.appearance)
+        model.open(.permissions)
+        try await Task.sleep(for: .milliseconds(30))
+        XCTAssertEqual(model.selection, .permissions)
+    }
+
+    func test_cancelledSidebarJobCannotConsumeTheNextWindowRequest() async {
+        let model = makeModel()
+        let arrived = expectation(description: "The next window request survives the cancelled job")
+        let subscription = model.$selection.dropFirst().sink { if $0 == .permissions { arrived.fulfill() } }
+        model.request(.appearance)
+        model.cancelPendingRequest()
+        model.request(.permissions)
+        await fulfillment(of: [arrived], timeout: 2)
+        XCTAssertEqual(model.selection, .permissions)
+        subscription.cancel()
+    }
+
+    func test_sidebarReselectionStillClearsAnExistingSearchPulse() async {
+        let model = makeModel()
+        model.reveal(.ghostTextSize)
+        let cleared = expectation(description: "Reselecting the current pane clears its search pulse")
+        let subscription = model.$highlightedItem.dropFirst().sink { if $0 == nil { cleared.fulfill() } }
+        model.request(.appearance)
+        XCTAssertEqual(model.highlightedItem, .ghostTextSize)
+        await fulfillment(of: [cleared], timeout: 2)
+        XCTAssertEqual(model.selection, .appearance)
+        XCTAssertNil(model.highlightedItem)
+        subscription.cancel()
+    }
+
     func test_learningQuickLinksChooseTheirOwnTabAndClearSearch() {
         let model = makeModel()
         for task in SettingsLearningTask.allCases {

@@ -138,7 +138,7 @@ struct SettingsSidebarView: View {
     private var selectionBinding: Binding<SettingsCategory> {
         Binding(
             get: { navigation.selection },
-            set: { navigation.open($0) }
+            set: navigation.request
         )
     }
 

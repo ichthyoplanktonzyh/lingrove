@@ -1025,6 +1025,7 @@
 		71DA0B215775B5C9C49C18FB /* UnassignedLocalModelsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBB74F16CC019BE1FE581FD /* UnassignedLocalModelsSection.swift */; };
 		72350974D42A4C409C1BA97B /* Aria2StagingDirectoryResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3628899722172D664BA39B67 /* Aria2StagingDirectoryResolver.swift */; };
 		72557D4D58B6F554E250E897 /* AnkiReviewSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8861171362E78F33958880 /* AnkiReviewSettings.swift */; };
+		7264EC3A64080FDBA0763135 /* NotebookWorkspaceNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E44AA4C4C0600EE5054B0C /* NotebookWorkspaceNavigationTests.swift */; };
 		72DAA8900EC3A217AC073A6B /* PauseInLowPowerModeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FEE8AD1511E027087F82239 /* PauseInLowPowerModeRow.swift */; };
 		72F7271494D6C647EE588F30 /* VocabularyNotebookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F8B8986F31C882B202A8313 /* VocabularyNotebookView.swift */; };
 		730055D034C88D34256FD294 /* SpeechPCMPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB4960213F08F61EDAA50387 /* SpeechPCMPlaybackState.swift */; };
@@ -2580,6 +2581,7 @@
 		4857EBCA73F23DEEFD762CF9 /* CurrentShortcutRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentShortcutRow.swift; sourceTree = "<group>"; };
 		48618E617E3CAA91F2F6A4D1 /* EmojiPickerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPickerModelsTests.swift; sourceTree = "<group>"; };
 		486F0A9D8C59E7E77DA41793 /* SystemDictionaryArticleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemDictionaryArticleService.swift; sourceTree = "<group>"; };
+		48E44AA4C4C0600EE5054B0C /* NotebookWorkspaceNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookWorkspaceNavigationTests.swift; sourceTree = "<group>"; };
 		493B48B73E2318EEDEE4878C /* BuiltInReviewText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInReviewText.swift; sourceTree = "<group>"; };
 		4959784EB20E2B5110D28DAA /* HostBaselineCalibratorTypefaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostBaselineCalibratorTypefaceTests.swift; sourceTree = "<group>"; };
 		49D06F8733BD87A9F8A79B65 /* BuiltInReviewFace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInReviewFace.swift; sourceTree = "<group>"; };
@@ -4503,6 +4505,14 @@
 			path = Vocabulary;
 			sourceTree = "<group>";
 		};
+		3E52F08A4A51F8D63E6D66F5 /* NotebookWorkspace */ = {
+			isa = PBXGroup;
+			children = (
+				48E44AA4C4C0600EE5054B0C /* NotebookWorkspaceNavigationTests.swift */,
+			);
+			path = NotebookWorkspace;
+			sourceTree = "<group>";
+		};
 		3FB963A11C8ADBA925BD32DA /* Runtime */ = {
 			isa = PBXGroup;
 			children = (
@@ -5889,6 +5899,7 @@
 				BBFB88F8DBB8832B5ED7B56D /* Focus */,
 				844C714DE60287A7F05AEDBC /* Input */,
 				3A4F9296457BB6320C4B7182 /* LanguageLearning */,
+				3E52F08A4A51F8D63E6D66F5 /* NotebookWorkspace */,
 				4A71E9045643C0761ADCBBE6 /* Runtime */,
 				C4D3ABE81D79235F821FA96F /* Settings */,
 				3FF117A7140FC4647F301198 /* Speech */,
@@ -7798,6 +7809,7 @@
 				AFD076149479638E46B08E58 /* NotebookProgressNativePresentationTests.swift in Sources */,
 				F13D7EB1E596F29D2B5FDD28 /* NotebookWorkspaceAppearanceIntegrationTests.swift in Sources */,
 				276AD971CE00327E8C517737 /* NotebookWorkspaceIntegrationTests.swift in Sources */,
+				7264EC3A64080FDBA0763135 /* NotebookWorkspaceNavigationTests.swift in Sources */,
 				EBC5DB27DE4719DACC28017C /* NotebookWorkspaceOnscreenAcceptanceTests.swift in Sources */,
 				48780A04E055C0468815AA1B /* NotebookWorkspaceTestSupport.swift in Sources */,
 				17F1C19F9F203D297D70C882 /* OCRPresentationIsolationTests.swift in Sources */,

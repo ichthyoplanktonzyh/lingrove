@@ -43,7 +43,7 @@ enum SettingsLearningTask: String, CaseIterable, Identifiable, Hashable {
 /// File overview:
 /// Navigation state for the Settings window: which pane is selected, which individual setting
 /// (if any) search wants revealed, and a pending request to focus the Home search field. Owned by
-/// `SettingsContainerView` and shared with the sidebar and Home so a search hit anywhere can land
+/// `SettingsCoordinator` and borrowed by the container, sidebar and Home so a search hit anywhere can land
 /// on the exact row: select the pane, scroll to the row, and pulse it briefly.
 ///
 /// The highlight is deliberately transient. It exists to answer "where did search drop me?",
@@ -131,6 +131,26 @@ final class SettingsNavigationModel: ObservableObject {
     @Published private(set) var pendingSearchFocus = false
 
     private var highlightClearTask: Task<Void, Never>?
+    private var selectionTask: Task<Void, Never>?
+
+    /// The native sidebar can write its binding inside a SwiftUI update. Queue its intent
+    /// without publishing anything there; the same window-owned model still performs routing
+    /// and highlight cleanup once the binding write has returned. Newer clicks replace old ones.
+    func request(_ category: SettingsCategory) {
+        cancelPendingRequest()
+        selectionTask = Task { @MainActor [weak self] in
+            guard !Task.isCancelled, let self else { return }
+            self.selectionTask = nil
+            self.open(category)
+        }
+    }
+
+    /// Closing the window or an explicit search/link revokes a queued sidebar click. Keeping
+    /// this task separate from the arrival pulse prevents either lifetime cancelling the other.
+    func cancelPendingRequest() {
+        selectionTask?.cancel()
+        selectionTask = nil
+    }
 
     /// How long the arrival pulse stays before fading. Long enough to catch the eye after the
     /// pane switch and scroll settle, short enough to never read as a stuck selection.
@@ -139,6 +159,7 @@ final class SettingsNavigationModel: ObservableObject {
     /// Plain pane navigation (sidebar click, Home quick link). Cancels any in-flight highlight so
     /// a stale pulse cannot replay when the user later returns to that pane.
     func open(_ category: SettingsCategory) {
+        cancelPendingRequest()
         inspectedCompletionEngine = nil
         modelManagerTask = nil
         cancelHighlight()
@@ -171,6 +192,7 @@ final class SettingsNavigationModel: ObservableObject {
     /// `highlightedItem` to perform the scroll.
     /// One exhaustive navigation map keeps every searchable destination in the same transaction.
     func reveal(_ item: SettingsItem) {
+        cancelPendingRequest()
         inspectedCompletionEngine = nil
         modelManagerTask = nil
         if item.category == .account {
@@ -233,6 +255,7 @@ final class SettingsNavigationModel: ObservableObject {
     /// Cmd-F: focus the active search field in place. On Home this focuses the hero search bar;
     /// on any detail pane the sidebar search field takes focus without losing the current pane.
     func requestSearchFocus() {
+        cancelPendingRequest()
         cancelHighlight()
         pendingSearchFocus = true
     }

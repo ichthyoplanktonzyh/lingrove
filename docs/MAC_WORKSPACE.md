@@ -50,6 +50,30 @@ practice state but revalidates scope when resumed. Number/Space/Enter/Undo handl
 the exact key window, visible review route, appropriate phase, no editable responder or sheet,
 and an idle writer. Tab retains its original purpose.
 
+The sidebar's native List may write its selection binding during a SwiftUI view update.
+NotebookWorkspaceNavigation queues the latest request in a later MainActor job before invoking
+VocabularyWindowController: pausing review and swapping hosted pages must not publish state or
+replace native views inside that binding write. A sheet, window Close or explicit source opening
+revokes the queued selection; the controller rechecks window/sheet eligibility when it executes.
+The 2026-11-03 regression checkpoint executed six navigation-model checks, six workspace
+integration checks and the validation-host policy check (13 passes), plus two real sidebar
+navigation cycles in the isolated on-screen host (one passing test). The latter retained one
+synthetic rating and restored the corpus toolbar. Its system log contained no SwiftUI
+publication-during-update warning; transient AppKit negative-geometry diagnostics remained,
+with no observed visual or responsiveness failure. Evidence is under
+`build/mac-workspace-validation/*navigation-hang*` and
+`build/hang-diagnosis-20261103/`; these checks do not use the installed user's corpus.
+The installed-app follow-up also identified the same synchronous binding publication in
+SettingsSidebarView. SettingsNavigationModel now defers sidebar requests while keeping explicit
+search/link routing synchronous, and SettingsCoordinator revokes pending input on window Close.
+The Settings follow-up executed 34 model tests and one native close/lifetime check, all passing.
+Its four-pane on-screen check also passed with no publication-during-update warning. Two earlier
+UI harness attempts counted initial/restored pane notifications as clicks; the bounded reruns
+fixed only observation deduplication and the private host's initial AppStorage value. Those failed
+attempts remain in the evidence, separately from the final pass; business/storage suites were not
+repeated for those harness-only changes. In total the two sidebar checkpoints executed 50 final
+passing checks, including their two focused on-screen tests.
+
 The corpus toolbar is detached outside the corpus destination and restored only with its
 own retained host. Its Edit/Delete actions must never remain over Review or Progress.
 All destinations inherit the owning native appearance; the corpus keeps its original page.
