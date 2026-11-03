@@ -3,7 +3,7 @@ import Foundation
 import LingroveNotebook
 import LingroveNotebookEngine
 
-/// One reusable native review window owns this MainActor presentation model. The repository
+/// The app's one review facade owns this MainActor presentation model. The repository
 /// owns persistence for the whole app; this model owns only navigation, an unsaved sheet, the
 /// pinned question and cancellable IO. Closing it never shuts down corpus, sync or autocomplete.
 @MainActor
@@ -31,10 +31,16 @@ final class BuiltInReviewSession: ObservableObject {
     private var lifetime = UUID()
     private var readIdentity = UUID()
     private var writeIdentity = UUID()
+    // Task retirement and UI publication have different lifetimes. Invalidating a stale Card
+    // revokes its presentation identity, while the admitted task remains retained for Quit's drain.
+    private var writePresentationIdentity = UUID()
     private var isVisible = false
+    private var isActive = false
     private var isShuttingDown = false
     private var isPublishing = false
     private var startsReviewAfterOpening = false
+    private var refreshAfterOwnChange = false
+    private var preferredCardAfterResume: String?
 
     var isBusy: Bool { isRefreshing || isMutating }
     var canSpeak: Bool { speech != nil }
@@ -53,6 +59,7 @@ final class BuiltInReviewSession: ObservableObject {
         guard !isShuttingDown else { return }
         close()
         isVisible = true
+        isActive = true
         // Nibomo opens directly on its due card. This only starts a presentation session;
         // it never creates participation, and source-targeted openings still show that sense.
         startsReviewAfterOpening = selection == nil
@@ -62,13 +69,13 @@ final class BuiltInReviewSession: ObservableObject {
 
     func close() {
         isVisible = false
+        isActive = false
         startsReviewAfterOpening = false
         lifetime = UUID()
-        writeIdentity = UUID()
         readTask?.cancel()
-        // A window can close while explicit Quit awaits the admitted writer. Hide its UI and
-        // revoke presentation identity, but keep that writer alive for the app's drain owner.
-        if !isShuttingDown { writeTask?.cancel(); writeTask = nil }
+        // Save/rating is already an explicit accepted intent. Keep its task even on ordinary
+        // Close, so a subsequent Quit can await it. Only its old UI lifetime is revoked; it
+        // cannot publish an old route or draft into a reopened window.
         imageTask?.cancel()
         readTask = nil
         imageTask = nil
@@ -78,12 +85,38 @@ final class BuiltInReviewSession: ObservableObject {
         images = []
         message = nil
         isRefreshing = false
-        isMutating = false
+        isMutating = writeTask != nil
+        refreshAfterOwnChange = false
+        preferredCardAfterResume = nil
         stopOwnSpeech()
     }
 
+    /// Switching workspace destinations pauses reads, image work and speech without discarding
+    /// the pinned card/navigation state. Sheets prevent navigation before this entry point, and
+    /// an admitted write may finish in the background; no second review writer is created.
+    func suspend() {
+        guard isVisible, isActive else { return }
+        isActive = false
+        readIdentity = UUID()
+        readTask?.cancel(); readTask = nil
+        imageTask?.cancel(); imageTask = nil
+        isRefreshing = false
+        images = []
+        stopOwnSpeech()
+    }
+
+    /// Re-entering always validates the current repository scope before displaying its card.
+    /// A hidden account switch therefore cannot reveal the previous account for one frame.
+    func resume() {
+        guard isVisible, !isActive, !isShuttingDown else { return }
+        isActive = true
+        reload(afterOwnChange: refreshAfterOwnChange, preferredCardID: preferredCardAfterResume)
+    }
+
     func reload(afterOwnChange: Bool = false, preferredCardID: String? = nil) {
-        guard isVisible else { return }
+        guard isVisible, isActive else { return }
+        let isOwnChange = afterOwnChange || refreshAfterOwnChange
+        let preferredCard = preferredCardID ?? preferredCardAfterResume
         readTask?.cancel()
         let operation = UUID()
         readIdentity = operation
@@ -107,7 +140,7 @@ final class BuiltInReviewSession: ObservableObject {
         readTask = Task { [weak self, io] in
             do {
                 let value = try await io.load(scope: scope, now: Date())
-                guard let self, self.isVisible, self.lifetime == savedLifetime, self.readIdentity == operation,
+                guard let self, self.isVisible, self.isActive, self.lifetime == savedLifetime, self.readIdentity == operation,
                       !Task.isCancelled else { return }
                 guard try self.repository.snapshot() == value.scope else {
                     self.isRefreshing = false
@@ -118,14 +151,16 @@ final class BuiltInReviewSession: ObservableObject {
                 }
                 // A successful retry replaces an unavailable read and its old error banner.
                 self.message = previous == nil ? nil : self.message
-                if let previous, !afterOwnChange, !self.samePresentedData(previous, value) {
+                if let previous, !isOwnChange, !self.samePresentedData(previous, value) {
                     self.clearUnsavedSession(cancelWrite: true)
                     self.message = BuiltInReviewCopy.text("message.changed")
                 }
                 self.content = value
                 self.isRefreshing = false
+                self.refreshAfterOwnChange = false
+                self.preferredCardAfterResume = nil
                 self.startReviewAfterOpeningIfNeeded()
-                if afterOwnChange, self.practice != nil { self.advancePractice(preferredCardID: preferredCardID) }
+                self.restorePracticeAfterReload(ownChange: isOwnChange, preferredCardID: preferredCard)
             } catch {
                 guard let self, self.lifetime == savedLifetime, self.readIdentity == operation, !Task.isCancelled else { return }
                 self.isRefreshing = false
@@ -182,12 +217,12 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     func reveal() {
-        guard !isBusy, case let .question(context) = practice?.phase else { return }
+        guard isActive, !isBusy, case let .question(context) = practice?.phase else { return }
         practice?.phase = .answer(context)
     }
 
     func rate(_ rating: ReviewRating) {
-        guard !isBusy, case let .answer(context) = practice?.phase else { return }
+        guard isActive, !isBusy, case let .answer(context) = practice?.phase else { return }
         mutate(.rate(context, rating, Date(), TimeZone.current.identifier), scope: context.snapshot, destination: .practice)
     }
 
@@ -268,28 +303,40 @@ final class BuiltInReviewSession: ObservableObject {
         let savedLifetime = lifetime
         let operation = UUID()
         writeIdentity = operation
+        writePresentationIdentity = operation
         message = nil
         isMutating = true
         writeTask = Task { [weak self, io, repository] in
             do {
                 try await io.perform(command)
                 guard let self else { repository.publishChange(); return }
+                guard self.writeIdentity == operation else { repository.publishChange(); return }
+                self.isMutating = false
+                self.writeTask = nil
                 // Commit visibility belongs to the repository even if the window closed while
                 // IO completed. A late result must not resurrect the closed UI session.
-                self.isPublishing = self.lifetime == savedLifetime && self.writeIdentity == operation
+                self.isPublishing = self.lifetime == savedLifetime && self.writePresentationIdentity == operation
                 repository.publishChange()
                 self.isPublishing = false
-                guard self.isVisible, self.lifetime == savedLifetime, self.writeIdentity == operation else { return }
-                self.isMutating = false
+                guard self.isVisible, self.lifetime == savedLifetime, self.writePresentationIdentity == operation else { return }
                 self.draft = nil
                 self.route = destination
                 if case .rate = command { self.practice?.answered += 1 }
                 if case .undo = command { self.practice?.answered = max(0, (self.practice?.answered ?? 0) - 1) }
                 self.stopOwnSpeech()
-                self.reload(afterOwnChange: true, preferredCardID: preferredCardID)
+                // Keep this proof until a read actually publishes, even when Review is active.
+                // Navigation or a sync ACK may cancel that read after the rating committed; the
+                // next Resume must still advance practice rather than classify it as an external edit.
+                self.refreshAfterOwnChange = true
+                self.preferredCardAfterResume = preferredCardID
+                if self.isActive {
+                    self.reload(afterOwnChange: true, preferredCardID: preferredCardID)
+                }
             } catch {
-                guard let self, self.isVisible, self.lifetime == savedLifetime, self.writeIdentity == operation else { return }
+                guard let self, self.writeIdentity == operation else { return }
                 self.isMutating = false
+                self.writeTask = nil
+                guard self.isVisible, self.lifetime == savedLifetime, self.writePresentationIdentity == operation else { return }
                 self.clearUnsavedSession()
                 self.message = BuiltInReviewCopy.text(error is CancellationError ? "message.changed" : "error.write")
                 self.reload()
@@ -298,7 +345,7 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func canAct(in scope: LingroveNotebookSnapshot) -> Bool {
-        guard isVisible, !isBusy, !isShuttingDown else { return false }
+        guard isVisible, isActive, !isBusy, !isShuttingDown else { return false }
         guard (try? repository.snapshot()) == scope else {
             clearUnsavedSession(cancelWrite: true)
             message = BuiltInReviewCopy.text("message.changed")
@@ -309,7 +356,7 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func repositoryDidChange() {
-        guard isVisible, !isPublishing else { return }
+        guard isVisible, isActive, !isPublishing else { return }
         // A notification can describe only an upload ACK. Disable actions while re-reading,
         // then discard a draft/question only if its actual scope or review rows changed.
         reload()
@@ -340,12 +387,20 @@ final class BuiltInReviewSession: ObservableObject {
         self.practice = practice
     }
 
+    private func restorePracticeAfterReload(ownChange: Bool, preferredCardID: String?) {
+        if ownChange, practice != nil {
+            advancePractice(preferredCardID: preferredCardID)
+        } else if let context = practice?.phase.context {
+            loadImages(context)
+        }
+    }
+
     private func loadImages(_ context: BuiltInReviewCardContext) {
         imageTask?.cancel()
         images = []
         imageTask = Task { [weak self, io] in
             let images = (try? await io.savedImages(context: context)) ?? []
-            guard let self, !Task.isCancelled,
+            guard let self, self.isVisible, self.isActive, !Task.isCancelled,
                   self.practice?.phase.context?.card == context.card,
                   self.practice?.phase.context?.snapshot == context.snapshot else { return }
             self.images = images
@@ -354,9 +409,11 @@ final class BuiltInReviewSession: ObservableObject {
 
     private func clearUnsavedSession(cancelWrite: Bool = false) {
         if cancelWrite {
-            writeIdentity = UUID()
+            writePresentationIdentity = UUID()
             writeTask?.cancel()
-            isMutating = false
+            // Retain the task until its completion path retires it, including a cancelled
+            // command already executing inside SQLite. Quit must still observe that drain.
+            isMutating = writeTask != nil
         }
         draft = nil
         practice = nil

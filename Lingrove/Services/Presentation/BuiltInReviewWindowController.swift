@@ -8,6 +8,8 @@ import SwiftUI
 final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate {
     let session: BuiltInReviewSession
     private var keyMonitor: Any?
+    private weak var presentationWindow: NSWindow?
+    private var isEmbeddedPresentationActive = false
 
     init(session: BuiltInReviewSession) {
         self.session = session
@@ -17,6 +19,7 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
     required init?(coder: NSCoder) { nil }
 
     func show(selection: VocabularySelection?) {
+        guard presentationWindow == nil else { return }
         prepareWindow()
         session.open(selection: selection)
         installKeyMonitor()
@@ -28,7 +31,7 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
     /// Preparing the host separately also lets native component tests render an isolated
     /// window without launching the user's running Lingrove or activating another app.
     func prepareWindow() {
-        guard window == nil else { return }
+        guard window == nil, presentationWindow == nil else { return }
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 1020, height: 740),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = BuiltInReviewCopy.text("title")
@@ -37,6 +40,7 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(rootView: BuiltInReviewWindowView(session: session))
+        window.contentView?.appearance = NSAppearance(named: .darkAqua)
         window.setFrameAutosaveName("LingroveBuiltInReview")
         window.center()
         self.window = window
@@ -53,10 +57,25 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
         close()
     }
 
+    /// Embedding borrows a window without taking its delegate or content view. The facade owns
+    /// exactly one monitor, whether its client uses the old standalone host or the workspace.
+    func attachPresentation(to window: NSWindow) {
+        removeKeyMonitor()
+        if self.window != nil { close() }
+        presentationWindow = window
+        isEmbeddedPresentationActive = false
+    }
+
+    func setPresentationActive(_ active: Bool) {
+        isEmbeddedPresentationActive = active
+        if active, presentationWindow != nil { installKeyMonitor() } else { removeKeyMonitor() }
+    }
+
     /// AppKit's field editor is an NSTextView, including when a SwiftUI TextField owns focus.
     /// Noneditable selectable Card text must not be mistaken for an editing session.
     func keyboardAction(for event: NSEvent, isKeyWindow: Bool) -> BuiltInReviewKeyboardPolicy.Action? {
-        guard let window, event.window === window else { return nil }
+        guard let window = presentationWindow ?? window, event.window === window,
+              presentationWindow == nil || isEmbeddedPresentationActive else { return nil }
         let editing: Bool
         if let text = window.firstResponder as? NSTextView {
             editing = text.isEditable
@@ -102,7 +121,7 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
             // Assert that contract instead of hopping actors and handling the key too late.
             let consumed = MainActor.assumeIsolated {
                 guard let self, let action = self.keyboardAction(for: event,
-                    isKeyWindow: NSApplication.shared.keyWindow === self.window) else { return false }
+                    isKeyWindow: NSApplication.shared.keyWindow === (self.presentationWindow ?? self.window)) else { return false }
                 self.handle(action)
                 return true
             }

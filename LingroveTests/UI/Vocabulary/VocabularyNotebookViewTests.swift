@@ -19,9 +19,9 @@ struct VocabularyNotebookViewTests {
             learningSettings: LanguageLearningSettings(defaults: defaults), preferences: defaults)
         controller.show()
         defer { controller.close() }
-        let host = try #require(controller.window?.contentView as? NSHostingView<VocabularyNotebookRoot>)
+        let host = try #require(controller.corpusHost)
         controller.show()
-        #expect(controller.window?.contentView === host)
+        #expect(controller.corpusHost === host)
     }
 
     @Test func savingAnExplanationKeepsTheBrowsedEntrySelected() async throws {

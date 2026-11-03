@@ -39,7 +39,9 @@ struct BuiltInReviewWindowView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .tint(.orange).preferredColorScheme(.dark)
+        // Color scheme is a subtree value: preferredColorScheme would change the hosting
+        // window, including the untouched corpus/sidebar when this view is embedded.
+        .tint(.orange).environment(\.colorScheme, .dark)
         .frame(minWidth: 760, minHeight: 560)
         .sheet(isPresented: $choosingSense) {
             if let content = session.content {
