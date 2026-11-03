@@ -1035,6 +1035,17 @@ content; it never trusts a request snapshot or rebuilds scheduling from events. 
 checks are in `FlashcardsTests/Notebook`, backend HTTP/PG checks in `notebook/review`, and the bounded
 acceptance supervisor is `scripts/validation/validate-notebook-review.py`.
 
+`LingroveNotebookFinalAcceptanceFixture` is DEBUG-only login/media preconditioning for the dedicated
+validation bundle; it supplies no saved corpus or review state. The existing Store owns initialization,
+and the normal editor owns the unsaved PNG draft until Save. Invalid explicit fixture configuration
+uses an empty test credential namespace and is rejected before database admission. The final UI class
+splits one real phone→tablet→phone result into three stages so the Python supervisor can alternate
+apps while retaining their actual containers. `testSupport/notebookFinalAcceptanceHTTP` adds the
+ordinary cloud routes to the existing private fixture with a default-off option. The supervisor owns
+shared Apple locking, source/config proof, stage evidence, per-device restoration and cleanup;
+its offline auditor compares captured target-workspace rows with explicit local event metadata rules.
+
+
 ### Portable notebook and native Mac foundation
 
 `Packages/LingroveNotebookEngine` now owns the shared corpus/Card/review SQLite implementation,
