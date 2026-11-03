@@ -225,8 +225,9 @@ existing local-signout semantics and makes no promise about other devices.
 `LingroveAppEnvironment` builds one service; `AppDelegate` starts restoration, resumes an expired
 session on activation and cancels tasks on shutdown. No connection/default account is supplied and
 no cloud guest is created. `SettingsCoordinator` and `SettingsContainerView` pass the same reference
-to `UI/Settings/Panes/AccountPaneView.swift`. That pane owns only form drafts and observes safe
-state; closing/reopening a window does not recreate authentication. Account/search navigation uses
+to `UI/Settings/Panes/AccountPaneView.swift`. `SettingsNavigationModel` retains its child
+`UI/Settings/Account/AccountSettingsNavigation`: window-lifetime URL drafts and explicit subpage
+paths survive pane unmount and Close. The pane observes that child and safe service state; closing/reopening a window does not recreate authentication. Account/search navigation uses
 the existing sidebar, native Form scaffold and row anchors. The signed-in label confirms identity
 only and cannot claim sync, local corpus adoption or review availability.
 
@@ -262,7 +263,11 @@ server/email/code/workspace pages to the app-owned account/sync services. `UI/Bu
 the original preparation, front/back editing and practice structure to `BuiltInReviewSession`.
 The session retains frozen scope/card/link identity and drains accepted writes; closing a view
 does not recreate the app service graph. See `docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md` for exact provenance and
-the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`.
+the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`. Current native appearance, shared
+button styles and account navigation follow `docs/MAC_UI_SYSTEM.md`; original extraction visual
+choices are provenance. `Support/BuiltInReview/BuiltInReviewDraftPresentationSnapshot` owns the
+pure editable baseline used by the material sheet's discard confirmation, while the existing
+session still owns its original CAS draft and writer.
 
 Tests mirror the storage and UI boundaries. `UI/Settings/MacWave3OnscreenAcceptanceTests.swift` is
 explicitly opt-in: it exposes disposable SQLite-backed production windows for a bounded computer-use
@@ -273,7 +278,8 @@ onscreen fixture; keyboard/data checks remain independently executable.
 
 `Models/NotebookWorkspace` stores the three outside destinations and temporary sheet admission.
 `UI/NotebookWorkspace` observes that navigation and the existing account/sync projection. Footer
-actions route to the original SettingsCoordinator; they do not create new settings or account UI.
+actions route to the existing SettingsCoordinator and its account overview; they create no
+second Settings window or service graph.
 `Services/Presentation/NotebookWorkspaceHostController` mounts one retained destination host and
 detaches corpus-only toolbars from Review/Progress. `VocabularyWindowController` owns source-link
 and sheet arbitration, visibility and the existing corpus hosting controller. The original

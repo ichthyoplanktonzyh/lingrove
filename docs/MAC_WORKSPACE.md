@@ -52,7 +52,8 @@ and an idle writer. Tab retains its original purpose.
 
 The corpus toolbar is detached outside the corpus destination and restored only with its
 own retained host. Its Edit/Delete actions must never remain over Review or Progress.
-Review styling is confined to its own host; the corpus keeps its original appearance.
+All destinations inherit the owning native appearance; the corpus keeps its original page.
+Account navigation cannot publish a forced color-scheme preference to the Settings window.
 
 An accepted writer remains owned through ordinary window Close. Explicit Quit drains CLI,
 corpus and review writes before retiring sync/repository. System termination retains its
@@ -131,7 +132,7 @@ workspace checks plus the validation-host policy check passed. The unchanged sta
 has 45 delivered regression passes, and its native model/storage/render checks have five passes.
 These are separate executions, not an assertion that every historical attempt passed.
 
-Mouse enrollment, reveal and Good rating were observed in the real workspace. A full visible
+Mouse enrollment, reveal and Good rating were observed in the real workspace. The earlier wave's full visible
 Progress/settings journey did not finish within the fixture deadline; two failed handoffs were
 retained as failures and further automation stopped at the timebox. Progress storage/model and
 native chart rendering have executed evidence, but this does not replace the missing complete
@@ -149,3 +150,12 @@ the preserved preview is build/mac-main-preview/Lingrove Dev.app. This adds no n
 claim. Split/build evidence lives in build/repository-split/ and build/mac-workspace-validation/;
 completed wave evidence remains separate. The snapshot shared-code owner and private mobile
 repository are described in [REPOSITORY_BOUNDARIES.md](REPOSITORY_BOUNDARIES.md).
+
+The native UI unification checkpoint now adapts all added account/sync/review/Progress surfaces
+to Lingrove's system appearance, native controls and Settings hierarchy. Account URL drafts are
+window-owned; external account navigation returns to overview and search reaches the actual
+subpage. Review Back and End review are explicit, and edited material Cancel asks before discard.
+The combined two-appearance native checks and the actual enrollment/rating/Progress/corpus/account
+journey passed. This closes the earlier main-window compositor journey gap; the separate account
+OTP handoff remains incomplete after its deadline. See MAC_UI_SYSTEM.md for exact evidence and
+remaining pointer/locale/accessibility limits.

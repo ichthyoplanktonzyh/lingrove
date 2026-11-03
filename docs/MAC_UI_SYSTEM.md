@@ -48,41 +48,28 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
 - Keep useful existing accessibility identifiers and keyboard semantics. New copy uses the
   destination's existing localization table and all 15 Mac locales; inherited credit remains.
 
-## Implementation seams and parallel ownership
+## Presentation ownership
 
 The app environment retains one dependency graph. Presentation borrows account, sync, corpus,
-review and Progress owners; appearance work must not construct a second service graph. There
-is no database/schema, transport, scheduling or shared-package implementation work in this wave.
+review and Progress owners; appearance work does not construct a second service graph. This
+adaptation changes no database/schema, transport, scheduling or shared-package implementation.
 
-The two module leads implement complete assigned modules, then validate/fix as a batch:
-
-| Owner | Source and responsibility |
+| Owner | Responsibility and data flow |
 | --- | --- |
-| A: navigation/account | UI/NotebookWorkspace, Models/NotebookWorkspace, Services/Presentation/{VocabularyWindowController,NotebookWorkspaceHostController,BuiltInReviewWindowController}, App/Coordinators/SettingsCoordinator, SettingsContainer/Sidebar/Category/Navigation/Index as needed, account Settings panes/sheets/components; window appearance and account navigation ownership. |
-| B: review/Progress | UI/BuiltInReview, UI/NotebookProgress, review-specific UI/NibomoPresentation, presentation-only Support/BuiltInReview and Support/NotebookProgress; complete destination and sheet adaptation with existing session/model interfaces. |
+| VocabularyWindowController / NotebookWorkspaceHostController | Retain the original corpus, mount one destination, align native title and selection, scope toolbars and inherit the window appearance. Existing review commands route here. |
+| SettingsCoordinator / SettingsNavigationModel | Own one Settings window and its route lifetime. External account actions and search select the intended overview/service/sync page. |
+| AccountSettingsNavigation | A window-owned child observed by the account pane. It retains URL drafts across pane unmount/Close, reconciles only pristine or explicitly saved pairs, and never grants network authority. |
+| AccountPaneView / account sheets / AccountNotebookSyncSection | Borrow the existing services. Native scaffold, row labels, callouts and confirmation present identity, service, workspace, ownership, sync opt-in and recovery as distinct actions. |
+| BuiltInReviewWindowView and related views | Borrow the existing frozen session. Overview/Back and End review have explicit meanings; material/source/queue/history sheets inherit native appearance. |
+| BuiltInReviewDraftPresentationSnapshot | A sheet-lifetime value of editable material fields. Navigation/preview alone is not dirty; edited Cancel asks Keep editing/Discard. The original scoped draft remains the writer input. |
+| NotebookProgressDestination and sections | Present the existing visibility-scoped model and immutable statistics. Native cards, adaptable forecast layout, labeled semantic rating/bucket colors and chart interactions retain data meaning. |
+| LingroveReadableContentLayout / LingroveNativeActionButtonStyles | Keep their extracted interface names while supplying Lingrove-native widths and bordered/prominent controls. They own no theme manager or service. |
 
-A alone owns the existing shared LingroveReadableContentLayout.swift and
-LingroveNativeActionButtonStyles.swift in UI/NibomoPresentation. Preserve their existing
-symbols, initializer signatures and style entry points so B can build against the frozen base.
-No new cross-lead Swift dependency is required: native semantic colors and existing interfaces
-are sufficient. Other shared settings infrastructure changes remain A-owned and scoped to this
-goal. B owns the remaining review-specific extracted presentation. Neither lead edits the other's
-source, App/Core, Services/{Account,Notebook,NotebookSync,BuiltInReview,NotebookProgress}, shared
-Packages, original UI/Vocabulary or the menu bar. Escalate a concrete necessary exception.
-
-Keep these existing composition interfaces compatible:
-VocabularyWindowController.showReview(selection:), its settings/account callbacks,
-BuiltInReviewWindowView(session:), NotebookProgressView(repository:isActive:),
-SettingsCoordinator.showAccount() and the existing app-owned service/session/model contracts.
-The root agent owns the final App/Core composition and combined validation changes if needed.
-
-A owns account/workspace/settings tests and their fixtures, including the mixed
-UI/Settings/LingroveReusedPresentationTests.swift. B owns review/Progress UI tests in distinct
-files and may use existing fixtures without changing A's fixture interface. For localization A
-owns NotebookWorkspace/Account/NotebookSync/NibomoAccount tables and necessary Settings copy;
-B owns BuiltInReview/ReviewCards/NotebookProgress tables. New shared default-table copy needs
-coordination rather than concurrent edits. Neither lead edits this contract or MAC_WORKSPACE.md;
-final integration updates maintained documentation and removes temporary delivery reports.
+Composition retains VocabularyWindowController.showReview(selection:), its settings/account
+callbacks, BuiltInReviewWindowView(session:), NotebookProgressView(repository:isActive:) and
+SettingsCoordinator.showAccount(). Original UI/Vocabulary and menu-bar sources were unchanged.
+Source provenance remains in MAC_REVIEW_ACCOUNT_UI_REUSE.md and MAC_PROGRESS_UI_REUSE.md; their
+extraction tables describe origin, while this document defines current presentation.
 
 ## Validation and user-data protection
 
@@ -114,8 +101,39 @@ set of real UI journeys across the combined destinations; avoid a broad E2E matr
 unmodified storage/FSRS suites for cosmetic changes. Automation infrastructure remains limited
 to two corrective reruns or 20 minutes per issue, then retain evidence and state the gap.
 
-Each lead uses gpt-6.1-sol/max in its managed worktree. Optional fresh gpt-6-luna/max reviewers
-may only review or execute tests, never write implementation/tests. The root agent does not
-poll, inspect work-in-progress, redirect or take over implementation; leads proactively report
-completion or ask concrete questions. No push, deployment, external accounts or Mac installation
-replacement belongs to a module delivery. Final integration produces a reviewable Dev build.
+## Current checkpoint evidence
+
+The completed two-module wave was integrated from baseline 6873de80. Temporary dispatch/delivery
+records were consolidated here and removed. Module A executed 61 test definitions / 64 concrete
+cases, no failures/skips; module B executed six definitions / 15 cases, then two affected rating
+cases. Those are separate module runs, not aggregate claims about every historical attempt.
+
+Integration completed a signed arm64 Debug build-for-testing, strict production SwiftLint and
+all seven affected catalogs' complete 15-locale/English-placeholder checks. Twelve native test
+definitions / 16 cases passed after combination, including real workspace/Settings ownership in
+Aqua and darkAqua, material/destination rendering, Progress and existing navigation/write guards.
+
+The actual isolated main-window journey passed: source sense -> explicit enrollment -> Start ->
+reveal -> Good -> visible Progress -> retained source corpus -> account footer -> existing
+Appearance settings. CUA screenshots showed the real compositor in inherited light appearance.
+The native postconditions independently confirmed one enrollment/exercise/rating, reps=1,
+Progress reviews=1/active senses=1, original selection retained and Settings visible.
+
+A separate visible account handoff completed service draft/Back/disabled-login/Revert, email,
+OTP and synthetic sign-in; it expired before its final done marker, so it remains a failed,
+incomplete checkpoint. The first workspace handoff was aborted when CUA reported locked Mac;
+its unmet assertions remain failures. A redundant selector probe selected zero tests and is not
+counted as a pass; its target had already passed in the combined run. No broad business suites
+were repeated to repair a selector. User-confirmed unlock allowed the final workspace pass.
+
+Keep editing/Discard pointer confirmation, every chart legend/paging pointer action, VoiceOver,
+actual speech and every locale's visual layout were not newly accepted. Model/native rendering
+and scoped keyboard/draft checks are evidence, not substitutes for unperformed pointer actions.
+Real providers/mailboxes/cloud/physical devices remain separate acceptance scope.
+
+Evidence is build/mac-ui-integration-validation/ (combined result, final workspace result and
+postconditions, catalog proof, logs and preserved earlier failures). Curated module evidence and
+passing result bundles were copied with SHA256 checks before module worktree archival. The final
+Dev artifact and cleanup have separate proof files there. No module or test touched the installed
+user app, corpus, real credentials, login items, TCC or macOS appearance. Root installation, when
+performed, is recorded separately and retains user data.

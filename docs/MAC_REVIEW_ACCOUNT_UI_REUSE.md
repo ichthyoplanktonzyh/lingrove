@@ -31,7 +31,8 @@ Lingrove’s current OTP capability does not expose; displaying those controls w
 paths. Those components are audited reference, not claimed as adopted. Nibomo’s math renderer
 uses MarkdownUI/RaTeX/UIKit; this port keeps the existing safe native Markdown text/local PNG
 boundary, so math/table rendering parity remains a documented gap rather than importing the
-whole mobile rendering/dependency graph. The original dark/orange appearance is applied only
-inside these owned surfaces. No remote image/CDN load, guest request or telemetry was added.
+whole mobile rendering/dependency graph. The extraction originally retained dark/orange appearance. The native unification stage now
+uses inherited system appearance, semantic backgrounds/accent and Lingrove-native controls,
+with explicit account paths and window-owned URL drafts; see MAC_UI_SYSTEM.md. No remote image/CDN load, guest request or telemetry was added.
 
 Current ownership, validation and remaining limits are maintained in [MAC_WORKSPACE.md](MAC_WORKSPACE.md).

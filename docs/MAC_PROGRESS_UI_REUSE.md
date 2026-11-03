@@ -69,3 +69,8 @@ do not inherit the mobile cloud fallback's “approximate” label.
   `NotebookProgressView(repository:isActive:)` into its optional content factory.
 
 Current ownership, validation and limitations are maintained in [MAC_WORKSPACE.md](MAC_WORKSPACE.md).
+
+The native UI unification stage retains these source interactions and statistics while adapting
+page headings/cards, native backgrounds/accent, chart legends and narrow forecast layout to
+Lingrove. Semantic rating and eight-bucket colors remain labeled. MAC_UI_SYSTEM.md defines the
+current presentation and distinguishes cached native renders from actual compositor evidence.

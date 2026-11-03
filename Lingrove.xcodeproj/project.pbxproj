@@ -2065,6 +2065,7 @@
 		F04E2AC9B8043846987E6923 /* DebugForcedSuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890DFCAA81B678F02AD9E3CF /* DebugForcedSuggestionEngine.swift */; };
 		F0A53DA870DA3107A5E5A815 /* MenuBarSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B9522EEE99DFA780565325 /* MenuBarSections.swift */; };
 		F0BF003D5212D61614504DA5 /* SuggestionSessionReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFF2686D2FD6C41E848AF7D /* SuggestionSessionReconciler.swift */; };
+		F13D7EB1E596F29D2B5FDD28 /* NotebookWorkspaceAppearanceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABCC44734E2B9D65B625453 /* NotebookWorkspaceAppearanceIntegrationTests.swift */; };
 		F177AF7015950C232B9E2DF8 /* VocabularyExportZIP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82106793005AFA9CCEECA5A1 /* VocabularyExportZIP.swift */; };
 		F17BF240267E89111504BE4E /* VocabularyGraphModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2323F033CC25AD1869074DA5 /* VocabularyGraphModels.swift */; };
 		F194342A05B6F9DC0B1B29F4 /* VocabularyReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B3B2D0906D6143C55F02B0 /* VocabularyReviewSheet.swift */; };
@@ -3270,6 +3271,7 @@
 		C9FDE4C0C3BC9D8CEC66D4E0 /* ScreenCaptureReplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureReplyTests.swift; sourceTree = "<group>"; };
 		CA16482307BDC0E438E2069D /* ContextLivePreviewField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextLivePreviewField.swift; sourceTree = "<group>"; };
 		CA7C58DF83F0638D34BC6732 /* CalendarAccessibilityCaptureGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarAccessibilityCaptureGuard.swift; sourceTree = "<group>"; };
+		CABCC44734E2B9D65B625453 /* NotebookWorkspaceAppearanceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookWorkspaceAppearanceIntegrationTests.swift; sourceTree = "<group>"; };
 		CABF1030AA707B39D927ACF6 /* OCRTextHygieneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRTextHygieneTests.swift; sourceTree = "<group>"; };
 		CAD1E2E214936BB60F81AD90 /* AccountOTPExpiryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountOTPExpiryPolicy.swift; sourceTree = "<group>"; };
 		CB63D69A648FDA30C7A0E29C /* KeycapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeycapView.swift; sourceTree = "<group>"; };
@@ -5759,6 +5761,7 @@
 		A348B280C4BA1D8CFA384A28 /* NotebookWorkspace */ = {
 			isa = PBXGroup;
 			children = (
+				CABCC44734E2B9D65B625453 /* NotebookWorkspaceAppearanceIntegrationTests.swift */,
 				1DA8C1AA59BD20F46FC4C50D /* NotebookWorkspaceIntegrationTests.swift */,
 				C3488C23AA2601C471BB7255 /* NotebookWorkspaceOnscreenAcceptanceTests.swift */,
 				C4365D0CAA4405D9B7B1AE21 /* NotebookWorkspaceTestSupport.swift */,
@@ -7793,6 +7796,7 @@
 				B0E1B0BF6C7D27989A9412E6 /* NativeTextWindowTests.swift in Sources */,
 				7A3CCC198186A7C6E84AEE9B /* NotebookProgressIntegrationTests.swift in Sources */,
 				AFD076149479638E46B08E58 /* NotebookProgressNativePresentationTests.swift in Sources */,
+				F13D7EB1E596F29D2B5FDD28 /* NotebookWorkspaceAppearanceIntegrationTests.swift in Sources */,
 				276AD971CE00327E8C517737 /* NotebookWorkspaceIntegrationTests.swift in Sources */,
 				EBC5DB27DE4719DACC28017C /* NotebookWorkspaceOnscreenAcceptanceTests.swift in Sources */,
 				48780A04E055C0468815AA1B /* NotebookWorkspaceTestSupport.swift in Sources */,
