@@ -37,19 +37,35 @@ public final class DatabaseCore {
 
     /// Hosts provide their own schema/bootstrap callback while sharing the same guarded handle.
     /// The callback runs synchronously before this connection can escape to another owner.
-    public init(databaseURL: URL, mediaDirectoryURL: URL,
-                initialize: (DatabaseCore) throws -> String?) throws {
+    public convenience init(databaseURL: URL, mediaDirectoryURL: URL,
+                            initialize: (DatabaseCore) throws -> String?) throws {
+        try self.init(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL,
+            readOnly: false, initialize: initialize)
+    }
+
+    /// Statistical readers borrow an existing database without creating directories, changing
+    /// journal mode or running bootstrap callbacks. SQLite itself rejects all attempted writes;
+    /// this is a native access boundary, not a convention that callers must remember to follow.
+    public convenience init(readOnlyDatabaseURL: URL, mediaDirectoryURL: URL) throws {
+        try self.init(databaseURL: readOnlyDatabaseURL, mediaDirectoryURL: mediaDirectoryURL,
+            readOnly: true, initialize: { _ in nil })
+    }
+
+    private init(databaseURL: URL, mediaDirectoryURL: URL, readOnly: Bool,
+                 initialize: (DatabaseCore) throws -> String?) throws {
         self.databaseURL = databaseURL
         self.mediaDirectoryURL = mediaDirectoryURL
         self.encoder = JSONEncoder()
         self.decoder = JSONDecoder()
         self.createdDefaultWorkspaceId = nil
         self.isClosed = false
-        try Self.prepareMediaDirectory(mediaDirectoryURL)
-        self.connection = try Self.openConnection(databaseURL: databaseURL)
+        if !readOnly { try Self.prepareMediaDirectory(mediaDirectoryURL) }
+        self.connection = try Self.openConnection(databaseURL: databaseURL, readOnly: readOnly)
         sqlite3_busy_timeout(self.connection, 5_000)
-        try self.enableForeignKeys()
-        try self.enableWriteAheadLogging()
+        if !readOnly {
+            try self.enableForeignKeys()
+            try self.enableWriteAheadLogging()
+        }
         self.createdDefaultWorkspaceId = try initialize(self)
     }
 
@@ -330,16 +346,15 @@ public final class DatabaseCore {
         }
     }
 
-    private static func openConnection(databaseURL: URL) throws -> OpaquePointer {
-        let parentDirectory = databaseURL.deletingLastPathComponent()
-        try FileManager.default.createDirectory(
-            at: parentDirectory,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+    private static func openConnection(databaseURL: URL, readOnly: Bool) throws -> OpaquePointer {
+        if !readOnly {
+            try FileManager.default.createDirectory(at: databaseURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true, attributes: nil)
+        }
 
         var connection: OpaquePointer?
-        let flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
+        let access = readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE
+        let flags = access | SQLITE_OPEN_FULLMUTEX
         let resultCode = sqlite3_open_v2(databaseURL.path, &connection, flags, nil)
 
         guard resultCode == SQLITE_OK, let connection else {
