@@ -67,7 +67,8 @@ extension LingroveNotebookEngine {
         return card
     }
 
-    public func linkLingroveNotebookCard(_ draft: LingroveNotebookCardDraft, cardId: String) throws -> LingroveNotebookCardLink {
+    public func linkLingroveNotebookCard(_ draft: LingroveNotebookCardDraft, cardId: String,
+                                         media: [ReviewMaterialPreparedMedia] = []) throws -> LingroveNotebookCardLink {
         try Task.checkCancellation()
         let fingerprint = try self.notebookCardCreationFingerprint(draft: draft, input: nil, cardId: cardId, mediaAssetIds: [])
         return try self.core.inTransaction {
@@ -89,6 +90,9 @@ extension LingroveNotebookEngine {
                     return existing
                 }
             }
+            try LingroveNotebookReviewMediaStore(core: core).register(plan: draft.materialPlan, source: draft.source,
+                snapshot: snapshot, supplied: media)
+            try Task.checkCancellation()
             return try self.lingroveNotebookCardLinkStore.insert(draft: draft, cardId: cardId, generatedContent: nil,
                 fingerprint: fingerprint, cardOperationId: nil, now: nowIsoTimestamp())
         }

@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 private let workspaceForkReviewEventSelectBatchSize: Int = 500
 
@@ -35,11 +36,24 @@ public struct WorkspaceForker {
         let all = try loadWorkspaceForkIdMappings(sourceWorkspaceId: sourceWorkspaceID, destinationWorkspaceId: targetWorkspaceID)
         let held = try LingroveNotebookCardLinkStore(core: core).heldCardIds(workspaceId: sourceWorkspaceID)
         let cards = all.cardIdsBySourceId.filter { !managedOnly || held.contains($0.key) }
-        let referencedAssets = try CardStore(core: core).loadCardsIncludingDeleted(workspaceId: sourceWorkspaceID)
+        var referencedAssets = try CardStore(core: core).loadCardsIncludingDeleted(workspaceId: sourceWorkspaceID)
             .filter { cards[$0.cardId] != nil }.reduce(into: Set<String>()) {
                 $0.formUnion(managedMediaAssetIdsReferencedInMarkdown(text: $1.frontText))
                 $0.formUnion(managedMediaAssetIdsReferencedInMarkdown(text: $1.backText))
             }
+        // A manual face can hide generated media without relinquishing the recipe's ownership.
+        // Carry the baseline and owned custom/audio resources too, so the next source refresh or
+        // editor reopen in the new account still has its original material.
+        for link in try LingroveNotebookCardLinkStore(core: core).load(workspaceId: sourceWorkspaceID, includingDeleted: true) where cards[link.cardId] != nil {
+            if let generated = link.generatedContent {
+                referencedAssets.formUnion(managedMediaAssetIdsReferencedInMarkdown(text: generated.frontText + "\n" + generated.backText))
+            }
+            if let plan = link.materialPlan {
+                var references = Set(plan.audio.values.map(\.reference))
+                references.formUnion(VocabularyContentPolicy.images(plan.layout.customContent).map(ReviewMaterialMediaReference.init(image:)))
+                referencedAssets.formUnion(references.map { LingroveNotebookCardMaterial.mediaAssetID(reference: $0, workspaceID: sourceWorkspaceID) })
+            }
+        }
         guard referencedAssets.isSubset(of: Set(all.mediaAssetIdsBySourceId.keys)) else { throw LingroveNotebookAccountError.unavailableSource }
         let events = try CardStore(core: core).loadReviewEvents(workspaceId: sourceWorkspaceID)
         let eventIDs = Set(events.filter { cards[$0.cardId] != nil }.map(\.reviewEventId))

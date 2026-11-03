@@ -58,7 +58,7 @@ public struct LingroveNotebookReviewMediaStore {
         }
         guard references.reduce(0, { $0 + $1.byteCount }) <= 16 * 1024 * 1024,
               Set(supplied.map { $0.reference.digest }).count == supplied.count,
-              supplied.count <= 128, supplied.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else { throw VocabularyError.invalidContent }
+              supplied.count <= 128, supplied.allSatisfy({ $0.reference.isValid }), supplied.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else { throw VocabularyError.invalidContent }
         for prepared in supplied { try Self.validate(prepared) }
         let byDigest = Dictionary(uniqueKeysWithValues: supplied.map { ($0.reference.digest, $0) })
         for reference in references.sorted(by: { $0.digest < $1.digest }) {

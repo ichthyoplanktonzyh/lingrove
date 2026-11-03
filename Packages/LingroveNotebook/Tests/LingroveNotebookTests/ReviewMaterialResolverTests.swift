@@ -30,6 +30,22 @@ struct ReviewMaterialResolverTests {
         #expect(try ReviewMaterialResolver.resolve(entry: entry, sense: removed, plan: independent).front == [.text("take")])
     }
 
+    @Test func typedAudioMapHasCanonicalObjectEncodingForDurableIntentHashes() throws {
+        let reference = ReviewMaterialMediaReference(digest: String(repeating: "a", count: 64), mimeType: "audio/wav", byteCount: 44)
+        let audio = ReviewMaterialAudio(reference: reference, textHash: String(repeating: "b", count: 64), fingerprint: String(repeating: "c", count: 64))
+        let layout = ReviewLayout(front: [.init(source: .expressionAudio)], back: [.init(source: .sentenceAudio)])
+        var first = ReviewMaterialPlan(layout: layout)
+        first.audio[.expression] = audio; first.audio[.sentence] = audio
+        var second = ReviewMaterialPlan(layout: layout)
+        second.audio[.sentence] = audio; second.audio[.expression] = audio
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let encoded = try encoder.encode(first)
+        #expect(try encoded == encoder.encode(second))
+        let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        #expect((object["audio"] as? [String: Any])?.keys.sorted() == ["expression", "sentence"])
+        #expect(try JSONDecoder().decode(ReviewMaterialPlan.self, from: encoded) == first)
+    }
+
     @Test func gapsRejectInvalidUTF16AndWholeSentences() {
         #expect(ReviewMaterialResolver.gap(in: "🐈 take", ranges: [.init(NSRange(location: 1, length: 1))], kind: .word) == nil)
         #expect(ReviewMaterialResolver.gap(in: "take", ranges: [.init(NSRange(location: 0, length: 4))], kind: .word) == nil)

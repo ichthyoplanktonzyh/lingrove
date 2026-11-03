@@ -129,7 +129,7 @@ public struct LingroveNotebookReviewSyncStore {
             guard response.protocolVersion == 2 || (sentMedia.isEmpty && receivedMedia.isEmpty && acknowledgedMedia.isEmpty),
                   Set(acknowledgedMedia) == Set(sentMedia.map { $0.reference.digest }),
                   Set(acknowledgedMedia).count == acknowledgedMedia.count,
-                  receivedMedia.count <= 128, receivedMedia.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else {
+                  receivedMedia.count <= 128, receivedMedia.allSatisfy({ $0.reference.isValid }), receivedMedia.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else {
                 throw LingroveNotebookNetworkError.invalidReply
             }
             let resources = LingroveNotebookReviewMediaStore(core: core)

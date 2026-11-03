@@ -14,6 +14,28 @@ public nonisolated struct ReviewMaterialPlan: Codable, Hashable, Sendable {
                 audio: [ReviewAudioKind: ReviewMaterialAudio] = [:]) {
         self.name = name; self.layout = layout; self.exampleID = exampleID; self.audio = audio
     }
+
+    private enum CodingKeys: String, CodingKey { case name, layout, exampleID, audio }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        name = try values.decodeIfPresent(String.self, forKey: .name)
+        layout = try values.decode(ReviewLayout.self, forKey: .layout)
+        exampleID = try values.decodeIfPresent(UUID.self, forKey: .exampleID)
+        let stored = try values.decode([String: ReviewMaterialAudio].self, forKey: .audio)
+        audio = [:]
+        for (key, value) in stored {
+            guard let kind = ReviewAudioKind(rawValue: key) else { throw VocabularyError.invalidContent }
+            audio[kind] = value
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(name, forKey: .name); try values.encode(layout, forKey: .layout)
+        try values.encodeIfPresent(exampleID, forKey: .exampleID)
+        // Codable encodes enum-keyed dictionaries as unordered alternating arrays. String keys
+        // let sorted JSON canonicalize creation fingerprints across retry/process boundaries.
+        try values.encode(Dictionary(uniqueKeysWithValues: audio.map { ($0.key.rawValue, $0.value) }), forKey: .audio)
+    }
 }
 
 /// Content addressing names portable bytes, never a local path or an Anki filename. Optional
@@ -75,6 +97,8 @@ public nonisolated struct ReviewMaterialAudio: Codable, Hashable, Sendable {
 public nonisolated enum ReviewResolvedPart: Equatable, Sendable {
     case text(String), blocks([VocabularyContentBlock]), audio(ReviewAudioKind)
 }
+/// One short-lived resolution keeps both sides ordered for the target adapter. It carries no
+/// mutable editor, scheduling state or remote serialization decisions.
 public nonisolated struct ReviewMaterialContent: Equatable, Sendable {
     public let front: [ReviewResolvedPart]
     public let back: [ReviewResolvedPart]

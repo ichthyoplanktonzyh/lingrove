@@ -23,7 +23,7 @@ extension LingroveNotebookEngine {
                                            actions: [NotebookBuiltInReviewAction]) throws -> [LingroveNotebookReviewEnrollment] {
         guard let first = actions.first, actions.count == drafts.count,
               Set(actions.map { $0.selection.senseID }).count == actions.count,
-              drafts.allSatisfy({ draft in actions.contains { $0.selection.senseID == draft.source.senseId && $0.cards.isEmpty } }),
+              drafts.allSatisfy({ draft in actions.contains { $0.selection.senseID == draft.source.senseId } }),
               actions.allSatisfy({ $0.scope == first.scope }) else { throw VocabularyError.editConflict }
         return try enrollLingroveNotebookSenses(drafts, scope: first.scope, preparedInputs: inputs,
             media: media, actions: actions)
