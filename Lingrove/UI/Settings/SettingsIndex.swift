@@ -13,7 +13,7 @@ import Foundation
 /// can scroll to and highlight it on arrival.
 enum SettingsItem: String, CaseIterable, Identifiable {
     // Account
-    case accountSession, accountConnection
+    case accountSession, accountConnection, accountSync
     // General
     case enableGlobally
     case useScreenContext
@@ -174,6 +174,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         switch self {
         case .accountSession: return String(localized: "Email sign-in", table: "Account")
         case .accountConnection: return String(localized: "Account service", table: "Account")
+        case .accountSync: return String(localized: "Notebook sync", table: "NotebookSync")
         case .vocabularySearch: return String(localized: "Expression search", table: "Vocabulary")
         case .replacementTranslationShortcut: return String(localized: "Replace preview translation", table: "Learning")
         case .translationDetailsShortcut: return String(localized: "Expand / collapse translation details", table: "Learning")
@@ -312,6 +313,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         switch self {
         case .accountSession: return "person.crop.circle"
         case .accountConnection: return "network"
+        case .accountSync: return "arrow.triangle.2.circlepath"
         case .vocabularySearch: return "text.magnifyingglass"
         case .expressionAssist: return "text.magnifyingglass"
         case .expressionAssistShortcut: return "keyboard"
@@ -432,7 +434,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
 
     var category: SettingsCategory {
         switch self {
-        case .accountSession, .accountConnection: return .account
+        case .accountSession, .accountConnection, .accountSync: return .account
         case .vocabularySearch: return .engineAndModel
         case .expressionAssist: return .languageLearning
         case .expressionAssistShortcut: return .shortcuts
@@ -494,6 +496,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var summary: String {
         switch self {
         case .accountSession, .accountConnection: return String(localized: "Sign-in and account connection", table: "Account")
+        case .accountSync: return String(localized: "Workspace", table: "NotebookSync")
         case .vocabularySearch: return String(localized: "Find expressions in your own words", table: "Vocabulary")
         case .expressionAssist: return String(localized: "Find an expression or term while writing", table: "Learning")
         case .expressionAssistShortcut: return String(localized: "Configure an expression shortcut", table: "Learning")
@@ -645,6 +648,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     var keywords: [String] {
         switch self {
         case .accountSession, .accountConnection: return ["account", "login", "sign in", "email", "otp", "session", "账户", "登录", "验证码"]
+        case .accountSync: return ["sync", "workspace", "cloud", "local library", "同步", "工作区", "本地资料库"]
         case .vocabularySearch: return ["vocabulary", "semantic", "embedding", "search", "表达检索", "语义检索", "词库"]
         case .expressionAssist: return ["expression", "term", "concept", "trigger", "??", "表达", "术语", "概念", "触发符号"]
         case .expressionAssistShortcut: return ["expression shortcut", "表达快捷键"]

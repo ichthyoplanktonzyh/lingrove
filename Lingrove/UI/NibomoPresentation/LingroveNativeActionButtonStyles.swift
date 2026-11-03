@@ -1,25 +1,16 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import SwiftUI
 
-/// Mechanical macOS availability port of Nibomo’s standard action styles. Parents supply tint;
-/// the OS supplies glass on 26 and the existing bordered fallback on earlier systems.
+/// The extracted screens keep their existing style entry points while using the same native
+/// controls as Lingrove Settings. The system resolves accent, contrast and appearance; the view
+/// owning a rating or warning may still supply its semantic tint without changing other actions.
 extension View {
-    @ViewBuilder
     func lingroveNativeActionButtonStyle() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glass)
-        } else {
-            self.buttonStyle(.bordered)
-        }
+        self.buttonStyle(.bordered)
     }
 
-    @ViewBuilder
     func lingroveNativeProminentActionButtonStyle() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glassProminent)
-        } else {
-            self.buttonStyle(.borderedProminent)
-        }
+        self.buttonStyle(.borderedProminent)
     }
 }

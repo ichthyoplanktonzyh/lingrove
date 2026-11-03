@@ -34,6 +34,7 @@ struct MacNotebookSyncPaneRenderingTests {
     }
 
     private func paint(_ content: AccountPaneView, name: String) async throws {
+        content.navigation.show(.sync)
         let host = NSHostingView(rootView: content)
         host.frame = CGRect(x: 0, y: 0, width: 800, height: 1_100)
         let window = NSPanel(contentRect: CGRect(x: -3000, y: -3000, width: 800, height: 1_100),

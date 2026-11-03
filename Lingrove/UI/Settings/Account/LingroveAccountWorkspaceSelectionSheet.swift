@@ -3,37 +3,46 @@
 import LingroveCloud
 import SwiftUI
 
-/// Nibomo’s workspace chooser uses the actual metadata supplied by the process-owned sync
-/// controller. A row delegates one explicit selection to it; local retain/accept and sync opt-in
-/// remain later steps. No guessed workspace, creation endpoint or guest capability is exposed.
+/// This sheet observes the real workspace metadata and delegates an explicit choice to the
+/// process-owned sync controller. Selection does not accept local material or enable sync. Its
+/// native Form and toolbar inherit the presenting Settings window's resolved appearance.
 struct LingroveAccountWorkspaceSelectionSheet: View {
     @ObservedObject var controller: MacNotebookSyncController
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
-                List {
-                    Section(String(localized: "Workspace", table: "NotebookSync")) {
-                        Text(String(localized: """
-                            Signing in only confirms your identity. Choose a workspace, decide what to do with \
-                            local material, then enable sync.
-                            """, table: "NotebookSync"))
+            SettingsPaneScaffold(callout: .init(tone: .info, message: String(localized: """
+                Signing in only confirms your identity. Choose a workspace, decide what to do with \
+                local material, then enable sync.
+                """, table: "NotebookSync"))) {
+                Section(LingroveNibomoAccountCopy.text("settings.currentWorkspace.section.chooseWorkspace")) {
+                    ForEach(controller.workspaces) { workspace in
+                        Button {
+                            controller.chooseWorkspace(workspace.id)
+                            dismiss()
+                        } label: {
+                            LingroveAccountWorkspaceRow(title: workspace.name,
+                                showsSelectedIndicator: workspace.id == controller.selectedWorkspace?.id)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(controller.isChoosingWorkspace || !controller.canAccessWorkspaces)
+                        .accessibilityIdentifier("account.sync.workspace." + workspace.id)
+                    }
+                    if controller.workspaces.isEmpty {
+                        Text(String(localized: "No workspaces are available for this account.", table: "NotebookSync"))
                             .foregroundStyle(.secondary)
                     }
-                    Section(LingroveNibomoAccountCopy.text("settings.currentWorkspace.section.chooseWorkspace")) {
-                        ForEach(controller.workspaces) { workspace in
-                            Button {
-                                controller.chooseWorkspace(workspace.id)
-                                dismiss()
-                            } label: {
-                                LingroveAccountWorkspaceRow(title: workspace.name,
-                                    showsSelectedIndicator: workspace.id == controller.selectedWorkspace?.id)
-                            }.buttonStyle(.plain).disabled(controller.isChoosingWorkspace || !controller.canAccessWorkspaces)
-                                .accessibilityIdentifier("account.sync.workspace." + workspace.id)
-                        }
+                }
+                Section {
+                    HStack(spacing: 8) {
+                        if controller.isLoadingWorkspaces || controller.isChoosingWorkspace { ProgressView().controlSize(.small) }
+                        LingroveSyncStatusIndicator(status: controller.workspaceStatus)
+                        Spacer()
+                        Button(String(localized: "Load workspaces", table: "NotebookSync")) { controller.refreshWorkspaces() }
+                            .disabled(!controller.canAccessWorkspaces || controller.isLoadingWorkspaces || controller.isChoosingWorkspace)
                     }
-                }.listStyle(.inset)
+                }
             }
             .navigationTitle(LingroveNibomoAccountCopy.text("settings.currentWorkspace.chooseWorkspaceTitle"))
             .toolbar {
@@ -41,42 +50,58 @@ struct LingroveAccountWorkspaceSelectionSheet: View {
                     Button(LingroveNibomoAccountCopy.text("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
                 }
             }
-        }.frame(width: 560, height: 440).preferredColorScheme(.dark).tint(.orange)
-            .accessibilityIdentifier("account.sync.workspaceChooser")
+        }
+        .frame(width: 560, height: 480)
+        .accessibilityIdentifier("account.sync.workspaceChooser")
     }
 }
 
-/// Extracted CloudWorkspaceSelectionRow. Lingrove has no create-new operation or creation-date
-/// metadata in this capability, so those optional adornments are removed; native row layout stays.
+/// A workspace name is user data, rendered verbatim. The checkmark supplements the selected row's
+/// accessibility trait, so the current scope remains distinguishable without relying on color.
 private struct LingroveAccountWorkspaceRow: View {
     let title: String
     let showsSelectedIndicator: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) { Text(title).foregroundStyle(.primary) }
+            Text(title).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
             Spacer()
-            if showsSelectedIndicator { Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary) }
-        }.contentShape(Rectangle()).padding(.vertical, 2)
+            if showsSelectedIndicator { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+        }
+        .contentShape(Rectangle()).padding(.vertical, 4)
+        .accessibilityAddTraits(showsSelectedIndicator ? .isSelected : [])
     }
 }
 
-/// Extracted SyncStatusIndicatorView, using safe lane status instead of a mobile CloudState.
-/// Each row owns one projection; independently failing review/media lanes retain their own tone.
+/// Safe per-lane states retain their semantic color and an explicit text label in either
+/// appearance. Working is progress, pending is caution, and unavailable/recovery remains distinct.
 struct LingroveSyncStatusIndicator: View {
     let status: MacNotebookSyncStatus
 
     var body: some View {
         HStack(spacing: 6) {
-            if let toneColor { Circle().fill(toneColor).frame(width: 8, height: 8) }
+            if status == .working {
+                ProgressView().controlSize(.small)
+            } else if let toneColor {
+                Image(systemName: symbol).foregroundStyle(toneColor).accessibilityHidden(true)
+            }
             Text(MacNotebookSyncPresentation.title(status)).multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var symbol: String {
+        switch status {
+        case .synchronized: "checkmark.circle.fill"
+        case .pending: "clock"
+        default: "exclamationmark.circle"
         }
     }
 
     private var toneColor: Color? {
         switch status {
         case .synchronized: .green
-        case .working, .pending: .yellow
+        case .pending: .orange
         case .unavailable, .forbidden, .failed, .conflict, .rejected: .red
         default: nil
         }

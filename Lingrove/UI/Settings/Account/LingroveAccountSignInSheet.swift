@@ -3,9 +3,9 @@
 import LingroveCloud
 import SwiftUI
 
-/// Nibomo’s separate email and code screens, bound to Lingrove’s existing OTP facade. Only
-/// text/focus/navigation belong to the sheet; challenge expiry, generation and credentials remain
-/// service-owned. Reopening sees the same challenge without resending or recreating a session.
+/// Only focus, entered text and the email/code route belong to this sheet. The app-owned account
+/// facade owns challenge expiry, credentials and cancellation generations. Reopening observes an
+/// existing challenge without resending. Every request remains gated by the saved service pair.
 struct LingroveAccountSignInSheet: View {
     @ObservedObject var account: AccountSessionService
     let connectionIsSaved: Bool
@@ -19,7 +19,7 @@ struct LingroveAccountSignInSheet: View {
     var body: some View {
         NavigationStack {
             emailForm
-                .navigationTitle(LingroveNibomoAccountCopy.text("common.email"))
+                .navigationTitle(String(localized: "Email sign-in", table: "Account"))
                 .navigationDestination(isPresented: $showingCode) { codeForm }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -28,7 +28,7 @@ struct LingroveAccountSignInSheet: View {
                     }
                 }
         }
-        .frame(width: 560, height: 480).tint(.orange).preferredColorScheme(.dark)
+        .frame(width: 560, height: 500)
         .onAppear {
             email = account.codePrompt?.email ?? email
             showingCode = account.codePrompt != nil
@@ -54,61 +54,94 @@ struct LingroveAccountSignInSheet: View {
     }
 
     private var emailForm: some View {
-        LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
-            Form {
-                errorSection
-                Section(LingroveNibomoAccountCopy.text("common.email")) {
-                    TextField(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.emailPlaceholder"), text: $email)
-                        .autocorrectionDisabled().textContentType(.emailAddress).focused($emailFocused)
-                        .accessibilityIdentifier("account.email").onSubmit(sendCode)
-                }.disabled(account.state.isBusy || !connectionIsSaved)
-                Section {
+        SettingsPaneScaffold {
+            errorSection
+            Section {
+                TextField(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.emailPlaceholder"), text: $email)
+                    .autocorrectionDisabled().textContentType(.emailAddress).focused($emailFocused)
+                    .accessibilityIdentifier("account.email").onSubmit(sendCode)
+                    .disabled(account.state.isBusy || !connectionIsSaved)
+                HStack {
                     Button(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.sendOneTimeCode"), action: sendCode)
+                        .buttonStyle(.borderedProminent)
                         .disabled(account.state.isBusy || email.isEmpty || !connectionIsSaved)
                         .accessibilityIdentifier("account.sendCode")
                     if account.state.isBusy { ProgressView().controlSize(.small) }
+                    Spacer()
                 }
-            }.formStyle(.grouped)
+            } header: { Text(LingroveNibomoAccountCopy.text("common.email")) }
+            serviceSection
         }
     }
 
     private var codeForm: some View {
-        LingroveReadableContentLayout(maxWidth: lingroveReadableFormMaxWidth, horizontalPadding: 0) {
-            Form {
-                errorSection
-                Section(LingroveNibomoAccountCopy.text("common.email")) {
-                    Text(account.codePrompt?.email ?? email).textSelection(.enabled)
+        SettingsPaneScaffold {
+            errorSection
+            Section(LingroveNibomoAccountCopy.text("common.email")) {
+                Text(account.codePrompt?.email ?? email).textSelection(.enabled)
+            }
+            Section {
+                Text(LingroveNibomoAccountCopy.text(account.codePrompt?.isExpired == true
+                    ? "settings.account.cloudSignIn.challengePrompt.expired" : "settings.account.cloudSignIn.challengePrompt.active"))
+                    .foregroundStyle(.secondary)
+                if account.codePrompt?.isExpired == false {
+                    TextField(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.codePlaceholder"), text: $code)
+                        .autocorrectionDisabled().textContentType(.oneTimeCode).focused($codeFocused)
+                        .accessibilityIdentifier("account.code").onSubmit(verifyCode)
+                        .disabled(account.state.isBusy || !connectionIsSaved)
                 }
-                Section(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.oneTimeCode")) {
-                    Text(LingroveNibomoAccountCopy.text(account.codePrompt?.isExpired == true
-                        ? "settings.account.cloudSignIn.challengePrompt.expired" : "settings.account.cloudSignIn.challengePrompt.active"))
-                        .foregroundStyle(.secondary)
+                HStack {
                     if account.codePrompt?.isExpired == false {
-                        TextField(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.codePlaceholder"), text: $code)
-                            .autocorrectionDisabled().textContentType(.oneTimeCode).focused($codeFocused)
-                            .accessibilityIdentifier("account.code").onSubmit(verifyCode)
-                            .disabled(account.state.isBusy || !connectionIsSaved)
                         Button(LingroveNibomoAccountCopy.text("common.continue"), action: verifyCode)
+                            .buttonStyle(.borderedProminent)
                             .disabled(account.state.isBusy || code.isEmpty || !connectionIsSaved)
                             .accessibilityIdentifier("account.verify")
                     }
                     Button(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.resendCode")) {
                         guard connectionIsSaved, !account.state.isBusy else { return }
-                        code = ""; account.resendCode()
-                    }.disabled(account.state.isBusy || !connectionIsSaved).accessibilityIdentifier("account.resend")
+                        code = ""
+                        account.resendCode()
+                    }
+                    .disabled(account.state.isBusy || !connectionIsSaved).accessibilityIdentifier("account.resend")
                     if account.state.isBusy { ProgressView().controlSize(.small) }
+                    Spacer()
                 }
-            }.formStyle(.grouped)
-        }.navigationTitle(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.verifyCodeTitle"))
-            .onAppear { codeFocused = account.codePrompt?.isExpired == false }
+            } header: {
+                Text(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.oneTimeCode"))
+            } footer: {
+                Text(String(localized: """
+                    Codes expire after three minutes. Resend may return the code already sent; the service checks its remaining validity.
+                    """, table: "Account"))
+            }
+        }
+        .navigationTitle(LingroveNibomoAccountCopy.text("settings.account.cloudSignIn.verifyCodeTitle"))
+        .onAppear { codeFocused = account.codePrompt?.isExpired == false }
     }
 
     @ViewBuilder private var errorSection: some View {
         if !connectionIsSaved {
-            Section { Label(String(localized: "Save connection", table: "Account"), systemImage: "exclamationmark.circle") }
+            Section {
+                SettingsCalloutView(callout: .init(tone: .warning, message: String(localized: """
+                    Connection changes are not saved. Save or revert them before signing in or syncing.
+                    """, table: "Account")))
+            }
         }
         if let issue = account.issue {
-            Section { Text(AccountPresentation.message(issue)).foregroundStyle(.red).accessibilityIdentifier("account.issue") }
+            Section {
+                SettingsCalloutView(callout: .init(tone: .warning, message: AccountPresentation.message(issue)))
+                    .accessibilityIdentifier("account.issue")
+            }
+        }
+    }
+
+    @ViewBuilder private var serviceSection: some View {
+        if let configuration = account.configuration {
+            Section(String(localized: "Account service", table: "Account")) {
+                LabeledContent(String(localized: "Authentication base URL", table: "Account")) {
+                    Text(configuration.authBaseURL.absoluteString).font(.caption.monospaced())
+                        .multilineTextAlignment(.trailing).textSelection(.enabled)
+                }
+            }
         }
     }
 

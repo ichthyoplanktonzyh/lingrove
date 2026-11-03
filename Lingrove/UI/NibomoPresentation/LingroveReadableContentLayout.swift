@@ -1,12 +1,13 @@
 // Adapted from Nibomo (kirill-markin/flashcards-open-source-app), Copyright (c) 2026 Kirill Markin.
-// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_W3_UI_REUSE_MAP.md.
+// MIT license: Lingrove/Resources/NibomoUI-LICENSE.txt. See docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md.
 import SwiftUI
 
 let lingroveReadableContentMaxWidth: CGFloat = 820
 let lingroveReadableFormMaxWidth: CGFloat = 720
 
-/// Extracted layout, owned by its parent view. The two width limits keep account forms and card
-/// content at Nibomo’s original reading widths without introducing another layout system.
+/// A presentation-only width boundary retained by the extracted review views. It centers reading
+/// material inside the native destination without owning scroll position, colors or services.
+/// Account forms use SettingsPaneScaffold directly so they share the existing Settings viewport.
 struct LingroveReadableContentLayout<Content: View>: View {
     private let maxWidth: CGFloat
     private let horizontalPadding: CGFloat
