@@ -290,7 +290,8 @@ final class LingroveAppEnvironment {
                 await vocabularyStore.executeCLI($0)
             }
         let reviewController = AnkiReviewController(settings: AnkiReviewSettings(
-            credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore, speech: speechController)
+            credentials: isTestHost ? AnkiCredentialStore(service: nil) : nil), store: vocabularyStore,
+            repository: notebookServices.repository, speech: speechController)
         let typingHistoryStore = TypingHistoryStore(loadsArchive: !isTestHost)
         // Phrase shortcuts answer from history before the router runs. The live engine kind is
         // read per request so a power-source switch to the endpoint stops shortcuts immediately.

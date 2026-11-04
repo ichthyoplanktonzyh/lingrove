@@ -9,6 +9,8 @@ import Logging
 /// One explicit operation at a time prevents two sheets from racing to create the same note.
 @MainActor
 final class AnkiReviewController: ObservableObject {
+    let noteIO: NoteAnkiIO?
+    var noteDidPrepare: (() -> Void)?
     let settings: AnkiReviewSettings
     let store: VocabularyStore
     let client: any AnkiConnecting
@@ -42,10 +44,13 @@ final class AnkiReviewController: ObservableObject {
         }
     }
 
-    init(settings: AnkiReviewSettings, store: VocabularyStore, client: any AnkiConnecting = AnkiConnectClient(),
+    init(settings: AnkiReviewSettings, store: VocabularyStore, repository: MacNotebookRepository? = nil,
+         client: any AnkiConnecting = AnkiConnectClient(),
          speech: (any SpeechExporting)? = nil, activateAnki: @escaping () -> Void = {
              NSRunningApplication.runningApplications(withBundleIdentifier: "net.ankiweb.dtop").first?.activate(options: [])
          }) {
+        noteIO = repository.map { NoteAnkiIO(repository: $0) }
+        noteDidPrepare = { [weak repository] in repository?.publishChange() }
         self.settings = settings; self.store = store; self.client = client
         self.speech = speech; self.activateAnki = activateAnki
         scopeSubscription = store.$scopeIdentity.dropFirst().sink { [weak self] _ in

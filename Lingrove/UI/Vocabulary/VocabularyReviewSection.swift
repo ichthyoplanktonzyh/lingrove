@@ -10,6 +10,7 @@ struct VocabularyReviewSection: View {
     @State private var editing: CardSelection?
     @State private var removing: VocabularyReview?
     @State private var failure: String?
+    @State private var sendingNote = false
 
     private struct CardSelection: Identifiable { let id: UUID }
 
@@ -33,8 +34,11 @@ struct VocabularyReviewSection: View {
                         .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
                 }
                 Spacer()
-                Button { editing = .init(id: UUID()) } label: {
-                    Label(String(localized: "Add card", table: "Vocabulary"), systemImage: "plus")
+                Button {
+                    if controller.noteIO != nil { sendingNote = true } else { editing = .init(id: UUID()) }
+                } label: {
+                    Label(controller.noteIO != nil ? String(localized: "Add to Anki", table: "Vocabulary")
+                        : String(localized: "Add card", table: "Vocabulary"), systemImage: "plus")
                         .font(.caption.weight(.medium))
                 }
                 .controlSize(.small)
@@ -122,6 +126,9 @@ struct VocabularyReviewSection: View {
                 .strokeBorder(Color.primary.opacity(0.075), lineWidth: 0.5)
         )
         .disabled(controller.sendingSenseID != nil)
+        .sheet(isPresented: $sendingNote) {
+            VocabularyNoteAnkiSheet(controller: controller, selection: .init(entryID: entry.id, senseID: sense.id))
+        }
         .sheet(item: $editing) { selection in
             VocabularyReviewSheet(controller: controller, entry: entry, sense: sense, cardID: selection.id)
         }

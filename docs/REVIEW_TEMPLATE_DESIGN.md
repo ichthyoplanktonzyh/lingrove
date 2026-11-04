@@ -47,9 +47,11 @@ WebKit 宿主只接收 HTML、CSS 和有限的本地图片字节，不依赖账�
 [条件生成](https://docs.ankiweb.net/manual/templates/generation)；这是常用语法子集，不承诺完整 Anki 引擎兼容。
 不支持 Cloze、任意 JavaScript、插件、远程资源或 Anki 专有音频/TTS 过滤器。
 
-`ReviewNoteAnkiExport` 保留命名字段、模板和 CSS，提供后续 Anki 适配的值边界。
-本轮没有把新的 Note 类型自动发布到 Anki，也没有重写现有独立 AnkiConnect 关联/发送流程。
-两者的评分与调度保持独立。
+`ReviewNoteAnkiExport` 保留命名字段、模板和 CSS。Mac 的单条及批量发送已经通过
+`NoteAnkiSession` / `NoteAnkiSender` 接入现有 AnkiConnect 连接设置；新发送使用共享 Note，
+不再先构造 Front/Back 卡片副本。旧的逐卡 Anki 关联仍可单独编辑，不做自动转换。
+发送更新相同 Note 的字段和共享模型；两种工具的评分与调度保持独立。详情见
+[ANKI_NOTE_SYNC.md](ANKI_NOTE_SYNC.md)。
 
 ## 原生操作与同步
 

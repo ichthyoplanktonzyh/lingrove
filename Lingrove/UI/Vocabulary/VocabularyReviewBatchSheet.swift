@@ -61,8 +61,12 @@ struct VocabularyReviewBatchSheet: View {
         .frame(width: 740, height: 720).interactiveDismissDisabled(batch.busy)
         .sheet(item: $preparing) { item in
             if let (entry, sense) = batch.resolve(item) {
-                VocabularyReviewSheet(controller: batch.controller, entry: entry, sense: sense, cardID: item.cardID)
-                    .onDisappear { batch.refresh(item.id) }
+                if batch.controller.noteIO != nil {
+                    VocabularyNoteAnkiSheet(controller: batch.controller, selection: item.selection, onSent: { batch.noteSent(item.id) })
+                } else {
+                    VocabularyReviewSheet(controller: batch.controller, entry: entry, sense: sense, cardID: item.cardID)
+                        .onDisappear { batch.refresh(item.id) }
+                }
             }
         }
         .onDisappear { batch.stop() }

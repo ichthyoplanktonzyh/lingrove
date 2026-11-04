@@ -14,11 +14,12 @@ final class AnkiReviewBatchSession: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var message: String?
     var work: Task<Void, Never>?
+    var noteDeckOverride = ""
     private var preparationBaselines: [UUID: (sense: VocabularySense, expression: String)] = [:]
 
     init(controller: AnkiReviewController, selections: [VocabularySelection], flexible: Bool = false) {
         self.controller = controller; notebookScope = controller.store.operationScope
-        emptySenseCount = flexible ? Set(selections).filter { selection in
+        emptySenseCount = flexible && controller.noteIO == nil ? Set(selections).filter { selection in
             guard let entry = controller.store.entries.first(where: { $0.id == selection.entryID }),
                   let index = VocabularySensePolicy.index(selection.senseID, in: entry) else { return true }
             return entry.senses[index].reviewCards?.isEmpty != false
@@ -27,17 +28,21 @@ final class AnkiReviewBatchSession: ObservableObject {
         items = selections.filter { seen.insert($0).inserted }.flatMap { selection -> [ReviewBatchItem] in
             let entry = controller.store.entries.first { $0.id == selection.entryID }
             let sense = entry.flatMap { entry in VocabularySensePolicy.index(selection.senseID, in: entry).map { entry.senses[$0] } }
-            let cardIDs: [UUID?] = flexible ? (sense?.reviewCards ?? []).map { Optional($0.plan.id) } : [nil]
+            let cardIDs: [UUID?] = flexible && controller.noteIO == nil ? (sense?.reviewCards ?? []).map { Optional($0.plan.id) } : [nil]
             return cardIDs.map { cardID in
                 let review = sense?.reviewValue(cardID)
                 var item = ReviewBatchItem(selection: selection, cardID: cardID, expression: entry?.expression ?? "",
                     meaning: review?.plan.name ?? sense?.displayTitle ?? "")
-                if let entry, let sense, controller.isSynchronized(entry, sense, cardID: cardID) {
+                if controller.noteIO == nil, let entry, let sense, controller.isSynchronized(entry, sense, cardID: cardID) {
                     item.status = review?.plan.audioKinds?.isEmpty == false ? .verifyAudio : .synced
                 }
                 return item
             }
         }
+    }
+    func noteSent(_ id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].status = .synced; items[index].message = nil
     }
     var completeCount: Int { items.filter { $0.status == .synced }.count }
     func resolve(_ item: ReviewBatchItem) -> (VocabularyEntry, VocabularySense)? {
@@ -71,6 +76,7 @@ final class AnkiReviewBatchSession: ObservableObject {
 
     func startApply(deck: String, cards: Int, audio: Int) {
         guard !busy else { return }
+        if controller.noteIO != nil { noteDeckOverride = deck; return }
         busy = true
         work = Task { [weak self] in await self?.apply(deck: deck, cards: cards, audio: audio) }
     }
@@ -111,6 +117,8 @@ final class AnkiReviewBatchSession: ObservableObject {
         guard controller.store.matches(notebookScope) else { throw VocabularyError.editConflict }
     }
 
+    // The legacy and shared-note branches retain one frozen batch scope and ordered retry list.
+    // swiftlint:disable:next cyclomatic_complexity
     private func run(only id: UUID?) async {
         defer { busy = false; work = nil }
         message = nil
@@ -134,6 +142,17 @@ final class AnkiReviewBatchSession: ObservableObject {
                 if !seen.insert(canonical).inserted { items[index].status = .skipped; continue }
                 try await controller.verify(scope)
                 items[index].status = .sending; items[index].message = nil
+                if controller.noteIO != nil {
+                    let session = NoteAnkiSession(controller: controller, selection: .init(entryID: entry.id, senseID: sense.id))
+                    await session.load()
+                    if !noteDeckOverride.isEmpty { session.deck = noteDeckOverride } else if !session.hasAssociation { session.deck = defaultDeck }
+                    let success = await session.send(expectedScope: scope)
+                    items[index].status = success ? .synced
+                        : Task.isCancelled ? .cancelled : session.conflicts.isEmpty ? .failed : .attention
+                    items[index].message = success ? nil : session.message ?? String(
+                        localized: "Resolve this item's Anki field changes in preparation.", table: "Vocabulary")
+                    continue
+                }
                 let session = AnkiReviewSession(controller: controller, entry: entry, sense: sense, defaults: scope,
                     cardID: items[index].cardID)
                 // Existing preparations/bindings retain their deck. Unprepared rows share the

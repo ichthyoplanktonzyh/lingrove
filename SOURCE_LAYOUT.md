@@ -1404,3 +1404,15 @@ The built-in review browser's deterministic membership/search projection lives i
 `Support/BuiltInReview/BuiltInReviewContentState.swift`. Its window-lifetime search, participation
 filter, selection and detail origin values live with `BuiltInReviewSessionState`; the app-owned
 `BuiltInReviewSession` retains them across replaced SwiftUI destinations. Neither owns storage.
+
+## Shared Note publishing to Anki
+
+`Services/Review/Notes` contains the sheet session, scoped IO and ordered Anki send operation.
+The process-owned `AnkiReviewController` lends its existing connection/profile lease and owns
+one `NoteAnkiIO`. IO reads the same notebook file and atomically stores Mac/profile-specific
+receipts next to it; these receipts are not corpus fields or cloud credentials.
+`Models/Review/NoteAnkiJournal` represents acknowledged definitions, pending model steps
+and note-field baselines. `Support/Review/Notes` plans reversible-name field transitions and
+merges fields without losing remote edits. `UI/Vocabulary/VocabularyNoteAnkiSheet` selects the
+shared type/deck and previews with the existing HTML renderer. Domain Note preparation remains
+in the shared engine; only explicit built-in enrollment creates scheduler membership.
