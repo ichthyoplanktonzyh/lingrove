@@ -5,7 +5,7 @@
 # Lingrove · 拾语
 
 **Local-first inline autocomplete and language learning while you write on macOS.**  
-Get ghost-text continuations beside your cursor, translate sentences in place, find expressions from a description, look up words, and build your Anki vocabulary—without leaving your editor.
+Get ghost-text continuations beside your cursor, translate sentences in place, find expressions from a description, look up words across reading and writing, and build your personal vocabulary corpus with built-in FSRS review or Anki sync—without leaving your editor.
 
 [**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**Releases**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**FAQ**](FAQ.md) · [**Learning Docs**](docs/LANGUAGE_LEARNING.md) · [**Feedback**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
 
@@ -78,15 +78,19 @@ Lingrove is built around two equally core capabilities that work together in any
 - **Flexible Inference Backends:** Run 100% locally via **Apple Intelligence** or in-process **`llama.cpp` (GGUF)**, or connect to any **OpenAI-compatible endpoint**.
 - **Rich Context & Granular Control:** Tune completion length, within-word prediction, and streaming. Optionally ground predictions with on-device screen OCR and clipboard context, and pause globally or per app.
 
-### 2. Language Learning While Writing
+### 2. Language Learning While Writing & Reading
 
 - **Expression Assistance:** Type `??` at the caret and describe a missing expression or term, then press Enter or Tab to insert a candidate. It shares the AI explanation model and can be enabled independently of translation.
 - **Write & Translate in Place:** Type in your native or target language and pause briefly to see a non-intrusive translation preview beside the cursor. Press `Control+Option+T` to replace the sentence in place, or `Option+T` to expand details.
-- **Expression Recognition & Deep Lookup:** An offline 11.5 MB Wiktionary/Kaikki lexicon automatically underlines reusable idioms and phrases without extra LLM calls. Double-click any word or expression to inspect definitions across **built-in expressions**, **macOS system dictionaries**, **imported `MDX`/`MDD` books**, or **contextual AI explanations**.
+- **Reading Translation & Pointer Lookup:** Capture text while reading via **text selection**, **pointer hover/shortcut lookup** (local Vision OCR first with Accessibility fallback), or **screen-region OCR capture**, each with independent per-app permissions and shortcuts.
+- **Expression Recognition & Staged Multi-Source Lookup:** An offline 11.5 MB Wiktionary/Kaikki lexicon automatically underlines reusable idioms and phrases without extra LLM calls. Double-click or select any word or expression for two-stage **contextual AI explanations** (instant meaning + sentence translation first, grammar and usage details on expansion) alongside **built-in expressions**, **macOS system dictionaries**, **imported `MDX`/`MDD` books**, and optional **online dictionaries** (ordered by entry and preferred definition languages).
 - **Read Aloud (TTS):** Listen to sentences or expressions without losing typing focus using **macOS system voices**, an in-process **Qwen3-TTS Base (`llama.cpp`)** model with optional voice cloning, or a `/audio/speech` endpoint.
-- **Vocabulary Notebook ("Fish Tail"):** Save expressions with their original sentences, then browse by entry or meaning in the same list and graph views. Associate specific senses with concepts or communicative functions, record usage patterns and compare collected expressions. Notes, tags and unclassified entries remain available in the notebook.
-- **Local CLI & Agent Skill:** Search and save vocabulary from an agent through the local `lingrove` CLI. Install the portable [`lingrove-cli` skill](CLI.md#agent-skill) for sense-aware capture, batch previews, and safe retries.
-- **One-Click Anki Sync:** Preview recognition and cloze/gap cards, attach generated TTS audio, and send or batch-update notes directly to **Anki Desktop** via [AnkiConnect](https://ankiweb.net/shared/info/2055492159) while preserving your review history.
+- **Personal Corpus & Vocabulary Workspace ("Fish Tail"):** The Vocabulary window brings together three destinations—**Personal Corpus**, **Review**, and **Progress**:
+  - **Organize & Graph:** Save expressions with their encountered sentences, browse by entry or meaning in **list and force-directed graph views**, classify senses with a 15-locale **semantic classification catalog**, record usage patterns, and create entries (`⌘N`) or batch-import **CSV/TXT word lists** (`⇧⌘I`) with example sentences.
+  - **Hybrid Semantic Search:** Optionally download the local multilingual `Qwen3 Embedding 0.6B` model (639 MB) to find collected senses in your own words by combining keyword and vector search.
+  - **Built-In FSRS Review & Anki Sync:** Saving to your corpus never forces a review task. Explicitly enroll selected senses into **Lingrove's built-in FSRS review** or send them to **Anki Desktop** via [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Both targets share customizable **Notes, Note Types, and HTML/CSS Card Templates** (with live source-field updates that preserve your review history and optional TTS audio for Anki).
+  - **Personal Progress:** Track your built-in review streaks, calendar activity, stacked rating history, and 8-bucket schedule forecast directly in the **Progress** tab.
+- **Local CLI & Agent Skill:** Search, capture, and classify vocabulary from an agent through the local `lingrove` CLI. Install the portable [`lingrove-cli` skill](CLI.md#agent-skill) for sense-aware capture, semantic organization, batch previews, and safe retries.
 
 ### Additional Writing Tools
 
@@ -109,6 +113,7 @@ Each capability configures its model and server settings independently—using a
 | **Translation** | • In-process `llama.cpp` (`Hy-MT2 1.8B / 7B`, `TranslateGemma 4B`) | OpenAI-compatible chat endpoint |
 | **AI Explanation & Expression Assistance** | • In-process `llama.cpp` (general instruction GGUF models) | OpenAI-compatible chat endpoint |
 | **Read Aloud (TTS)** | • Apple macOS System Speech<br>• Local `Qwen3-TTS Base` via `llama.cpp` (~1.48 GB, PCM streaming) | OpenAI-compatible `/audio/speech` endpoint |
+| **Expression Search** | • Optional local `Qwen3 Embedding 0.6B` via `llama.cpp` (~639 MB, hybrid keyword + vector search) | — |
 | **Lexicon & OCR** | • Always on-device (Wiktionary/Kaikki subset + macOS Vision OCR) | — |
 
 ---
@@ -152,10 +157,10 @@ In first-run setup, choose **Use recommended setup** to configure missing models
 | **Writing translation** | Enable **Language Learning → Translation**, choose a target language, and turn on sentence previews. Type a sentence and pause; use the card's Replace action or the default `Control+Option+T` to insert its translation. |
 | **Expression assistance** | Enable **Language Learning → Explanation & expression → Expression assistance**. Set the target language to English, type `??` at the caret, and describe “only noticing evidence that supports your existing beliefs.” Choose a candidate, then press `Enter` / `Tab` to insert or `Esc` to cancel. |
 | **Double-click lookup** | Double-click a word or underlined expression inside a Lingrove translation card. Switch between **Contextual meaning** and **Dictionary** in the lookup window. |
-| **Reading translation** | Enable selection translation and its icon in **Language Learning → Translation**, and allow the app you want to read in. Select text on a page, then click the translation icon or use your configured selection-translation shortcut. |
-| **Vocabulary** | Click the fish-tail button on a card to save it. Click the saved button again and choose **View in Vocabulary**, or open Vocabulary from the menu bar. |
+| **Reading translation & lookup** | Enable selection translation (or pointer / screen-region lookup) in **Language Learning → Translation**, and allow the app you want to read in. Select text, point and trigger your lookup shortcut, or drag a screen region to translate or look up expressions. |
+| **Personal corpus & Review** | Click the fish-tail button on a card to save it to your corpus, then open **Vocabulary** from the menu bar to browse in list or graph view, enroll senses into **built-in review** or **Anki**, and check your **Progress**. |
 
-Target and explanation languages are configured in **Language Learning**; shortcuts can be changed in **Settings → Shortcuts**. See [Language Learning Behavior & Model Details](docs/LANGUAGE_LEARNING.md) for the full interaction rules.
+Target and explanation languages are configured in **Language Learning**; shortcuts can be changed in **Settings → Shortcuts**. You can also explore interactive feature walkthroughs anytime from the in-app **Usage Guide** or switch quick controls in the menu bar popover. See [Language Learning Behavior & Model Details](docs/LANGUAGE_LEARNING.md) for the full interaction rules.
 
 ---
 
@@ -198,6 +203,6 @@ For the documentation map and the authority of each guide, see [docs/README.md](
 **Lingrove (拾语)** is independently maintained by [ichthyoplanktonzyh](https://github.com/ichthyoplanktonzyh).  
 It derives from [FuJacob/Cotabby](https://github.com/FuJacob/cotabby), created by [FuJacob](https://github.com/FuJacob) and developed with [jam-cai](https://github.com/jam-cai), [akramj13](https://github.com/akramj13), McHamster, and other contributors. Their authorship and contributions remain credited.
 
-Built with [CotabbyInference](https://github.com/FuJacob/cotabbyinference), [llama.cpp](https://github.com/ggml-org/llama.cpp), [Sparkle](https://github.com/sparkle-project/Sparkle), [swift-log](https://github.com/apple/swift-log), [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern), [SymSpell](https://github.com/wolfgarbe/SymSpell), and [GitHub gemoji](https://github.com/github/gemoji). Bundled dictionary and expression notices are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and [learning-expressions.NOTICE.md](Lingrove/Resources/learning-expressions.NOTICE.md).
+Built with [CotabbyInference](https://github.com/FuJacob/cotabbyinference), [llama.cpp](https://github.com/ggml-org/llama.cpp), [Sparkle](https://github.com/sparkle-project/Sparkle), [swift-log](https://github.com/apple/swift-log), [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin-Modern), [SymSpell](https://github.com/wolfgarbe/SymSpell), [Grape](https://github.com/li3zhen1/Grape), [Easydict MDictReader](https://github.com/tisfeng/Easydict), [Nibomo UI components](docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md), and [GitHub gemoji](https://github.com/github/gemoji). Bundled dictionary, semantic classification, and expression notices are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), [VocabularyClassificationCatalog.NOTICE.md](Lingrove/Resources/VocabularyClassificationCatalog.NOTICE.md), and [learning-expressions.NOTICE.md](Lingrove/Resources/learning-expressions.NOTICE.md).
 
 Licensed under the [**GNU Affero General Public License v3.0 (AGPLv3)**](LICENSE). Third-party libraries, dictionaries, and model weights retain their respective licenses.
