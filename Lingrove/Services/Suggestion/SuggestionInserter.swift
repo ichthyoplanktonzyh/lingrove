@@ -195,23 +195,70 @@ final class SuggestionInserter {
     /// from no dispatch so it never retries or restores unrelated clipboard data immediately.
     private enum PasteMenuDispatch {
         case notDispatched
+        case menuUnavailable
         case dispatched
         case uncertain
     }
 
-    /// Explicit selected-text transactions use the host's Paste command only. The caller must
-    /// verify the selection immediately before the menu action and verify the resulting value
-    /// afterward; this method's Bool means dispatched, never "replacement succeeded".
+    /// The caller verifies the selection immediately before dispatch and reads the resulting value
+    /// afterward. If AX cannot find Paste, Cmd-V can still go directly to the verified process.
     func pasteSelectedText(
-        _ text: String, inApplicationPID pid: pid_t, onDispatchPhase: ((String) -> Void)? = nil,
+        _ text: String, inApplicationPID pid: pid_t, allowProcessFallback: Bool = false,
+        onDispatchPhase: ((String) -> Void)? = nil,
         validateSelection: @escaping () -> Bool
     ) -> Bool {
-        insertViaPaste(text, requiredApplicationPID: pid, validateSelection: validateSelection,
+        insertViaPaste(text, requiredApplicationPID: pid, allowProcessFallback: allowProcessFallback,
+            validateSelection: validateSelection,
             onDispatchPhase: onDispatchPhase)
     }
 
+    /// An empty clipboard paste can leave a web editor's selection unchanged. Delete the
+    /// acknowledged range directly, using the same last-moment validation as scoped paste.
+    func deleteSelectedText(
+        inApplicationPID pid: pid_t, onDispatchPhase: ((String) -> Void)? = nil,
+        validateSelection: () -> Bool
+    ) -> Bool {
+        postScopedKey(Self.backspaceKeyCode, flags: [], pid: pid, validateSelection: validateSelection,
+            onDispatchPhase: onDispatchPhase)
+    }
+
+    private func postScopedKey(
+        _ key: CGKeyCode, flags: CGEventFlags, pid: pid_t, validateSelection: () -> Bool,
+        onDispatchPhase: ((String) -> Void)?
+    ) -> Bool {
+        guard CGPreflightPostEventAccess() else {
+            onDispatchPhase?("scoped_key_post_not_permitted")
+            return false
+        }
+        let source = CGEventSource(stateID: .combinedSessionState)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else {
+            onDispatchPhase?("scoped_key_unavailable")
+            return false
+        }
+        for event in [down, up] {
+            event.flags = flags
+            suppressionController.markSynthetic(event)
+        }
+        // Check focus after the AX validation, which can briefly wait for the editor to reply.
+        // A PID-targeted pair avoids sending to whichever application is active at delivery time.
+        guard validateSelection() else {
+            onDispatchPhase?("scoped_key_selection_validation_failed")
+            return false
+        }
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+            onDispatchPhase?("scoped_key_target_not_frontmost")
+            return false
+        }
+        down.postToPid(pid)
+        up.postToPid(pid)
+        onDispatchPhase?("scoped_key_posted")
+        return true
+    }
+
     private func insertViaPaste(
-        _ text: String, requiredApplicationPID: pid_t? = nil, validateSelection: (() -> Bool)? = nil,
+        _ text: String, requiredApplicationPID: pid_t? = nil, allowProcessFallback: Bool = false,
+        validateSelection: (() -> Bool)? = nil,
         onDispatchPhase: ((String) -> Void)? = nil
     ) -> Bool {
         let pasteboard = NSPasteboard.general
@@ -232,6 +279,9 @@ final class SuggestionInserter {
             return false
         }
         let expectedChangeCount = pasteboard.changeCount
+        let validatePaste: (() -> Bool)? = validateSelection.map { validate in
+            { validate() && pasteboard.changeCount == expectedChangeCount }
+        }
 
         // Preferred trigger: press the host's real Edit > Paste menu item via Accessibility. No key
         // event exists, so neither an active IME nor the HID modifier state machine can interfere.
@@ -241,16 +291,22 @@ final class SuggestionInserter {
         // session source still never pasted in Chrome. The menu press drives the same paste command
         // those key events would have reached, one IPC hop earlier.
         let menuDispatch = pressPasteMenuItem(
-            requiredApplicationPID: requiredApplicationPID, validateSelection: validateSelection,
+            requiredApplicationPID: requiredApplicationPID, validateSelection: validatePaste,
             onDispatchPhase: onDispatchPhase
         )
-        if menuDispatch != .notDispatched {
+        if menuDispatch == .dispatched || menuDispatch == .uncertain {
             LingroveLogger.suggestion.debug("Paste menu action dispatched; editor verification belongs to the caller")
+        } else if allowProcessFallback, menuDispatch == .menuUnavailable, let pid = requiredApplicationPID, let validatePaste,
+                  postScopedKey(Self.vKeyCode, flags: .maskCommand, pid: pid,
+                    validateSelection: validatePaste, onDispatchPhase: onDispatchPhase) {
+            LingroveLogger.suggestion.debug("Paste shortcut posted to the verified editor process")
         } else {
             // Explicit selection replacement never falls through to delayed global keystrokes.
             if requiredApplicationPID != nil {
                 pendingPasteboardRestore?.cancel()
-                Self.restorePasteboard(saved, to: pasteboard)
+                if pasteboard.changeCount == expectedChangeCount {
+                    Self.restorePasteboard(saved, to: pasteboard)
+                }
                 clearPendingPasteboardRestore()
                 return false
             }
@@ -329,7 +385,7 @@ final class SuggestionInserter {
         guard let item = AXHelper.pasteMenuItem(forApplicationPID: pid) else {
             let phase = isScoped ? "scoped_fresh_paste_menu_unavailable" : "paste_menu_unavailable"
             onDispatchPhase?(phase)
-            return .notDispatched
+            return .menuUnavailable
         }
         guard validateSelection?() ?? true else {
             let phase = isScoped ? "scoped_fresh_selection_validation_failed" : "fresh_selection_validation_failed"

@@ -346,7 +346,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         case 125, 126:
             guard !candidates.isEmpty else { return false }
             selected = (selected + (key == 125 ? 1 : -1) + candidates.count) % candidates.count
-            showResults()
+            showResults(revealingSelection: true)
             return true
         default: return false
         }
@@ -420,7 +420,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         return true
     }
 
-    private func showResults() {
+    private func showResults(revealingSelection: Bool = false) {
         guard let input = inputPanel, isVisible else { return }
         let candidates = result?.candidates ?? []
         let state = currentCandidateState(candidates: candidates)
@@ -447,6 +447,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         } else if let message {
             offset += addStatus(to: content, kind: .failure, text: message, y: offset, width: width)
         }
+        var selectedRow: ExpressionAssistCandidateRow?
         for index in candidates.indices {
             let candidate = candidates[index]
             let row = ExpressionAssistCandidateRow(
@@ -461,6 +462,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
                 onToggleFavorite: vocabulary == nil ? nil : { [weak self] in self?.toggleFavorite(for: candidate) }
             )
             row.tag = index
+            if index == selected { selectedRow = row }
             row.target = self
             row.action = #selector(selectCandidate(_:))
             let rowWidth = width - Metrics.rowInset * 2
@@ -500,6 +502,9 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         panel.setFrame(frame, display: true)
         candidatePanel = panel
         panel.orderFrontRegardless()
+        if revealingSelection, let selectedRow {
+            selectedRow.scrollToVisible(selectedRow.bounds)
+        }
     }
 
     /// Visibility and content are independent: native composition hides a retained result window,
@@ -858,7 +863,9 @@ private final class ExpressionAssistQueryView: NSTextView {
     var onCompositionChange: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        // AppKit can mark a bare arrow with numericPad and function. Only the four shortcut
+        // modifiers distinguish panel commands from the text view's modified editing gestures.
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         if !hasMarkedText() {
             if modifiers.isEmpty, onCommand?(event.keyCode) == true { return }
             if modifiers == [.command],

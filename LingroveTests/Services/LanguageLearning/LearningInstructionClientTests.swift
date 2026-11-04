@@ -89,8 +89,49 @@ struct LearningInstructionClientTests {
         #expect(!deltas.isEmpty)
     }
 
-    private func sentenceStream(reason: String?, includesDone: Bool) throws -> Data {
-        var records = try ["first translation\n", "later chunks\n"].map { text in
+    @Test(arguments: [true, false])
+    func expressionStreamReportsTheParserInputAndMissingSchemaField(hasHint: Bool) async throws {
+        let first = #"{"candidates":[{"text":"I've missed you""#
+        let last = hasHint ? #","hint":"表达思念","dictionaryForm":"miss"}],"clarification":null}"# : #"}],"clarification":null}"#
+        configureStub(body: try sentenceStream(reason: "stop", includesDone: true, deltas: [first, last]))
+        defer { LearningInstructionStubURLProtocol.reset() }
+        let suite = "test.expression.transport.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let profile = LearningModelSettings(role: .explanation, defaults: defaults)
+        profile.backend = .endpoint
+        profile.endpointModel = "fixture-model"
+        let controller = LearningModelController(profile: profile, client: makeClient())
+        defer { controller.shutdownSync() }
+        let requestID = "req_expression_stream_fixture"
+        var events: [String: [String: String]] = [:]
+        let telemetry = LearningRequestTelemetry(event: { context, phase, details in
+            #expect(context.requestID == requestID)
+            events[phase] = details
+        })
+        let service = ExpressionAssistService(model: controller, telemetry: telemetry)
+        let request = ExpressionAssistRequest(query: "表达思念", leftContext: "A note to a friend: ",
+            rightContext: "", selectedText: "", targetLanguage: "en", explanationLanguage: "zh-Hans")
+
+        do {
+            let result = try await service.generate(request, requestID: requestID)
+            #expect(hasHint)
+            #expect(result.candidates.first?.text == "I've missed you")
+            #expect(events["usable_result"] != nil && events["output_rejected"] == nil)
+        } catch let error as ExpressionAssistPrompt.Rejection {
+            #expect(!hasHint)
+            #expect(error.reason == "json_key_missing")
+            #expect(events["output_rejected"] == ["reason": "json_key_missing", "coding_path": "$.candidates[0].hint"])
+            #expect(events["usable_result"] == nil)
+        }
+        let byteCount = String((first + last).utf8.count)
+        #expect(events["output_received"]?["stream_bytes"] == byteCount)
+        #expect(events["output_received"]?["parser_bytes"] == byteCount)
+    }
+
+    private func sentenceStream(reason: String?, includesDone: Bool,
+                                deltas: [String] = ["first translation\n", "later chunks\n"]) throws -> Data {
+        var records = try deltas.map { text in
             let json = try JSONSerialization.data(withJSONObject: ["choices": [["delta": ["content": text]]]])
             return "data: " + String(decoding: json, as: UTF8.self) + "\n\n"
         }

@@ -178,18 +178,26 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
         }
         // Editors publish AX state asynchronously. Never roll back an unverified value: the user
         // may already have typed, and an automatic restoration could overwrite their new content.
+        var verificationReason = "value_unavailable"
         for _ in 0..<5 {
             try await Task.sleep(for: .milliseconds(60))
             focus.refreshNow()
             let sameSession = focus.snapshot.context?.sessionIdentity == saved.context.sessionIdentity
+            let actual = AXHelper.exactEditableTextSelection(on: saved.element)?.value
             if LearningReplacementVerificationPolicy.accepts(expectedValue: expected,
-                actualValue: AXHelper.exactEditableTextSelection(on: saved.element)?.value,
+                actualValue: actual,
                 isWebContentField: isWeb, sameSession: sameSession) {
                 finalResult = "verified"
                 return
             }
-            if isWeb, !sameSession { break }
+            if isWeb, !sameSession {
+                verificationReason = "session_changed"
+                break
+            }
+            verificationReason = actual == nil ? "value_unavailable" : "value_mismatch"
         }
+        logReplacement(.warning, traceID: traceID, status: "verification_failed",
+            details: ["reason": verificationReason])
         throw LearningFailure.message(String(localized: """
         Could not verify the replacement. Check the editor. The card keeps copy actions for the source and translation to avoid \
         another overwrite.
@@ -384,20 +392,26 @@ final class LearningSelectionReplacement: LearningSelectionReplacing {
         if isWeb {
             var validationPhase = "not_invoked"
             var validationReason = "none"
-            var pastePhase = "no_dispatch_detail"
-            // Scoped Paste reports dispatch only. Its callback validates the exact transaction at
-            // the menu-action boundary; neither a false validation nor an uncertain press is retried.
-            let dispatched = inserter.pasteSelectedText(english, inApplicationPID: transaction.context.processIdentifier,
-                onDispatchPhase: { pastePhase = $0 },
-                validateSelection: {
-                    validationPhase = "before_paste_action"
-                    guard !Task.isCancelled else { validationReason = "cancelled"; return false }
-                    guard self.isCurrent(transaction) else { validationReason = "saved_capture_changed"; return false }
-                    validationPhase = "validated"
-                    return true
-                })
+            var dispatchPhase = "no_dispatch_detail"
+            let validateSelection: () -> Bool = {
+                validationPhase = "before_content_action"
+                guard !Task.isCancelled else { validationReason = "cancelled"; return false }
+                guard self.isCurrent(transaction) else { validationReason = "saved_capture_changed"; return false }
+                validationPhase = "validated"
+                return true
+            }
+            let pid = transaction.context.processIdentifier
+            // A trigger cancellation is an empty replacement of a confirmed, nonempty range.
+            // Backspace deletes that selection even in editors that ignore an empty paste.
+            let deletesSelection = transaction.usesExplicitRange && transaction.range.length > 0 && english.isEmpty
+            let dispatched = deletesSelection
+                ? inserter.deleteSelectedText(inApplicationPID: pid, onDispatchPhase: { dispatchPhase = $0 },
+                    validateSelection: validateSelection)
+                : inserter.pasteSelectedText(english, inApplicationPID: pid,
+                    allowProcessFallback: transaction.usesExplicitRange, onDispatchPhase: { dispatchPhase = $0 },
+                    validateSelection: validateSelection)
             logReplacement(dispatched ? .info : .warning, traceID: traceID, status: "content_dispatch", details: [
-                "route": "paste", "dispatched": String(dispatched), "phase": pastePhase,
+                "route": deletesSelection ? "delete" : "paste", "dispatched": String(dispatched), "phase": dispatchPhase,
                 "validation": validationPhase, "validation_reason": validationReason
             ])
             if validationReason == "cancelled" { throw CancellationError() }

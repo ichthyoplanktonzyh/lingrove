@@ -23,7 +23,7 @@ nonisolated struct ExpressionAssistCandidate: Equatable, Sendable, Decodable {
 
 /// Ambiguity is a normal result, not a transport failure. The coordinator displays a short question
 /// in the same input surface; it never inserts explanatory prose into the host document.
-nonisolated struct ExpressionAssistResult: Equatable, Sendable, Decodable {
+nonisolated struct ExpressionAssistResult: Equatable, Sendable {
     let candidates: [ExpressionAssistCandidate]
     var clarification: String?
 }

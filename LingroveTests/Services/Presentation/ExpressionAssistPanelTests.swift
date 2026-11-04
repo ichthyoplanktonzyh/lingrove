@@ -76,9 +76,13 @@ struct ExpressionAssistPanelTests {
         input.unmarkText()
         panel.update(result: .init(candidates: [.init(text: "rule out", hint: "排除"),
             .init(text: "exclude", hint: "排除在外")]), message: nil, loading: false)
-        input.keyDown(with: try key(125, characters: "", window: window))
+        let navigationFlags: NSEvent.ModifierFlags = [.numericPad, .function]
+        input.keyDown(with: try key(125, characters: "\u{F701}", window: window, flags: navigationFlags))
         input.keyDown(with: try key(48, characters: "\t", window: window))
         #expect(accepted == ["exclude"])
+        input.keyDown(with: try key(126, characters: "\u{F700}", window: window, flags: navigationFlags))
+        input.keyDown(with: try key(48, characters: "\t", window: window))
+        #expect(accepted == ["exclude", "rule out"])
         #expect(submitted == 1)
         await Task.yield()
     }
@@ -190,8 +194,10 @@ struct ExpressionAssistPanelTests {
         })
     }
 
-    private func key(_ code: UInt16, characters: String, window: NSWindow) throws -> NSEvent {
-        try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+    private func key(
+        _ code: UInt16, characters: String, window: NSWindow, flags: NSEvent.ModifierFlags = []
+    ) throws -> NSEvent {
+        try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
             timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
             context: nil, characters: characters, charactersIgnoringModifiers: characters,
             isARepeat: false, keyCode: code))

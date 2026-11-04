@@ -82,6 +82,20 @@ struct ExpressionAssistPolicyTests {
     }
 
     @Test
+    func moreThanThreeCandidatesSurviveMalformedAndUnsafeNeighborsInModelOrder() throws {
+        let result = try ExpressionAssistPrompt.parse(#"""
+        {"candidates":[{"text":"beautiful","hint":"常用"},
+        null,{"text":"missing hint"},
+        {"text":"pretty","hint":"轻松"},
+        {"text":"unsafe\nline","hint":"换行"},
+        {"text":"gorgeous","hint":"语气较强"},
+        {"text":"stunning","hint":"惊艳"},
+        {"text":"attractive","hint":"有吸引力"}],"clarification":null}
+        """#, request: fixture())
+        #expect(result.candidates.map(\.text) == ["beautiful", "pretty", "gorgeous", "stunning", "attractive"])
+    }
+
+    @Test
     func intentionalEdgeSpacesRemainPartOfTheExactInsertion() throws {
         let request = try ExpressionAssistPolicy.request(query: "排除", value: "We can rule??.",
             range: NSRange(location: 11, length: 2), target: .english, explanation: .chinese)
@@ -99,10 +113,20 @@ struct ExpressionAssistPolicyTests {
         #expect(result.clarification == "指心理感受还是管理现象？")
     }
 
+    @Test
+    func clarificationRemainsAvailableWhenEveryCandidateIsRejected() throws {
+        let result = try ExpressionAssistPrompt.parse(
+            #"{"candidates":[{"text":"missing hint"}],"clarification":"想形容人还是景色？"}"#, request: fixture())
+        #expect(result.candidates.isEmpty)
+        #expect(result.clarification == "想形容人还是景色？")
+    }
+
     @Test(arguments: [
         "{\"candidates\":[]}",
         "{\"candidates\":[{\"text\":\"unfinished\"}]}",
         "{\"candidates\":[{\"text\":\"line\\nline\",\"hint\":\"hint\"}]}",
+        "{\"candidates\":[{\"text\":\"rule\\u0007 out\",\"hint\":\"hint\"}]}",
+        "{\"candidates\":[{\"text\":\"rule\\u200b out\",\"hint\":\"hint\"}]}",
         "{\"candidates\":[{\"text\":\"We still cannot rule out caching\",\"hint\":\"hint\"}]}"
     ])
     func malformedOrContextEchoingOutputIsNotInsertable(_ raw: String) throws {

@@ -43,6 +43,9 @@ final class LearningRequestMeasurement {
         usableResultMs = elapsedMs
         event(context, "usable_result", ["elapsed_ms": String(elapsedMs)])
     }
+    func record(_ phase: String, details: [String: String]) {
+        event(context, phase, details)
+    }
     func clearDebugContent() { prompt = ""; rawOutput = "" }
     func displayed() {
         guard displayMs == nil else { return }
