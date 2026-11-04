@@ -4,7 +4,7 @@ import SwiftUI
 import AppKit
 
 private let reviewCardsStringsTableName: String = "ReviewCards"
-let lingroveReviewContentSurfaceCornerRadius: CGFloat = 12
+let lingroveReviewContentSurfaceCornerRadius: CGFloat = 16
 
 /// One pinned face borrows source text, local image bytes and speech closures from practice.
 /// The card owns only temporary copy feedback. Native semantic surfaces keep the same material
@@ -54,10 +54,20 @@ struct LingroveReviewCardSideView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Button(action: self.onSelectText) {
-                Text(self.label)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(self.surfaceStyle == .front ? LingroveBrand.accent : Color.green)
+                        .frame(width: 6, height: 6)
+                    Text(self.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color(nsColor: .windowBackgroundColor).opacity(0.75))
+                )
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(self.surfaceStyle == .front

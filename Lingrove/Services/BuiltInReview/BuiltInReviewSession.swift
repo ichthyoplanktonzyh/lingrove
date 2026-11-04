@@ -11,8 +11,21 @@ final class BuiltInReviewSession: ObservableObject {
     // @Published tells the hosted SwiftUI root to redraw; these properties are temporary
     // presentation state. A durable change still requires an explicit shared-engine command.
     @Published private(set) var participationRevision = UUID()
-    @Published private(set) var content: NotebookBuiltInReviewSnapshot?
-    @Published var browsing = BuiltInReviewBrowsing()
+    @Published private(set) var content: NotebookBuiltInReviewSnapshot? {
+        didSet {
+            browserIndex = content.map(BuiltInReviewContentState.init)
+            updateContentSelections()
+        }
+    }
+    @Published var browsing = BuiltInReviewBrowsing() {
+        didSet {
+            if browsing.filter != oldValue.filter || browsing.search != oldValue.search {
+                updateContentSelections()
+            }
+        }
+    }
+    private(set) var browserIndex: BuiltInReviewContentState?
+    private(set) var contentSelections: [VocabularySelection] = []
     @Published private(set) var addedCount = 0
     @Published var route: BuiltInReviewRoute = .overview
     @Published var noteDraft: ReviewNoteEditorDraft?
@@ -94,10 +107,10 @@ final class BuiltInReviewSession: ObservableObject {
         noteDraft = nil
         batchDraft = nil
         pendingBatchSelections = nil
+        content = nil
         browsing = .init()
         addedCount = 0
         practice = nil
-        content = nil
         images = []
         savedAudio = []
         message = nil
@@ -191,6 +204,15 @@ final class BuiltInReviewSession: ObservableObject {
         }
     }
 
+    /// Keep a single management projection for both layouts. A search, filter or snapshot
+    /// change can invalidate a browser selection, but must not dismiss a direct corpus link.
+    private func updateContentSelections() {
+        contentSelections = browserIndex?.selections(adding: false, filter: browsing.filter, search: browsing.search) ?? []
+        guard browserIndex != nil, browsing.detailOrigin == .content, case let .sense(selection) = route,
+              !contentSelections.contains(selection) else { return }
+        route = .content
+    }
+
     /// Detail navigation records the caller independently of persistence. Returning after an
     /// enrollment keeps the add search, while management returns to its exact status filter.
     func showDetail(_ selection: VocabularySelection) {
@@ -200,8 +222,10 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     func showContent(filter: BuiltInReviewContentFilter = .active) {
-        browsing.filter = filter
-        browsing.search = ""
+        var next = browsing
+        next.filter = filter
+        next.search = ""
+        browsing = next
         route = .content
     }
 
@@ -251,7 +275,7 @@ final class BuiltInReviewSession: ObservableObject {
 
     func save(_ value: BuiltInReviewDraft) {
         guard draft?.id == value.id, value.canSave else { return }
-        let destination: BuiltInReviewRoute = route == .practice ? .practice : .sense(value.selection)
+        let destination = route == .practice ? .practice : detailDestination(for: value.selection)
         let cardID: String?
         if case let .editing(card, _) = value.purpose { cardID = card.cardId } else { cardID = nil }
         mutate(.save(value), scope: value.snapshot, destination: destination, preferredCardID: cardID)
@@ -311,11 +335,17 @@ final class BuiltInReviewSession: ObservableObject {
     func setStatus(_ status: LingroveNotebookReviewStatus, selection: VocabularySelection,
                    basedOn value: NotebookBuiltInReviewSnapshot) {
         let action = NotebookBuiltInReviewAction(content: value, selection: selection)
-        mutate(.status(status, action, UUID()), scope: value.scope, destination: .sense(selection))
+        mutate(.status(status, action, UUID()), scope: value.scope, destination: detailDestination(for: selection))
     }
 
     func retain(_ context: BuiltInReviewCardContext) {
-        mutate(.retain(context), scope: context.snapshot, destination: .sense(context.group.selection))
+        mutate(.retain(context), scope: context.snapshot, destination: detailDestination(for: context.group.selection))
+    }
+
+    private func detailDestination(for selection: VocabularySelection) -> BuiltInReviewRoute {
+        // Wide management can show its first result without navigating into detail.
+        // Keep that browser route after edits so its current filter still governs the pane.
+        route == .content ? .content : .sense(selection)
     }
 
     func start(selection: VocabularySelection? = nil) {

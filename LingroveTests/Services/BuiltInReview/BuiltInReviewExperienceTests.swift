@@ -24,31 +24,54 @@ struct BuiltInReviewExperienceTests {
         session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
         await session.waitForIdle()
         #expect(session.addedCount == 1 && session.practice == nil)
-        session.route = session.browsing.detailOrigin
+        session.route = try #require(session.browsing.detailOrigin)
         #expect(session.route == .adding && session.browsing.addingSearch == "harbor")
         let added = try #require(session.content)
-        #expect(BuiltInReviewContentState.selections(in: added, adding: true, filter: .active, search: "").isEmpty)
-        #expect(BuiltInReviewContentState.selections(in: added, adding: false, filter: .active, search: "harbor")
+        #expect(BuiltInReviewContentState(added).selections(adding: true, filter: .active, search: "").isEmpty)
+        #expect(BuiltInReviewContentState(added).selections(adding: false, filter: .active, search: "harbor")
             == [fixture.selection])
         session.setStatus(.paused, selection: fixture.selection, basedOn: added)
         await session.waitForIdle()
         let paused = try #require(session.content)
-        #expect(BuiltInReviewContentState.selections(in: paused, adding: false, filter: .active, search: "").isEmpty)
-        #expect(BuiltInReviewContentState.selections(in: paused, adding: false, filter: .paused, search: "")
+        #expect(BuiltInReviewContentState(paused).selections(adding: false, filter: .active, search: "").isEmpty)
+        #expect(BuiltInReviewContentState(paused).selections(adding: false, filter: .paused, search: "")
             == [fixture.selection])
         session.setStatus(.withdrawn, selection: fixture.selection, basedOn: paused)
         await session.waitForIdle()
         let withdrawn = try #require(session.content)
         #expect(BuiltInReviewOverviewState(content: withdrawn) == .withdrawn)
-        #expect(BuiltInReviewContentState.selections(in: withdrawn, adding: false, filter: .withdrawn, search: "")
+        #expect(BuiltInReviewContentState(withdrawn).selections(adding: false, filter: .withdrawn, search: "")
             == [fixture.selection])
         session.showContent(filter: .withdrawn)
         session.browsing.search = "harbor"
         session.showDetail(fixture.selection)
-        session.route = session.browsing.detailOrigin
+        session.route = try #require(session.browsing.detailOrigin)
         #expect(session.route == .content && session.browsing.filter == .withdrawn && session.browsing.search == "harbor")
         session.close()
         #expect(session.browsing.search.isEmpty && session.browsing.addingSearch.isEmpty)
+    }
+
+    @Test func managementClearsFilteredDetailButDirectSourceRemainsReachable() async throws {
+        let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
+        let session = fixture.session
+        session.open(selection: fixture.selection)
+        await session.waitForIdle()
+        #expect(session.route == .sense(fixture.selection))
+        #expect(session.browsing.detailOrigin == nil)
+
+        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
+        await session.waitForIdle()
+        session.showDetail(fixture.selection)
+        session.browsing.search = "no such expression"
+        #expect(session.route == .content && session.contentSelections.isEmpty)
+
+        session.browsing.search = ""
+        session.showDetail(fixture.selection)
+        session.setStatus(.paused, selection: fixture.selection, basedOn: try #require(session.content))
+        await session.waitForIdle()
+        #expect(session.route == .content && session.contentSelections.isEmpty)
+        session.showContent(filter: .paused)
+        #expect(session.contentSelections == [fixture.selection])
     }
 
     @Test func authoredPreviewMatchesPracticeAndRestoresOnlySelectedFace() async throws {
@@ -209,7 +232,10 @@ struct BuiltInReviewExperienceTests {
         let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
         let session = fixture.session
         session.open(selection: fixture.selection); await session.waitForIdle()
-        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
+        // This journey edits a directly authored Card face. Note-owned cards use the note
+        // editor and the engine correctly rejects writes through the standalone Card editor.
+        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
+        session.save(try #require(session.draft))
         await session.waitForIdle()
         session.start(); session.reveal()
         let context = try #require(session.practice?.phase.context)

@@ -18,4 +18,11 @@ struct ReviewNoteTypeEditorDraft: Identifiable {
         type.templates = type.templates.map { var value = $0; value.id = UUID(); return value }
         expected = nil
     }
+
+    /// A preset can change the learning task, so saving it creates its own type instead of
+    /// updating the definition referenced by existing cards.
+    mutating func choosePreset(_ preset: ReviewNoteDefaults.Preset) {
+        type = ReviewNoteDefaults.makeType(preset, basedOn: type)
+        expected = nil
+    }
 }

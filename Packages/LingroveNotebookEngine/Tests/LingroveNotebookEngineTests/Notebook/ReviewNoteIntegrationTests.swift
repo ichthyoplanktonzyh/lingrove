@@ -79,6 +79,28 @@ struct ReviewNoteIntegrationTests {
         #expect(rendered.backHTML.contains("Updated meaning") && rendered.backHTML.contains("<b>My hint</b>"))
         #expect(model.note.customFields == edited.customFields)
     }
+    @Test func savingPresetAsDefaultPreservesExistingCardAndHistory() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        let (scope, selection) = try source(fixture)
+        let original = ReviewNoteDefaults.type
+        _ = try fixture.db.enrollReviewNotes(selections: [selection], type: original, scope: scope)
+        let review = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        let card = try #require(review.queue.first)
+        _ = try fixture.db.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), card: card,
+            action: .init(content: review, selection: selection))
+        let before = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        let preset = try #require(ReviewNoteDefaults.presets.first { $0.id == "bilateral-recall" })
+        let newType = ReviewNoteDefaults.makeType(preset, basedOn: original)
+        try fixture.db.saveReviewNoteType(newType, expected: nil, scope: scope, makeDefault: true)
+        try fixture.reopen()
+        let after = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        #expect(after.defaultNoteType == newType)
+        #expect(after.noteCards == before.noteCards)
+        #expect(after.review.groups[selection.senseID]?.cards == before.review.groups[selection.senseID]?.cards)
+        #expect(after.statistics.ratingRecords == 1)
+    }
+
     private func source(_ fixture: NotebookMediaDatabaseFixture) throws -> (LingroveNotebookSnapshot, VocabularySelection) {
         let scope = try fixture.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))

@@ -30,21 +30,26 @@ struct NotebookProgressDestination: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 12) {
                 Text(NotebookProgressCopy.text("title"))
-                    .font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button(action: model.reload) { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .disabled(isLoading)
                     .help(NotebookProgressCopy.text("refresh"))
                     .accessibilityLabel(NotebookProgressCopy.text("refresh"))
                     .accessibilityIdentifier("notebook.progress.refresh")
-            }.padding(.horizontal, 24).padding(.vertical, 16)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.bar)
             Divider()
             ScrollView {
-                LingroveReadableContentLayout(maxWidth: lingroveReadableContentMaxWidth, horizontalPadding: 24) {
-                    LazyVStack(alignment: .leading, spacing: 16) {
+                LingroveReadableContentLayout(maxWidth: 1040, horizontalPadding: 24) {
+                    LazyVStack(alignment: .leading, spacing: 18) {
                         switch model.state {
                         case .inactive, .loading:
                             ProgressView(NotebookProgressCopy.text("loading"))
@@ -87,49 +92,107 @@ private struct NotebookProgressLoadedSections: View {
     let content: NotebookProgressContent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(NotebookProgressCopy.text("scope.detail"))
-                .font(.footnote).foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 16) {
-                metric("metric.reviews", value: content.snapshot.totalReviews)
-                metric("metric.active_senses", value: content.snapshot.activeSenses)
-                metric("metric.exercises", value: content.snapshot.schedule.totalCards)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.xyaxis.line")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(LingroveBrand.accent)
+                Text(NotebookProgressCopy.text("scope.detail"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), alignment: .leading)], alignment: .leading, spacing: 14) {
+                metric("metric.reviews", value: content.snapshot.totalReviews, icon: "checkmark.seal.fill", tint: .green)
+                metric("metric.active_senses", value: content.snapshot.activeSenses, icon: "book.pages.fill", tint: LingroveBrand.accent)
+                metric("metric.exercises", value: content.snapshot.schedule.totalCards, icon: "rectangle.stack.fill", tint: .orange)
             }
         }
         .modifier(NotebookProgressCardModifier())
         .accessibilityIdentifier("notebook.progress.summary")
 
         if !content.snapshot.hasHistory {
-            VStack(alignment: .leading, spacing: 6) {
-                Label(NotebookProgressCopy.text("empty.title"), systemImage: "chart.bar")
-                    .font(.headline)
-                Text(NotebookProgressCopy.text("empty.detail")).foregroundStyle(.secondary)
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(LingroveBrand.accent.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "chart.bar")
+                        .font(.headline)
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(NotebookProgressCopy.text("empty.title"))
+                        .font(.headline)
+                    Text(NotebookProgressCopy.text("empty.detail"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             .modifier(NotebookProgressCardModifier())
             .accessibilityIdentifier("notebook.progress.empty")
         }
 
-        NotebookProgressStreakSection(summary: content.snapshot.summary, weeks: content.streakWeeks,
-            calendar: content.snapshot.calendar)
-            .modifier(NotebookProgressCardModifier())
-            .accessibilityIdentifier("notebook.progress.streak")
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 18) {
+                NotebookProgressStreakSection(summary: content.snapshot.summary, weeks: content.streakWeeks,
+                    calendar: content.snapshot.calendar)
+                    .modifier(NotebookProgressCardModifier())
+                    .accessibilityIdentifier("notebook.progress.streak")
+                    .frame(minWidth: 420, maxWidth: .infinity)
+
+                NotebookProgressReviewScheduleSection(schedule: content.snapshot.schedule)
+                    .modifier(NotebookProgressCardModifier())
+                    .accessibilityIdentifier("notebook.progress.schedule")
+                    .frame(minWidth: 380, maxWidth: .infinity)
+            }
+
+            VStack(alignment: .leading, spacing: 18) {
+                NotebookProgressStreakSection(summary: content.snapshot.summary, weeks: content.streakWeeks,
+                    calendar: content.snapshot.calendar)
+                    .modifier(NotebookProgressCardModifier())
+                    .accessibilityIdentifier("notebook.progress.streak")
+
+                NotebookProgressReviewScheduleSection(schedule: content.snapshot.schedule)
+                    .modifier(NotebookProgressCardModifier())
+                    .accessibilityIdentifier("notebook.progress.schedule")
+            }
+        }
 
         NotebookProgressReviewsSection(chartDays: content.chartDays, chartCalendar: content.snapshot.calendar,
             selectionResetKey: content.snapshot.scope.generation + content.snapshot.range.to)
             .modifier(NotebookProgressCardModifier())
             .accessibilityIdentifier("notebook.progress.reviews")
-
-        NotebookProgressReviewScheduleSection(schedule: content.snapshot.schedule)
-            .modifier(NotebookProgressCardModifier())
-            .accessibilityIdentifier("notebook.progress.schedule")
     }
 
-    private func metric(_ title: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value.formatted()).font(.title2.weight(.semibold)).monospacedDigit()
-            Text(NotebookProgressCopy.text(title)).font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+    private func metric(_ title: String, value: Int, icon: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(tint.opacity(0.13))
+                    .frame(width: 38, height: 38)
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value.formatted())
+                    .font(.title2.weight(.bold))
+                    .monospacedDigit()
+                Text(NotebookProgressCopy.text(title))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.32))
+        }
     }
 }

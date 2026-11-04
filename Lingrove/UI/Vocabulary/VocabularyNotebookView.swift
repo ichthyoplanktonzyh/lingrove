@@ -223,13 +223,7 @@ struct VocabularyNotebookView: View {
                 .accessibilityIdentifier("vocabularyAddEntry")
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(!store.isLoaded)
-                Button { choosingWordList = true } label: {
-                    Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
-                }
-                .help(String(localized: "Import CSV or TXT word list", table: "Vocabulary"))
-                .accessibilityIdentifier("vocabularyImportWordList")
-                .keyboardShortcut("i", modifiers: [.command, .shift])
-                .disabled(!store.isLoaded)
+
                 Button {
                     withAnimation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.94)) {
                         selectingSenses.toggle()
@@ -241,17 +235,6 @@ struct VocabularyNotebookView: View {
                 }
                 .help(String(localized: "Select senses", table: "Vocabulary"))
 
-                if let openReview = store.onRequestBuiltInReview {
-                    Button { openReview(nil) } label: {
-                        Label(String(localized: "Built-in review", table: "Vocabulary"), systemImage: "rectangle.stack.badge.play")
-                    }
-                    .help(String(localized: "Built-in review", table: "Vocabulary"))
-                    .accessibilityIdentifier("vocabularyBuiltInReview")
-                }
-                if let review {
-                    Button { Task { reviewError = await review.reviewDeck() } } label: { Image(systemName: "rectangle.stack.badge.play") }
-                        .help(String(localized: "Review in Anki", table: "Vocabulary"))
-                }
                 Menu {
                     Picker(String(localized: "Text size", table: "Vocabulary"), selection: $textSizeRaw) {
                         ForEach(VocabularyTextSize.allCases) { level in
@@ -277,12 +260,20 @@ struct VocabularyNotebookView: View {
                 .accessibilityIdentifier("vocabularyTextSize")
 
                 Menu {
-                    Button(String(localized: "Export…", table: "Vocabulary")) { beginExport() }
-                        .disabled(store.entries.isEmpty)
-                    Button(String(localized: "Full notebook backup…", table: "Vocabulary"), action: backup)
+                    Button { choosingWordList = true } label: {
+                        Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
+                    }
+                    .accessibilityIdentifier("vocabularyImportWordList")
+                    .keyboardShortcut("i", modifiers: [.command, .shift])
+                    .disabled(!store.isLoaded)
+                    Button { beginExport() } label: {
+                        Label(String(localized: "Export…", table: "Vocabulary"), systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(store.entries.isEmpty)
                     Divider()
+                    Button(String(localized: "Full notebook backup…", table: "Vocabulary"), action: backup)
                     Button(String(localized: "Restore notebook…", table: "Vocabulary"), action: chooseBackup)
-                } label: { Image(systemName: "square.and.arrow.up") }
+                } label: { Image(systemName: "ellipsis.circle") }
                     .help(String(localized: "Export and backup", table: "Vocabulary"))
                     .disabled(!store.isLoaded)
             }
@@ -1396,26 +1387,6 @@ struct VocabularyEntryDetail: View {
             .padding(.vertical, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .toolbar {
-            ToolbarItemGroup {
-                if let openReview = store.onRequestBuiltInReview {
-                    Button(String(localized: "Built-in review", table: "Vocabulary")) {
-                        openReview(.init(entryID: entry.id, senseID: sense.id))
-                    }
-                    .accessibilityIdentifier("vocabularySenseBuiltInReview")
-                }
-                Button(String(localized: "Edit", table: "Vocabulary"), action: edit)
-                Button(action: newSense) { Image(systemName: "plus") }
-                    .help(String(localized: "New sense", table: "Vocabulary"))
-                Menu(String(localized: "Merge sense", table: "Vocabulary")) {
-                    ForEach(entry.senses.filter { $0.id != sense.id }) { target in
-                        Button(target.displayTitle) { merge(target.id) }
-                    }
-                }.disabled(entry.senses.count < 2)
-                Button(action: delete) { Image(systemName: "trash") }
-                    .help(String(localized: "Delete", table: "Vocabulary"))
-            }
-        }
         .onDisappear { speech.stop(ownerID: sense.id) }
     }
 
@@ -1447,6 +1418,47 @@ struct VocabularyEntryDetail: View {
                     }
                     .controlSize(.small)
                     .buttonStyle(.bordered)
+                    Menu {
+                        Button(action: newSense) {
+                            Label(String(localized: "New sense", table: "Vocabulary"), systemImage: "plus")
+                        }
+                        if entry.senses.count >= 2 {
+                            Menu(String(localized: "Merge sense", table: "Vocabulary")) {
+                                ForEach(entry.senses.filter { $0.id != sense.id }) { target in
+                                    Button(target.displayTitle) { merge(target.id) }
+                                }
+                            }
+                        }
+                        if let openReview = store.onRequestBuiltInReview {
+                            Button {
+                                openReview(.init(entryID: entry.id, senseID: sense.id))
+                            } label: {
+                                Label(String(localized: "Built-in review", table: "Vocabulary"), systemImage: "rectangle.stack.badge.play")
+                            }
+                            .accessibilityIdentifier("vocabularySenseBuiltInReview")
+                        }
+                        Divider()
+                        Button(role: .destructive, action: delete) {
+                            Label(String(localized: "Delete", table: "Vocabulary"), systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, height: 22)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.primary.opacity(0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.09), lineWidth: 0.5)
+                            )
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help(String(localized: "Edit", table: "Vocabulary"))
                     VocabularyFavoriteIcon(isSaved: true)
                         .frame(width: 18, height: 18)
                 }

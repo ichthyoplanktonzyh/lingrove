@@ -10,13 +10,13 @@ struct NotebookProgressCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
+            .padding(22)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(Color(nsColor: .separatorColor).opacity(0.45))
             }
     }

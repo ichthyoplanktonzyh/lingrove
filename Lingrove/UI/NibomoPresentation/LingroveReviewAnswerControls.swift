@@ -53,25 +53,51 @@ struct LingroveReviewAnswerControls: View {
     }
 
     private func answerButton(_ option: LingroveReviewAnswerOption) -> some View {
-        Button { onRate(option.rating) } label: {
-            VStack(alignment: .center, spacing: 4) {
-                HStack(spacing: 8) {
+        let ratingColor = lingroveReviewRatingColor(option.rating)
+        let keyNumber = String(option.rating.rawValue + 1)
+        return Button { onRate(option.rating) } label: {
+            VStack(alignment: .center, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(option.intervalDescription)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(ratingColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(ratingColor.opacity(0.14))
+                        )
+                    Spacer(minLength: 4)
+                    Text(keyNumber)
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(Color(nsColor: .windowBackgroundColor))
+                        )
+                }
+
+                HStack(spacing: 6) {
                     // Native bordered buttons do not consistently paint their tint on macOS.
                     // Color the rating symbol explicitly, keeping the written label in the
                     // semantic primary foreground for legibility in either appearance.
-                    Image(systemName: option.rating.symbolName).font(.headline)
-                        .foregroundStyle(lingroveReviewRatingColor(option.rating))
+                    Image(systemName: option.rating.symbolName).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ratingColor)
                     Text(lingroveLocalizedReviewRatingTitle(rating: option.rating))
-                        .fontWeight(.semibold).multilineTextAlignment(.center)
+                        .font(.subheadline.weight(.semibold))
+                        .multilineTextAlignment(.center)
                 }
-                Text(option.intervalDescription).font(.caption2).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 2)
             }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 46, alignment: .center)
         }
         .buttonStyle(.bordered)
-        .tint(lingroveReviewRatingColor(option.rating))
-        .help(String(option.rating.rawValue + 1) + " · " + lingroveLocalizedReviewRatingTitle(rating: option.rating))
-        .accessibilityIdentifier("builtinReview.rate." + String(option.rating.rawValue + 1))
+        .tint(ratingColor)
+        .help(keyNumber + " · " + lingroveLocalizedReviewRatingTitle(rating: option.rating))
+        .accessibilityIdentifier("builtinReview.rate." + keyNumber)
     }
 }

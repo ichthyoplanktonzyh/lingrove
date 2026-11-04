@@ -76,7 +76,8 @@ nonisolated struct BuiltInReviewBrowsing {
     var search = ""
     var addingSearch = ""
     var selectedSenseIDs = Set<UUID>()
-    var detailOrigin: BuiltInReviewRoute = .content
+    // Direct links from the corpus have no browser origin and open a standalone detail.
+    var detailOrigin: BuiltInReviewRoute?
 }
 
 /// Participation and material health are independent facts. Attention is a cross-status view,

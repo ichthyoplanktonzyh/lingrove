@@ -42,50 +42,43 @@ struct ReviewNoteTypeEditor: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    TextField(String(localized: "Template name", table: "Vocabulary"), text: $draft.type.name)
-                    Button(String(localized: "Copy", table: "Vocabulary")) {
-                        draft.duplicate(); selectedTemplate = draft.type.templates[0].id
-                    }
-                    Toggle(String(localized: "Default cards", table: "Vocabulary"), isOn: $draft.makeDefault)
-                }.padding(16)
+                headerBar
+                Divider()
+                presetGalleryBar
                 Divider()
                 HSplitView {
-                    controls.frame(minWidth: 320, idealWidth: 420)
-                    VStack(spacing: 0) {
-                        Picker(BuiltInReviewCopy.text("material.preview"), selection: $sampleID) {
-                            ForEach(draft.scope.document.collectedEntries) { entry in
-                                ForEach(entry.senses) { sense in
-                                    Text(entry.expression + " · " + sense.meaning).tag(Optional(sense.id))
-                                }
-                            }
-                        }.padding(16)
-                        if let preview {
-                            ReviewNoteWebView(html: tab == 0 ? preview.frontHTML : preview.backHTML, css: preview.css, images: images)
-                                .accessibilityIdentifier("review.noteType.preview")
-                        } else {
-                            ContentUnavailableView(BuiltInReviewCopy.text("material.preview"), systemImage: "rectangle.stack")
-                        }
-                    }.frame(minWidth: 300, idealWidth: 500)
+                    controls.frame(minWidth: 340, idealWidth: 430)
+                    previewColumn.frame(minWidth: 340, idealWidth: 540)
                 }
-                if let issue = validation ?? session.message { Text(issue).foregroundStyle(.red).padding(12) }
-            }.disabled(session.isBusy)
-                .navigationTitle(String(localized: "Card templates", table: "Vocabulary"))
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(String(localized: "Cancel")) {
-                            if changed { confirmingDiscard = true } else { session.noteTypeDraft = nil }
-                        }.keyboardShortcut(.cancelAction).disabled(session.isMutating)
+                if let issue = validation ?? session.message {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text(issue)
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button(String(localized: "Save", table: "Vocabulary")) { session.saveNoteType(draft) }
-                            .disabled(validation != nil || !changed || session.isBusy)
-                            .keyboardShortcut("s", modifiers: .command)
-                            .accessibilityIdentifier("review.noteType.save")
-                    }
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.08))
                 }
+            }
+            .disabled(session.isBusy)
+            .navigationTitle(String(localized: "Card templates", table: "Vocabulary"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        if changed { confirmingDiscard = true } else { session.noteTypeDraft = nil }
+                    }.keyboardShortcut(.cancelAction).disabled(session.isMutating)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "Save", table: "Vocabulary")) { session.saveNoteType(draft) }
+                        .disabled(validation != nil || !changed || session.isBusy)
+                        .keyboardShortcut("s", modifiers: .command)
+                        .accessibilityIdentifier("review.noteType.save")
+                }
+            }
         }
-        .frame(minWidth: 760, idealWidth: 1040, minHeight: 620, idealHeight: 760)
+        .frame(minWidth: 820, idealWidth: 1080, minHeight: 660, idealHeight: 780)
         .interactiveDismissDisabled(changed || session.isBusy)
         .alert(BuiltInReviewCopy.text("draft.discardTitle"), isPresented: $confirmingDiscard) {
             Button(BuiltInReviewCopy.text("draft.keepEditing"), role: .cancel) {}
@@ -98,6 +91,126 @@ struct ReviewNoteTypeEditor: View {
                 let bytes = await store.image(reference, scope: draft.scope)
                 guard !Task.isCancelled else { return }
                 images[reference.filename] = bytes
+            }
+        }
+    }
+
+    private var headerBar: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "rectangle.portrait.on.rectangle.portrait.angled.fill")
+                .font(.title3)
+                .foregroundStyle(LingroveBrand.accent)
+            TextField(String(localized: "Template name", table: "Vocabulary"), text: $draft.type.name)
+                .textFieldStyle(.roundedBorder)
+                .font(.headline)
+            Button {
+                draft.duplicate()
+                selectedTemplate = draft.type.templates[0].id
+            } label: {
+                Label(String(localized: "Copy", table: "Vocabulary"), systemImage: "plus.square.on.square")
+            }
+            .buttonStyle(.bordered)
+            Toggle(String(localized: "Default cards", table: "Vocabulary"), isOn: $draft.makeDefault)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.bar)
+    }
+
+    private var presetGalleryBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ReviewNoteDefaults.presets) { preset in
+                    let isSelected = ReviewNoteDefaults.matches(preset, type: draft.type)
+                    Button {
+                        guard !isSelected else { return }
+                        draft.choosePreset(preset)
+                        if let first = draft.type.templates.first { selectedTemplate = first.id }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(preset.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Spacer(minLength: 4)
+                                Text(preset.badge)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(isSelected ? LingroveBrand.accent : .secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(isSelected ? LingroveBrand.accent.opacity(0.16) : Color(nsColor: .windowBackgroundColor))
+                                    )
+                            }
+                            Text(preset.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .frame(width: 225, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(isSelected ? LingroveBrand.accent.opacity(0.10) : Color(nsColor: .controlBackgroundColor))
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(
+                                    isSelected ? LingroveBrand.accent.opacity(0.65) : Color(nsColor: .separatorColor).opacity(0.45),
+                                    lineWidth: isSelected ? 1.5 : 1
+                                )
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("review.noteType.preset." + preset.id)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+        }
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
+    }
+
+    private var previewColumn: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Picker(BuiltInReviewCopy.text("material.preview"), selection: $sampleID) {
+                    ForEach(draft.scope.document.collectedEntries) { entry in
+                        ForEach(entry.senses) { sense in
+                            Text(entry.expression + " · " + sense.meaning).tag(Optional(sense.id))
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                Picker(String(localized: "Card side", table: "Vocabulary"), selection: Binding(
+                    get: { tab == 1 ? 1 : 0 },
+                    set: { tab = $0 }
+                )) {
+                    Text(BuiltInReviewCopy.text("field.prompt")).tag(0)
+                    Text(BuiltInReviewCopy.text("field.answer")).tag(1)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 150)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.bar)
+
+            Divider()
+
+            if let preview {
+                ReviewNoteWebView(html: tab == 0 ? preview.frontHTML : preview.backHTML, css: preview.css, images: images)
+                    .padding(16)
+                    .background(Color(nsColor: .underPageBackgroundColor).opacity(0.25))
+                    .accessibilityIdentifier("review.noteType.preview")
+            } else {
+                ContentUnavailableView(BuiltInReviewCopy.text("material.preview"), systemImage: "rectangle.stack")
             }
         }
     }
