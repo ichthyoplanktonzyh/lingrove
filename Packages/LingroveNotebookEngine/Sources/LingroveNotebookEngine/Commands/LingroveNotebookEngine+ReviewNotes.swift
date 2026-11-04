@@ -16,6 +16,43 @@ extension LingroveNotebookEngine {
             return try ReviewNoteStore(core: core).defaultType(workspace: scope.workspaceId)
         }
     }
+    /// Preparing a Note for an external target does not admit any built-in Card. Only the
+    /// explicit enrollment command below creates membership and scheduler records.
+    public func prepareReviewNote(selection: VocabularySelection, type: ReviewNoteType,
+                                  scope: LingroveNotebookSnapshot) throws -> ReviewNote {
+        try core.inTransaction {
+            try Task.checkCancellation()
+            try requireCurrentScopeInTransaction(scope, requireRevision: true)
+            let store = ReviewNoteStore(core: core)
+            guard try store.types(workspace: scope.workspaceId).contains(type) else { throw VocabularyError.editConflict }
+            let note = try previewReviewNoteInTransaction(selection: selection, type: type, scope: scope)
+            // Persist the selected definition once: a future bundled default must not silently
+            // redefine already-prepared notes before their shared type is explicitly updated.
+            try store.put(type, workspace: scope.workspaceId)
+            try store.put(note, scope: scope)
+            return note
+        }
+    }
+
+    public func previewReviewNote(selection: VocabularySelection, type: ReviewNoteType,
+                                  scope: LingroveNotebookSnapshot) throws -> ReviewNote {
+        try core.inReadTransaction { try previewReviewNoteInTransaction(selection: selection, type: type, scope: scope) }
+    }
+
+    private func previewReviewNoteInTransaction(selection: VocabularySelection, type: ReviewNoteType,
+                                                scope: LingroveNotebookSnapshot) throws -> ReviewNote {
+        try requireCurrentScopeInTransaction(scope, requireRevision: true)
+        guard let entry = scope.document.collectedEntries.first(where: { $0.id == selection.entryID }),
+              let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
+        let existing = try ReviewNoteStore(core: core).notes(scope: scope)
+        if let note = existing.first(where: { $0.noteTypeID == type.id && ($0.senseID == sense.id || sense.mergedFrom.contains($0.senseID)) }) { return note }
+        return ReviewNote(id: LingroveNotebookCardMaterial.stableID("note|" + type.id.uuidString,
+            workspace: scope.workspaceId, sense: sense.id), noteTypeID: type.id, entryID: entry.id, senseID: sense.id,
+            exampleID: sense.examples.filter { $0.completeness == .sentence }.sorted {
+                $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
+            }.first?.id)
+    }
+
     public func saveReviewNoteType(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
                                   scope: LingroveNotebookSnapshot, makeDefault: Bool = false) throws {
         try core.inTransaction {
@@ -33,7 +70,7 @@ extension LingroveNotebookEngine {
             }
             try store.put(proposed, workspace: scope.workspaceId)
             if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
-            for note in try store.notes(scope: scope) where note.noteTypeID == proposed.id {
+            for note in affected where usedTemplates.contains(where: { $0.noteID == note.id }) {
                 try store.reconcile(note, type: proposed, scope: scope)
             }
             try store.refreshInTransaction(scope)
@@ -49,16 +86,12 @@ extension LingroveNotebookEngine {
             guard !selections.isEmpty, Set(selections.map(\.senseID)).count == selections.count else { throw VocabularyError.invalidContent }
             let store = ReviewNoteStore(core: core)
             guard try store.types(workspace: scope.workspaceId).contains(expected) else { throw VocabularyError.editConflict }
-            let existing = try store.notes(scope: scope)
+            try store.put(expected, workspace: scope.workspaceId)
             var result: [ReviewNote] = []
             for selection in selections {
                 guard let entry = scope.document.collectedEntries.first(where: { $0.id == selection.entryID }),
                       let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
-                let id = LingroveNotebookCardMaterial.stableID("note|" + expected.id.uuidString,
-                    workspace: scope.workspaceId, sense: sense.id)
-                let note = existing.first { $0.noteTypeID == expected.id && $0.senseID == sense.id } ?? ReviewNote(id: id, noteTypeID: expected.id,
-                    entryID: entry.id, senseID: sense.id, exampleID: sense.examples.filter { $0.completeness == .sentence }
-                        .sorted { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }.first?.id)
+                let note = try previewReviewNoteInTransaction(selection: selection, type: expected, scope: scope)
                 try store.put(note, scope: scope)
                 try store.reconcile(note, type: expected, scope: scope)
                 guard try store.memberships(workspace: scope.workspaceId).contains(where: { $0.noteID == note.id }) else { throw VocabularyError.invalidContent }
@@ -85,7 +118,9 @@ extension LingroveNotebookEngine {
                   Set(proposed.customFields.keys).isSubset(of: Set(type.fields.map { $0.id.uuidString.lowercased() })),
                   proposed.customFields.values.allSatisfy({ $0.utf8.count <= 131_072 }) else { throw VocabularyError.editConflict }
             try store.put(proposed, scope: scope)
-            try store.reconcile(proposed, type: type, scope: scope)
+            if try store.memberships(workspace: scope.workspaceId).contains(where: { $0.noteID == proposed.id }) {
+                try store.reconcile(proposed, type: type, scope: scope)
+            }
             try store.refreshInTransaction(scope)
         }
     }

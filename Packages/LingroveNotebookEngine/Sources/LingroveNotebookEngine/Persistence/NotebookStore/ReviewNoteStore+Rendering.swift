@@ -17,7 +17,8 @@ extension ReviewNoteStore {
     /// existing CardStore keeps FSRS/reps/events when replacing its readable face projection.
     func refreshInTransaction(_ scope: LingroveNotebookSnapshot) throws {
         let definitions = try types(workspace: scope.workspaceId)
-        for note in try notes(scope: scope) {
+        let admitted = Set(try memberships(workspace: scope.workspaceId).map(\.noteID))
+        for note in try notes(scope: scope) where admitted.contains(note.id) {
             guard let type = definitions.first(where: { $0.id == note.noteTypeID }) else { throw VocabularyError.invalidArchive }
             try reconcile(note, type: type, scope: scope)
         }
