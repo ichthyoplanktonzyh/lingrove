@@ -123,10 +123,9 @@ struct EngineScopedCommandIntegrationTests {
         let source = try engine.workspaceSettingsStore.loadWorkspace().workspaceId
         let saved = try engine.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: engine.loadLingroveNotebook(workspaceId: source))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let selected = try #require(try engine.enrollNotebookSenses([draft], basedOn: saved).first)
-        let oldCard = try #require(try engine.lingroveNotebookReviewStore.exercises(selected).first).cardId
+        _ = try engine.enrollReviewNotes(selections: [.init(entryID: saved.document.entries[0].id,
+            senseID: saved.document.entries[0].senses[0].id)], type: ReviewNoteDefaults.type, scope: saved)
+        let oldCard = try #require(try ReviewNoteStore(core: engine.core).memberships(workspace: source).first).cardID
         _ = try engine.submitNotebookRating(.init(cardId: oldCard, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
         let target = UUID().uuidString.lowercased()
@@ -147,6 +146,9 @@ struct EngineScopedCommandIntegrationTests {
         let adoption = try JSONDecoder().decode(LingroveNotebookReviewRequest.HistoryAdoption.self, from: Data(try #require(adoptions.first).utf8))
         #expect(adoption.eventIds.count == 1)
         #expect(adoption.originWorkspaceId == source)
+        let copiedNotes = try ReviewNoteStore(core: engine.core).cardModels(scope: accepted)
+        #expect(copiedNotes.count == 1 && copiedNotes[adoption.cardId] != nil)
+        #expect(try copiedNotes[adoption.cardId]?.render(in: accepted).backHTML.contains(saved.document.entries[0].senses[0].meaning) == true)
         #expect(adoption.cardId != oldCard)
         #expect(try engine.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
     }
@@ -168,10 +170,10 @@ struct EngineScopedCommandIntegrationTests {
             guard case let .object(fields) = op.operation, case let .string(id)? = fields["operationId"] else { return nil }
             return id
         } + request.undos.map(\.undoId) + request.historyAdoptions.map(\.operationId)
-        let json: [String: Any] = ["protocolVersion": 1, "notebookId": binding.scope.notebookID.uuidString,
-            "replicaId": binding.scope.replicaID.uuidString, "acknowledged": sent, "confirmed": [],
-            "afterSequence": request.afterSequence, "hasMore": false, "changes": []]
-        let response = try JSONDecoder().decode(LingroveNotebookReviewResponse.self, from: JSONSerialization.data(withJSONObject: json))
+        let response = LingroveNotebookReviewResponse(protocolVersion: request.protocolVersion,
+            notebookId: request.notebookId, replicaId: request.replicaId, acknowledged: sent,
+            confirmed: [], afterSequence: request.afterSequence, hasMore: false, changes: [],
+            noteState: request.noteState, acknowledgedNoteState: request.noteStateDigest)
         try sync.apply(response, request: request, binding: binding)
         let next = try sync.request(binding)
         #expect(next.operations.count == 2)

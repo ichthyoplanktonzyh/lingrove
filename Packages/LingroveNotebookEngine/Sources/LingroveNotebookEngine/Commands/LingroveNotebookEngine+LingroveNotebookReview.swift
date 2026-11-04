@@ -196,7 +196,8 @@ extension LingroveNotebookEngine {
             }
             return .init(workspaceId: current.workspaceId, notebookId: current.notebookId, notebookRevision: current.revision,
                 groups: groups, links: try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId), hasPendingSync:
-                    try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0)
+                    try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current),
+                    noteCards: try ReviewNoteStore(core: core).cardModels(scope: current))
         }
     }
 }

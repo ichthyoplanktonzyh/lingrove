@@ -11,18 +11,20 @@ public nonisolated struct LingroveNotebookReviewSnapshot: Sendable {
     public let groups: [UUID: LingroveNotebookReviewGroup]
     public let links: [LingroveNotebookCardLink]
     public var hasPendingSync: Bool = false
+    public let noteCards: [String: NotebookReviewNoteCard]
 
     public func matches(_ notebook: LingroveNotebookSnapshot) -> Bool {
         workspaceId == notebook.workspaceId && notebookId == notebook.notebookId && notebookRevision == notebook.revision
     }
 
-    public init(workspaceId: String, notebookId: UUID, notebookRevision: UInt64, groups: [UUID: LingroveNotebookReviewGroup], links: [LingroveNotebookCardLink], hasPendingSync: Bool = false) {
+    public init(workspaceId: String, notebookId: UUID, notebookRevision: UInt64, groups: [UUID: LingroveNotebookReviewGroup], links: [LingroveNotebookCardLink], hasPendingSync: Bool = false, noteCards: [String: NotebookReviewNoteCard] = [:]) {
         self.workspaceId = workspaceId
         self.notebookId = notebookId
         self.notebookRevision = notebookRevision
         self.groups = groups
         self.links = links
         self.hasPendingSync = hasPendingSync
+        self.noteCards = noteCards
     }
 }
 

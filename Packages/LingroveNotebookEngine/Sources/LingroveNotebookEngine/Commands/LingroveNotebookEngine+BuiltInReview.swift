@@ -70,6 +70,9 @@ extension LingroveNotebookEngine {
     func requireBuiltInReviewActionInTransaction(_ action: NotebookBuiltInReviewAction) throws {
         try requireCurrentScopeInTransaction(action.scope, requireRevision: true)
         let current = try lingroveNotebookStore.readSnapshot(workspaceId: action.scope.workspaceId)
+        let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
+        let displayedIDs = Set(action.cards.map(\.cardId))
+        guard noteCards.filter({ displayedIDs.contains($0.key) }) == action.noteCards else { throw VocabularyError.editConflict }
         let enrollmentIDs = Set(action.enrollments.map(\.id))
         let matching = try lingroveNotebookReviewStore.load(workspaceId: current.workspaceId).filter { enrollment in
             guard enrollment.notebookId == current.notebookId else { return false }

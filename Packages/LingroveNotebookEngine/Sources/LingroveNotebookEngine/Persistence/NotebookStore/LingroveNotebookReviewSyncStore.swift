@@ -23,17 +23,20 @@ public struct LingroveNotebookReviewSyncStore {
             let workspace = binding.scope.workspaceID.uuidString.lowercased()
             let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
             guard let installation = UUID(uuidString: settings.installationId) else { throw LingroveNotebookNetworkError.identityMismatch }
+            let localScope = try LingroveNotebookStore(core: core).readSnapshot(workspaceId: workspace)
+            let noteStore = ReviewNoteStore(core: core)
+            let noteState = try noteStore.syncState(scope: localScope) ?? ReviewNoteSyncState(types: noteStore.types(workspace: workspace),
+                notes: [], memberships: [], defaultTypeID: noteStore.defaultType(workspace: workspace).id)
             let pendingMedia = try LingroveNotebookReviewMediaStore(core: core).pending(workspaceID: workspace)
             if !pendingMedia.isEmpty {
                 // A finite media envelope is acknowledged before dependent plans/Cards. Keeping
                 // this independent avoids a large recording starving every later Card operation.
-                let value = LingroveNotebookReviewRequest(protocolVersion: 2, notebookId: binding.scope.notebookID,
+                let value = LingroveNotebookReviewRequest(protocolVersion: 3, notebookId: binding.scope.notebookID,
                     replicaId: binding.scope.replicaID, installationId: installation, afterSequence: try cursor(workspace),
-                    sourceSequence: "0", enrollments: [], links: [], operations: [], undos: [], confirmations: [], media: pendingMedia)
+                    sourceSequence: "0", enrollments: [], links: [], operations: [], undos: [], confirmations: [], media: pendingMedia, noteState: noteState, noteBase: try noteStore.acknowledgedState(workspace: workspace))
                 guard try core.encoder.encode(value).count <= 7 * 1024 * 1024 else { throw LingroveNotebookNetworkError.replyTooLarge }
                 return value
             }
-            let richProtocol = try core.scalarInt(sql: "SELECT EXISTS(SELECT 1 FROM notebook_card_links WHERE workspace_id=? AND material_plan_json IS NOT NULL)", values: [.text(workspace)]) != 0
             let enrollments = try core.query(sql: """
                 SELECT operation_id,payload_json FROM (SELECT operation_id,payload_json,created_at,ROW_NUMBER() OVER(PARTITION BY enrollment_id ORDER BY revision DESC) ordinal
                 FROM notebook_review_operations WHERE workspace_id=?) WHERE ordinal=1 ORDER BY created_at,operation_id LIMIT 200
@@ -112,8 +115,8 @@ public struct LingroveNotebookReviewSyncStore {
             let adoptions = try core.query(sql: "SELECT payload_json FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1 ORDER BY operation_id",
                 values: [.text(workspace)]) { try core.decoder.decode(LingroveNotebookReviewRequest.HistoryAdoption.self,
                     from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8)) }
-            return try bounded(.init(protocolVersion: richProtocol ? 2 : 1, notebookId: binding.scope.notebookID, replicaId: binding.scope.replicaID, installationId: installation,
-                afterSequence: try cursor(workspace), sourceSequence: sourceSequence, enrollments: enrollments, links: Array(admittedLinks), operations: Array(admittedOperations), undos: admittedUndos, confirmations: confirmations, historyAdoptions: adoptions))
+            return try bounded(.init(protocolVersion: 3, notebookId: binding.scope.notebookID, replicaId: binding.scope.replicaID, installationId: installation,
+                afterSequence: try cursor(workspace), sourceSequence: sourceSequence, enrollments: enrollments, links: Array(admittedLinks), operations: Array(admittedOperations), undos: admittedUndos, confirmations: confirmations, historyAdoptions: adoptions, noteState: noteState, noteBase: try noteStore.acknowledgedState(workspace: workspace)))
         }
     }
 
@@ -121,12 +124,20 @@ public struct LingroveNotebookReviewSyncStore {
         try core.inTransaction {
             try LingroveNotebookWindowStore(core: core).checkBindingInTransaction(binding)
             let workspace = binding.scope.workspaceID.uuidString.lowercased()
-            guard [1, 2].contains(request.protocolVersion), (response.protocolVersion == request.protocolVersion || request.protocolVersion == 1 && response.protocolVersion == 2), response.notebookId == binding.scope.notebookID, response.replicaId == binding.scope.replicaID,
+            guard [1, 2, 3].contains(request.protocolVersion), (response.protocolVersion == request.protocolVersion || request.protocolVersion == 1 && response.protocolVersion == 2), response.notebookId == binding.scope.notebookID, response.replicaId == binding.scope.replicaID,
                   try cursor(workspace) == request.afterSequence, response.afterSequence >= request.afterSequence else { throw LingroveNotebookNetworkError.invalidReply }
             let local = try LingroveNotebookStore(core: core).readSnapshot(workspaceId: workspace)
+            if request.protocolVersion == 3 {
+                guard let sent = request.noteState, let remote = response.noteState,
+                      response.acknowledgedNoteState == (try sent.digest()) else { throw LingroveNotebookNetworkError.invalidReply }
+                try ReviewNoteStore(core: core).applySyncState(remote, sent: sent, scope: local)
+                try ReviewNoteStore(core: core).acknowledgeState(remote, scope: local)
+            } else if response.noteState != nil || response.acknowledgedNoteState != nil {
+                throw LingroveNotebookNetworkError.invalidReply
+            }
             let sentMedia = request.media ?? [], receivedMedia = response.media ?? []
             let acknowledgedMedia = response.acknowledgedMedia ?? []
-            guard response.protocolVersion == 2 || (sentMedia.isEmpty && receivedMedia.isEmpty && acknowledgedMedia.isEmpty),
+            guard response.protocolVersion >= 2 || (sentMedia.isEmpty && receivedMedia.isEmpty && acknowledgedMedia.isEmpty),
                   Set(acknowledgedMedia) == Set(sentMedia.map { $0.reference.digest }),
                   Set(acknowledgedMedia).count == acknowledgedMedia.count,
                   receivedMedia.count <= 128, receivedMedia.allSatisfy({ $0.reference.isValid }), receivedMedia.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else {
@@ -156,6 +167,8 @@ public struct LingroveNotebookReviewSyncStore {
                 prior = sequence
                 let data = try core.encoder.encode(item.value)
                 switch item.kind {
+                case "noteState":
+                    guard response.protocolVersion == 3 else { throw LingroveNotebookNetworkError.invalidReply }
                 case "enrollment":
                     let value = try core.decoder.decode(LingroveNotebookReviewEnrollment.self, from: data)
                     guard value.workspaceId == workspace, value.notebookId == binding.scope.notebookID else { throw LingroveNotebookNetworkError.identityMismatch }
@@ -172,7 +185,7 @@ public struct LingroveNotebookReviewSyncStore {
                           value.link.source.notebookId == binding.scope.notebookID, value.link.cardId == value.card.cardId else { throw LingroveNotebookNetworkError.identityMismatch }
                     let link = remote(value.link, book: local.notebookId, sourceRevision: local.revision)
                     if let plan = link.materialPlan {
-                        guard response.protocolVersion == 2, plan.exampleID == link.source.exampleId else { throw LingroveNotebookNetworkError.invalidReply }
+                        guard response.protocolVersion >= 2, plan.exampleID == link.source.exampleId else { throw LingroveNotebookNetworkError.invalidReply }
                         try resources.register(plan: plan, source: link.source, snapshot: local, supplied: [])
                     }
                     let pendingLink = try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_card_link_operations WHERE workspace_id=? AND link_id=?", values: [.text(workspace), .text(link.id.uuidString)])
@@ -262,7 +275,7 @@ public struct LingroveNotebookReviewSyncStore {
             let next = LingroveNotebookReviewRequest(protocolVersion: input.protocolVersion, notebookId: input.notebookId,
                 replicaId: input.replicaId, installationId: input.installationId, afterSequence: input.afterSequence,
                 sourceSequence: input.sourceSequence, enrollments: enrollments, links: links, operations: paired, undos: safeUndos, confirmations: input.confirmations,
-                historyAdoptions: adoptions)
+                historyAdoptions: adoptions, noteState: input.noteState, noteBase: input.noteBase)
             if try core.encoder.encode(next).count <= 7 * 1024 * 1024 { return next }
             if !undos.isEmpty { undos.removeLast() }
             else if !operations.isEmpty { operations.removeLast() }

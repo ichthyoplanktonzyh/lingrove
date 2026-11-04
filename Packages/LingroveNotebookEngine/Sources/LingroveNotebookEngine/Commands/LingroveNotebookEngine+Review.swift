@@ -13,6 +13,11 @@ extension LingroveNotebookEngine {
             // invalid row. This hook borrows the same writer lock; it never spans an await.
             try validateCurrentState?()
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: false) }
+            if let version = reviewSubmission.noteVersion {
+                let saved = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
+                guard let model = try ReviewNoteStore(core: core).cardModels(scope: saved)[reviewSubmission.cardId],
+                      try model.questionVersion(in: saved) == version else { throw VocabularyError.editConflict }
+            }
             let card = try self.cardStore.loadCard(workspaceId: workspaceId, cardId: reviewSubmission.cardId)
             if let expectedCardOperationID, card.lastOperationId != expectedCardOperationID { throw VocabularyError.editConflict }
             // A rating queued by an old screen cannot write after a pause/withdrawal committed.

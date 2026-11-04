@@ -27,7 +27,7 @@ public final class LingroveNotebookEngine {
     public convenience init(databaseURL: URL, mediaDirectoryURL: URL) throws {
         let core = try DatabaseCore(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL) { core in
             let version = try core.scalarInt(sql: "PRAGMA user_version", values: [])
-            guard version == 0 || version == 38 || version == LocalDatabaseSchema.currentVersion else {
+            guard version == 0 || version == 38 || version == 39 || version == LocalDatabaseSchema.currentVersion else {
                 throw LocalStoreError.database("Unsupported notebook engine schema version: \(version)")
             }
             if version == 0 {
@@ -43,6 +43,13 @@ public final class LingroveNotebookEngine {
                     try core.executeScript(sql: "ALTER TABLE notebook_card_links ADD COLUMN material_plan_json TEXT;\n" + LingroveNotebookReviewMediaStore.createSQL,
                         errorContext: "Add shared review material ownership")
                     try core.executeScript(sql: "PRAGMA user_version = 39", errorContext: "Record shared review material schema")
+                }
+            }
+            if version == 38 || version == 39 {
+                // Add empty note-model tables; existing exercises are not converted or reset.
+                try core.inTransaction {
+                    try core.executeScript(sql: ReviewNoteStore.createSQL + "\nPRAGMA user_version = 40;",
+                                           errorContext: "Create note-based review storage")
                 }
             }
             return try LocalDatabaseBootstrapper(core: core).ensureDefaultState()

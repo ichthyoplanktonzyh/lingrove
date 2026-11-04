@@ -48,7 +48,9 @@ extension LingroveNotebookEngine {
                     newExercises: cards.values.filter { eligibleIDs.contains($0.cardId) && $0.dueAt == nil }.count,
                     reviewedExercises: cards.values.filter { $0.reps > 0 }.count,
                     ratingRecords: counts.ratings, undoneRatings: counts.undos),
-                undoByCardID: undo, recentHistory: history)
+                undoByCardID: undo, recentHistory: history, noteCards: try ReviewNoteStore(core: core).cardModels(scope: scope),
+                noteTypes: try ReviewNoteStore(core: core).types(workspace: scope.workspaceId),
+                defaultNoteType: try ReviewNoteStore(core: core).defaultType(workspace: scope.workspaceId))
         }
     }
 

@@ -83,6 +83,7 @@ public struct WorkspaceForker {
         try insertForkedReviewEvents(sourceWorkspaceId: sourceWorkspaceID, destinationWorkspaceId: targetWorkspaceID, forkMappings: mappings)
         try LingroveNotebookAccountReviewHandoff(core: core).copyInTransaction(source: sourceWorkspaceID, target: targetWorkspaceID,
             notebookID: notebookID, cardIDs: cards, assetIDs: mappings.mediaAssetIdsBySourceId)
+        try ReviewNoteStore(core: core).copyOwnership(source: sourceWorkspaceID, target: targetWorkspaceID, cardIDs: cards)
         let installation = try workspaceSettingsStore.loadCloudSettings().installationId
         let outbox = OutboxStore(core: core), cardStore = CardStore(core: core)
         let now = nowIsoTimestamp()

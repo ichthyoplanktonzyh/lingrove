@@ -187,7 +187,8 @@ public final class NotebookEngineStorage: NotebookStorage, NotebookMediaStorage,
             let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
             return try .init(body: encoder.encode(value), afterSequence: value.afterSequence,
                 hasWork: !value.enrollments.isEmpty || !value.links.isEmpty || !value.operations.isEmpty
-                    || !value.undos.isEmpty || !value.confirmations.isEmpty || !value.historyAdoptions.isEmpty || !(value.media ?? []).isEmpty)
+                    || !value.undos.isEmpty || !value.confirmations.isEmpty || !value.historyAdoptions.isEmpty || !(value.media ?? []).isEmpty
+                    || value.noteState != value.noteBase)
         }
     }
 

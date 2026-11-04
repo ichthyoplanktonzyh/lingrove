@@ -229,8 +229,10 @@ public struct ReviewSubmission: Hashable, Sendable {
     public let rating: ReviewRating
     public let reviewedAtClient: String
     public let reviewedTimeZone: String?
+    public let noteVersion: String?
 
-    public init(cardId: String, rating: ReviewRating, reviewedAtClient: String, reviewedTimeZone: String?) {
+    public init(cardId: String, rating: ReviewRating, reviewedAtClient: String, reviewedTimeZone: String?, noteVersion: String? = nil) {
+        self.noteVersion = noteVersion
         self.cardId = cardId
         self.rating = rating
         self.reviewedAtClient = reviewedAtClient

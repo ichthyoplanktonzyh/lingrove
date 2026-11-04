@@ -11,7 +11,9 @@ public struct LingroveNotebookReviewMaterialStore {
         let links = LingroveNotebookCardLinkStore(core: core)
         let cards = CardStore(core: core)
         let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
+        let noteCards = Set(try ReviewNoteStore(core: core).memberships(workspace: snapshot.workspaceId).map(\.cardID))
         for link in try links.load(workspaceId: snapshot.workspaceId) {
+            if noteCards.contains(link.cardId) { continue }
             guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: snapshot.workspaceId, cardId: link.cardId), card.deletedAt == nil else { continue }
             let material = LingroveNotebookCardMaterial.resolve(source: link.source, snapshot: snapshot, materialPlan: link.materialPlan)
             let state = material == nil && link.allowsUnavailableMaterial ? "retained" : material == nil ? (LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: snapshot) == nil ? "sourceMissing" : "exampleMissing") : "ready"
@@ -37,6 +39,7 @@ public struct LingroveNotebookReviewMaterialStore {
             }
             _ = try links.update(link, generatedContent: generated, sourceRevision: snapshot.revision, cardOperationId: operationID)
         }
+        try ReviewNoteStore(core: core).refreshInTransaction(snapshot)
     }
 
     public init(core: DatabaseCore) {

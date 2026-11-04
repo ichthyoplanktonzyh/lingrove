@@ -119,18 +119,18 @@ struct ReviewMaterialIntegrationTests {
         _ = try source.db.enrollLingroveNotebookSenses([draft], scope: saved, media: [audio.prepared])
         let binding = try source.binding(), sync = LingroveNotebookReviewSyncStore(core: source.db.core)
         let stage = try sync.request(binding)
-        #expect(stage.protocolVersion == 2 && stage.media == [audio.prepared] && stage.links.isEmpty)
+        #expect(stage.protocolVersion == 3 && stage.media == [audio.prepared] && stage.links.isEmpty)
         #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 1, notebookId: source.book, replicaId: source.replica,
-            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: []), request: stage, binding: binding) }
-        #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 2, notebookId: source.book, replicaId: source.replica,
-            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: []), request: stage, binding: binding) }
-        #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 2, notebookId: source.book, replicaId: source.replica,
-            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], media: Self.oversizedMedia(), acknowledgedMedia: [audio.prepared.reference.digest]), request: stage, binding: binding) }
+            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding) }
+        #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: source.replica,
+            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding) }
+        #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: source.replica,
+            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], media: Self.oversizedMedia(), acknowledgedMedia: [audio.prepared.reference.digest], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding) }
         #expect(try sync.request(binding).media == stage.media)
-        try sync.apply(.init(protocolVersion: 2, notebookId: source.book, replicaId: source.replica,
-            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], acknowledgedMedia: [audio.prepared.reference.digest]), request: stage, binding: binding)
+        try sync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: source.replica,
+            acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], acknowledgedMedia: [audio.prepared.reference.digest], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding)
         let publication = try sync.request(binding)
-        #expect(publication.protocolVersion == 2 && publication.links.first?.value.materialPlan == plan)
+        #expect(publication.protocolVersion == 3 && publication.links.first?.value.materialPlan == plan)
         #expect(try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: JSONEncoder().encode(publication)).links.first?.value.materialPlan == plan)
         let target = try NotebookMediaDatabaseFixture(workspace: source.workspace, owner: source.owner); defer { target.cleanUp() }
         let targetSaved = try target.db.saveLingroveNotebook(saved.document, basedOn: target.db.loadLingroveNotebook(workspaceId: target.workspace))
@@ -143,8 +143,8 @@ struct ReviewMaterialIntegrationTests {
         let changes: [LingroveNotebookReviewResponse.Change] = [
             .init(sequence: "1", kind: "enrollment", value: try Self.json(enrollment)),
             .init(sequence: "2", kind: "exercise", value: try Self.json(exercise))]
-        try targetSync.apply(.init(protocolVersion: 2, notebookId: source.book, replicaId: target.replica,
-            acknowledged: [], confirmed: [], afterSequence: 2, hasMore: false, changes: changes, media: [audio.prepared]), request: targetRequest, binding: targetBinding)
+        try targetSync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: target.replica,
+            acknowledged: [], confirmed: [], afterSequence: 2, hasMore: false, changes: changes, media: [audio.prepared], noteState: targetRequest.noteState, acknowledgedNoteState: targetRequest.noteStateDigest), request: targetRequest, binding: targetBinding)
         try target.reopen()
         #expect(try target.db.loadLingroveNotebookCardLinks(workspaceId: target.workspace).first?.materialPlan == plan)
         #expect(try target.db.loadActiveCard(workspaceId: target.workspace, cardId: card.cardId).frontText == card.frontText)
@@ -228,7 +228,7 @@ struct ReviewMaterialIntegrationTests {
         let events = try f.db.cardStore.loadReviewEvents(workspaceId: f.workspace)
         try f.db.core.executeScript(sql: "DROP TABLE notebook_review_media; ALTER TABLE notebook_card_links DROP COLUMN material_plan_json; PRAGMA user_version=38;", errorContext: "Synthetic current schema38")
         try f.reopen()
-        #expect(try f.db.core.scalarInt(sql: "PRAGMA user_version", values: []) == 39)
+        #expect(try f.db.core.scalarInt(sql: "PRAGMA user_version", values: []) == LocalDatabaseSchema.currentVersion)
         #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
         #expect(try f.db.loadActiveCard(workspaceId: f.workspace, cardId: card.cardId) == card)
         #expect(try f.db.cardStore.loadReviewEvents(workspaceId: f.workspace) == events)

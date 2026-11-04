@@ -12,12 +12,16 @@ public struct NotebookBuiltInReviewSnapshot: Sendable {
     public let eligibleCardIDs: Set<String>
     public let statistics: NotebookBuiltInReviewStatistics
     public let undoByCardID: [String: NotebookBuiltInReviewUndo]
+    public let noteTypes: [ReviewNoteType]
+    public let defaultNoteType: ReviewNoteType
+    public let noteCards: [String: NotebookReviewNoteCard]
     public let recentHistory: [NotebookBuiltInReviewHistory]
 
     public init(scope: LingroveNotebookSnapshot, review: LingroveNotebookReviewSnapshot,
                 schedulerSettings: WorkspaceSchedulerSettings, queue: [Card], eligibleCardIDs: Set<String>,
                 statistics: NotebookBuiltInReviewStatistics, undoByCardID: [String: NotebookBuiltInReviewUndo],
-                recentHistory: [NotebookBuiltInReviewHistory]) {
+                recentHistory: [NotebookBuiltInReviewHistory], noteCards: [String: NotebookReviewNoteCard] = [:],
+                noteTypes: [ReviewNoteType] = [ReviewNoteDefaults.type], defaultNoteType: ReviewNoteType = ReviewNoteDefaults.type) {
         self.scope = scope
         self.review = review
         self.schedulerSettings = schedulerSettings
@@ -26,6 +30,8 @@ public struct NotebookBuiltInReviewSnapshot: Sendable {
         self.statistics = statistics
         self.undoByCardID = undoByCardID
         self.recentHistory = recentHistory
+        self.noteCards = noteCards
+        self.noteTypes = noteTypes; self.defaultNoteType = defaultNoteType
     }
 }
 
@@ -92,6 +98,7 @@ public struct NotebookBuiltInReviewHistory: Identifiable, Sendable {
 /// revision. Ratings and participation changes can occur without a corpus edit; their original
 /// Card/link/enrollment identities therefore travel with the saved scope to the writer lock.
 public struct NotebookBuiltInReviewAction: Sendable {
+    public let noteCards: [String: NotebookReviewNoteCard]
     public let scope: LingroveNotebookSnapshot
     public let selection: VocabularySelection
     public let enrollments: [LingroveNotebookReviewEnrollment]
@@ -108,5 +115,6 @@ public struct NotebookBuiltInReviewAction: Sendable {
         let ids = Set(cards.map(\.cardId))
         links = content.review.links.filter { ids.contains($0.cardId) }
         schedulerSettings = content.schedulerSettings
+        noteCards = content.noteCards.filter { ids.contains($0.key) }
     }
 }

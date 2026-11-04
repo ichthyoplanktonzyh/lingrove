@@ -84,13 +84,16 @@ public nonisolated struct LingroveNotebookReviewRequest: Codable, Sendable {
     public let undos: [LingroveNotebookReviewUndo]
     public let confirmations: [Confirmation]
     public let historyAdoptions: [HistoryAdoption]
+    public let noteBase: ReviewNoteSyncState?
+    public let noteStateDigest: String?
+    public let noteState: ReviewNoteSyncState?
     public let media: [ReviewMaterialPreparedMedia]?
     public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, installationId: UUID, afterSequence: Int64, sourceSequence: String,
          enrollments: [Enrollment], links: [Link], operations: [Operation], undos: [LingroveNotebookReviewUndo],
-         confirmations: [Confirmation], historyAdoptions: [HistoryAdoption] = [], media: [ReviewMaterialPreparedMedia]? = nil) {
+         confirmations: [Confirmation], historyAdoptions: [HistoryAdoption] = [], media: [ReviewMaterialPreparedMedia]? = nil, noteState: ReviewNoteSyncState? = nil, noteBase: ReviewNoteSyncState? = nil) {
         self.protocolVersion = protocolVersion; self.notebookId = notebookId; self.replicaId = replicaId; self.installationId = installationId
         self.afterSequence = afterSequence; self.sourceSequence = sourceSequence; self.enrollments = enrollments; self.links = links
-        self.operations = operations; self.undos = undos; self.confirmations = confirmations; self.historyAdoptions = historyAdoptions; self.media = media
+        self.operations = operations; self.undos = undos; self.confirmations = confirmations; self.historyAdoptions = historyAdoptions; self.media = media; self.noteState = noteState; self.noteBase = noteBase; self.noteStateDigest = try? noteState?.digest()
     }
 }
 
@@ -132,10 +135,12 @@ public nonisolated struct LingroveNotebookReviewResponse: Decodable, Sendable {
     public let afterSequence: Int64
     public let hasMore: Bool
     public let changes: [Change]
+    public let noteState: ReviewNoteSyncState?
     public let media: [ReviewMaterialPreparedMedia]?
+    public let acknowledgedNoteState: String?
     public let acknowledgedMedia: [String]?
 
-    public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, acknowledged: [String], confirmed: [String], afterSequence: Int64, hasMore: Bool, changes: [Change], media: [ReviewMaterialPreparedMedia]? = nil, acknowledgedMedia: [String]? = nil) {
+    public init(protocolVersion: Int, notebookId: UUID, replicaId: UUID, acknowledged: [String], confirmed: [String], afterSequence: Int64, hasMore: Bool, changes: [Change], media: [ReviewMaterialPreparedMedia]? = nil, acknowledgedMedia: [String]? = nil, noteState: ReviewNoteSyncState? = nil, acknowledgedNoteState: String? = nil) {
         self.protocolVersion = protocolVersion
         self.notebookId = notebookId
         self.replicaId = replicaId
@@ -145,5 +150,6 @@ public nonisolated struct LingroveNotebookReviewResponse: Decodable, Sendable {
         self.hasMore = hasMore
         self.changes = changes
         self.media = media; self.acknowledgedMedia = acknowledgedMedia
+        self.noteState = noteState; self.acknowledgedNoteState = acknowledgedNoteState
     }
 }
