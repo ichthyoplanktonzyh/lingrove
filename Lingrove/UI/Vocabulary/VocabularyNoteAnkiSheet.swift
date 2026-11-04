@@ -18,7 +18,7 @@ struct VocabularyNoteAnkiSheet: View {
         VStack(spacing: 0) {
             Form {
                 Picker(String(localized: "Note type", table: "Vocabulary"), selection: $session.typeID) {
-                    ForEach(session.types) { Text($0.name).tag(Optional($0.id)) }
+                    ForEach(session.types) { Text(BuiltInReviewCopy.noteTypeName($0)).tag(Optional($0.id)) }
                 }
                 Picker(String(localized: "Deck", table: "Vocabulary"), selection: $session.deck) {
                     ForEach(session.catalog?.decks ?? [session.deck], id: \.self) { Text($0).tag($0) }
@@ -28,7 +28,9 @@ struct VocabularyNoteAnkiSheet: View {
                 }
                 if let material = session.material {
                     Picker(String(localized: "Card templates", table: "Vocabulary"), selection: $templateID) {
-                        ForEach(material.type.templates.filter(\.enabled)) { Text($0.name).tag(Optional($0.id)) }
+                        ForEach(material.type.templates.filter(\.enabled)) {
+                            Text(BuiltInReviewCopy.cardTemplateName($0)).tag(Optional($0.id))
+                        }
                     }
                 }
                 ForEach(session.conflicts) { field in

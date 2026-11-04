@@ -461,18 +461,45 @@ struct VocabularyNotebookView: View {
     }
 
     private var emptyNotebookContent: some View {
-        ContentUnavailableView {
-            Label(String(localized: "No saved expressions", table: "Vocabulary"), systemImage: "books.vertical")
-        } description: {
-            Text(String(localized: "Add an entry yourself or import a CSV or TXT word list.", table: "Vocabulary"))
-        } actions: {
-            HStack {
+        VStack(spacing: 18) {
+            LingroveBrandEmblem(logoSize: 58)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 5) {
+                    LingroveWhaleGlyph(size: 12, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+
+                Text(String(localized: "No saved expressions", table: "Vocabulary"))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+
+                Text(String(localized: "Add an entry yourself or import a CSV or TXT word list.", table: "Vocabulary"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
+            }
+
+            HStack(spacing: 10) {
                 Button(String(localized: "Add entry", table: "Vocabulary")) { creatingEntry = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(LingroveBrand.accent)
+                    .controlSize(.regular)
                     .accessibilityIdentifier("vocabularyEmptyAddEntry")
                 Button(String(localized: "Import word list", table: "Vocabulary")) { choosingWordList = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
                     .accessibilityIdentifier("vocabularyEmptyImportWordList")
-            }.buttonStyle(.bordered)
+            }
         }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// A successful addition must be visible even when the user was searching another language,
@@ -1136,32 +1163,59 @@ struct VocabularyNotebookView: View {
             VocabularyUnclassifiedDetail(store: store, entries: scopedEntries, unclassified: unclassified, speech: speech,
                 openSense: { meaningDestination = .sense(nodeID: nil, senseID: $0.senseID) }, openMeaning: showMeaning)
         } else if organization == "meaning" {
-            ContentUnavailableView {
-                Label(meaningItems.isEmpty
+            unselectedMeaningCanvas
+        } else { entryDetail }
+    }
+
+    private var unselectedMeaningCanvas: some View {
+        VStack(spacing: 16) {
+            LingroveBrandEmblem(logoSize: 50)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 5) {
+                    LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+
+                Text(meaningItems.isEmpty
                     ? String(localized: "No meanings in this view", table: "Vocabulary")
-                    : String(localized: "Browse by meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
-            } description: {
+                    : String(localized: "Browse by meaning", table: "Vocabulary"))
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+
                 Text(String(localized:
                         "Select a semantic domain or meaning group to explore expressions by their role.",
                         table: "Vocabulary"))
-            } actions: {
-                HStack(spacing: 10) {
-                    Button(String(localized: "New meaning", table: "Vocabulary")) { creatingMeaning = true }
-                        .buttonStyle(.borderedProminent)
-                    if !query.isEmpty || language != nil || !selectedTag.isEmpty {
-                        Button(String(localized: "Clear filters", table: "Vocabulary")) {
-                            query = ""; language = nil; selectedTag = ""
-                        }
-                    }
-                    if !unclassified.isEmpty {
-                        Button(String(localized: "Other expressions", table: "Vocabulary") + " (\(unclassified.count))") {
-                            meaningDestination = .unclassified
-                        }
-                        .buttonStyle(.bordered)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
+            }
+
+            HStack(spacing: 10) {
+                Button(String(localized: "New meaning", table: "Vocabulary")) { creatingMeaning = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(LingroveBrand.accent)
+                if !query.isEmpty || language != nil || !selectedTag.isEmpty {
+                    Button(String(localized: "Clear filters", table: "Vocabulary")) {
+                        query = ""; language = nil; selectedTag = ""
                     }
                 }
+                if !unclassified.isEmpty {
+                    Button(String(localized: "Other expressions", table: "Vocabulary") + " (\(unclassified.count))") {
+                        meaningDestination = .unclassified
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
-        } else { entryDetail }
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Contextual breadcrumb and sibling expression switcher bar shown when drilling into a single
@@ -1275,8 +1329,45 @@ struct VocabularyNotebookView: View {
                 .transition(.opacity)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: sense.id)
         } else {
-            ContentUnavailableView(String(localized: "Vocabulary", table: "Vocabulary"), systemImage: "books.vertical")
+            unselectedEntryCanvas
         }
+    }
+
+    private var unselectedEntryCanvas: some View {
+        VStack(spacing: 16) {
+            LingroveBrandEmblem(logoSize: 52)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 5) {
+                    LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+
+                Text(String(localized: "Vocabulary", table: "Vocabulary"))
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+
+                Text(String(localized: "\(store.entries.count) entries stored"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            HStack(spacing: 10) {
+                Button(String(localized: "Add entry", table: "Vocabulary")) { creatingEntry = true }
+                    .buttonStyle(.borderedProminent)
+                    .tint(LingroveBrand.accent)
+                Button(String(localized: "Import word list", table: "Vocabulary")) { choosingWordList = true }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var selectedEntry: VocabularyEntry? {

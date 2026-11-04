@@ -27,15 +27,31 @@ struct PermissionReminderView: View {
 
     var body: some View {
         VStack(spacing: 26) {
-            OnboardingStepHeader(
-                systemImage: "exclamationmark.shield.fill",
-                tint: .orange,
-                title: String(localized: "Permissions needed"),
-                subtitle: String(
-                    localized: "Lingrove needs these permissions to work.\nGrant them in System Settings, then come back here.",
-                    table: "Learning"
+            VStack(spacing: 12) {
+                HStack(spacing: 7) {
+                    LingroveLogoBadge(size: 20, showsGlow: false)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
                 )
-            )
+
+                OnboardingStepHeader(
+                    systemImage: "exclamationmark.shield.fill",
+                    tint: .orange,
+                    title: String(localized: "Permissions needed"),
+                    subtitle: String(
+                        localized: "Lingrove needs these permissions to work.\nGrant them in System Settings, then come back here.",
+                        table: "Learning"
+                    )
+                )
+            }
             .onboardingReveal(0)
 
             VStack(spacing: 10) {

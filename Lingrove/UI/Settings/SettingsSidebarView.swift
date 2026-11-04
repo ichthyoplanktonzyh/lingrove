@@ -96,22 +96,15 @@ struct SettingsSidebarView: View {
         .padding(.bottom, 4)
     }
 
-    /// "Lingrove" wordmark with the app version in small secondary text beside it, sitting above the
-    /// search field. The top padding clears the title bar (the search field used to own that space).
+    /// Lingrove brand header with the squircle app logo, rounded wordmark, and app version pill,
+    /// sitting above the search field. Shares `LingroveSidebarBrandHeader` with the Vocabulary
+    /// notebook workspace so both multi-column windows carry the same top-left identity anchor.
     private var appHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(ProductIdentity.appDisplayName)
-                .font(.title3.weight(.semibold))
-            if let version = appVersionText {
-                Text(version)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 24)
-        .padding(.bottom, 8)
+        LingroveSidebarBrandHeader(
+            badgeText: appVersionText,
+            topPadding: 22,
+            bottomPadding: 8
+        )
     }
 
     /// Short marketing version (e.g. "v1.0"), or nil if the bundle has no version string.

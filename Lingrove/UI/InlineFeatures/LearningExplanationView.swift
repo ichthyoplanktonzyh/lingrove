@@ -151,10 +151,7 @@ struct LearningExplanationView: View {
             if let record = session.record {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if presentation == .embedded {
-                        Image(systemName: "sparkles")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(LingroveBrand.accent)
-                            .accessibilityHidden(true)
+                        LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
                     }
                     Text(record.result.meaning).font(.callout.weight(.semibold)).textSelection(.enabled)
                 }

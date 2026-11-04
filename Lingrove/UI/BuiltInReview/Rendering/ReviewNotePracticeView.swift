@@ -21,7 +21,8 @@ struct ReviewNotePracticeView: View {
         return result
     }
     private var templateName: String {
-        model.noteType.templates.first { $0.id == model.templateID }?.name ?? model.noteType.name
+        model.noteType.templates.first { $0.id == model.templateID }
+            .map(BuiltInReviewCopy.cardTemplateName) ?? BuiltInReviewCopy.noteTypeName(model.noteType)
     }
 
     var body: some View {

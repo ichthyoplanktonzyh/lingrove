@@ -124,6 +124,7 @@ struct ReviewNoteTypeEditor: View {
             HStack(spacing: 10) {
                 ForEach(ReviewNoteDefaults.presets) { preset in
                     let isSelected = ReviewNoteDefaults.matches(preset, type: draft.type)
+                    let labels = BuiltInReviewCopy.presetLabels(preset)
                     Button {
                         guard !isSelected else { return }
                         draft.choosePreset(preset)
@@ -131,11 +132,11 @@ struct ReviewNoteTypeEditor: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 6) {
-                                Text(preset.title)
+                                Text(labels.title)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.primary)
                                 Spacer(minLength: 4)
-                                Text(preset.badge)
+                                Text(labels.badge)
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(isSelected ? LingroveBrand.accent : .secondary)
                                     .padding(.horizontal, 6)
@@ -145,7 +146,7 @@ struct ReviewNoteTypeEditor: View {
                                             .fill(isSelected ? LingroveBrand.accent.opacity(0.16) : Color(nsColor: .windowBackgroundColor))
                                     )
                             }
-                            Text(preset.subtitle)
+                            Text(labels.subtitle)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -219,7 +220,7 @@ struct ReviewNoteTypeEditor: View {
         VStack(spacing: 12) {
             HStack {
                 Picker(String(localized: "Card templates", table: "Vocabulary"), selection: $selectedTemplate) {
-                    ForEach(draft.type.templates) { Text($0.name).tag($0.id) }
+                    ForEach(draft.type.templates) { Text(BuiltInReviewCopy.cardTemplateName($0)).tag($0.id) }
                 }.labelsHidden()
                 Button {
                     let template = ReviewCardTemplate(name: String(localized: "New card", table: "Vocabulary"),

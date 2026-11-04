@@ -30,7 +30,7 @@ struct ReviewNoteEditor: View {
                 }
                 if let message = session.message { Text(message).foregroundStyle(.red) }
             }.formStyle(.grouped).disabled(session.isBusy)
-                .navigationTitle(draft.type.name)
+                .navigationTitle(BuiltInReviewCopy.noteTypeName(draft.type))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(String(localized: "Cancel")) {

@@ -12,8 +12,19 @@ struct ProductUsageGuideView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            HStack {
+            HStack(spacing: 10) {
+                LingroveLogoBadge(size: 26, showsGlow: true)
                 Text(String(localized: "Usage Guide", table: "Learning")).font(.title2.weight(.semibold))
+                HStack(spacing: 4) {
+                    LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+                .accessibilityHidden(true)
                 Spacer()
                 Button(String(localized: "Close", table: "Learning")) { dismiss() }.keyboardShortcut(.cancelAction)
             }

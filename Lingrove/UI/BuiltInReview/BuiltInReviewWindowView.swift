@@ -158,7 +158,7 @@ struct BuiltInReviewWindowView: View {
                             session.editNoteType(type)
                         } label: {
                             HStack {
-                                Text(type.name)
+                                Text(BuiltInReviewCopy.noteTypeName(type))
                                 if type.id == session.content?.defaultNoteType.id {
                                     Image(systemName: "checkmark")
                                 }

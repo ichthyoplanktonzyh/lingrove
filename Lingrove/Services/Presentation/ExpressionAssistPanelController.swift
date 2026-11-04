@@ -692,13 +692,57 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
             : String(localized: "Search", table: "Learning")))
         if candidateCount > 0 { keys.append(("⇥", String(localized: "Insert", table: "Learning"))) }
         keys.append(("esc", String(localized: "Cancel", table: "Learning")))
+        let brandLabel = NSTextField(labelWithString: ProductIdentity.appDisplayName)
+        brandLabel.font = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
+        brandLabel.textColor = NSColor.tertiaryLabelColor
+        let brandTextWidth = ceil(brandLabel.intrinsicContentSize.width)
+        let brandTextHeight = ceil(brandLabel.intrinsicContentSize.height)
+        let brandIconSize: CGFloat = 12
+        let brandSpacing: CGFloat = 4
+        let whaleImage = NSImage(named: LingroveBrand.whaleTemplateIconAssetName)
+        let iconWidth = whaleImage == nil ? 0 : brandIconSize
+        let wordmarkOffset = iconWidth > 0 ? iconWidth + brandSpacing : 0
+
         let hints = NSTextField(labelWithAttributedString: Self.keyHints(keys))
         hints.lineBreakMode = .byTruncatingTail
         hints.setAccessibilityLabel(keys.map { "\($0.0) \($0.1)" }.joined(separator: ", "))
         let hintsHeight = ceil(hints.intrinsicContentSize.height)
+        // Keep every shortcut visible whenever the panel can fit it. The measured spare
+        // width can buy the wordmark, the whale alone, or neither in longer translations.
+        let footerWidth = max(0, width - inset * 2)
+        let brandGap: CGFloat = 10
+        let brandBudget = footerWidth - ceil(hints.intrinsicContentSize.width) - brandGap
+        let showsWordmark = brandBudget >= wordmarkOffset + brandTextWidth
+        let showsIcon = iconWidth > 0 && brandBudget >= iconWidth
+        let brandTotalWidth = showsWordmark ? wordmarkOffset + brandTextWidth : (showsIcon ? iconWidth : 0)
+        let availableHintsWidth = brandTotalWidth > 0 ? footerWidth - brandTotalWidth - brandGap : footerWidth
         hints.frame = CGRect(x: inset, y: currentTop + (Metrics.footerHeight - hintsHeight) / 2,
-            width: max(0, width - inset * 2), height: hintsHeight)
+            width: availableHintsWidth, height: hintsHeight)
         content.addSubview(hints)
+
+        let brandOriginX = width - inset - brandTotalWidth
+        if showsIcon, let whaleImage {
+            let iconView = NSImageView(image: whaleImage)
+            iconView.imageScaling = NSImageScaling.scaleProportionallyUpOrDown
+            iconView.contentTintColor = NSColor.tertiaryLabelColor
+            iconView.frame = CGRect(
+                x: brandOriginX,
+                y: currentTop + (Metrics.footerHeight - brandIconSize) / 2,
+                width: brandIconSize,
+                height: brandIconSize
+            )
+            content.addSubview(iconView)
+        }
+        if showsWordmark {
+            brandLabel.frame = CGRect(
+                x: brandOriginX + wordmarkOffset,
+                y: currentTop + (Metrics.footerHeight - brandTextHeight) / 2,
+                width: brandTextWidth,
+                height: brandTextHeight
+            )
+            content.addSubview(brandLabel)
+        }
+
         return (currentTop - top) + Metrics.footerHeight + 2
     }
 

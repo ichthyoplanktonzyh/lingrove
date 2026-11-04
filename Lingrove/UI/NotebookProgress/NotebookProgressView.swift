@@ -30,7 +30,13 @@ struct NotebookProgressDestination: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(LingroveBrand.accent.opacity(0.12))
+                        .frame(width: 26, height: 26)
+                    LingroveWhaleGlyph(size: 14, tint: LingroveBrand.accent)
+                }
                 Text(NotebookProgressCopy.text("title"))
                     .font(.title3.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)

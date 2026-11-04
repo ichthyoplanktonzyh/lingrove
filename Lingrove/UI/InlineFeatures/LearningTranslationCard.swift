@@ -17,12 +17,27 @@ struct LearningTranslationCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(sourceLanguage.map {
-                String(localized: "\($0.label) → \(targetLanguage.label)", table: "Learning",
-                    comment: "Language direction shown at the top of a translation preview.")
-            } ?? String(localized: "Expression preview · target: \(targetLanguage.label)", table: "Learning",
-                comment: "Preview header when the source language is unavailable; the target language name is inserted."))
-                .font(.headline)
+            HStack(spacing: 8) {
+                LingroveLogoBadge(size: 22, showsGlow: false)
+                Text(sourceLanguage.map {
+                    String(localized: "\($0.label) → \(targetLanguage.label)", table: "Learning",
+                        comment: "Language direction shown at the top of a translation preview.")
+                } ?? String(localized: "Expression preview · target: \(targetLanguage.label)", table: "Learning",
+                    comment: "Preview header when the source language is unavailable; the target language name is inserted."))
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                HStack(spacing: 4) {
+                    LingroveWhaleGlyph(size: 10, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2.5)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+                .accessibilityHidden(true)
+            }
             Text(isSentence
                 ? String(localized: "Scope: sentence at the caret", table: "Learning",
                     comment: "Identifies that the preview covers the sentence containing the caret.")

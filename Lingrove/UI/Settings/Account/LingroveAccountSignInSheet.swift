@@ -71,8 +71,18 @@ struct LingroveAccountSignInSheet: View {
     private var emailForm: some View {
         SettingsPaneScaffold {
             Section {
-                Text(String(localized: "Use your email to sign in or create an account. No password is needed.", table: "Account"))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    LingroveLogoBadge(size: 38, showsGlow: true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(ProductIdentity.appDisplayName)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(.primary)
+                        Text(String(localized: "Use your email to sign in or create an account. No password is needed.", table: "Account"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 2)
             }
             errorSection
             Section {

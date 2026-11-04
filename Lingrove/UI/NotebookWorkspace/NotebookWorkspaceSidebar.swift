@@ -13,6 +13,12 @@ struct NotebookWorkspaceSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            LingroveSidebarBrandHeader(
+                subtitle: NotebookWorkspaceCopy.title(navigation.destination),
+                topPadding: 10,
+                bottomPadding: 6
+            )
+
             List(selection: Binding(get: { navigation.destination }, set: navigation.request)) {
                 Section {
                     ForEach(NotebookWorkspaceDestination.allCases) { destination in
@@ -43,11 +49,9 @@ struct NotebookWorkspaceSidebar: View {
                         HStack(spacing: 10) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.primary.opacity(0.07))
+                                    .fill(LingroveBrand.accent.opacity(0.11))
                                     .frame(width: 28, height: 28)
-                                Image(systemName: "person.crop.circle")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(.secondary)
+                                LingroveWhaleGlyph(size: 14, tint: LingroveBrand.accent)
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(NotebookWorkspaceCopy.text("account.localTitle"))
@@ -129,11 +133,15 @@ private struct NotebookWorkspaceAccountButton: View {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(hasIdentity ? LingroveBrand.accent.opacity(0.14) : Color.primary.opacity(0.07))
+                        .fill(hasIdentity ? LingroveBrand.accent.opacity(0.14) : LingroveBrand.accent.opacity(0.11))
                         .frame(width: 28, height: 28)
-                    Image(systemName: hasIdentity ? "person.crop.circle.fill" : "person.crop.circle")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(hasIdentity ? LingroveBrand.accent : .secondary)
+                    if hasIdentity {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(LingroveBrand.accent)
+                    } else {
+                        LingroveWhaleGlyph(size: 14, tint: LingroveBrand.accent)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.observation.retainedIdentity?.email ?? title)

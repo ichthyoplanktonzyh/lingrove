@@ -32,6 +32,16 @@ struct AccountPaneView: View {
                 .accessibilityHidden(navigation.path.isEmpty)
                 Text(pageTitle).font(.headline)
                 Spacer()
+                HStack(spacing: 5) {
+                    LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.11)))
+                .accessibilityHidden(true)
             }.padding(.horizontal, 20).frame(height: 44)
             Divider()
             Group {

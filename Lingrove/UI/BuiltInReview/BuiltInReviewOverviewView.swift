@@ -89,6 +89,17 @@ struct BuiltInReviewOverviewView: View {
                 }
 
                 Spacer(minLength: 0)
+
+                HStack(spacing: 5) {
+                    LingroveWhaleGlyph(size: 11, tint: LingroveBrand.accent)
+                    Text(ProductIdentity.appDisplayName)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(LingroveBrand.accent)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3.5)
+                .background(Capsule(style: .continuous).fill(LingroveBrand.accent.opacity(0.1)))
+                .accessibilityHidden(true)
             }
 
             Divider().opacity(0.5)
@@ -194,7 +205,7 @@ struct BuiltInReviewOverviewView: View {
                             .foregroundStyle(.purple)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(content.defaultNoteType.name)
+                        Text(BuiltInReviewCopy.noteTypeName(content.defaultNoteType))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(1)

@@ -21,10 +21,10 @@ struct VocabularyExplanationSection: View {
                 || session.record != nil || session.isGenerating || session.error != nil
             VStack(alignment: .leading, spacing: hasContent ? 8 : 0) {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: textSize.size(11), weight: .semibold))
-                        .foregroundStyle(session.record != nil || session.isGenerating ? LingroveBrand.accent : .secondary)
-                        .accessibilityHidden(true)
+                    LingroveWhaleGlyph(
+                        size: textSize.size(12),
+                        tint: session.record != nil || session.isGenerating ? LingroveBrand.accent : .secondary
+                    )
                     Text(example == nil ? String(localized: "General meaning", table: "Vocabulary")
                         : String(localized: "Meaning in this context", table: "Vocabulary"))
                         .font(textSize.font(12, weight: .semibold)).foregroundStyle(.secondary)

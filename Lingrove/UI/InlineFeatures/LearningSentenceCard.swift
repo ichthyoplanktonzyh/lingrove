@@ -149,6 +149,10 @@ struct LearningSentenceCard: View {
     private var header: some View {
         HStack(spacing: 8) {
             HStack(spacing: 5) {
+                LingroveWhaleGlyph(
+                    size: 11,
+                    tint: presentation.isTranslating ? LingroveBrand.accent : .secondary
+                )
                 if presentation.isTranslating {
                     Circle()
                         .fill(LingroveBrand.accent)
