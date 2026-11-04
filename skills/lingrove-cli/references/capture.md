@@ -21,7 +21,8 @@ The capture-task format uses `version: 1`.
       "title": "推迟安排",
       "aliases": [{"text": "Postponing an event", "language": "en"}],
       "definition": "使原定活动在更晚的时间发生。",
-      "cues": ["晚点再做"]
+      "cues": ["晚点再做"],
+      "categories": ["content.time.timing"]
     }
   ],
   "entries": [
@@ -46,12 +47,16 @@ The capture-task format uses `version: 1`.
 
 ```sh
 "$lingrove_cli" schema capture
+"$lingrove_cli" data list categories --query content.time.timing --summary --limit 10
 "$lingrove_cli" vocab capture --file /absolute/path/capture.json --dry-run
 "$lingrove_cli" vocab capture --file /absolute/path/capture.json
 ```
 
 Inspect `ok`, `dryRun`, `replayed` and `operations`. A capture outcome contains `summary` counts,
 entry/expression/language and sense IDs, example IDs, association IDs and resolved meaning refs.
+Each resolved meaning includes `categories` with `categoryID`, optional `key`, `membershipID`
+and `created`. `summary.categoryMembershipCount` counts newly added memberships; existing ones
+return `created: false`. These receipts confirm classification without additional reads.
 The same key/material produces stable IDs and a committed retry replays its receipt. Do not
 invent a fresh key after a timeout. Optional `expectedRevision` guards an explicit baseline;
 a capture otherwise uses the archive's serialized current snapshot without replacing fields.
@@ -77,8 +82,10 @@ a capture otherwise uses the archive's serialized current snapshot without repla
   definition. Existing references accept ref/id and optional additive categories, preserving the node's names and cues.
   Similar wording does not automatically merge two meanings.
 - Optional meaning `categories` contains category UUIDs or unambiguous built-in keys discovered
-  with `data list categories`. Read [classification.md](classification.md) for category membership,
-  custom parents and local overrides. Omission leaves current membership unchanged.
+  with `data list categories --summary`. This completes ordinary classification in the same
+  capture; there is no separate membership write. Read [classification.md](classification.md)
+  only for independent classification edits, custom parents or local overrides. Omission leaves
+  current membership unchanged.
 - An association names a meaning ref. `usage` creates a pattern; optional formality, medium and
   collocations describe that pattern. Nuance and conditions describe the association. The app
   infers expressesContent/realizesFunction from the node kind and attaches this capture's examples

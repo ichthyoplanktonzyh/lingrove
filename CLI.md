@@ -18,13 +18,26 @@ The client starts its app in the background when needed. Global options:
 | `--timeout SECONDS` | Wait 1–120 seconds; default 30. |
 
 Keep the selected executable and app destination consistent throughout a read/write operation.
+Install CLI also updates a user-owned symlink to an earlier installation of the same product.
+It preserves ordinary files, unrelated links and links to the other product (Dev versus production).
+An old target whose bundle identity cannot be verified requires manual inspection.
+
+CLI 4 uses transport protocol 2. Before sending material, it verifies the serving app path and
+capabilities, then pins the request to that server instance. Incompatible clients are rejected
+before notebook writes. `--version` reports the local CLI contract and its containing app's
+version/build/path; replies expose the actual serving identity under top-level `server`.
+The batch formats remain version 1/2 and capture remains version 1.
+
+If a client rejects `notebookScope` while the app requires it, stop retrying edited payloads.
+Use the serving app's bundled helper and update the CLI link from that app's settings. Never
+remove notebook scope as a workaround. After correcting versions, reread before preparing a
+revised edit. Older `--app` clients share a mailbox and do not verify the serving instance.
 
 ## Discover and read
 
 ```sh
 lingrove --version
 lingrove status
-lingrove schema
 lingrove schema capture
 lingrove vocab list --query bank --language en --limit 20 --offset 0
 lingrove vocab get ENTRY_UUID
@@ -168,9 +181,15 @@ lingrove data list categoryOverrides --related CATEGORY_UUID
 ```
 
 Categories organize semantic meaning nodes; mappings link those nodes to lexical senses.
-Discover category IDs or stable keys before using them. Capture meaning declarations accept
+Discover category IDs or stable keys before using them. Use `--summary --limit 10` on
+`data list categories` or `data list nodes` for compact candidates, then `data get` for full guidance.
+Queries are substring matches over all string fields; whitespace-separated terms must all match.
+They are not semantic searches or ranked results. Capture meaning declarations accept
 `categories: ["CATEGORY_UUID_OR_KEY"]`; resource operations edit individual memberships.
 A meaning may belong to several categories, and a category may have several same-axis parents.
+Capture returns each meaning's resolved `categories` (category ID/key, membership ID, created)
+and a `summary.categoryMembershipCount` of new memberships. Ordinary save-and-classify tasks
+need one capture, not separate node/mapping/membership writes.
 New agent assertions are active (`model`/`confirmed`) by default; proposed assertions are explicit.
 
 Built-in categories and their parent links are read only. Use `categoryOverrides` to change local

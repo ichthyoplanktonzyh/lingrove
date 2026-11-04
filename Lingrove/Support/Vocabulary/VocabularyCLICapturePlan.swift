@@ -16,11 +16,13 @@ nonisolated struct VocabularyCLICapturePlan {
     private var mappingCount = 0
     private var exampleCount = 0
     private var senseCount = 0
+    private var categoryMembershipCount = 0
 
     var summary: CLIJSON {
         .object(["entryCount": .integer(Int64(entries.count)), "senseCount": .integer(Int64(senseCount)),
             "exampleCount": .integer(Int64(exampleCount)), "meaningCount": .integer(Int64(meanings.count)),
-            "associationCount": .integer(Int64(mappingCount))])
+            "associationCount": .integer(Int64(mappingCount)),
+            "categoryMembershipCount": .integer(Int64(categoryMembershipCount))])
     }
 
     init(_ capture: CLICapture, document: VocabularyDocument, now: Date, id: @escaping (String) -> UUID) throws {
@@ -82,6 +84,7 @@ nonisolated struct VocabularyCLICapturePlan {
                     nodeID: nodeID, provenance: provenance))
             }
         }
+        var categories: [CLIJSON] = []
         for (offset, reference) in (input.categories ?? []).enumerated() {
             let matches = document.classification.categories.filter {
                 $0.id == UUID(uuidString: reference) || $0.key == reference
@@ -89,13 +92,20 @@ nonisolated struct VocabularyCLICapturePlan {
             guard matches.count == 1, let category = matches.first, !category.isRetired else {
                 throw CLIError.invalid("Category reference must name one active category UUID or catalog key.")
             }
-            if !document.classification.memberships.contains(where: { $0.nodeID == nodeID && $0.categoryID == category.id }) {
+            let existing = document.classification.memberships.first { $0.nodeID == nodeID && $0.categoryID == category.id }
+            let membershipID = existing?.id ?? id(path + ".category.\(offset)")
+            if existing == nil {
                 document.classification.memberships.append(.init(id: id(path + ".category.\(offset)"),
                     nodeID: nodeID, categoryID: category.id, provenance: try provenance(input.status)))
+                categoryMembershipCount += 1
             }
+            categories.append(.object(["categoryID": .string(category.id.uuidString),
+                "key": category.key.map(CLIJSON.string) ?? .null,
+                "membershipID": .string(membershipID.uuidString), "created": .bool(existing == nil)]))
         }
         nodes[ref] = nodeID
-        meanings.append(.object(["ref": .string(ref), "nodeID": .string(nodeID.uuidString), "created": .bool(input.id == nil)]))
+        meanings.append(.object(["ref": .string(ref), "nodeID": .string(nodeID.uuidString),
+            "created": .bool(input.id == nil), "categories": .array(categories)]))
     }
 
     private mutating func addEntry(_ input: CLICapture.Entry, path: String) throws {

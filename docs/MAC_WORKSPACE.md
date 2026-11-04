@@ -349,3 +349,28 @@ checks; the Close test raced initial AppStorage restoration. After settling firs
 only that affected test was rerun and passed. Geometry, draft/account appearance, corpus toolbar
 restoration and hidden-page lifecycle checks passed. Evidence: `build/navigation-stability-validation`.
 No installed Dev app/data was used. This checkpoint does not include the following Anki changes.
+
+## CLI installation and capture checkpoint (2026-11-04)
+
+The installer updates a verified earlier helper symlink of the same product, preserving unrelated
+commands and Dev/production separation. CLI 4 / transport protocol 2 verifies app path, capabilities
+and a mailbox-lease instance before sending material. Legacy requests receive an upgrade error
+without reaching the archive. Notebook scope remains an independent account/notebook guard.
+Category/node discovery supports compact summaries; capture receipts include classification
+memberships. CLI.md and the portable skill describe the single-capture workflow and stop on
+client/schema/server contradictions instead of removing scope fields.
+
+Signed build-for-testing and the four focused CLI suites passed: 28 definitions / 37 concrete
+cases. After adding legacy-envelope rejection coverage and closing the fixture's store before
+deleting its SQLite files, the affected transport suite passed again (24 definitions / 25 cases).
+Evidence is under `build/mac-workspace-validation/`, with preparation/Release/deployment evidence
+under `build/cli-validation/`. Skill validation and linked capture JSON checks passed.
+
+The user separately authorized updating the installed Dev app and testing their real notebook.
+The arm64 Release build retained the existing installation path and developer signing requirement;
+normal Quit preceded replacement. The old helper returned an explicit upgrade error. CUA then
+clicked Install CLI in General settings and observed Installed; the symlink resolved to the running
+build and its status returned protocol 2 and notebook scope. One user-requested classification
+membership was previewed, committed and read back (revision 13 → 14), retaining the original sense
+and both examples. No synthetic material, enrollment or review rating was added to the user notebook.
+DerivedData, copied package caches and the private test host were removed and cleanup verified.

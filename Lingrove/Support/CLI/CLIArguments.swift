@@ -24,6 +24,7 @@ nonisolated struct CLIArguments {
         timeout = try Self.parsedTimeout(parsed.options.removeValue(forKey: "--timeout"))
         try configureRequest(from: &parsed)
         guard parsed.options.isEmpty,
+              !parsed.flags.contains("--summary") || request.summary == true,
               request.command == .apply || (!parsed.flags.contains("--dry-run") && !parsed.flags.contains("--stdin")) else {
             throw CLIError.invalid("An option is not valid for this command.")
         }
@@ -86,6 +87,12 @@ nonisolated struct CLIArguments {
             request.limit = try parsed.integerOption("--limit")
             request.offset = try parsed.integerOption("--offset")
             request.claimStatus = parsed.options.removeValue(forKey: "--status")
+            if parsed.flags.contains("--summary") {
+                guard ["categories", "nodes"].contains(parsed.words[2]) else {
+                    throw CLIError.invalid("--summary is supported by data list categories/nodes.")
+                }
+                request.summary = true
+            }
             if let related = parsed.options.removeValue(forKey: "--related") {
                 guard let id = UUID(uuidString: related) else { throw CLIError.invalid("--related requires a UUID.") }
                 request.relatedID = id
@@ -114,7 +121,7 @@ nonisolated struct CLIArguments {
         var words: [String] = []
 
         init(_ arguments: [String]) throws {
-            let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin"]
+            let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin", "--summary"]
             let valued: Set<String> = ["--app", "--timeout", "--query", "--language", "--limit", "--offset", "--file",
                                        "--related", "--status"]
             var index = 0
@@ -152,18 +159,25 @@ nonisolated struct CLIArguments {
       vocab get ENTRY_UUID                       Portable entry and current revision
       vocab apply (--file PATH | --stdin) [--dry-run]
       vocab capture (--file PATH | --stdin) [--dry-run]  Task-shaped material and meaning organization
-      data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N]
+      data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N] [--summary]
       data get RESOURCE UUID                     Full record and current revision
       schema [capture]                           Batch or capture-task JSON Schema
       --version | --help
 
     Capture generates IDs, locates unique example spans and collects senses atomically.
+    Capture also creates meaning nodes and category memberships in the same write.
+    Use schema capture for capture tasks; schema is the complete resource-batch contract.
+    Each request checks the selected app path, server instance and protocol capabilities.
+    --version reports the local helper's contract, containing app version/build and path.
     Model organization is active by default; explicit proposed claims remain suggestions.
     Images use explicit local paths, relative to the input file (stdin: current directory).
     Writes are atomic. Retry an uncertain write with the SAME idempotencyKey and content.
     New meanings create distinct senses; append uses exact IDs; update needs expectedRevision.
     Resources: entries, senses, sources, occurrences, interpretations, collections,
-      nodes, patterns, mappings, relations, cues, cueTargets.
+      nodes, patterns, mappings, relations, cues, cueTargets,
+      frameworks, categories, categoryParents, categoryMemberships, categoryOverrides.
+    --summary returns compact category/node candidates; data get returns their full guidance.
+    --query uses substring matching; whitespace-separated terms must all match, without ranking.
     Resource put/delete use batch version 2 and expectedRevision. Put merges fields;
     arrays replace, null clears optional fields. UUIDs are caller supplied (collections: senseID).
     --status filters interpretations: candidate, accepted, rejected. --related matches UUID fields.

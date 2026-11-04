@@ -3,8 +3,8 @@ import Foundation
 /// Versioned values shared by the bundled command-line executable and app. The executable only
 /// transports these values: domain validation and all notebook writes remain inside the app.
 nonisolated struct CLIRequest: Codable, Sendable {
-    enum Command: String, Codable, Sendable { case status, list, get, apply, resourceList, resourceGet }
-    var version = 1
+    enum Command: String, Codable, Sendable { case hello, status, list, get, apply, resourceList, resourceGet }
+    var version = CLIServiceIdentity.protocolVersion
     var id = UUID()
     var expiresAt = Date().addingTimeInterval(30)
     var command: Command
@@ -17,6 +17,9 @@ nonisolated struct CLIRequest: Codable, Sendable {
     var resourceID: UUID?
     var relatedID: UUID?
     var claimStatus: String?
+    var summary: Bool?
+    var serverInstanceID: UUID?
+    var targetAppPath: String?
     var batch: CLIBatch?
     var dryRun = false
 }
@@ -159,11 +162,12 @@ nonisolated enum CLIJSON: Codable, Equatable, Sendable {
 }
 
 nonisolated struct CLIReply: Codable, Sendable {
-    var version = 1
+    var version = CLIServiceIdentity.protocolVersion
     var requestID: UUID
     var ok: Bool
     var result: CLIJSON?
     var error: CLIError?
+    var server: CLIServiceIdentity?
     static func failure(_ id: UUID, _ error: CLIError) -> Self { .init(requestID: id, ok: false, error: error) }
 }
 

@@ -12,8 +12,11 @@ actor CLIMailboxServer {
     private var work: Task<Void, Never>?
     private var stopWork: Task<Void, Never>?
     private var stopping = false
+    private var identity: CLIServiceIdentity
 
-    init(root: URL, handle: @escaping @Sendable (CLIRequest) async -> CLIReply) { self.root = root; self.handle = handle }
+    init(root: URL, identity: CLIServiceIdentity = .init(), handle: @escaping @Sendable (CLIRequest) async -> CLIReply) {
+        self.root = root; self.identity = identity; self.handle = handle
+    }
 
     func start() async throws {
         if let stopWork { await stopWork.value }
@@ -51,6 +54,7 @@ actor CLIMailboxServer {
             Darwin.close(lease)
             throw error
         }
+        identity.instanceID = UUID()
         stopping = false; schedule()
         LingroveLogger.learning.info("Vocabulary CLI server started")
     }
@@ -93,21 +97,43 @@ actor CLIMailboxServer {
             let replyURL = root.appendingPathComponent("replies").appendingPathComponent(pending.lastPathComponent)
             guard let id = UUID(uuidString: pending.deletingPathExtension().lastPathComponent) else { continue }
             do { try FileManager.default.moveItem(at: pending, to: claimed) } catch { continue }
-            let reply = await response(for: claimed, id: id)
+            var reply = await response(for: claimed, id: id)
+            reply.server = identity
             acknowledge(reply, id: id, claimed: claimed, destination: replyURL)
         }
         removeExpiredReplies()
     }
 
     private func response(for claimed: URL, id: UUID) async -> CLIReply {
+        var receivedVersion = CLIServiceIdentity.protocolVersion
         do {
             let request = try JSONDecoder().decode(CLIRequest.self, from: CLIFileIO.read(claimed))
-            guard request.id == id, request.version == 1 else {
-                throw CLIError.invalid("Request identity or protocol version does not match.")
+            receivedVersion = request.version
+            let started = Date()
+            defer {
+                // Command timing and lease identity are useful for version/latency diagnosis;
+                // vocabulary text, notebook contents and the submitted payload stay out of logs.
+                LingroveLogger.learning.info("Vocabulary CLI request handled", metadata: [
+                    "request_id": .string(id.uuidString), "command": .string(request.command.rawValue),
+                    "dry_run": .stringConvertible(request.dryRun),
+                    "duration_ms": .stringConvertible(Int(Date().timeIntervalSince(started) * 1_000)),
+                    "server_instance": .string(identity.instanceID.uuidString)
+                ])
+            }
+            guard request.id == id, request.expiresAt > Date() else {
+                throw CLIError.invalid("Request identity does not match or request expired.")
+            }
+            try identity.validate(request)
+            if request.command == .hello {
+                return .init(requestID: id, ok: true, result: try .value(identity))
             }
             return await handle(request)
         } catch let error as CLIError {
-            return .failure(id, error)
+            var failure = CLIReply.failure(id, error)
+            // A legacy client can decode the upgrade instruction only in its own envelope.
+            // This is an error-only compatibility path; no old request reaches the archive.
+            if receivedVersion == 1 { failure.version = 1 }
+            return failure
         } catch {
             return .failure(id, .invalid("Invalid CLI request JSON."))
         }
@@ -118,7 +144,9 @@ actor CLIMailboxServer {
             var bytes = try JSONEncoder().encode(reply)
             if bytes.count > CLIInputPolicy.maximumBytes {
                 let error = CLIError.invalid("Response exceeds 32 MiB. Use the app's export for this entry.")
-                bytes = try JSONEncoder().encode(CLIReply.failure(id, error))
+                var failure = CLIReply.failure(id, error)
+                failure.server = identity
+                bytes = try JSONEncoder().encode(failure)
             }
             if !FileManager.default.fileExists(atPath: destination.path) { try CLIFileIO.publish(bytes, to: destination) }
             try FileManager.default.removeItem(at: claimed)

@@ -11,6 +11,64 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func legacyAndStaleRequestsNeverReachTheArchive() async throws {
+        let fixture = try await Fixture()
+        do {
+            let greeting = try await fixture.send(CLIRequest(command: .hello))
+            let identity = try #require(greeting.server)
+            for legacy in [true, false] {
+                var request = CLIRequest(command: .apply)
+                request.version = legacy ? 1 : CLIServiceIdentity.protocolVersion
+                request.targetAppPath = identity.appPath
+                request.serverInstanceID = legacy ? identity.instanceID : UUID()
+                request.batch = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("rejected", [add()])))
+                let reply = try await fixture.send(request)
+                #expect(reply.ok == false && reply.error?.code == .unavailable)
+                #expect(reply.version == request.version)
+            }
+            #expect(try await fixture.archive.load().document.catalog.isEmpty)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test(arguments: ["path", "capabilities"])
+    func mismatchedServerRejectsBeforeSendingMaterial(_ mismatch: String) async throws {
+        let fixture = try await Fixture(mismatch: mismatch)
+        do {
+            let bytes = try JSONSerialization.data(withJSONObject: batch("must-not-write", [add()]))
+            let reply = try await fixture.call(["vocab", "apply", "--stdin"], stdin: bytes)
+            #expect(reply.0 == 6)
+            #expect(try await fixture.archive.load().document.catalog.isEmpty)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test func resourceEditTransportsReadScopeAndRejectsItsOmission() async throws {
+        let fixture = try await Fixture()
+        do {
+            let status = try await fixture.call(["status"])
+            let server = try #require(status.1["server"] as? [String: Any])
+            #expect(server["appPath"] as? String == fixture.app.resolvingSymlinksInPath().path)
+            let read = try result(status.1)
+            let input: [String: Any] = ["version": 2, "idempotencyKey": "scope-through-wire",
+                "expectedRevision": try #require(read["revision"]),
+                "operations": [["put": ["resource": "nodes", "value": ["id": UUID().uuidString,
+                    "labels": [["id": UUID().uuidString, "text": "Synthetic node"]]]]]]]
+            let missing = try await fixture.call(["vocab", "apply", "--stdin"], stdin: JSONSerialization.data(withJSONObject: input))
+            #expect(missing.0 == 4)
+            #expect(try await fixture.archive.load().document.semantics.nodes.isEmpty)
+            var scoped = input
+            scoped["notebookScope"] = try #require(read["notebookScope"])
+            let bytes = try JSONSerialization.data(withJSONObject: scoped)
+            let preview = try await fixture.call(["vocab", "apply", "--stdin", "--dry-run"], stdin: bytes)
+            #expect(preview.0 == 0)
+            #expect(try await fixture.archive.load().document.semantics.nodes.isEmpty)
+            #expect(try await fixture.call(["vocab", "apply", "--stdin"], stdin: bytes).0 == 0)
+            #expect(try await fixture.archive.load().document.semantics.nodes.count == 1)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func categoryGuidanceTravelsThroughTheInstalledCLIContract() async throws {
         let fixture = try await Fixture()
         do {
@@ -22,6 +80,10 @@ struct VocabularyCLITests {
             let record = try #require(read["record"] as? [String: Any])
             #expect((record["examples"] as? [[String: Any]])?.isEmpty == false)
             #expect((record["references"] as? [[String: Any]])?.first?["identifier"] as? String == "9.4.6.1")
+            let compact = try result(try await fixture.call(["data", "list", "categories", "--query", try #require(base.key), "--summary"]).1)
+            let rows = try #require(compact["records"] as? [[String: Any]])
+            #expect(rows.count == 1 && rows[0]["id"] as? String == base.id.uuidString)
+            #expect(rows[0]["definition"] != nil && rows[0]["localizations"] == nil && rows[0]["references"] == nil)
             let custom = UUID()
             let value: [String: Any] = ["id": custom.uuidString, "axis": "content",
                 "labels": [["id": UUID().uuidString, "text": "Local domain"]], "definition": "Definition",
@@ -78,7 +140,14 @@ struct VocabularyCLITests {
             let bytes = try JSONSerialization.data(withJSONObject: capture)
             #expect(try await fixture.call(["vocab", "capture", "--stdin", "--dry-run"], stdin: bytes).0 == 0)
             #expect(try await fixture.archive.load().revision == 1)
-            #expect(try await fixture.call(["vocab", "capture", "--stdin"], stdin: bytes).0 == 0)
+            let savedReply = try await fixture.call(["vocab", "capture", "--stdin"], stdin: bytes)
+            #expect(savedReply.0 == 0)
+            let outcomes = try #require(try result(savedReply.1)["operations"] as? [[String: Any]])
+            let captureResult = try #require(outcomes.first)
+            let meanings = try #require(captureResult["meanings"] as? [[String: Any]])
+            let categories = try #require(meanings.first?["categories"] as? [[String: Any]])
+            #expect(categories.count == 2 && categories.allSatisfy { $0["created"] as? Bool == true })
+            #expect((captureResult["summary"] as? [String: Any])?["categoryMembershipCount"] as? Int == 2)
             let snapshot = try await fixture.archive.load()
             #expect(snapshot.document.classification.memberships.count == 2)
             #expect(snapshot.document.classification.memberships.allSatisfy { $0.provenance.origin == .model && $0.provenance.status == .confirmed })
@@ -321,7 +390,7 @@ struct VocabularyCLITests {
         let archive: VocabularyArchive
         let store: VocabularyStore
         let server: CLIMailboxServer
-        init(oversizedReply: Bool = false) async throws {
+        init(oversizedReply: Bool = false, mismatch: String? = nil) async throws {
             directory = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-cli-" + UUID().uuidString)
             app = directory.appendingPathComponent("Fixture.app")
             try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents"), withIntermediateDirectories: true)
@@ -332,7 +401,10 @@ struct VocabularyCLITests {
             archive = VocabularyArchive(url: directory.appendingPathComponent("notebook.sqlite"))
             store = VocabularyStore(archive: archive); await store.load()
             let store = store
-            server = CLIMailboxServer(root: root) { request in
+            var identity = CLIServiceIdentity(appURL: app)
+            if mismatch == "path" { identity.appPath += ".other" }
+            if mismatch == "capabilities" { identity.capabilities = [] }
+            server = CLIMailboxServer(root: root, identity: identity) { request in
                 if oversizedReply { return .init(requestID: request.id, ok: true, result: .string(String(repeating: "x", count: CLIInputPolicy.maximumBytes))) }
                 return await store.executeCLI(request)
             }
@@ -340,8 +412,24 @@ struct VocabularyCLITests {
         }
         func close() async {
             await server.stop()
+            await store.shutdown()
             try? FileManager.default.removeItem(at: directory)
             try? FileManager.default.removeItem(at: root.deletingLastPathComponent())
+        }
+        func send(_ request: CLIRequest) async throws -> CLIReply {
+            let name = request.id.uuidString + ".json"
+            let pending = root.appendingPathComponent("requests/" + name)
+            let response = root.appendingPathComponent("replies/" + name)
+            defer { try? FileManager.default.removeItem(at: pending); try? FileManager.default.removeItem(at: response) }
+            try CLIFileIO.publish(JSONEncoder().encode(request), to: pending)
+            let deadline = Date().addingTimeInterval(5)
+            while Date() < deadline {
+                if FileManager.default.fileExists(atPath: response.path) {
+                    return try JSONDecoder().decode(CLIReply.self, from: CLIFileIO.read(response))
+                }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            throw CLIError(code: .timeout, message: "Synthetic mailbox did not reply.")
         }
         func call(_ arguments: [String], stdin: Data? = nil) async throws -> (Int32, [String: Any]) {
             let tool = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove")

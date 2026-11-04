@@ -9,7 +9,7 @@ import Foundation
 /// existing transaction boundary; no CLI code interprets SQL or invokes an AI provider.
 extension VocabularyArchive {
     func executeCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
-        guard request.version == 1, request.expiresAt > Date() else {
+        guard request.version == CLIServiceIdentity.protocolVersion, request.expiresAt > Date() else {
             throw CLIError(code: .timeout, message: "Request expired or protocol version is unsupported.")
         }
         if request.command == .apply {
@@ -18,6 +18,7 @@ extension VocabularyArchive {
         let snapshot = try load()
         let result: CLIJSON
         switch request.command {
+        case .hello: throw CLIError.invalid("Handshake belongs to the CLI transport.")
         case .status:
             result = .object(["storage": .string("sqlite"), "schemaVersion": .integer(Int64(LocalDatabaseSchema.currentVersion)),
                 "revision": .integer(Int64(snapshot.revision)), "entryCount": .integer(Int64(snapshot.document.collectedEntries.count)),

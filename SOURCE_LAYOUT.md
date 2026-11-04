@@ -805,6 +805,12 @@ bundles. `Models/CLI` and `Support/CLI` compile into both targets: the versioned
 strict batch shape/count validation, deterministic argument parsing and bounded atomic file IO.
 The CLI reads explicitly supplied image paths, transports bytes, and lets its containing bundle
 choose Dev/production identity. It never opens SQLite or calls an AI/Anki provider.
+`CLIServiceIdentity` is the shared transport value for protocol 2: each mailbox lease gets an
+instance UUID, app path/version/build, process ID and explicit capabilities. A material-free
+handshake verifies the destination before the client sends a business request pinned to that
+lease. The server rejects legacy protocols or mismatched leases before calling the archive;
+`notebookScope` independently protects the account/notebook boundary. Replies carry the serving
+identity, while local `--version` describes the helper's containing build.
 
 `LingroveAppEnvironment` owns one `CLIMailboxServer` actor and one `CLIInstallationModel`.
 The server holds an exclusive lifetime lease on a private app-specific mailbox; a passive
@@ -814,7 +820,9 @@ owns pure additive/update planning with stable IDs, explicit ownership and revis
 `CLIResourceContract` shares closed field validation and JSON Schema generation between the
 executable and app. `VocabularyCLIResources` plans canonical resource patches/deletions, without
 implicitly collecting knowledge. `VocabularyArchive+CLIResources` returns bounded full records,
-related-ID/query/status filters and revisions. Version 2 resource batches require CAS and explicit
+related-ID/query/status filters and revisions. Category/node lists optionally return compact
+`--summary` projections; full `get` remains authoritative for classification scope and provenance.
+Version 2 resource batches require CAS and explicit
 UUIDs, support linked records in one transaction, and reject dangling deletion references. The
 external agent owns classification; no internal classifier or vector service is constructed.
 `skills/lingrove-cli/references/organization.md` documents the independent-resource workflow.
@@ -826,7 +834,9 @@ while retired JSON files are still ignored. A content commit, revision and recei
 transaction, with the existing media staging/rollback lock. CLI receipts are operational state,
 excluded from notebook backups/exports. `CLISettingsSection` reuses General's settings rows and
 the searchable `commandLineTools` entry, installing user-level `lingrove`/`lingrove-dev` symlinks
-without overwriting unrelated commands or editing shell configuration. `CLI.md` is the agent-facing
+without overwriting unrelated commands or editing shell configuration. The installer recognizes
+an older canonical helper link by its containing product bundle identity and updates it atomically;
+unverifiable links and Dev/production cross-links remain conflicts. `CLI.md` is the agent-facing
 usage contract; tests under `Services/CLI` launch the actual bundled executable against an isolated
 mailbox/store/SQLite notebook and never send requests to a real user library.
 
@@ -1398,7 +1408,9 @@ selected range. Set `LINGROVE_SELECTION_OCR_SCREENSHOTS` and
 shares its closed schema and validation between the executable and app. `CLIArguments` chooses
 capture input, and `VocabularyCLICapturePlan` under `Support/Vocabulary/` translates a task into
 canonical entries, evidence, personal collections and meaning links. The existing archive owns
-commit/replay and persistence; capture creates no new service or database owner.
+commit/replay and persistence; capture creates no new service or database owner. Its meaning
+receipts include resolved categories, membership IDs and created/existing status; the summary
+counts newly added memberships so clients can verify classification from the acknowledgement.
 
 The built-in review browser's deterministic membership/search projection lives in
 `Support/BuiltInReview/BuiltInReviewContentState.swift`. Its window-lifetime search, participation

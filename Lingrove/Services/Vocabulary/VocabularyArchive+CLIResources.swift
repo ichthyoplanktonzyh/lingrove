@@ -7,6 +7,9 @@ extension VocabularyArchive {
     /// resource projection. A read returns the same revision used by later compare-and-swap.
     func readCLIResources(_ request: CLIRequest, snapshot: VocabularyArchiveSnapshot) throws -> CLIJSON {
         guard let resource = request.resource else { throw CLIError.invalid("A resource name is required.") }
+        guard request.summary != true || (request.command == .resourceList && ["categories", "nodes"].contains(resource)) else {
+            throw CLIError.invalid("Summary is supported by category/node lists only.")
+        }
         let records = try VocabularyCLIResources.records(resource, in: snapshot.document)
         if request.command == .resourceGet {
             guard let id = request.resourceID,
@@ -29,7 +32,9 @@ extension VocabularyArchive {
             let terms = (request.query ?? "").split(whereSeparator: \.isWhitespace)
             return terms.allSatisfy { Self.resourceContains(record, text: String($0)) }
         }
-        let page = Array(values.dropFirst(min(offset, values.count)).prefix(limit))
+        let page = values.dropFirst(min(offset, values.count)).prefix(limit).map { record in
+            request.summary == true ? Self.resourceSummary(record) : record
+        }
         let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision)), "resource": .string(resource),
             "total": .integer(Int64(values.count)), "offset": .integer(Int64(offset)), "records": .array(page),
             "nextOffset": offset < values.count && page.count < values.count - offset ? .integer(Int64(offset + page.count)) : .null])
@@ -37,6 +42,14 @@ extension VocabularyArchive {
             throw CLIError.invalid("Resource page exceeds 16 MiB. Request a smaller limit.")
         }
         return result
+    }
+
+    /// Discovery needs names and definitions, not every translated scope note and attribution.
+    /// Filtering still uses the full record; get retains the authoritative, unabridged guidance.
+    private static func resourceSummary(_ value: CLIJSON) -> CLIJSON {
+        guard case let .object(fields) = value else { return value }
+        let selected: Set<String> = ["id", "key", "axis", "kind", "labels", "definition", "isRetired", "provenance"]
+        return .object(fields.filter { selected.contains($0.key) })
     }
 
     private static func resourceContains(_ value: CLIJSON, uuid: UUID) -> Bool {

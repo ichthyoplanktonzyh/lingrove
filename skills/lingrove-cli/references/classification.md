@@ -3,10 +3,11 @@
 For edits that refer to existing records, retain `result.notebookScope` from the same read and include it as top-level `notebookScope` alongside the original revision. This applies to append/update/resource changes, capture with existing sense/meaning IDs, and any `expectedRevision`. It contains `workspaceID`, `notebookID`, and `generation`; never refresh only that scope on an old draft after an account change. Pure new captures may omit it.
 
 Categories group reusable semantic meaning nodes; mappings connect those nodes to lexical senses.
-Inspect `schema` and discover existing categories before creating a custom one.
+When saving an expression and classifying it together, use the complete [capture example](capture.md).
+Read the full `schema` only for an independent membership edit or custom category maintenance.
 
 ```sh
-"$lingrove_cli" data list categories --query 'content.degree' --limit 100
+"$lingrove_cli" data list categories --query 'content.degree' --summary --limit 10
 "$lingrove_cli" data list categoryParents --related CATEGORY_UUID
 "$lingrove_cli" data list categoryMemberships --related NODE_UUID
 "$lingrove_cli" data list categoryOverrides --related CATEGORY_UUID
@@ -14,7 +15,10 @@ Inspect `schema` and discover existing categories before creating a custom one.
 
 Paginate using `nextOffset`. Categories have stable `id`, `axis` (`content` or `function`) and
 multilingual `labels`. Built-ins also have `frameworkID` and `key`. Search narrowly rather than
-loading the entire directory when a known topic suffices.
+loading the entire directory when a known topic suffices. Summary results omit examples,
+localizations, references and scope notes; use `data get categories UUID` for a shortlisted record.
+Queries match substrings anywhere in the full record, with whitespace-separated terms ANDed;
+there is no semantic ranking. Search one concept/paraphrase at a time and stop at a defensible fit.
 
 ## Assign a meaning
 
@@ -24,7 +28,8 @@ Capture meaning declarations accept category UUIDs or unambiguous active catalog
 {"ref":"almost-none","title":"几乎没有","categories":["content.degree.near-zero"]}
 ```
 
-An existing node can receive additive memberships without replacing its names or cues:
+Within a capture that also includes entries, an existing node can receive additive memberships
+without replacing its names or cues:
 
 ```json
 {"ref":"existing","id":"NODE_UUID","categories":["CATEGORY_UUID_OR_KEY"]}
@@ -61,6 +66,11 @@ an empty localized definition or scope note clears that field.
 ## Edit categories and local overrides
 
 Use revisioned resource batches as described in [organization.md](organization.md).
+For a standalone “attach this existing node to this category” task, read the node, category and
+existing memberships, then submit one `put categoryMemberships` with a fresh membership UUID,
+`nodeID`, `categoryID`, the read's `expectedRevision` and unchanged `notebookScope`.
+If that membership already exists, report it without creating a duplicate. Capture requires
+entries; do not fabricate an expression or sense merely to classify an existing node.
 
 | Resource | Write behavior |
 | --- | --- |
