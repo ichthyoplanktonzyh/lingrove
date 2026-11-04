@@ -103,7 +103,7 @@ implementation. Shared material authoring has its own persistence and protocol v
 | BuiltInReviewWindowView and related views | Borrow the existing frozen session. Overview/Back and End review have explicit meanings; material/source/queue/history sheets inherit native appearance. |
 | BuiltInReviewDraftPresentationSnapshot | A sheet-lifetime value of editable material fields. Navigation/preview alone is not dirty; edited Cancel asks Keep editing/Discard. The original scoped draft remains the writer input. |
 | ReviewMaterialEditor / VocabularyReviewLayoutEditor | The shared editor borrows neutral recipe/media bindings and source values. The Anki wrapper translates only its plan; source selection, ordered parts, templates and native preview have one implementation. |
-| NotebookReviewDestinationView / BuiltInReviewContentView | Equal Lingrove/Anki choices and separate Today/content management. Search misses, no corpus, all content already added, unenrolled, scheduled and unavailable states remain truthful; target switches suspend hidden review work. |
+| NotebookReviewDestinationView / BuiltInReviewContentView | Equal Lingrove/Anki choices and separate due-now/content management. Search misses, no corpus, all content already added, unenrolled, scheduled and unavailable states remain truthful; target switches suspend hidden review work. |
 | NotebookProgressDestination and sections | Present the existing visibility-scoped model and immutable statistics. Native cards, adaptable forecast layout, labeled semantic rating/bucket colors and chart interactions retain data meaning. |
 | LingroveReadableContentLayout / LingroveNativeActionButtonStyles | Keep their extracted interface names while supplying Lingrove-native widths and bordered/prominent controls. They own no theme manager or service. |
 
@@ -241,3 +241,30 @@ matched their explicit English text. Export, import and validation now share tha
 reference while preserving literal-key format contracts. Nine focused Python regressions and
 the full catalog check passed: 2,086 source keys across ten catalogs and 15 languages. This
 resolves the tooling reports without changing the translated product text.
+
+### Review flow clarity (2026-11-03)
+
+Lingrove and Anki retain equal-level tool selection. The built-in landing page prioritizes due
+work and the next scheduled date; enrollment/card inventory counts no longer compete with Start.
+Management defaults to active participation, with paused, removed and needs-attention filters.
+Material health is an additional label, not a replacement for participation status. Add from
+corpus is an explicit destination with selection and atomic batch confirmation. Session-owned
+search/filter/origin state survives a detail round trip, but closes with the session/account scope.
+Successful enrollment gives feedback and explicit Start/continue-adding actions; it never starts
+a round by itself. Removed participation is restored in management rather than duplicated.
+
+The preparation sheet presents one question/answer preview before expandable card options. Its
+preview follows the same generated-versus-authored face rule as practice; restoring generated
+text changes only the displayed face. Recipe controls are still shared with Anki. History rows
+identify the expression/meaning or retained card text before displaying the causal rating/undo.
+This is a Mac presentation change: no scheduler, schema, account or sync contract changes.
+
+### Proposed template-led review design (2026-11-04)
+
+The next design phase follows the user's confirmed journey: add from corpus without a material
+editor or immediate single-sense practice, then start a round from Review. Default templates
+extract and present rich sense content; advanced template customization lives in settings, and
+content follows source updates. The proposed default content hierarchy, three synthetic sample
+levels, editor structure, source/optional-material rules and cross-platform gaps are maintained
+in [REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md). It is a design-review draft, not a
+claim that the currently installed Dev or shared sync contract already implements these rules.

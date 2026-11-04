@@ -12,6 +12,8 @@ final class BuiltInReviewSession: ObservableObject {
     // presentation state. A durable change still requires an explicit shared-engine command.
     @Published private(set) var participationRevision = UUID()
     @Published private(set) var content: NotebookBuiltInReviewSnapshot?
+    @Published var browsing = BuiltInReviewBrowsing()
+    @Published private(set) var addedCount = 0
     @Published var route: BuiltInReviewRoute = .overview
     @Published var draft: BuiltInReviewDraft?
     @Published var batchDraft: BuiltInReviewBatchDraft?
@@ -88,6 +90,8 @@ final class BuiltInReviewSession: ObservableObject {
         draft = nil
         batchDraft = nil
         pendingBatchSelections = nil
+        browsing = .init()
+        addedCount = 0
         practice = nil
         content = nil
         images = []
@@ -143,7 +147,9 @@ final class BuiltInReviewSession: ObservableObject {
         }
         if let previous, previous.scope != scope {
             clearUnsavedSession(cancelWrite: true)
-            if !sameLifetime(previous.scope, scope) { content = nil; route = .overview }
+            if !sameLifetime(previous.scope, scope) {
+                content = nil; route = .overview; browsing = .init(); addedCount = 0
+            }
             message = BuiltInReviewCopy.text("message.changed")
         }
         isRefreshing = true
@@ -181,6 +187,22 @@ final class BuiltInReviewSession: ObservableObject {
         }
     }
 
+    /// Detail navigation records the caller independently of persistence. Returning after an
+    /// enrollment keeps the add search, while management returns to its exact status filter.
+    func showDetail(_ selection: VocabularySelection) {
+        browsing.detailOrigin = route == .adding ? .adding : .content
+        addedCount = 0
+        route = .sense(selection)
+    }
+
+    func showContent(filter: BuiltInReviewContentFilter = .active) {
+        browsing.filter = filter
+        browsing.search = ""
+        route = .content
+    }
+
+    func showAdding() { addedCount = 0; route = .adding }
+
     func prepare(selection: VocabularySelection, additional: Bool = false, basedOn value: NotebookBuiltInReviewSnapshot) {
         guard canAct(in: value.scope) else { return }
         do { draft = try .init(content: value, selection: selection, additional: additional) } catch {
@@ -201,7 +223,7 @@ final class BuiltInReviewSession: ObservableObject {
 
     func saveBatch(_ batch: BuiltInReviewBatchDraft) {
         guard batchDraft?.id == batch.id, !batch.drafts.isEmpty else { return }
-        mutate(.batch(batch), scope: batch.content.scope, destination: .content)
+        mutate(.batch(batch), scope: batch.content.scope, destination: route == .adding ? .adding : .content)
     }
 
     /// The corpus may inspect participation while Review is hidden. This read returns a value
@@ -402,6 +424,9 @@ final class BuiltInReviewSession: ObservableObject {
         draft = nil
         batchDraft = nil
         route = destination
+        addedCount = 0
+        if case let .save(value) = command, case .enrollment = value.purpose { addedCount = 1 }
+        if case let .batch(value) = command { addedCount = value.drafts.count; browsing.selectedSenseIDs = [] }
         if case .rate = command { practice?.answered += 1 }
         if case .undo = command { practice?.answered = max(0, (practice?.answered ?? 0) - 1) }
         stopOwnSpeech()

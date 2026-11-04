@@ -23,7 +23,7 @@ Saving corpus material never enrolls it for review. A sense is explicitly enroll
 material. Local corpus, review and statistics work without an account. Anki remains optional
 and its history/scheduling are separate from built-in review.
 
-Review now contains equal-level Lingrove / Anki choices. Lingrove provides Today and Review
+Review now contains equal-level Lingrove / Anki choices. Lingrove provides Due now and Review
 content; ordinary navigation shows the overview without starting a round. Corpus details show
 each target's state/actions, and multi-selection provides explicit built-in enrollment or Anki
 preparation. Settings and Home use the same target distinction. User-facing text is limited to
@@ -293,3 +293,36 @@ synthetic sign-in journeys. Final native results retained no selected workspace 
 proposal and left sync disabled. Build defaults remain empty and real mailbox/service deployment
 is deferred. MAC_UI_SYSTEM.md records the exact scope and build/mac-account-login-validation/
 holds the result bundles, renderings, postconditions and cleanup proof.
+
+### Built-in review flow checkpoint (2026-11-03)
+
+The review-flow refinement keeps the equal Lingrove/Anki destination and existing engine. It
+adds an explicit corpus-add destination with atomic batch confirmation, retained search/filter
+and return origin, participation filters independent of material warnings, enrollment feedback,
+action-led due overview, one effective question/answer preview with optional recipe controls,
+and identifiable history rows. See MAC_UI_SYSTEM.md for the maintained interaction contract.
+
+Validation evidence is in `build/review-flow-validation/`: signed Debug build-for-testing passed;
+16 targeted definitions executed as 24 cases with zero failures/skips (experience, session,
+keyboard and native presentation). One additional CUA-driven protected journey passed against
+`io.ichthyoplanktonzyh.lingrove.review-flow.validation` and a private synthetic notebook. It
+searched harbor, entered detail and returned with search retained, expanded card options,
+manually authored the prompt, verified that exact text in preview and practice, enrolled,
+rated Good, inspected identifiable history, checked next-due presentation and returned to source.
+Persisted assertions confirmed one active sense/card/rating, reps=1 and Progress reviews=1.
+
+Aqua/darkAqua content captures were inspected; native bitmap captures do not reliably include
+system toolbar compositing, so the live CUA journey separately checked the editor controls in
+light appearance. All 134 review catalog keys cover 15 locales; localization validation and
+strict lint on changed production Swift passed. This checkpoint does not validate real Anki,
+physical audio, every localized layout or VoiceOver. No installed user application or corpus
+was opened/replaced; no schema, scheduler or synchronization contract changed. DerivedData and
+the private copied host were removed after validation (cleanup evidence beside the test results).
+
+On 2026-11-04, the user authorized installing this review-flow checkpoint into the existing
+Lingrove Dev bundle. The arm64 Release candidate passed strict signing and the installed app’s
+signature requirement. Clean Quit preceded a Notebook/SQLite/preferences/previous-app backup;
+startup preserved schema 39, all 37 protected corpus/review table fingerprints and every existing
+preference value. The new process and Settings window were observed. Installation evidence and
+the exact uncommitted source manifest are in `build/review-flow-dev-update/`; build caches were
+cleaned afterward. No enrollment or rating was performed on the user's corpus for this update.

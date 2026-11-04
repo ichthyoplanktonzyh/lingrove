@@ -73,9 +73,10 @@ struct BuiltInReviewWindowView: View {
 
     private var heading: some View {
         HStack(spacing: 12) {
-            if case .sense = session.route {
-                Button { session.route = .content } label: {
-                    Label(BuiltInReviewCopy.text("nav.content"), systemImage: "chevron.left")
+            if isDetail || session.route == .adding {
+                Button { session.route = isDetail ? session.browsing.detailOrigin : .content } label: {
+                    Label(BuiltInReviewCopy.text(isDetail && session.browsing.detailOrigin == .adding
+                        ? "action.addContent" : "nav.content"), systemImage: "chevron.left")
                 }
                 .help(BuiltInReviewCopy.text("nav.content"))
                 .accessibilityIdentifier("builtinReview.back")
@@ -94,7 +95,10 @@ struct BuiltInReviewWindowView: View {
         }
     }
 
+    private var isDetail: Bool { if case .sense = session.route { return true }; return false }
+
     private var pageTitle: String {
+        if session.route == .adding { return BuiltInReviewCopy.text("action.addContent") }
         if case let .sense(selection) = session.route, let content = session.content {
             return BuiltInReviewSource.value(selection, in: content.scope)?.entry.expression ?? BuiltInReviewCopy.text("nav.content")
         }
@@ -134,7 +138,20 @@ struct BuiltInReviewWindowView: View {
     @ViewBuilder private func destination(_ content: NotebookBuiltInReviewSnapshot) -> some View {
         switch session.route {
         case .overview: BuiltInReviewOverviewView(session: session, content: content)
-        case .content: BuiltInReviewContentView(content: content) { session.route = .sense($0) }
+        case .content, .adding:
+            VStack(spacing: 0) {
+                if session.addedCount > 0 {
+                    HStack {
+                        Label(BuiltInReviewCopy.text("message.added"), systemImage: "checkmark.circle")
+                        Text(session.addedCount.formatted()).monospacedDigit()
+                        Spacer()
+                        Button(BuiltInReviewCopy.text("action.start")) { session.start() }.disabled(content.queue.isEmpty)
+                    }.padding(16)
+                }
+                BuiltInReviewContentView(content: content, browsing: $session.browsing,
+                    adding: session.route == .adding, onAdd: session.showAdding,
+                    onEnroll: session.requestBatch, onSelect: session.showDetail)
+            }.disabled(session.isBusy)
         case let .sense(selection): BuiltInReviewSenseView(session: session, selection: selection, content: content)
         case .practice: BuiltInReviewPracticeView(session: session, content: content)
         }

@@ -92,6 +92,26 @@ nonisolated struct BuiltInReviewDraft: Identifiable, Sendable {
         chooseMaterial(plan)
     }
 
+    /// Match practice rendering: only a face equal to its generated baseline uses rich parts.
+    /// An authored face is previewed as its own saved text, never as the underlying recipe.
+    func previewParts(answer: Bool) -> [ReviewResolvedPart]? {
+        let text = answer ? back : front
+        let baseline = answer ? generated?.backText : generated?.frontText
+        guard text == baseline, let source = BuiltInReviewSource.value(selection, in: snapshot),
+              let resolved = try? ReviewMaterialResolver.resolve(entry: source.entry, sense: source.sense,
+                                                                 plan: materialPlan) else { return nil }
+        return answer ? resolved.back : resolved.front
+    }
+
+    func isAuthored(answer: Bool) -> Bool {
+        (answer ? back : front) != (answer ? generated?.backText : generated?.frontText)
+    }
+
+    mutating func restoreGeneratedFace(answer: Bool) {
+        guard let generated else { return }
+        if answer { back = generated.backText } else { front = generated.frontText }
+    }
+
     func creationDraft() throws -> LingroveNotebookCardDraft {
         try LingroveNotebookCardMaterial.draft(snapshot: snapshot, selection: selection,
             exampleId: exampleID, intentId: id, materialPlan: materialPlan)

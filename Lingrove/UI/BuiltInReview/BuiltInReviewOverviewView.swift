@@ -30,7 +30,11 @@ struct BuiltInReviewOverviewView: View {
                             switch state {
                             case .due: session.start()
                             case .noCorpus: session.onBrowseCorpus?()
-                            default: session.route = .content
+                            case .noSelection: session.showAdding()
+                            case .paused: session.showContent(filter: .paused)
+                            case .withdrawn: session.showContent(filter: .withdrawn)
+                            case .unavailable: session.showContent(filter: .attention)
+                            case .scheduled: session.showContent()
                             }
                         } label: {
                             Label(BuiltInReviewCopy.text(state.actionKey), systemImage: state == .due ? "play.fill" : "arrow.right")
@@ -38,13 +42,18 @@ struct BuiltInReviewOverviewView: View {
                         .lingroveNativeProminentActionButtonStyle().controlSize(.large)
                         .accessibilityIdentifier(state == .due ? "builtinReview.start" : "builtinReview.overview.primary")
                     }
-                    HStack(alignment: .top, spacing: 20) {
-                        metric("count.ready", value: content.queue.count)
-                        metric("count.activeSenses", value: content.statistics.activeSenses)
-                        metric("count.exercises", value: content.statistics.exercises)
+                    if state == .due {
+                        LabeledContent(BuiltInReviewCopy.text("count.ready"), value: content.queue.count.formatted())
+                            .font(.title3).monospacedDigit()
                     }
-                    .padding(20)
-                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+                    if state != .noCorpus && state != .noSelection {
+                        Button(BuiltInReviewCopy.text("action.addContent"), systemImage: "plus") { session.showAdding() }
+                    }
+                    if state != .unavailable, content.review.groups.values.contains(where: \.hasUnavailableMaterial) {
+                        Button(BuiltInReviewCopy.text("action.fixMaterial"), systemImage: "exclamationmark.triangle") {
+                            session.showContent(filter: .attention)
+                        }
+                    }
                 }.padding(.vertical, 32)
             }
         }
@@ -52,101 +61,110 @@ struct BuiltInReviewOverviewView: View {
         .accessibilityIdentifier("builtinReview.overview.content")
     }
 
-    private func metric(_ key: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value.formatted()).font(.title2.weight(.semibold)).monospacedDigit()
-            Text(BuiltInReviewCopy.text(key)).font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }.frame(maxWidth: .infinity, alignment: .leading)
-    }
 }
 
-/// One content browser separates participation from available corpus. A sense occurs once in
-/// the current filter, including paused/withdrawn material whose recipe and history are retained.
+/// This browser borrows session-owned search and filters. Adding is an explicit destination;
+/// a detail round trip does not recreate local state or silently switch the visible list.
 struct BuiltInReviewContentView: View {
     let content: NotebookBuiltInReviewSnapshot
+    @Binding var browsing: BuiltInReviewBrowsing
+    var adding = false
+    var onAdd: (() -> Void)?
+    var onEnroll: (([VocabularySelection]) -> Void)?
     let onSelect: (VocabularySelection) -> Void
-    @State private var search = ""
-    @State private var available = false
 
+    private var search: Binding<String> { adding ? $browsing.addingSearch : $browsing.search }
     private var selections: [VocabularySelection] {
-        let values: [VocabularySelection]
-        if available {
-            values = content.scope.document.collectedEntries.flatMap { entry in
-                entry.senses.filter { content.review.groups[$0.id]?.cards.isEmpty != false }
-                    .map { .init(entryID: entry.id, senseID: $0.id) }
-            }
-        } else { values = content.review.groups.values.map(\.selection) }
-        return values.filter { selection in
-            let source = BuiltInReviewSource.value(selection, in: content.scope)
-            return search.isEmpty || source?.entry.expression.localizedCaseInsensitiveContains(search) == true
-                || source?.sense.meaning.localizedCaseInsensitiveContains(search) == true
-        }.sorted { lhs, rhs in
-            let left = BuiltInReviewSource.value(lhs, in: content.scope)?.entry.expression ?? ""
-            let right = BuiltInReviewSource.value(rhs, in: content.scope)?.entry.expression ?? ""
-            return left == right ? lhs.senseID.uuidString < rhs.senseID.uuidString
-                : left.localizedStandardCompare(right) == .orderedAscending
-        }
+        BuiltInReviewContentState.selections(in: content, adding: adding, filter: browsing.filter, search: search.wrappedValue)
     }
-
-    // An empty filtered list is not evidence that the corpus is empty. Keep search misses
-    // and an already-enrolled corpus distinct from the first-use state.
-    private var emptyTitleKey: String {
-        guard available else { return "state.noSelection" }
-        return content.scope.document.collectedEntries.isEmpty ? "state.noCorpus" : "state.allAdded"
+    private var selected: [VocabularySelection] {
+        BuiltInReviewContentState.selections(in: content, adding: true, filter: browsing.filter, search: "")
+            .filter { browsing.selectedSenseIDs.contains($0.senseID) }
+    }
+    private var emptyTitle: String {
+        if !adding { return BuiltInReviewCopy.text("state.noMatches") }
+        return BuiltInReviewCopy.text(content.scope.document.collectedEntries.isEmpty ? "state.noCorpus" : "state.allAdded")
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker(BuiltInReviewCopy.text("nav.content"), selection: $available) {
-                Text(BuiltInReviewCopy.text("nav.enrolled")).tag(false)
-                Text(BuiltInReviewCopy.text("action.addContent")).tag(true)
-            }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.vertical, 16)
-                .accessibilityIdentifier("builtinReview.content.filter")
-            List(selections, id: \.senseID) { selection in
-                let source = BuiltInReviewSource.value(selection, in: content.scope)
-                let group = content.review.groups[selection.senseID]
-                Button { onSelect(selection) } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"))
-                            Text(source?.sense.meaning ?? BuiltInReviewCopy.text("material.retained"))
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            Text(group.map { BuiltInReviewCopy.text(
-                                $0.hasUnavailableMaterial ? "material.unavailable" : "status." + $0.status.rawValue) }
-                                ?? BuiltInReviewCopy.text("status.notSelected")).font(.caption).foregroundStyle(.secondary)
+            HStack {
+                if !adding {
+                    Picker(BuiltInReviewCopy.text("nav.content"), selection: $browsing.filter) {
+                        ForEach(BuiltInReviewContentFilter.allCases, id: \.self) { filter in
+                            Text(BuiltInReviewCopy.text(filter.titleKey)).tag(filter)
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-                    }.padding(.vertical, 6).contentShape(Rectangle())
-                }.buttonStyle(.plain)
-            }
-            .listStyle(.inset).searchable(text: $search, prompt: BuiltInReviewCopy.text("field.search"))
-            .overlay {
-                if selections.isEmpty {
-                    if !search.isEmpty {
-                        ContentUnavailableView.search(text: search)
-                    } else {
-                        ContentUnavailableView(BuiltInReviewCopy.text(emptyTitleKey), systemImage: "tray")
+                    }.accessibilityIdentifier("builtinReview.content.filter")
+                    Spacer()
+                    Button(BuiltInReviewCopy.text("action.addContent"), systemImage: "plus") { onAdd?() }
+                        .accessibilityIdentifier("builtinReview.content.add")
+                } else if let onEnroll {
+                    Text(BuiltInReviewCopy.text("nav.selected"))
+                    Text(selected.count.formatted()).monospacedDigit()
+                    Spacer()
+                    Button(BuiltInReviewCopy.text("action.enroll")) { onEnroll(selected) }
+                        .buttonStyle(.borderedProminent).disabled(selected.isEmpty)
+                        .accessibilityIdentifier("builtinReview.content.enrollSelected")
+                }
+            }.padding(.horizontal, 24).padding(.vertical, 12)
+            List(selections, id: \.senseID) { selection in
+                HStack(spacing: 12) {
+                    if adding, onEnroll != nil {
+                        Toggle(BuiltInReviewCopy.text("action.enroll"), isOn: Binding(
+                            get: { browsing.selectedSenseIDs.contains(selection.senseID) },
+                            set: { selected in
+                                if selected {
+                                    browsing.selectedSenseIDs.insert(selection.senseID)
+                                } else { browsing.selectedSenseIDs.remove(selection.senseID) }
+                            }))
+                            .toggleStyle(.checkbox).labelsHidden()
+                            .accessibilityLabel(BuiltInReviewSource.value(selection, in: content.scope)?.entry.expression ?? "")
+                    }
+                    Button { onSelect(selection) } label: { row(selection) }.buttonStyle(.plain)
+                }
+            }.listStyle(.inset).searchable(text: search, prompt: BuiltInReviewCopy.text("field.search"))
+                .overlay {
+                    if selections.isEmpty {
+                        if !search.wrappedValue.isEmpty {
+                            ContentUnavailableView.search(text: search.wrappedValue)
+                        } else { ContentUnavailableView(emptyTitle, systemImage: "tray") }
+                    }
+                }
+        }.accessibilityIdentifier("builtinReview.content")
+    }
+
+    private func row(_ selection: VocabularySelection) -> some View {
+        let source = BuiltInReviewSource.value(selection, in: content.scope)
+        let group = content.review.groups[selection.senseID]
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource"))
+                Text(source?.sense.meaning ?? BuiltInReviewCopy.text("material.retained"))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                if let group {
+                    Text(BuiltInReviewCopy.status(group.status)).font(.caption).foregroundStyle(.secondary)
+                    if group.hasUnavailableMaterial {
+                        Label(BuiltInReviewCopy.text("material.unavailable"), systemImage: "exclamationmark.triangle")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
-        }
-        .onAppear { if content.review.groups.isEmpty { available = true } }
-        .accessibilityIdentifier("builtinReview.content")
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+        }.padding(.vertical, 6).contentShape(Rectangle())
     }
 }
 
-/// Kept as a compact host for clients that request a chooser sheet; it delegates the same
-/// content browser rather than maintaining a second enrolled/all-source list.
+/// A standalone chooser owns only temporary browsing state; it shares the same list projection.
 struct BuiltInReviewSenseChooser: View {
     let content: NotebookBuiltInReviewSnapshot
     let onSelect: (VocabularySelection) -> Void
+    @State private var browsing = BuiltInReviewBrowsing()
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
-            BuiltInReviewContentView(content: content, onSelect: onSelect)
-                .navigationTitle(BuiltInReviewCopy.text("nav.content"))
+            BuiltInReviewContentView(content: content, browsing: $browsing, adding: true, onSelect: onSelect)
+                .navigationTitle(BuiltInReviewCopy.text("action.addContent"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(BuiltInReviewCopy.text("action.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)

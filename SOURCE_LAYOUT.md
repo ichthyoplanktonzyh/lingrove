@@ -1394,3 +1394,8 @@ shares its closed schema and validation between the executable and app. `CLIArgu
 capture input, and `VocabularyCLICapturePlan` under `Support/Vocabulary/` translates a task into
 canonical entries, evidence, personal collections and meaning links. The existing archive owns
 commit/replay and persistence; capture creates no new service or database owner.
+
+The built-in review browser's deterministic membership/search projection lives in
+`Support/BuiltInReview/BuiltInReviewContentState.swift`. Its window-lifetime search, participation
+filter, selection and detail origin values live with `BuiltInReviewSessionState`; the app-owned
+`BuiltInReviewSession` retains them across replaced SwiftUI destinations. Neither owns storage.

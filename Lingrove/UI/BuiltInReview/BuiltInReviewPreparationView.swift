@@ -14,6 +14,9 @@ struct BuiltInReviewPreparationView: View {
     @StateObject private var audio: ReviewAudioPreparation
     @State private var operation: Task<Void, Never>?
     @State private var importingImage = false
+    @State private var answer = false
+    @State private var showingOptions = false
+    @State private var sourceImages: [String: Data] = [:]
     @State private var confirmingDiscard = false
     @State private var failure: String?
     @Environment(\.dismiss) private var dismiss
@@ -53,32 +56,52 @@ struct BuiltInReviewPreparationView: View {
                 Section {
                     Text(source?.entry.expression ?? BuiltInReviewCopy.text("material.retained")).font(.headline).textSelection(.enabled)
                 }
-                if let source, let store = session.materialStore {
-                    ReviewMaterialEditor(plan: plan, entry: source.entry, sense: source.sense, store: store,
-                        scope: draft.snapshot, importedImages: $draft.importedImages, importingImage: $importingImage,
-                        operation: $operation, prepareAudio: { kind in
-                            draft = try await BuiltInReviewMaterialPreparation.prepare(kind, draft: draft, audio: audio, audition: true)
+                Section {
+                    Picker(String(localized: "Card side", table: "Vocabulary"), selection: $answer) {
+                        Text(BuiltInReviewCopy.text("field.prompt")).tag(false)
+                        Text(BuiltInReviewCopy.text("field.answer")).tag(true)
+                    }.pickerStyle(.segmented).accessibilityIdentifier("review.material.side")
+                    Text(BuiltInReviewCopy.text(draft.isAuthored(answer: answer) ? "material.authored" : "material.generated"))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section(BuiltInReviewCopy.text("material.preview")) {
+                    BuiltInReviewFace(text: answer ? draft.back : draft.front, images: previewImages,
+                        material: draft.previewParts(answer: answer), workspaceID: draft.snapshot.workspaceId,
+                        audio: previewAudio, onPlayAudio: { saved in
+                            guard operation == nil else { return }
+                            operation = Task {
+                                defer { operation = nil }
+                                do {
+                                    draft = try await BuiltInReviewMaterialPreparation.prepare(
+                                        saved.kind, draft: draft, audio: audio, audition: true)
+                                } catch is CancellationError { } catch { failure = error.localizedDescription }
+                            }
                         })
-                } else if let source {
-                    Section(BuiltInReviewCopy.text("material.context")) {
-                        Picker(BuiltInReviewCopy.text("material.context"), selection: Binding(
-                            get: { draft.exampleID }, set: { draft.chooseExample($0) })) {
-                            Text(BuiltInReviewCopy.text("material.meaningOnly")).tag(Optional<UUID>.none)
-                            ForEach(source.sense.examples) { Text($0.text).tag(Optional($0.id)) }
-                        }.accessibilityIdentifier("builtinReview.prepare.context")
+                        .accessibilityIdentifier("review.material.preview")
+                    if !materialIsUsable {
+                        Text(BuiltInReviewCopy.text("material.chooseSource")).foregroundStyle(.red)
+                    }
+                    NavigationLink(value: answer ? LingroveReviewEditorField.back : .front) {
+                        Text(BuiltInReviewCopy.text("material.editText"))
+                    }.accessibilityIdentifier(answer ? "builtinReview.prepare.backRow" : "builtinReview.prepare.frontRow")
+                    if draft.isAuthored(answer: answer) {
+                        Button(BuiltInReviewCopy.text("material.useRecipe")) { draft.restoreGeneratedFace(answer: answer) }
                     }
                 }
-                Section(BuiltInReviewCopy.text("material.customText")) {
-                    NavigationLink(value: LingroveReviewEditorField.front) {
-                        LingroveReviewTextPreviewRow(title: String(localized: "Front", table: "ReviewCards"), text: draft.front)
-                    }.accessibilityIdentifier("builtinReview.prepare.frontRow")
-                    NavigationLink(value: LingroveReviewEditorField.back) {
-                        LingroveReviewTextPreviewRow(title: String(localized: "Back", table: "ReviewCards"), text: draft.back)
-                    }.accessibilityIdentifier("builtinReview.prepare.backRow")
-                    if draft.input != draft.generated {
-                        Button(BuiltInReviewCopy.text("material.useRecipe")) {
-                            if let generated = draft.generated {
-                                draft.front = generated.frontText; draft.back = generated.backText; draft.tags = generated.tags
+                Section {
+                    DisclosureGroup(BuiltInReviewCopy.text("material.options"), isExpanded: $showingOptions) {
+                        if let source, let store = session.materialStore {
+                            ReviewMaterialEditor(plan: plan, entry: source.entry, sense: source.sense, store: store,
+                                scope: draft.snapshot, importedImages: $draft.importedImages, importingImage: $importingImage,
+                                operation: $operation, hostedSide: $answer, showsPreview: false, prepareAudio: { kind in
+                                    draft = try await BuiltInReviewMaterialPreparation.prepare(kind, draft: draft, audio: audio,
+                                                                                             audition: true)
+                                })
+                        } else if let source {
+                            Picker(BuiltInReviewCopy.text("material.context"), selection: Binding(
+                                get: { draft.exampleID }, set: { draft.chooseExample($0) })) {
+                                Text(BuiltInReviewCopy.text("material.meaningOnly")).tag(Optional<UUID>.none)
+                                ForEach(source.sense.examples) { Text($0.text).tag(Optional($0.id)) }
                             }
                         }
                     }
@@ -113,6 +136,13 @@ struct BuiltInReviewPreparationView: View {
                 .accessibilityIdentifier("builtinReview.prepare.discard")
         }
         .task {
+            if let source, let store = session.materialStore {
+                for reference in VocabularyContentPolicy.images(source.sense.content ?? []) {
+                    let data = await store.image(reference, scope: draft.snapshot)
+                    guard !Task.isCancelled else { return }
+                    sourceImages[reference.filename] = data
+                }
+            }
             let media = await session.savedMaterialMedia(draft)
             guard !Task.isCancelled else { return }
             let images = VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
@@ -127,6 +157,26 @@ struct BuiltInReviewPreparationView: View {
         }
         .onDisappear { operation?.cancel(); audio.discard() }
         .accessibilityIdentifier("builtinReview.preparation")
+    }
+
+    // Preview bytes remain sheet-owned; no persistence is needed to display a draft image.
+    private var previewImages: [BuiltInReviewSavedImage] {
+        let references = Set(VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
+            + VocabularyContentPolicy.images(source?.sense.content ?? []))
+        return references.compactMap { reference in
+            guard let data = draft.importedImages[reference.filename] ?? sourceImages[reference.filename] else { return nil }
+            return .init(id: LingroveNotebookCardMaterial.mediaAssetID(reference: .init(image: reference),
+                                                                      workspaceID: draft.snapshot.workspaceId), data: data)
+        }
+    }
+
+    private var previewAudio: [BuiltInReviewSavedAudio] {
+        draft.materialPlan.audio.compactMap { kind, value in
+            guard let media = draft.preparedMedia.first(where: { $0.reference == value.reference }) else { return nil }
+            return .init(id: LingroveNotebookCardMaterial.mediaAssetID(reference: value.reference,
+                workspaceID: draft.snapshot.workspaceId), kind: kind, data: media.data,
+                fileExtension: value.reference.mimeType == "audio/mpeg" ? "mp3" : "wav")
+        }
     }
 
     private func save() {

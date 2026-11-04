@@ -42,6 +42,10 @@ struct BuiltInReviewNativePresentationTests {
         defer { keyboard.shutdown() }
         try await host.settle()
         try host.capture("review-sense-unenrolled")
+        fixture.session.showAdding()
+        try await host.settle()
+        try host.capture("review-add-from-corpus")
+        fixture.session.showDetail(fixture.selection)
         fixture.session.prepare(selection: fixture.selection, basedOn: try #require(fixture.session.content))
         try await host.settle()
         try host.capture("review-material-form", window: try #require(host.window.attachedSheet))
@@ -54,6 +58,9 @@ struct BuiltInReviewNativePresentationTests {
         try fixture.enroll()
         fixture.session.reload()
         await fixture.session.waitForIdle()
+        fixture.session.showContent()
+        try await host.settle()
+        try host.capture("review-content-active")
         fixture.session.route = .overview
         try await host.settle()
         #expect(fixture.session.practice == nil)

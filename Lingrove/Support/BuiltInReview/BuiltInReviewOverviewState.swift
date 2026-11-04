@@ -5,7 +5,7 @@ import LingroveNotebookEngine
 /// Landing-state policy consumes immutable repository facts. It deliberately has no finished
 /// case: completion belongs only to a round that accepted a rating, never to an empty queue.
 nonisolated enum BuiltInReviewOverviewState: Equatable {
-    case noCorpus, noSelection, due, paused, unavailable, scheduled(Date?)
+    case noCorpus, noSelection, due, paused, withdrawn, unavailable, scheduled(Date?)
 
     init(content: NotebookBuiltInReviewSnapshot) {
         if !content.queue.isEmpty { self = .due; return }
@@ -16,7 +16,8 @@ nonisolated enum BuiltInReviewOverviewState: Equatable {
                 .compactMap { $0.dueAt.flatMap { parseIsoTimestamp(value: $0) } }
             self = .scheduled(dates.min()); return
         }
-        if !groups.isEmpty { self = .paused; return }
+        if groups.contains(where: { $0.status == .paused }) { self = .paused; return }
+        if !groups.isEmpty { self = .withdrawn; return }
         self = content.scope.document.collectedEntries.isEmpty ? .noCorpus : .noSelection
     }
 
@@ -26,6 +27,7 @@ nonisolated enum BuiltInReviewOverviewState: Equatable {
         case .noSelection: "state.noSelection"
         case .due: "today.ready"
         case .paused: "today.paused"
+        case .withdrawn: "today.withdrawn"
         case .unavailable: "today.unavailable"
         case .scheduled: "today.scheduled"
         }
@@ -35,7 +37,7 @@ nonisolated enum BuiltInReviewOverviewState: Equatable {
         case .noCorpus: "action.browseCorpus"
         case .noSelection: "action.addContent"
         case .due: "action.start"
-        case .paused, .scheduled: "action.manage"
+        case .paused, .withdrawn, .scheduled: "nav.content"
         case .unavailable: "action.fixMaterial"
         }
     }
@@ -44,6 +46,7 @@ nonisolated enum BuiltInReviewOverviewState: Equatable {
         case .due: "rectangle.on.rectangle"
         case .unavailable: "exclamationmark.triangle"
         case .paused: "pause.circle"
+        case .withdrawn: "archivebox"
         case .scheduled: "calendar"
         default: "tray"
         }

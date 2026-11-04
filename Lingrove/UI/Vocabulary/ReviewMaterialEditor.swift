@@ -16,6 +16,7 @@ struct ReviewMaterialEditor: View {
     @Binding var operation: Task<Void, Never>?
     var hostedSide: Binding<Bool>?
     var previewFirst = false
+    var showsPreview = true
     var prepareAudio: (ReviewAudioKind) async throws -> Void
     @State private var localBack = false
     @State private var templateName = ""
@@ -28,7 +29,7 @@ struct ReviewMaterialEditor: View {
     private var parts: Binding<[ReviewCardPart]> { back ? layout.back : layout.front }
 
     var body: some View {
-        if previewFirst { cardPreview }
+        if showsPreview && previewFirst { cardPreview }
         Section {
             TextField(String(localized: "Card name", table: "Vocabulary"), text: Binding(
                 get: { plan.name ?? "" }, set: { interact(); plan.name = $0 }))
@@ -117,7 +118,7 @@ struct ReviewMaterialEditor: View {
             Button(String(localized: "Save", table: "Vocabulary")) { saveTemplate() }
                 .disabled(templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        if !previewFirst { cardPreview }
+        if showsPreview && !previewFirst { cardPreview }
     }
 
     private var cardPreview: some View {

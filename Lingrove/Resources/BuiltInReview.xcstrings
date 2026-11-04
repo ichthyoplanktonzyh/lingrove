@@ -296,91 +296,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Edit material"
+            "value": "Edit card"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تعديل المحتوى"
+            "value": "تحرير البطاقة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Material bearbeiten"
+            "value": "Karte bearbeiten"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Editar el material"
+            "value": "Editar tarjeta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modifier le contenu"
+            "value": "Modifier la carte"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सामग्री संपादित करें"
+            "value": "कार्ड संपादित करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Edit materi"
+            "value": "Edit kartu"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Modifica il materiale"
+            "value": "Modifica scheda"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "教材を編集"
+            "value": "カードを編集"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자료 편집"
+            "value": "카드 편집"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Editar material"
+            "value": "Editar cartão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изменить материал"
+            "value": "Изменить карточку"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Materyali düzenle"
+            "value": "Kartı düzenle"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "编辑材料"
+            "value": "编辑卡片"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "編輯教材"
+            "value": "編輯卡片"
           }
         }
       }
@@ -680,91 +680,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepare material"
+            "value": "Adjust card"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إعداد المحتوى"
+            "value": "تعديل البطاقة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Material vorbereiten"
+            "value": "Karte anpassen"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar el material"
+            "value": "Ajustar tarjeta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Préparer le contenu"
+            "value": "Ajuster la carte"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सामग्री तैयार करें"
+            "value": "कार्ड समायोजित करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Siapkan materi"
+            "value": "Sesuaikan kartu"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara il materiale"
+            "value": "Personalizza scheda"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "教材を準備"
+            "value": "カードを調整"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자료 준비"
+            "value": "카드 조정"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar material"
+            "value": "Ajustar cartão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подготовить материал"
+            "value": "Настроить карточку"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Materyali hazırla"
+            "value": "Kartı ayarla"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备材料"
+            "value": "调整卡片"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "準備教材"
+            "value": "調整卡片"
           }
         }
       }
@@ -968,91 +968,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Resume"
+            "value": "Resume review"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "استئناف"
+            "value": "استئناف المراجعة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fortsetzen"
+            "value": "Wiederholung fortsetzen"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reanudar"
+            "value": "Reanudar repaso"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reprendre"
+            "value": "Reprendre les révisions"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "जारी रखें"
+            "value": "समीक्षा फिर शुरू करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lanjutkan"
+            "value": "Lanjutkan ulasan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riprendi"
+            "value": "Riprendi ripasso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "再開"
+            "value": "復習を再開"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "재개"
+            "value": "복습 재개"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retomar"
+            "value": "Retomar revisão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Продолжить"
+            "value": "Возобновить повторение"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sürdür"
+            "value": "Tekrarı sürdür"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续"
+            "value": "恢复复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "繼續"
+            "value": "恢復複習"
           }
         }
       }
@@ -1832,91 +1832,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Withdraw"
+            "value": "Remove from review"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الخروج من المراجعة"
+            "value": "إزالة من المراجعة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aus der Wiederholung nehmen"
+            "value": "Aus Wiederholung entfernen"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salir de la práctica"
+            "value": "Retirar del repaso"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quitter les révisions"
+            "value": "Retirer des révisions"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "दोहराव से बाहर निकलें"
+            "value": "समीक्षा से हटाएँ"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keluar dari pengulangan"
+            "value": "Keluarkan dari ulasan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esci dalle ripetizioni"
+            "value": "Rimuovi dal ripasso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "復習を終了"
+            "value": "復習から除外"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "복습에서 나가기"
+            "value": "복습에서 제외"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sair da revisão"
+            "value": "Remover da revisão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выйти из повторения"
+            "value": "Исключить из повторения"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tekrardan çık"
+            "value": "Tekrardan çıkar"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "退出复习"
+            "value": "移出复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "退出複習"
+            "value": "移出複習"
           }
         }
       }
@@ -7490,91 +7490,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Active"
+            "value": "In review"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "نشط"
+            "value": "قيد المراجعة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktiv"
+            "value": "In Wiederholung"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activa"
+            "value": "En repaso"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actif"
+            "value": "En révision"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सक्रिय"
+            "value": "समीक्षा में"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktif"
+            "value": "Dalam ulasan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Attiva"
+            "value": "In ripasso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "有効"
+            "value": "復習中"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "활성"
+            "value": "복습 중"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ativa"
+            "value": "Em revisão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Активно"
+            "value": "На повторении"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Etkin"
+            "value": "Tekrarda"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "启用"
+            "value": "复习中"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "啟用"
+            "value": "複習中"
           }
         }
       }
@@ -7586,91 +7586,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not selected for review"
+            "value": "Not added to review"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "غير محدد للمراجعة"
+            "value": "لم يُضف إلى المراجعة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nicht zur Wiederholung ausgewählt"
+            "value": "Nicht zur Wiederholung hinzugefügt"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No seleccionada para practicar"
+            "value": "Sin añadir al repaso"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non sélectionné pour les révisions"
+            "value": "Non ajouté aux révisions"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "दोहराव के लिए नहीं चुना गया"
+            "value": "समीक्षा में नहीं जोड़ा गया"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tidak dipilih untuk pengulangan"
+            "value": "Belum ditambahkan ke ulasan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non selezionata per le ripetizioni"
+            "value": "Non aggiunto al ripasso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "復習に未選択"
+            "value": "復習に未追加"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "복습 대상으로 선택되지 않음"
+            "value": "복습에 추가되지 않음"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não selecionada para revisão"
+            "value": "Não adicionado à revisão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не выбрано для повторения"
+            "value": "Не добавлено в повторение"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tekrar için seçilmedi"
+            "value": "Tekrara eklenmedi"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未选择复习"
+            "value": "未加入复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未選取複習"
+            "value": "未加入複習"
           }
         }
       }
@@ -7778,25 +7778,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Withdrawn"
+            "value": "Removed from review"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "خرج من المراجعة"
+            "value": "أُزيل من المراجعة"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aus der Wiederholung genommen"
+            "value": "Aus Wiederholung entfernt"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuera de la práctica"
+            "value": "Retirado del repaso"
           }
         },
         "fr": {
@@ -7808,37 +7808,37 @@
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "दोहराव से बाहर"
+            "value": "समीक्षा से हटाया गया"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dikeluarkan dari pengulangan"
+            "value": "Dikeluarkan dari ulasan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uscita dalle ripetizioni"
+            "value": "Rimosso dal ripasso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "復習を終了"
+            "value": "復習から除外済み"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "복습에서 나감"
+            "value": "복습에서 제외됨"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saiu da revisão"
+            "value": "Removido da revisão"
           }
         },
         "ru": {
@@ -7850,19 +7850,19 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tekrardan çıktı"
+            "value": "Tekrardan çıkarıldı"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已退出复习"
+            "value": "已移出复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已退出複習"
+            "value": "已移出複習"
           }
         }
       }
@@ -8641,91 +8641,91 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "اليوم"
+            "value": "للمراجعة الآن"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Heute"
+            "value": "Jetzt fällig"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Today"
+            "value": "Due now"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy"
+            "value": "Por repasar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aujourd’hui"
+            "value": "À réviser"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आज"
+            "value": "अभी समीक्षा करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hari ini"
+            "value": "Perlu diulas"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oggi"
+            "value": "Da ripassare"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日"
+            "value": "復習待ち"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "오늘"
+            "value": "복습 대기"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoje"
+            "value": "Para revisar"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня"
+            "value": "К повторению"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bugün"
+            "value": "Tekrar zamanı"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天"
+            "value": "待复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天"
+            "value": "待複習"
           }
         }
       },
@@ -9024,91 +9024,91 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إضافة محتوى"
+            "value": "إضافة من المجموعة اللغوية"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inhalt hinzufügen"
+            "value": "Aus dem Korpus hinzufügen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add content"
+            "value": "Add from corpus"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Añadir contenido"
+            "value": "Añadir desde el corpus"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajouter du contenu"
+            "value": "Ajouter depuis le corpus"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सामग्री जोड़ें"
+            "value": "संग्रह से जोड़ें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tambah konten"
+            "value": "Tambah dari korpus"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aggiungi contenuto"
+            "value": "Aggiungi dal corpus"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "内容を追加"
+            "value": "コーパスから追加"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "내용 추가"
+            "value": "자료 모음에서 추가"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adicionar conteúdo"
+            "value": "Adicionar do corpus"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавить содержимое"
+            "value": "Добавить из корпуса"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İçerik ekle"
+            "value": "Derlemden ekle"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加内容"
+            "value": "从语料库添加"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "新增內容"
+            "value": "從語料庫新增"
           }
         }
       }
@@ -9214,91 +9214,91 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "اليوم"
+            "value": "للمراجعة الآن"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Heute"
+            "value": "Jetzt fällig"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Today"
+            "value": "Due now"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy"
+            "value": "Por repasar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aujourd’hui"
+            "value": "À réviser"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आज"
+            "value": "अभी समीक्षा करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hari ini"
+            "value": "Perlu diulas"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oggi"
+            "value": "Da ripassare"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日"
+            "value": "復習待ち"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "오늘"
+            "value": "복습 대기"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoje"
+            "value": "Para revisar"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня"
+            "value": "К повторению"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bugün"
+            "value": "Tekrar zamanı"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天"
+            "value": "待复习"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天"
+            "value": "待複習"
           }
         }
       },
@@ -10167,91 +10167,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fix material"
+            "value": "View material issues"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "修复材料"
+            "value": "查看材料问题"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "修復材料"
+            "value": "查看材料問題"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "教材を修正"
+            "value": "教材の問題を確認"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자료 수정"
+            "value": "자료 문제 보기"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Material korrigieren"
+            "value": "Materialprobleme ansehen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corriger le contenu"
+            "value": "Voir les problèmes de contenu"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corregir material"
+            "value": "Ver problemas del material"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Correggi materiale"
+            "value": "Vedi problemi del materiale"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corrigir material"
+            "value": "Ver problemas do material"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Исправить материалы"
+            "value": "Проблемы материалов"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إصلاح المواد"
+            "value": "عرض مشكلات المحتوى"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सामग्री ठीक करें"
+            "value": "सामग्री की समस्याएँ देखें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perbaiki materi"
+            "value": "Lihat masalah materi"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Materyali düzelt"
+            "value": "Materyal sorunlarını gör"
           }
         }
       }
@@ -10262,91 +10262,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No active review content"
+            "value": "All review content is paused"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂无进行中的复习"
+            "value": "复习内容均已暂停"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "暫無進行中的複習"
+            "value": "複習內容均已暫停"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "有効な復習内容がありません"
+            "value": "すべての復習が一時停止中です"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "활성 복습 콘텐츠 없음"
+            "value": "모든 복습이 일시 중지되었습니다"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine aktiven Lerninhalte"
+            "value": "Alle Wiederholungen sind pausiert"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun contenu actif"
+            "value": "Toutes les révisions sont en pause"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay contenido activo"
+            "value": "Todo el repaso está en pausa"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun contenuto attivo"
+            "value": "Tutti i ripassi sono in pausa"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nenhum conteúdo ativo"
+            "value": "Todas as revisões estão pausadas"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Нет активных материалов"
+            "value": "Все повторения приостановлены"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا يوجد محتوى نشط"
+            "value": "كل المراجعات متوقفة مؤقتًا"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "कोई सक्रिय समीक्षा सामग्री नहीं"
+            "value": "सभी समीक्षाएँ रुकी हुई हैं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tidak ada materi aktif"
+            "value": "Semua ulasan dijeda"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Etkin tekrar içeriği yok"
+            "value": "Tüm tekrarlar duraklatıldı"
           }
         }
       }
@@ -11117,91 +11117,91 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restore generated text"
+            "value": "Restore this side’s generated text"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还原生成文本"
+            "value": "恢复这一面的生成文本"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "還原產生的文字"
+            "value": "還原這一面的產生文字"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "生成したテキストに戻す"
+            "value": "この面の生成テキストを復元"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "생성된 텍스트 복원"
+            "value": "이 면의 생성 텍스트 복원"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Generierten Text wiederherstellen"
+            "value": "Generierten Text dieser Seite wiederherstellen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurer le texte généré"
+            "value": "Restaurer le texte généré de cette face"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurar texto generado"
+            "value": "Restaurar el texto generado de esta cara"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ripristina testo generato"
+            "value": "Ripristina il testo generato di questo lato"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurar texto gerado"
+            "value": "Restaurar o texto gerado deste lado"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Восстановить созданный текст"
+            "value": "Восстановить созданный текст этой стороны"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "استعادة النص المُنشأ"
+            "value": "استعادة النص المُنشأ لهذا الوجه"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "बनाया गया पाठ बहाल करें"
+            "value": "इस तरफ का बनाया गया पाठ बहाल करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pulihkan teks yang dibuat"
+            "value": "Pulihkan teks otomatis sisi ini"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oluşturulan metni geri yükle"
+            "value": "Bu yüzün oluşturulan metnini geri yükle"
           }
         }
       }
@@ -11876,91 +11876,946 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تمت إضافة كل المحتوى المحفوظ"
+            "value": "لا يوجد محتوى جديد لإضافته"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle gespeicherten Inhalte sind hinzugefügt"
+            "value": "Keine neuen Inhalte zum Hinzufügen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All saved content is already added"
+            "value": "No new content to add"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todo el contenido guardado ya está añadido"
+            "value": "No hay contenido nuevo para añadir"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tout le contenu enregistré est déjà ajouté"
+            "value": "Aucun nouveau contenu à ajouter"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "सभी सहेजी गई सामग्री पहले ही जोड़ी जा चुकी है"
+            "value": "जोड़ने के लिए कोई नई सामग्री नहीं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Semua materi tersimpan sudah ditambahkan"
+            "value": "Tidak ada materi baru untuk ditambahkan"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tutti i contenuti salvati sono già aggiunti"
+            "value": "Nessun nuovo contenuto da aggiungere"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存済みの内容はすべて追加されています"
+            "value": "新しく追加できる内容はありません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저장한 콘텐츠가 모두 추가되었습니다"
+            "value": "새로 추가할 내용이 없습니다"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todo o conteúdo salvo já foi adicionado"
+            "value": "Nenhum conteúdo novo para adicionar"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Все сохранённые материалы уже добавлены"
+            "value": "Нет новых материалов для добавления"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kaydedilen tüm içerik zaten eklendi"
+            "value": "Eklenecek yeni içerik yok"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已保存内容均已加入复习"
+            "value": "没有新的可添加内容"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已儲存內容均已加入複習"
+            "value": "沒有新的可新增內容"
+          }
+        }
+      }
+    },
+    "filter.attention": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs attention"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要处理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要處理"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要確認"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인 필요"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À vérifier"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfung nötig"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere atención"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precisa de atenção"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da controllare"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Требует внимания"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بحاجة إلى متابعة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ध्यान देना आवश्यक"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perlu perhatian"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlgilenilmesi gerekiyor"
+          }
+        }
+      }
+    },
+    "state.noMatches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matching review content"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无符合条件的复习内容"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫無符合條件的複習內容"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該当する復習内容はありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치하는 복습 내용이 없습니다"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun contenu correspondant"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine passenden Lerninhalte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay contenido coincidente"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum conteúdo correspondente"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun contenuto corrispondente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет подходящих материалов"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد محتوى مراجعة مطابق"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोई मेल खाती समीक्षा सामग्री नहीं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada materi yang cocok"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşen tekrar içeriği yok"
+          }
+        }
+      }
+    },
+    "today.withdrawn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All review content has been removed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复习内容均已移出"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複習內容均已移出"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべての内容が復習から除外されています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 내용이 복습에서 제외되었습니다"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout le contenu a été retiré des révisions"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Inhalte wurden aus der Wiederholung entfernt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el contenido se ha retirado del repaso"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo o conteúdo foi removido da revisão"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutti i contenuti sono stati rimossi dal ripasso"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все материалы исключены из повторения"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُزيل كل المحتوى من المراجعة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सभी सामग्री समीक्षा से हटा दी गई है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semua materi telah dikeluarkan dari ulasan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm içerik tekrardan çıkarıldı"
+          }
+        }
+      }
+    },
+    "message.added": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added to review"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加入复习"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加入複習"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復習に追加しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복습에 추가됨"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouté aux révisions"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zur Wiederholung hinzugefügt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadido al repaso"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionado à revisão"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiunto al ripasso"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавлено в повторение"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أُضيف إلى المراجعة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "समीक्षा में जोड़ा गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ditambahkan ke ulasan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrara eklendi"
+          }
+        }
+      }
+    },
+    "material.authored": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom text"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义文本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自訂文字"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カスタムテキスト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용자 지정 텍스트"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texte personnalisé"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigener Text"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto personalizado"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto personalizado"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testo personalizzato"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свой текст"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نص مخصص"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कस्टम पाठ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks khusus"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özel metin"
+          }
+        }
+      }
+    },
+    "material.generated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically generated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动生成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動產生"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動生成"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 생성"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Généré automatiquement"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch erzeugt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generado automáticamente"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerado automaticamente"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generato automaticamente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создано автоматически"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مُنشأ تلقائيًا"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपने आप बनाया गया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dibuat otomatis"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik oluşturuldu"
+          }
+        }
+      }
+    },
+    "material.editText": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit text"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑文本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯文字"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 편집"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le texte"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text bearbeiten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar texto"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar texto"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica testo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить текст"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحرير النص"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पाठ संपादित करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit teks"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metni düzenle"
+          }
+        }
+      }
+    },
+    "material.options": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adjust card"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调整卡片"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "調整卡片"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カードを調整"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카드 조정"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuster la carte"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karte anpassen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar tarjeta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar cartão"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personalizza scheda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настроить карточку"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل البطاقة"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कार्ड समायोजित करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesuaikan kartu"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kartı ayarla"
+          }
+        }
+      }
+    },
+    "status.retention": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausing or removing keeps cards and review history."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停或移出会保留卡片和复习记录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫停或移出會保留卡片和複習紀錄。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一時停止や除外をしてもカードと復習履歴は残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 중지하거나 제외해도 카드와 복습 기록은 유지됩니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La pause ou le retrait conserve les cartes et l’historique."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausieren oder Entfernen behält Karten und Lernverlauf bei."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar o retirar conserva las tarjetas y el historial."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar ou remover mantém os cartões e o histórico."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La pausa o la rimozione conserva schede e cronologia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При паузе или исключении карточки и история сохраняются."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتفظ الإيقاف أو الإزالة بالبطاقات وسجل المراجعة."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रोकने या हटाने पर कार्ड और समीक्षा इतिहास सुरक्षित रहते हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menjeda atau mengeluarkan tetap menyimpan kartu dan riwayat ulasan."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duraklatma veya çıkarma kartları ve tekrar geçmişini korur."
           }
         }
       }

@@ -35,6 +35,12 @@ struct BuiltInReviewSenseView: View {
                     Text(group.map { BuiltInReviewCopy.status($0.status) } ?? BuiltInReviewCopy.text("status.notSelected"))
                         .foregroundStyle(.secondary)
                 }
+                if session.addedCount > 0 {
+                    Section {
+                        Label(BuiltInReviewCopy.text("message.added"), systemImage: "checkmark.circle")
+                        Button(BuiltInReviewCopy.text("action.addContent")) { session.showAdding() }
+                    }
+                }
                 if let group, !group.cards.isEmpty {
                     Section(BuiltInReviewCopy.text("nav.lingrove")) {
                         participation(group)
@@ -52,15 +58,17 @@ struct BuiltInReviewSenseView: View {
                 } else if source != nil, isCollected {
                     Section(BuiltInReviewCopy.text("material.default")) {
                         if let material = try? LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: currentSelection) {
+                            Text(BuiltInReviewCopy.text("field.prompt")).font(.caption).foregroundStyle(.secondary)
                             BuiltInReviewFace(text: material.generatedContent.frontText, images: [])
                             Divider()
+                            Text(BuiltInReviewCopy.text("field.answer")).font(.caption).foregroundStyle(.secondary)
                             BuiltInReviewFace(text: material.generatedContent.backText, images: [])
                         }
                     }
                     Section {
                         Button(BuiltInReviewCopy.text("action.enroll"), systemImage: "checkmark.circle") {
                             session.enrollDefault(selection: currentSelection, basedOn: content)
-                        }.accessibilityIdentifier("builtinReview.enroll")
+                        }.buttonStyle(.borderedProminent).accessibilityIdentifier("builtinReview.enroll")
                         Button(BuiltInReviewCopy.text("action.prepare")) {
                             session.prepare(selection: currentSelection, basedOn: content)
                         }.accessibilityIdentifier("builtinReview.prepare")
@@ -75,8 +83,18 @@ struct BuiltInReviewSenseView: View {
 
     @ViewBuilder private func participation(_ group: LingroveNotebookReviewGroup) -> some View {
         if group.status == .active {
-            Button(BuiltInReviewCopy.text("action.start"), systemImage: "play.fill") { session.start(selection: group.selection) }
-                .disabled(!content.queue.contains { card in group.cards.contains { $0.cardId == card.cardId } })
+            if content.queue.contains(where: { card in group.cards.contains { $0.cardId == card.cardId } }) {
+                Button(BuiltInReviewCopy.text("action.start"), systemImage: "play.fill") { session.start(selection: group.selection) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Text(BuiltInReviewCopy.text(group.hasUnavailableMaterial ? "material.unavailable" : "today.scheduled"))
+                    .foregroundStyle(.secondary)
+                if !group.hasUnavailableMaterial,
+                   let date = group.cards.compactMap({ $0.dueAt.flatMap { parseIsoTimestamp(value: $0) } }).min() {
+                    LabeledContent(BuiltInReviewCopy.text("session.nextDue"),
+                        value: date.formatted(date: .abbreviated, time: .shortened))
+                }
+            }
             Button(BuiltInReviewCopy.text("action.pause")) { changeStatus(.paused, group) }
                 .accessibilityIdentifier("builtinReview.pause")
         } else {
@@ -84,6 +102,7 @@ struct BuiltInReviewSenseView: View {
                 changeStatus(.active, group)
             }.accessibilityIdentifier("builtinReview.resume")
         }
+        Text(BuiltInReviewCopy.text("status.retention")).font(.caption).foregroundStyle(.secondary)
         if group.status != .withdrawn {
             Button(BuiltInReviewCopy.text("action.withdraw"), role: .destructive) { changeStatus(.withdrawn, group) }
                 .accessibilityIdentifier("builtinReview.withdraw")

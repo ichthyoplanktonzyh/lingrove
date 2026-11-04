@@ -32,7 +32,7 @@ struct VocabularyBuiltInReviewSection: View {
                 Text(statusText).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button(BuiltInReviewCopy.text(exerciseCount > 0 ? "action.manage" : "action.prepare")) {
+            Button(BuiltInReviewCopy.text(exerciseCount > 0 ? "nav.content" : "action.enroll")) {
                 store.onRequestBuiltInReview?(selection)
             }.buttonStyle(.bordered).controlSize(.small)
                 .accessibilityIdentifier("vocabulary.review.lingrove.manage")

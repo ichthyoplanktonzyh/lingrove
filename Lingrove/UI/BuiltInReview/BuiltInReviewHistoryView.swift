@@ -1,3 +1,4 @@
+import LingroveNotebook
 import LingroveNotebookEngine
 import SwiftUI
 
@@ -22,6 +23,17 @@ struct BuiltInReviewHistoryView: View {
                     }
                     ForEach(content.recentHistory) { event in
                         VStack(alignment: .leading, spacing: 6) {
+                            let group = content.review.groups.values.first { $0.cards.contains { $0.cardId == event.cardID } }
+                            let source = group.flatMap { BuiltInReviewSource.value($0.selection, in: content.scope) }
+                            let card = group?.cards.first { $0.cardId == event.cardID }
+                            Text(source?.entry.expression ?? card?.frontText ?? BuiltInReviewCopy.text("history.savedExercise"))
+                                .fontWeight(.semibold).lineLimit(2)
+                            if let meaning = source?.sense.meaning {
+                                Text(meaning).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            }
+                            if source == nil {
+                                Text(BuiltInReviewCopy.text("state.missingSource")).font(.caption).foregroundStyle(.secondary)
+                            }
                             HStack {
                                 Label(BuiltInReviewCopy.rating(event.rating), systemImage: event.rating.symbolName)
                                     .fontWeight(.semibold).foregroundStyle(lingroveReviewRatingColor(event.rating))

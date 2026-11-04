@@ -7,6 +7,7 @@ import LingroveNotebookEngine
 nonisolated enum BuiltInReviewRoute: Hashable, Sendable {
     case overview
     case content
+    case adding
     case sense(VocabularySelection)
     case practice
 }
@@ -66,4 +67,21 @@ nonisolated struct BuiltInReviewSavedAudio: Identifiable, Sendable {
     let kind: ReviewAudioKind
     let data: Data
     let fileExtension: String
+}
+
+/// The session retains this window-only browser state while detail views are replaced. It
+/// carries no write authority; closing or changing account clears searches and selections.
+nonisolated struct BuiltInReviewBrowsing {
+    var filter: BuiltInReviewContentFilter = .active
+    var search = ""
+    var addingSearch = ""
+    var selectedSenseIDs = Set<UUID>()
+    var detailOrigin: BuiltInReviewRoute = .content
+}
+
+/// Participation and material health are independent facts. Attention is a cross-status view,
+/// so a paused item with missing material can be found without losing its participation label.
+nonisolated enum BuiltInReviewContentFilter: String, CaseIterable {
+    case active, paused, withdrawn, attention
+    var titleKey: String { self == .attention ? "filter.attention" : "status." + rawValue }
 }
