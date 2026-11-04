@@ -441,8 +441,8 @@ those reviewer/test agents do not write implementation or test code.
   verification and fixes, and eventual integration into `main`; leads do not merge into `main`.
 - Native Mac ownership, current feature scope, component sources and validation limits are
   maintained in `docs/MAC_WORKSPACE.md`, `docs/MAC_UI_SYSTEM.md` and `SOURCE_LAYOUT.md`.
-  The current UI-unification wave adapts account, sync, review and Progress to Lingrove's
-  existing navigation and system appearance. The original corpus page and menu bar remain
+  Account, sync, review and Progress follow Lingrove's existing navigation and system appearance.
+  The original corpus page and menu bar remain
   the baseline; outer navigation contains only corpus, review and progress. Existing Settings
   ownership and business services are reused while account/sync presentation is adapted.
 - Completed dispatch notes and delivery reports are temporary. Consolidate lasting requirements,

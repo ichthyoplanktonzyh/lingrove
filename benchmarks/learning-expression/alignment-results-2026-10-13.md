@@ -66,5 +66,5 @@
 - 模型已全部卸载；已安装 Cotabby Dev 的 SHA256 未变化，没有修改当前模型设置或生产提示词。
 - 16 个中英例子、2 个英中例子；其余日/韩/德/西各方向仅 1～3 个例子，不能形成全面多语言能力结论。
 - [机器可读结果](alignment-results-2026-10-13.json)
-- [原始运行目录](/Users/shadow/cotabby/build/LanguageLearning/AlignmentEval/20261013T022023Z-formal)
-- [提示词/调度脚本](/Users/shadow/cotabby/scripts/learning_alignment_eval.py)；[盲审脚本](/Users/shadow/cotabby/scripts/learning_alignment_review.py)。
+- 原始运行目录 (`/Users/shadow/cotabby/build/LanguageLearning/AlignmentEval/20261013T022023Z-formal`; historical local path)
+- 提示词/调度脚本 (`/Users/shadow/cotabby/scripts/learning_alignment_eval.py`; historical local path)；盲审脚本 (`/Users/shadow/cotabby/scripts/learning_alignment_review.py`; historical local path)。

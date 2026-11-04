@@ -1,5 +1,7 @@
 # 1337 benchmark improvement experiments
 
+> Historical experiment log; results apply only to the configuration described below.
+
 This is the working checklist and decision record for improving Cotabby's local autocomplete.
 The benchmark runner owns replay and scoring; this document records hypotheses, evidence,
 and decisions so experiments do not silently become product defaults.
@@ -17,9 +19,9 @@ All 13 acceptance gates passed, including the Release build and 171 focused Swif
 tested Qwen model and synthetic corpus; category-level partial-word caveats remain in the report.
 The full six-hour window is complete: closed at **04:14:15 PDT**, after **6 hours and 20 seconds**.
 
-- [Results and limitations](benchmarks/phrase-prediction/round1-20260917/summary.md)
-- [Comparison charts](benchmarks/phrase-prediction/round1-20260917/reportplots.md)
-- [Reproduction instructions](benchmarks/phrase-prediction/round1-20260917/reproduction.md)
+- [Results and limitations](summary.md)
+- [Comparison charts](reportplots.md)
+- [Reproduction instructions](reproduction.md)
 
 ## Six-hour round 1
 
@@ -192,7 +194,7 @@ Round 1 motivates this question: in the full production-seed comparison, screen 
 815 checkpoints and harmed 324. Most remaining misses were generated first-word reference
 mismatches; the approximate raw-correct/display-wrong count was zero. A plausible alternative
 continuation can still be a reference mismatch, so exact-match gains remain distinct from
-real-user usefulness. See the retained [failure review](benchmarks/phrase-prediction/round1-20260917/failure-review.md).
+real-user usefulness. See the retained [failure review](failure-review.md).
 
 ### Proposed finite candidate list
 

@@ -263,8 +263,9 @@ runtime remains single-sequence; these independent engines exist only inside the
 
 ## Bounded improvement experiments
 
-`IMPROVEMENT_BRAINSTORMING.md` records the current experiment hypotheses, checklist, time window,
-and adoption criteria. Keep the model and corpus fixed while comparing sampling configurations.
+The historical round-one decision, limitations and reproduction are recorded in
+[the benchmark report](benchmarks/phrase-prediction/round1-20260917/summary.md). Historical
+experiments are not current product defaults. Keep the model and corpus fixed while comparing sampling configurations.
 The CLI supports explicit test-only overrides without changing product defaults or saved settings:
 
 ```sh

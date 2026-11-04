@@ -17,7 +17,7 @@
 </div>
 
 > [!NOTE]
-> **开发预览版 (v0.5)**：Lingrove 正在 `main` 分支积极开发中。你可以直接下载最新的 [v0.5.1-test.1 预发布测试包 (DMG)](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1) 体验，或从源码编译构建。
+> **开发预览版：** Lingrove 仍在开发中。可查看 [版本发布页面](https://github.com/ichthyoplanktonzyh/lingrove/releases)了解可用下载，或从源码构建。
 
 ---
 
@@ -118,14 +118,12 @@
 ### 系统要求
 
 - **操作系统：** macOS 14.0 (Sonoma) 或更高版本 *（仅在使用 Apple Intelligence 补全时需 macOS 26+）*。
-- **硬件架构：** 推荐使用 Apple Silicon (`arm64`) 运行本地 GGUF 与 TTS 推理；安装包为同时支持 Apple Silicon 与 Intel (`x86_64`) 的通用二进制版本。
+- **硬件架构：** 推荐使用 Apple Silicon (`arm64`) 运行本地 GGUF 与 TTS 推理；具体版本支持的架构请以发布说明为准。
 
-### 方式一：下载测试版安装包（普通用户）
+### 方式一：下载安装包
 
-1. 前往 [**v0.5.1-test.1 预发布页面**](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1) 下载 `Lingrove-0.5.1-test-universal.dmg`。
-2. 双击打开 DMG，将 **Lingrove.app** 拖入 **Applications（应用程序）** 文件夹，推出磁盘映像后从“应用程序”启动。
-3. 由于当前测试版使用临时签名（尚未进行 Apple 公证），首次打开若提示“无法验证开发者”，请前往 **系统设置 → 隐私与安全性**，在底部安全性区域点击 **仍要打开 (Open Anyway)**。
-4. 详细图文与功能体验步骤请参阅 [**简体中文安装与快速体验指南**](assets/testing/INSTALL.zh-CN.txt)（DMG 内亦附带为 `INSTALL.txt`）。
+请查看 [版本发布页面](https://github.com/ichthyoplanktonzyh/lingrove/releases)，以具体版本的
+安装、签名和平台说明为准；当前源码不保证某个预编译安装包始终可用。
 
 ### 方式二：从源码编译（开发者）
 
@@ -172,12 +170,14 @@ open build/lingrove-dependencies/Lingrove.xcworkspace
 
 ---
 
+文档导航及各文档的职责见 [docs/README.md](docs/README.md)。
+
 ## 隐私与数据安全
 
 - **默认本地运行：** Apple Intelligence、本地 `llama.cpp` GGUF 模型、屏幕截图与 Vision OCR、离线短语识别与词典查询均在 Mac 本机完成。
 - **远程请求严格受限：** 只有当你主动将某项任务配置为远程 Endpoint 时，该任务的有限文本上下文才会发送至你指定的服务端。语言学习请求绝不附带无关剪贴板内容或打字历史。
 - **输入历史加密且默认关闭：** 输入历史记录默认关闭；开启后数据以加密归档形式存储在本地，密钥保存在 macOS 钥匙串（Keychain）中，可随时在设置中一键清空。
-- **零遥测与追踪：** 无需注册账号，无内置数据统计（Analytics）或远程崩溃上传。
+- **隐私：** 本地使用无需账号。账户与同步为可选功能，使用用户配置的服务；应用没有内置数据统计或远程崩溃上传。
 - **应用数据完全隔离：** `Lingrove`、`Lingrove Dev` 与原 `Cotabby` 使用各自独立的偏好设置、钥匙串服务与存储目录，互不覆盖。详见 [FORK.md](FORK.md)。
 
 ---

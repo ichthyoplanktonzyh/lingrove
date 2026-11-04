@@ -60,39 +60,21 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
 
 ## Presentation ownership
 
-### Shared card authoring and review journey contract
+### Review journey contract
 
-The shared-authoring checkpoint includes both the entry/journey changes and content/editor
-changes accepted in PRODUCT_MODEL.md. Shared authoring supports both batches. Executed evidence
-and remaining limits are recorded separately below and in MAC_WORKSPACE.md.
+The current default enrollment and shared Note model are maintained in
+[REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md); explicit Anki publication is described in
+[ANKI_NOTE_SYNC.md](ANKI_NOTE_SYNC.md). Both targets remain discoverable with independent histories.
+Ordinary Review navigation shows an overview and starts a round only through an explicit action.
+Empty, unenrolled, due, scheduled, paused, unavailable and completed states remain distinct.
+Use native light/dark appearance and keep source navigation, cancellation, keyboard scoping and
+user edits intact. Product-facing copy presents actions, status and necessary errors, leaving
+architecture explanations to developer documentation.
 
-- The outer destinations remain Personal corpus, Review and Progress. Inside Review, Lingrove
-  and Anki are equally discoverable targets, while participation and scheduling remain separate.
-- The corpus sense shows both targets' actual state and actions. Multi-selection offers explicit
-  built-in enrollment and Anki preparation; neither an ordinary corpus save nor Cancel enrolls.
-- One material editor supplies source/example selection, templates, ordered question/answer
-  content and previews to both adapters. Target connection, deck and remote conflicts remain
-  Anki-owned. Editing built-in material does not require an Anki session or connection.
-- Ordinary Review navigation opens the overview. Starting a round is explicit. Empty corpus,
-  unenrolled corpus, due work, not-yet-due work, paused participation, unavailable material and
-  a completed round have distinct primary actions and truthful status.
-- Finding material to add and managing existing participation are distinct actions. A selected
-  source is not repeated as an unselected row. Practice and completion communicate their actual
-  round/scope and provide return, source and built-in Progress navigation.
-- User-facing copy is limited to labels, actions, status and errors/confirmations needed for the
-  operation. Do not add domain-model, architecture, ownership or unrelated explanatory paragraphs
-  to the editor, overview, management screens, Settings or onboarding. Teaching belongs in source
-  comments and maintained developer documentation.
-- Light/dark native checks must inspect the actual editor, question/answer, overview and target
-  navigation. A protected synthetic journey checks save/reopen, explicit enrollment, rating and
-  completion against persisted results; screenshots alone do not establish persistence.
-
-### Existing appearance checkpoint
+### Presentation boundaries
 
 The app environment retains one dependency graph. Presentation borrows account, sync, corpus,
-review and Progress owners; appearance work does not construct a second service graph. This
-earlier appearance adaptation changed no database/schema, transport, scheduling or shared-package
-implementation. Shared material authoring has its own persistence and protocol validation.
+review and Progress owners rather than creating another service graph.
 
 | Owner | Responsibility and data flow |
 | --- | --- |
@@ -101,24 +83,21 @@ implementation. Shared material authoring has its own persistence and protocol v
 | AccountSettingsNavigation | A window-owned child observed by the account pane. It retains URL drafts across pane unmount/Close, reconciles only pristine or explicitly saved pairs, and never grants network authority. |
 | AccountPaneView / account sheets / AccountNotebookSyncSection | Borrow the existing services. Native scaffold, row labels, callouts and confirmation present identity, service, workspace, ownership, sync opt-in and recovery as distinct actions. |
 | BuiltInReviewWindowView and related views | Borrow the existing frozen session. Overview/Back and End review have explicit meanings; material/source/queue/history sheets inherit native appearance. |
-| BuiltInReviewDraftPresentationSnapshot | A sheet-lifetime value of editable material fields. Navigation/preview alone is not dirty; edited Cancel asks Keep editing/Discard. The original scoped draft remains the writer input. |
-| ReviewMaterialEditor / VocabularyReviewLayoutEditor | The shared editor borrows neutral recipe/media bindings and source values. The Anki wrapper translates only its plan; source selection, ordered parts, templates and native preview have one implementation. |
+| Review Note and type editors | Own window-lifetime drafts; saving uses the shared Note/type boundary and Cancel discards the draft. |
+| Legacy material editors | Continue to support existing recipe-based paths; new Note enrollment and sending use the shared Note/type model. |
 | NotebookReviewDestinationView / BuiltInReviewContentView | Equal Lingrove/Anki choices and separate due-now/content management. Search misses, no corpus, all content already added, unenrolled, scheduled and unavailable states remain truthful; target switches suspend hidden review work. |
 | NotebookProgressDestination and sections | Present the existing visibility-scoped model and immutable statistics. Native cards, adaptable forecast layout, labeled semantic rating/bucket colors and chart interactions retain data meaning. |
 | LingroveReadableContentLayout / LingroveNativeActionButtonStyles | Keep their extracted interface names while supplying Lingrove-native widths and bordered/prominent controls. They own no theme manager or service. |
 
 Composition retains VocabularyWindowController.showReview(selection:), its settings/account
 callbacks, BuiltInReviewWindowView(session:), NotebookProgressView(repository:isActive:) and
-SettingsCoordinator.showAccount(). The earlier appearance checkpoint left original UI/Vocabulary
-and menu-bar sources unchanged; the shared-authoring checkpoint may adapt their review entry
-points while preserving the corpus navigation and existing native appearance.
+SettingsCoordinator.showAccount(). Review entry points preserve corpus navigation and the existing native appearance.
 Source provenance remains in MAC_REVIEW_ACCOUNT_UI_REUSE.md and MAC_PROGRESS_UI_REUSE.md; their
 extraction tables describe origin, while this document defines current presentation.
 
-The explicit first-save action is Add to review. Existing-material Save does not change
-participation. Completed-round feedback requires a started round with accepted answers, names
-its actual scope, and offers Today/Progress navigation. Preparation Cancel asks before discarding
-edits and publishes no Card/media/enrollment writes. There is no persistent unenrolled-draft UI.
+Enrollment is explicit; editing saved material does not change participation. Completed-round
+feedback requires a started round with accepted answers and names its actual scope. Canceling an
+unsaved edit or preparation does not commit its draft or implicitly enroll a sense.
 
 ## Validation and user-data protection
 
@@ -150,121 +129,9 @@ set of real UI journeys across the combined destinations; avoid a broad E2E matr
 unmodified storage/FSRS suites for cosmetic changes. Automation infrastructure remains limited
 to two corrective reruns or 20 minutes per issue, then retain evidence and state the gap.
 
-## Current checkpoint evidence
+## Validation limits
 
-The newer shared-authoring checkpoint is integrated into main with both planned batches. It
-adds the shared editor and typed media persistence, Lingrove/Anki destinations, Today/content
-management, corpus/batch actions, explicit round completion and concise Settings/Home surfaces.
-The original appearance checkpoint below remains historical evidence, not a claim that the
-new material persistence was unchanged. Current ownership and exact counts are maintained in
-MAC_WORKSPACE.md and `build/review-integration-validation/integration-proof.json`.
-
-The Mac delivery passed 33 definitions / 46 cases and an actual synthetic CUA journey through
-Discard, enrollment, rating, completion, Progress and source return. Final module presentation
-ran in both appearances. Main's signed Debug build-for-testing and 11-definition / 12-case
-combined selection passed without failures/skips after the content empty-state correction.
-The 125-key review catalog has all 15 locales; strict production SwiftLint passed. Useful native
-screens and module evidence are preserved beside the combined proof. Physical audio, real Anki,
-VoiceOver and the protocol-v2 backend/mobile rollout remain explicitly outside this acceptance.
-
-The completed two-module wave was integrated from baseline 6873de80. Temporary dispatch/delivery
-records were consolidated here and removed. Module A executed 61 test definitions / 64 concrete
-cases, no failures/skips; module B executed six definitions / 15 cases, then two affected rating
-cases. Those are separate module runs, not aggregate claims about every historical attempt.
-
-Integration completed a signed arm64 Debug build-for-testing, strict production SwiftLint and
-all seven affected catalogs' complete 15-locale/English-placeholder checks. Twelve native test
-definitions / 16 cases passed after combination, including real workspace/Settings ownership in
-Aqua and darkAqua, material/destination rendering, Progress and existing navigation/write guards.
-
-The actual isolated main-window journey passed: source sense -> explicit enrollment -> Start ->
-reveal -> Good -> visible Progress -> retained source corpus -> account footer -> existing
-Appearance settings. CUA screenshots showed the real compositor in inherited light appearance.
-The native postconditions independently confirmed one enrollment/exercise/rating, reps=1,
-Progress reviews=1/active senses=1, original selection retained and Settings visible.
-
-A separate visible account handoff completed service draft/Back/disabled-login/Revert, email,
-OTP and synthetic sign-in; it expired before its final done marker, so it remains a failed,
-incomplete checkpoint. The first workspace handoff was aborted when CUA reported locked Mac;
-its unmet assertions remain failures. A redundant selector probe selected zero tests and is not
-counted as a pass; its target had already passed in the combined run. No broad business suites
-were repeated to repair a selector. User-confirmed unlock allowed the final workspace pass.
-
-Keep editing/Discard pointer confirmation, every chart legend/paging pointer action, VoiceOver,
-actual speech and every locale's visual layout were not newly accepted. Model/native rendering
-and scoped keyboard/draft checks are evidence, not substitutes for unperformed pointer actions.
-Real providers/mailboxes/cloud/physical devices remain separate acceptance scope.
-
-Evidence is build/mac-ui-integration-validation/ (combined result, final workspace result and
-postconditions, catalog proof, logs and preserved earlier failures). Curated module evidence and
-passing result bundles were copied with SHA256 checks before module worktree archival. The final
-Dev artifact and cleanup have separate proof files there. No module or test touched the installed
-user app, corpus, real credentials, login items, TCC or macOS appearance. Root installation, when
-performed, is recorded separately and retains user data.
-
-The normal account-entry follow-up on 2026-11-03 executed 31 focused test definitions / 36 concrete
-cases with zero failures/skips, covering paired build defaults, pinned/custom precedence, logout
-restore permission, explicit reset/removal, cancellation generations, draft guards and inherited
-Aqua/darkAqua. The final consumed-code/pending-identity native UI regression also passed after the
-code-step Close control was added. Signed arm64 Debug build-for-testing and strict production
-SwiftLint passed; all 58 Account strings have all 15 locales and matching placeholders.
-
-CUA completed the previously missing account handoff using only the private .validation host and
-in-memory synthetic credentials. Missing-service login remained discoverable, disabled sending,
-and reached service settings with a working Back path. The configured journey checked unsaved
-draft/Back/blocked-login/Revert, email -> code -> Back -> retry, direct code-step Close -> reopen,
-and resend -> successful sign-in -> existing Appearance settings. Native postconditions confirmed
-workspaceSelected=false, ownershipProposed=false and syncEnabled=false after identity confirmation.
-These are separate executions of two journey definitions, not an aggregate claim about historical
-attempts. Evidence is build/mac-account-login-validation/; real mailbox/service acceptance remains
-deferred with deployment. No installed app/data, real account, TCC or system appearance was changed.
-
-Root integrated the account module with main's shared-review checkpoint (`177d9e8c`) without
-source conflicts. Independent read-only review found no actionable account issues. Module result
-bundles and postconditions were preserved with SHA256 hashes in the canonical checkout's
-`build/mac-account-login-validation/`; `integration-proof.json` distinguishes the module's executed
-tests from root's source-only integration checks. At the user's request, root did not build,
-launch or replace an application or rerun native tests during that source integration.
-
-The subsequently authorized Dev update built arm64 Release 0.7.2 from `68a3d30a`, passed strict
-signature and existing-installation requirement checks, and replaced the same Dev bundle after
-a normal CUA Quit and a local database/media/preferences backup. Startup retained schema 39,
-all 37 protected corpus/review table fingerprints and every existing preference value. CUA
-observed the installed login sheet and its truthful missing-service explanation; email entry
-and code sending remain disabled until a service is configured. No mailbox/provider acceptance
-is claimed. `build/account-dev-update/` holds build, installation, UI and cleanup evidence;
-DerivedData and the copied package/module caches were removed, with fixed inputs preserved.
-
-The initial repository-wide localization check reported 70 format mismatches because it treated
-NotebookProgress's symbolic identifiers as English format strings. The existing translations
-matched their explicit English text. Export, import and validation now share that English
-reference while preserving literal-key format contracts. Nine focused Python regressions and
-the full catalog check passed: 2,086 source keys across ten catalogs and 15 languages. This
-resolves the tooling reports without changing the translated product text.
-
-### Review flow clarity (2026-11-03)
-
-Lingrove and Anki retain equal-level tool selection. The built-in landing page prioritizes due
-work and the next scheduled date; enrollment/card inventory counts no longer compete with Start.
-Management defaults to active participation, with paused, removed and needs-attention filters.
-Material health is an additional label, not a replacement for participation status. Add from
-corpus is an explicit destination with selection and atomic batch confirmation. Session-owned
-search/filter/origin state survives a detail round trip, but closes with the session/account scope.
-Successful enrollment gives feedback and explicit Start/continue-adding actions; it never starts
-a round by itself. Removed participation is restored in management rather than duplicated.
-
-The preparation sheet presents one question/answer preview before expandable card options. Its
-preview follows the same generated-versus-authored face rule as practice; restoring generated
-text changes only the displayed face. Recipe controls are still shared with Anki. History rows
-identify the expression/meaning or retained card text before displaying the causal rating/undo.
-This is a Mac presentation change: no scheduler, schema, account or sync contract changes.
-
-### Proposed template-led review design (2026-11-04)
-
-The next design phase follows the user's confirmed journey: add from corpus without a material
-editor or immediate single-sense practice, then start a round from Review. Default templates
-extract and present rich sense content; advanced template customization lives in settings, and
-content follows source updates. The proposed default content hierarchy, three synthetic sample
-levels, editor structure, source/optional-material rules and cross-platform gaps are maintained
-in [REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md). It is a design-review draft, not a
-claim that the currently installed Dev or shared sync contract already implements these rules.
+Synthetic native checks and their historical evidence do not establish real Anki, production
+service deployment, physical-device sync, VoiceOver, every locale, or final visual acceptance.
+The Note implementation and its specific validation limits are recorded in
+[REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md). Historical checkpoint reports remain in Git.

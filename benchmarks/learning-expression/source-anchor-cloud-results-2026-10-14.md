@@ -101,6 +101,6 @@
 
 总用量：输入 7279 tokens（缓存命中 128、未命中 7151），输出 951 tokens，共 8230 tokens。没有自动重试。只发送固定合成句对；密钥用于内存认证，未写入项目、配置或证据文件。
 
-可复现入口：[Python 实验脚本](/Users/shadow/cotabby/scripts/learning_alignment_source_anchor_eval.py)、[独立 Swift 解析包装](/Users/shadow/cotabby/scripts/learning_alignment_parse.swift)。包装只提供解析器所需的三个小值类型；最终校验执行的是当前产品 `LearningAlignmentParser` 本身，不启动 App 或模型运行时。实验脚本负责冻结输入、请求和结果，语义判断由独立审查完成。
+可复现入口：Python 实验脚本 (`/Users/shadow/cotabby/scripts/learning_alignment_source_anchor_eval.py`; historical local path)、独立 Swift 解析包装 (`/Users/shadow/cotabby/scripts/learning_alignment_parse.swift`; historical local path)。包装只提供解析器所需的三个小值类型；最终校验执行的是当前产品 `LearningAlignmentParser` 本身，不启动 App 或模型运行时。实验脚本负责冻结输入、请求和结果，语义判断由独立审查完成。
 
-[机器可读结果](/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-cloud-results-2026-10-14.json)；[原始结果](/Users/shadow/cotabby/build/LanguageLearning/SourceAnchorCloud/20261014T042408Z/results.jsonl)；[原始提示词](/Users/shadow/cotabby/build/LanguageLearning/SourceAnchorCloud/20261014T042408Z/system-prompt.json)。七项既有云端传输单测通过，30 份原始返回已运行产品解析器，压缩及文本证据的密钥形态扫描通过。独立 Swift 编译缓存已清理，`build/DerivedData` 不存在。
+机器可读结果 (`/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-cloud-results-2026-10-14.json`; historical local path)；原始结果 (`/Users/shadow/cotabby/build/LanguageLearning/SourceAnchorCloud/20261014T042408Z/results.jsonl`; historical local path)；原始提示词 (`/Users/shadow/cotabby/build/LanguageLearning/SourceAnchorCloud/20261014T042408Z/system-prompt.json`; historical local path)。七项既有云端传输单测通过，30 份原始返回已运行产品解析器，压缩及文本证据的密钥形态扫描通过。独立 Swift 编译缓存已清理，`build/DerivedData` 不存在。

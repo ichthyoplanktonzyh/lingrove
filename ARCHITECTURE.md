@@ -178,16 +178,13 @@ and cohesive mutable sub-state to smaller boundaries:
 
 - [SuggestionAvailabilityEvaluator.swift](Lingrove/Support/Suggestion/Request/SuggestionAvailabilityEvaluator.swift):
   pure permission, settings, focus, and runtime gates.
-- [SuggestionRequestFactory.swift](Lingrove/Support/Suggestion/Request/SuggestionRequestFactory.swift): pure bounded
-  request construction and the selected backend's developer-debug prompt payload. Nothing is generated
-  with the caret inside a token ([CaretTokenPosition.swift](Lingrove/Support/Suggestion/Request/CaretTokenPosition.swift)),
-  and on the llama path a request made mid-word is anchored at the word boundary
-  ([WordBoundaryAnchorPolicy.swift](Lingrove/Support/Suggestion/Request/WordBoundaryAnchorPolicy.swift)): the partial
-  word leaves the prompt (so its last token is a whole word) and the engine is handed the boundary whitespace plus the
-  typed letters as a required prefix it masks every inconsistent token against, so the model finishes the word the
-  user started; the normalizer shows only the untyped remainder. The word-count preset also bounds the result
-  ([SuggestionLengthPolicy.swift](Lingrove/Support/Suggestion/Output/SuggestionLengthPolicy.swift) trims to the
-  preset's upper bound at a clause boundary; the decoder's sentence stop waits for its lower bound).
+- [SuggestionRequestFactory.swift](Lingrove/Support/Suggestion/Request/SuggestionRequestFactory.swift):
+  pure bounded request construction and developer-debug prompt payload. It rejects ordinary requests
+  with the caret inside a token using [CaretTokenPosition.swift](Lingrove/Support/Suggestion/Request/CaretTokenPosition.swift).
+  The llama engine uses [MidWordContinuationPolicy.swift](Lingrove/Support/Suggestion/Request/MidWordContinuationPolicy.swift)
+  to decide whether to constrain the first token for an eligible request. Output length is bounded by
+  [SuggestionLengthPolicy.swift](Lingrove/Support/Suggestion/Output/SuggestionLengthPolicy.swift).
+
 - [SuggestionWorkController.swift](Lingrove/Services/Suggestion/State/SuggestionWorkController.swift):
   debounce/generation tasks and monotonically increasing work IDs.
 - [SuggestionInteractionState.swift](Lingrove/Services/Suggestion/State/SuggestionInteractionState.swift):

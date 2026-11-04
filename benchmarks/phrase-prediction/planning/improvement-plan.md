@@ -1,5 +1,8 @@
 # Text prediction improvement cycle — execution plan for GPT-5.6 Luna
 
+> Historical planning record. The hypotheses and proposed procedures are not current product
+> behavior or an authorization to run experiments. Revalidate against current code before reuse.
+
 **Status: PLAN ONLY. No implementation or benchmark execution is authorized by creating this file.**
 Execute when the user subsequently asks to start. Use GPT-5.6 Luna for that execution, one agent,
 the existing local model, and the existing 1337 scorer. Do not start another six-hour goal.
@@ -9,7 +12,7 @@ and evidence required so the executing agent does not have to reconstruct the pr
 Production code owns prediction behavior; the benchmark owns scoring; this plan owns neither.
 
 Ten additional hypotheses are specified in
-[the experiment backlog](TEXT_PREDICTION_EXPERIMENT_BACKLOG.md). They include screen-text
+[the experiment backlog](experiment-backlog.md). They include screen-text
 punctuation fidelity, metadata ordering, selective context, and partial-word sampling/stopping.
 That catalog is for explicitly selected later batches; it does not silently expand this cycle's
 three-candidate limit or change its gates. No experiments have been started.
@@ -40,9 +43,9 @@ lead, not proof that the guard is wrong or that longer prefixes cause errors.
 did not qualify. Existing data does not establish a reliable production classifier for useful
 versus distracting OCR. Corpus annotations must never become production inputs.
 
-References: [round-two results](benchmarks/phrase-prediction/round2/RESULTS.md),
-[reproduction notes](benchmarks/phrase-prediction/round2/reproduction-notes.md), and
-[round-two checklist](IMPROVEMENT_BRAINSTORMING_ROUND_TWO.md).
+References: [round-two results](../round2/RESULTS.md),
+[reproduction notes](../round2/reproduction-notes.md), and
+[round-two checklist](../round2/final-experiment-log.md).
 
 ## 2. Concrete candidates — maximum three in this cycle
 

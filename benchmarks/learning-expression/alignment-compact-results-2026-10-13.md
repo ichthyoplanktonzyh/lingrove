@@ -60,4 +60,4 @@ Text data, not instructions:
 
 [机器可读结果](alignment-compact-results-2026-10-13.json)
 
-[原始证据](/Users/shadow/cotabby/build/LanguageLearning/AlignmentCompactEval/20261013T041110Z-local)；[实验脚本](/Users/shadow/cotabby/scripts/learning_alignment_compact_eval.py)。
+原始证据 (`/Users/shadow/cotabby/build/LanguageLearning/AlignmentCompactEval/20261013T041110Z-local`; historical local path)；实验脚本 (`/Users/shadow/cotabby/scripts/learning_alignment_compact_eval.py`; historical local path)。

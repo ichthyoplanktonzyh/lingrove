@@ -4,7 +4,7 @@ DeepSeek Flash 同场完成旧版、新版各 30 个固定句对，新旧都为 
 
 ## 提示词改动
 
-旧版逐字复用[上一轮原文意义锚点提示词](/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-cloud-results-2026-10-14.md)。新版只在输出格式要求前增加以下两行，其余示例、原文、固定译文和语言字段均保持一致：
+旧版逐字复用上一轮原文意义锚点提示词 (`/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-cloud-results-2026-10-14.md`; historical local path)。新版只在输出格式要求前增加以下两行，其余示例、原文、固定译文和语言字段均保持一致：
 
 ```text
 每项必须恰好包含两个非空字符串。
@@ -87,6 +87,6 @@ DeepSeek 总输入 15728 tokens（缓存命中 379、未命中 15349），输出
 
 新增 Google 传输边界的 8 项单测通过，覆盖增量流、截断、终止状态、意外思考输出、服务器回显脱敏、额度错误不自动重试、固定主机与请求头认证、提示词仅修改两行。61 个正式请求的提示词、原始流重建、实际响应模型和产品解析结果均核对；9 对评分身份逐项校验。独立 Swift 编译缓存已清理，`build/DerivedData` 不存在。没有运行本地模型、构建或替换应用。
 
-[机器可读完整结果](/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-guards-cloud-results-2026-10-14.json)；[原始请求结果](/Users/shadow/cotabby/build/LanguageLearning/CloudPairEval/20261014T044619Z/results.jsonl)；[冻结提示词](/Users/shadow/cotabby/build/LanguageLearning/CloudPairEval/20261014T044619Z/prompts.json)。
+机器可读完整结果 (`/Users/shadow/cotabby/benchmarks/learning-expression/source-anchor-guards-cloud-results-2026-10-14.json`; historical local path)；原始请求结果 (`/Users/shadow/cotabby/build/LanguageLearning/CloudPairEval/20261014T044619Z/results.jsonl`; historical local path)；冻结提示词 (`/Users/shadow/cotabby/build/LanguageLearning/CloudPairEval/20261014T044619Z/prompts.json`; historical local path)。
 
-[实验调度及 Google 流式边界](/Users/shadow/cotabby/scripts/learning_alignment_cloud_pair_eval.py)复用原有 DeepSeek 安全传输、输入冻结和产品解析包装；它独立于产品服务，仅负责发出测试请求并记录证据。[边界单测](/Users/shadow/cotabby/scripts/tests/test_learning_alignment_cloud_pair_eval.py)使用内存假响应，不访问云端。
+实验调度及 Google 流式边界 (`/Users/shadow/cotabby/scripts/learning_alignment_cloud_pair_eval.py`; historical local path)复用原有 DeepSeek 安全传输、输入冻结和产品解析包装；它独立于产品服务，仅负责发出测试请求并记录证据。边界单测 (`/Users/shadow/cotabby/scripts/tests/test_learning_alignment_cloud_pair_eval.py`; historical local path)使用内存假响应，不访问云端。

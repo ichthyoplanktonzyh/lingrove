@@ -66,4 +66,4 @@
 
 [机器可读结果](alignment-quantity-results-2026-10-13.json)
 
-[云端原始证据](/Users/shadow/cotabby/build/LanguageLearning/AlignmentQuantityEval/20261013T032534Z-cloud)；[本地原始证据](/Users/shadow/cotabby/build/LanguageLearning/AlignmentQuantityEval/20261013T034137Z-local)。
+云端原始证据 (`/Users/shadow/cotabby/build/LanguageLearning/AlignmentQuantityEval/20261013T032534Z-cloud`; historical local path)；本地原始证据 (`/Users/shadow/cotabby/build/LanguageLearning/AlignmentQuantityEval/20261013T034137Z-local`; historical local path)。

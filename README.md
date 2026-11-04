@@ -17,7 +17,7 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 </div>
 
 > [!NOTE]
-> **Active Preview (v0.5):** Lingrove is under active development on `main`. You can try the latest [v0.5.1-test.1 prerelease DMG](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1) today or build from source.
+> **Development preview:** Lingrove is under active development. Check the [releases page](https://github.com/ichthyoplanktonzyh/lingrove/releases) for available downloads, or build from source.
 
 ---
 
@@ -118,14 +118,13 @@ Each capability configures its model and server settings independently—using a
 ### System Requirements
 
 - **OS:** macOS 14.0 (Sonoma) or later *(macOS 26+ required only if using Apple Intelligence autocomplete)*.
-- **Hardware:** Apple Silicon (`arm64`) recommended for local GGUF and TTS inference; Universal binary supports Intel (`x86_64`).
+- **Hardware:** Apple Silicon (`arm64`) is recommended for local GGUF and TTS inference. Check each release for its supported architectures.
 
-### Option 1: Download Prebuilt Test DMG (For Users)
+### Option 1: Download a build
 
-1. Download `Lingrove-0.5.1-test-universal.dmg` from the [**v0.5.1-test.1 Prerelease**](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.5.1-test.1).
-2. Open the DMG, drag **Lingrove.app** into **Applications**, eject the disk image, and launch Lingrove from Applications.
-3. Because test builds use ad-hoc signing (not yet notarized), if macOS shows an unverified developer prompt, open **System Settings → Privacy & Security** and click **Open Anyway**.
-4. See the [Simplified Chinese Install & Quickstart Guide](assets/testing/INSTALL.zh-CN.txt) (also bundled inside the DMG as `INSTALL.txt`) for a step-by-step walkthrough.
+Check the [releases page](https://github.com/ichthyoplanktonzyh/lingrove/releases) for available
+builds and their installation, signing and platform notes. The availability and properties of a
+particular build are described by its release, not guaranteed by the current source tree.
 
 ### Option 2: Build from Source (For Developers)
 
@@ -177,12 +176,14 @@ Lingrove requests only the macOS permissions required for the features you enabl
 - **Local by Default:** Apple Intelligence, `llama.cpp` GGUF models, Vision OCR, and dictionary lookup run entirely on your Mac with zero network calls.
 - **Explicit Endpoint Scope:** Only tasks explicitly configured to use a remote endpoint send bounded text context to that server. Learning requests never include unrelated clipboard contents or typing history.
 - **Encrypted Opt-In History:** Input-history recording is **off by default**. When enabled, history is stored in a local encrypted archive whose key lives in your macOS Keychain, and can be wiped anytime in Settings.
-- **Zero Telemetry:** No user accounts, no analytics, and no remote crash reporting. Automatic app updates remain disabled until independent Sparkle infrastructure is finalized.
+- **Privacy:** Local use does not require an account. Optional account and sync features use a configured service; there is no built-in analytics or remote crash reporting. Automatic app updates remain disabled until independent Sparkle infrastructure is finalized.
 - **Clean Side-by-Side Storage:** `Lingrove`, `Lingrove Dev`, and legacy `Cotabby` installations use separate preferences, Keychain services, and application support directories. See [FORK.md](FORK.md).
 
 ---
 
 ## Documentation & Community
+
+For the documentation map and the authority of each guide, see [docs/README.md](docs/README.md).
 
 - [**FAQ.md**](FAQ.md) — Common questions on setup, offline usage, and permissions
 - [**docs/LANGUAGE_LEARNING.md**](docs/LANGUAGE_LEARNING.md) — Deep dive into translation workflows, dictionaries, TTS, and model token budgets

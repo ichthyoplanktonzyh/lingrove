@@ -1,7 +1,10 @@
 # Additional text-prediction experiments
 
+> Historical planning record. The hypotheses and proposed procedures are not current product
+> behavior or an authorization to run experiments. Revalidate against current code before reuse.
+
 **Planning only — none of these experiments has been executed.** This catalog supplements
-`TEXT_PREDICTION_IMPROVEMENT_PLAN.md`. It adds ten hypotheses beyond A, B and AB; it does not
+`improvement-plan.md`. It adds ten hypotheses beyond A, B and AB; it does not
 automatically add ten runs to that plan. Select a batch and freeze its rules before execution.
 
 The hypotheses below have different levels of support. The punctuation experiments come from

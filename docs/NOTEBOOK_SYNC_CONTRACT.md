@@ -9,6 +9,12 @@ opt-in MCP 工具。双模拟器本地接续和真实 ChatGPT 私有 Tunnel → 
 与身份契约以 [`contract.ts`](https://github.com/ichthyoplanktonzyh/lingrove-mobile/blob/main/apps/backend/src/notebook/corpus/contract.ts) 为准。
 它们没有复用 SQLite codec 的 opaque payload、索引或整本备份格式。
 
+## 当前复习协议
+
+新 Note 与共享定义使用下文的 [Review v3](#review-v3note-与共享定义2026-11-04)。
+下文涉及旧版材料及 v1/v2 的说明仍用于理解旧客户端和兼容边界，不应作为新 Note
+默认流程。版本确认、部署与跨设备验收是各自独立的事实。
+
 ## 身份、顺序与材料
 
 词条、义项、来源、出现位置、解释判断、收藏及意义/分类关系分别拥有身份。子记录

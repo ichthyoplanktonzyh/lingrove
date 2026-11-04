@@ -2,7 +2,7 @@
 
 This is round two's working checklist, hypothesis register, and decision record. The benchmark
 runner owns replay and scoring; this document connects those measurements to a bounded decision.
-Round one's completed record remains in `IMPROVEMENT_BRAINSTORMING.md`.
+Round one's completed record remains in [round-one experiment log](../round1-20260917/experiment-log.md).
 
 ## Window and baseline
 
