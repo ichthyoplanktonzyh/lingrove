@@ -126,8 +126,9 @@ struct EngineScopedCommandIntegrationTests {
         _ = try engine.enrollReviewNotes(selections: [.init(entryID: saved.document.entries[0].id,
             senseID: saved.document.entries[0].senses[0].id)], type: ReviewNoteDefaults.type, scope: saved)
         let oldCard = try #require(try ReviewNoteStore(core: engine.core).memberships(workspace: source).first).cardID
+        let question = try #require(try ReviewNoteStore(core: engine.core).cardModels(scope: saved)[oldCard])
         _ = try engine.submitNotebookRating(.init(cardId: oldCard, rating: .good,
-            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC", noteVersion: question.questionVersion(in: saved)), basedOn: saved)
         let target = UUID().uuidString.lowercased()
         let account = CloudLinkedSession(userId: "synthetic-engine-owner", workspaceId: target, email: nil,
             configurationMode: .custom, apiBaseUrl: "http://127.0.0.1:19080", authorization: .bearer("synthetic-unused"))

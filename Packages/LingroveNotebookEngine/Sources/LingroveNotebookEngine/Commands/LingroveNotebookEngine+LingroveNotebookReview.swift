@@ -182,12 +182,15 @@ extension LingroveNotebookEngine {
                     }
                 }
             }
+            let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
             var groups: [UUID: LingroveNotebookReviewGroup] = [:]
             for (senseId, values) in grouped {
                 guard let selection = currentSelections[senseId] else { throw VocabularyError.invalidArchive }
                 let cards = groupedCards[senseId] ?? []
                 let unavailable = try cards.contains { card in
-                    try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status NOT IN ('ready','retained')", values: [.text(scope.workspaceId), .text(card.cardId)]) > 0
+                    if let model = noteCards[card.cardId],
+                       model.noteType.templates.first(where: { $0.id == model.templateID })?.enabled == false { return false }
+                    return try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status NOT IN ('ready','retained')", values: [.text(scope.workspaceId), .text(card.cardId)]) > 0
                 }
                 let undoable = try cards.filter { card in
                     try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_last_rating rating JOIN notebook_review_schedule_heads head USING(workspace_id,card_id) WHERE rating.workspace_id=? AND rating.card_id=? AND rating.operation_id=head.operation_id AND ? IS NOT NULL", values: [.text(scope.workspaceId), .text(card.cardId), card.fsrsLastReviewedAt.map(SQLiteValue.text) ?? .null]) > 0
@@ -197,7 +200,7 @@ extension LingroveNotebookEngine {
             return .init(workspaceId: current.workspaceId, notebookId: current.notebookId, notebookRevision: current.revision,
                 groups: groups, links: try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId), hasPendingSync:
                     try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current),
-                    noteCards: try ReviewNoteStore(core: core).cardModels(scope: current))
+                    noteCards: noteCards)
         }
     }
 }

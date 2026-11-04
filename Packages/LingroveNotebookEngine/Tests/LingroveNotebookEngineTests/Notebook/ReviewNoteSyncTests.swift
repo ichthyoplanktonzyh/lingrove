@@ -75,6 +75,7 @@ struct ReviewNoteSyncTests {
         try f.db.saveReviewNoteType(disabled, expected: type, scope: updated)
         let after = try f.db.loadBuiltInNotebookReview(scope: updated, now: Date())
         #expect(after.queue.isEmpty && after.noteCards.count == 2)
+        #expect(after.review.groups[selection.senseID]?.hasUnavailableMaterial == false)
         #expect(after.statistics.ratingRecords == 1)
     }
 }

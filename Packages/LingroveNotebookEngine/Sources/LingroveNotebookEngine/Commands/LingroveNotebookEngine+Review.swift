@@ -13,11 +13,17 @@ extension LingroveNotebookEngine {
             // invalid row. This hook borrows the same writer lock; it never spans an await.
             try validateCurrentState?()
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: false) }
-            if let version = reviewSubmission.noteVersion {
-                let saved = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
-                guard let model = try ReviewNoteStore(core: core).cardModels(scope: saved)[reviewSubmission.cardId],
-                      try model.questionVersion(in: saved) == version else { throw VocabularyError.editConflict }
-            }
+            if try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_note_cards WHERE workspace_id=? AND card_id=?",
+                values: [.text(workspaceId), .text(reviewSubmission.cardId)]) > 0 {
+                let savedNotebook = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
+                guard let noteModel = try ReviewNoteStore(core: core).cardModels(scope: savedNotebook)[reviewSubmission.cardId] else { throw VocabularyError.editConflict }
+                // Native Mac actions supply a complete frozen action. Asynchronous generic
+                // queues must carry the version of the note face they actually displayed.
+                guard validateCurrentState != nil || reviewSubmission.noteVersion != nil else { throw VocabularyError.editConflict }
+                if let version = reviewSubmission.noteVersion {
+                    guard try noteModel.questionVersion(in: savedNotebook) == version else { throw VocabularyError.editConflict }
+                }
+            } else if reviewSubmission.noteVersion != nil { throw VocabularyError.editConflict }
             let card = try self.cardStore.loadCard(workspaceId: workspaceId, cardId: reviewSubmission.cardId)
             if let expectedCardOperationID, card.lastOperationId != expectedCardOperationID { throw VocabularyError.editConflict }
             // A rating queued by an old screen cannot write after a pause/withdrawal committed.
