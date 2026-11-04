@@ -43,7 +43,9 @@ struct EngineCloudIntegrationTests {
                 guard case let .object(fields) = op.operation, case let .string(id)? = fields["operationId"] else { return nil }
                 return id
             } + canonical.undos.map(\.undoId) + canonical.historyAdoptions.map(\.operationId)
-        let response = try JSONSerialization.data(withJSONObject: ["protocolVersion": 1,
+        let response = try JSONSerialization.data(withJSONObject: ["protocolVersion": 3,
+            "noteState": try JSONSerialization.jsonObject(with: JSONEncoder().encode(canonical.noteState)),
+            "acknowledgedNoteState": try #require(canonical.noteStateDigest),
             "notebookId": f.scope.notebookID.uuidString, "replicaId": f.scope.replicaID.uuidString,
             "acknowledged": sentIDs, "confirmed": [], "afterSequence": canonical.afterSequence,
             "hasMore": false, "changes": []] as [String: Any])
@@ -60,7 +62,7 @@ struct EngineCloudIntegrationTests {
         #expect(restored.body == next.body)
     }
 
-    @Test func pendingMaterialMediaRemainsWorkUntilExactVersion2Acknowledgment() async throws {
+    @Test func pendingMaterialMediaRemainsWorkUntilExactVersion3Acknowledgment() async throws {
         let f = try EngineCloudFixture(); defer { f.cleanUp() }
         let saved = try f.engine.saveLingroveNotebook(Self.document(), basedOn: f.engine.loadLingroveNotebook(workspaceId: f.workspace))
         let entry = saved.document.entries[0]
@@ -74,17 +76,19 @@ struct EngineCloudIntegrationTests {
         let storage = NotebookEngineStorage(engine: f.engine), binding = try storage.capture(scope: f.scope)
         let request = try await storage.request(binding)
         let canonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: request.body)
-        #expect(request.hasWork && canonical.protocolVersion == 2 && canonical.media == [prepared])
+        #expect(request.hasWork && canonical.protocolVersion == 3 && canonical.media == [prepared])
         #expect(canonical.enrollments.isEmpty && canonical.links.isEmpty && canonical.operations.isEmpty)
         func reply(version: Int, digests: [String]) throws -> Data {
             try JSONSerialization.data(withJSONObject: ["protocolVersion": version,
+                "noteState": try JSONSerialization.jsonObject(with: JSONEncoder().encode(canonical.noteState)),
+                "acknowledgedNoteState": try #require(canonical.noteStateDigest),
                 "notebookId": f.scope.notebookID.uuidString, "replicaId": f.scope.replicaID.uuidString,
                 "acknowledged": [], "acknowledgedMedia": digests, "confirmed": [], "afterSequence": canonical.afterSequence,
                 "hasMore": false, "changes": []] as [String: Any])
         }
         await #expect(throws: (any Error).self) { try await storage.apply(reply(version: 1, digests: []), request: request, binding: binding) }
         #expect(try await storage.request(binding).body == request.body)
-        _ = try await storage.apply(reply(version: 2, digests: [reference.digest]), request: request, binding: binding)
+        _ = try await storage.apply(reply(version: 3, digests: [reference.digest]), request: request, binding: binding)
         let next = try await storage.request(binding)
         let nextCanonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: next.body)
         #expect(next.hasWork && nextCanonical.media == nil && nextCanonical.links.first?.value.materialPlan == plan)

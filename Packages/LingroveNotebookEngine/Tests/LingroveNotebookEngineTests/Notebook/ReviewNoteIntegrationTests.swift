@@ -46,6 +46,10 @@ struct ReviewNoteIntegrationTests {
                 rating: .good, reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC", noteVersion: mobileVersion))
         }
         let after = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        #expect(throws: (any Error).self) {
+            try fixture.db.saveCard(workspaceId: scope.workspaceId, input: .init(frontText: "override", backText: "answer", tags: []),
+                cardId: card.cardId, mediaAssetIdsReadyForUpload: [])
+        }
         #expect(after.queue.first == card)
         #expect(after.noteCards[card.cardId]?.noteType.css == next.css)
         #expect(throws: (any Error).self) { try fixture.db.saveReviewNoteType(next, expected: type, scope: scope) }

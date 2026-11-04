@@ -146,6 +146,10 @@ extension LingroveNotebookEngine {
         now: String,
         newCardID: String? = nil
     ) throws -> Card {
+        // Note-owned faces are derived caches. Editing through a generic Card editor would
+        // create an apparent manual change that the next source projection must overwrite.
+        if let cardId, try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_note_cards WHERE workspace_id=? AND card_id=?",
+            values: [.text(workspaceId), .text(cardId)]) > 0 { throw VocabularyError.invalidContent }
         let operationId = UUID().uuidString.lowercased()
         let isInitialCreate = cardId == nil
         // Fresh creates install the card into the review queue; text/tag edits
