@@ -138,9 +138,9 @@ Lingrove's own practice, scheduling and history, accessed from Mac and mobile as
 Its progress is independent of an optional external tool's scheduling and history.
 
 **Review card / 复习卡片**:
-An exercise with a prompt and an answer. One sense can supply several different review cards;
-a card remains distinct from the source expression, sense or usage.
-_Avoid_: treating a review card as the sense itself.
+A persistent practice instance of one note under one card template, with its own ratings,
+schedule and history. Source content and presentation definitions remain shared.
+_Avoid_: equating a card with a copied prompt/answer document or the source sense itself.
 
 **Review link / 复习关联**:
 The connection between a notebook sense and an exercise in one review tool; an example supplies
@@ -149,15 +149,24 @@ histories, and removing a link or its source preserves those exercises and histo
 _Avoid_: using “Anki association” as the general name for every review link.
 
 **Generated card content / 来源生成卡面**:
-Prompt and answer material prepared from a chosen sense and optional usage. It is a starting point
-for the review card; later manual card edits belong to the card rather than changing notebook content.
-
-**Review plan / 制卡方案**:
-The chosen example, review answer and exercise forms for learning one sense. Review edits belong
-to this preparation independently of the expression’s core meaning; saving the plan alone does
-not enroll it for scheduling.
+A question or answer produced from current note fields and its referenced template. It is a
+presentation of shared content, not a second editable corpus source.
 
 **Anki association / Anki 关联**:
 The relationship between a saved sense and an identified note in an Anki profile. Synchronization
 describes agreement of their exported content, independently of learning progress.
 An Anki association is one optional, tool-specific kind of review link.
+
+## Note-based review / 笔记式复习
+
+**复习笔记（Note）**：一份面向复习的字段集合，关联一个语料义项和一种笔记类型。来源字段跟随语料，自定义字段属于笔记。
+_Avoid_：卡片正文副本
+
+**笔记类型（Note Type）**：字段定义、卡片模板及共享样式的组合。修改类型会影响引用它的笔记所生成的题面。
+_Avoid_：一次性制卡预设
+
+**卡片模板（Card Template）**：一种提问方式的问题面和答案面定义，有独立稳定身份。
+
+**来源字段（Source Field）**：由语料的指定内容提供的笔记字段。
+
+**自定义字段（Custom Field）**：用户为复习单独填写、不会被来源更新覆盖的笔记字段。

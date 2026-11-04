@@ -27,6 +27,9 @@ struct BuiltInReviewPracticeView: View {
                         Text(BuiltInReviewCopy.text("session.answered") + ": " + (session.practice?.answered ?? 0).formatted())
                         Text(BuiltInReviewCopy.text("count.ready") + ": " + remaining.formatted())
                     }.font(.callout).foregroundStyle(.secondary).monospacedDigit().padding(.horizontal, 24).padding(.vertical, 12)
+                    if let model = context.action.noteCards[context.card.cardId] {
+                        ReviewNotePracticeView(session: session, context: context, model: model, answer: isAnswerVisible)
+                    } else {
                     ScrollViewReader { proxy in
                         ScrollView {
                             LingroveReadableContentLayout(maxWidth: lingroveReadableContentMaxWidth, horizontalPadding: 20) {
@@ -37,6 +40,7 @@ struct BuiltInReviewPracticeView: View {
                             if visible { proxy.scrollTo("back", anchor: .top) }
                         }
                         .onChange(of: context.card.cardId) { _, _ in proxy.scrollTo("front", anchor: .top) }
+                    }
                     }
                     Divider()
                     let options = try? lingroveMakeReviewAnswerOptions(card: context.card,

@@ -49,29 +49,13 @@ struct BuiltInReviewSenseView: View {
                         ForEach(group.cards) { card in
                             if let context = session.context(card: card, group: group, content: content) { exercise(context) }
                         }
-                        if source != nil {
-                            Button(BuiltInReviewCopy.text("action.addExercise"), systemImage: "plus.rectangle.on.rectangle") {
-                                session.prepare(selection: currentSelection, additional: true, basedOn: content)
-                            }.accessibilityIdentifier("builtinReview.addExercise")
-                        }
                     }
                 } else if source != nil, isCollected {
-                    Section(BuiltInReviewCopy.text("material.default")) {
-                        if let material = try? LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: currentSelection) {
-                            Text(BuiltInReviewCopy.text("field.prompt")).font(.caption).foregroundStyle(.secondary)
-                            BuiltInReviewFace(text: material.generatedContent.frontText, images: [])
-                            Divider()
-                            Text(BuiltInReviewCopy.text("field.answer")).font(.caption).foregroundStyle(.secondary)
-                            BuiltInReviewFace(text: material.generatedContent.backText, images: [])
-                        }
-                    }
                     Section {
                         Button(BuiltInReviewCopy.text("action.enroll"), systemImage: "checkmark.circle") {
                             session.enrollDefault(selection: currentSelection, basedOn: content)
                         }.buttonStyle(.borderedProminent).accessibilityIdentifier("builtinReview.enroll")
-                        Button(BuiltInReviewCopy.text("action.prepare")) {
-                            session.prepare(selection: currentSelection, basedOn: content)
-                        }.accessibilityIdentifier("builtinReview.prepare")
+
                     }
                 } else {
                     Text(BuiltInReviewCopy.text(source == nil ? "error.source" : "state.saveFirst")).foregroundStyle(.secondary)
@@ -83,18 +67,6 @@ struct BuiltInReviewSenseView: View {
 
     @ViewBuilder private func participation(_ group: LingroveNotebookReviewGroup) -> some View {
         if group.status == .active {
-            if content.queue.contains(where: { card in group.cards.contains { $0.cardId == card.cardId } }) {
-                Button(BuiltInReviewCopy.text("action.start"), systemImage: "play.fill") { session.start(selection: group.selection) }
-                    .buttonStyle(.borderedProminent)
-            } else {
-                Text(BuiltInReviewCopy.text(group.hasUnavailableMaterial ? "material.unavailable" : "today.scheduled"))
-                    .foregroundStyle(.secondary)
-                if !group.hasUnavailableMaterial,
-                   let date = group.cards.compactMap({ $0.dueAt.flatMap { parseIsoTimestamp(value: $0) } }).min() {
-                    LabeledContent(BuiltInReviewCopy.text("session.nextDue"),
-                        value: date.formatted(date: .abbreviated, time: .shortened))
-                }
-            }
             Button(BuiltInReviewCopy.text("action.pause")) { changeStatus(.paused, group) }
                 .accessibilityIdentifier("builtinReview.pause")
         } else {
@@ -116,7 +88,13 @@ struct BuiltInReviewSenseView: View {
     private func exercise(_ context: BuiltInReviewCardContext) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             LingroveReviewQueuePreviewCardRow(card: context.card, isCurrent: false)
-            if context.group.hasUnavailableMaterial ||
+            if let model = content.noteCards[context.card.cardId] {
+                if model.noteType.templates.first(where: { $0.id == model.templateID })?.enabled == false {
+                    Text(BuiltInReviewCopy.text("status.paused")).foregroundStyle(.secondary)
+                } else if (try? model.render(in: context.snapshot)) == nil {
+                    Text(BuiltInReviewCopy.text("material.unavailable")).foregroundStyle(.secondary)
+                }
+            } else if context.group.hasUnavailableMaterial ||
                 LingroveNotebookCardMaterial.resolve(source: context.link.source, snapshot: content.scope) == nil {
                 Label(BuiltInReviewCopy.text(context.link.allowsUnavailableMaterial ? "material.retained" : "material.unavailable"),
                     systemImage: context.link.allowsUnavailableMaterial ? "archivebox" : "exclamationmark.triangle")
@@ -128,9 +106,13 @@ struct BuiltInReviewSenseView: View {
             }
             HStack {
                 Button(BuiltInReviewCopy.text("action.edit")) {
-                    session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content)
+                    if let model = content.noteCards[context.card.cardId] { session.editNote(model) }
+                    else { session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content) }
                 }.disabled(source == nil && !context.link.allowsUnavailableMaterial)
                     .accessibilityIdentifier("builtinReview.edit." + context.card.cardId)
+                if let model = content.noteCards[context.card.cardId] {
+                    Button(String(localized: "Card templates", table: "Vocabulary")) { session.editNoteType(model.noteType) }
+                }
                 if let undo = session.undoAction(cardID: context.card.cardId, basedOn: content) {
                     Button(BuiltInReviewCopy.text("action.undo")) { session.undo(undo) }
                         .accessibilityIdentifier("builtinReview.undo." + context.card.cardId)

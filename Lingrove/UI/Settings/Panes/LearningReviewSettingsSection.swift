@@ -31,7 +31,9 @@ struct LearningReviewSettingsSection: View {
                     Button(BuiltInReviewCopy.text("action.openReview")) { store.onRequestBuiltInReview?(nil) }
                         .accessibilityIdentifier("settings.review.lingrove.open")
                 }
-                templates
+                Section(String(localized: "Card templates", table: "Vocabulary")) {
+                    Button(String(localized: "Card templates", table: "Vocabulary")) { store.onRequestReviewTemplates?() }
+                }
             }
         }
         .onAppear { store.loadIfNeeded(); revealAnki(highlightedItem) }

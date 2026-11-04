@@ -15,6 +15,8 @@ final class BuiltInReviewSession: ObservableObject {
     @Published var browsing = BuiltInReviewBrowsing()
     @Published private(set) var addedCount = 0
     @Published var route: BuiltInReviewRoute = .overview
+    @Published var noteDraft: ReviewNoteEditorDraft?
+    @Published var noteTypeDraft: ReviewNoteTypeEditorDraft?
     @Published var draft: BuiltInReviewDraft?
     @Published var batchDraft: BuiltInReviewBatchDraft?
     @Published private(set) var practice: BuiltInReviewPractice?
@@ -88,6 +90,8 @@ final class BuiltInReviewSession: ObservableObject {
         readTask = nil
         imageTask = nil
         draft = nil
+        noteTypeDraft = nil
+        noteDraft = nil
         batchDraft = nil
         pendingBatchSelections = nil
         browsing = .init()
@@ -253,12 +257,55 @@ final class BuiltInReviewSession: ObservableObject {
         mutate(.save(value), scope: value.snapshot, destination: destination, preferredCardID: cardID)
     }
 
+    /// Corpus admission keeps the corpus window in place. The app-owned session retains this
+    /// accepted writer even while Review is hidden, so normal Quit still drains its transaction.
+    func enrollFromCorpus(_ selection: VocabularySelection) async -> String? {
+        guard !isShuttingDown, writeTask == nil else { return BuiltInReviewCopy.text("error.write") }
+        let scope: LingroveNotebookSnapshot
+        do { scope = try repository.snapshot() } catch { return BuiltInReviewCopy.text("error.load") }
+        isMutating = true
+        var failure: String?
+        let task = Task { [io, repository] in
+            do {
+                let value = try await io.load(scope: scope, now: Date())
+                try await io.perform(.enrollNotes([selection], value.defaultNoteType, scope))
+                repository.publishChange()
+            } catch { failure = BuiltInReviewCopy.text("error.write") }
+        }
+        writeTask = task
+        await task.value
+        writeTask = nil; isMutating = false
+        participationRevision = UUID()
+        return failure
+    }
+
     func enrollDefault(selection: VocabularySelection, basedOn value: NotebookBuiltInReviewSnapshot) {
         guard canAct(in: value.scope) else { return }
-        do {
-            let prepared = try BuiltInReviewDraft(content: value, selection: selection)
-            mutate(.save(prepared), scope: value.scope, destination: .sense(selection))
-        } catch { message = BuiltInReviewCopy.text("error.source") }
+        mutate(.enrollNotes([selection], value.defaultNoteType, value.scope), scope: value.scope, destination: .content)
+    }
+
+    /// Type drafts pin the same source scope as a review question. Saving a definition is a
+    /// shared change, distinct from editing any single card or starting a round.
+    func editNoteType(_ type: ReviewNoteType? = nil) {
+        guard let content, !isBusy else { return }
+        noteTypeDraft = .init(type: type ?? content.defaultNoteType, scope: content.scope)
+    }
+
+    func saveNoteType(_ draft: ReviewNoteTypeEditorDraft) {
+        guard noteTypeDraft?.id == draft.id else { return }
+        var value = draft.type
+        value.revision = (draft.expected?.revision ?? 0) + 1
+        mutate(.noteType(value, draft.expected, draft.scope, draft.makeDefault), scope: draft.scope, destination: route)
+    }
+
+    func editNote(_ model: NotebookReviewNoteCard) {
+        guard let content, !isBusy else { return }
+        noteDraft = .init(model: model, scope: content.scope)
+    }
+
+    func saveNote(_ draft: ReviewNoteEditorDraft) {
+        guard noteDraft?.id == draft.id else { return }
+        mutate(.note(draft), scope: draft.scope, destination: route)
     }
 
     func setStatus(_ status: LingroveNotebookReviewStatus, selection: VocabularySelection,
@@ -422,9 +469,12 @@ final class BuiltInReviewSession: ObservableObject {
         isPublishing = false
         guard isVisible, lifetime == savedLifetime, writePresentationIdentity == operation else { return }
         draft = nil
+        noteTypeDraft = nil
+        noteDraft = nil
         batchDraft = nil
         route = destination
         addedCount = 0
+        if case let .enrollNotes(selections, _, _) = command { addedCount = selections.count }
         if case let .save(value) = command, case .enrollment = value.purpose { addedCount = 1 }
         if case let .batch(value) = command { addedCount = value.drafts.count; browsing.selectedSenseIDs = [] }
         if case .rate = command { practice?.answered += 1 }
@@ -526,6 +576,8 @@ final class BuiltInReviewSession: ObservableObject {
             isMutating = writeTask != nil
         }
         draft = nil
+        noteTypeDraft = nil
+        noteDraft = nil
         batchDraft = nil
         practice = nil
         imageTask?.cancel()
@@ -543,6 +595,7 @@ final class BuiltInReviewSession: ObservableObject {
         lhs.scope == rhs.scope && lhs.schedulerSettings == rhs.schedulerSettings && lhs.review.links == rhs.review.links
             && Set(lhs.review.groups.values.flatMap(\.enrollments)) == Set(rhs.review.groups.values.flatMap(\.enrollments))
             && Set(lhs.review.groups.values.flatMap(\.cards)) == Set(rhs.review.groups.values.flatMap(\.cards))
+            && lhs.noteCards == rhs.noteCards && lhs.noteTypes == rhs.noteTypes
     }
 
     private func speechTarget(_ context: BuiltInReviewCardContext, answer: Bool) -> SpeechTarget {

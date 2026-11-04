@@ -132,7 +132,8 @@ Lingrove/
 │   │   └── Streaming/                partial coalescing, monotonic text, presentation timing
 │   └── Utilities/                    small cross-subsystem value helpers
 └── UI/
-    ├── BuiltInReview/                Lingrove/Anki destinations, Today/content, atomic enrollment, material editor, practice and history
+    ├── BuiltInReview/                Lingrove/Anki destinations, Today/content, Note/type editors, practice and history
+    │   └── Rendering/                pinned Note practice surface and reusable inert WebKit renderer
     ├── Components/                   application-wide reusable views
     ├── NibomoPresentation/           extracted Nibomo card surfaces, answer controls, layout and AppKit adapters
     ├── NotebookWorkspace/            outer corpus/review/progress sidebar; original corpus page stays intact
@@ -271,7 +272,11 @@ disposable derived state, never a caller-supplied authority or an account bounda
 controls and queue rows. Parent views supply immutable content, local image bytes and closures;
 these components own neither storage nor authentication. `UI/Settings/Account` ports the original
 server/email/code/workspace pages to the app-owned account/sync services. `UI/BuiltInReview` binds
-the original preparation, front/back editing and practice structure to `BuiltInReviewSession`.
+the Note/type editors and practice structure to `BuiltInReviewSession`.
+`UI/BuiltInReview/Rendering` owns the pinned Note surface and its HTML/CSS WebKit host; the shared
+`LingroveNotebook/ReviewNotes` module owns field projection, template syntax and default definitions.
+`LingroveNotebookEngine/ReviewNoteStore` persists types/notes/membership alongside independent Card
+history. The native renderer has no storage, account or scheduling dependency.
 The session retains frozen scope/card/link identity and drains accepted writes; closing a view
 does not recreate the app service graph. See `docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md` for exact provenance and
 the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`. Current native appearance, shared

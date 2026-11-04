@@ -20,6 +20,7 @@ final class VocabularyStore: ObservableObject {
     @Published var errorMessage: String?
     /// E injects its app-owned review navigation. Merely opening it does not save or enroll.
     var onRequestBuiltInReview: ((VocabularySelection?) -> Void)?
+    var onRequestReviewTemplates: (() -> Void)?
     @Published private(set) var scopeIdentity = UUID()
     @Published private(set) var operationScope: VocabularyOperationScope?
     let isAvailable: Bool

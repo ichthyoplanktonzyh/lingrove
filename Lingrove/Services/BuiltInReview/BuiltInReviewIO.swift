@@ -8,6 +8,9 @@ import LingroveNotebookEngine
 /// scopes and results cross the actor; the repository's non-Sendable engine never does.
 actor BuiltInReviewIO {
     enum Command: Sendable {
+        case enrollNotes([VocabularySelection], ReviewNoteType, LingroveNotebookSnapshot)
+        case noteType(ReviewNoteType, ReviewNoteType?, LingroveNotebookSnapshot, Bool)
+        case note(ReviewNoteEditorDraft)
         case save(BuiltInReviewDraft)
         case batch(BuiltInReviewBatchDraft)
         case status(LingroveNotebookReviewStatus, NotebookBuiltInReviewAction, UUID)
@@ -31,6 +34,13 @@ actor BuiltInReviewIO {
     func perform(_ command: Command) throws {
         try withEngine { engine in
             switch command {
+            case let .enrollNotes(selections, type, scope):
+                _ = try engine.enrollReviewNotes(selections: selections, type: type, scope: scope)
+            case let .noteType(type, expected, scope, makeDefault):
+                try engine.saveReviewNoteType(type, expected: expected, scope: scope, makeDefault: makeDefault)
+            case let .note(draft):
+                var value = draft.note; value.revision = draft.expected.revision + 1
+                try engine.saveReviewNote(value, expected: draft.expected, scope: draft.scope)
             case let .save(draft):
                 switch draft.purpose {
                 case .enrollment:
@@ -50,10 +60,8 @@ actor BuiltInReviewIO {
                     }
                 }
             case let .batch(batch):
-                let drafts = try batch.drafts.map { try $0.creationDraft() }
-                _ = try engine.enrollBuiltInNotebookSenses(drafts,
-                    inputs: Dictionary(uniqueKeysWithValues: zip(drafts, batch.drafts).map { ($0.id, $1.input) }),
-                    actions: batch.drafts.map(\.action))
+                _ = try engine.enrollReviewNotes(selections: batch.drafts.map(\.selection),
+                    type: batch.content.defaultNoteType, scope: batch.content.scope)
             case let .status(status, action, requestID):
                 try engine.setBuiltInNotebookReviewStatus(status, action: action, requestID: requestID)
             case let .rate(context, rating, now, zone):

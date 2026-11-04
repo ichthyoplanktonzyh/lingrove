@@ -348,3 +348,16 @@ runner 在新工作区初始化 revision-zero 本地头，再读取 shadow，不
 账户迁移、目录的移动自动安装/升级与首次归属协调、媒体传输、大图生产接入、持久冲突
 解决及真实 iPhone/iPad 和 MCP
 客户端验收仍然保留。受管理 Card/评分 holds 不因语料同步成功释放。此处没有部署。
+
+## Review v3：Note 与共享定义（2026-11-04）
+
+新客户端的 held review 请求使用 `protocolVersion: 3`，带 `noteState`、`noteStateDigest` 和
+可选的 `noteBase`（上次确认的服务端状态）。目录包含 types、notes、memberships、defaultTypeID
+和 defaultRevision。服务端在原有 workspace writer transaction 内验证来源归属并做整实体三方合并；
+卡片/评分仍走原有 held lane。模板、Note 和卡片操作全部成功后才返回 `acknowledgedNoteState`。
+回包精确确认本次发送摘要；应用远端状态时保留发送后新增的本地版本。相同版本不同内容是冲突。
+
+目录变化写入 `noteState` review change 标记，保证 CSS-only 修改也推进游标；完整目录位于响应顶层，
+标记不重复存储它。v1/v2 回包不能确认 v3 请求。目录当前上限 3 MiB，整体请求/响应仍遵循 7 MiB
+边界，不提供目录分页。此协议需要 `lingrove-mobile/db/migrations/0248_notebook_review_notes.sql`
+与对应后端代码配套；本轮只做本地验证，不代表线上已部署。

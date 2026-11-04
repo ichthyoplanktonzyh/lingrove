@@ -151,6 +151,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
 
     private var hasBlockingSheet: Bool {
         window?.attachedSheet != nil || builtInReview?.session.draft != nil || builtInReview?.session.batchDraft != nil
+            || builtInReview?.session.noteTypeDraft != nil || builtInReview?.session.noteDraft != nil
     }
 
     private func open(_ request: OpenRequest) {

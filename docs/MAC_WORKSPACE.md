@@ -326,3 +326,9 @@ startup preserved schema 39, all 37 protected corpus/review table fingerprints a
 preference value. The new process and Settings window were observed. Installation evidence and
 the exact uncommitted source manifest are in `build/review-flow-dev-update/`; build caches were
 cleaned afterward. No enrollment or rating was performed on the user's corpus for this update.
+
+## Note 模板实现（2026-11-04）
+
+新选入的内置复习采用共享 Note / Note Type / Card Template 模型；语料字段动态投影，
+Card 保留独立历史。原生模板编辑与实际复习共用 HTML/CSS renderer；视觉迭代边界见
+[REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md)。不转换既有练习，不触碰安装中的 Dev 数据。

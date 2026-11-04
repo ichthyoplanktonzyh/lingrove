@@ -15,6 +15,8 @@ struct VocabularyBuiltInReviewSection: View {
     @State private var unavailable = false
     @State private var loaded = false
     @State private var failed = false
+    @State private var joining = false
+    @State private var failure: String?
 
     private var selection: VocabularySelection { .init(entryID: entry.id, senseID: sense.id) }
     private var statusText: String {
@@ -29,12 +31,15 @@ struct VocabularyBuiltInReviewSection: View {
             Image(systemName: "rectangle.stack").foregroundStyle(.secondary).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Lingrove").font(.subheadline.weight(.semibold))
-                Text(statusText).font(.caption).foregroundStyle(.secondary)
+                Text(failure ?? statusText).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Button(BuiltInReviewCopy.text(exerciseCount > 0 ? "nav.content" : "action.enroll")) {
-                store.onRequestBuiltInReview?(selection)
-            }.buttonStyle(.bordered).controlSize(.small)
+                if exerciseCount > 0 { store.onRequestBuiltInReview?(selection) } else {
+                    joining = true
+                    Task { failure = await session.enrollFromCorpus(selection); joining = false }
+                }
+            }.buttonStyle(.bordered).controlSize(.small).disabled(joining || session.isBusy)
                 .accessibilityIdentifier("vocabulary.review.lingrove.manage")
         }.padding(14).background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.075), lineWidth: 0.5) }

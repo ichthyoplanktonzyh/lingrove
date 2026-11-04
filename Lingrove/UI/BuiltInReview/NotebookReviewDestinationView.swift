@@ -29,7 +29,7 @@ struct NotebookReviewDestinationView: View {
                     Text("Lingrove").tag(NotebookReviewDestinationModel.Target.lingrove)
                     Text("Anki").tag(NotebookReviewDestinationModel.Target.anki)
                 }.pickerStyle(.segmented).frame(width: 260).labelsHidden()
-                    .disabled(session.draft != nil || session.batchDraft != nil || session.isMutating)
+                    .disabled(session.draft != nil || session.batchDraft != nil || session.noteTypeDraft != nil || session.noteDraft != nil || session.isMutating)
                     .accessibilityIdentifier("review.destination")
             }.padding(.horizontal, 24).padding(.vertical, 16)
             Divider()

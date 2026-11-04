@@ -50,6 +50,8 @@ struct BuiltInReviewWindowView: View {
             if let content = session.content { BuiltInReviewHistoryView(session: session, content: content) }
         }
         .sheet(item: $session.batchDraft) { batch in BuiltInReviewBatchView(session: session, batch: batch) }
+        .sheet(item: $session.noteDraft) { draft in ReviewNoteEditor(session: session, draft: draft) }
+        .sheet(item: $session.noteTypeDraft) { draft in ReviewNoteTypeEditor(session: session, draft: draft) }
         .sheet(item: $session.draft) { draft in BuiltInReviewPreparationView(session: session, draft: draft) }
         .accessibilityIdentifier("builtinReview.window")
     }
@@ -118,6 +120,13 @@ struct BuiltInReviewWindowView: View {
                     .accessibilityLabel(BuiltInReviewCopy.text("action.undo"))
                     .accessibilityIdentifier("builtinReview.session.undo")
             }
+            Menu {
+                ForEach(session.content?.noteTypes ?? []) { type in
+                    Button(type.name) { session.editNoteType(type) }
+                }
+            } label: { Image(systemName: "rectangle.stack") }
+                .help(String(localized: "Card templates", table: "Vocabulary"))
+                .accessibilityIdentifier("builtinReview.templates")
             Button { showingQueue = true } label: { Image(systemName: "list.bullet") }
                 .help(BuiltInReviewCopy.text("queue.title"))
                 .accessibilityLabel(BuiltInReviewCopy.text("queue.title"))

@@ -24,6 +24,13 @@ final class MacNotebookAppServices {
             let review = BuiltInReviewController(repository: repository, speech: speech)
             builtInReview = review
             vocabulary.onRequestBuiltInReview = { [weak review] selection in review?.show(selection: selection) }
+            vocabulary.onRequestReviewTemplates = { [weak review] in
+                review?.show()
+                Task { [weak review] in
+                    await review?.session.waitForIdle()
+                    review?.session.editNoteType()
+                }
+            }
         } catch {
             repository = nil
             vocabulary = .unavailable(error)
