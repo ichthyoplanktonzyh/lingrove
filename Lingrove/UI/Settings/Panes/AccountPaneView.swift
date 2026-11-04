@@ -5,7 +5,7 @@ import SwiftUI
 
 /// The Settings window lends its account navigation/draft owner and the process-owned services.
 /// This pane renders identity first, then links to sync and secondary service configuration. Its
-/// NavigationStack has an explicit path so an external Account action always reaches the overview
+/// local navigation has an explicit path so an external Account action always reaches the overview
 /// without discarding URL drafts or performing authentication, ownership adoption or sync opt-in.
 struct AccountPaneView: View {
     @ObservedObject var account: AccountSessionService
@@ -18,24 +18,35 @@ struct AccountPaneView: View {
     private var hasDraftChanges: Bool { navigation.hasChanges(comparedWith: account.configuration) }
 
     var body: some View {
-        NavigationStack(path: $navigation.path) {
-            overview
-                .navigationTitle(String(localized: "Account", table: "Account"))
-                .navigationDestination(for: AccountSettingsPage.self) { destination in
-                    switch destination {
-                    case .service:
-                        LingroveAccountServerView(account: account, api: $navigation.api, auth: $navigation.auth)
-                    case .sync:
-                        SettingsPaneScaffold(callout: draftCallout) {
-                            if let syncController {
-                                AccountNotebookSyncSection(controller: syncController)
-                                    .disabled(!connectionIsSaved)
-                            }
-                        }
-                        .navigationTitle(String(localized: "Notebook sync", table: "NotebookSync"))
-                        .accessibilityIdentifier("account.sync.screen")
-                    }
+        VStack(spacing: 0) {
+            // Settings owns the window toolbar. Account routes use a local, constant-height
+            // header so a nested NavigationStack cannot insert/remove native titlebar rows.
+            HStack(spacing: 12) {
+                Button { navigation.showOverview() } label: {
+                    Image(systemName: "chevron.left")
                 }
+                .accessibilityLabel(String(localized: "Back"))
+                .accessibilityIdentifier("account.back")
+                .opacity(navigation.path.isEmpty ? 0 : 1)
+                .disabled(navigation.path.isEmpty)
+                .accessibilityHidden(navigation.path.isEmpty)
+                Text(pageTitle).font(.headline)
+                Spacer()
+            }.padding(.horizontal, 20).frame(height: 44)
+            Divider()
+            Group {
+                switch navigation.path.last {
+                case .service:
+                    LingroveAccountServerView(account: account, api: $navigation.api, auth: $navigation.auth)
+                case .sync:
+                    SettingsPaneScaffold(callout: draftCallout) {
+                        if let syncController {
+                            AccountNotebookSyncSection(controller: syncController).disabled(!connectionIsSaved)
+                        }
+                    }.accessibilityIdentifier("account.sync.screen")
+                case nil: overview
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .sheet(isPresented: $signingIn, onDismiss: { account.cancelSignIn() }, content: {
             LingroveAccountSignInSheet(account: account, connectionIsSaved: connectionIsSaved,
@@ -56,6 +67,14 @@ struct AccountPaneView: View {
         }
         .onAppear { navigation.reconcile(configuration: account.configuration) }
         .onChange(of: account.configuration) { _, configuration in navigation.reconcile(configuration: configuration) }
+    }
+
+    private var pageTitle: String {
+        switch navigation.path.last {
+        case .service: String(localized: "Account service", table: "Account")
+        case .sync: String(localized: "Notebook sync", table: "NotebookSync")
+        case nil: String(localized: "Account", table: "Account")
+        }
     }
 
     private var overview: some View {
@@ -94,16 +113,16 @@ struct AccountPaneView: View {
 
             if let syncController {
                 Section {
-                    AccountSyncNavigationRow(controller: syncController)
+                    AccountSyncNavigationRow(controller: syncController, open: { navigation.show(.sync) })
                 }
             }
             Section {
-                NavigationLink(value: AccountSettingsPage.service) {
+                Button { navigation.show(.service) } label: {
                     SettingsRowLabel(title: String(localized: "Account service", table: "Account"),
                         description: String(localized: "Advanced connection settings", table: "Account"),
                         systemImage: "server.rack")
                 }
-                .accessibilityIdentifier("account.server")
+                .buttonStyle(.plain).accessibilityIdentifier("account.server")
             }
             Section {
                 SettingsCalloutView(callout: .init(tone: .info,
@@ -168,9 +187,10 @@ struct AccountPaneView: View {
 /// and corpus lane; opening the link has no effect on either the selected scope or sync consent.
 private struct AccountSyncNavigationRow: View {
     @ObservedObject var controller: MacNotebookSyncController
+    let open: () -> Void
 
     var body: some View {
-        NavigationLink(value: AccountSettingsPage.sync) {
+        Button(action: open) {
             HStack(spacing: 12) {
                 SettingsRowLabel(title: String(localized: "Notebook sync", table: "NotebookSync"),
                     description: controller.selectedWorkspace?.name ?? MacNotebookSyncPresentation.title(controller.workspaceStatus),
@@ -180,6 +200,6 @@ private struct AccountSyncNavigationRow: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
-        .accessibilityIdentifier("account.sync.open")
+        .buttonStyle(.plain).accessibilityIdentifier("account.sync.open")
     }
 }

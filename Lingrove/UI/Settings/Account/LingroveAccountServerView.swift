@@ -91,7 +91,6 @@ struct LingroveAccountServerView: View {
                 }
             }
         }
-        .navigationTitle(String(localized: "Account service", table: "Account"))
         .alert(confirmationTitle, isPresented: $confirmingApply) {
             Button(LingroveNibomoAccountCopy.text("common.cancel"), role: .cancel) { }
             Button(confirmationButton, role: .destructive, action: applyChange)

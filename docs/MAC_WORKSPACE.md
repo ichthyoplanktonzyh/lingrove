@@ -332,3 +332,20 @@ cleaned afterward. No enrollment or rating was performed on the user's corpus fo
 新选入的内置复习采用共享 Note / Note Type / Card Template 模型；语料字段动态投影，
 Card 保留独立历史。原生模板编辑与实际复习共用 HTML/CSS renderer；视觉迭代边界见
 [REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md)。不转换既有练习，不触碰安装中的 Dev 数据。
+
+## Navigation geometry checkpoint (2026-11-04)
+
+Corpus/Review/Progress now keep the native toolbar region attached. Destinations with no
+commands use an empty icon-only toolbar; they never retain hidden corpus actions. The split
+container owns destination sizes instead of accepting changing SwiftUI intrinsic minima.
+Settings also owns its window size. Account's overview/service/workspace pages use a local
+44-point header and retained path/drafts, avoiding a nested NavigationStack changing the window
+chrome on push/pop. No account/auth/sync operation is performed by that navigation.
+
+The synthetic native probe reproduced 32-point viewport changes before the fix. Its 96 sampled
+states after the fix retained exact window frames/content rects: corpus 1000×620 inside a
+1000×672 window, account 900×560 inside a 900×592 window. The initial broader run passed 15/16
+checks; the Close test raced initial AppStorage restoration. After settling first appearance,
+only that affected test was rerun and passed. Geometry, draft/account appearance, corpus toolbar
+restoration and hidden-page lifecycle checks passed. Evidence: `build/navigation-stability-validation`.
+No installed Dev app/data was used. This checkpoint does not include the following Anki changes.

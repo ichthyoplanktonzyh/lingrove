@@ -21,6 +21,9 @@ struct NotebookWorkspaceIntegrationTests {
             let settings = try workspaceRequire(fixture.settingsWindow)
             let coordinator = try workspaceRequire(fixture.settings)
             settings.setFrameOrigin(.init(x: -3000, y: -3000))
+            // Complete first appearance/restored-pane delivery before isolating the queued
+            // sidebar request. Otherwise this test also races the private host's AppStorage.
+            try await Task.sleep(for: .milliseconds(200))
             coordinator.navigation.open(.home)
             coordinator.navigation.request(.appearance)
             settings.close()
@@ -52,7 +55,7 @@ struct NotebookWorkspaceIntegrationTests {
             workspaceExpect(reentrantPublications == 0)
             isWritingBinding = false
             try await workspaceEventually { fixture.window.navigation.destination == .progress }
-            workspaceExpect(window.toolbar == nil)
+            workspaceExpect(window.toolbar?.items.isEmpty == true)
             try await captureWorkspace(window, name: "deferred-sidebar-progress")
             subscription.cancel()
 
@@ -93,12 +96,12 @@ struct NotebookWorkspaceIntegrationTests {
             workspaceExpect(window.title == NotebookWorkspaceCopy.title(.review))
             workspaceExpect(window.contentViewController?.view.appearance == nil,
                 "Workspace navigation keeps the split host's inherited appearance")
-            workspaceExpect(window.toolbar == nil, "Hidden corpus editing actions must leave the window toolbar")
+            workspaceExpect(window.toolbar?.items.isEmpty == true, "Hidden corpus editing actions must leave the window toolbar")
             workspaceExpect(try fixture.repository.engine.loadActiveCardCount(workspaceId: scope.workspaceId) == 0,
                 "Entering review is not enrollment")
             fixture.window.navigate(to: .progress)
             workspaceExpect(window.title == NotebookWorkspaceCopy.title(.progress))
-            workspaceExpect(window.toolbar == nil, "Progress must not retain hidden corpus actions")
+            workspaceExpect(window.toolbar?.items.isEmpty == true, "Progress must not retain hidden corpus actions")
             workspaceExpect(fixture.progress.visibility == [true])
             fixture.window.navigate(to: .corpus)
             workspaceExpect(window.title == NotebookWorkspaceCopy.title(.corpus))

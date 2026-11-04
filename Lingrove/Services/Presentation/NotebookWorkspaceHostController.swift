@@ -10,6 +10,9 @@ import SwiftUI
 final class NotebookWorkspaceHostController: NSSplitViewController {
     private let sidebar: NSViewController
     private let content = NSViewController()
+    // A destination without actions still occupies the window's existing toolbar region.
+    // Removing the toolbar changes AppKit's content viewport and moves the entire split view.
+    private let navigationToolbar = NSToolbar(identifier: "LingroveNotebookNavigation")
     private(set) var visibleController: NSViewController?
     private weak var corpusToolbarOwner: NSViewController?
     private var corpusToolbar: NSToolbar?
@@ -17,6 +20,7 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
 
     init(sidebar: NotebookWorkspaceSidebar) {
         self.sidebar = NSHostingController(rootView: sidebar)
+        navigationToolbar.displayMode = .iconOnly
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -29,6 +33,9 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
     static func destinationHost<Content: View>(rootView: Content) -> NSHostingController<Content> {
         let controller = NSHostingController(rootView: rootView)
         controller.sceneBridgingOptions = [.toolbars]
+        // The native split view supplies all four edges. An asynchronously loaded page must
+        // not publish a different intrinsic minimum back into the window's geometry.
+        controller.sizingOptions = []
         // A nil local appearance follows the native parent even when the window's appearance
         // changes while this destination is detached. Views supply semantic colors, not a theme.
         controller.view.appearance = nil
@@ -60,9 +67,9 @@ final class NotebookWorkspaceHostController: NSSplitViewController {
         }
         visibleController?.view.removeFromSuperview()
         visibleController?.removeFromParent()
-        // SwiftUI's toolbar bridge retains the last native toolbar when the next page has no
-        // toolbar. Detach it explicitly so corpus Edit/Delete never target a hidden page.
-        window?.toolbar = nil
+        // Replace corpus actions without removing the native toolbar region. Hidden corpus
+        // Edit/Delete actions must not remain live on Review or Progress.
+        window?.toolbar = navigationToolbar
         content.addChild(controller)
         controller.view.translatesAutoresizingMaskIntoConstraints = false
         content.view.addSubview(controller.view)

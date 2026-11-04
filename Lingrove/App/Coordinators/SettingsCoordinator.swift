@@ -188,6 +188,9 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         // The owning host inherits the same system-resolved appearance as every existing pane.
         // Account subpages and sheets must not publish a color-scheme preference to this window.
         hostingController.view.appearance = nil
+        // The coordinator owns the resizable window's minimum. NavigationStack destination
+        // measurements and toolbar preferences must not resize it on a push or pop.
+        hostingController.sizingOptions = []
         // Sized so the native split view opens with a readable sidebar, a comfortable grouped
         // detail form, and room for the Home pane's status-card row to breathe. The user can still
         // resize from here; the sidebar provides its own range.
@@ -209,6 +212,7 @@ final class SettingsCoordinator: NSObject, NSWindowDelegate {
         window.level = .normal
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.minSize = minSize
+        window.toolbarStyle = .unified
         window.setFrameAutosaveName(autosaveName)
         window.delegate = self
         window.contentViewController = hostingController

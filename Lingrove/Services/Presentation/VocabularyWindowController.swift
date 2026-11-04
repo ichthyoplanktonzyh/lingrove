@@ -99,6 +99,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         window.title = NotebookWorkspaceCopy.title(.corpus)
         window.identifier = .init("LingroveVocabulary")
         window.minSize = CGSize(width: 1000, height: 620)
+        window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.setFrameAutosaveName("LingroveNotebookWorkspace")
