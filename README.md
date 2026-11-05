@@ -7,7 +7,7 @@
 **Local-first inline autocomplete and language learning while you write on macOS.**  
 Get ghost-text continuations beside your cursor, translate sentences in place, find expressions from a description, look up words across reading and writing, and build your personal vocabulary corpus with built-in FSRS review or Anki sync—without leaving your editor.
 
-[**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**Releases**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**FAQ**](FAQ.md) · [**Learning Docs**](docs/LANGUAGE_LEARNING.md) · [**Feedback**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
+[**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**Website**](https://lingrove.dev) · [**Releases**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**FAQ**](FAQ.md) · [**Learning Docs**](docs/LANGUAGE_LEARNING.md) · [**Feedback**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
 
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue?style=flat-square&logo=apple)](#install)
 [![Architecture](https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-success?style=flat-square)](#install)

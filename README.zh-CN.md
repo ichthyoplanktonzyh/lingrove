@@ -7,7 +7,7 @@
 **macOS 本地优先的行内自动补全与伴随式语言学习工具。**  
 在任意输入框的光标旁获取续写建议、即时翻译句子、描述意思寻找表达、在阅读与写作中随时查词，并构建支持内置 FSRS 复习与 Anki 同步的个人语言语料库——全程无需离开你正在写作的应用。
 
-[**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**版本发布 (Releases)**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**常见问题 (FAQ)**](FAQ.md) · [**语言学习机制详解**](docs/LANGUAGE_LEARNING.md) · [**问题反馈**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
+[**English**](README.md) · [**简体中文**](README.zh-CN.md) · [**官网**](https://lingrove.dev) · [**版本发布 (Releases)**](https://github.com/ichthyoplanktonzyh/lingrove/releases) · [**常见问题 (FAQ)**](FAQ.md) · [**语言学习机制详解**](docs/LANGUAGE_LEARNING.md) · [**问题反馈**](https://github.com/ichthyoplanktonzyh/lingrove/issues)
 
 [![Platform](https://img.shields.io/badge/系统要求-macOS%2014%2B-blue?style=flat-square&logo=apple)](#安装指南)
 [![Architecture](https://img.shields.io/badge/架构-Apple%20Silicon%20%7C%20Intel-success?style=flat-square)](#安装指南)
