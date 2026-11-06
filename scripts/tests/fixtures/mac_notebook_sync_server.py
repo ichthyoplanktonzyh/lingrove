@@ -188,10 +188,19 @@ class Handler(BaseHTTPRequestHandler):
         if endpoint == 'windows/release': self.reply({'released': True}); return
         if endpoint == 'review/sync':
             if STATE['mode'] == 'review-unavailable': self.reply({'code': 'NOTEBOOK_REVIEW_UNAVAILABLE'}, 503); return
+            # The native client sends the held Note lane as v3. An older response must never
+            # acknowledge it; echo this fixture's exact received catalog and digest, as the
+            # shared engine/cloud integration fixtures do, without weakening client validation.
+            valid = (body.get('protocolVersion') == 3 and isinstance(body.get('noteState'), dict)
+                     and isinstance(body.get('noteStateDigest'), str) and len(body['noteStateDigest']) == 64)
+            STATE['checks'].append(valid)
+            if not valid: self.reply({'code': 'INVALID_REVIEW_REQUEST'}, 400); return
             ids = [v['operationId'] for v in body['enrollments'] + body['links'] + body['historyAdoptions']]
             ids += [v['operation']['operationId'] for v in body['operations']]
             ids += [v['undoId'] for v in body['undos']]
-            self.reply({'protocolVersion': 1, 'notebookId': BOOKS[account], 'replicaId': REPLICAS[account],
+            self.reply({'protocolVersion': 3, 'notebookId': BOOKS[account], 'replicaId': REPLICAS[account],
+                'noteState': body['noteState'], 'acknowledgedNoteState': body['noteStateDigest'],
+                'acknowledgedMedia': [v['reference']['digest'] for v in body.get('media', [])],
                 'acknowledged': ids, 'confirmed': [v['cardId'] for v in body['confirmations']],
                 'afterSequence': body['afterSequence'], 'hasMore': False, 'changes': []}); return
         if endpoint.startswith('media/'):

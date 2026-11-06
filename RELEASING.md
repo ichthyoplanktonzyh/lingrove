@@ -40,8 +40,8 @@ The DMG contains the app, Applications shortcut, `INSTALL.txt` from
 `assets/release/INSTALL.zh-CN.txt`, and third-party/legal notices. Downloaded model weights,
 user data and credentials are excluded. Attach the DMG, `INSTALL.zh-CN.txt`, `SHA256SUMS.txt`
 and `build-info.json` to the release. Build metadata records exact source SHA, dirty flags,
-version/build, architectures, minimum macOS and signing/notarization state. Both dirty flags must
-be false for publication. Shared packages, CLI and all native helper inputs participate in source
+version/build, architectures, minimum macOS and signing/notarization state. Require `sourceDirty=false` for publication. Record any unrelated checkout changes behind
+`workingTreeDirty` and verify they are outside all app/package inputs. Shared packages, CLI and all native helper inputs participate in source
 tracking.
 
 Before publishing, verify mounted contents, version/build, every embedded executable's slices,

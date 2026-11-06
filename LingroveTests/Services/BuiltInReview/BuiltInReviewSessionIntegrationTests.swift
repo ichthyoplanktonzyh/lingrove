@@ -159,7 +159,11 @@ struct BuiltInReviewSessionIntegrationTests {
         let session = fixture.session
         session.open(selection: fixture.selection)
         await session.waitForIdle()
-        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
+        // This fixture exercises the retained material reader. Default enrollment now creates
+        // Note-owned faces, which correctly reject generic Card edits; prepare a material Card
+        // explicitly so this test continues to cover local PNG loading rather than Note editing.
+        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
+        session.save(try #require(session.draft))
         await session.waitForIdle()
         var content = try #require(session.content)
         var group = try #require(content.review.groups[fixture.selection.senseID])
