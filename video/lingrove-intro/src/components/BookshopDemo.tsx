@@ -30,8 +30,7 @@ export function OpeningDemo({t}: {t: number}) {
 }
 
 /** The reply closes the same fictional exchange; typing is derived from elapsed scene time. */
-export function ReplyDemo({t}: {t: number}) {
-  const message = 'Thank you! See you there.';
+export function ReplyDemo({t, message = 'Thank you! See you there.'}: {t: number; message?: string}) {
   const count = Math.floor(clamp((t - 1.35) / 2.3) * message.length);
   const replyOpacity = clamp((t - .35) / .5);
   return <div className="bookshop-reply-host"><div className="bookshop-reply-window">

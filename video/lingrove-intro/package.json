@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "studio": "remotion studio src/film-entry.ts",
+    "render:film": "remotion render src/film-entry.ts Lingrove-NextTime out/lingrove-next-time-1080p.mp4 --scale=1.5 --image-format=png --codec=h264 --crf=14",
+    "check": "tsc --noEmit --jsx react --esModuleInterop --lib dom,es2022 --moduleResolution bundler --module esnext --skipLibCheck src/film-entry.ts src/opening-entry.ts src/story-entry.ts src/director-entry.ts src/lookup-entry.ts src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "@remotion/cli": "4.0.541",
+    "@remotion/media": "4.0.541",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "remotion": "4.0.541"

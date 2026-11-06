@@ -1,0 +1,29 @@
+/* Film-only framing. These scoped overrides align both existing host recreations so a cut
+   advances the message without changing the window geometry or shifting its first sentence. */
+.opening-film { background: #eef1ee; color: #263b35; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+.opening-film * { box-sizing: border-box; }
+.opening-brand { position: absolute; top: 31px; left: 45px; display: flex; gap: 9px; align-items: center; font-size: 18px; font-weight: 650; }
+.opening-brand img { width: 29px; height: 29px; }
+.opening-brand small { font-size: 12px; font-weight: 450; color: #84968d; margin-left: 5px; }
+.opening-copy { position: absolute; top: 80px; width: 100%; text-align: center; }
+.opening-copy h1 { font-size: 34px; font-weight: 550; letter-spacing: 1px; margin: 0; }
+.opening-viewport { position: absolute; left: 20px; right: 20px; top: 170px; height: 450px; overflow: hidden; border-radius: 18px; }
+.opening-stage { position: absolute; left: 76px; top: 18px; width: 1088px; height: 400px; transform-origin: 0 0; }
+.opening-detail-shot { background: white; box-shadow: 0 16px 38px #243b3012; }
+.opening-detail-shot .opening-stage { left: 0; top: -92px; transform: scale(1.45); }
+.opening-caption { position: absolute; left: 0; right: 0; bottom: 38px; display: flex; justify-content: center; align-items: center; gap: 15px; height: 36px; color: #61756a; font-size: 16px; letter-spacing: .5px; }
+.opening-caption kbd { padding: 5px 11px; min-width: 45px; text-align: center; font-family: inherit; font-size: 13px; border: 1px solid #b8c3ba; border-bottom-width: 3px; border-radius: 7px; background: #fcfdfb; color: #405a4e; }
+.opening-caption kbd.pressed { transform: translateY(2px); border-bottom-width: 1px; background: #c8dfcf; }
+.opening-film .lg-ghost-window, .opening-film .expression-window { width: 100%; height: 100%; border: 1px solid #dce2db; border-radius: 15px; box-shadow: 0 22px 55px #243b301c; }
+.opening-film .lg-ghost-titlebar, .opening-film .expression-titlebar { height: 56px; background: #f8f9f6; color: #7e8983; font-size: 14px; border-radius: 15px 15px 0 0; }
+.opening-film .lg-ghost-lights, .opening-film .expression-lights { left: 22px; }
+.opening-film .lg-ghost-lights i, .opening-film .expression-lights i { background: #f3837a; }
+.opening-film .lg-ghost-lights i:nth-child(2), .opening-film .expression-lights i:nth-child(2) { background: #f2c363; }
+.opening-film .lg-ghost-lights i:nth-child(3), .opening-film .expression-lights i:nth-child(3) { background: #79c98b; }
+.opening-film .lg-ghost-recipient, .opening-film .expression-recipient { display: block; height: 55px; margin: 0; padding: 18px 38px; border-bottom: 1px solid #edf0ed; font-size: 15px; color: #303c38; }
+.opening-film .lg-ghost-recipient span { margin-right: 5px; color: #a5b0a9; }
+.opening-film .lg-ghost-recipient b { font-weight: 400; color: inherit; }
+.opening-film .lg-ghost-editor, .opening-film .expression-editor { padding: 26px 38px; font-size: 24px; line-height: 1.7; letter-spacing: .03px; }
+.opening-film .lg-ghost-text { font-size: 24px; line-height: 1.7; }
+.opening-film .lg-ghost-bottom, .opening-film .expression-send { position: absolute; left: 28px; right: 28px; bottom: 21px; height: 47px; border-top: 1px solid #edf1ed; padding: 15px 0 0; }
+.opening-film .lg-ghost-send { width: 31px; height: 31px; font-size: 20px; background: #6d9c8b; }

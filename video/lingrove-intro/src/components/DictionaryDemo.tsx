@@ -3,11 +3,11 @@ import {staticFile} from 'remotion';
 import './dictionary.css';
 const ease = (n: number) => { const x = Math.max(0, Math.min(1, n)); return 1 - (1 - x) ** 3; };
 /** Reconstructs the sentence and dictionary cards from synthetic data, entirely from the supplied time. */
-export default function DictionaryDemo({t}: {t: number}) {
+export default function DictionaryDemo({t, isolated = false}: {t: number; isolated?: boolean}) {
   const selected = t >= 1.8, card = ease((t - 2.05) / .45), saved = t >= 6.52;
   const a = ease((t - .55) / .8), b = ease((t - 4.55) / 1.25);
   const pressed = (t >= 1.45 && t < 1.55) || (t >= 1.7 && t < 1.8) || (t >= 6.15 && t < 6.35);
-  return <div className="dictionary-demo"><div className="dictionary-window">
+  return <div className={`dictionary-demo ${isolated ? 'dictionary-isolated' : ''}`}><div className="dictionary-window">
     <div className="dictionary-bar"><div className="dictionary-lights"><i/><i/><i/></div><span>给书店发消息</span><div className="dictionary-bar-spacer"/></div>
     <div className="dictionary-address"><span>收件人：</span> Paper &amp; Pine Bookshop</div>
     <div className="dictionary-letter">Hi! I saw your book club event and I’d love to join.<br/><br/>I’m a little nervous, but I’d like to give it a try.<br/><br/>我很期待和大家分享我的想法。<span className="dictionary-caret"/></div>
@@ -19,6 +19,6 @@ export default function DictionaryDemo({t}: {t: number}) {
       <div className="dictionary-content"><div className="dictionary-pos">verb · idiomatic, transitive</div><div>1. To anticipate, expect, or wait for, especially with a feeling of approval or pleasure; to be excited or eager to.</div><div className="dictionary-source">Wiktionary / Kaikki</div><div className="dictionary-chips"><span>look</span><span>forward</span><span>to</span></div><div className="dictionary-example"><div>本次例句</div><p>I’m <mark>looking forward to</mark> sharing my thoughts with everyone.</p><p>我很期待和大家分享我的想法。</p></div></div>
       <div className="dictionary-attribution">Wiktionary contributors / Kaikki · CC BY-SA 4.0</div>
     </div>
-    {t>=.55&&t<7.05&&<div className="dictionary-pointer" style={{left:t<4.55?300-a*70:230+b*475,top:t<4.55?330-a*74:256-b*116,transform:`scale(${pressed?.85:1})`}}><svg width="23" height="29" viewBox="0 0 23 29" fill="none"><path d="M2 1.5v20l5.1-4.8 3.9 9.2 3.4-1.5-3.9-9.1 7.1-.3L2 1.5Z" fill="#17191d" stroke="white" strokeWidth="1.7" strokeLinejoin="round"/></svg></div>}
+    {t>=(isolated?5.4:.55)&&t<7.05&&<div className="dictionary-pointer" style={{left:(t<4.55?300-a*70:230+b*475)-(isolated?445:0),top:(t<4.55?330-a*74:256-b*116)-(isolated?120:0),transform:`scale(${pressed?.85:1})`}}><svg width="23" height="29" viewBox="0 0 23 29" fill="none"><path d="M2 1.5v20l5.1-4.8 3.9 9.2 3.4-1.5-3.9-9.1 7.1-.3L2 1.5Z" fill="#17191d" stroke="white" strokeWidth="1.7" strokeLinejoin="round"/></svg></div>}
   </div></div>;
 }
