@@ -25,7 +25,7 @@
 
 ### 产品演示视频
 
-演示视频附件正在上传。
+https://github.com/user-attachments/assets/ce68087d-21fb-49df-ab15-4635b60fe5d1
 
 [English edition](README.md#product-demo)
 

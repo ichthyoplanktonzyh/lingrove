@@ -25,7 +25,7 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 
 ### Product demo
 
-Video attachment upload in progress.
+https://github.com/user-attachments/assets/bdc61a21-d21f-410d-97cc-3ea119bd6bb3
 
 [中文版](README.zh-CN.md#产品演示视频)
 
