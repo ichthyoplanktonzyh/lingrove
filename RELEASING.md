@@ -5,12 +5,12 @@ version/build metadata. `scripts/package_dmg.py` validates the production app an
 explicit installer/legal inputs; `scripts/build_dmg.sh` is its shell entry point. GitHub Actions
 retains the separate future Developer ID/notarization/update workflow.
 
-## Current release: 1.0.0 (build 5)
+## Current release: 0.8.1 (build 6)
 
-Publish the clean current source as **Lingrove（拾语）v1.0.0**, tag `v1.0.0`, with GitHub's
+Publish the clean current source as **Lingrove（拾语）v0.8.1**, tag `v0.8.1`, with GitHub's
 prerelease flag disabled and the release marked latest. The universal artifact is
-`Lingrove-1.0.0-universal.dmg`; it has no test designation. Release notes live in
-[releases/lingrove-1.0.0.md](releases/lingrove-1.0.0.md).
+`Lingrove-0.8.1-universal.dmg`; it has no test designation. Release notes live in
+[releases/lingrove-0.8.1.md](releases/lingrove-0.8.1.md).
 
 The package remains **ad-hoc signed and unnotarized** because the distribution identity is not
 configured. Stable version naming does not establish Developer ID signing or notarization.
@@ -37,7 +37,7 @@ user app/data for release validation. Validate with synthetic fixtures and a pri
   The bundle is 1.0.0/build 5 and its UI shows v1.0.0; 41 protected corpus/review tables are unchanged, schema remains 40,
   and existing semantic preference values are preserved. The previous app, SQLite backup and
   preference backup remain in the Dev support folder. Installed user data is never a test fixture.
-- GitHub now contains only the stable/latest v1.0.0 Release. The four superseded Releases and their
+- At this historical checkpoint GitHub contained only the stable/latest v1.0.0 Release. The four superseded Releases and their
   attachments were removed; historical source tags remain. The page starts with a direct DMG link.
 - Repo-scoped DerivedData and temporary test/candidate apps were removed. Intel hardware,
   fresh-machine Gatekeeper installation and full model/host acceptance remain outside this checkpoint.
@@ -58,7 +58,7 @@ Hold `/tmp/lingrove-mobile-validation.lock` for Xcode, native preparation and pa
 Build from a clean committed source revision:
 
 ```sh
-scripts/build_dmg.sh --output-dir build/distributions/v1.0.0
+scripts/build_dmg.sh --output-dir build/distributions/v0.8.1
 ```
 
 The script prepares the pinned inference/native helpers, builds Release for arm64 and x86_64,
