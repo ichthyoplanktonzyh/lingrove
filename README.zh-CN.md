@@ -25,9 +25,9 @@
 
 ### 产品演示视频
 
-[![拾语产品演示：行内补全、翻译、表达学习与复习](.github/assets/readme/lingrove-demo-poster.jpg)](.github/assets/readme/lingrove-demo.mp4?raw=true)
+https://github.com/user-attachments/assets/ce68087d-21fb-49df-ab15-4635b60fe5d1
 
-[**点击观看完整演示**](.github/assets/readme/lingrove-demo.mp4?raw=true) ·[English edition](.github/assets/readme/lingrove-demo-en.mp4?raw=true)。
+[English edition](README.md#product-demo)
 
 ### 功能实录
 

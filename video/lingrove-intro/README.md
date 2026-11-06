@@ -250,11 +250,20 @@ For the same composition with explicit parameters:
 npx remotion render src/film-entry.ts Lingrove-FirstHello out/lingrove-first-hello-en.mp4 --props='{"locale":"en","bgm":true}' --scale=1.5 --image-format=png --codec=h264 --crf=14
 ```
 
-No real app, account, or user corpus is used. The root English README links to the current
-English export at `.github/assets/readme/lingrove-demo-en.mp4`; the Chinese README links to
-the current Chinese export at `.github/assets/readme/lingrove-demo.mp4`. Each has a matching
-end-card poster and a link to the other language. Both published demo files omit the writing
-assistance badge.
+No real app, account, or user corpus is used. The root READMEs embed GitHub video
+attachments directly, with a link to the other language:
+
+- English: https://github.com/user-attachments/assets/bdc61a21-d21f-410d-97cc-3ea119bd6bb3
+- Chinese: https://github.com/user-attachments/assets/ce68087d-21fb-49df-ab15-4635b60fe5d1
+
+Repository MP4 copies and end-card posters were removed after attachment upload. Keep
+master exports locally under `out/`; source compositions and their required assets remain
+tracked. Both published demos omit the writing assistance badge.
+
+For an attachment below 10 MB, encode each 67.2-second master with two-pass libx264
+at 1000 kbit/s, AAC at 96 kbit/s, and `-movflags +faststart`. The published copies
+retain 1920×1080 at 30 fps and are about 8.8 MiB each. Both decode completely without
+errors; frame checks at 35 seconds retain readable interface text and captions.
 
 Validation for these review exports (2026-11-06):
 
