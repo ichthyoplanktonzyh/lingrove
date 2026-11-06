@@ -22,6 +22,23 @@ The production scheme produces `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`)
 has its separate bundle, storage and credentials. Do not launch, replace or read the installed
 user app/data for release validation. Validate with synthetic fixtures and a private host.
 
+## 0.8.1 acceptance checkpoint — 2026-11-06
+
+- Product numbering was changed to 0.8.1 with monotonic internal build 6. The installer/tag
+  identifies source `2244303a2a779b4bb726f85538c510f692ea1dc6`; functional app, engine and native sources are unchanged from
+  the preceding 1.0.0 checkpoint. No database format or data-directory change was made.
+- The universal Release and local Dev Release builds passed, as did all 17 packaging regression
+  tests. Mounted contents, all Mach-O architecture slices, nested signatures, test-bundle exclusion
+  and checksums passed. Business/model suites were not repeated for this metadata-only change.
+- All four remote attachment digests match local artifacts. The public DMG URL returned HTTP 200
+  with the expected length, and the release body starts with its direct installer link.
+- Dev was updated through normal Quit, retained its designated signing requirement, and opened
+  with v0.8.1 visible. Its bundle records build 6. All 41 protected corpus/review tables and semantic
+  preference values are preserved; database schema stays 40. Backups remain in the Dev support folder.
+- The superseded v1.0.0 GitHub Release and its attachments were removed after verification.
+  Historical source tags remain. v0.8.1 is the sole stable/latest Release. DerivedData and the
+  temporary candidate app were removed; signing, notarization and hardware limits remain as above.
+
 ## 1.0.0 acceptance checkpoint — 2026-11-06
 
 - The published tag and installer identify app source `003c74ac1bc4da9b13bbb08db72b981f824add5a`.
