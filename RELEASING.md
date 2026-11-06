@@ -22,6 +22,26 @@ The production scheme produces `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`)
 has its separate bundle, storage and credentials. Do not launch, replace or read the installed
 user app/data for release validation. Validate with synthetic fixtures and a private host.
 
+## 1.0.0 acceptance checkpoint — 2026-11-06
+
+- The published tag and installer identify app source `003c74ac1bc4da9b13bbb08db72b981f824add5a`.
+  Follow-up commits at this checkpoint change release documentation only; the installer/tag stays immutable.
+- The universal Release build passed. Mounted DMG contents, all embedded Mach-O architecture slices,
+  nested signatures, absence of test bundles/entitlements, and SHA-256 checks passed. All four GitHub
+  asset digests match local files; the public installer URL returned HTTP 200 with the exact file length.
+- Selected app-hosted Release tests: 121 of 123 initially passed. The two failures were outdated
+  material-card and Review-v1 server fixtures; after aligning them with existing Note/v3 protections,
+  all 12 tests in the affected two suites passed, without skips. Unaffected passing tests were not rerun.
+  The 125 Python tooling tests, strict SwiftLint, and localization structure validation also passed.
+- The authorized Dev update reused the existing installation and designated signing requirement.
+  Its UI shows 1.0.0/build 5; 41 protected corpus/review tables are unchanged, schema remains 40,
+  and existing semantic preference values are preserved. The previous app, SQLite backup and
+  preference backup remain in the Dev support folder. Installed user data is never a test fixture.
+- GitHub now contains only the stable/latest v1.0.0 Release. The four superseded Releases and their
+  attachments were removed; historical source tags remain. The page starts with a direct DMG link.
+- Repo-scoped DerivedData and temporary test/candidate apps were removed. Intel hardware,
+  fresh-machine Gatekeeper installation and full model/host acceptance remain outside this checkpoint.
+
 ## Release page presentation
 
 Start release notes with a prominent direct link to the versioned DMG, followed by the app version,
