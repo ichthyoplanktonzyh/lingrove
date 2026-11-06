@@ -145,7 +145,9 @@ final class AnkiReviewBatchSession: ObservableObject {
                 if controller.noteIO != nil {
                     let session = NoteAnkiSession(controller: controller, selection: .init(entryID: entry.id, senseID: sense.id))
                     await session.load()
-                    if !noteDeckOverride.isEmpty { session.deck = noteDeckOverride } else if !session.hasAssociation { session.deck = defaultDeck }
+                    if !noteDeckOverride.isEmpty {
+                        session.deck = noteDeckOverride
+                    } else if !session.hasAssociation { session.deck = defaultDeck }
                     let success = await session.send(expectedScope: scope)
                     items[index].status = success ? .synced
                         : Task.isCancelled ? .cancelled : session.conflicts.isEmpty ? .failed : .attention

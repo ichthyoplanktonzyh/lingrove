@@ -42,23 +42,7 @@ actor BuiltInReviewIO {
                 var value = draft.note; value.revision = draft.expected.revision + 1
                 try engine.saveReviewNote(value, expected: draft.expected, scope: draft.scope)
             case let .save(draft):
-                switch draft.purpose {
-                case .enrollment:
-                    _ = try engine.enrollBuiltInNotebookSense(draft.creationDraft(), input: draft.input,
-                        media: draft.preparedMedia, action: draft.action)
-                case .additionalExercise:
-                    _ = try engine.addBuiltInNotebookExercise(draft.creationDraft(), input: draft.input,
-                        media: draft.preparedMedia, action: draft.action)
-                case let .editing(card, link):
-                    if LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: draft.snapshot) == nil {
-                        try engine.saveRetainedBuiltInNotebookMaterial(link: link, card: card, input: draft.input,
-                            materialPlan: draft.materialPlan, media: draft.preparedMedia, action: draft.action)
-                    } else {
-                        try engine.prepareNotebookExercise(link: link, card: card, snapshot: draft.snapshot,
-                            exampleID: draft.exampleID, input: draft.input, materialPlan: draft.materialPlan,
-                            media: draft.preparedMedia, action: draft.action)
-                    }
-                }
+                try save(draft, using: engine)
             case let .batch(batch):
                 _ = try engine.enrollReviewNotes(selections: batch.drafts.map(\.selection),
                     type: batch.content.defaultNoteType, scope: batch.content.scope)
@@ -73,6 +57,28 @@ actor BuiltInReviewIO {
             case let .retain(context):
                 try engine.retainNotebookExercise(link: context.link, card: context.card,
                     snapshot: context.snapshot, action: context.action)
+            }
+        }
+    }
+
+    /// Draft purpose selects the storage operation after command dispatch. Borrow the connection
+    /// already opened by `perform` so every save keeps the same cancellation and close boundary.
+    private func save(_ draft: BuiltInReviewDraft, using engine: LingroveNotebookEngine) throws {
+        switch draft.purpose {
+        case .enrollment:
+            _ = try engine.enrollBuiltInNotebookSense(draft.creationDraft(), input: draft.input,
+                media: draft.preparedMedia, action: draft.action)
+        case .additionalExercise:
+            _ = try engine.addBuiltInNotebookExercise(draft.creationDraft(), input: draft.input,
+                media: draft.preparedMedia, action: draft.action)
+        case let .editing(card, link):
+            if LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: draft.snapshot) == nil {
+                try engine.saveRetainedBuiltInNotebookMaterial(link: link, card: card, input: draft.input,
+                    materialPlan: draft.materialPlan, media: draft.preparedMedia, action: draft.action)
+            } else {
+                try engine.prepareNotebookExercise(link: link, card: card, snapshot: draft.snapshot,
+                    exampleID: draft.exampleID, input: draft.input, materialPlan: draft.materialPlan,
+                    media: draft.preparedMedia, action: draft.action)
             }
         }
     }

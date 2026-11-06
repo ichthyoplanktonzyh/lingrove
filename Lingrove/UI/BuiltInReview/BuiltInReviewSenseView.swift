@@ -170,7 +170,8 @@ struct BuiltInReviewSenseView: View {
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("builtinReview.pause")
                 } else {
-                    Button(BuiltInReviewCopy.text(group.status == .withdrawn ? "action.rejoin" : "action.resume"), systemImage: "play.circle.fill") {
+                    Button(BuiltInReviewCopy.text(group.status == .withdrawn ? "action.rejoin" : "action.resume"),
+                        systemImage: "play.circle.fill") {
                         changeStatus(.active, group)
                     }
                     .buttonStyle(.borderedProminent)
@@ -230,8 +231,11 @@ struct BuiltInReviewSenseView: View {
 
             HStack(spacing: 8) {
                 Button {
-                    if let model = content.noteCards[context.card.cardId] { session.editNote(model) }
-                    else { session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content) }
+                    if let model = content.noteCards[context.card.cardId] {
+                        session.editNote(model)
+                    } else {
+                        session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content)
+                    }
                 } label: {
                     Label(BuiltInReviewCopy.text("action.edit"), systemImage: "pencil")
                 }

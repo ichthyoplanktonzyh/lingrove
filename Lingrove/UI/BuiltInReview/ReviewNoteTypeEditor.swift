@@ -22,8 +22,10 @@ struct ReviewNoteTypeEditor: View {
     }
     private var changed: Bool { draft.type != original || draft.makeDefault }
     private var validation: String? {
-        do { try ReviewTemplateRenderer.validate(draft.type); return nil }
-        catch { return ReviewNoteEditorCopy.message(error) }
+        do {
+            try ReviewTemplateRenderer.validate(draft.type)
+            return nil
+        } catch { return ReviewNoteEditorCopy.message(error) }
     }
     private var source: (VocabularyEntry, VocabularySense)? {
         for entry in draft.scope.document.collectedEntries {
@@ -32,7 +34,8 @@ struct ReviewNoteTypeEditor: View {
         return nil
     }
     private var preview: ReviewRenderedCard? {
-        guard let template = draft.type.templates.first(where: { $0.id == selectedTemplate }), let (entry, sense) = source else { return nil }
+        guard let template = draft.type.templates.first(where: { $0.id == selectedTemplate }),
+              let (entry, sense) = source else { return nil }
         let note = ReviewNote(noteTypeID: draft.type.id, entryID: entry.id, senseID: sense.id,
             exampleID: sense.examples.sorted { $0.createdAt < $1.createdAt }.first?.id)
         guard let fields = try? ReviewNoteProjection.fields(note: note, type: draft.type, entry: entry, sense: sense) else { return nil }
@@ -242,9 +245,11 @@ struct ReviewNoteTypeEditor: View {
                 TextEditor(text: Binding(get: {
                     tab == 0 ? draft.type.templates[index].front : tab == 1 ? draft.type.templates[index].back : draft.type.css
                 }, set: { value in
-                    if tab == 0 { draft.type.templates[index].front = value }
-                    else if tab == 1 { draft.type.templates[index].back = value }
-                    else { draft.type.css = value }
+                    if tab == 0 {
+                        draft.type.templates[index].front = value
+                    } else if tab == 1 {
+                        draft.type.templates[index].back = value
+                    } else { draft.type.css = value }
                 })).font(.system(.body, design: .monospaced)).frame(minHeight: 170)
                     .accessibilityIdentifier("review.noteType.code")
             }

@@ -28,8 +28,6 @@ nonisolated enum VocabularyMeaningLabelPolicy {
         VocabularyMeaningLabelRules.label(in: labels, languages: languages)
     }
 
-
-
     static func hasMultipleLanguages(_ entries: [VocabularyEntry]) -> Bool {
         Set(entries.map { $0.language?.rawValue ?? "und" }).count > 1
     }

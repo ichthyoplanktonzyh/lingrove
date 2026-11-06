@@ -104,7 +104,8 @@ final class BuiltInReviewWindowController: NSWindowController, NSWindowDelegate 
         }
         return BuiltInReviewKeyboardPolicy.action(key: key, phase: phase, interaction: .init(
             isKeyWindow: isKeyWindow && session.route == .practice, isEditingText: editing,
-            hasSheet: window.attachedSheet != nil || session.draft != nil || session.batchDraft != nil || session.noteTypeDraft != nil || session.noteDraft != nil,
+            hasSheet: window.attachedSheet != nil || session.draft != nil || session.batchDraft != nil
+                || session.noteTypeDraft != nil || session.noteDraft != nil,
             isBusy: session.isBusy, canUndo: session.latestUndo != nil))
     }
 
