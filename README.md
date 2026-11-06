@@ -25,9 +25,9 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 
 ### Product demo
 
-[![Lingrove product demo — autocomplete, translation, expression learning, and review](.github/assets/readme/lingrove-demo-en-poster.jpg)](.github/assets/readme/lingrove-demo-en.mp4?raw=true)
+Video attachment upload in progress.
 
-[**Watch the demo**](.github/assets/readme/lingrove-demo-en.mp4?raw=true) · [中文版](.github/assets/readme/lingrove-demo.mp4?raw=true).
+[中文版](README.zh-CN.md#产品演示视频)
 
 ### Feature recordings
 
