@@ -23,8 +23,9 @@ def main():
     RUNTIME.mkdir(parents=True,exist_ok=True,mode=0o700)
     RUNTIME.chmod(0o700)
     AGENTS.mkdir(exist_ok=True)
-    for name in ('bridge.mjs','draft-store.mjs','server.mjs','package.json','package-lock.json','connect.py','tunnel.py'):
+    for name in ('bridge.mjs','draft-store.mjs','write-policy.mjs','server.mjs','package.json','package-lock.json','connect.py','tunnel.py'):
         shutil.copy2(SOURCE/name,RUNTIME/name)
+    shutil.copy2(SOURCE.parents[1]/'skills/lingrove-cli/references/semantic-modeling.md',RUNTIME/'semantic-modeling.md')
     subprocess.run(['npm','ci','--ignore-scripts','--omit=dev'],cwd=RUNTIME,check=True)
     app = str((HOME/'.local/bin/lingrove-dev').resolve().parents[2])
     cli = str((HOME/'.local/bin/lingrove-dev').resolve())
@@ -32,6 +33,8 @@ def main():
     if not config_path.exists():
         config_path.write_text(json.dumps({'cli':cli,'app':app,'state':str(RUNTIME/'drafts'),'port':19681,'bearer':secrets.token_urlsafe(48)},indent=2)+'\n')
     config=json.loads(config_path.read_text())
+    config['guidePath']=str(RUNTIME/'semantic-modeling.md')
+    config_path.write_text(json.dumps(config,indent=2)+'\n')
     (RUNTIME/'mcp-authorization').write_text('Bearer '+config['bearer'])
     # Reuse the already verified official release binary without depending on build output.
     binary=HOME/'lingrove/build/private-mcp-preparation/tunnel-client/tunnel-client'
@@ -70,6 +73,7 @@ mcp:
         subprocess.run(['launchctl','bootstrap',target,str(AGENTS/'io.lingrove.mcp.plist')],check=True)
     else:
         subprocess.run(['launchctl','kickstart','-k',target+'/io.lingrove.mcp'],check=True)
-    print('Local MCP installed. Enter the existing Tunnel runtime key through Connect Lingrove.command to enable the tunnel.')
+    print('Local MCP installed. Refresh ChatGPT tools.' if (RUNTIME/'runtime-key').exists() else
+          'Local MCP installed. Enter the existing Tunnel runtime key through Connect Lingrove.command to enable the tunnel.')
 
 if __name__=='__main__': main()

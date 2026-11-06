@@ -3,6 +3,13 @@
 Read, save and organize language-learning material in the local Lingrove notebook.
 Commands do not request AI inference or send material to Anki.
 
+Language capture and semantic maintenance follow the shared
+[semantic-modeling guidance](skills/lingrove-cli/references/semantic-modeling.md).
+The private [MCP adapter](tools/mcp/README.md) exposes the same notebook commands.
+Its `notebook_write` performs authorized additive writes in one call with internal
+validation; already-authorized additions do not need another confirmation.
+Replacement/deletion/shared edits retain the preview/commit review route.
+
 ## Installation and notebook selection
 
 Install from **Settings → General → Command-line tools**. The normal app installs

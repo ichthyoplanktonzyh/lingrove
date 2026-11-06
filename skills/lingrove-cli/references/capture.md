@@ -5,6 +5,8 @@ For edits that refer to existing records, retain `result.notebookScope` from the
 Use `vocab capture` for ordinary entry/example/meaning capture. Read `schema capture` rather than
 learning every resource record. Keep the selected CLI and `--app` fixed throughout the task.
 The capture-task format uses `version: 1`.
+Apply the shared [semantic-modeling guidance](semantic-modeling.md) when selecting node scope,
+kind, patterns and categories. A node describes reusable meaning, not a whole example scene.
 
 ```json
 {

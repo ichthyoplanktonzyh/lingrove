@@ -1,0 +1,135 @@
+[
+  {
+    "expression": "be rooted in the ground",
+    "source": "Most plants are rooted in the ground.",
+    "translation": "大多数植物扎根于地里。",
+    "sense": "扎根于地里",
+    "node": {
+      "kind": "concept",
+      "title": "以根部扎根于某处",
+      "definition": "具有扎入基质中的根部，并由此处于扎根状态。"
+    },
+    "usage": "be rooted in {place}",
+    "boundary": "保留字面根部特征；不把具体植物、土壤或抽象来源并入节点。",
+    "reuseReview": "当前同名节点兼收字面与抽象来源，不能仅按标签复用；若修正原节点须复查其他映射和分类。",
+    "nodeQuery": "扎根于某处",
+    "reuseExpected": false,
+    "categoryKey": "content.nature.plants"
+  },
+  {
+    "expression": "anchor something in the ground",
+    "source": "Roots anchor the plant in the ground.",
+    "translation": "根将植物固定在地里。",
+    "sense": "将某物固定在地里",
+    "node": {
+      "kind": "concept",
+      "title": "将某物固定在某处",
+      "definition": "使某个对象保持在特定位置，防止其移动。"
+    },
+    "usage": "anchor {object} in {place}",
+    "boundary": "保留固定、防止移动的特征；植物和地面仅为例句参与者。",
+    "reuseReview": "已有同义概念可复用；按固定操作分类，不按例句的植物领域分类。",
+    "nodeQuery": "将某物固定在某处",
+    "reuseExpected": true,
+    "categoryKey": "content.actions"
+  },
+  {
+    "expression": "absorb water and minerals",
+    "source": "Roots absorb water and minerals from the soil.",
+    "translation": "根从土壤中吸收水分和矿物质。",
+    "sense": "吸收水分和矿物质",
+    "node": {
+      "kind": "concept",
+      "title": "吸收某种物质",
+      "definition": "使外部的某种物质进入吸收主体内部。"
+    },
+    "usage": "absorb {substance}",
+    "boundary": "不增加运输、供养或生长动作；不自动扩展到吸收知识、费用等其他义项。",
+    "reuseReview": "已有物质吸收节点可复用；读取物质过程分类边界，而非仅挂植物分类。",
+    "nodeQuery": "吸收某种物质",
+    "reuseExpected": true,
+    "categoryKey": "content.objects.process"
+  },
+  {
+    "expression": "the right level of detail",
+    "source": "We should choose the right level of detail for different people.",
+    "translation": "我们应该针对不同的人选择合适的细节程度。",
+    "sense": "合适的细节程度",
+    "node": {
+      "kind": "concept",
+      "title": "适当的细节程度",
+      "definition": "描述或说明所包含的细节在详略程度上合适。"
+    },
+    "boundary": "适当和细节程度属于意义；选择和不同受众来自例句，不加入节点。",
+    "reuseReview": "已有合适详略程度节点可复用；不为补字段而新增动作节点或模式。",
+    "nodeQuery": "适当的细节程度",
+    "reuseExpected": true,
+    "categoryKey": "content.degree"
+  },
+  {
+    "expression": "different levels of abstraction",
+    "source": "Language operates at different levels of abstraction.",
+    "translation": "语言在不同的抽象层次上运作。",
+    "sense": "不同的抽象层次",
+    "node": {
+      "kind": "concept",
+      "title": "不同的抽象层次",
+      "definition": "概念或表述在抽象程度上具有不同层次。"
+    },
+    "boundary": "不引入比较、区分、分析动作；语言只是当前讨论对象。",
+    "reuseReview": "已有抽象层次概念可复用；不把当前学科设为节点唯一分类。",
+    "nodeQuery": "不同的抽象层次",
+    "reuseExpected": true,
+    "categoryKey": "content.cognition"
+  },
+  {
+    "expression": "move on to",
+    "source": "Let's move on to the next part.",
+    "translation": "我们进入下一部分吧。",
+    "sense": "转到下一个话题或部分",
+    "node": {
+      "kind": "function",
+      "title": "转入下一话题或环节",
+      "definition": "在交流中推进话语，从当前内容进入后续话题或环节。"
+    },
+    "usage": "move on to {next topic or part}",
+    "boundary": "当前例句支持话语组织功能；不把一切客观阶段变化都称为交际功能。",
+    "reuseReview": "现有功能节点混入非交际行动范围，需检查定义与其他映射后决定复用或修正。",
+    "nodeQuery": "转入下一内容或阶段",
+    "reuseExpected": false,
+    "categoryKey": "function.discourse.open"
+  },
+  {
+    "expression": "keep going",
+    "source": "Let's keep going.",
+    "translation": "我们继续吧。",
+    "sense": "继续进行",
+    "node": {
+      "kind": "concept",
+      "title": "活动持续进行",
+      "definition": "当前活动或过程持续，而非停止。"
+    },
+    "boundary": "概念描述持续；本句的提议用途来自整体话语，不使所有用法都成为鼓励或话语组织功能。",
+    "reuseReview": "先查持续类 Concept；现有 Function 的泛化定义不等同于可复用的同类概念。",
+    "nodeQuery": "继续当前活动或过程",
+    "reuseExpected": false,
+    "categoryKey": "content.time.phase.continue"
+  },
+  {
+    "expression": "be like",
+    "source": "The stem is like the plant's backbone.",
+    "translation": "茎就像植物的脊梁。",
+    "sense": "像……一样",
+    "node": {
+      "kind": "concept",
+      "title": "事物之间具有相似性",
+      "definition": "两个事物在某些特征或性质上相似。"
+    },
+    "usage": "{subject} be like {comparison}",
+    "boundary": "保留相似关系；不混入相同、口语引述或具体植物部位。",
+    "reuseReview": "已有相似性概念可复用；不必另建比喻 Function。",
+    "nodeQuery": "某物与另一事物具有相似性",
+    "reuseExpected": true,
+    "categoryKey": "content.general.similarity"
+  }
+]

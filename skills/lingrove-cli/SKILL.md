@@ -49,6 +49,10 @@ its text. Paginate while offset is below `result.total`; list limits are 1–200
 | Resolve interpretations, manage collection membership or organize semantic links | `data list/get` and resource `put`/`delete`; read [organization.md](references/organization.md). |
 | Only classify an existing node, or edit category definitions/hierarchy | Read [classification.md](references/classification.md); use resource operations. |
 
+For capture or semantic maintenance, read [semantic-modeling.md](references/semantic-modeling.md).
+It defines node/sense/pattern/example boundaries, abstraction, Concept/Function choice,
+classification consistency and authorized-write behavior. It is also the MCP guide's source.
+
 For an ordinary “save and classify this expression” request:
 
 1. Search the expression; get a matching entry only when choosing an existing sense.
@@ -57,7 +61,8 @@ For an ordinary “save and classify this expression” request:
    Read a shortlisted category's full record only to distinguish its scope from alternatives.
 3. Put nodes in `meanings`, classification keys in each meaning's `categories`, and sense-to-node
    links in `associations`. A single capture generates IDs and persists all of them atomically.
-4. Preview, commit the identical file, and inspect the returned IDs and category receipts.
+4. Validate internally, complete the already-authorized write with the identical file,
+   and inspect the returned IDs and category receipts. Do not ask for the same approval again.
 
 Do not expand this into separate `nodes`, `mappings` and `categoryMemberships` writes or read
 all resource manuals. Those interfaces serve independent edits. Search is substring matching,
@@ -83,6 +88,17 @@ or quoted heredoc to preserve learning text without shell substitution. Preview 
 `vocab capture --file PATH --dry-run` or `vocab apply --file PATH --dry-run`, inspect the result,
 then complete the authorized write with the identical file and key without `--dry-run`.
 Do not stop at preview when the user requested saving. General discussion does not authorize edits.
+Explicit authorization to add material and classify it covers ordinary additions, example/tag
+appends and additive semantic links. Keep a review route for deletion, replacement, merging,
+category overrides/hierarchy and changes to shared meanings; inspect effects and obtain any
+missing authorization for the concrete change, without mechanically repeating prior approval.
+
+Through MCP, read `notebook_guide` and the schema, search/read, then call `notebook_write`
+with a caller-generated requestID and capture/apply material. This performs the dry-run and
+authorized additive commit internally; no previewID or second approval is required. For
+`review_required`, use `notebook_preview`/`notebook_commit` after reviewing the affected material.
+Retry the same requestID and unchanged task after busy/timeout. Read back affected records from
+returned IDs; do not store transport IDs or operational commentary in learning fields.
 
 Inspect `ok`, `result.dryRun`, `result.replayed` and `result.operations`. A fresh save has
 `ok: true`, `dryRun: false`. Report the material saved and any limitation. Read affected records

@@ -1,7 +1,7 @@
 /** Owns private transport artifacts, not notebook storage. Uploads are bounded,
  * retryable byte chunks. Validated drafts freeze JSON and image bytes together.
  */
-import { mkdir, readFile, writeFile, open } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, open, link, unlink } from 'node:fs/promises';
 import { randomUUID, createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -15,9 +15,23 @@ export class DraftStore {
   async init() { await mkdir(this.root,{recursive:true,mode:0o700}); }
   async save(id,suffix,value) {
     await this.init();
-    await writeFile(this.path(id,suffix),JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});
+    await this.immutable(this.path(id,suffix),Buffer.from(JSON.stringify(value)+'\n'));
   }
   async load(id,suffix) { return JSON.parse(await readFile(this.path(id,suffix),'utf8')); }
+  async optional(id,suffix) {
+    try { return await this.load(id,suffix); } catch(e) { if(e.code==='ENOENT') return null; throw e; }
+  }
+  // Publish only complete files. A crash before publication leaves no usable
+  // request/preview; retrying an identical artifact never replaces approved bytes.
+  async immutable(path,bytes) {
+    const temp=path+'.'+randomUUID()+'.tmp';
+    const file=await open(temp,'wx',0o600);
+    try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
+    try {
+      try { await link(temp,path); }
+      catch(e) { if(e.code!=='EEXIST') throw e; if(!(await readFile(path)).equals(bytes)) throw new Error('Conflicting persisted material; use the original request unchanged.'); }
+    } finally { await unlink(temp); }
+  }
   // Serialize chunk mutations; a repeated offset must contain identical bytes.
   upload(a) {
     const next=this.queue.then(()=>this.uploadChunk(a));
@@ -74,7 +88,7 @@ export class DraftStore {
         if(count>64 || total>16*1024*1024) throw new Error('CLI image batch limit exceeded.');
         const suffix='-image-'+count;
         const path=this.path(id,suffix);
-        await writeFile(path,bytes,{mode:0o600,flag:'wx'});
+        await this.immutable(path,bytes);
         assets.push({suffix,sha256:hash(bytes)}); block.image.path=path;
       }
     }
@@ -83,7 +97,7 @@ export class DraftStore {
   async writeTask(id,task) {
     const bytes=Buffer.from(JSON.stringify(task,null,2)+'\n');
     if(bytes.length>MAX_TASK_BYTES) throw new Error('Task exceeds the CLI 32 MiB limit.');
-    await writeFile(this.path(id,'.json'),bytes,{mode:0o600,flag:'wx'});
+    await this.immutable(this.path(id,'.json'),bytes);
     return hash(bytes);
   }
   async validate(id,manifest) { await this.save(id,'.ready',manifest); }
@@ -108,6 +122,7 @@ export class DraftStore {
     return {ok:result.ok??result.receipt?.ok??true,resultID,totalCharacters:text.length,
       revision:result.result?.revision,notebookScope:result.result?.notebookScope,
       previewID:result.previewID,requiresUserConfirmation:result.requiresUserConfirmation,
+      writeRequestID:result.writeRequestID,
       paged:true,message:'Full result preserved. Use notebook_result_read until nextOffset is null; do not infer omitted content.'};
   }
   async result({resultID,offset,limit}) {

@@ -3,6 +3,9 @@
 For edits that refer to existing records, retain `result.notebookScope` from the same read and include it as top-level `notebookScope` alongside the original revision. This applies to append/update/resource changes, capture with existing sense/meaning IDs, and any `expectedRevision`. It contains `workspaceID`, `notebookID`, and `generation`; never refresh only that scope on an old draft after an account change. Pure new captures may omit it.
 
 Categories group reusable semantic meaning nodes; mappings connect those nodes to lexical senses.
+Use the node's meaning rather than an example's topic. When its scope or kind changes, inspect
+existing mappings, linked senses and memberships and reconcile classification as one coherent
+change; see [semantic-modeling.md](semantic-modeling.md). Do not silently broaden a shared node.
 When saving an expression and classifying it together, use the complete [capture example](capture.md).
 Read the full `schema` only for an independent membership edit or custom category maintenance.
 
