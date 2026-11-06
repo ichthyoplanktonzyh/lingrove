@@ -22,6 +22,16 @@ The production scheme produces `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`)
 has its separate bundle, storage and credentials. Do not launch, replace or read the installed
 user app/data for release validation. Validate with synthetic fixtures and a private host.
 
+## Release page presentation
+
+Start release notes with a prominent direct link to the versioned DMG, followed by the app version,
+minimum macOS, universal-architecture label and download size. Put three short installation steps
+before the changelog. Keep signing/notarization and manual-update facts visible. Technical checks,
+checksums and build metadata belong in a lower collapsible section with explicit attachment links.
+Do not make users infer the installer from GitHub's automatic source archives or helper files.
+The release body can be improved after a tag is created; retain the original tag/source SHA and
+installer bytes so build provenance stays exact. Documentation-only follow-ups require no rebuild.
+
 ## Build and verify
 
 Hold `/tmp/lingrove-mobile-validation.lock` for Xcode, native preparation and package inspection.

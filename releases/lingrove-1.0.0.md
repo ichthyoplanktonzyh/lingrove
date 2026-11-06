@@ -1,20 +1,19 @@
-# Lingrove（拾语）v1.0.0
+## [⬇ 下载 macOS 安装包](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v1.0.0/Lingrove-1.0.0-universal.dmg)
 
-Lingrove 1.0.0（build 5）正式发布。自动补全和写作中的语言学习均为核心能力，包含此前
-0.7.2 发布之后的最新 macOS 功能与修复。
+**Lingrove 1.0.0 · macOS 14 或更新版本 · Apple Silicon / Intel 通用 · 59.5 MB**
 
-## 下载与安装
+自动补全与写作中的语言学习，让表达、收藏和复习连在一起。
 
-下载 **Lingrove-1.0.0-universal.dmg**，打开后将 Lingrove.app 拖入 Applications。
-更新前退出旧版并备份重要学习数据；替换后推出磁盘映像，再从“应用程序”启动。
-详细步骤见随包的 INSTALL.txt 或单独下载的 INSTALL.zh-CN.txt。
+### 安装
 
-要求 macOS 14 或更新版本，支持 Apple Silicon 和 Intel。Apple Intelligence 还要求受支持的
-Mac 和 macOS 26 或更新版本。本包不包含模型权重、用户数据或服务商凭据。
+1. 点击上方链接，下载并打开 **Lingrove-1.0.0-universal.dmg**。
+2. 将 **Lingrove.app** 拖入 **Applications（应用程序）**。
+3. 推出磁盘映像，从“应用程序”启动 Lingrove。更新前请先退出旧版并备份重要数据。
 
-**当前安装包使用 ad-hoc 临时签名，未经 Developer ID 签名或 Apple 公证。** macOS 可能要求
-在“隐私与安全性”中选择“仍要打开”，详见安装说明。版本更新需手动下载安装包，尚无自动更新。
-Intel 实机与其他 Mac 下载后的首次安装流程未完成本次验收。
+[详细安装说明](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v1.0.0/INSTALL.zh-CN.txt)
+
+> 当前安装包使用临时签名，尚未经过 Apple Developer ID 签名或公证。首次启动可能需要在
+> “系统设置 → 隐私与安全性”中选择“仍要打开”。目前采用手动更新。
 
 ## 本次更新
 
@@ -38,6 +37,11 @@ Intel 实机与其他 Mac 下载后的首次安装流程未完成本次验收。
 Lingrove 与 Lingrove Dev 的数据、设置及权限独立，本包不会自动导入 Dev 数据。
 临时签名更新后可能需要重新授予辅助功能、输入监控或屏幕录制权限。
 
+<details>
+<summary>校验文件、构建信息与验证结果</summary>
+
+[下载 SHA-256 校验文件](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v1.0.0/SHA256SUMS.txt) · [查看构建信息](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v1.0.0/build-info.json)
+
 ## 验证
 
 - Release 配置编译与定向原生回归覆盖语料库导航、复习、笔记与模板、进度、账户、同步、CLI、
@@ -49,5 +53,10 @@ Lingrove 与 Lingrove Dev 的数据、设置及权限独立，本包不会自动
 
 build-info.json 记录精确源码提交、版本、架构和签名状态；源码构建输入干净，工作区中单独进行的
 视频工程编辑不进入安装包。SHA256SUMS.txt 提供安装包下载完整性校验。
+
+Intel 实机与其他 Mac 下载后的首次安装流程未完成本次验收。Apple Intelligence 需要受支持的
+Mac 和 macOS 26 或更新版本。安装包不包含模型权重、用户数据或服务商凭据。
+
+</details>
 
 反馈请至 [GitHub Issues](https://github.com/ichthyoplanktonzyh/lingrove/issues)，请勿上传私人输入或密钥。
