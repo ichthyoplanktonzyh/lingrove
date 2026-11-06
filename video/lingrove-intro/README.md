@@ -130,3 +130,87 @@ The score's event times are coupled to `root.tsx`; regenerate it when changing s
 - This is an editorial candidate, not audience-tested creative. Music is synthesized; no
   voiceover, public release URL, conversion claim or automatic vocabulary recall is implied.
 - No native app was opened or built, and no repository DerivedData remains.
+
+## First Hello — continuous-story revision
+
+The prior accepted film is checkpoint `685fedcf`. `Lingrove-FirstHello` is a separate 60-second
+revision, keeping the checkpoint composition available. The user approved the book-club story
+and explicitly freed the film from the app's theme colors. Warm paper `#F1EEE5`, charcoal
+`#242420`, vermilion `#D94B30`, and a soft blue `#D7E4F1` now carry the editorial scenes;
+the existing product components retain their recognizable native materials.
+
+Creative mode: autonomous revision of the approved story and reused components. Existing
+approved UI references and the inspected Shotcraft motion samples serve as the visual baseline;
+each new scene is checked with rendered stills before delivery. This is a synthetic fictional
+exchange, with no real customer, account, native application or corpus access.
+
+| Time | Story event / state | Visual and motion purpose |
+| --- | --- | --- |
+| 0–6 | See the book-club invitation and click contact | Invitation rotates from a paper-like angled view into readable frontal composition |
+| 6–12 | Start one message; explicitly accept autocomplete chunks | Camera settles on the caret; ghost continuation reveals and Tab consumes words |
+| 12–18 | Describe a missing expression in Chinese, confirm candidate | Same host persists; candidate lifts, holds, then collapses before insertion |
+| 18–24 | Write the final thought in Chinese, inspect and replace | Camera follows the third line; native translation preview rises as a separate layer |
+| 24–30 | Click send, then receive the bookshop's welcome | The composed content becomes a sent bubble; reply arrives before the learning act |
+| 30–36 | Revisit and explicitly collect the expression just used | Context remains behind the lifted dictionary card; save control receives a click |
+| 36–42 | Find the expression with its context and enroll it | Entry drops into its actual notebook slot; camera moves to context and enrollment |
+| 42–49.2 | Start review, recall, reveal, rate | Camera lands before interaction; the answer card turns at the reveal midpoint |
+| 49.2–55.2 | After the event, write a new thank-you and anticipation | Same recipient, new purpose; human typing uses the expression without a ghost |
+| 55.2–60 | Brand close | Stable title and wordmark hold; no fabricated release URL or CTA |
+
+### Implementation and motion sources
+
+`campaign/timeline.ts` owns story time and synthetic text states. `MessageHost.tsx` owns one
+continuous editor and conversation shell. `GhostLine`, `ExpressionLine` and `TranslationPreview`
+are extracted from the existing demos so their controls can share that host; original demo
+defaults are retained. `camera.tsx` owns deterministic camera poses, and `FirstHello.tsx` owns
+the scene sequence, captions and component choreography. `first-hello.css` scopes this cut's
+palette, framing and motion variables. Nothing is wired to native app behavior.
+
+Motion research: [video-shotcraft](https://github.com/Vincentwei1021/video-shotcraft), Gallery
+index revision `bdd94be16d60fa8f`. Read cards, exact source and extracted sample frames:
+
+- `cursor-flyover` / `demos/camera/cursor-flyover/CursorFlyover.tsx`: adapt camera focal points,
+  asymmetric in-out easing and move→hold→act grammar to one continuous message, rather than
+  reproducing a four-station dashboard tour.
+- `row-embed` / `demos/ui-entrance/row-embed/RowEmbed.tsx`: adapt one-row descent, 16° flattening
+  and contact compression to the saved expression. This is a single-item narrative adaptation,
+  not the demo's accelerating five-row sequence.
+- `line-carry-transition` was inspected but not used: the existing phrase/host continuity is
+  sufficient, and a second long graphic transition would interrupt the conversation.
+
+Upstream code/docs are Apache-2.0; see `licenses/video-shotcraft-LICENSE.txt`. Recipes are
+adapted, not claimed to be pixel-identical. UI surfaces remain the user's approved recreations,
+an explicit exception to Shotcraft's default preference for fresh native screenshots. The
+native data-bearing app stays closed. Repeated phrases are intentional story callbacks rather
+than repeated feature demonstrations. The soundtrack retains the prior film's original
+synthesized vocabulary; no Freesound sampling or recorded-foley claim is made.
+
+### Reproduce
+
+```sh
+python3 scripts/make-first-hello-score.py
+npm run check
+npx remotion render src/film-entry.ts Lingrove-FirstHello out/lingrove-first-hello-1080p.mp4 --scale=1.5 --image-format=png --codec=h264 --crf=14
+npx remotion render src/film-entry.ts Lingrove-FirstHello out/first-hello-no-bgm-render.mp4 --props='{"bgm":false}' --scale=1.5 --image-format=png --codec=h264 --crf=14
+ffmpeg -i out/lingrove-first-hello-1080p.mp4 -i out/first-hello-no-bgm-render.mp4 -map 0:v:0 -map 1:a:0 -c copy out/lingrove-first-hello-no-bgm.mp4
+```
+
+The two audio stems are independently reproducible: music and timed foley. Both exports share
+the same picture and foley, with only the `bgm` prop changing. Sound event seconds are declared
+in `make-first-hello-score.py`, and must follow the action markers in `timeline.ts`.
+The last remux reuses the main video bitstream, eliminating minute independent-encode pixel
+differences between the two picture tracks without re-encoding either picture or audio.
+
+Technical QA for this revision: `npm run check` and the legacy opening's still render pass;
+the complete main MP4 decodes cleanly (1,800 frames, 1080p, 30fps, stereo AAC). Source foley
+versus no-music output was cross-correlated at 8.4, 22.6, 41.0 and 54.7 seconds after decoding
+both to 48kHz mono: measured lag was 0 samples at every probe, so no pipeline offset was
+applied. Pipeline: Remotion 4.0.541, H.264/AAC, 48kHz output, MP4; checked 2026-11-06.
+Main audio peak is −5.2 dBFS and mean is −21.9 dBFS. This establishes signal integrity and
+alignment, not a claim of professional listening approval. The two delivered decoded picture
+streams share SHA-256 `de356610473e40a5cec94624ae432c3f594d3754746084e641cef140857e27c4`.
+
+Independent review was requested with the final MP4, reference cards/source, sample frames and
+review criteria, but returned no report within the bounded review window and was stopped.
+It is **unverified**, not a pass. The checks above are the producing agent's actual technical
+and visual checks. This cut remains an editorial review candidate.

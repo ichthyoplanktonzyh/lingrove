@@ -5,6 +5,7 @@ import {staticFile} from 'remotion';
 import {Hesitation, InvitationOpening, Writing} from './openings';
 import {EndCard, FindWords, IntoNotebook, KeepExpression, NextTime, Remember, TranslateThought} from './story-scenes';
 import './film.css';
+import {FirstHello} from '../campaign/FirstHello';
 
 function OpeningScore() {
   const frame=useCurrentFrame(), {fps}=useVideoConfig();
@@ -38,6 +39,7 @@ function ProductFilm() { const {fps}=useVideoConfig(); return <>
   <Audio src={staticFile('audio/lingrove-score.m4a')}/>
 </>; }
 export const FilmRoot=()=> <>
+  <Composition id="Lingrove-FirstHello" component={FirstHello} width={1280} height={720} fps={30} durationInFrames={1800} defaultProps={{bgm:true}}/>
   <Composition id="Lingrove-NextTime" component={ProductFilm} width={1280} height={720} fps={30} durationInFrames={1512}/>
   <Composition id="OpeningA-Thought" component={OpeningA} width={1280} height={720} fps={30} durationInFrames={288}/>
   <Composition id="OpeningB-Invitation" component={OpeningB} width={1280} height={720} fps={30} durationInFrames={288}/>

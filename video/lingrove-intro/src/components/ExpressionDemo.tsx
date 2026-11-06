@@ -13,6 +13,24 @@ export type ExpressionFrame = {
 
 /** The component owns UI fidelity; the caller optionally owns the narrative's text and timing. */
 export default function ExpressionDemo({t, state}: {t: number; state?: ExpressionFrame}) {
+  return <div className="expression-demo">
+    <div className="expression-window">
+      <div className="expression-titlebar">
+        <div className="expression-lights"><i/><i/><i/></div>
+        <span>给书店发消息</span><span className="expression-more">···</span>
+      </div>
+      <div className="expression-recipient"><span>收件人：</span> Paper &amp; Pine Bookshop</div>
+      <div className="expression-editor">
+        <p>Hi! I saw your book club event and I’d love to join.</p>
+        <ExpressionLine t={t} state={state}/>
+      </div>
+      <div className="expression-send"><span>✦</span><span className="expression-send-button">↑</span></div>
+    </div>
+  </div>;
+}
+
+/** The quiet input and candidate panel remain one anchored unit while the film camera moves. */
+export function ExpressionLine({t, state}: {t: number; state?: ExpressionFrame}) {
   const query = '想鼓起勇气尝试一下';
   const queryText = state?.queryText ?? Array.from(query).slice(0, Math.max(0, Math.floor((t - 2.2) * 7))).join('');
   const accepted = state ? state.phase === 'accepted' : t >= 9.5;
@@ -23,16 +41,7 @@ export default function ExpressionDemo({t, state}: {t: number; state?: Expressio
   const wrapped = queryText.length > 22;
   const cursorVisible = Math.floor(t * 2) % 2 === 0;
 
-  return <div className="expression-demo">
-    <div className="expression-window">
-      <div className="expression-titlebar">
-        <div className="expression-lights"><i/><i/><i/></div>
-        <span>给书店发消息</span><span className="expression-more">···</span>
-      </div>
-      <div className="expression-recipient"><span>收件人：</span> Paper &amp; Pine Bookshop</div>
-      <div className="expression-editor">
-        <p>Hi! I saw your book club event and I’d love to join.</p>
-        <div className="expression-paragraph">{state?.leadText ?? 'I’m a little nervous, but I’d like to '}
+  return <div className="expression-paragraph">{state?.leadText ?? 'I’m a little nervous, but I’d like to '}
           {accepted ? <><span className="expression-inserted">give it a try</span><span className="expression-caret expression-host-caret" style={{opacity: cursorVisible ? 1 : 0}}/></> : <>
             {trigger && <span className="expression-trigger">{trigger}</span>}
             {inputVisible && <div className={wrapped ? "expression-input expression-input-wrapped" : "expression-input"}>
@@ -53,9 +62,5 @@ export default function ExpressionDemo({t, state}: {t: number; state?: Expressio
             </div>}
             {!inputVisible && <span className="expression-caret" style={{opacity: cursorVisible ? 1 : 0}}/>}
           </>}
-        </div>
-      </div>
-      <div className="expression-send"><span>✦</span><span className="expression-send-button">↑</span></div>
-    </div>
-  </div>;
+        </div>;
 }

@@ -13,9 +13,6 @@ const clamp = (value: number) => Math.max(0, Math.min(1, value));
  */
 export default function TranslationDemo({t}: {t: number}) {
   const typed = Math.floor(clamp((t - 0.45) / 2.65) * source.length);
-  const preview = clamp((t - 3.8) / 0.14) * (1 - clamp((t - 8.65) / 0.25));
-  const translated = Math.floor(clamp((t - 4.25) / 1.65) * translation.length);
-  const isComplete = translated >= translation.length;
   const replaced = t >= 8.5;
   const pointer = clamp((t - 6.6) / 1.25);
   const clicked = t >= 8.1 && t < 8.5;
@@ -35,7 +32,21 @@ export default function TranslationDemo({t}: {t: number}) {
           
         </div>
       </div>
-      <div className="translation-card" style={{opacity: preview}}>
+      <TranslationPreview t={t}/>
+      {t >= 6.6 && t < 8.65 && <div className="translation-pointer" style={{left: `${78 - pointer * 8}%`, top: `${56 - pointer * 14}%`, transform: `scale(${clicked ? 0.85 : 1})`}}>
+        <svg width="23" height="29" viewBox="0 0 23 29" fill="none"><path d="M2 1.5v20l5.1-4.8 3.9 9.2 3.4-1.5-3.9-9.1 7.1-.3L2 1.5Z" fill="#17191d" stroke="white" strokeWidth="1.7" strokeLinejoin="round"/></svg>
+      </div>}
+    </div>
+  </div>;
+}
+
+/** Reuse the original translation controls as a floating layer in a shared host. */
+export function TranslationPreview({t}: {t: number}) {
+  const preview = clamp((t - 3.8) / 0.14) * (1 - clamp((t - 8.65) / 0.25));
+  const translated = Math.floor(clamp((t - 4.25) / 1.65) * translation.length);
+  const isComplete = translated >= translation.length;
+  const clicked = t >= 8.1 && t < 8.5;
+  return <div className="translation-card" style={{opacity: preview}}>
         <div className="translation-card-header">
           <div className="translation-language"><span className={`translation-whale ${!isComplete ? 'active' : ''}`} style={{maskImage: `url(${whale})`, WebkitMaskImage: `url(${whale})`}}/>{!isComplete && <span className="translation-generating"/>} English</div>
           <div className="translation-card-actions">
@@ -49,10 +60,5 @@ export default function TranslationDemo({t}: {t: number}) {
           </div>
         </div>
         <div className="translation-result">{translated ? translation.slice(0, translated) : 'Generating expression…'}</div>
-      </div>
-      {t >= 6.6 && t < 8.65 && <div className="translation-pointer" style={{left: `${78 - pointer * 8}%`, top: `${56 - pointer * 14}%`, transform: `scale(${clicked ? 0.85 : 1})`}}>
-        <svg width="23" height="29" viewBox="0 0 23 29" fill="none"><path d="M2 1.5v20l5.1-4.8 3.9 9.2 3.4-1.5-3.9-9.1 7.1-.3L2 1.5Z" fill="#17191d" stroke="white" strokeWidth="1.7" strokeLinejoin="round"/></svg>
-      </div>}
-    </div>
-  </div>;
+      </div>;
 }
