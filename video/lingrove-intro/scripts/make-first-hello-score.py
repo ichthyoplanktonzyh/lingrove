@@ -10,7 +10,7 @@ import subprocess
 import wave
 import numpy as np
 
-RATE, DURATION = 44100, 60.0
+RATE, DURATION = 44100, 67.2
 mix = np.zeros((int(RATE * DURATION), 2), dtype=np.float64)
 rng = np.random.default_rng(2718)
 
@@ -52,28 +52,28 @@ def sweep(at, duration=.55, gain=.035):
 
 # Same original harmonic palette, with space around the first send/reply.
 chords=[[50,57,61,64,69],[47,54,57,62,66],[43,50,54,57,62],[45,52,57,59,64]]
-for bar in range(25):
+for bar in range(28):
     start=bar*2.4
     chord=chords[(bar//2)%4]
     energy=.4 if bar<2 or 10<=bar<=12 else .75
-    if bar>=23: energy=.5
+    if bar>=26: energy=.5
     note(start,chord[0],2.3,.12*energy,bass=True)
     for beat,idx in enumerate([1,3,2,4,2,3,1,4]):
         note(start+beat*.3,chord[idx]+12,1.6,.06*energy,pan=(-.3 if beat%2 else .3))
-    if 2<=bar<23 and not 10<=bar<=12:
+    if 2<=bar<26 and not 10<=bar<=12:
         for beat in range(4):
             t=np.arange(int(.22*RATE))/RATE
             phase=2*np.pi*(45*t+45*.035*(1-np.exp(-t/.035)))
             add(start+beat*.6,np.sin(phase)*np.exp(-t*22),.06)
 music=mix.copy()
 mix[:]=0
-# Frame-addressed foley: button / Tab / Return / replacement / send / save / enroll / reveal / rate.
-for at in [5.1,8.4,9.1,9.8,10.5,15.3,17,22.6,25.2,34.8,41,43.1,45.4,47.8,54.7]:
+# Frame-addressed foley: button / Tab / Return / replacement / send / hover-lookup / save / enroll / reveal / rate.
+for at in [5.1,8.4,9.1,9.8,10.5,15.3,17,22.6,25.2,32.05,42.0,48.2,50.3,52.6,55.0,61.9]:
     click(at,.08)
 # Short keystroke beds stop at the end of each actual typing interval.
-for start,end in [(6.6,7.2),(12,13.15),(13.75,15.15),(18,19),(50.2,53.7)]:
+for start,end in [(6.6,7.2),(12,13.15),(13.75,15.15),(18,19),(57.4,60.9)]:
     for at in np.arange(start,end,.09):click(float(at),.025,pan=-.1)
-for at,duration in [(2.7,.8),(5.5,.5),(12,.3),(18,.5),(25.2,.4),(27,.35),(30.55,.7),(36.6,.6),(45.05,.7),(49.2,.55),(55.2,.6)]:
+for at,duration in [(2.7,.8),(5.5,.5),(12,.3),(18,.5),(25.2,.4),(27,.35),(30.3,.55),(37.75,.7),(43.8,.6),(52.25,.7),(56.4,.55),(62.4,.6)]:
     sweep(at,duration,.025)
 foley=mix.copy()
 folder=Path(__file__).resolve().parents[1]/'public/audio'

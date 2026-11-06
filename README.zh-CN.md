@@ -23,6 +23,14 @@
 
 ## 界面预览
 
+### 产品演示视频
+
+[![拾语产品演示：行内补全、翻译、表达学习与复习](.github/assets/readme/lingrove-demo-poster.jpg)](.github/assets/readme/lingrove-demo.mp4?raw=true)
+
+[**点击观看完整演示**](.github/assets/readme/lingrove-demo.mp4?raw=true) · 67 秒 · 1080p · 含音乐与音效。使用虚构内容制作的产品功能动画演示。
+
+### 功能实录
+
 以下为功能操作演示。拾语的五段语言学习演示使用中文界面。
 
 <table align="center">

@@ -23,6 +23,14 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 
 ## Preview
 
+### Product demo
+
+[![Lingrove product demo — autocomplete, translation, expression learning, and review](.github/assets/readme/lingrove-demo-poster.jpg)](.github/assets/readme/lingrove-demo.mp4?raw=true)
+
+[**Watch the demo**](.github/assets/readme/lingrove-demo.mp4?raw=true) · 67 seconds · 1080p · Music and sound effects. Animated product walkthrough with fictional content.
+
+### Feature recordings
+
 See the features in use below. The five Lingrove language-learning recordings use the Chinese interface.
 
 <table align="center">
