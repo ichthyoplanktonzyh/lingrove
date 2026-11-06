@@ -1,0 +1,9 @@
+{
+  "name": "lingrove-mcp",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Private MCP adapter for the existing Lingrove CLI",
+  "dependencies": {"@modelcontextprotocol/sdk": "1.32.2", "zod": "4.6.7"},
+  "scripts": {"start": "node server.mjs", "test": "node --test bridge.test.mjs"}
+}
