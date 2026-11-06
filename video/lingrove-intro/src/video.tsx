@@ -1,0 +1,44 @@
+import React from 'react';
+import {AbsoluteFill, Composition, interpolate, useCurrentFrame, staticFile} from 'remotion';
+import './visual.css';
+
+const fps=24, seconds=[8,10,11,11,10,9,11,7];
+const begins=seconds.map((_,i)=>seconds.slice(0,i).reduce((a,b)=>a+b,0));
+const fade=(t:number,start=0,duration=.6)=>interpolate(t,[start,start+duration],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+const typed=(s:string,t:number,start:number,rate=16)=>Array.from(s).slice(0,Math.max(0,Math.floor((t-start)*rate))).join('');
+const Cursor=()=> <span className="caret"/>;
+const Brand=()=> <div className="brand"><img src={staticFile('lingrove-logo.svg')}/> <span>Lingrove <small>拾语</small></span></div>;
+const Window=({children,title='Messages'}:{children:React.ReactNode,title?:string})=><div className="window"><div className="windowbar"><div className="lights"><i/><i/><i/></div><span>{title}</span><span className="windowRight">···</span></div>{children}</div>;
+const Caption=({eyebrow,children}:{eyebrow:string,children:React.ReactNode})=><div className="caption"><div className="eyebrow">{eyebrow}</div><div className="captionText">{children}</div><div className="captionRule"/></div>;
+const Pointer=()=> <span className="pointer">↖</span>;
+const Key=({children}:{children:React.ReactNode})=><span className="key">{children}</span>;
+const Translation=({t}:{t:number})=><div className="pop translation" style={{opacity:fade(t,3.8),transform:`translateY(${(1-fade(t,3.8))*12}px)`}}><div className="popHead"><img src={staticFile('app-icon.png')}/> <b>中文 → 英语</b><span className="pill">Lingrove</span></div><div className="small muted">范围：光标所在句子</div><div className="small muted space">原文（中文）</div><div>我很期待和大家分享我的想法。</div><div className="small muted space">目标表达（英语）</div><div>I’m <u>looking forward to</u> sharing my thoughts with everyone.</div><div className="actions"><span className={t>7?'action selected relative':'action relative'}>替换句子{t>6.4&&t<7.7&&<Pointer/>}</span><span className="action">复制译文</span><span className="action">取消 · Esc</span></div></div>;
+const Message=({scene,t}:{scene:number,t:number})=>{
+ const first='Hi! I saw your book club event and '; const ending='I’d love to join.';
+ let content:React.ReactNode;
+ if(scene===1) {const a=typed(first,t,.5,13); const show=t>3.7; const accepted=t>6.7?ending:t>5.5?'I’d love ':''; content=<>{a}{show&&<><span>{accepted}</span><span className="ghost">{ending.slice(accepted.length)}</span></>}{t<3.7&&<Cursor/>}{show&&<div className="keyboard">{t>5.2&&<><Key>Tab</Key><span>接受建议</span></>}</div>}</>}
+ else if(scene===2) {content=<>{first}{ending}<br/><br/>I’m a little nervous, but I’d like to {t<8?'??':'give it a try.'}<Cursor/>{t>1.8&&t<8&&<div className="assistInput">{typed('勇敢尝试一件新事物',t,2,5)}<Cursor/></div>}{t>4.5&&t<8&&<div className="pop candidate"><div className="candidateTop">↵ &nbsp; give it a try <span>⌄</span></div><div className="candidateHint">尝试一下；勇敢迈出第一步</div></div>}{t>7&&t<9&&<div className="keyboard"><Key>Return</Key><span>使用表达</span></div>}</>}
+ else {const cn='我很期待和大家分享我的想法。'; content=<>{first}{ending}<br/><br/>I’m a little nervous, but I’d like to give it a try.<br/><br/>{t<8?typed(cn,t,.5,7):'I’m looking forward to sharing my thoughts with everyone.'}<Cursor/>{t<8&&<Translation t={t}/>}</>}
+ return <Window title="给书店发消息"><div className="recipient"><span>收件人：</span> Paper & Pine Bookshop</div><div className="editor">{content}</div><div className="send"><span>✦</span><span className="sendBtn">↑</span></div></Window>;
+};
+const scenes=[
+ {tag:'一封消息的开始', title:<>有些想法，<br/>想和更远的人分享。</>},
+ {tag:'自动补全', title:<>在你写作的地方，<br/><em>帮你继续。</em></>},
+ {tag:'表达辅助', title:<>想说的意思，<br/><em>先用自己的语言描述。</em></>},
+ {tag:'写作翻译', title:<>写下想法。<br/><em>看过译文，再决定。</em></>},
+ {tag:'收集表达', title:<>在真实的语境里，<br/><em>留下值得记住的话。</em></>},
+ {tag:'阅读理解', title:<>阅读时遇见，<br/><em>就在此刻理解。</em></>},
+ {tag:'语料与复习', title:<>遇见过的语言，<br/><em>慢慢成为自己的语言。</em></>},
+ {tag:'LINGROVE 拾语',title:<>写作时，<br/><em>自然积累语言。</em></>},
+];
+function Scene({n,t}:{n:number,t:number}){
+ if(n===0)return <Window title="Paper & Pine"><div className="site"><div className="siteNav"><b>PAPER & PINE</b><span>OUR STORY　　EVENTS　　VISIT</span></div><div className="bookArt"><div className="sun"/><div className="book b1"/><div className="book b2"/><div className="book b3"/><div className="book b4"/><div className="leaf">✳</div></div><div className="siteBody"><div className="small caps">A LITTLE SPACE FOR BIG IDEAS</div><h1>Community<br/>Book Club<span>.</span></h1><p>Come read, share, and connect.</p><div className="siteButton" style={{opacity:fade(t,3)}}>Say hello　 ↗</div></div></div></Window>;
+ if(n>=1&&n<=3)return <Message scene={n} t={t}/>;
+ if(n===4)return <Window title="给书店发消息"><div className="recipient"><span>收件人：</span> Paper & Pine Bookshop</div><div className="editor">Hi! I saw your book club event and I’d love to join.<br/><br/>I’m a little nervous, but I’d like to give it a try.<br/><br/>I’m <mark>looking forward to</mark> sharing my thoughts with everyone.<div className="pop dictionary" style={{opacity:fade(t,.6)}}><div className="dictHead"><span>↖　表达</span><span className="fish" style={{transform:`scale(${t>5&&t<5.6?1.22:1})`,color:t>5?'#428fb0':'#9aabb2'}}><img src={staticFile(t>5 ? "fish-filled.svg" : "fish-outline.svg")}/>{t>4.4&&t<5.6&&<Pointer/>}</span></div><h2>look forward to</h2><div className="pron">英 · 表达　　◖))</div><div className="dictLine"/><div className="small muted">释义</div><p>期待；盼望</p><div className="example">I’m looking forward to sharing my thoughts with everyone.<br/><span>我很期待和大家分享我的想法。</span></div></div></div><div className="send"><span>✦</span><span className="sendBtn">↑</span></div></Window>;
+ if(n===5)return <Window title="Paper & Pine · 活动介绍"><div className="article"><div className="small caps">COMMUNITY / BOOK CLUB</div><h1>A place for<br/>different stories<span>.</span></h1><p>Books are better when we share them.</p><p>Everyone <mark>brings something different to the table</mark>. Come as you are, and join the conversation.</p><div className="pop readcard" style={{opacity:fade(t,2)}}><div className="popHead"><img src={staticFile('app-icon.png')}/><b>语境释义</b></div><h2>bring something to the table</h2><p>在这里指：每个人都能带来不同的想法和贡献。</p><div className="small muted">结合当前句子理解</div></div></div></Window>;
+ if(n===6)return <Window title="Lingrove"><div className="notebook"><div className="sidebar"><Brand/><div className="sideactive">▤　语料库</div><div>◷　复习</div><div>◫　进度</div></div><div className="notemain">{t<5?<><div className="small caps">YOUR COLLECTION</div><h2>语料库</h2><div className="search">⌕　搜索表达</div><div className="entry"><div><b>look forward to</b><p>期待；盼望</p></div><span>英语　 ›</span></div><div className="entryDetail"><div className="small muted">例句</div><p>I’m looking forward to sharing my thoughts with everyone.</p><div className="action selected relative">加入复习{t>3.7&&t<5&&<Pointer/>}</div></div></>:<><div className="small caps">REVIEW</div><h2>复习</h2><div className="review"><div className="small muted">正面</div><h2>look forward to</h2>{t>7&&<><div className="dictLine"/><div className="small muted">背面</div><p>期待；盼望</p></>}</div>{t<7?<div className="reviewButton relative">显示答案{t>6.2&&<Pointer/>}</div>:<div className="ratings"><span>重来</span><span>困难</span><span className={t>9?'rated relative':'relative'}>良好{t>8.5&&t<9.7&&<Pointer/>}</span><span>简单</span></div>}</>}</div></div></Window>;
+ if(t<3.2)return <Window title="给书店发消息"><div className="recipient"><span>收件人：</span> Paper & Pine Bookshop</div><div className="reply"><div className="replyName">Paper & Pine Bookshop</div><div className="replyBubble">We’d love to have you!</div><div className="replyCompose">{typed("Thank you! See you there.",t,.8,13)}<Cursor/></div></div></Window>;
+ return <div className="endCard"><img src={staticFile('lingrove-logo.svg')}/><div>Lingrove <span>拾语</span></div><p>让语言，在每一次表达中生长。</p></div>;
+}
+const Video=()=>{let frame=useCurrentFrame();let s=frame/fps;let n=begins.findIndex((b,i)=>s>=b&&s<b+seconds[i]);if(n<0)n=7;let t=s-begins[n];let opacity=Math.min(fade(t,0,.45),fade(seconds[n]-t,0,.45));return <AbsoluteFill className="canvas"><div className="ambient a1"/><div className="ambient a2"/><div className="topbar"><Brand/><div className="issue">A LITTLE MORE LANGUAGE, EVERY DAY</div></div><div className="layout" style={{opacity}}><Caption eyebrow={scenes[n].tag}>{scenes[n].title}</Caption><div className="stage"><Scene n={n} t={t}/></div></div><div className="footer"><span>LINGROVE / 拾语</span><div className="progress"><div style={{width:`${s/seconds.reduce((a,b)=>a+b,0)*100}%`}}/></div><span>PRODUCT FILM　·　01</span></div></AbsoluteFill>};
+export const Root=()=> <Composition id="LingroveIntro" component={Video} durationInFrames={seconds.reduce((a,b)=>a+b,0)*fps} fps={fps} width={1280} height={720}/>;

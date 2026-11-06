@@ -1,0 +1,180 @@
+/* One filmed macOS workspace: neutral materials, native density, and blue selections. */
+.review-demo{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#242426;font-size:11px}
+.review-demo *{box-sizing:border-box}
+.review-demo svg{flex-shrink:0;vertical-align:middle}
+.review-demo button{font:inherit;color:inherit;border:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.review-window{width:94%;height:90%;overflow:hidden;border-radius:14px;background:#fff;border:1px solid #fff;box-shadow:0 27px 80px #31463c2b,0 5px 18px #31463c15}
+.review-titlebar{height:40px;display:flex;align-items:center;background:#fff;border-bottom:1px solid #e7e7e8;position:relative}
+.review-lights{position:absolute;left:15px;display:flex;gap:6px}
+.review-lights i{width:9px;height:9px;border-radius:50%;background:#ff6059;border:.5px solid #0001}
+.review-lights i:nth-child(2){background:#ffbd2e}
+.review-lights i:nth-child(3){background:#28c840}
+.review-window-title{font-size:10px;font-weight:600;margin-left:73px;color:#444}
+.review-sidebar-toggle{position:absolute;left:37%;color:#626367;width:27px;height:27px;display:grid;place-items:center;border-radius:50%;box-shadow:0 0 20px #00000006}
+.review-corpus-toolbar{display:flex;align-items:center;gap:6px;margin-left:auto;margin-right:9px;color:#555}
+.review-corpus-toolbar>div{height:25px;padding:0 8px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 15px #00000005;border-radius:15px}
+.review-corpus-toolbar .review-view-toggle{width:112px;justify-content:center;gap:12px;background:#fcfcfc}
+.review-view-toggle b{display:grid;place-items:center;border-radius:50%;width:23px;height:23px;background:#e8e8e9}
+.review-corpus-toolbar .review-size{font-size:9px;gap:0}
+.review-workspace{height:calc(100% - 40px);display:flex}
+.review-nav{width:140px;flex-shrink:0;background:linear-gradient(110deg,#f7f7f9,#fbfbfc);border-right:1px solid #e8e8eb;padding:10px 7px;position:relative}
+.review-brand{display:flex;align-items:center;gap:6px;padding:0 5px 12px}
+.review-logo{width:22px;height:22px;object-fit:contain}
+.review-brand b{font-size:11px}
+.review-brand small{display:block;font-size:8px;color:#8a8a8d;margin-top:1px}
+.review-nav-item{height:27px;padding:6px 8px;border-radius:6px;display:flex;align-items:center;gap:7px;font-size:10px;color:#69696c}
+.review-nav-item span{color:#262629}
+.review-nav-item.selected{background:#dedee0;color:#2b78ed}
+.review-nav-item.selected span{font-weight:600}
+.review-nav-footer{position:absolute;left:7px;right:7px;bottom:9px;padding-top:8px;border-top:1px solid #ededf0}
+.review-account{display:flex;align-items:center;gap:6px;background:#f0f0f2;border:1px solid #e8e8eb;border-radius:8px;padding:7px}
+.review-avatar{width:23px;height:23px;border-radius:50%;background:#e2e9f8;display:grid;place-items:center}
+.review-avatar .review-logo{width:15px;height:15px;opacity:.6}
+.review-account b{font-size:9px;font-weight:550}
+.review-account small{display:block;font-size:8px;color:#929296;margin-top:2px}
+.review-account>span{margin-left:auto;color:#999}
+.review-settings{display:flex;gap:7px;align-items:center;font-size:9px;color:#777;padding:8px 8px 0}
+.review-settings svg{width:11px;height:11px}
+.review-list{width:200px;flex-shrink:0;background:#fafafb;border-right:1px solid #eeeef0;padding:7px 6px}
+.review-list-tools{display:flex;align-items:center;gap:9px;height:23px;border-bottom:1px solid #ededf0;padding:0 3px 5px;color:#777}
+.review-list-tools>span{display:flex;gap:1px;align-items:center;font-size:8px}
+.review-list-tools>span svg{width:10px;height:10px}
+.review-list-tools>small{font-size:7px;color:#aaa;margin-left:auto}
+.review-list-tabs{display:flex;border-radius:8px;background:#efeff1;font-size:7px;white-space:nowrap}
+.review-list-tabs>*{padding:3px 6px;font-weight:500}
+.review-list-tabs>b{background:#dce9ff;color:#3178d9;border-radius:8px}
+.review-entry-list{padding-top:7px}
+.review-entry{height:27px;display:flex;align-items:center;gap:4px;padding:5px 8px;border-radius:5px}
+.review-entry strong{font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.review-entry small{font-size:7px;line-height:1.2;border-radius:6px;background:#e9e9eb;color:#777;padding:1px 4px;margin-left:auto;flex-shrink:0}
+.review-entry.selected{background:#0864db;color:#fff}
+.review-entry.selected small{background:#ffffff26;color:#e5efff}
+.review-detail{flex:1;min-width:0;padding:18px 18px 12px}
+.review-detail-heading{height:26px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.review-detail h2{font-size:20px;font-weight:750;letter-spacing:-.7px;margin:0;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.review-detail h2 svg{color:#97979a}
+.review-detail-actions{display:flex;align-items:center;gap:8px;color:#737377;font-size:10px;flex-shrink:0}
+.review-detail-actions button{font-size:7px;padding:3px 6px;border-radius:3px;background:#eeeef0;gap:4px}
+.review-tail{width:13px;height:13px;object-fit:contain;filter:invert(38%) sepia(88%) saturate(2100%) hue-rotate(200deg)}
+.review-badges{display:flex;gap:5px;margin-top:5px;height:16px;align-items:center}
+.review-badges span{font-size:8px;font-weight:600;background:#e8f1ff;color:#2679eb;padding:2px 6px;border-radius:8px}
+.review-badges span+span{background:#efeff0;color:#858589;font-weight:500}
+.review-add-explanation{height:18px;display:inline-flex;align-items:center;gap:3px;font-size:8px;color:#929296;border:1px dashed #d9d9dc;border-radius:10px;padding:2px 7px;margin-top:11px}
+.review-context-panel{margin-top:12px;padding:10px;border:1px solid #e8e8eb;border-radius:10px;background:#f8f8f9}
+.review-context-label{display:flex;align-items:center;gap:5px;font-size:8px;color:#86868a}
+.review-context-label svg{color:#3882eb}
+.review-context-label small{font-size:7px;margin-left:auto}
+.review-context-panel p{font-size:10px;line-height:1.5;margin:8px 0 8px;white-space:normal}
+.review-context-panel mark{background:#dceaff;color:#1879e8;font-weight:600;border-radius:1px}
+.review-context-translation{display:flex;align-items:center;justify-content:space-between;color:#909094;font-size:9px;margin-bottom:8px}
+.review-local-meaning{position:relative;padding:7px 8px;background:#f0f0f2;border:1px solid #e9e9ec;border-radius:5px}
+.review-local-meaning small{font-size:7px;color:#97979b;display:flex;align-items:center;gap:4px}
+.review-local-meaning b{display:block;font-size:10px;font-weight:600;margin-top:4px}
+.review-local-meaning>span{position:absolute;right:8px;top:8px;color:#888;font-size:12px}
+.review-source{display:flex;align-items:center;gap:4px;color:#aaa;font-size:7px;margin-top:8px}
+.review-source i{width:8px;height:8px;border-radius:50%;background:conic-gradient(#e94f45 0 33%,#f4ce42 33% 66%,#54ab65 66%);position:relative}
+.review-source i:after{content:"";position:absolute;inset:2px;background:#5a9aec;border:1px solid #fff;border-radius:50%}
+.review-section-title{font-size:10px;font-weight:650;margin-top:12px}
+.review-enrollment,.review-anki{display:flex;align-items:center;gap:8px;background:#f8f8f9;border:1px solid #ededee;border-radius:10px;margin-top:7px;padding:8px 10px;min-height:38px;color:#7f7f82}
+.review-enrollment b,.review-enrollment small{display:block}
+.review-enrollment b,.review-anki>b{font-size:8px;font-weight:600;color:#363639}
+.review-enrollment small{font-size:7px;color:#9c9ca0;margin-top:3px}
+.review-enrollment button,.review-anki button{margin-left:auto;background:#e9e9eb;border-radius:4px;padding:3px 7px;font-size:7px;color:#49494b}
+.review-enrollment.enrolled button{background:#e2eefd;color:#2975da}
+.review-enrollment.enrolled small{color:#438363}
+.review-anki{min-height:30px;margin-top:7px;padding:6px 10px}
+.review-dictionary{margin-top:12px;height:28px;display:flex;align-items:center;gap:7px;padding:0 10px;background:#f8f8f9;border:1px solid #ededee;border-radius:10px;color:#7c7c80}
+.review-dictionary b{font-size:9px;color:#424246}
+.review-dictionary span{margin-left:auto;font-size:17px}
+.review-created{display:flex;gap:5px;align-items:center;font-size:7px;color:#b6b6ba;margin-top:8px}
+.review-main{flex:1;min-width:0;display:flex;flex-direction:column;background:#fff}
+.review-main-header{height:52px;flex-shrink:0;border-bottom:1px solid #ececef;display:flex;justify-content:space-between;align-items:center;padding:0 17px;font-size:11px}
+.review-segment{display:flex;border-radius:4px;overflow:hidden;background:#eaeaec;font-size:9px}
+.review-segment>*{padding:4px 10px;font-weight:500}
+.review-segment b{background:#3279ed;color:#fff;box-shadow:inset 0 0 0 1px #1d65da;border-radius:4px}
+.review-header-actions{display:flex;align-items:center;gap:5px}
+.review-icon-button,.review-end{height:17px;min-width:25px;padding:2px 7px;border-radius:4px;background:#ededee;font-size:8px!important;color:#777!important}
+.review-icon-button svg{width:11px;height:11px}
+.review-header-actions>i{width:1px;height:15px;background:#ddd;margin:0 3px}
+.review-target{display:flex;overflow:hidden;border-radius:4px;font-size:9px;background:#eaeaec}
+.review-target>*{padding:4px 8px;font-weight:450}
+.review-target b{background:#3279ed;color:white;border-radius:4px}
+.review-overview{padding:17px 28px;overflow:hidden}
+.review-hero{border:1px solid #c4d7f8;border-radius:12px;background:linear-gradient(110deg,#f1f5ff,#fff);padding:16px}
+.review-hero-top{display:flex;align-items:center;gap:10px}
+.review-hero-icon{width:36px;height:36px;display:grid;place-items:center;background:#dae6ff;border-radius:10px;color:#3279ed}
+.review-hero strong{font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px}
+.review-hero strong i{border-radius:7px;background:#347bed;color:#fff;font-size:8px;font-weight:500;font-style:normal;padding:2px 6px}
+.review-hero small{display:block;color:#909097;font-size:8px;margin-top:6px}
+.review-brand-pill{margin-left:auto;display:flex;align-items:center;gap:3px;background:#eaf0fc;color:#5b84c9;padding:3px 6px;border-radius:10px;font-size:7px}
+.review-brand-pill .review-logo{width:10px;height:10px;opacity:.65}
+.review-hero-divider{height:1px;background:#e7ebf3;margin:14px 0}
+.review-hero-buttons{display:flex;align-items:center;gap:7px}
+.review-start,.review-secondary{border-radius:12px;padding:5px 12px;font-size:9px!important;gap:4px}
+.review-start{background:#3279ed;color:white!important}
+.review-secondary{background:#e5e6eb;color:#45454a!important}
+.review-metrics{display:flex;gap:10px;margin-top:13px}
+.review-metrics>div{border:1px solid #ececef;border-radius:10px;flex:1;display:flex;align-items:center;gap:9px;padding:10px;min-width:0}
+.review-metric-icon{width:26px;height:26px;border-radius:8px;background:#e8f0ff;color:#3279ed;display:grid;place-items:center;flex-shrink:0}
+.review-metric-icon.purple{background:#f5e9fa;color:#b842cc}
+.review-metrics p{margin:0;flex:1}
+.review-metrics strong{display:block;font-size:12px}
+.review-metrics small{display:block;font-size:7px;color:#96969a;margin-top:3px}
+.review-metrics .review-template-name{font-size:9px;font-weight:500}
+.review-metrics>div>svg{color:#c6c6cc}
+.review-queue-title{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:600;margin:18px 0 8px}
+.review-queue-title>span{margin-left:auto;background:#f0f0f2;border-radius:10px;padding:2px 5px;color:#888;font-size:7px;font-weight:400}
+.review-queue-card{border:1px solid #abc9fa;border-radius:10px;padding:11px;font-size:9px}
+.review-queue-card>b{font-size:10px;font-weight:600}
+.review-queue-card>span{float:right;border-radius:9px;background:#e5efff;color:#5b8ada;font-size:7px;padding:3px 7px}
+.review-queue-card p{font-size:8px;color:#999;line-height:1.5;margin:10px 0 7px}
+.review-queue-card>small{display:flex;align-items:center;gap:5px;font-size:7px;color:#aaa}
+.review-queue-card>small svg:nth-of-type(2){margin-left:6px}
+.review-practice-header{padding:9px 17px 8px;border-bottom:1px solid #eeeef1;flex-shrink:0}
+.review-practice-header>div:first-child{display:flex;justify-content:space-between;align-items:center}
+.review-practice-header b{font-size:9px;font-weight:500;display:flex;align-items:center;gap:6px}
+.review-practice-header span{display:flex;align-items:center;gap:4px;color:#949499;font-size:7px}
+.review-practice-header span>svg{color:#4184eb;margin-left:6px;width:9px;height:9px}
+.review-status-dot{width:6px;height:6px;display:inline-block;border-radius:50%;background:#64bf70;box-shadow:inset 0 0 0 1px #54ad61}
+.review-progress{height:3px;background:#f1f1f4;margin-top:8px;border-radius:4px}
+.review-progress i{display:block;height:100%;background:#3279ed;border-radius:4px}
+.review-card-area{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 25px 12px}
+.review-card-meta{display:flex;align-items:center;gap:9px;height:18px;flex-shrink:0;font-size:7px}
+.review-card-meta>div{flex:1}
+.review-template{display:flex;align-items:center;gap:5px;background:#edf2ff;color:#537bc4;border-radius:10px;padding:4px 7px;font-weight:500}
+.review-side{font-size:7px;color:#96969b}
+.review-card-meta .review-icon-button{font-size:7px!important;height:15px;padding:2px 6px}
+.review-card-meta .review-icon-button svg{width:9px;height:9px}
+.review-web-card{flex:1;min-height:0;border:1px solid #ededf0;border-radius:14px;background:#fff;box-shadow:0 5px 20px #1c233407;margin-top:9px;padding:24px 43px;overflow:hidden}
+.review-expression{font-family:Georgia,"Times New Roman",serif;font-size:29px;line-height:1.2;letter-spacing:-.3px;color:#111}
+.review-answer-divider{height:1px;background:#ededf0;margin:20px 0}
+.review-answer{font-size:15px;font-weight:600;margin-bottom:17px}
+.review-context{border-radius:9px;background:#f3f4f6;font-size:10px;line-height:1.5;padding:14px 15px;color:#27272b}
+.review-context small{display:block;font-size:9px;color:#818187;margin-top:9px}
+.review-controls{border-top:1px solid #eeeef1;padding:9px 28px 7px;flex-shrink:0;background:#fff}
+.review-reveal{width:100%;height:30px;background:#3279ed;color:#fff!important;border-radius:4px;font-size:9px!important;gap:6px!important;box-shadow:inset 0 0 0 1px #2b6ee4}
+.review-hint{text-align:center;color:#a0a0a5;font-size:7px;margin-top:6px;white-space:nowrap}
+.review-ratings{display:flex;gap:7px}
+.review-rating{position:relative;flex:1;height:37px;border-radius:5px;color:#b73334!important;background:#fff5f5;padding:17px 3px 4px}
+.review-rating b{font-size:8px;font-weight:500;display:flex;align-items:center;gap:4px}
+.review-interval{position:absolute;left:11px;top:5px;border-radius:7px;background:#f9dddd;font-size:6px;padding:1px 4px}
+.review-rating-number{position:absolute;right:10px;top:5px;border-radius:2px;background:#fff;color:inherit;opacity:.55;font-size:6px;padding:0 3px}
+.review-rating.orange{color:#d18139!important;background:#fff9f2}
+.review-rating.orange .review-interval{background:#fcebd7}
+.review-rating.green{color:#51a758!important;background:#f4fbf5}
+.review-rating.green .review-interval{background:#e2f4e2}
+.review-rating.blue{color:#4d82da!important;background:#f3f7ff}
+.review-rating.blue .review-interval{background:#dfebff}
+.review-finished{display:flex;align-items:center;justify-content:center;flex:1;padding:25px}
+.review-finished-panel{border:1px solid #eeeef0;border-radius:14px;padding:28px 36px;display:flex;align-items:center;flex-direction:column;box-shadow:0 5px 20px #1c233405}
+.review-finished-icon{height:43px;width:43px;border-radius:50%;background:#e8f5eb;color:#5ca96c;display:grid;place-items:center;margin-bottom:13px}
+.review-finished-panel>strong{font-size:16px;font-weight:600}
+.review-finished-panel>small{font-size:9px;color:#9a9aa0;margin-top:9px}
+.review-finished-stats{display:flex;gap:45px;margin:22px 0;font-size:8px;color:#999;text-align:center}
+.review-finished-stats b{display:block;color:#444;font-size:17px;margin-top:6px;font-weight:500}
+.review-finished-actions{display:flex;gap:8px}
+.review-finished-actions button{padding:5px 12px;border-radius:12px;background:#ededf0;font-size:8px}
+.review-finished-actions button:first-child{background:#3279ed;color:#fff}
+.review-pointer{position:absolute;z-index:3;pointer-events:none;filter:drop-shadow(0 2px 2px #0003)}
+.review-click{position:absolute;left:2px;top:2px;width:27px;height:27px;border:1px solid #3279ed;border-radius:50%;background:#3279ed15}
+
