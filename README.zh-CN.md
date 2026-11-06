@@ -27,7 +27,7 @@
 
 [![拾语产品演示：行内补全、翻译、表达学习与复习](.github/assets/readme/lingrove-demo-poster.jpg)](.github/assets/readme/lingrove-demo.mp4?raw=true)
 
-[**点击观看完整演示**](.github/assets/readme/lingrove-demo.mp4?raw=true) · 67 秒 · 1080p · 含音乐与音效。使用虚构内容制作的产品功能动画演示。
+[**点击观看完整演示**](.github/assets/readme/lingrove-demo.mp4?raw=true) · 67 秒 · 1080p · 含音乐与音效。使用虚构内容制作的产品功能动画演示。[English edition](.github/assets/readme/lingrove-demo-en.mp4?raw=true)。
 
 ### 功能实录
 

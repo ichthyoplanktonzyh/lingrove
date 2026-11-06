@@ -1,4 +1,5 @@
 import {Easing, interpolate} from 'remotion';
+import {DemoLocale, filmCopy} from '../demo-copy';
 import type {ExpressionFrame} from '../components/ExpressionDemo';
 import type {GhostFrame} from '../components/GhostDemo';
 
@@ -36,32 +37,14 @@ export function translationAt(t:number) {
 /** Feature kicker: captions tell the story, while the editorial header folio tells a first-time
  * viewer which Lingrove capability is on screen. All seven capabilities appear in story order. */
 export type Feature={index:string;name:string;hint:string;start:number;end:number};
-export const FEATURES:Feature[]=[
-  {index:'01',name:'行内自动补全',hint:'按 Tab 逐词接受',start:6.8,end:12},
-  {index:'02',name:'表达求助',hint:'输入 ?? 描述想说的话',start:12.6,end:18},
-  {index:'03',name:'写作翻译',hint:'先写母语，确认后替换',start:18.6,end:24.4},
-  {index:'04',name:'阅读翻译',hint:'鼠标指向目标，按快捷键即查',start:30.4,end:37.2},
-  {index:'05',name:'收藏表达',hint:'连同这次的语境一起保存',start:37.6,end:43.2},
-  {index:'06',name:'个人语料库',hint:'随时找回，一键加入复习',start:43.6,end:49.2},
-  {index:'07',name:'间隔复习',hint:'在语境中回想',start:49.6,end:56.4},
-];
-export function featureAt(t:number){return FEATURES.find(f=>t>=f.start&&t<f.end)??null;}
+const FEATURE_TIMINGS = [[6.8,12],[12.6,18],[18.6,24.4],[30.4,37.2],[37.6,43.2],[43.6,49.2],[49.6,56.4]];
+export function featuresFor(locale:DemoLocale):Feature[] {
+  return FEATURE_TIMINGS.map(([start,end],i)=>({index:String(i+1).padStart(2,'0'),name:filmCopy(locale).features[i][0],hint:filmCopy(locale).features[i][1],start,end}));
+}
+export const FEATURES=featuresFor('zh-CN');
+export function featureAt(t:number,locale:DemoLocale='zh-CN'){return featuresFor(locale).find(f=>t>=f.start&&t<f.end)??null;}
 
-export function captionAt(t:number) {
-  if(t<6)return '看到一场很想参加的读书会。';
-  if(t<12)return '先写下第一句。';
-  if(t<15.7)return '“想鼓起勇气试试看”，该怎么说？';
-  if(t<18)return 'give it a try';
-  if(t<23.1)return '最后一句，先用熟悉的语言。';
-  if(t<25.2)return '看过译文，确认使用。';
-  if(t<27)return '好了，发出去。';
-  if(t<30)return '“当然，欢迎你来！”';
-  if(t<33.2)return '读读他们的活动手记，鼠标指向不熟的表达。';
-  if(t<37.2)return '按下快捷键，直接弹出此处的释义。';
-  if(t<42.0)return '刚学会的表达，想留下来。';
-  if(t<43.2)return '连同这一次的语境。';
-  if(t<49.2)return '下次想用时，还能找到它。';
-  if(t<52.6)return '再给自己一次回想的机会。';
-  if(t<56.4)return '记住的，还有当时想说的话。';
-  return '读书会之后，这句话自己写了出来。';
+export function captionAt(t:number,locale:DemoLocale='zh-CN') {
+  const ends=[6,12,15.7,18,23.1,25.2,27,30,33.2,37.2,42,43.2,49.2,52.6,56.4,Infinity];
+  return filmCopy(locale).captions[ends.findIndex(end=>t<end)];
 }

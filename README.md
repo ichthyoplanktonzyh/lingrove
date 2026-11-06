@@ -25,9 +25,9 @@ Get ghost-text continuations beside your cursor, translate sentences in place, f
 
 ### Product demo
 
-[![Lingrove product demo — autocomplete, translation, expression learning, and review](.github/assets/readme/lingrove-demo-poster.jpg)](.github/assets/readme/lingrove-demo.mp4?raw=true)
+[![Lingrove product demo — autocomplete, translation, expression learning, and review](.github/assets/readme/lingrove-demo-en-poster.jpg)](.github/assets/readme/lingrove-demo-en.mp4?raw=true)
 
-[**Watch the demo**](.github/assets/readme/lingrove-demo.mp4?raw=true) · 67 seconds · 1080p · Music and sound effects. Animated product walkthrough with fictional content.
+[**Watch the demo**](.github/assets/readme/lingrove-demo-en.mp4?raw=true) · 67 seconds · 1080p · Music and sound effects. Animated product walkthrough with fictional content. English interface and captions; the story follows a Chinese speaker learning English. [中文版](.github/assets/readme/lingrove-demo.mp4?raw=true).
 
 ### Feature recordings
 

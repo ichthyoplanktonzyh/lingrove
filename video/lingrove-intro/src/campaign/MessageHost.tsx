@@ -65,7 +65,6 @@ export function MessageHost({t, later=false, backdrop=true}:{t:number;later?:boo
         </div>}
       </div>}
       {!sent&&<div className="hello-toolbar">
-        <div className="hello-toolbar-hint"><i/><span>Lingrove 拾语 · 写作辅助中</span></div>
         <button className={t>=25&&t<25.2||(later&&t>=54.5&&t<54.7)?'pressed':''}><span>{later&&t>=54.7?'Sent':'Send note'}</span><b>{later&&t>=54.7?'✓':'↗'}</b></button>
       </div>}
     </div>

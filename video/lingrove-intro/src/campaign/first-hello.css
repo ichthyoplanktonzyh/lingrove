@@ -299,15 +299,8 @@
 .hello-toolbar {
   height: 52px; margin: 0 32px;
   border-top: 1px solid #ebe5d8;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.hello-toolbar-hint {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--sans); font-size: 12px; color: #8c8475;
-}
-.hello-toolbar-hint i {
-  width: 7px; height: 7px; border-radius: 50%; background: #527a61;
-  box-shadow: 0 0 0 3px rgba(82,122,97,.16);
+  /* The send action keeps its original right edge after removing the filmed status badge. */
+  display: flex; justify-content: flex-end; align-items: center;
 }
 .hello-toolbar button {
   border: 0; border-radius: 999px; height: 34px; padding: 0 16px;
@@ -531,7 +524,37 @@
 .hello-recall .review-context small { font-size: 11px; margin-top: 7px; }
 .hello-film .review-source { font-size: 0; }
 .hello-film .review-source i { display: none; }
-.hello-film .review-source::after { content: '来自 · Paper & Pine Bookshop 留言'; font-size: 11px; color: #7a7367; }
+.hello-film .review-source::after { content: var(--review-source, '来自 · Paper & Pine Bookshop 留言'); font-size: 11px; color: #7a7367; }
+
+/* English is an editorial language, while the learner still writes Chinese and learns English.
+   Scope typography to this variant so longer Latin labels never resize the approved Chinese cut. */
+.hello-language-en .hello-invite-title,
+.hello-language-en .hello-later-title,
+.hello-language-en .hello-end-copy {
+  font-family: var(--serif-en); letter-spacing: -.8px;
+}
+.hello-language-en .hello-invite-title { font-size: 54px; line-height: 1.18; }
+.hello-language-en .hello-later-title { font-size: 62px; }
+.hello-language-en .hello-end-copy { font-size: 56px; line-height: 1.3; }
+.hello-language-en .hello-caption {
+  font-family: var(--serif-en); font-size: 23px; letter-spacing: .2px;
+}
+.hello-language-en .hello-kicker span {
+  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+}
+.hello-language-en .hello-kicker small { font-size: 11.5px; }
+.hello-language-en .hello-phrase-gloss { font-family: var(--serif-en); letter-spacing: 0; }
+.hello-language-en .hello-phrase-gloss span { display: block; margin-top: 7px; }
+.hello-language-en .hello-end-lockup p {
+  font-family: var(--serif-en); font-size: 17px; letter-spacing: 0;
+}
+.hello-language-en .hello-end-recap { padding-left: 28px; }
+.hello-language-en .hello-end-recap li { gap: 10px; padding: 12px 0; }
+.hello-language-en .hello-end-recap span {
+  font-family: var(--sans); font-size: 16px; letter-spacing: 0; white-space: nowrap;
+}
+.hello-language-en .hello-end-recap small { font-size: 10px; text-align: right; }
+.hello-language-en .hello-end-local { font-size: 12px; }
 
 /* ── Scene 6: Ticket & Later ── */
 .hello-after-ticket {

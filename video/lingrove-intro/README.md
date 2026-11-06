@@ -214,3 +214,58 @@ Independent review was requested with the final MP4, reference cards/source, sam
 review criteria, but returned no report within the bounded review window and was stopped.
 It is **unverified**, not a pass. The checks above are the producing agent's actual technical
 and visual checks. This cut remains an editorial review candidate.
+
+## English international edition
+
+The approved Chinese film, corrected replacement-button pointer, and README demo assets are
+checkpointed at `048cf9db`. The current 67.2-second cut also has an English international
+edition, `Lingrove-FirstHello-English`. Both compositions render the same `FirstHello` component;
+`locale` selects the display language independently of the fictional learner's language pair.
+
+The English edition keeps a Chinese speaker learning English. Chinese expression queries,
+translation source text, encountered translations, and saved review answers remain Chinese.
+English captions explain their meaning, while the editorial titles, feature labels, controls,
+corpus navigation, and review UI use English. The original soundtrack, action timing, and
+camera poses are shared. Both current editions omit the message composer's lower-left writing
+assistance badge, including in the later follow-up; the send button retains its position.
+
+`src/demo-copy.tsx` owns the two editorial copy packs, typed UI translations, and a render-scoped
+locale context. The composition owns the provider; the shared dictionary, expression, reading,
+and review components consume it without reading application settings. Without a provider they
+retain their Chinese defaults, keeping earlier compositions usable. `campaign/timeline.ts`
+continues to own all story timing and learner text states. English-only typography is scoped
+under `.hello-language-en` in `campaign/first-hello.css`, so text fitting does not resize the
+Chinese edition.
+
+```sh
+npm run studio
+npm run check
+npm run render:first-hello       # Chinese
+npm run render:first-hello:en    # English international
+```
+
+For the same composition with explicit parameters:
+
+```sh
+npx remotion render src/film-entry.ts Lingrove-FirstHello out/lingrove-first-hello-en.mp4 --props='{"locale":"en","bgm":true}' --scale=1.5 --image-format=png --codec=h264 --crf=14
+```
+
+No real app, account, or user corpus is used. The root English README links to the current
+English export at `.github/assets/readme/lingrove-demo-en.mp4`; the Chinese README links to
+the current Chinese export at `.github/assets/readme/lingrove-demo.mp4`. Each has a matching
+end-card poster and a link to the other language. Both published demo files omit the writing
+assistance badge.
+
+Validation for these review exports (2026-11-06):
+
+- `npm run check` passes across all existing entry points. English Studio loads without an
+  error, and the replacement pointer tip is inside its button at frame 681.
+- Seventeen English stills cover the opening, autocomplete, query/candidate, replacement,
+  reading, saving, enrollment, review, later writing, and end card. The longer English labels
+  fit the inspected layouts.
+- Before removing the badge, six Chinese PNG frames (45, 490, 681, 1434, 1605, 1980) are
+  byte-identical to fresh renders of checkpoint `048cf9db`. After removal, frames 490 and
+  681 differ only within the former badge's pixel bounds; frames 1434 and 1980 remain identical.
+- `out/lingrove-first-hello-en-clean-1080p.mp4` and
+  `out/lingrove-first-hello-zh-clean-1080p.mp4` both decode completely without errors:
+  2,016 H.264 frames, 1920×1080, 30 fps, 67.2 seconds, stereo AAC at 48 kHz.

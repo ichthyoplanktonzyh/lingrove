@@ -1,4 +1,5 @@
 import React from 'react';
+import {useDemoText} from '../demo-copy';
 import './translation.css';
 
 const source = '我很期待和大家分享我的想法。';
@@ -12,6 +13,7 @@ const clamp = (value: number) => Math.max(0, Math.min(1, value));
  * The caller owns time in seconds, so rendering any frame does not depend on timers or prior frames.
  */
 export default function TranslationDemo({t}: {t: number}) {
+  const text=useDemoText();
   const typed = Math.floor(clamp((t - 0.45) / 2.65) * source.length);
   const replaced = t >= 8.5;
   const pointer = clamp((t - 6.6) / 1.25);
@@ -21,11 +23,11 @@ export default function TranslationDemo({t}: {t: number}) {
     <div className="translation-window">
       <div className="translation-window-bar">
         <div className="translation-traffic"><i/><i/><i/></div>
-        <span>给书店发消息</span>
+        <span>{text('给书店发消息')}</span>
         <div className="translation-window-spacer"/>
       </div>
       <div className="translation-editor">
-        <div className="translation-address"><span>收件人：</span><b>Paper &amp; Pine Bookshop</b></div>
+        <div className="translation-address"><span>{text('收件人：')}</span><b>Paper &amp; Pine Bookshop</b></div>
         <div className="translation-body">
           <div className="translation-greeting">Hi! I saw your book club event and I’d love to join.<br/><br/>I’m a little nervous, but I’d like to give it a try.</div>
           <div className="translation-writing">{replaced ? translation : source.slice(0, typed)}<span className="translation-caret" style={{opacity: Math.floor(t * 2) % 2 === 0 ? 1 : 0}} /></div>
