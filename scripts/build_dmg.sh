@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Build or package the local, ad-hoc-signed Lingrove test installer.
+# Build or package the local, ad-hoc-signed Lingrove installer.
 # Use --app-path to package a Release app that has already been built.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-exec python3 "$REPO_ROOT/scripts/package_test_dmg.py" "$@"
+exec python3 "$REPO_ROOT/scripts/package_dmg.py" "$@"

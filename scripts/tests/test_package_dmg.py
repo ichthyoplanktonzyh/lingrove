@@ -1,4 +1,4 @@
-"""Exercise the local test-package contract without invoking macOS build tools."""
+"""Exercise the local distribution contract without invoking macOS build tools."""
 
 import contextlib
 import fcntl
@@ -17,11 +17,11 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-import package_test_dmg as packaging
+import package_dmg as packaging
 import sign_local_app as local_sign
 
 
-class TestDMGPackageTests(unittest.TestCase):
+class DMGPackageTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
@@ -89,7 +89,7 @@ class TestDMGPackageTests(unittest.TestCase):
             if command[:2] == ["git", "rev-parse"]:
                 return "a" * 40
             if command[:3] == ["git", "status", "--porcelain"]:
-                return "" if "--" in command else " M scripts/package_test_dmg.py"
+                return "" if "--" in command else " M scripts/package_dmg.py"
             raise AssertionError(f"Unexpected captured command: {command}")
 
         return run, output
@@ -100,7 +100,7 @@ class TestDMGPackageTests(unittest.TestCase):
                 packaging.parse_args(["--help"])
         self.assertEqual(caught.exception.code, 0)
 
-    def test_packages_complete_signed_test_candidate_with_metadata_and_checksum(self):
+    def test_packages_complete_signed_candidate_with_metadata_and_checksum(self):
         commands = []
         run, output = self.package_mocks(commands)
         with (
@@ -114,7 +114,7 @@ class TestDMGPackageTests(unittest.TestCase):
                 expected_architectures=("arm64", "x86_64"),
             )
 
-        self.assertEqual(dmg.name, "Lingrove-0.7.2-test-universal.dmg")
+        self.assertEqual(dmg.name, "Lingrove-1.0.0-universal.dmg")
         self.assertTrue(dmg.is_file())
         self.assertEqual(
             checksum_file.read_text(encoding="utf-8"),
@@ -122,8 +122,8 @@ class TestDMGPackageTests(unittest.TestCase):
         )
         metadata = json.loads(info_file.read_text(encoding="utf-8"))
         self.assertEqual(metadata["bundleIdentifier"], packaging.EXPECTED_BUNDLE_ID)
-        self.assertEqual(metadata["version"], "0.7.2")
-        self.assertEqual(metadata["build"], "4")
+        self.assertEqual(metadata["version"], "1.0.0")
+        self.assertEqual(metadata["build"], "5")
         self.assertEqual(metadata["architectures"], ["arm64", "x86_64"])
         self.assertEqual(metadata["minimumMacOS"], "14.0")
         self.assertEqual(metadata["codeIdentity"], "ad-hoc")
@@ -229,7 +229,7 @@ class TestDMGPackageTests(unittest.TestCase):
                 packaging.validate_app(self.app, ("arm64", "x86_64"))
 
     def test_never_overwrites_any_existing_package_output(self):
-        existing = self.output / "Lingrove-0.7.2-test-universal.dmg"
+        existing = self.output / "Lingrove-1.0.0-universal.dmg"
         existing.write_bytes(b"previous package")
         run, output = self.package_mocks([])
         with (
@@ -280,9 +280,9 @@ class TestDMGPackageTests(unittest.TestCase):
         workspace.mkdir()
         commands = []
         derived_data = (build_dir / "DerivedData").resolve()
-        lock_path = build_dir / ".DerivedData.test-dmg.lock"
+        lock_path = build_dir / ".DerivedData.dmg.lock"
         package_outputs = (
-            self.output / "Lingrove-0.7.2-test-universal.dmg",
+            self.output / "Lingrove-1.0.0-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )
@@ -383,14 +383,14 @@ class TestDMGPackageTests(unittest.TestCase):
         sentinel = derived_data / "another-build-product"
         sentinel.write_text("preserve")
         package_outputs = (
-            self.output / "Lingrove-0.7.2-test-universal.dmg",
+            self.output / "Lingrove-1.0.0-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )
 
         with (
             mock.patch.object(
-                packaging, "__file__", str(fake_repo / "scripts/package_test_dmg.py")
+                packaging, "__file__", str(fake_repo / "scripts/package_dmg.py")
             ),
             mock.patch.object(packaging, "package_app", return_value=package_outputs) as package,
         ):
@@ -409,12 +409,12 @@ class TestDMGPackageTests(unittest.TestCase):
         derived_data.mkdir(parents=True)
         sentinel = derived_data / "another-build-product"
         sentinel.write_text("preserve")
-        lock_path = build_dir / ".DerivedData.test-dmg.lock"
+        lock_path = build_dir / ".DerivedData.dmg.lock"
         code = "\n".join(
             [
                 "from pathlib import Path",
                 "import sys, time",
-                "from package_test_dmg import exclusive_build_lock",
+                "from package_dmg import exclusive_build_lock",
                 "with exclusive_build_lock(Path(sys.argv[1])):",
                 "    print('acquired', flush=True)",
                 "    time.sleep(0.35)",

@@ -1,13 +1,12 @@
-Lingrove（拾语）v0.7.2（build 4）测试预发布版
+Lingrove（拾语）v1.0.0（build 5）
 安装与快速体验
 本说明在 DMG 根目录中的文件名为 INSTALL.txt。
 
 适用范围
 
-此说明适用于 Lingrove 的本地验收包和公开测试包，供自愿参与测试的用户使用。
-它不是正式稳定版，也没有自动更新。包内应用使用 ad-hoc（临时）签名，尚未使用 Apple
-Developer ID 签名或公证。构建来源和架构以安装包旁的 build-info.json 为准；本地验收包
-尚未公开发布。公开测试包请从下面的官方 Releases 页面下载 DMG，无需使用终端。
+此说明适用于 Lingrove v1.0.0 正式发布版。当前采用手动更新，包内应用使用 ad-hoc
+（临时）签名，尚未使用 Apple Developer ID 签名或公证。构建来源和架构以安装包旁的
+build-info.json 为准。请从下面的官方 Releases 页面下载 DMG，无需使用终端。
 本说明已附在 DMG 内：
 https://github.com/ichthyoplanktonzyh/lingrove/releases
 
@@ -27,18 +26,18 @@ LearningExpressions-NOTICE.md，以及 ThirdPartyLicenses/ 第三方许可资料
 
 一、安装并启动
 
-1. 从上面的官方预发布页面下载 Lingrove-0.7.2-test-universal.dmg。
+1. 从上面的官方发布页面下载 Lingrove-1.0.0-universal.dmg。
 2. 双击打开 DMG，将 Lingrove.app 拖到 Applications（应用程序）快捷方式。
 3. 安装完成后，在 Finder 侧边栏中推出 Lingrove 磁盘映像。
 4. 从“应用程序”文件夹启动 Lingrove。不要直接从已挂载的 DMG 运行它。
 
-因为这是尚未公证的测试版，macOS 可能提示无法验证开发者。如果你确认安装包来自上述
-官方预发布页面，可以先尝试打开一次，再到“系统设置”→“隐私与安全性”
+因为这是尚未公证的应用，macOS 可能提示无法验证开发者。如果你确认安装包来自上述
+官方发布页面，可以先尝试打开一次，再到“系统设置”→“隐私与安全性”
 页面靠下的“安全性”区域选择“仍要打开”（Open Anyway），然后按系统提示确认。也可先查看
 Apple 的 Gatekeeper 说明：https://support.apple.com/en-us/102445
 
 如果 macOS 提示应用“将损坏你的电脑”，或提示签名损坏、文件已损坏，请停止操作并联系
-测试团队。不要绕过这类提示，不要移除隔离标记，不要关闭 Gatekeeper。
+维护者。不要绕过这类提示，不要移除隔离标记，不要关闭 Gatekeeper。
 
 二、首次授权
 
@@ -50,10 +49,10 @@ Apple 的 Gatekeeper 说明：https://support.apple.com/en-us/102445
 “屏幕录制”权限用于截图视觉上下文、主动框选区域 OCR，以及鼠标取词的 OCR 回退。
 区域 OCR 和鼠标取词仅在主动触发时读取相应屏幕范围。不使用这些能力时无需授予此权限。
 
-Lingrove 与 Lingrove Dev 是两个独立应用，使用不同的设置和模型存储位置；测试版不会自动
-导入 Dev 版的数据。测试本安装包时，请先退出 Lingrove Dev，并确保同时只运行一个 Lingrove
-实例，以免重复注册全局键盘监听；无需卸载 Dev 版。由于测试包使用临时签名，重新安装或
-替换后 macOS 可能要求再次授予权限。未来的正式版需要先完成 Apple Developer ID 签名与
+Lingrove 与 Lingrove Dev 是两个独立应用，使用不同的设置和模型存储位置；本应用不会自动
+导入 Dev 版的数据。使用本安装包时，请先退出 Lingrove Dev，并确保同时只运行一个 Lingrove
+实例，以免重复注册全局键盘监听；无需卸载 Dev 版。由于本包使用临时签名，重新安装或
+替换后 macOS 可能要求再次授予权限。未来的公证分发需要先完成 Apple Developer ID 签名与
 公证设置；签名切换后也请检查权限状态。
 
 三、体验自动补全
@@ -117,11 +116,19 @@ Lingrove 与 Lingrove Dev 是两个独立应用，使用不同的设置和模型
 不包含该权重。索引和检索在本机进行，不发送词库到远程服务。未安装时仍可使用关键词查找。
 语义结果可能遗漏相关表达，或混淆意思接近、方向相反的表达，请结合义项和原句判断。
 
-六、替换测试版本与反馈
+语料库窗口还提供“复习”和“进度”。保存表达与加入复习是独立操作：在义项中明确加入
+Lingrove 内置复习后，才会产生相应卡片；可编辑笔记、笔记类型和卡片模板。Anki 是可选
+的另一复习目标，需自行配置 AnkiConnect；其进度不与内置复习混合统计。
 
-新测试版不会自动安装。更新时先退出 Lingrove，再将新 DMG 中的 Lingrove.app 拖入“应用
+“进度”展示当前工作区的内置复习记录和计划。本地语料库、复习和进度无需账户即可使用。
+本安装包未预置账户服务地址；账户登录与同步需在设置中明确配置可用的服务。登录不等于
+启用同步，只有明确授权并开启同步后，所选语料及相关媒体和复习数据才会发送至该服务。
+
+六、更新版本与反馈
+
+新本应用不会自动安装。更新时先退出 Lingrove，再将新 DMG 中的 Lingrove.app 拖入“应用
 程序”并选择替换；随后推出 DMG，再从“应用程序”启动新版本。重要数据请自行备份。
-输入历史记录是可选的加密功能，默认关闭；测试版不会自动导入 Lingrove Dev 的历史记录。
+输入历史记录是可选的加密功能，默认关闭；本应用不会自动导入 Lingrove Dev 的历史记录。
 
 请在 GitHub Issues 提交反馈：https://github.com/ichthyoplanktonzyh/lingrove/issues
 请附上应用版本和 build、macOS 版本、Mac 芯片型号，以及能够重复问题的步骤。不要附上
@@ -137,6 +144,6 @@ Lingrove 与 Lingrove Dev 是两个独立应用，使用不同的设置和模型
     shasum -a 256 -c SHA256SUMS.txt
 
 显示 OK 表示 DMG 与发布方记录的文件一致；校验失败时请从官方页面重新下载，或联系
-测试团队。此检查仅验证文件一致性，不代表软件安全，也不能替代 Apple 签名或公证。
+维护者。此检查仅验证文件一致性，不代表软件安全，也不能替代 Apple 签名或公证。
 
 Apple Developer ID 分发说明：https://developer.apple.com/developer-id/

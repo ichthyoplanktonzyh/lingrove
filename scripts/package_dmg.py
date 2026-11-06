@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a local Lingrove test DMG, or package an existing Release app.
+"""Build a local Lingrove DMG, or package an existing Release app.
 
 The shell entry point stays small; this module owns the installer contents and
 publication rules. It only stages the finished app and explicit legal/install
@@ -27,11 +27,11 @@ from typing import Iterator, Sequence
 
 PRODUCT_NAME = "Lingrove"
 EXPECTED_BUNDLE_ID = "io.ichthyoplanktonzyh.lingrove"
-EXPECTED_VERSION = "0.7.2"
-EXPECTED_BUILD = "4"
+EXPECTED_VERSION = "1.0.0"
+EXPECTED_BUILD = "5"
 REQUIRED_ARCHITECTURES = ("arm64", "x86_64")
 SIGNING_HELPER = Path(__file__).with_name("sign_local_app.py")
-INSTALL_GUIDE = Path(__file__).resolve().parents[1] / "assets" / "testing" / "INSTALL.zh-CN.txt"
+INSTALL_GUIDE = Path(__file__).resolve().parents[1] / "assets" / "release" / "INSTALL.zh-CN.txt"
 REQUIRED_LEGAL_FILES = (
     Path("LICENSE"),
     Path("THIRD_PARTY_LICENSES.md"),
@@ -43,6 +43,8 @@ REQUIRED_LEGAL_FILES = (
 )
 APP_BUILD_INPUT_PATHS = (
     "Lingrove/",
+    "LingroveCLI/",
+    "Packages/",
     "Lingrove.xcodeproj/",
     "LingroveInfo.plist",
     "Config/Package.resolved",
@@ -52,6 +54,13 @@ APP_BUILD_INPUT_PATHS = (
     "scripts/create-inference-workspace.py",
     "scripts/prepare_lingrove_workspace.sh",
     "native/tts/",
+    "native/ocr/",
+    "native/dictionary/",
+    "scripts/prepare_ocr_helper.sh",
+    "scripts/embed_ocr_helper.sh",
+    "scripts/prepare_dictionary_helper.sh",
+    "scripts/embed_dictionary_helper.sh",
+    "scripts/embed_cli.sh",
     "scripts/prepare_tts_runtime.sh",
     "scripts/embed_tts_runtime.sh",
 )
@@ -125,7 +134,7 @@ def exclusive_build_lock(lock_path: Path) -> Iterator[None]:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build the Lingrove test DMG. Without --app-path, prepares the pinned workspace "
+            "Build the Lingrove DMG. Without --app-path, prepares the pinned workspace "
             "and builds Release into build/DerivedData."
         )
     )
@@ -237,7 +246,7 @@ def build_and_package_release(
             f"Output directory cannot be inside DerivedData, which this build cleans: {derived_data}"
         )
 
-    lock_path = repo_root / "build/.DerivedData.test-dmg.lock"
+    lock_path = repo_root / "build/.DerivedData.dmg.lock"
     with exclusive_build_lock(lock_path):
         try:
             app_path = build_release_app(repo_root, expected_architectures)
@@ -287,18 +296,18 @@ def validate_app(app_path: Path, expected_architectures: tuple[str, ...]) -> dic
             raise PackageError(f"{key} must be {expected!r}; found {actual!r} in {app_path}")
 
     if info.get("LingroveUpdatesEnabled") is not False:
-        raise PackageError("Test package requires LingroveUpdatesEnabled=false in the app Info.plist")
+        raise PackageError("Local package requires LingroveUpdatesEnabled=false in the app Info.plist")
     for key in (
         "SUAllowsAutomaticUpdates",
         "SUAutomaticallyUpdate",
         "SUEnableAutomaticChecks",
     ):
         if info.get(key) is not False:
-            raise PackageError(f"Test package requires {key}=false in the app Info.plist")
+            raise PackageError(f"Local package requires {key}=false in the app Info.plist")
     for key in ("SUFeedURL", "SUPublicEDKey"):
         value = info.get(key)
         if value not in (None, ""):
-            raise PackageError(f"Test package must not contain configured {key}")
+            raise PackageError(f"Local package must not contain configured {key}")
 
     minimum_os = info.get("LSMinimumSystemVersion")
     if not isinstance(minimum_os, str) or not minimum_os:
@@ -391,7 +400,7 @@ def sha256(path: Path) -> str:
 
 def package_name(architectures: tuple[str, ...]) -> str:
     label = "universal" if architectures == REQUIRED_ARCHITECTURES else "-".join(architectures)
-    return f"Lingrove-{EXPECTED_VERSION}-test-{label}.dmg"
+    return f"Lingrove-{EXPECTED_VERSION}-{label}.dmg"
 
 
 def build_info(
@@ -438,7 +447,7 @@ def publish_candidate(candidate_files: dict[Path, Path]) -> None:
     except OSError as error:
         for path in reversed(published):
             path.unlink(missing_ok=True)
-        raise PackageError(f"Could not publish complete test package: {error}") from error
+        raise PackageError(f"Could not publish complete local package: {error}") from error
 
 
 def package_app(
@@ -468,7 +477,7 @@ def package_app(
         )
 
     source_commit, source_dirty, working_tree_dirty = source_snapshot(repo_root)
-    with tempfile.TemporaryDirectory(prefix=".lingrove-test-package-", dir=output_dir) as temporary:
+    with tempfile.TemporaryDirectory(prefix=".lingrove-distribution-", dir=output_dir) as temporary:
         candidate_root = Path(temporary)
         dmg_candidate = candidate_root / f".{dmg_name}.candidate.dmg"
         staged_root = candidate_root / "disk"

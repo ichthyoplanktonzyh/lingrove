@@ -4,9 +4,9 @@
 Xcode's compile output stays in repo-scoped DerivedData. A temporary metadata-free
 copy is the signing boundary because a file provider can restore FinderInfo while
 codesign is running. build_and_run.sh calls this helper before launching the app.
-The test-DMG packager also uses it for a staged ad-hoc app, with an explicit
+The DMG packager also uses it for a staged ad-hoc app, with an explicit
 ad-hoc-only option to omit hardened runtime. Developer certificate behavior
-stays unchanged, and the test-package path never grants XCTest entitlements.
+stays unchanged, and the distribution path never grants XCTest entitlements.
 """
 import argparse
 from pathlib import Path
@@ -39,7 +39,7 @@ def main():
     parser.add_argument(
         "--no-hardened-runtime",
         action="store_true",
-        help="Omit hardened runtime only for an ad-hoc test package.",
+        help="Omit hardened runtime only for an ad-hoc local package.",
     )
     args = parser.parse_args()
     if args.no_hardened_runtime and args.identity != "-":
