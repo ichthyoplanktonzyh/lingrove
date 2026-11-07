@@ -68,10 +68,10 @@ for bar in range(28):
 music=mix.copy()
 mix[:]=0
 # Frame-addressed foley: button / Tab / Return / replacement / send / hover-lookup / save / enroll / reveal / rate.
-for at in [5.1,8.4,9.1,9.8,10.5,15.3,17,22.6,25.2,32.05,42.0,48.2,50.3,52.6,55.0,61.9]:
+for at in [5.1,8.4,9.1,9.8,15.3,17,22.6,25.2,32.05,42.0,48.2,50.3,52.6,55.0,61.9]:
     click(at,.08)
 # Short keystroke beds stop at the end of each actual typing interval.
-for start,end in [(6.6,7.2),(12,13.15),(13.75,15.15),(18,19),(57.4,60.9)]:
+for start,end in [(6.6,7.2),(12,13.15),(13.75,15.15),(18,20.2),(57.4,60.9)]:
     for at in np.arange(start,end,.09):click(float(at),.025,pan=-.1)
 for at,duration in [(2.7,.8),(5.5,.5),(12,.3),(18,.5),(25.2,.4),(27,.35),(30.3,.55),(37.75,.7),(43.8,.6),(52.25,.7),(56.4,.55),(62.4,.6)]:
     sweep(at,duration,.025)

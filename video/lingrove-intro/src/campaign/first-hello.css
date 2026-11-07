@@ -526,7 +526,7 @@
 .hello-film .review-source i { display: none; }
 .hello-film .review-source::after { content: var(--review-source, '来自 · Paper & Pine Bookshop 留言'); font-size: 11px; color: #7a7367; }
 
-/* English is an editorial language, while the learner still writes Chinese and learns English.
+/* English is an editorial language, independent of the learner’s target language.
    Scope typography to this variant so longer Latin labels never resize the approved Chinese cut. */
 .hello-language-en .hello-invite-title,
 .hello-language-en .hello-later-title,
@@ -656,3 +656,52 @@
   position: absolute; inset: 0; pointer-events: none; z-index: 38;
   background: #efe8da;
 }
+
+/* Learner language is separate from subtitle locale: both cuts show committed Chinese
+   characters in the host and English semantic help. These rules leave legacy studies alone. */
+.hello-learning-chinese .hello-body,
+.hello-learning-chinese .hello-sent-bubble,
+.hello-learning-chinese .hello-reply p,
+.hello-learning-chinese .hello-prior-note p {
+  font-family: 'PingFang SC', -apple-system, sans-serif;
+}
+.hello-learning-chinese .hello-body { font-size: 20px; }
+.hello-learning-chinese .hello-line-three { font-family: var(--sans); font-size: 19px; }
+.hello-learning-chinese .expression-query { font-family: var(--sans); font-size: 17px; }
+/* The English idea needs its own line; no pinyin or IME candidate is implied. */
+.hello-learning-chinese .expression-input-wrapped {
+  display: block; width: 420px; max-width: 100%; margin-top: 6px;
+  padding: 5px 8px; line-height: 1.25;
+}
+.hello-learning-chinese .hello-translation-layer .translation-result {
+  font-family: 'PingFang SC', -apple-system, sans-serif; font-size: 20px;
+}
+.hello-learning-chinese .hello-chinese-term {
+  font-family: var(--serif-cn); font-size: 112px; line-height: 1.25;
+  letter-spacing: 8px; margin-top: 40px;
+}
+.hello-learning-chinese .hello-phrase-gloss { max-width: 440px; }
+.hello-learning-chinese .hello-phrase-gloss span { display: block; margin-top: 10px; }
+.hello-learning-chinese .reading-chinese .reading-content h1 {
+  font-family: var(--serif-cn); font-size: 32px; letter-spacing: 1px; line-height: 1.22;
+}
+.hello-learning-chinese .reading-chinese .reading-content p {
+  font-family: 'PingFang SC', sans-serif; font-size: 16px; line-height: 1.8;
+}
+.hello-learning-chinese .reading-chinese .reading-side-art strong {
+  font-family: var(--serif-cn); line-height: 1.4;
+}
+.hello-learning-chinese .reading-chinese .reading-nav>span { font-family: var(--serif-cn); }
+.hello-learning-chinese .bookshop-copy h1 { font-family: var(--serif-cn); letter-spacing: 2px; }
+.hello-learning-chinese .bookshop-copy h1 em { font-style: normal; }
+.hello-learning-chinese .bookshop-copy>p { font-family: var(--serif-cn); }
+.hello-learning-chinese .bookshop-brand { font-family: var(--serif-cn); }
+.hello-learning-chinese .bookshop-art-caption { font-family: var(--serif-cn); }
+.hello-learning-chinese .review-expression { font-family: 'PingFang SC', sans-serif; }
+.hello-learning-chinese .hello-end-copy { font-size: 57px; }
+.hello-language-en.hello-learning-chinese .hello-end-copy {
+  font-family: var(--serif-en); font-size: 55px; line-height: 1.16; letter-spacing: -1px;
+  max-width: 570px;
+}
+/* Shortcut states are frame-driven; CSS transitions would vary with render order. */
+.hello-keystroke-hud { transition: none; }

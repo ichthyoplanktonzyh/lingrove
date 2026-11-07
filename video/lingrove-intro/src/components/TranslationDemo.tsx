@@ -1,4 +1,5 @@
 import React from 'react';
+import {useLearningStory} from '../campaign/learning-story';
 import {useDemoText} from '../demo-copy';
 import './translation.css';
 
@@ -44,13 +45,15 @@ export default function TranslationDemo({t}: {t: number}) {
 
 /** Reuse the original translation controls as a floating layer in a shared host. */
 export function TranslationPreview({t}: {t: number}) {
+  const story=useLearningStory();
+  const result=story?.third ?? translation;
   const preview = clamp((t - 3.8) / 0.14) * (1 - clamp((t - 8.65) / 0.25));
-  const translated = Math.floor(clamp((t - 4.25) / 1.65) * translation.length);
-  const isComplete = translated >= translation.length;
+  const translated = Math.floor(clamp((t - 4.25) / 1.65) * result.length);
+  const isComplete = translated >= result.length;
   const clicked = t >= 8.1 && t < 8.5;
   return <div className="translation-card" style={{opacity: preview}}>
         <div className="translation-card-header">
-          <div className="translation-language"><span className={`translation-whale ${!isComplete ? 'active' : ''}`} style={{maskImage: `url(${whale})`, WebkitMaskImage: `url(${whale})`}}/>{!isComplete && <span className="translation-generating"/>} English</div>
+          <div className="translation-language"><span className={`translation-whale ${!isComplete ? 'active' : ''}`} style={{maskImage: `url(${whale})`, WebkitMaskImage: `url(${whale})`}}/>{!isComplete && <span className="translation-generating"/>} {story?.target ?? 'English'}</div>
           <div className="translation-card-actions">
             <span className="translation-action" aria-label="AI explanation"><svg viewBox="0 0 20 20"><path d="M10 2.5c.4 3.2 1.3 4.2 4.4 4.6-3.1.4-4 1.4-4.4 4.6-.4-3.2-1.3-4.2-4.4-4.6C8.7 6.7 9.6 5.7 10 2.5ZM4.5 11.5c.2 1.7.7 2.2 2.3 2.4-1.6.2-2.1.8-2.3 2.5-.2-1.7-.7-2.3-2.3-2.5 1.6-.2 2.1-.7 2.3-2.4Zm10.2.4c.2 1.3.5 1.7 1.8 1.8-1.3.2-1.6.6-1.8 1.9-.2-1.3-.6-1.7-1.9-1.9 1.3-.1 1.7-.5 1.9-1.8Z" fill="currentColor"/></svg></span>
             {isComplete && <span className="translation-action translation-favorite" aria-label="Save to vocabulary"><span style={{maskImage: `url(${fish})`, WebkitMaskImage: `url(${fish})`}}/></span>}
@@ -61,6 +64,6 @@ export function TranslationPreview({t}: {t: number}) {
             <span className="translation-action" aria-label="Dismiss"><svg viewBox="0 0 20 20"><path d="m6.5 6.5 7 7m0-7-7 7"/></svg></span>
           </div>
         </div>
-        <div className="translation-result">{translated ? translation.slice(0, translated) : 'Generating expression…'}</div>
+        <div className="translation-result">{translated ? result.slice(0, translated) : 'Generating expression…'}</div>
       </div>;
 }

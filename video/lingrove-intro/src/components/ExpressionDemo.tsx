@@ -1,4 +1,5 @@
 import React from 'react';
+import {useLearningStory} from '../campaign/learning-story';
 import {useDemoText} from '../demo-copy';
 import {staticFile} from 'remotion';
 import './expression.css';
@@ -33,7 +34,7 @@ export default function ExpressionDemo({t, state}: {t: number; state?: Expressio
 
 /** The quiet input and candidate panel remain one anchored unit while the film camera moves. */
 export function ExpressionLine({t, state}: {t: number; state?: ExpressionFrame}) {
-  const text=useDemoText();
+  const text=useDemoText(), story=useLearningStory();
   const query = '想鼓起勇气尝试一下';
   const queryText = state?.queryText ?? Array.from(query).slice(0, Math.max(0, Math.floor((t - 2.2) * 7))).join('');
   const accepted = state ? state.phase === 'accepted' : t >= 9.5;
@@ -45,7 +46,7 @@ export function ExpressionLine({t, state}: {t: number; state?: ExpressionFrame})
   const cursorVisible = Math.floor(t * 2) % 2 === 0;
 
   return <div className="expression-paragraph">{state?.leadText ?? 'I’m a little nervous, but I’d like to '}
-          {accepted ? <><span className="expression-inserted">give it a try</span><span className="expression-caret expression-host-caret" style={{opacity: cursorVisible ? 1 : 0}}/></> : <>
+          {accepted ? <><span className="expression-inserted">{story?.candidate ?? 'give it a try'}</span>{story && '。'}<span className="expression-caret expression-host-caret" style={{opacity: cursorVisible ? 1 : 0}}/></> : <>
             {trigger && <span className="expression-trigger">{trigger}</span>}
             {inputVisible && <div className={wrapped ? "expression-input expression-input-wrapped" : "expression-input"}>
               <span className={queryText ? 'expression-query' : 'expression-placeholder'}>{queryText || text('描述想表达的意思或概念…')}</span>
@@ -53,8 +54,8 @@ export function ExpressionLine({t, state}: {t: number; state?: ExpressionFrame})
               {panel && <div className="expression-panel">
                 {loading ? <div className="expression-loading"><span className="expression-spinner" style={{transform: `rotate(${Math.floor(t * 8) * 45}deg)`}}>✳</span>{text('正在查找表达…')}</div> : <div className="expression-selected">
                   <span className="expression-arrow">↵</span>
-                  <div className="expression-answer">give it a try</div>
-                  <div className="expression-hint">{text('尝试一下；勇敢迈出第一步')}</div>
+                  <div className="expression-answer">{story?.candidate ?? 'give it a try'}</div>
+                  <div className="expression-hint">{story?.candidateHint ?? text('尝试一下；勇敢迈出第一步')}</div>
                   <div className="expression-actions">
                     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8h3l3-3v10l-3-3H3zM12 7c1.7 1.5 1.7 4.5 0 6M14 5c3 2.6 3 7.4 0 10"/></svg>
                     <img src={staticFile('fish-outline.svg')} />

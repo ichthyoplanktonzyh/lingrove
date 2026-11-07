@@ -1,5 +1,6 @@
 import {Easing, interpolate} from 'remotion';
 import {DemoLocale, filmCopy} from '../demo-copy';
+import {chineseStory} from './learning-story';
 import type {ExpressionFrame} from '../components/ExpressionDemo';
 import type {GhostFrame} from '../components/GhostDemo';
 
@@ -12,26 +13,28 @@ export const STORY = {
   notebook:43.2, enroll:48.2, review:49.2, reveal:52.6, rate:55.0,
   later:56.4, nextSend:61.9, end:62.4,
 } as const;
-export const FIRST='Hi! I saw your book club event and I’d love to join.';
-export const SECOND='I’m a little nervous, but I’d like to give it a try.';
-export const THIRD='I’m looking forward to sharing my thoughts with everyone.';
-export const SOURCE='我很期待和大家分享我的想法。';
-export const NEXT='I’m looking forward to our next meeting.';
+export const FIRST=chineseStory.first;
+export const SECOND=chineseStory.second;
+export const THIRD=chineseStory.third;
+export const SOURCE=chineseStory.source;
+export const NEXT=chineseStory.next;
+// Foundation's word segmentation accepts these three chunks, including final punctuation.
+export const ACCEPT_AT=[8.4,9.1,9.8];
 export const ease=Easing.bezier(.55,0,.18,1);
 export const p=(t:number,a:number,b:number)=>interpolate(t,[a,b],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp',easing:ease});
 export const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 export const type=(text:string,t:number,a:number,b:number)=>Array.from(text).slice(0,Math.floor(Array.from(text).length*Math.max(0,Math.min(1,(t-a)/(b-a))))).join('');
 
 export function ghostAt(t:number):GhostFrame {
-  const chunks=['I’d',' love',' to',' join.'];
-  const count=[8.4,9.1,9.8,10.5].filter(at=>t>=at).length;
-  return {typed:'Hi! I saw your book club event'+type(' and ',t,6.6,7.2),accepted:chunks.slice(0,count).join(''),remaining:t>=7.7?chunks.slice(count).join(''):''};
+  const chunks=chineseStory.chunks;
+  const count=ACCEPT_AT.filter(at=>t>=at).length;
+  return {typed:'你好，'+type(chineseStory.prefix.slice(3),t,6.6,7.2),accepted:chunks.slice(0,count).join(''),remaining:t>=7.7?chunks.slice(count).join(''):''};
 }
 export function expressionAt(t:number):ExpressionFrame {
-  return {leadText:type('I’m a little nervous, but I’d like to ',t,12,13.15),queryText:type('想鼓起勇气尝试一下',t,13.75,15.15),triggerText:t<13.35?'':t<13.55?'?':'??',phase:t>=17?'accepted':t>=15.7?'candidate':t>=15.3?'loading':t>=13.55?'query':'writing'};
+  return {leadText:type(chineseStory.expressionLead,t,12,13.15),queryText:type(chineseStory.query,t,13.75,15.15),triggerText:t<13.35?'':t<13.55?'?':'??',phase:t>=17?'accepted':t>=15.7?'candidate':t>=15.3?'loading':t>=13.55?'query':'writing'};
 }
 export function translationAt(t:number) {
-  return interpolate(t,[18,19,19.5,21.1,22.6,23.1,24],[.45,3.8,4.25,5.95,8.1,8.6,9.3],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+  return interpolate(t,[18,20.3,20.65,21.5,22.6,23.1,24],[.45,3.8,4.25,5.95,8.1,8.6,9.3],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
 }
 
 /** Feature kicker: captions tell the story, while the editorial header folio tells a first-time

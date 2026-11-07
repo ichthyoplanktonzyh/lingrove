@@ -3,10 +3,11 @@ import {GhostLine} from '../components/GhostDemo';
 import {ExpressionLine} from '../components/ExpressionDemo';
 import {TranslationPreview} from '../components/TranslationDemo';
 import {OpeningDemo} from '../components/BookshopDemo';
+import {chineseStory as story} from './learning-story';
 import {Cursor} from './camera';
-import {expressionAt,FIRST,ghostAt,lerp,NEXT,p,SECOND,SOURCE,STORY,THIRD,translationAt,type} from './timeline';
+import {ACCEPT_AT,expressionAt,FIRST,ghostAt,lerp,NEXT,p,SECOND,SOURCE,STORY,THIRD,translationAt,type} from './timeline';
 
-/** This host lives for the entire exchange. By keeping the Paper & Pine webpage alive and softly
+/** This host lives for the entire exchange. By keeping the fictional bookshop webpage alive and softly
  * dimmed behind the compact stationery modal, the viewer never drops into an empty white void. */
 export function MessageHost({t, later=false, backdrop=true}:{t:number;later?:boolean;backdrop?:boolean}) {
   const sent=!later&&t>=STORY.send;
@@ -14,9 +15,9 @@ export function MessageHost({t, later=false, backdrop=true}:{t:number;later?:boo
   const sendMotion=p(t,STORY.send,STORY.send+.65);
   const previewTime=translationAt(t);
   const replacing=t>=STORY.replace;
-  const third=later?type(NEXT,t,50.2,53.7):replacing?THIRD:type(SOURCE,t,18,19);
+  const third=later?type(NEXT,t,50.2,53.7):replacing?THIRD:type(SOURCE,t,18,20.2);
   const candidateIn=p(t,15.3,15.7), candidateOut=p(t,16.8,17);
-  const tabPulse=[8.4,9.1,9.8,10.5].some(at=>t>=at-.04&&t<at+.18);
+  const tabPulse=ACCEPT_AT.some(at=>t>=at-.04&&t<at+.18);
   const componentMotion={
     '--candidate-y':`${lerp(20,0,candidateIn)-candidateOut*8}px`,
     '--candidate-r':`${lerp(-10,0,candidateIn)}deg`,
@@ -33,23 +34,23 @@ export function MessageHost({t, later=false, backdrop=true}:{t:number;later?:boo
     <div className={`hello-host ${sent?'has-sent':''} ${later?'is-later':''}`}>
       <div className="hello-host-bar">
         <div className="hello-traffic"><i/><i/><i/></div>
-        <div className="hello-host-title"><span>✳</span><b>Paper &amp; Pine Bookshop</b><small>COMMUNITY BOOK CLUB · MESSAGE</small></div>
+        <div className="hello-host-title"><span>✳</span><b>{story.bookshop}</b><small>COMMUNITY BOOK CLUB · MESSAGE</small></div>
         <span className="hello-host-more">···</span>
       </div>
       <div className="hello-recipient">
-        <div className="hello-recipient-to"><span>TO</span><b>Paper &amp; Pine Bookshop</b><i>community@paperandpine.books</i></div>
+        <div className="hello-recipient-to"><span>TO</span><b>{story.bookshop}</b><i>{story.recipient}</i></div>
         <div className="hello-recipient-badge">{later?'FOLLOW-UP NOTE':'FRIDAY · 7:30 PM RSVP'}</div>
       </div>
       {!sent&&<div className="hello-body" style={componentMotion}>
         {later?<>
           <div className="hello-prior-note"><span>YOUR EARLIER NOTE · FRIDAY</span><p>{FIRST} {SECOND}</p></div>
-          <p className="hello-first-after">Thanks for a lovely evening.</p>
+          <p className="hello-first-after">{story.thanks}</p>
           <p className="hello-last-line">{third}<i className="hello-caret"/></p>
         </>:<>
           <div className={t>=12?'hello-context-line':''}>{t<12?<GhostLine t={t-6} state={ghostAt(t)}/>:FIRST}</div>
           {t>=12&&<div className={`hello-line-two ${t>=18?'hello-context-line':''}`}>{t<18?<ExpressionLine t={t-12} state={expressionAt(t)}/>:SECOND}</div>}
           {t>=18&&<div className="hello-line-three">{third}<i className="hello-caret"/></div>}
-          {t>=19&&t<24&&<div className="hello-translation-layer" style={{transform:`perspective(1000px) translateY(${lerp(22,0,p(t,19,19.55))}px) rotateX(${lerp(-10,0,p(t,19,19.55))}deg)`}}><TranslationPreview t={previewTime}/></div>}
+          {t>=20.3&&t<24&&<div className="hello-translation-layer" style={{transform:`perspective(1000px) translateY(${lerp(22,0,p(t,20.3,20.65))}px) rotateX(${lerp(-10,0,p(t,20.3,20.65))}deg)`}}><TranslationPreview t={previewTime}/></div>}
         </>}
       </div>}
       {sent&&<div className="hello-thread">
@@ -57,11 +58,11 @@ export function MessageHost({t, later=false, backdrop=true}:{t:number;later?:boo
           <small>YOU · SENT JUST NOW ✓</small>
           <p>{FIRST}</p>
           <p>{SECOND}</p>
-          <p>I’m <span className={t>=29.4?'hello-saved-phrase':''}>looking forward to</span> sharing my thoughts with everyone.</p>
+          <p>{story.beforeTerm}<span className={t>=29.4?'hello-saved-phrase':''}>{story.term}</span>{story.afterTerm}</p>
         </div>
         {reply&&<div className="hello-reply" style={{transform:`translateY(${lerp(26,0,p(t,27,27.6))}px) scale(${lerp(.95,1,p(t,27,27.6))})`,opacity:p(t,27,27.35)}}>
           <span>✳</span>
-          <div><small>Paper &amp; Pine Bookshop · Host</small><p>We’d love to have you! Saving you a seat by the window.</p></div>
+          <div><small>{story.bookshop} · Host</small><p>{story.reply}</p></div>
         </div>}
       </div>}
       {!sent&&<div className="hello-toolbar">

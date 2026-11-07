@@ -1,4 +1,5 @@
 import React from 'react';
+import {useLearningStory} from '../campaign/learning-story';
 import './bookshop.css';
 
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, value));
@@ -8,10 +9,11 @@ const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, v
  * film, so the same scene can be rendered at any frame without timers or persistent state.
  */
 function BookshopShell({children}: {children: React.ReactNode}) {
+  const story=useLearningStory();
   return <div className="bookshop">
-    <div className="bookshop-browser"><div className="bookshop-lights"><i/><i/><i/></div><div className="bookshop-address">paperandpinebooks.com / community</div><span>↗</span></div>
+    <div className="bookshop-browser"><div className="bookshop-lights"><i/><i/><i/></div><div className="bookshop-address">{story?.address ?? 'paperandpinebooks.com / community'}</div><span>↗</span></div>
     <div className="bookshop-page">
-      <header className="bookshop-header"><div className="bookshop-brand"><span className="bookshop-mark">✳</span><span>paper &amp; pine<small>INDEPENDENT BOOKSHOP</small></span></div><nav><span>Our story</span><span>Visit us</span><b>Community</b></nav><div className="bookshop-menu">☰</div></header>
+      <header className="bookshop-header"><div className="bookshop-brand"><span className="bookshop-mark">✳</span><span>{story?.bookshop ?? 'paper & pine'}<small>{story ? 'SONGJIAN BOOKSHOP' : 'INDEPENDENT BOOKSHOP'}</small></span></div><nav><span>{story ? '关于我们' : 'Our story'}</span><span>{story ? '来店看看' : 'Visit us'}</span><b>{story ? '读书会' : 'Community'}</b></nav><div className="bookshop-menu">☰</div></header>
       {children}
     </div>
   </div>;
@@ -19,13 +21,14 @@ function BookshopShell({children}: {children: React.ReactNode}) {
 
 /** Opening invitation: a small editorial illustration gives the fictional event a tangible place. */
 export function OpeningDemo({t}: {t: number}) {
+  const story=useLearningStory();
   const pointerOpacity = clamp((t - 2.6) / .35);
   const pointerX = 36 * (1 - clamp((t - 2.7) / 1.1));
   const pointerY = 20 * (1 - clamp((t - 2.7) / 1.1));
   return <BookshopShell><main className="bookshop-opening">
-    <section className="bookshop-copy"><div className="bookshop-eyebrow"><span/> A LITTLE SPACE FOR BIG STORIES</div><h1>Community<br/><em>Book Club</em></h1><p>Come read, share, and connect.</p><div className="bookshop-detail"><span>✳</span><div>GOOD BOOKS. GOOD PEOPLE.<small>Everyone is welcome at the table.</small></div></div><div className="bookshop-cta">Send us a message <span>↗</span></div><div className="bookshop-pointer" style={{opacity:pointerOpacity, transform:`translate(${pointerX}px, ${pointerY}px)`}}>↖</div></section>
-    <div className="bookshop-art"><div className="bookshop-art-label">A STORY IS BETTER<br/>WHEN SHARED <span>↗</span></div><div className="bookshop-sun"/><div className="bookshop-arch"/><div className="bookshop-shelf"><div className="bookshop-books"><i/><i/><i/><i/><i/><i/><i/></div><div className="bookshop-vase"><span/></div><div className="bookshop-plant"><i/><i/><i/><i/><i/></div></div><div className="bookshop-art-caption">A little more room<br/><em>for connection.</em></div><div className="bookshop-art-num">01 / 03</div></div>
-    <div className="bookshop-bottom"><span>INDEPENDENT BOOKS · SHARED STORIES</span><span>SCROLL TO EXPLORE ↓</span></div>
+    <section className="bookshop-copy"><div className="bookshop-eyebrow"><span/> {story ? '中文学习者也欢迎参加' : 'A LITTLE SPACE FOR BIG STORIES'}</div><h1>{story ? '中文' : 'Community'}<br/><em>{story ? '读书会' : 'Book Club'}</em></h1><p>{story ? '带一本喜欢的书，一起聊聊。' : 'Come read, share, and connect.'}</p><div className="bookshop-detail"><span>✳</span><div>{story ? '周五晚上 · 19:30' : 'GOOD BOOKS. GOOD PEOPLE.'}<small>{story ? '正在学中文？也欢迎你来。' : 'Everyone is welcome at the table.'}</small></div></div><div className="bookshop-cta">{story ? '给我们留言' : 'Send us a message'} <span>↗</span></div><div className="bookshop-pointer" style={{opacity:pointerOpacity, transform:`translate(${pointerX}px, ${pointerY}px)`}}>↖</div></section>
+    <div className="bookshop-art"><div className="bookshop-art-label">{story ? '一本书，一段对话。' : <>A STORY IS BETTER<br/>WHEN SHARED</>} <span>↗</span></div><div className="bookshop-sun"/><div className="bookshop-arch"/><div className="bookshop-shelf"><div className="bookshop-books"><i/><i/><i/><i/><i/><i/><i/></div><div className="bookshop-vase"><span/></div><div className="bookshop-plant"><i/><i/><i/><i/><i/></div></div><div className="bookshop-art-caption">{story ? <>让故事，<br/><em>连接彼此。</em></> : <>A little more room<br/><em>for connection.</em></>}</div><div className="bookshop-art-num">01 / 03</div></div>
+    <div className="bookshop-bottom"><span>{story ? '松间书店 · 分享阅读，也练习中文' : 'INDEPENDENT BOOKS · SHARED STORIES'}</span><span>{story ? '往下看看 ↓' : 'SCROLL TO EXPLORE ↓'}</span></div>
   </main></BookshopShell>;
 }
 

@@ -10,6 +10,7 @@ import {MessageHost} from './MessageHost';
 import {captionAt,featureAt,featuresFor,lerp,p} from './timeline';
 import {DemoLocale, DemoLocaleProvider, filmCopy, useDemoLocale} from '../demo-copy';
 import './first-hello.css';
+import {ChineseLearningStory, chineseStory as story} from './learning-story';
 
 /** Act one supplies a concrete reason to write. The invitation card, its call to action and
  * the next message share the same destination; the invitation is an event, not background art. */
@@ -19,11 +20,11 @@ function Invitation() {
   return <AbsoluteFill className="hello-film hello-paper">
     <div className="hello-sun" style={{transform:`translate(${lerp(120,0,p(t,0,1.2))}px,0) scale(${1-exit*.3})`}}/>
     <div className="hello-invite-block" style={{opacity:1-p(t,2.1,2.75),transform:`translateY(${-approach*60}px)`}}>
-      <div className="hello-invite-eyebrow"><b>I · INVITATION</b><span>PAPER &amp; PINE BOOKSHOP</span></div>
+      <div className="hello-invite-eyebrow"><b>I · INVITATION</b><span>SONGJIAN BOOKSHOP</span></div>
       <div className="hello-invite-title"><span>{copy.invitation[0]}</span><br/>{copy.invitation[1]}</div>
     </div>
     <div className="hello-bookshop" style={{left:lerp(540,190,approach),top:lerp(98,84,approach),transform:`perspective(1500px) rotateY(${lerp(-14,0,approach)}deg) rotateZ(${lerp(4.5,0,approach)}deg) scale(${lerp(.8,1.0,approach)})`,opacity:1-exit*.4,translate:`0 ${-exit*25}px`,'--cta-scale':t>=5.1&&t<5.4?.95:1} as React.CSSProperties}><OpeningDemo t={Math.min(4,t)}/></div>
-    {t>4&&t<5.5&&<Cursor x={lerp(560,368,p(t,4,4.65))} y={lerp(520,492,p(t,4,4.65))} press={t>=5.1}/>}
+    {t>4&&t<5.5&&<Cursor x={lerp(560,309,p(t,4,4.65))} y={lerp(520,510,p(t,4,4.65))} press={t>=5.1}/>}
     <Caption>{captionAt(0,locale)}</Caption>
   </AbsoluteFill>;
 }
@@ -46,7 +47,7 @@ function Exchange() {
 }
 
 /** Hover-based reading lookup (`LearningReadingSource.pointer`): while browsing the bookshop's
- * journal, the user simply points the cursor at an unfamiliar phrase (`come together`) — with zero
+ * journal, the learner points at the same Chinese word (`期待`) in a new context — with zero
  * selection highlight or pre-hover UI on the page — and presses the shortcut (`⌃⇧T`) to pop up
  * the lookup card directly. */
 function HoverLookup() {
@@ -59,7 +60,7 @@ function HoverLookup() {
     {at:0,cx:600,cy:355,zoom:.98},{at:1.1,cx:600,cy:355,zoom:.98},
     {at:2.05,cx:520,cy:375,zoom:1.18},{at:7.2,cx:520,cy:375,zoom:1.18},
   ];
-  const cursorX=lerp(420,192,move), cursorY=lerp(435,342,move);
+  const cursorX=lerp(420,54,move), cursorY=lerp(435,340,move);
   const hudIn=p(t,1.15,1.55)*(1-p(t,6.4,6.9));
   const style={
     '--lookup-card-y':`${lerp(10,0,cardIn)}px`,
@@ -95,7 +96,7 @@ function SavePhrase() {
     <div className="hello-source-message" style={{opacity:lerp(.55,.18,enter),filter:`blur(${lerp(2,9,enter)}px)`,transform:`perspective(1400px) rotateY(${lerp(0,12,enter)}deg) scale(${lerp(.84,.72,enter)}) translateX(${-enter*120}px)`}}><MessageHost t={30.1} backdrop={false}/></div>
     <div className="hello-phrase-block" style={{opacity:p(t,.85,1.65),transform:`translateY(${lerp(28,0,p(t,.85,1.65))}px)`}}>
       <div className="hello-phrase-eyebrow"><b>SAVED EXPRESSION</b><span>FROM YOUR SENT NOTE</span></div>
-      <div className="hello-phrase-title">look<br/><em>forward</em><br/>to<span>.</span></div>
+      <div className="hello-phrase-title hello-chinese-term">{story.term}<span>。</span></div>
       <div className="hello-phrase-gloss">{copy.gloss}{locale==='en'?'':' · '}<span>{copy.grammar}</span></div>
     </div>
     <div className="hello-dictionary" style={{left:lerp(420,660,enter),top:lerp(260,86,enter),opacity:p(t,.4,1.0)}}><div style={{width:900,height:520,zoom:lerp(.78,1.06,enter),transformOrigin:'0 0',transform:enter<1?`perspective(1100px) rotateY(${lerp(-14,0,enter)}deg) rotateX(${lerp(9,0,enter)}deg)`:undefined}}><DictionaryDemo t={2.1+t*.92} isolated/></div></div>
@@ -134,10 +135,10 @@ function Later() {
   const t=useTime(), intro=p(t,.75,1.4);
   return <AbsoluteFill className="hello-film hello-paper">
     <div className="hello-later-block" style={{opacity:1-intro,transform:`translateY(${-intro*55}px)`}}>
-      <div className="hello-invite-eyebrow"><b>II · AFTER THE GATHERING</b><span>FRIDAY NIGHT · 9:40 PM</span></div>
+      <div className="hello-invite-eyebrow"><b>II · AFTER THE GATHERING</b><span>SONGJIAN BOOKSHOP</span></div>
       <div className="hello-later-title">{copy.later}<span>{locale==='en'?'.':'。'}</span></div>
     </div>
-    <div className="hello-after-ticket" style={{opacity:p(t,.2,.75)*(1-p(t,.75,1.25)),transform:`rotate(-6deg) translateY(${lerp(55,0,p(t,.2,.75))-p(t,.75,1.25)*35}px)`}}><b>PAPER &amp; PINE</b><span>BOOK<br/>CLUB</span><small>GOOD STORIES. GOOD COMPANY.</small></div>
+    <div className="hello-after-ticket" style={{opacity:p(t,.2,.75)*(1-p(t,.75,1.25)),transform:`rotate(-6deg) translateY(${lerp(55,0,p(t,.2,.75))-p(t,.75,1.25)*35}px)`}}><b>松间书店</b><span>中文<br/>读书会</span><small>GOOD STORIES. GOOD COMPANY.</small></div>
     <div style={{opacity:intro}}><Camera t={t} keys={[{at:0,cx:600,cy:320,zoom:.98},{at:1.35,cx:600,cy:320,zoom:.98},{at:2.1,cx:575,cy:310,zoom:1.24},{at:4.5,cx:575,cy:310,zoom:1.24},{at:5.2,cx:600,cy:320,zoom:1.02},{at:6,cx:600,cy:320,zoom:1.02}]}><MessageHost t={49.2+t} later/></Camera></div>
     {t>1.4&&<Caption>{captionAt(58,locale)}</Caption>}
   </AbsoluteFill>;
@@ -148,7 +149,7 @@ function Finish() {
   const t=useTime();
   return <AbsoluteFill className="hello-film hello-vermilion">
     <div className="hello-end-colophon"><span>LINGROVE · 拾语</span><span>A WRITING &amp; MEMORY COMPANION FOR MAC</span></div>
-    <div className="hello-end-copy" style={{clipPath:`inset(${100*(1-p(t,.15,.95))}% 0 0 0)`}}>{copy.finish[0]}<br/>{copy.finish[1]}<span>{copy.finish[2]}</span></div>
+    <div className="hello-end-copy" style={{clipPath:`inset(${100*(1-p(t,.15,.95))}% 0 0 0)`}}>{copy.finish[0]}<br/>{copy.finish[1]}{locale==='en'&&<br/>}<span>{copy.finish[2]}</span></div>
     <div className="hello-end-lockup" style={{opacity:p(t,.95,1.55),transform:`translateY(${lerp(24,0,p(t,.95,1.55))}px)`}}>
       <Img src={staticFile('lingrove-logo.svg')}/>
       <div><span>Lingrove <small>拾语</small></span><p>{copy.tagline}</p></div>
@@ -184,7 +185,7 @@ function FilmOverlay({dark}:{dark:(t:number)=>boolean}) {
  * story, palette and camera system. Audio stems allow the same edit with or without music. */
 export function FirstHello({bgm=true,locale='zh-CN'}:{bgm?:boolean;locale?:DemoLocale}) {
   const {fps}=useVideoConfig();
-  return <DemoLocaleProvider locale={locale}><AbsoluteFill className={`hello-language-${locale}`} lang={locale} style={{'--review-source':JSON.stringify(filmCopy(locale).source)} as React.CSSProperties}>
+  return <DemoLocaleProvider locale={locale}><ChineseLearningStory><AbsoluteFill className={`hello-language-${locale} hello-learning-chinese`} lang={locale} style={{'--review-source':JSON.stringify(filmCopy(locale).source)} as React.CSSProperties}>
     <Sequence name="看到邀请" durationInFrames={6*fps}><Invitation/></Sequence>
     <Sequence name="同一封消息：补全、表达、翻译、发送、回复" from={6*fps} durationInFrames={24*fps}><Exchange/></Sequence>
     <Sequence name="阅读手记：鼠标悬停查词" from={30*fps} durationInFrames={Math.round(7.2*fps)}><HoverLookup/></Sequence>
@@ -196,5 +197,5 @@ export function FirstHello({bgm=true,locale='zh-CN'}:{bgm?:boolean;locale?:DemoL
     <FilmOverlay dark={t=>t>=37.2&&t<43.2}/>
     {bgm&&<Audio src={staticFile('audio/first-hello-music.m4a')}/>}
     <Audio src={staticFile('audio/first-hello-foley.m4a')}/>
-  </AbsoluteFill></DemoLocaleProvider>;
+  </AbsoluteFill></ChineseLearningStory></DemoLocaleProvider>;
 }

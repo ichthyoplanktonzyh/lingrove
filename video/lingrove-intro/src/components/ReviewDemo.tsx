@@ -1,4 +1,5 @@
 import React from 'react';
+import {useLearningStory} from '../campaign/learning-story';
 import {useDemoText} from '../demo-copy';
 import {staticFile} from 'remotion';
 import './review.css';
@@ -55,16 +56,16 @@ function Sidebar({review}: {review: boolean}) {
 
 /** All notebook text is synthetic; only the app's hierarchy and controls follow the references. */
 function Notebook({enrolled}: {enrolled: boolean}) {
-  const text=useDemoText();
-  const entries = ['look forward to', 'keep in touch', 'make time for', 'a fresh start', 'take a moment', 'on the same page', 'little by little', 'give it a try'];
+  const text=useDemoText(), story=useLearningStory();
+  const entries = story?.entries ?? ['look forward to', 'keep in touch', 'make time for', 'a fresh start', 'take a moment', 'on the same page', 'little by little', 'give it a try'];
   return <><div className="review-list">
     <div className="review-list-tools"><div className="review-list-tabs"><b>{text('词条')}</b><span>{text('语义')}</span></div><span><Glyph name="globe"/>⌄</span><span><Glyph name="tag"/>⌄</span><small>8</small><Glyph name="list" size={11}/></div>
-    <div className="review-entry-list">{entries.map((entry, index) => <div key={entry} className={`review-entry ${index === 0 ? 'selected' : ''}`}><strong>{entry}</strong><small>English</small></div>)}</div>
+    <div className="review-entry-list">{entries.map((entry, index) => <div key={entry} className={`review-entry ${index === 0 ? 'selected' : ''}`}><strong>{entry}</strong><small>{story?.target ?? 'English'}</small></div>)}</div>
   </div><main className="review-detail">
-    <div className="review-detail-heading"><h2>look forward to <Glyph name="sound" size={12}/></h2><div className="review-detail-actions"><Glyph name="copy" size={11}/><Glyph name="folder" size={13}/><button><Glyph name="edit" size={10}/>{text('编辑')}</button><span>···</span><Whale tail/></div></div>
-    <div className="review-badges"><span>English</span><span>{text('短语')}</span></div>
+    <div className="review-detail-heading"><h2>{story?.term ?? 'look forward to'} <Glyph name="sound" size={12}/></h2><div className="review-detail-actions"><Glyph name="copy" size={11}/><Glyph name="folder" size={13}/><button><Glyph name="edit" size={10}/>{text('编辑')}</button><span>···</span><Whale tail/></div></div>
+    <div className="review-badges"><span>{story?.target ?? 'English'}</span><span>{text(story ? '词语' : '短语')}</span></div>
     <div className="review-add-explanation"><Glyph name="plus" size={10}/>{text('添加解释')}</div>
-    <section className="review-context-panel"><div className="review-context-label"><Glyph name="quote" size={11}/><span>{text('上下文')}</span><small>{text('移动用例')}⌄</small></div><p>I’m <mark>looking forward to</mark> sharing my thoughts with everyone.</p><div className="review-context-translation">我很期待和大家分享我的想法。<Glyph name="sound" size={11}/></div><div className="review-local-meaning"><small><Glyph name="tag" size={9}/>{text('此处含义')}</small><b>期待；盼望</b><span>✧</span></div><div className="review-source"><i/>Google Chrome</div></section>
+    <section className="review-context-panel"><div className="review-context-label"><Glyph name="quote" size={11}/><span>{text('上下文')}</span><small>{text('移动用例')}⌄</small></div><p>{story ? <>{story.beforeTerm}<mark>{story.term}</mark>{story.afterTerm}</> : <>I’m <mark>looking forward to</mark> sharing my thoughts with everyone.</>}</p><div className="review-context-translation">{story?.source ?? '我很期待和大家分享我的想法。'}<Glyph name="sound" size={11}/></div><div className="review-local-meaning"><small><Glyph name="tag" size={9}/>{text('此处含义')}</small><b>{story?.gloss ?? '期待；盼望'}</b><span>✧</span></div><div className="review-source"><i/>Google Chrome</div></section>
     <div className="review-section-title">{text('复习')}</div>
     <div className={`review-enrollment ${enrolled ? 'enrolled' : ''}`}><Glyph name="deck"/><div><b>{text('拾语')}</b><small>{enrolled ? text('已加入复习') : text('未加入复习')}</small></div><button>{enrolled ? <><Glyph name="check" size={10}/>{text('复习内容')}</> : text('加入复习')}</button></div>
     <div className="review-anki"><Glyph name="deck" size={12}/><b>Anki</b><button><Glyph name="plus" size={10}/>{text('添加到 Anki')}</button></div>
@@ -79,18 +80,18 @@ function ReviewToolbar({practice, rated}: {practice: boolean; rated: boolean}) {
 }
 
 function Overview() {
-  const text=useDemoText();
+  const text=useDemoText(), story=useLearningStory();
   return <div className="review-overview"><section className="review-hero"><div className="review-hero-top"><div className="review-hero-icon"><Glyph name="cards" size={24}/></div><div><strong>{text('现在可复习')} <i>1</i></strong><small>{text('现在可复习')}　1</small></div><div className="review-brand-pill"><Whale/>{text('拾语')}</div></div><div className="review-hero-divider"/><div className="review-hero-buttons"><button className="review-start"><Glyph name="play" size={11}/>{text('开始复习')}</button><button className="review-secondary"><Glyph name="plus" size={11}/>{text('从语料库添加')}</button></div></section>
     <div className="review-metrics"><div><span className="review-metric-icon"><Glyph name="bolt" size={17}/></span><p><strong>1</strong><small>{text('现在可复习')}</small></p></div><div><span className="review-metric-icon"><Glyph name="deck" size={17}/></span><p><strong>1</strong><small>{text('练习卡')}</small></p></div><div><span className="review-metric-icon purple"><Glyph name="edit" size={17}/></span><p><strong className="review-template-name">{text('表达与语境')}</strong><small>{text('卡片模板')}</small></p><Glyph name="sliders" size={11}/></div></div>
-    <div className="review-queue-title"><Glyph name="list" size={12}/>{text('复习队列')}<span>1</span></div><div className="review-queue-card"><b>look forward to</b><span>{text('当前')}</span><p>look forward to<br/>期待；盼望</p><small><Glyph name="clock" size={9}/>{text('新卡')}<Glyph name="tag" size={9}/>{text('英语 · 写作')}</small></div>
+    <div className="review-queue-title"><Glyph name="list" size={12}/>{text('复习队列')}<span>1</span></div><div className="review-queue-card"><b>{story?.term ?? 'look forward to'}</b><span>{text('当前')}</span><p>{story?.term ?? 'look forward to'}<br/>{story?.gloss ?? '期待；盼望'}</p><small><Glyph name="clock" size={9}/>{text('新卡')}<Glyph name="tag" size={9}/>{text(story ? '中文 · 写作' : '英语 · 写作')}</small></div>
   </div>;
 }
 
 function Practice({revealed, rated}: {revealed: boolean; rated: boolean}) {
-  const text=useDemoText();
+  const text=useDemoText(), story=useLearningStory();
   return <><div className="review-practice-header"><div><b><Glyph name="deck" size={12}/>{text('今日 Lingrove 复习')}</b><span><i className="review-status-dot"/>{text('本次练习已回答')}: {rated ? 1 : 0}<Glyph name="clock" size={10}/>{text('现在可复习')}: {rated ? 0 : 1}</span></div><div className="review-progress"><i style={{width: rated ? '100%' : '4px'}}/></div></div>
     {rated ? <div className="review-finished"><div className="review-finished-panel"><div className="review-finished-icon"><Glyph name="check" size={25}/></div><strong>{text('本轮复习完成')}</strong><small>{text('每一次回想，都让表达更熟悉。')}</small><div className="review-finished-stats"><span>{text('本次已回答')}<b>1</b></span><span>{text('现在可复习')}<b>0</b></span></div><div className="review-finished-actions"><button>{text('返回待复习')}</button><button>{text('查看进度')}</button></div></div></div> : <><div className="review-card-area"><div className="review-card-meta"><span className="review-template"><Glyph name="cards" size={10}/>{text('语境理解卡')}</span><span className="review-side">{revealed ? text('背面') : text('正面')}</span><div/><IconButton name="sound"/><IconButton name="external">{text('打开来源')}</IconButton><IconButton name="sliders">{text('卡片模板')}</IconButton></div>
-    <div className={`review-web-card ${revealed ? 'revealed' : ''}`}><div className="review-expression">look forward to</div>{revealed && <><div className="review-answer-divider"/><div className="review-answer">期待；盼望</div><div className="review-context">I’m looking forward to sharing my thoughts with everyone.<small>我很期待和大家分享我的想法。</small></div></>}</div></div>
+    <div className={`review-web-card ${revealed ? 'revealed' : ''}`}><div className="review-expression">{story?.term ?? 'look forward to'}</div>{revealed && <><div className="review-answer-divider"/><div className="review-answer">{story?.gloss ?? '期待；盼望'}</div><div className="review-context">{story?.third ?? 'I’m looking forward to sharing my thoughts with everyone.'}<small>{story?.source ?? '我很期待和大家分享我的想法。'}</small></div></>}</div></div>
     <div className="review-controls">{!revealed ? <button className="review-reveal"><Glyph name="eye" size={14}/>{text('显示答案')}</button> : <div className="review-ratings">{[[text('再来一次'), '1', 'red', text('1 分钟后'), 'undo'], [text('困难'), '2', 'orange', text('6 分钟后'), 'clock'], [text('良好'), '3', 'green', text('10 分钟后'), 'check'], [text('简单'), '4', 'blue', text('1 周后'), 'bolt']].map(([label,key,color,interval,icon]) => <button key={key} className={`review-rating ${color}`}><span className="review-interval">{interval}</span><span className="review-rating-number">{key}</span><b><Glyph name={icon} size={10}/>{label}</b></button>)}</div>}<div className="review-hint">{text('按 Space 或 Return 显示答案 · 显示后按 1–4 评分 · 按 ⌘Z 撤销评分')}</div></div></>}
   </>;
 }

@@ -1,5 +1,10 @@
 # Lingrove intro film
 
+**Current audience (2026-11-07): English speakers learning Chinese.** The two current
+`Lingrove-FirstHello` compositions share the same Chinese-learning story, with Chinese or
+English interface/editorial copy. Earlier sections below document previous cuts; the
+Chinese-learning revision at the end describes the current content and exports.
+
 A standalone, code-animated product film. React components reproduce product UI states using synthetic data; the app and user data are never opened or modified. Remotion controls every frame. This is a visual interpretation, not a screen recording or a functional app.
 
 ```sh
@@ -215,7 +220,7 @@ review criteria, but returned no report within the bounded review window and was
 It is **unverified**, not a pass. The checks above are the producing agent's actual technical
 and visual checks. This cut remains an editorial review candidate.
 
-## English international edition
+## Previous English international edition (English-learning story)
 
 The approved Chinese film, corrected replacement-button pointer, and README demo assets are
 checkpointed at `048cf9db`. The current 67.2-second cut also has an English international
@@ -278,3 +283,70 @@ Validation for these review exports (2026-11-06):
 - `out/lingrove-first-hello-en-clean-1080p.mp4` and
   `out/lingrove-first-hello-zh-clean-1080p.mp4` both decode completely without errors:
   2,016 H.264 frames, 1920×1080, 30 fps, 67.2 seconds, stereo AAC at 48 kHz.
+
+
+## Current revision — learning Chinese
+
+Both current 67.2-second FirstHello compositions now follow an English-speaking learner
+joining a fictional Chinese book club at 松间书店 (Songjian Bookshop). The audience already
+knows some written Chinese. The film remains a synthetic UI reconstruction, with no native
+application, real account or user corpus access. The `.example` addresses are fictional.
+Existing GitHub attachments above still show the prior English-learning story; this revision
+has **not** been uploaded or substituted into either root README.
+
+### Shared story, two display languages
+
+- Invitation: 中文读书会, welcoming Chinese learners.
+- Autocomplete: `你好，我看到你们的读书会活动，` → `想报名参加。` Three explicit Tab
+  acceptances at 8.4, 9.1 and 9.8 seconds consume `想 / 报名 / 参加。`. Foundation's
+  `.byWords` segmentation was checked locally; trailing Chinese punctuation follows the
+  product's default punctuation-binding rule.
+- Expression help: English query `give it a try, even though I’m nervous` → `试试看`;
+  the completed line is `我有点紧张，不过想试试看。`.
+- Translation: `I’m looking forward to hearing everyone’s thoughts.` →
+  `很期待听听大家的想法。`, previewed before explicit replacement and sending.
+- Reply: `欢迎你来！周五见。`.
+- Reading: encounter `期待` again in `期待和大家一起聊聊最近读的书。`; point at the word
+  and press the existing shortcut for its English contextual meaning.
+- Collection and review: save `期待` with the original sent sentence and English translation;
+  explicitly enroll, recall its meaning, reveal `look forward to`, and rate.
+- Days later: `谢谢，今晚聊得很开心。期待下次再见！` is typed in a new message. It depicts
+  human reuse, not retrieval from the corpus or proof that one review guarantees mastery.
+
+`campaign/learning-story.tsx` owns the immutable fictional content and a render-scoped
+provider. FirstHello supplies it to the existing bookshop, expression, translation, reading,
+collection and review components; standalone legacy studies retain their no-provider content.
+`demo-copy.tsx` owns display-language copy independently. The timeline owns time and text states;
+MessageHost keeps the same editor and recipient through the exchange. English typing now lasts
+18–20.2 seconds; the translation preview starts at 20.3, finishes by 21.5, and replacement
+remains at 23.1 seconds. The original music is retained; foley was regenerated for the three
+Chinese acceptances and longer English typing interval.
+
+The local bundled lexicon has no standalone `期待` entry. Its collection card therefore uses
+**In context**, with a synthetic English explanation, rather than fabricating a bundled
+Wiktionary result or source attribution. No new pinyin, pronunciation-assessment or IME feature
+is depicted. Both subtitle editions show Chinese learner text with English semantic help.
+
+### Reproduce current exports
+
+```sh
+python3 scripts/make-first-hello-score.py
+npm run check
+npx remotion render src/film-entry.ts Lingrove-FirstHello-English out/lingrove-learn-chinese-en-1080p.mp4 --scale=1.5 --image-format=png --codec=h264 --crf=14 --concurrency=4
+npx remotion render src/film-entry.ts Lingrove-FirstHello out/lingrove-learn-chinese-zh-1080p.mp4 --scale=1.5 --image-format=png --codec=h264 --crf=14 --concurrency=4
+```
+
+Use `npm run studio` for both current compositions. The standard `render:first-hello` scripts
+also render the updated story to their existing generic filenames. The audience-specific export
+names above keep older local review masters intact.
+
+### Validation (2026-11-07)
+
+- `npm run check` passed across all entry points. Both current compositions loaded in Studio.
+- Inspected key frames in both editions from invitation to end card, including the Chinese
+  suggestion, English query, translation preview, contextual lookup, save, review and reuse.
+  Verified pointer tips against the invitation CTA, replacement control and the reading target;
+  checked the revised invitation and later title again from the encoded files.
+- Both final MP4s decoded fully with FFmpeg: 2,016 H.264 frames, 1920×1080 at 30 fps, 67.2 seconds,
+  with matching 48 kHz stereo AAC audio. An earlier `Lingrove-NextTime` corpus still also rendered
+  with its original English-learning example.
