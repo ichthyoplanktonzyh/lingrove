@@ -174,7 +174,7 @@ struct VocabularyNotebookView: View {
                                 } else {
                                     showSense(senseID)
                                 }
-                            })
+                            }, senseMenu: senseContextMenu)
                     }
                     .navigationSplitViewColumnWidth(min: 260, ideal: 315, max: 420)
                 } detail: { browserDetail }
@@ -643,6 +643,20 @@ struct VocabularyNotebookView: View {
         }
     }
 
+    /// Row actions carry the clicked sense, which can differ from the open detail. Deletion
+    /// hands that identity to the notebook's shared confirmation, just like the detail menu.
+    @ViewBuilder private func senseContextMenu(_ target: VocabularySelection) -> some View {
+        if let openReview = store.onRequestBuiltInReview {
+            Button(String(localized: "Built-in review", table: "Vocabulary")) { openReview(target) }
+        }
+        Button(String(localized: "Export this sense…", table: "Vocabulary")) { beginExport(single: target) }
+        Button(role: .destructive) {
+            deleting = target
+        } label: {
+            Label(String(localized: "Delete", table: "Vocabulary"), systemImage: "trash")
+        }
+    }
+
     private var listBrowser: some View {
         NavigationSplitView {
             List(selection: $selection) {
@@ -664,16 +678,7 @@ struct VocabularyNotebookView: View {
                         }
                         .padding(.vertical, isDetailedList ? 4 : 2.5)
                         .tag(singleSense.id)
-                        .contextMenu {
-                            if let openReview = store.onRequestBuiltInReview {
-                                Button(String(localized: "Built-in review", table: "Vocabulary")) {
-                                    openReview(.init(entryID: entry.id, senseID: singleSense.id))
-                                }
-                            }
-                            Button(String(localized: "Export this sense…", table: "Vocabulary")) {
-                                beginExport(single: .init(entryID: entry.id, senseID: singleSense.id))
-                            }
-                        }
+                        .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: singleSense.id)) }
                     } else {
                         let isSelected = isEntrySelected(entry)
                         let isExpanded = expandedEntries.contains(entry.id)
@@ -700,16 +705,7 @@ struct VocabularyNotebookView: View {
                                 }
                                 .padding(.vertical, 3)
                                 .tag(sense.id)
-                                .contextMenu {
-                                    if let openReview = store.onRequestBuiltInReview {
-                                        Button(String(localized: "Built-in review", table: "Vocabulary")) {
-                                            openReview(.init(entryID: entry.id, senseID: sense.id))
-                                        }
-                                    }
-                                    Button(String(localized: "Export this sense…", table: "Vocabulary")) {
-                                        beginExport(single: .init(entryID: entry.id, senseID: sense.id))
-                                    }
-                                }
+                                .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: sense.id)) }
                             }
                         } label: {
                             VocabularyMultiSenseHeaderRow(

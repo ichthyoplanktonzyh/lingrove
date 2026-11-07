@@ -64,6 +64,7 @@ struct VocabularyNotebookViewTests {
     @Test(.enabled(if: LingroveCompatibility.processEnvironment["LINGROVE_UI_SENSE_REVIEW"] == "1"))
     func nativeSenseActionsCanBeReviewedWithoutUserData() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        store.onRequestBuiltInReview = { _ in }
         let fixtures = [("I went to the bank.", "Financial institution"),
                         ("The bank opened early.", "A financial institution"),
                         ("We sat beside the bank.", "River edge")]

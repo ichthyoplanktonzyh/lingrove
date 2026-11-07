@@ -150,7 +150,7 @@ struct VocabularySearchCountView: View {
 
 /// Search groups present explicit notebook links. A row belongs to its section so the same
 /// sense can appear under two meanings while still opening the same saved sense detail.
-struct VocabularySearchResultsView: View {
+struct VocabularySearchResultsView<SenseMenu: View>: View {
     private struct RowID: Hashable {
         let senseID: UUID
         let nodeID: UUID?
@@ -162,6 +162,7 @@ struct VocabularySearchResultsView: View {
     let tag: String
     let selectedSenseID: UUID?
     let onSelect: (UUID, UUID?) -> Void
+    @ViewBuilder let senseMenu: (VocabularySelection) -> SenseMenu
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
     @State private var selectedRow: RowID?
     @State private var visibleCounts: [UUID: Int] = [:]
@@ -242,6 +243,7 @@ struct VocabularySearchResultsView: View {
         }
         .padding(.vertical, 5)
         .tag(RowID(senseID: document.id, nodeID: nodeID))
+        .contextMenu { senseMenu(document.selection) }
         .accessibilityIdentifier("vocabularySearchHit." + document.id.uuidString)
     }
 

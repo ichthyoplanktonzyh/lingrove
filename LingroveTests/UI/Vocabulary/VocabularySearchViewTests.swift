@@ -44,7 +44,7 @@ struct VocabularySearchViewTests {
         #expect(!search.downloads.state(for: VocabularySearchCatalog.model).isDownloading)
         var selected: (senseID: UUID, nodeID: UUID?)?
         let results = NSHostingView(rootView: VocabularySearchResultsView(controller: search, query: "产生影响", language: .english,
-            tag: "", selectedSenseID: nil, onSelect: { selected = ($0, $1) }))
+            tag: "", selectedSenseID: nil, onSelect: { selected = ($0, $1) }, senseMenu: { _ in EmptyView() }))
         window.contentView = results
         for _ in 0..<30 {
             try await Task.sleep(for: .milliseconds(30))
