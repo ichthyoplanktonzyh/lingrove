@@ -21,23 +21,27 @@ actor VocabularySearchIndex {
 
     init(cacheURL: URL?) { self.cacheURL = cacheURL }
 
-    func documents(entries: [VocabularyEntry], semantics: VocabularySemanticIndex) -> [VocabularySearchDocument] {
-        VocabularySearchPolicy.documents(entries: entries, semantics: semantics)
+    func prepare(entries: [VocabularyEntry], semantics: VocabularySemanticIndex)
+        -> (documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument]) {
+        (VocabularySearchPolicy.documents(entries: entries, semantics: semantics),
+         VocabularySearchPolicy.meaningDocuments(entries: entries, semantics: semantics))
     }
 
-    func reconcile(_ documents: [VocabularySearchDocument], modelURL: URL,
+    func reconcile(_ documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument] = [], modelURL: URL,
                    progress: @Sendable (Int, Int) async -> Void) async throws {
         restore()
-        let keys = Set(documents.map(\.fingerprint))
+        // Sense and meaning vectors share one cache because the key describes the complete
+        // embedding input. Existing sense vectors survive when a notebook gains meaning search.
+        let inputs = documents.map { ($0.fingerprint, $0.text) } + meanings.map { ($0.fingerprint, $0.text) }
+        let keys = Set(inputs.map { $0.0 })
         // Deletion and editing retire old vectors. The cache stores hashes, never saved text;
         // it is independent of the canonical archive and safe to remove or rebuild.
         vectors = vectors.filter { keys.contains($0.key) }
-        for (position, document) in documents.enumerated() {
+        for (position, (key, text)) in inputs.enumerated() {
             try Task.checkCancellation()
-            let key = document.fingerprint
-            if vectors[key] == nil { vectors[key] = try embed(document.text, modelURL: modelURL) }
-            if position % 10 == 0 || position + 1 == documents.count {
-                await progress(position + 1, documents.count)
+            if vectors[key] == nil { vectors[key] = try embed(text, modelURL: modelURL) }
+            if position % 10 == 0 || position + 1 == inputs.count {
+                await progress(position + 1, inputs.count)
             }
             // Yield even for cached rows so a large library cannot monopolize this actor and
             // delay cancellation, unloading, or keyword fallback while the window is interactive.
@@ -49,18 +53,32 @@ actor VocabularySearchIndex {
 
     func search(_ query: String, documents: [VocabularySearchDocument], modelURL: URL?) throws -> [VocabularySearchHit] {
         try Task.checkCancellation()
-        var similarities: [UUID: Float] = [:]
-        if let modelURL {
-            let queryVector = try embed(VocabularySearchPolicy.queryText(query), modelURL: modelURL)
-            for document in documents {
-                try Task.checkCancellation()
-                let key = document.fingerprint
-                guard let vector = vectors[key] else { continue }
-                similarities[document.id] = zip(queryVector, vector).reduce(0) { $0 + $1.0 * $1.1 }
-            }
-        }
+        let queryVector = try modelURL.map { try embed(VocabularySearchPolicy.queryText(query), modelURL: $0) }
+        let similarities = try scores(for: documents.map { ($0.id, $0.fingerprint) }, queryVector: queryVector)
         try Task.checkCancellation()
         return VocabularySearchPolicy.hits(documents: documents, query: query, similarities: similarities)
+    }
+
+    func search(_ query: String, documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument],
+                modelURL: URL?) throws -> VocabularySearchResults {
+        try Task.checkCancellation()
+        let queryVector = try modelURL.map { try embed(VocabularySearchPolicy.queryText(query), modelURL: $0) }
+        let similarities = try scores(for: documents.map { ($0.id, $0.fingerprint) }, queryVector: queryVector)
+        let meaningSimilarities = try scores(for: meanings.map { ($0.id, $0.fingerprint) }, queryVector: queryVector)
+        try Task.checkCancellation()
+        return VocabularySearchPolicy.results(documents: documents, meanings: meanings, query: query,
+            similarities: similarities, meaningSimilarities: meaningSimilarities)
+    }
+
+    private func scores(for inputs: [(UUID, String)], queryVector: [Float]?) throws -> [UUID: Float] {
+        guard let queryVector else { return [:] }
+        var similarities: [UUID: Float] = [:]
+        for (id, fingerprint) in inputs {
+            try Task.checkCancellation()
+            guard let vector = vectors[fingerprint] else { continue }
+            similarities[id] = zip(queryVector, vector).reduce(0) { $0 + $1.0 * $1.1 }
+        }
+        return similarities
     }
 
     /// Native work has no suspension point, so unload cannot race a decode. The caller cancels

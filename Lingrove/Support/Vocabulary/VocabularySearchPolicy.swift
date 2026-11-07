@@ -37,6 +37,62 @@ nonisolated enum VocabularySearchPolicy {
         } }
     }
 
+    static func meaningDocuments(entries: [VocabularyEntry], semantics: VocabularySemanticIndex) -> [VocabularyMeaningSearchDocument] {
+        let cues = Dictionary(uniqueKeysWithValues: semantics.cues.map { ($0.id, $0.text) })
+        let targets = Dictionary(grouping: semantics.cueTargets.filter { $0.provenance.status == .confirmed }, by: \.nodeID)
+        return VocabularyMeaningBrowserProjection.items(index: semantics, entries: entries, includeEmpty: false).compactMap { item in
+            guard item.node.provenance.status == .confirmed, !item.selections.isEmpty else { return nil }
+            let terms = item.node.labels.map(\.text) + (targets[item.id] ?? []).prefix(12).compactMap { cues[$0.cueID] }
+            let text = String((terms + [item.node.definition]).map {
+                String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(384))
+            }.filter { !$0.isEmpty }.joined(separator: "\n").prefix(2_000))
+            guard !text.isEmpty else { return nil }
+            return .init(node: item.node, senseIDs: item.selections.map(\.senseID), lookupTerms: terms,
+                text: text, fingerprint: fingerprint(text))
+        }
+    }
+
+    static func results(documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument],
+                        query: String, similarities: [UUID: Float] = [:],
+                        meaningSimilarities: [UUID: Float] = [:]) -> VocabularySearchResults {
+        let term = normalized(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !term.isEmpty else { return .init() }
+        let exact = documents.filter { normalized($0.expression) == term || normalized($0.dictionaryForm) == term }
+        let byID = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
+        // Only nodes with visible senses participate in admission. A filtered-out node cannot
+        // raise the similarity threshold or surface a result the learner has filtered away.
+        let candidates = meanings.filter { $0.senseIDs.contains { byID[$0] != nil } }
+        let literal = candidates.compactMap { meaning -> (meaning: VocabularyMeaningSearchDocument, rank: Int)? in
+            let terms = meaning.lookupTerms.map(normalized)
+            if terms.contains(term) { return (meaning, 2) }
+            if terms.contains(where: { containsPhrase(term, in: $0) }) { return (meaning, 1) }
+            return nil
+        }
+        let matched: [VocabularyMeaningSearchDocument]
+        if !literal.isEmpty {
+            matched = literal.sorted { $0.rank > $1.rank }.map(\.meaning)
+        } else if exact.isEmpty {
+            let scores = candidates.compactMap { meaning -> (meaning: VocabularyMeaningSearchDocument, score: Float)? in
+                guard let score = meaningSimilarities[meaning.id], VocabularySearchRelevancePolicy.isValid(score) else { return nil }
+                return (meaning, score)
+            }
+            let cutoff = VocabularySearchRelevancePolicy.cutoff(for: scores.map(\.score))
+            matched = scores.filter { $0.score >= cutoff }.sorted { $0.score > $1.score }.map(\.meaning)
+        } else {
+            matched = []
+        }
+        let groups = matched.map { meaning in
+            VocabularySearchResults.MeaningGroup(node: meaning.node, documents: meaning.senseIDs.compactMap { byID[$0] }.sorted {
+                let order = $0.expression.localizedStandardCompare($1.expression)
+                return order == .orderedSame ? $0.id.uuidString < $1.id.uuidString : order == .orderedAscending
+            })
+        }
+        let expanded = Set(exact.map(\.id) + groups.flatMap { $0.documents.map(\.id) })
+        let other = hits(documents: documents, query: query, similarities: similarities)
+            .map(\.document).filter { !expanded.contains($0.id) }
+        return .init(exact: exact, groups: groups, other: other)
+    }
+
     static func fingerprint(_ text: String) -> String {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }

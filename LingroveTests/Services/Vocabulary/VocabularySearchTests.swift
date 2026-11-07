@@ -20,13 +20,32 @@ struct VocabularySearchTests {
         search.search("延期", language: .french, tag: "")
         try await settle { !search.isSearching && search.results.count == 1 }
         #expect(search.status == .notInstalled)
-        #expect(search.results.first?.document.expression == "reporter")
+        #expect(search.results.other.first?.expression == "reporter")
         await store.save(.init(expression: "remettre", dictionaryForm: "remettre", language: .french, kind: .word, meaning: "延期"))
         try await settle { !search.isSearching && search.results.count == 2 }
         search.search("postpone", language: .english, tag: "missing")
         try await settle { !search.isSearching }
         #expect(search.results.isEmpty)
         #expect(!FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @Test(.enabled(if: LingroveCompatibility.processEnvironment["LINGROVE_SEARCH_MODEL_PATH"] != nil))
+    func realModelMatchesNaturalLanguageToTheSharedMeaning() async throws {
+        let modelURL = URL(fileURLWithPath: try #require(LingroveCompatibility.processEnvironment["LINGROVE_SEARCH_MODEL_PATH"]))
+        var fixture = VocabularySearchPolicyTests.influenceFixture()
+        let adjacent = VocabularySemanticTests.fixture()
+        fixture.entries += adjacent.entries
+        fixture.semantics.nodes += adjacent.semantics.nodes
+        fixture.semantics.mappings += adjacent.semantics.mappings
+        let index = VocabularySearchIndex(cacheURL: nil)
+        let (documents, meanings) = await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
+        try await index.reconcile(documents, meanings: meanings, modelURL: modelURL) { _, _ in }
+        let results = try await index.search("某个因素会左右结果", documents: documents, meanings: meanings, modelURL: modelURL)
+        #expect(results.groups.first?.node.title == "对某事产生影响")
+        #expect(results.groups.first?.documents.count == 5)
+        let unrelated = try await index.search("形容火山正在喷发", documents: documents, meanings: meanings, modelURL: modelURL)
+        #expect(unrelated.groups.isEmpty)
+        await index.unload()
     }
 
     @Test func aNewQueryOrClosureCannotPublishOldResults() async throws {

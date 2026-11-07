@@ -1,4 +1,5 @@
 import AppKit
+import LingroveNotebook
 import SwiftUI
 import Testing
 @testable import Lingrove
@@ -14,8 +15,15 @@ struct VocabularySearchViewTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
-        await store.save(.init(expression: "postpone", dictionaryForm: "postpone", language: .english, kind: .word, meaning: "推迟安排"))
-        await store.save(.init(expression: "approve", dictionaryForm: "approve", language: .english, kind: .word, meaning: "同意提议"))
+        let fixture = VocabularySearchPolicyTests.influenceFixture()
+        for entry in fixture.entries {
+            await store.save(.init(expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: .english,
+                kind: .expression, meaning: try #require(entry.senses.first?.meaning)))
+        }
+        let node = try #require(fixture.semantics.nodes.first)
+        let mappings = store.entries.flatMap { $0.senses.map { VocabularyMeaningMapping(nodeID: node.id, senseID: $0.id) } }
+        let saved = await store.updateSemantics(.init(nodes: [node], mappings: mappings), basedOn: store.semantics)
+        try #require(saved)
         let search = VocabularySearchController(store: store, directoryURL: folder, cacheURL: nil)
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, search: search, preferences: defaults))
@@ -34,20 +42,29 @@ struct VocabularySearchViewTests {
             try await Task.sleep(for: .seconds(seconds))
         }
         #expect(!search.downloads.state(for: VocabularySearchCatalog.model).isDownloading)
-        var selected: UUID?
-        let results = NSHostingView(rootView: VocabularySearchResultsView(controller: search, query: "推迟", language: .english,
-            tag: "", selection: Binding(get: { selected }, set: { selected = $0 })))
+        var selected: (senseID: UUID, nodeID: UUID?)?
+        let results = NSHostingView(rootView: VocabularySearchResultsView(controller: search, query: "产生影响", language: .english,
+            tag: "", selectedSenseID: nil, onSelect: { selected = ($0, $1) }))
         window.contentView = results
         for _ in 0..<30 {
             try await Task.sleep(for: .milliseconds(30))
             if !search.results.isEmpty { break }
         }
         try await paint(results, filename: "results")
-        #expect(search.results.count == 1)
+        #expect(search.results.count == 5)
+        let group = try #require(search.results.groups.first)
         let table = try #require(findTable(results))
-        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        // Native sidebar sections insert a nonselectable header before the first expression.
+        let rows = (0..<table.numberOfRows).filter {
+            table.rowView(atRow: $0, makeIfNecessary: true)?.isGroupRowStyle != true &&
+                table.delegate?.tableView?(table, shouldSelectRow: $0) != false
+        }
+        #expect(rows.count == group.documents.count)
+        let row = try #require(rows.first)
+        table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         try await Task.sleep(for: .milliseconds(100))
-        #expect(selected == search.results.first?.id)
+        #expect(selected?.senseID == group.documents.first?.id)
+        #expect(selected?.nodeID == node.id)
         #expect(SettingsSearchRanker.rank("embedding", in: SettingsItem.allCases).contains(.vocabularySearch))
         let navigation = SettingsNavigationModel()
         navigation.reveal(.vocabularySearch)

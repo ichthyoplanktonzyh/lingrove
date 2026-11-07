@@ -8,7 +8,7 @@ import Foundation
 @MainActor
 final class VocabularySearchController: ObservableObject {
     @Published private(set) var status: VocabularySearchStatus = .notInstalled
-    @Published private(set) var results: [VocabularySearchHit] = []
+    @Published private(set) var results = VocabularySearchResults()
     @Published private(set) var isSearching = false
     let downloads: ModelDownloadManager
     var openModelSettings: (() -> Void)?
@@ -19,6 +19,7 @@ final class VocabularySearchController: ObservableObject {
     private var indexing: Task<Void, Never>?
     private var searching: Task<Void, Never>?
     private var documents: [VocabularySearchDocument] = []
+    private var meanings: [VocabularyMeaningSearchDocument] = []
     private var epoch = UUID()
     private var queryEpoch = UUID()
     private var active = false
@@ -41,7 +42,7 @@ final class VocabularySearchController: ObservableObject {
         store.$scopeIdentity.dropFirst().sink { [weak self] identity in
             guard let self else { return }
             epoch = UUID(); queryEpoch = UUID(); indexing?.cancel(); searching?.cancel()
-            documents = []; results = []; isSearching = false; query = ""; language = nil; tag = ""
+            documents = []; meanings = []; results = .init(); isSearching = false; query = ""; language = nil; tag = ""
             Task { [weak self, index = self.index] in
                 await index.unload(removingCache: true)
                 guard let self, store.scopeIdentity == identity else { return }
@@ -101,19 +102,20 @@ final class VocabularySearchController: ObservableObject {
     private func refresh() {
         guard active else { return }
         epoch = UUID()
-        queryEpoch = UUID(); results = []; isSearching = false
+        queryEpoch = UUID(); results = .init(); isSearching = false
         let capturedEpoch = epoch
         indexing?.cancel(); searching?.cancel()
         let entries = store.entries, semantics = store.semantics, modelURL = modelURL
         indexing = Task { [weak self, index] in
-            let documents = await index.documents(entries: entries, semantics: semantics)
+            let (documents, meanings) = await index.prepare(entries: entries, semantics: semantics)
             guard let self, self.epoch == capturedEpoch, !Task.isCancelled else { return }
             self.documents = documents
-            self.status = modelURL == nil ? .notInstalled : .indexing(completed: 0, total: documents.count)
+            self.meanings = meanings
+            self.status = modelURL == nil ? .notInstalled : .indexing(completed: 0, total: documents.count + meanings.count)
             self.runSearch(usingModel: false)
             guard let modelURL else { return }
             do {
-                try await index.reconcile(documents, modelURL: modelURL) { [weak self] completed, total in
+                try await index.reconcile(documents, meanings: meanings, modelURL: modelURL) { [weak self] completed, total in
                     await self?.progress(completed, total: total, epoch: capturedEpoch)
                 }
                 guard self.epoch == capturedEpoch, !Task.isCancelled else { return }
@@ -134,26 +136,27 @@ final class VocabularySearchController: ObservableObject {
 
     private func runSearch(usingModel: Bool = true) {
         queryEpoch = UUID(); searching?.cancel()
-        results = []; isSearching = false
+        results = .init(); isSearching = false
         let text = String(query.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1_000))
         guard active, !text.isEmpty else { return }
         let allowedSenses = Set(store.entries.filter { language == nil || $0.language == language }.flatMap {
             $0.senses.filter { tag.isEmpty || $0.tags.contains(tag) }.map(\.id)
         })
         let scoped = documents.filter { allowedSenses.contains($0.id) }
+        let scopedMeanings = meanings.filter { $0.senseIDs.contains(where: allowedSenses.contains) }
         let queryID = queryEpoch
         let url = usingModel && status == .ready ? modelURL : nil
         isSearching = true
         searching = Task { [weak self, index] in
             do {
                 try await Task.sleep(for: .milliseconds(180))
-                let results = try await index.search(text, documents: scoped, modelURL: url)
+                let results = try await index.search(text, documents: scoped, meanings: scopedMeanings, modelURL: url)
                 guard let self, self.queryEpoch == queryID, !Task.isCancelled else { return }
                 self.results = results; self.isSearching = false
             } catch {
-                let fallback = try? await index.search(text, documents: scoped, modelURL: nil)
+                let fallback = try? await index.search(text, documents: scoped, meanings: scopedMeanings, modelURL: nil)
                 guard let self, self.queryEpoch == queryID, !Task.isCancelled else { return }
-                self.results = fallback ?? []
+                self.results = fallback ?? .init()
                 self.isSearching = false
                 if url != nil { self.status = .failed(error.localizedDescription) }
             }

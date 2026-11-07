@@ -168,7 +168,13 @@ struct VocabularyNotebookView: View {
                     VStack(spacing: 0) {
                         sidebarFilterBar
                         VocabularySearchResultsView(controller: search, query: query, language: language, tag: selectedTag,
-                            selection: Binding(get: { activeSenseID }, set: { if let id = $0 { showSense(id) } }))
+                            selectedSenseID: activeSenseID, onSelect: { senseID, nodeID in
+                                if organization == "meaning" {
+                                    meaningDestination = .sense(nodeID: nodeID, senseID: senseID)
+                                } else {
+                                    showSense(senseID)
+                                }
+                            })
                     }
                     .navigationSplitViewColumnWidth(min: 260, ideal: 315, max: 420)
                 } detail: { browserDetail }

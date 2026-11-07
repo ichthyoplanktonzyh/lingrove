@@ -148,30 +148,37 @@ struct VocabularySearchCountView: View {
     var body: some View { Text("\(controller.results.count)") }
 }
 
-/// A flat relevance-ordered sense list serves both notebook organizations and graph searches.
-/// Selecting a hit reuses the existing detail view with stable IDs; no generated text is inserted.
+/// Search groups present explicit notebook links. A row belongs to its section so the same
+/// sense can appear under two meanings while still opening the same saved sense detail.
 struct VocabularySearchResultsView: View {
+    private struct RowID: Hashable {
+        let senseID: UUID
+        let nodeID: UUID?
+    }
+
     @ObservedObject var controller: VocabularySearchController
     let query: String
     let language: LearningLanguage?
     let tag: String
-    @Binding var selection: UUID?
+    let selectedSenseID: UUID?
+    let onSelect: (UUID, UUID?) -> Void
+    @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
+    @State private var selectedRow: RowID?
+    @State private var visibleCounts: [UUID: Int] = [:]
+    private let pageSize = 20
 
     var body: some View {
-        List(selection: $selection) {
-            ForEach(controller.results) { hit in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Text(hit.document.expression).font(.headline)
-                        Spacer()
-                        if let language = hit.document.language {
-                            Text(language.compactLabel).font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                    Text(hit.document.meaning).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+        List(selection: rowSelection) {
+            ForEach(controller.results.exact) { row($0, nodeID: nil) }
+            ForEach(controller.results.groups) { group in
+                meaningSection(group)
+            }
+            if controller.results.groups.isEmpty {
+                ForEach(controller.results.other) { row($0, nodeID: nil) }
+            } else if !controller.results.other.isEmpty {
+                Section(String(localized: "Expressions", table: "Vocabulary")) {
+                    ForEach(controller.results.other) { row($0, nodeID: nil) }
                 }
-                .padding(.vertical, 5).tag(hit.id)
-                .accessibilityIdentifier("vocabularySearchHit." + hit.id.uuidString)
             }
         }
         .listStyle(.sidebar)
@@ -190,5 +197,57 @@ struct VocabularySearchResultsView: View {
         .accessibilityIdentifier("vocabularySearchResults")
     }
 
-    private func updateQuery() { controller.search(query, language: language, tag: tag) }
+    private var rowSelection: Binding<RowID?> {
+        Binding(get: {
+            guard let selectedSenseID else { return nil }
+            if selectedRow?.senseID == selectedSenseID { return selectedRow }
+            let results = controller.results
+            if (results.exact + results.other).contains(where: { $0.id == selectedSenseID }) {
+                return RowID(senseID: selectedSenseID, nodeID: nil)
+            }
+            return results.groups.first { group in group.documents.contains { $0.id == selectedSenseID } }
+                .map { RowID(senseID: selectedSenseID, nodeID: $0.id) }
+        }, set: { row in
+            selectedRow = row
+            if let row { onSelect(row.senseID, row.nodeID) }
+        })
+    }
+
+    private func meaningSection(_ group: VocabularySearchResults.MeaningGroup) -> some View {
+        let title = VocabularyMeaningLabelRules.label(for: group.node, languages: meaningLanguages)?.text ?? group.node.title
+        let count = visibleCounts[group.id] ?? pageSize
+        return Section {
+            ForEach(group.documents.prefix(count)) { row($0, nodeID: group.id) }
+            if count < group.documents.count {
+                Button("Load More") { visibleCounts[group.id] = count + pageSize }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+            }
+        } header: {
+            Text(verbatim: "\(title) · \(group.documents.count.formatted())")
+                .accessibilityIdentifier("vocabularySearchMeaning." + group.id.uuidString)
+        }
+    }
+
+    private func row(_ document: VocabularySearchDocument, nodeID: UUID?) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(document.expression).font(.headline)
+                Spacer()
+                if let language = document.language {
+                    Text(language.compactLabel).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            Text(document.meaning).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+        }
+        .padding(.vertical, 5)
+        .tag(RowID(senseID: document.id, nodeID: nodeID))
+        .accessibilityIdentifier("vocabularySearchHit." + document.id.uuidString)
+    }
+
+    private func updateQuery() {
+        selectedRow = nil
+        visibleCounts = [:]
+        controller.search(query, language: language, tag: tag)
+    }
 }

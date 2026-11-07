@@ -7,6 +7,59 @@ import Testing
 /// incidental example topics stay out, and only adopted semantic knowledge contributes.
 @MainActor
 struct VocabularySearchPolicyTests {
+    static func influenceFixture() -> VocabularyDocument {
+        let now = Date()
+        let entries = [
+            ("influence the result", "影响结果"),
+            ("affect the outcome", "改变事情的走向"),
+            ("have an impact on", "对某人或某事产生影响"),
+            ("play a role in", "作为因素之一发挥作用"),
+            ("shape the way", "塑造做事的方式")
+        ].map { expression, meaning in
+            VocabularyEntry(id: UUID(), expression: expression, dictionaryForm: expression, language: .english,
+                kind: .expression, senses: [.init(id: UUID(), meaning: meaning, createdAt: now, updatedAt: now)],
+                createdAt: now, updatedAt: now)
+        }
+        let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "对某事产生影响", language: .chinese)],
+            definition: "对事物的状态、发展或结果产生作用，但未必完全决定它。")
+        let mappings = entries.flatMap { $0.senses.map { VocabularyMeaningMapping(nodeID: node.id, senseID: $0.id) } }
+        return .init(entries: entries, semantics: .init(nodes: [node], mappings: mappings))
+    }
+
+    @Test func aMeaningMatchExpandsAllConfirmedInScopeSenses() throws {
+        var fixture = Self.influenceFixture()
+        let adjacent = VocabularySemanticTests.fixture()
+        fixture.entries += adjacent.entries
+        fixture.semantics.nodes += adjacent.semantics.nodes
+        fixture.semantics.mappings += adjacent.semantics.mappings
+        let documents = VocabularySearchPolicy.documents(entries: fixture.entries, semantics: fixture.semantics)
+        let meanings = VocabularySearchPolicy.meaningDocuments(entries: fixture.entries, semantics: fixture.semantics)
+        let influence = try #require(fixture.semantics.nodes.first)
+        // A weak score on every sense must not hide the five stored links.
+        let lowScores = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, Float(0.1)) })
+        let literal = VocabularySearchPolicy.results(documents: documents, meanings: meanings, query: "产生影响",
+            similarities: lowScores)
+        #expect(literal.groups.map(\.id) == [influence.id])
+        #expect(literal.groups.first?.documents.count == 5)
+        #expect(literal.count == 5 && literal.other.isEmpty)
+
+        let scoped = Array(documents.prefix(3))
+        let paraphrase = VocabularySearchPolicy.results(documents: scoped, meanings: meanings, query: "某个因素会左右结果",
+            similarities: lowScores, meaningSimilarities: [influence.id: 0.7, adjacent.semantics.nodes[0].id: 0.95])
+        #expect(Set(paraphrase.groups.flatMap { $0.documents.map(\.id) }) == Set(scoped.map(\.id)))
+
+        let direct = VocabularySearchPolicy.results(documents: documents, meanings: meanings, query: "affect the outcome",
+            meaningSimilarities: [influence.id: 0.9])
+        #expect(direct.exact.first?.expression == "affect the outcome")
+        #expect(direct.groups.isEmpty)
+
+        fixture.semantics.mappings[0].provenance.status = .proposed
+        let adopted = VocabularySearchPolicy.meaningDocuments(entries: fixture.entries, semantics: fixture.semantics)
+        let refreshed = VocabularySearchPolicy.results(documents: documents, meanings: adopted, query: "产生影响",
+            similarities: lowScores)
+        #expect(refreshed.groups.first?.documents.count == 4)
+    }
+
     @Test func materialIncludesMeaningsAndCuesButNeverExamplesOrPersonalNotes() throws {
         var document = VocabularySemanticTests.fixture()
         document.entries[0].senses[0].note = "PRIVATE_NOTE_SENTINEL"
