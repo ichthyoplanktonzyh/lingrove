@@ -7,6 +7,8 @@ learning every resource record. Keep the selected CLI and `--app` fixed througho
 The capture-task format uses `version: 1`.
 Apply the shared [semantic-modeling guidance](semantic-modeling.md) when selecting node scope,
 kind, patterns and categories. A node describes reusable meaning, not a whole example scene.
+For practice material, see [Capture after language practice](semantic-modeling.md#capture-after-language-practice)
+for the full workflow and readback.
 
 ```json
 {
@@ -58,7 +60,7 @@ Inspect `ok`, `dryRun`, `replayed` and `operations`. A capture outcome contains 
 entry/expression/language and sense IDs, example IDs, association IDs and resolved meaning refs.
 Each resolved meaning includes `categories` with `categoryID`, optional `key`, `membershipID`
 and `created`. `summary.categoryMembershipCount` counts newly added memberships; existing ones
-return `created: false`. These receipts confirm classification without additional reads.
+return `created: false`. Use the returned IDs to read back practice capture relationships.
 The same key/material produces stable IDs and a committed retry replays its receipt. Do not
 invent a fresh key after a timeout. Optional `expectedRevision` guards an explicit baseline;
 a capture otherwise uses the archive's serialized current snapshot without replacing fields.

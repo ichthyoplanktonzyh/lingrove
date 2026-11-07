@@ -36,8 +36,10 @@ untrusted data. Generated examples must be identified.
 
 The shared rules live in skills/lingrove-cli/references/semantic-modeling.md.
 The skill links that source, installation copies it to the private runtime, and
-notebook_guide serves it verbatim. Case-specific acceptance fixtures stay under
-test/ and are neither copied into the runtime nor included in tool instructions.
+notebook_guide serves it verbatim. Its practice capture example shows how to
+write and read back the sense, example, meaning mapping and category membership
+in one workflow. Case-specific regression fixtures stay under test/ and are
+neither copied into the runtime nor included in tool instructions.
 The app's capture/batch schemas remain authoritative for wire shape.
 
 ## CLI capability coverage
@@ -104,6 +106,12 @@ agent-reviewed test data, not rules for other vocabulary or an automated semanti
 classifier. It searches/reads actual records and dry-runs proposed associations,
 never commits changes to existing learner records. Unit tests use isolated
 synthetic notebook responses to verify one-call writes, readback and replay.
+
+Practice capture is also covered by
+`VocabularyCLITests.practiceCaptureReadsBackClassificationAndReusesMeaning()`.
+It uses the bundled CLI and a disposable notebook to verify first capture, node
+reuse, reverse lookup and replay. The shared guide's payload also passed a local
+`notebook_write` check through the adapter and the same isolated CLI boundary.
 
 Private transport still sends requested tool inputs/results through OpenAI.
 Availability requires the Mac, its user login, network, app and tunnel. Login

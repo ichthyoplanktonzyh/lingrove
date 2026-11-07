@@ -181,6 +181,99 @@ struct VocabularyCLITests {
         await fixture.close()
     }
 
+    /// A practice capture is complete when the saved example and both links can be read
+    /// through the CLI. A second expression should reuse the node in the same notebook.
+    @Test func practiceCaptureReadsBackClassificationAndReusesMeaning() async throws {
+        let fixture = try await Fixture()
+        do {
+            var document = VocabularyDocument()
+            try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: [])
+            _ = try await fixture.archive.commit(document)
+
+            func read(_ arguments: [String]) async throws -> [String: Any] {
+                let reply = try await fixture.call(arguments)
+                try #require(reply.0 == 0, "\(reply.1["error"] ?? "")")
+                return try result(reply.1)
+            }
+
+            func records(_ resource: String, related id: String) async throws -> [[String: Any]] {
+                let reply = try await read(["data", "list", resource, "--related", id])
+                return try #require(reply["records"] as? [[String: Any]])
+            }
+
+            func task(expression: String, example: String, translation: String, meaning: [String: Any]) -> [String: Any] {
+                ["version": 1, "idempotencyKey": UUID().uuidString,
+                 "defaults": ["language": "en", "meaningLanguage": "zh-Hans", "sourceKind": "captured"],
+                 "meanings": [meaning],
+                 "entries": [["expression": expression, "kind": "expression",
+                              "senses": [["meaning": "影响结果",
+                                          "examples": [["text": example, "translation": translation]],
+                                          "associations": [["meaning": "have-an-influence"]]]]]]]
+            }
+
+            func capture(_ task: [String: Any]) async throws -> [String: Any] {
+                let input = try JSONSerialization.data(withJSONObject: task)
+                let reply = try await fixture.call(["vocab", "capture", "--stdin"], stdin: input)
+                try #require(reply.0 == 0, "\(reply.1["error"] ?? "")")
+                return try result(reply.1)
+            }
+
+            func verifyEntry(in receipt: [String: Any], example: String) async throws -> (senseID: String, nodeID: String) {
+                #expect(receipt["dryRun"] as? Bool == false)
+                let outcomes = try #require(receipt["operations"] as? [[String: Any]])
+                let outcome = try #require(outcomes.first)
+                let entries = try #require(outcome["entries"] as? [[String: Any]])
+                let meanings = try #require(outcome["meanings"] as? [[String: Any]])
+                let entryID = try #require(entries.first?["entryID"] as? String)
+                let nodeID = try #require(meanings.first?["nodeID"] as? String)
+                let reply = try await read(["vocab", "get", entryID])
+                let entry = try #require(reply["entry"] as? [String: Any])
+                let senses = try #require(entry["senses"] as? [[String: Any]])
+                try #require(senses.count == 1)
+                let senseID = try #require(senses[0]["id"] as? String)
+                #expect(senses[0]["meaning"] as? String == "影响结果")
+                let examples = try #require(senses[0]["examples"] as? [[String: Any]])
+                #expect(examples.compactMap { $0["text"] as? String } == [example])
+                let mappings = try await records("mappings", related: senseID)
+                #expect(mappings.compactMap { $0["nodeID"] as? String } == [nodeID])
+                return (senseID, nodeID)
+            }
+
+            let definition = "对事物的状态、发展或结果产生作用，但未必完全决定它。"
+            let firstExample = "These three factors influence the result."
+            let first = try await capture(task(expression: "influence the result", example: firstExample,
+                translation: "这三个因素影响结果。",
+                meaning: ["ref": "have-an-influence", "title": "对某事产生影响",
+                          "definition": definition,
+                          "kind": "concept", "categories": ["content.general"]]))
+            let firstIDs = try await verifyEntry(in: first, example: firstExample)
+            let category = try #require(document.classification.categories.first { $0.key == "content.general" })
+            let memberships = try await records("categoryMemberships", related: category.id.uuidString)
+            #expect(memberships.compactMap { $0["nodeID"] as? String } == [firstIDs.nodeID])
+
+            let baseline = try await read(["data", "get", "nodes", firstIDs.nodeID])
+            #expect((baseline["record"] as? [String: Any])?["definition"] as? String == definition)
+            let secondExample = "Even small changes can affect the outcome."
+            var reuse = task(expression: "affect the outcome", example: secondExample,
+                translation: "即使是小变化也可能影响结果。",
+                meaning: ["ref": "have-an-influence", "id": firstIDs.nodeID])
+            reuse["defaults"] = ["language": "en", "meaningLanguage": "zh-Hans", "sourceKind": "generated"]
+            reuse["notebookScope"] = try #require(baseline["notebookScope"])
+            reuse["expectedRevision"] = try #require(baseline["revision"])
+            let second = try await capture(reuse)
+            let secondIDs = try await verifyEntry(in: second, example: secondExample)
+            #expect(secondIDs.nodeID == firstIDs.nodeID)
+            #expect(try await capture(reuse)["replayed"] as? Bool == true)
+            let reverse = try await records("mappings", related: firstIDs.nodeID)
+            #expect(reverse.count == 2)
+            #expect(Set(reverse.compactMap { $0["senseID"] as? String }) == [firstIDs.senseID, secondIDs.senseID])
+            let snapshot = try await fixture.archive.load()
+            #expect(snapshot.document.semantics.nodes.count == 1)
+            #expect(snapshot.document.classification.memberships.count == 1)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func captureTaskBuildsActiveMeaningGraphWithStableIDsAndReplay() async throws {
         let fixture = try await Fixture()
         do {

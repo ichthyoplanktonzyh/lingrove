@@ -53,7 +53,8 @@ For capture or semantic maintenance, read [semantic-modeling.md](references/sema
 It defines node/sense/pattern/example boundaries, abstraction, Concept/Function choice,
 classification consistency and authorized-write behavior. It is also the MCP guide's source.
 
-For an ordinary “save and classify this expression” request:
+For an ordinary practice-session capture or “save and classify this expression” request,
+follow the complete example in [Capture after language practice](references/semantic-modeling.md#capture-after-language-practice):
 
 1. Search the expression; get a matching entry only when choosing an existing sense.
 2. Search relevant `nodes` and `categories` with `data list ... --query TEXT --summary --limit 10`.
@@ -62,7 +63,7 @@ For an ordinary “save and classify this expression” request:
 3. Put nodes in `meanings`, classification keys in each meaning's `categories`, and sense-to-node
    links in `associations`. A single capture generates IDs and persists all of them atomically.
 4. Validate internally, complete the already-authorized write with the identical file,
-   and inspect the returned IDs and category receipts. Do not ask for the same approval again.
+   and read back the sense, example, mapping and classification using the returned IDs.
 
 Do not expand this into separate `nodes`, `mappings` and `categoryMemberships` writes or read
 all resource manuals. Those interfaces serve independent edits. Search is substring matching,
@@ -103,9 +104,9 @@ returned IDs; do not store transport IDs or operational commentary in learning f
 Inspect `ok`, `result.dryRun`, `result.replayed` and `result.operations`. A fresh save has
 `ok: true`, `dryRun: false`. Report the material saved and any limitation. Read affected records
 when needed to confirm their current state; a replay only acknowledges an earlier write.
-Capture meaning receipts include category IDs/keys, membership IDs and whether they were created;
-`summary.categoryMembershipCount` counts newly added memberships. Use those receipts to confirm
-classification instead of rereading every generated relationship.
+Capture meaning receipts include category IDs/keys, membership IDs and whether they were created.
+`summary.categoryMembershipCount` counts newly added memberships. Use those IDs to focus practice
+capture readback on the saved relationships.
 
 Each write is atomic. Resource writes and sense updates require the current notebook revision;
 capture may optionally guard one. On a definitive conflict, reread and reconcile before preparing

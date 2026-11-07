@@ -61,6 +61,101 @@ of the same coherent change where possible. Broadening a shared node may alter
 other expressions' meanings: do not treat it as a harmless label edit. A new node
 and a targeted mapping change may be preferable. Do not silently merge meanings.
 
+## Capture after language practice
+
+When the learner asks to organize and save useful material from a practice session,
+include semantic organization in the same capture. For each selected sense, keep
+the expression and a useful example when available, link the sense to a reusable
+meaning, and place that meaning in a suitable existing category. Leave uncertain
+classification open and report the gap if no existing category fits.
+
+For “These three factors influence the result,” the expression is
+`influence the result`, the sense is “影响结果,” and the reusable concept is
+“对某事产生影响.” The three factors belong in the example. The concept retains the
+distinction between exerting influence and determining the outcome.
+
+Search for the expression, read any matching sense, then search for nodes by
+meaning and inspect their definitions and category memberships. This example
+uses the existing “存在与关系” category after resolving its key `content.general`.
+
+### First capture
+
+If the sense and node are missing, use one task:
+
+```json
+{
+  "version": 1,
+  "idempotencyKey": "REPLACE-WITH-A-FRESH-UUID",
+  "defaults": {
+    "language": "en",
+    "meaningLanguage": "zh-Hans",
+    "sourceKind": "captured"
+  },
+  "meanings": [
+    {
+      "ref": "have-an-influence",
+      "title": "对某事产生影响",
+      "definition": "对事物的状态、发展或结果产生作用，但未必完全决定它。",
+      "kind": "concept",
+      "categories": ["content.general"]
+    }
+  ],
+  "entries": [
+    {
+      "expression": "influence the result",
+      "kind": "expression",
+      "senses": [
+        {
+          "meaning": "影响结果",
+          "examples": [
+            {
+              "text": "These three factors influence the result.",
+              "translation": "这三个因素影响结果。"
+            }
+          ],
+          "associations": [{"meaning": "have-an-influence"}]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`senses[].associations[].meaning` matches the task-local `meanings[].ref` and
+creates the sense-to-node link. `meanings[].categories` creates the node-to-category
+link using an existing category key or UUID. `sourceKind` describes the example's
+origin. Use `generated` for a newly composed example and omit session dates and
+workflow notes. Semantic assertions still carry model authorship.
+
+### Reuse or complete an existing record
+
+- **Matching node exists.** Replace the meaning declaration with
+  `{"ref":"have-an-influence","id":"EXISTING_NODE_UUID"}`. Keep the sense's
+  association to that ref. For example, a newly collected `affect the outcome`
+  can reuse the same node when its sense matches the definition. Keep existing
+  appropriate categories. Add a category key only if that membership is missing.
+- **Matching sense exists.** Reference its ID instead of resubmitting the sense
+  definition. Include only missing material or links. For example, append a useful
+  example without resubmitting an existing mapping. A sense without an ID creates
+  a new sense. If the example and both links already exist, finish with readback
+  and skip the write.
+
+For a task that references an existing sense or node ID, include the top-level
+`notebookScope` and `expectedRevision` from the baseline read. Save the task via
+`vocab capture --file PATH` in the CLI, or pass it as `task` to `notebook_write`
+with `mode: "capture"` and a fresh UUID `requestID` in MCP. When supplying an
+`idempotencyKey` to MCP, use the same UUID as `requestID`.
+
+### Read back the saved material
+
+Use the receipt IDs to read the entry and confirm the sense and example. Read
+mappings by sense ID and check the node ID, then read the node and its category
+memberships. When verifying reuse, read mappings by node ID and confirm both
+senses point to that node. The CLI uses `vocab get` and `data get/list` with
+`--related` for relationship lookups. MCP uses `notebook_read` and
+`notebook_catalog_read/search` with `related` for those lookups. Report any
+missing association or classification as unfinished semantic organization.
+
 ## Authorized writes and verification
 
 An explicit request to save material and do routine classification authorizes
