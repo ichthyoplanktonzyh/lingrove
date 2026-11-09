@@ -327,11 +327,11 @@ struct VocabularyWireWindowIntegrationTests {
 
         var futureClock = valid
         futureClock["version"] = "9007199254740993"
-        futureClock["fieldVersions"] = ["senseId": "9007199254740993", "interpretationId": "9007199254740993"]
-        futureClock["fieldResets"] = ["senseId": "9007199254740993", "interpretationId": "9007199254740993"]
+        futureClock["fieldVersions"] = ["mappingId": "9007199254740993", "interpretationId": "9007199254740993"]
+        futureClock["fieldResets"] = ["mappingId": "9007199254740993", "interpretationId": "9007199254740993"]
         let exactFutureRecord = try Self.decodeRecord(futureClock)
         #expect(exactFutureRecord.version.rawValue == "9007199254740993")
-        #expect(exactFutureRecord.fieldVersions["senseId"]?.rawValue == "9007199254740993")
+        #expect(exactFutureRecord.fieldVersions["mappingId"]?.rawValue == "9007199254740993")
         #expect(try JSONDecoder().decode(
             VocabularyWireCorpusRecord.self, from: JSONEncoder().encode(exactFutureRecord)
         ) == exactFutureRecord)
@@ -356,14 +356,14 @@ struct VocabularyWireWindowIntegrationTests {
 
         var missingClock = valid
         var clocks = try Self.dictionary(missingClock["fieldVersions"])
-        clocks.removeValue(forKey: "senseId")
+        clocks.removeValue(forKey: "mappingId")
         missingClock["fieldVersions"] = clocks
         #expect(throws: VocabularyWireWindowError.invalidRecord) {
             _ = try Self.decodeRecord(missingClock)
         }
 
         var clockPastVersion = valid
-        clockPastVersion["fieldVersions"] = ["senseId": "2", "interpretationId": "1"]
+        clockPastVersion["fieldVersions"] = ["mappingId": "2", "interpretationId": "1"]
         #expect(throws: VocabularyWireWindowError.invalidRecord) {
             _ = try Self.decodeRecord(clockPastVersion)
         }
@@ -914,6 +914,7 @@ extension VocabularyWireWindowIntegrationTests {
     func terminalOutcomeRejectsUnmatchedOrOpenEndedConfirmation() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
         var sent = original; sent.savedSenses[0].note = "pending note"; sent.catalog[0].senses[0].meaning = "pending meaning"
+        sent.savedSenses[1].note = "another pending note"
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
         let valid: [String: Any] = ["protocolVersion":1,"notebookId":batch.request.notebookID.uuidString.lowercased(),
             "groupId":batch.request.groupID.uuidString.lowercased(),"memberIds":batch.request.members.map { $0.memberID.uuidString.lowercased() },"reason":"entity_conflict"]
