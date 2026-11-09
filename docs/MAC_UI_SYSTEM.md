@@ -176,9 +176,9 @@ native attributes to portable UTF-16 inline marks. Shared reading and HTML rende
 same marks. Paragraph/media identities remain an internal storage detail, not separate input boxes.
 The semantic section contains node links only. A migration to move existing pattern/association
 explanations into the sense body with their exact meaning/pattern scope has passed a dry run;
-relation identities and restrictions are preserved. The user paused Dev updates, so this migration
-and the continuous editor have not been installed. Favorite writer alignment is described below;
-the installed Working record has not been migrated.
+relation identities and restrictions are preserved. Deployment was initially paused, then authorized
+on 2026-11-09 and completed as recorded below. Favorite writer alignment is described below;
+the reported existing Working record was repaired from its already-saved interpretation.
 
 The continuous editor passed 7 focused native tests covering formatting, Unicode, image identity,
 undo/redo, rich paste, selection, IME commit and save/reopen. Shared formatting and wire-codec suites
@@ -215,5 +215,27 @@ index crash after removing an example; the affected cases were corrected and rer
 Coverage includes the real bundled CLI, dry-run/replay, revision/scope conflicts, persistence,
 removed image restoration, semantic relationships, delayed explanation writes and retained review
 receipts. All 12 MCP bridge tests passed, and the repository CLI skill validator passed.
-No new Dev installation, live corpus migration, on-screen drag verification or backend/mobile
-rollout was performed. Test DerivedData and the private host were removed after verification.
+This source checkpoint did not include on-screen drag verification or backend/mobile rollout.
+Test DerivedData and the private host were removed after verification.
+
+### Dev and private MCP rollout, 2026-11-09
+
+The user subsequently authorized installing this checkpoint. A signed Dev Release was built from
+`8111e6eb` and replaced the existing Dev installation in place, retaining its designated signing
+requirement and bundled CLI path. The previous application, notebook/media, preferences and private
+MCP runtime were backed up before replacement. The corpus remained unchanged across app replacement.
+
+One revision-bound CLI transaction then moved existing pattern/association explanation text into
+sense bodies and repaired the reported blank Working definition from its single saved interpretation.
+It added 84 body blocks across the content migration and adjusted 39 senses in total. Existing content
+blocks, entry/sense/example identities, media bytes and shared semantic nodes were preserved. Pattern
+notes and association nuance were cleared only after their text was retained in the sense body;
+actual restrictions and relationships remained. Integrity and foreign-key checks passed. Existing
+review identities/history remained, while ordinary generated material refreshed through the normal
+save path; no separate review-data migration was performed.
+
+The private MCP runtime and guide were copied from the repository and its server/tunnel restarted.
+Configuration, credentials, drafts and the CLI/app destination were retained. The connected MCP
+returned the new Dev process identity, the `merge` schema and the updated guide. This verifies the
+actual existing connection, beyond a local health probe. On-screen drag feel and cross-device
+behavior remain unverified. Release DerivedData was removed after installation checks.

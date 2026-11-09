@@ -185,3 +185,10 @@ links; source examples move to it. No model runs inside the app. Merge remains o
 preview/commit path because the source's shared content is removed. Authorization already given
 for a concrete merge need not be requested again. Generic CSV/TXT import is no longer exposed;
 agents interpret external materials and use explicit sense operations instead.
+
+
+Dev rollout verification, 2026-11-09: the existing private runtime was updated and its server/tunnel
+restarted after installing the matching signed Dev Release and bundled CLI from `8111e6eb`.
+Runtime files/guide matched repository bytes; existing credentials, drafts and destination paths
+were preserved. The connected MCP returned the new running process, an explicit `merge` batch
+schema and the revised consolidation guide. Validation performed no trial merges in learner data.
