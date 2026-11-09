@@ -21,7 +21,7 @@ const definitions={
   notebook_write:['WRITE authorized additions in one call: capture, add/append, or new resource records (including meaning mappings and category memberships). Read notebook_guide/schema and search/read first. No repeated user confirmation for already-authorized additions. Provide a fresh requestID before the first attempt; retain it and the identical task for busy/timeout retries. Internal dry-run and commit are automatic. Existing-record replacements, deletes, merges and catalog overrides/hierarchy are refused here; use preview/commit review. Read affected records from returned IDs. Never write merely to test connectivity.',z.object({requestID:uuid,...material}).strict()],
   notebook_status:['Read selected notebook identity, revision, supported resources and counts.',z.object(readOptions).strict()],
   notebook_cli_info:['Read the selected helper version or command help; does not send a notebook request.',z.object({topic:z.enum(['version','help']).default('version')}).strict()],
-  notebook_schema:['Read authoritative CLI JSON schema: capture for collecting material; batch for add/append/update and all version 2 resource put/delete operations. Schema commands run alone.',z.object({format:z.enum(['capture','batch']).default('capture')}).strict()],
+  notebook_schema:['Read authoritative CLI JSON schema: capture for collecting material; batch for add/append/update, explicit sense merge and all version 2 resource put/delete operations. Schema commands run alone.',z.object({format:z.enum(['capture','batch']).default('capture')}).strict()],
   notebook_search:['Search collected vocabulary before saving. Substring matching, not semantic ranking; paginate until offset reaches total.',z.object({query:z.string().max(32000).default(''),language:z.string().max(100).optional(),...page,...readOptions}).strict()],
   notebook_read:['Read a complete collected entry before choosing an existing sense.',z.object({entryID:uuid,...readOptions}).strict()],
   notebook_catalog_search:['List ANY CLI resource, including mappings/categoryMemberships for an existing sense/node. Filters match CLI semantics; related is a UUID. status only filters interpretations; summary only supports nodes/categories. Paginate via nextOffset.',z.object({resource,query:z.string().max(32000).optional(),related:uuid.optional(),status:z.enum(['candidate','accepted','rejected']).optional(),summary:z.boolean().optional(),...page,...readOptions}).strict()],
@@ -98,7 +98,7 @@ export class Bridge {
     return structuredClone(input);
   }
   async prepare(original,mode,opts) {
-    const edits=mode==='apply'?(original.operations??[]).some(op=>op.append||op.update||op.put||op.delete||references(op.capture)):references(original);
+    const edits=mode==='apply'?(original.operations??[]).some(op=>op.append||op.update||op.put||op.delete||op.merge||references(op.capture)):references(original);
     if(edits && (!original.notebookScope || original.expectedRevision===undefined)) throw new Error('Existing-record/resource edits require notebookScope and expectedRevision from the original read.');
     const status=await this.run(['status'],opts);
     if(!status.ok) return {error:status};

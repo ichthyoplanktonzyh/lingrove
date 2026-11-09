@@ -45,7 +45,7 @@ its text. Paginate while offset is below `result.total`; list limits are 1–200
 | Intent | Interface |
 | --- | --- |
 | Save expressions, examples, meaning nodes and their categories together | **One `vocab capture` task**; read [capture.md](references/capture.md). |
-| Append examples/content or replace a saved meaning, note or tags | `vocab apply`; read [batches.md](references/batches.md). |
+| Append examples/content, edit a sense, or merge duplicate senses | `vocab apply`; read [batches.md](references/batches.md). |
 | Resolve interpretations, manage collection membership or organize semantic links | `data list/get` and resource `put`/`delete`; read [organization.md](references/organization.md). |
 | Only classify an existing node, or edit category definitions/hierarchy | Read [classification.md](references/classification.md); use resource operations. |
 
@@ -73,11 +73,12 @@ the whole directory to prove a globally optimal classification.
 
 A new sense is always distinct; definitions do not merge by similarity. Extend an exact existing
 sense ID when it matches the intended meaning. Preserve source expression/context and distinguish
-a sense definition, contextual meaning and full-sentence translation. Do not invent source text;
+the sense definition/explanation from full-sentence translation. Do not invent source text;
 mark requested illustrative model-written examples as generated.
 
-Optional fields should add distinct information: usage notes describe syntax/register, association
-nuance distinguishes alternatives, and conditions state actual applicability restrictions. Omit
+Keep usage, syntax and register explanations in the sense's `explanation`/content. Semantic links
+identify nodes; conditions state actual applicability restrictions. Avoid duplicating prose in
+association nuance or example meaning fields. Omit
 redundant or generic filler. Agent semantic assertions retain model authorship and default to
 active adoption; `confirmed` does not claim human review. Use proposed/candidate states for
 uncertain readings or requested alternatives.

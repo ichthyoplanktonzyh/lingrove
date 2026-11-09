@@ -177,8 +177,8 @@ same marks. Paragraph/media identities remain an internal storage detail, not se
 The semantic section contains node links only. A migration to move existing pattern/association
 explanations into the sense body with their exact meaning/pattern scope has passed a dry run;
 relation identities and restrictions are preserved. The user paused Dev updates, so this migration
-and the continuous editor have not been installed. The translation-preview capture path is deferred,
-including the reported Working capture issue.
+and the continuous editor have not been installed. Favorite writer alignment is described below;
+the installed Working record has not been migrated.
 
 The continuous editor passed 7 focused native tests covering formatting, Unicode, image identity,
 undo/redo, rich paste, selection, IME commit and save/reopen. Shared formatting and wire-codec suites
@@ -190,3 +190,30 @@ The current Dev installation is local-only. Inline marks are supported by local 
 backups, HTML and the shared wire codec. The deployed backend's strict content schema and older mobile
 clients still need the matching rich-text contract rollout before syncing formatted text; this change
 performs no backend deployment or mobile snapshot update.
+
+
+### Explicit sense consolidation and capture writes
+
+The Mac list supports dragging one sense onto another within the same headword, plus a row-menu
+alternative. Existing row components and icons remain. The target retains its summary, rich body,
+notes, tags and semantic associations; source examples move with translations and provenance.
+The hover label states which content survives. One undo action restores the pre-merge document and
+removed images while the notebook scope/revision is unchanged. A later write invalidates that
+receipt. The same shared policy handles CLI version 2 `merge`; MCP uses its existing reviewed
+preview/commit path. There is no additional inference request or automatic semantic classifier.
+
+Favorites now persist the supplied meaning on the sense and already available explanation in its
+body. Late explanation completion fills untouched content only; manual clears and merged target
+content remain authoritative. Explicit adoption edits the sense definition. Manual creation makes
+an explicit new sense instead of identifying one by its wording, notes or tags. Generic CSV/TXT
+import, mappings, preview UI and parsing were removed; original backup restoration remains.
+
+Validation: build-for-testing succeeded. Six new merge/capture/undo cases and 73 related native
+cases ultimately passed (79 distinct cases across the focused/regression/corrected runs). Initial
+regression failures exposed stale fixture/expectation assumptions, including a test-only array
+index crash after removing an example; the affected cases were corrected and rerun successfully.
+Coverage includes the real bundled CLI, dry-run/replay, revision/scope conflicts, persistence,
+removed image restoration, semantic relationships, delayed explanation writes and retained review
+receipts. All 12 MCP bridge tests passed, and the repository CLI skill validator passed.
+No new Dev installation, live corpus migration, on-screen drag verification or backend/mobile
+rollout was performed. Test DerivedData and the private host were removed after verification.

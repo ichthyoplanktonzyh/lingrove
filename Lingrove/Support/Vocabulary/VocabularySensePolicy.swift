@@ -54,8 +54,8 @@ nonisolated enum VocabularySensePolicy {
         } else {
             // A new context is not evidence that its sense equals any existing one. Create a
             // stable identity silently and let explicit merge/move actions establish membership.
-            entry.senses.append(VocabularySense(id: UUID(), meaning: capture.example == nil ? capture.meaning : "",
-                meaningLanguage: capture.example == nil ? capture.meaningLanguage : nil, createdAt: now, updatedAt: now))
+            entry.senses.append(VocabularySense(id: UUID(), meaning: capture.meaning,
+                meaningLanguage: capture.meaningLanguage, createdAt: now, updatedAt: now))
             senseIndex = entry.senses.count - 1
         }
         if var example = capture.example {
@@ -130,7 +130,6 @@ extension VocabularySense {
                 return value.text
             }
         }
-        if let text = examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
         if !VocabularyContentPolicy.images(content ?? []).isEmpty { return String(localized: "Image explanation", table: "Vocabulary") }
         return String(localized: "Meaning pending", table: "Vocabulary")
     }

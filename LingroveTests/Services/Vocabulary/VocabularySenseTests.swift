@@ -27,7 +27,7 @@ struct VocabularySenseTests {
         await store.saveExplanation(record(second, meaning: "Same wording"))
         let entry = try #require(store.entries.first)
         #expect(entry.senses.count == 2 && Set(entry.senses.map(\.id)).count == 2)
-        #expect(entry.senses.allSatisfy { $0.meaning.isEmpty }, "A contextual answer is owned by its usage")
+        #expect(entry.senses.allSatisfy { $0.meaning == "Same wording" && $0.content?.isEmpty == false })
         #expect(entry.senses.allSatisfy { $0.examples.count == 1 })
     }
 
@@ -90,9 +90,9 @@ struct VocabularySenseTests {
         #expect(entry.senses.count == 1 && entry.senses[0].id == target)
         #expect(entry.senses[0].mergedFrom == [source] && VocabularySensePolicy.index(source, in: entry) == 0)
         #expect(Set(entry.examples.map(\.id)) == Set(baseline.examples.map(\.id)))
-        #expect(entry.senses[0].note.contains("First note") && entry.senses[0].note.contains("Second note"))
-        #expect(Set(entry.senses[0].tags) == ["Work", "Money"])
-        #expect(entry.explanations?.count == 2 && entry.senses[0].alternateMeanings.contains(.init(text: "金融机构", language: nil)))
+        #expect(entry.senses[0].note == "First note")
+        #expect(Set(entry.senses[0].tags) == ["Work"])
+        #expect(entry.explanations?.count == 2 && entry.senses[0].alternateMeanings.isEmpty)
         #expect(VocabularyPolicy.matches(entry, query: "金融机构"))
     }
 
@@ -110,7 +110,7 @@ struct VocabularySenseTests {
         #expect(store.entries[0].senses[0].examples.isEmpty)
         #expect(store.entries[0].senses[1].examples.contains { $0.id == usage.id && $0.explanations == [result] })
         #expect(await store.adoptExplanation(result, at: destination))
-        #expect(store.entries[0].senses[1].examples.first { $0.id == usage.id }?.meaningOrigin == .user)
+        #expect(store.entries[0].senses[1].meaningOrigin == .user)
         var opened: VocabularySelection?
         store.openSelection = { opened = $0 }
         store.show(first)
@@ -179,9 +179,9 @@ struct VocabularySenseTests {
         #expect(throws: VocabularyError.editConflict) {
             _ = try VocabularySensePolicy.move(exampleID: usage, from: source, to: target, in: &invalid, now: Date())
         }
-        #expect(throws: VocabularyError.editConflict) {
-            try VocabularySensePolicy.merge(source: source, into: target, in: &invalid, now: Date())
-        }
+        var explicitMerge = invalid
+        try VocabularySensePolicy.merge(source: source, into: target, in: &explicitMerge, now: Date())
+        #expect(explicitMerge.senses[0].examples.count == 2, "Explicit merge retains distinct source identities")
         await #expect(throws: (any Error).self) { try await archive.update(invalid, basedOn: baseline) }
         #expect(try await archive.load().document == snapshot.document)
     }

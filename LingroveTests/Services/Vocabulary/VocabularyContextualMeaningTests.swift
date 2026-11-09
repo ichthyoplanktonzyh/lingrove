@@ -30,11 +30,12 @@ struct VocabularyContextualMeaningTests {
         #expect(entry.examples.count == 1 && store.contains(capture))
         #expect(entry.examples[0].meaning == record.result.meaning && entry.examples[0].meaningOrigin == .ai)
         #expect(entry.examples[0].meaningLanguage == .chinese && entry.explanations == [record])
-        #expect(entry.senses[0].meaning.isEmpty, "A contextual sense belongs to the occurrence, not a universal word definition")
+        #expect(entry.senses[0].meaning == record.result.meaning)
+        #expect(entry.senses[0].content?.first?.content == .text(.init(text: record.result.explanation)))
         await store.save(capture)
         #expect(store.entries[0].examples.count == 1 && store.contains(capture))
         await store.remove(capture)
-        #expect(store.entries.isEmpty)
+        #expect(store.entries[0].senses.count == 1 && store.entries[0].examples.isEmpty)
     }
 
     @Test func refreshingDraftsPreservesUserEditsAndOtherOccurrences() async throws {

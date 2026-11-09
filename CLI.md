@@ -104,8 +104,8 @@ meaning similarity does not merge senses. Supply a sense's exact `id` to extend 
 semantic meaning is referenced with `{"ref":"finance","id":"NODE_UUID"}`.
 Omit `meanings` and `associations` when no semantic organization is wanted.
 
-A sense's `meaning` defines the expression; example `meaning` describes its contextual reading;
-`translation` translates the whole example. Preserve real source text and its provenance. Mark
+A sense's `meaning` names its current definition; `explanation` supplies its detailed body.
+Examples contain source text and whole-sentence `translation`, without a separate meaning field. Preserve real source text and its provenance. Mark
 illustrative model-written examples as `generated`, and incomplete context as `fragment`.
 See [capture fields and examples](skills/lingrove-cli/references/capture.md).
 
@@ -117,10 +117,11 @@ See [capture fields and examples](skills/lingrove-cli/references/capture.md).
 | --- | --- |
 | `add` | Add a distinct sense, with optional examples, notes, tags and rich content. |
 | `append` | Add examples, content or tags to an exact entry/sense ID. |
-| `update` | Replace specified sense meaning, language, note or tags; requires the current notebook revision. |
+| `update` | Replace specified sense meaning, language, explanation, note or tags; requires the current notebook revision. |
+| `merge` | Merge a source sense into an explicitly selected target within one entry; keep target content and move examples. |
 | `put` / `delete` | Create, patch or remove catalog resources and explicit relationships. |
 
-Use batch `version: 1` for `add`/`append`/`update`; resource batches use `version: 2` and a
+Use batch `version: 1` for `add`/`append`/`update`; resource and merge batches use `version: 2` and a
 batch-level `expectedRevision`. Both require a fresh `idempotencyKey` for each new intent.
 `append`, `update`, resource operations and any batch/capture with `expectedRevision` also
 include the unchanged `notebookScope` returned by the read that the edit is based on:

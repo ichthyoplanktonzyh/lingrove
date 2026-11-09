@@ -172,11 +172,10 @@ struct VocabularySemanticTests {
         _ = try await archive.commit(document)
         let entry = document.entries[0], source = entry.senses[0].id, target = entry.senses[1].id
         let merged = try await archive.mergeSenses(entryID: entry.id, source: source, target: target)
-        #expect(merged.document.semantics.patterns[0].senseID == target)
-        #expect(merged.document.semantics.mappings[0].senseID == target)
-        #expect(merged.document.semantics.mappings[0].evidenceIDs == document.semantics.mappings[0].evidenceIDs)
+        #expect(!merged.document.semantics.patterns.contains { $0.senseID == source })
+        #expect(merged.document.semantics.mappings == document.semantics.mappings.filter { $0.senseID != source })
         let removed = try await archive.removeSense(entryID: entry.id, senseID: target)
-        #expect(removed.document.semantics == merged.document.semantics)
+        #expect(removed.document.semantics.mappings == merged.document.semantics.mappings.filter { $0.senseID != target })
         #expect(!removed.document.entries.contains { $0.senses.contains { $0.id == target } })
         #expect(removed.document.semantics.nodes == document.semantics.nodes)
     }

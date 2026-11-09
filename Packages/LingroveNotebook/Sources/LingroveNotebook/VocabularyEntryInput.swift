@@ -1,6 +1,6 @@
 import Foundation
 
-/// A user-authored entry before it has durable IDs. Create sheets and word-list previews own
+/// A user-authored entry before it has durable IDs. Create sheets own
 /// these values; only the archive assigns entry/sense identities and commits them to SQLite.
 public nonisolated struct VocabularyEntryInput: Equatable, Sendable {
     public init(expression: String = "", dictionaryForm: String = "", language: LearningLanguage? = .english,
@@ -22,7 +22,7 @@ public nonisolated struct VocabularyEntryInput: Equatable, Sendable {
     public var exampleTranslation = ""
 }
 
-/// Import acknowledges what actually changed against the latest notebook, not a stale preview.
+/// Creation acknowledges the newly saved entries and senses.
 /// Returning both IDs lets the window reveal a newly added sense or an existing duplicate.
 public nonisolated struct VocabularyEntryImportResult: Equatable, Sendable {
     public init() {}
@@ -36,94 +36,14 @@ public nonisolated struct VocabularyEntryImportResult: Equatable, Sendable {
     public var hasChanges: Bool { addedSenses > 0 || addedExamples > 0 || addedTranslations > 0 }
 }
 
-/// The source table keeps physical line numbers for useful errors even with quoted CSV newlines.
-/// A preview retains only bounded text, never a file handle or permission-scoped URL.
-public nonisolated struct VocabularyWordList: Sendable {
-    public enum Format: Sendable { case csv, text }
-    public struct Row: Sendable {
-        public let line: Int
-        public let cells: [String]
-    }
-    public let format: Format
-    public let rows: [Row]
-    public var columnCount: Int { rows.map(\.cells.count).max() ?? 0 }
-}
-
-public nonisolated enum VocabularyImportField: String, CaseIterable, Sendable {
-    case expression, meaning, dictionaryForm, language, kind, meaningLanguage, note, tags
-    case example, exampleTranslation
-
-    public var label: String {
-        switch self {
-        case .expression: String(localized: "Expression", table: "Vocabulary")
-        case .meaning: String(localized: "Core meaning", table: "Vocabulary")
-        case .dictionaryForm: String(localized: "Dictionary form", table: "Vocabulary")
-        case .language: String(localized: "Language", table: "Vocabulary")
-        case .kind: String(localized: "Entry type", table: "Vocabulary")
-        case .meaningLanguage: String(localized: "Meaning language", table: "Vocabulary")
-        case .note: String(localized: "Notes", table: "Vocabulary")
-        case .tags: String(localized: "Tags", table: "Vocabulary")
-        case .example: String(localized: "Example sentence", table: "Vocabulary")
-        case .exampleTranslation: String(localized: "Example translation", table: "Vocabulary")
-        }
-    }
-}
-
-/// Explicit mappings support headerless lists and third-party column names without guessing
-/// which cell is a word. Default language/type apply only when a mapped cell is empty.
-public nonisolated struct VocabularyWordListConfiguration: Equatable, Sendable {
-    public init(hasHeader: Bool = false, columns: [VocabularyImportField: Int] = [.expression: 0],
-                language: LearningLanguage = .english, kind: VocabularyEntry.Kind = .word, meaningLanguage: LearningLanguage? = nil) {
-        self.hasHeader = hasHeader; self.columns = columns; self.language = language; self.kind = kind
-        self.meaningLanguage = meaningLanguage
-    }
-    public var hasHeader = false
-    public var columns: [VocabularyImportField: Int] = [.expression: 0]
-    public var language: LearningLanguage = .english
-    public var kind: VocabularyEntry.Kind = .word
-    public var meaningLanguage: LearningLanguage?
-}
-
-public nonisolated struct VocabularyWordListPreview: Sendable {
-    public let inputs: [VocabularyEntryInput]
-    public let result: VocabularyEntryImportResult
-    public init(inputs: [VocabularyEntryInput], result: VocabularyEntryImportResult) { self.inputs = inputs; self.result = result }
-}
-
-public nonisolated enum VocabularyWordListError: LocalizedError {
-    case tooLarge, encoding, unsupportedFile, empty, mapping, invalidInput
-    case malformedCSV(Int), missingExpression(Int), language(Int), kind(Int)
-    case missingExample(Int), translationWithoutExample, exampleConflict
-
+/// Manual input validation remains separate from filesystem formats. External materials are
+/// interpreted by an agent and submitted through explicit sense operations.
+public nonisolated enum VocabularyEntryInputError: LocalizedError {
+    case invalidInput, translationWithoutExample
     public var errorDescription: String? {
         switch self {
-        case .tooLarge:
-            String(localized: "Use a word list up to 4 MB with at most 10,000 rows.", table: "Vocabulary")
-        case .encoding:
-            String(localized: "Save the word list as UTF-8 or UTF-16 text and try again.", table: "Vocabulary")
-        case .unsupportedFile:
-            String(localized: "Choose a CSV or TXT word list.", table: "Vocabulary")
-        case .empty:
-            String(localized: "The word list has no entries to import.", table: "Vocabulary")
-        case .mapping:
-            String(localized: "Choose the column containing the expressions.", table: "Vocabulary")
-        case .invalidInput:
-            String(localized: "Check the expression, meaning, notes, and tags before saving.", table: "Vocabulary")
-        case .malformedCSV(let row):
-            String(localized: "Check the CSV quoting near line \(row).", table: "Vocabulary")
-        case .missingExpression(let row):
-            String(localized: "An expression is missing on line \(row).", table: "Vocabulary")
-        case .language(let row):
-            String(localized: "Use a supported language code on line \(row), such as en or zh-Hans.", table: "Vocabulary")
-        case .kind(let row):
-            String(localized: "Use word, expression, pattern, or sentence as the type on line \(row).", table: "Vocabulary")
-        case .missingExample(let row):
-            String(localized: "An example sentence is missing on line \(row).", table: "Vocabulary")
-        case .translationWithoutExample:
-            String(localized: "Add an example sentence before its translation.", table: "Vocabulary")
-        case .exampleConflict:
-            String(localized: "This example belongs to another sense. Match its saved meaning or edit it in the notebook.",
-                table: "Vocabulary")
+        case .invalidInput: String(localized: "Check the expression, meaning, notes, and tags before saving.", table: "Vocabulary")
+        case .translationWithoutExample: String(localized: "Add an example sentence before its translation.", table: "Vocabulary")
         }
     }
 }

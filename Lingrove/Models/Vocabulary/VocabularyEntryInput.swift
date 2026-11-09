@@ -1,10 +1,6 @@
 import LingroveNotebook
 
-// Portable import values preserve the Mac file and draft interface.
+// Manual drafts share validation and acknowledgement with the portable model.
 typealias VocabularyEntryInput = LingroveNotebook.VocabularyEntryInput
 typealias VocabularyEntryImportResult = LingroveNotebook.VocabularyEntryImportResult
-typealias VocabularyWordList = LingroveNotebook.VocabularyWordList
-typealias VocabularyImportField = LingroveNotebook.VocabularyImportField
-typealias VocabularyWordListConfiguration = LingroveNotebook.VocabularyWordListConfiguration
-typealias VocabularyWordListPreview = LingroveNotebook.VocabularyWordListPreview
-typealias VocabularyWordListError = LingroveNotebook.VocabularyWordListError
+typealias VocabularyEntryInputError = LingroveNotebook.VocabularyEntryInputError

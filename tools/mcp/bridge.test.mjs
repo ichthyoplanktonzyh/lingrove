@@ -253,3 +253,26 @@ test('case-specific material writes and reads back through the normal additive e
     assert.deepEqual(stored.meanings,task.meanings);
   } finally { await rm(state,{recursive:true,force:true}); }
 });
+
+
+test('sense merge requires the original scope and stays on the reviewed write path',async()=>{
+  const state=await mkdtemp(join(tmpdir(),'lingrove-merge-test-'));
+  const scope={workspaceID:'synthetic',notebookID:'00000000-0000-4000-8000-000000000001',generation:'test'};
+  const calls=[];
+  const run=async args=>{
+    calls.push(args);
+    return args[0]==='status'?{ok:true,result:{revision:7,notebookScope:scope}}:{ok:true,result:{dryRun:args.includes('--dry-run')}};
+  };
+  try {
+    const b=new Bridge({state,run});
+    const task={version:2,expectedRevision:7,notebookScope:scope,operations:[{merge:{
+      entryID:'00000000-0000-4000-8000-000000000002',sourceSenseID:'00000000-0000-4000-8000-000000000003',
+      targetSenseID:'00000000-0000-4000-8000-000000000004'}}]};
+    await assert.rejects(()=>b.call('notebook_preview',{mode:'apply',task:{...task,notebookScope:undefined}}),/original read/);
+    const preview=await b.call('notebook_preview',{mode:'apply',task});
+    assert.equal(calls.filter(args=>args[0]==='vocab'&&!args.includes('--dry-run')).length,0);
+    assert.deepEqual((await b.call('notebook_preview_read',{previewID:preview.previewID})).task.operations,task.operations);
+    await b.call('notebook_commit',{previewID:preview.previewID});
+    assert.equal(calls.filter(args=>args[0]==='vocab'&&!args.includes('--dry-run')).length,1);
+  } finally { await rm(state,{recursive:true,force:true}); }
+});

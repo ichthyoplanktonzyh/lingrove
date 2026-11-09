@@ -176,9 +176,9 @@ public nonisolated enum VocabularySemanticPolicy {
         let oldSenses = Set(previousEntries.flatMap { $0.senses.map(\.id) })
         let senses = entries.flatMap(\.senses)
         let live = Set(senses.map(\.id))
-        var aliases: [UUID: UUID] = [:]
-        for sense in senses { for alias in sense.mergedFrom { aliases[alias] = sense.id } }
-        func resolved(_ id: UUID) -> UUID? { live.contains(id) ? id : aliases[id] ?? (oldSenses.contains(id) ? nil : id) }
+        // A merge adopts the destination's semantic links. Retired-sense aliases preserve
+        // review receipts, but must not silently transfer the source's semantic assertions.
+        func resolved(_ id: UUID) -> UUID? { live.contains(id) ? id : (oldSenses.contains(id) ? nil : id) }
         index.patterns = index.patterns.compactMap { value in
             guard let id = resolved(value.senseID) else { return nil }
             var value = value; value.senseID = id; return value

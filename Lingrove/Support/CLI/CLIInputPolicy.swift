@@ -44,9 +44,14 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateOperationShape(_ value: Any, path: String) throws {
-        let operation = try object(value, keys: ["add", "append", "update", "put", "delete", "capture"], at: path)
+        let operation = try object(value, keys: ["add", "append", "update", "put", "delete", "capture", "merge"], at: path)
         guard operation.count == 1, let kind = operation.keys.first, let payload = operation[kind] else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if kind == "merge" {
+            let bytes = try JSONSerialization.data(withJSONObject: payload)
+            _ = try CLIMerge.shape.normalized(JSONDecoder().decode(CLIJSON.self, from: bytes))
+            return
         }
         if kind == "capture" {
             let bytes = try JSONSerialization.data(withJSONObject: payload)
@@ -119,7 +124,7 @@ nonisolated enum CLIInputPolicy {
         var images = 0, blocks = 0, examples = 0, imageBytes = 0
         for operation in batch.operations {
             guard [operation.add != nil, operation.append != nil, operation.update != nil,
-                   operation.put != nil, operation.delete != nil, operation.capture != nil].filter({ $0 }).count == 1 else {
+                   operation.put != nil, operation.delete != nil, operation.capture != nil, operation.merge != nil].filter({ $0 }).count == 1 else {
                 throw CLIError.invalid("Each operation needs exactly one action.")
             }
             try validateResourceOperation(operation, batch: batch)
@@ -155,9 +160,9 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateResourceOperation(_ operation: CLIChange, batch: CLIBatch) throws {
-        guard operation.put != nil || operation.delete != nil else { return }
+        guard operation.put != nil || operation.delete != nil || operation.merge != nil else { return }
         guard batch.version == 2, batch.expectedRevision != nil else {
-            throw CLIError.invalid("Resource operations require version 2 and expectedRevision.")
+            throw CLIError.invalid("Resource edits and merges require version 2 and expectedRevision.")
         }
         if let put = operation.put {
             _ = try CLIResourceContract.shape(put.resource).normalized(put.value, creating: false)

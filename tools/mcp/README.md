@@ -53,7 +53,7 @@ The app's capture/batch schemas remain authoritative for wire shape.
 | `vocab list/get` | `notebook_search/read`, all list filters and pagination |
 | `data list/get RESOURCE` | `notebook_catalog_search/read` for all 17 resource kinds, including `related`, `status`, and `summary` where supported |
 | `vocab capture --dry-run` | `notebook_preview(mode=capture)` |
-| `vocab apply --dry-run` | `notebook_preview(mode=apply)`; v1 add/append/update and v2 capture/put/delete |
+| `vocab apply --dry-run` | `notebook_preview(mode=apply)`; v1 add/append/update and v2 capture/merge/put/delete |
 | Authorized additive capture/apply | `notebook_write(requestID, mode, task)` validates and commits internally |
 | Reviewed replacement/delete | `notebook_preview` then `notebook_commit(previewID)` reuses exact validated material |
 | Local image input | `notebook_upload(kind=image)` followed by `image.path: upload:UUID` in add/append content; user must supply the image |
@@ -176,3 +176,12 @@ ChatGPT tool refresh visibly registered fourteen tools (two write, twelve
 read/staging), including notebook_write and notebook_guide. The app description
 now distinguishes authorized additions from reviewed replacements. Remote status
 request 4D2FFC4C-47DA-456B-A610-6ACBB75FB9F8 confirmed unchanged revision 34.
+
+
+Sense consolidation uses a version 2 `merge` operation with `entryID`, `sourceSenseID` and
+`targetSenseID`, plus the batch's original `notebookScope`, `expectedRevision` and idempotency key.
+Read both senses first. The target keeps its definition, explanation, notes, tags and semantic
+links; source examples move to it. No model runs inside the app. Merge remains on the reviewed
+preview/commit path because the source's shared content is removed. Authorization already given
+for a concrete merge need not be requested again. Generic CSV/TXT import is no longer exposed;
+agents interpret external materials and use explicit sense operations instead.

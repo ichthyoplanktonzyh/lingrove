@@ -63,7 +63,8 @@ struct VocabularyEntryCreationSheet: View {
                     .keyboardShortcut(.cancelAction).disabled(saving)
                 Button(String(localized: "Save", table: "Vocabulary"), action: save)
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                    .disabled(saving || VocabularyPolicy.normalized(input.expression).isEmpty)
+                    .disabled(saving || VocabularyPolicy.normalized(input.expression).isEmpty ||
+                        input.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("vocabularyCreateEntry")
             }.padding(16)
         }
@@ -87,7 +88,7 @@ struct VocabularyEntryCreationSheet: View {
 }
 
 /// Shared optional annotation-language control. “Not specified” avoids inventing provenance for
-/// a manually entered meaning; imported language columns can provide a more precise row value.
+/// a manually entered meaning.
 struct VocabularyMeaningLanguagePicker: View {
     @Binding var selection: LearningLanguage?
 

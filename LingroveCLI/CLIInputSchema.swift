@@ -19,6 +19,8 @@ enum CLIInputSchema {
             var alternatives = items["oneOf"] as? [[String: Any]] ?? []
             alternatives.append(["type": "object", "additionalProperties": false, "required": ["capture"],
                 "properties": ["capture": CLICaptureContract.shape.schema]])
+            alternatives.append(["type": "object", "additionalProperties": false, "required": ["merge"],
+                "properties": ["merge": CLIMerge.shape.schema]])
             root["x-readOnlyResources"] = ["frameworks"]
             alternatives += try CLIResourceContract.names.filter { $0 != "frameworks" }.map { name in
                 var shape = try CLIResourceContract.shape(name).schema
@@ -36,7 +38,7 @@ enum CLIInputSchema {
             items["oneOf"] = alternatives; operations["items"] = items; properties["operations"] = operations
             root["properties"] = properties
             root["allOf"] = [["if": ["properties": ["operations": ["contains": ["anyOf": [
-                ["required": ["put"]], ["required": ["delete"]]]]]]],
+                ["required": ["put"]], ["required": ["delete"]], ["required": ["merge"]]]]]]],
                 "then": ["required": ["expectedRevision", "notebookScope"], "properties": ["version": ["const": 2]]]]]
             var rules = root["allOf"] as? [[String: Any]] ?? []
             rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"]]]]],

@@ -151,7 +151,7 @@ struct AnkiReviewTests {
             var example = try #require(VocabularyPolicy.example(text: text,
                 ranges: [(text as NSString).range(of: "bank")], language: .english))
             example.meaning = meaning
-            await store.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word, example: example))
+            await store.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word, meaning: meaning, example: example))
         }
         let fake = ReviewFakeAnki()
         let settings = AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil))

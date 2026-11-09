@@ -135,11 +135,6 @@ struct VocabularyUnifiedRepositoryTests {
             let anki = AnkiReviewController(settings: AnkiReviewSettings(defaults: f.defaults, credentials: AnkiCredentialStore(service: nil)),
                 store: f.store, client: ReviewFakeAnki(), activateAnki: {})
             let oldAnkiSession = AnkiReviewSession(controller: anki, entry: oldEntry, sense: oldEntry.senses[0])
-            let importSession = VocabularyWordListImportSession(store: f.store)
-            let csv = f.root.appendingPathComponent("words.csv")
-            try Data("expression,meaning\nadditional,a new word".utf8).write(to: csv)
-            await importSession.load(csv, language: .english)
-            for _ in 0..<50 { if !importSession.preparing { break }; try await Task.sleep(for: .milliseconds(10)) }
             let settings = LanguageLearningSettings(defaults: f.defaults)
             let model = LearningModelController(profile: settings.explanation,
                 client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)), localModelURL: { _ in URL(fileURLWithPath: "/unused-synthetic-model.gguf") })
@@ -156,7 +151,9 @@ struct VocabularyUnifiedRepositoryTests {
             try f.repository.engine.switchActiveWorkspace(workspace: .init(workspaceId: target, name: "Other", createdAt: "2026-11-03T00:00:00.000Z", isSelected: true), linkedSession: account)
             f.repository.publishChange(); await f.store.load()
             #expect(f.store.scopeIdentity != oldIdentity && f.store.entries.isEmpty)
-            #expect(await importSession.commit() == nil)
+            await #expect(throws: (any Error).self) {
+                try await f.store.addEntries([.init(expression: "additional", meaning: "a new word")], scope: oldScope)
+            }
             #expect(oldAnkiSession.current == nil)
             let oldAnkiSaved = await oldAnkiSession.save()
             #expect(!oldAnkiSaved)

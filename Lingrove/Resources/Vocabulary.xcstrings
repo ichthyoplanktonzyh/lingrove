@@ -43752,6 +43752,116 @@
           }
         }
       }
+    },
+    "Merge here; keep this sense’s explanation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge here; keep this sense’s explanation"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并到此义项，保留此义项的解释"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併到此義項，保留此義項的解釋"
+          }
+        }
+      }
+    },
+    "Senses merged. The destination’s content was kept.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senses merged. The destination’s content was kept."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "义项已合并，已保留目标义项的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "義項已合併，已保留目標義項的內容。"
+          }
+        }
+      }
+    },
+    "Undo merge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo merge"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销合并"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復原合併"
+          }
+        }
+      }
+    },
+    "Merge into…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge into…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并到…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併到…"
+          }
+        }
+      }
+    },
+    "Save an expression while reading, add a sense yourself, or ask your agent to organize material.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save an expression while reading, add a sense yourself, or ask your agent to organize material."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阅读时收藏表达、手动添加义项，或让 Agent 整理材料。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閱讀時收藏表達、手動新增義項，或讓 Agent 整理材料。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

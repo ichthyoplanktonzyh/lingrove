@@ -21,18 +21,18 @@ struct VocabularyExplanationTests {
         #expect(try await archive.saveExplanation(result).document.entries.isEmpty)
         await store.save(capture)
         var baseline = try #require(store.entries.first), edited = baseline
-        edited.senses[0].note = "User note"; edited.senses[0].examples[0].meaning = "My meaning"
+        edited.senses[0].note = "User note"; edited.senses[0].meaning = "My meaning"
         #expect(await store.update(edited, basedOn: baseline))
         await store.saveExplanation(result)
         baseline = try #require(store.entries.first)
-        #expect(baseline.senses[0].note == "User note" && baseline.examples[0].meaning == "My meaning")
+        #expect(baseline.senses[0].note == "User note" && baseline.senses[0].meaning == "My meaning")
         #expect(baseline.explanations == [result])
         #expect(await store.adoptExplanation(result, at: .init(entryID: baseline.id, senseID: baseline.senses[0].id,
                 exampleID: baseline.examples[0].id)))
-        #expect(store.entries[0].examples[0].meaning == "告知" && store.entries[0].senses[0].note == "User note")
+        #expect(store.entries[0].senses[0].meaning == "告知" && store.entries[0].senses[0].note == "User note")
         #expect(store.contains(capture), "Adopting a meaning must not change favorite identity")
         await store.save(capture)
-        #expect(store.entries[0].examples.count == 1 && store.entries[0].examples[0].meaning == "告知")
+        #expect(store.entries[0].examples.count == 1 && store.entries[0].senses[0].meaning == "告知")
     }
 
     @Test func adoptingAnotherLanguageKeepsTheUsageAndSenseIdentity() async throws {
@@ -46,7 +46,7 @@ struct VocabularyExplanationTests {
         let result = record(second)
         #expect(await store.adoptExplanation(result,
             at: .init(entryID: entry.id, senseID: entry.senses[0].id, exampleID: entry.examples[0].id)))
-        #expect(store.entries[0].examples[0].meaning == result.result.meaning)
+        #expect(store.entries[0].senses[0].meaning == result.result.meaning)
         #expect(store.entries[0].senses[0].id == entry.senses[0].id && store.entries[0].examples[0].id == entry.examples[0].id)
     }
 
@@ -74,11 +74,12 @@ struct VocabularyExplanationTests {
         _ = try await archive.saveExplanation(record(first))
         let baseline = try #require(try await archive.load().document.entries.first)
         var edited = baseline
-        edited.senses[0].examples[0].text = "The user changed this example."; edited.senses[0].examples[0].ranges = []
+        let owner = try #require(edited.senses.firstIndex { !$0.examples.isEmpty })
+        edited.senses[owner].examples[0].text = "The user changed this example."; edited.senses[owner].examples[0].ranges = []
         let updated = try await archive.update(edited, basedOn: baseline)
         #expect(updated.document.entries[0].explanations == nil)
         #expect(!LearningExplanationPolicy.isValid(LearningExplanationPolicy.input(
-            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.senses[0].examples[0]))))
+            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.senses[owner].examples[0]))))
     }
 
     @Test func floatingSessionLoadsSavedAnnotationBeforeModelConfiguration() async throws {

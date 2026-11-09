@@ -105,7 +105,7 @@ nonisolated struct VocabularyContentTests {
         _ = try await archive.update(edited, basedOn: withTwo, importedImages: [image.reference.filename: image.data])
         let merged = try await archive.mergeSenses(entryID: original.id, source: secondID, target: original.senses[0].id)
         let blocks = try #require(merged.document.entries[0].senses[0].content)
-        #expect(Set(blocks.map(\.id)) == Set(edited.senses.flatMap { $0.content ?? [] }.map(\.id)))
+        #expect(blocks == edited.senses[0].content)
         #expect(try await archive.image(image.reference) == image.data)
         _ = try await archive.removeSense(entryID: original.id, senseID: original.senses[0].id)
         await #expect(throws: (any Error).self) { try await archive.image(image.reference) }

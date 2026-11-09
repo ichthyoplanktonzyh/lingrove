@@ -38,9 +38,7 @@ struct VocabularyNotebookView: View {
     @State private var exporting: VocabularyExportRequest?
     @State private var reviewError: String?
     @State private var creatingEntry = false
-    @State private var choosingWordList = false
-    @State private var importingWordList: VocabularyWordListImportRequest?
-    @State private var importResult: VocabularyEntryImportResult?
+    @State private var draggingSense: VocabularySenseDrag?
     @State private var meaningDestination: VocabularyMeaningDestination?
     @State private var creatingMeaning = false
 
@@ -266,12 +264,6 @@ struct VocabularyNotebookView: View {
                 .accessibilityIdentifier("vocabularyTextSize")
 
                 Menu {
-                    Button { choosingWordList = true } label: {
-                        Label(String(localized: "Import word list", table: "Vocabulary"), systemImage: "square.and.arrow.down")
-                    }
-                    .accessibilityIdentifier("vocabularyImportWordList")
-                    .keyboardShortcut("i", modifiers: [.command, .shift])
-                    .disabled(!store.isLoaded)
                     Button { beginExport() } label: {
                         Label(String(localized: "Export…", table: "Vocabulary"), systemImage: "square.and.arrow.up")
                     }
@@ -290,6 +282,19 @@ struct VocabularyNotebookView: View {
     private var lifecycleContent: some View {
         browserContent
         .environment(\.vocabularyTextSize, currentTextSize)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if store.canUndoSenseMerge {
+                HStack {
+                    Text(String(localized: "Senses merged. The destination’s content was kept.", table: "Vocabulary"))
+                        .font(.callout)
+                    Spacer()
+                    Button(String(localized: "Undo merge", table: "Vocabulary")) {
+                        Task { if let restored = await store.undoLastSenseMerge() { showSense(restored.senseID) } }
+                    }
+                    .accessibilityIdentifier("vocabularyUndoSenseMerge")
+                }.padding(10).background(.bar)
+            }
+        }
         .onAppear { store.loadIfNeeded(); search?.activate(); if browserMode == "graph" { graph.reveal(graphSelection) } }
         .onChange(of: selectedEntry, initial: true) { _, entry in
             learning?.select(entry, senseID: activeSenseID)
@@ -391,27 +396,6 @@ struct VocabularyNotebookView: View {
             VocabularyMeaningEditor(store: store, categoryID: meaningDestination?.categoryID,
                 preferredLanguages: meaningLanguages, onSaved: showMeaning)
         }
-        .fileImporter(isPresented: $choosingWordList, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
-            switch result {
-            case .success(let url): importingWordList = .init(url: url, language: language ?? .english)
-            case .failure(let error):
-                if (error as NSError).code != NSUserCancelledError { store.errorMessage = error.localizedDescription }
-            }
-        }
-        .sheet(item: $importingWordList) { request in
-            VocabularyWordListImportSheet(store: store, request: request) { result in
-                revealAddedEntries(result)
-                importResult = result
-            }
-        }
-        .alert(String(localized: "Import complete", table: "Vocabulary"), isPresented: Binding(
-            get: { importResult != nil && importingWordList == nil }, set: { if !$0 { importResult = nil } })) {
-                Button(String(localized: "OK"), role: .cancel) { importResult = nil }
-            } message: {
-                if let result = importResult {
-                    Text(importSummary(result))
-                }
-            }
         .sheet(isPresented: $showingBatch) {
             if let review {
                 VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
@@ -485,7 +469,7 @@ struct VocabularyNotebookView: View {
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
 
-                Text(String(localized: "Add an entry yourself or import a CSV or TXT word list.", table: "Vocabulary"))
+                Text(String(localized: "Save an expression while reading, add a sense yourself, or ask your agent to organize material.", table: "Vocabulary"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -498,10 +482,7 @@ struct VocabularyNotebookView: View {
                     .tint(LingroveBrand.accent)
                     .controlSize(.regular)
                     .accessibilityIdentifier("vocabularyEmptyAddEntry")
-                Button(String(localized: "Import word list", table: "Vocabulary")) { choosingWordList = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-                    .accessibilityIdentifier("vocabularyEmptyImportWordList")
+
             }
         }
         .padding(32)
@@ -518,16 +499,6 @@ struct VocabularyNotebookView: View {
         selection = target.senseID
     }
 
-    private func importSummary(_ result: VocabularyEntryImportResult) -> String {
-        var lines = [String(localized: "New entries: \(result.addedEntries)", table: "Vocabulary"),
-            String(localized: "New senses: \(result.addedSenses)", table: "Vocabulary")]
-        if result.addedExamples > 0 { lines.append(String(localized: "New examples: \(result.addedExamples)", table: "Vocabulary")) }
-        if result.addedTranslations > 0 {
-            lines.append(String(localized: "New translations: \(result.addedTranslations)", table: "Vocabulary"))
-        }
-        lines.append(String(localized: "Duplicates skipped: \(result.skippedRows)", table: "Vocabulary"))
-        return lines.joined(separator: "\n")
-    }
 
     private var graphBrowser: some View {
         let drawerWidth: CGFloat = 424
@@ -649,11 +620,35 @@ struct VocabularyNotebookView: View {
         if let openReview = store.onRequestBuiltInReview {
             Button(String(localized: "Built-in review", table: "Vocabulary")) { openReview(target) }
         }
+        if let entry = store.entries.first(where: { $0.id == target.entryID }), entry.senses.count > 1 {
+            Menu(String(localized: "Merge into…", table: "Vocabulary")) {
+                ForEach(entry.senses.filter { $0.id != target.senseID }) { sense in
+                    Button(sense.displayTitle) {
+                        mergeSense(dragValue(entryID: entry.id, senseID: target.senseID),
+                            into: dragValue(entryID: entry.id, senseID: sense.id))
+                    }
+                }
+            }
+        }
         Button(String(localized: "Export this sense…", table: "Vocabulary")) { beginExport(single: target) }
         Button(role: .destructive) {
             deleting = target
         } label: {
             Label(String(localized: "Delete", table: "Vocabulary"), systemImage: "trash")
+        }
+    }
+
+    private func dragValue(entryID: UUID, senseID: UUID) -> VocabularySenseDrag {
+        .init(entryID: entryID, senseID: senseID, scopeIdentity: store.scopeIdentity,
+            revision: store.currentRevision)
+    }
+
+    private func mergeSense(_ source: VocabularySenseDrag, into target: VocabularySenseDrag) {
+        guard source.canMerge(into: target), source.scopeIdentity == store.scopeIdentity else { return }
+        let scope = store.operationScope
+        Task {
+            if await store.mergeSenses(entryID: target.entryID, source: source.senseID, target: target.senseID,
+                scope: scope, expectedRevision: source.revision) { showSense(target.senseID) }
         }
     }
 
@@ -678,6 +673,8 @@ struct VocabularyNotebookView: View {
                         }
                         .padding(.vertical, isDetailedList ? 4 : 2.5)
                         .tag(singleSense.id)
+                        .modifier(VocabularySenseMergeInteraction(target: dragValue(entryID: entry.id, senseID: singleSense.id),
+                            dragging: $draggingSense, onMerge: { mergeSense($0, into: $1) }))
                         .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: singleSense.id)) }
                     } else {
                         let isSelected = isEntrySelected(entry)
@@ -705,6 +702,8 @@ struct VocabularyNotebookView: View {
                                 }
                                 .padding(.vertical, 3)
                                 .tag(sense.id)
+                                .modifier(VocabularySenseMergeInteraction(target: dragValue(entryID: entry.id, senseID: sense.id),
+                                    dragging: $draggingSense, onMerge: { mergeSense($0, into: $1) }))
                                 .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: sense.id)) }
                             }
                         } label: {
@@ -1357,8 +1356,7 @@ struct VocabularyNotebookView: View {
                 Button(String(localized: "Add entry", table: "Vocabulary")) { creatingEntry = true }
                     .buttonStyle(.borderedProminent)
                     .tint(LingroveBrand.accent)
-                Button(String(localized: "Import word list", table: "Vocabulary")) { choosingWordList = true }
-                    .buttonStyle(.bordered)
+
             }
         }
         .padding(32)

@@ -19,8 +19,13 @@ _Avoid_: using “word” for every saved phrase or sentence.
 One reusable meaning or use of an expression, and the first-class unit of corpus content.
 It owns the current concise definition, detailed explanation and supporting examples. Its identity
 remains the same when it is reworded, translated or explained again; collecting another occurrence
-does not itself establish a new sense. Agents organize this knowledge; users primarily read it.
+does not itself establish semantic equivalence or difference. Users and agents can explicitly
+consolidate duplicate senses; users primarily browse and read the corpus.
 _Avoid_: treating a generated definition string as the sense itself.
+
+**Sense merge / 义项合并**:
+An explicit choice that two saved senses of one expression represent the same meaning. The target
+retains its definition, explanation, notes and semantic links; the source contributes its examples.
 
 **Meaning category / 意义类别**:
 A reusable organizing class containing meaning nodes, such as degree or minimal degree.

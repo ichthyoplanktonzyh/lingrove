@@ -60,12 +60,9 @@ struct VocabularyUnknownLanguageTests {
         await #expect(throws: VocabularyError.self) { try await archive.validate(invalid) }
     }
 
-    @Test func csvUndLanguageDoesNotSilentlyBecomeTheImportDefault() throws {
-        let table = try VocabularyWordListPolicy.decode(Data("expression,language\ncompatible,und\n".utf8), fileExtension: "csv")
-        let inputs = try VocabularyWordListPolicy.inputs(table,
-            configuration: VocabularyWordListPolicy.configuration(for: table, language: .english))
-        #expect(inputs.count == 1 && inputs[0].language == nil)
-        let plan = try VocabularyEntryInputPolicy.plan(inputs, into: .init(), now: Date())
-        #expect(plan.document.schemaVersion == VocabularyDocument.currentVersion)
+    @Test func manualUnknownLanguageRemainsUnknown() throws {
+        let plan = try VocabularyEntryInputPolicy.plan([.init(expression: "compatible", language: nil, meaning: "compatible")],
+            into: .init(), now: Date())
+        #expect(plan.document.entries[0].language == nil)
     }
 }

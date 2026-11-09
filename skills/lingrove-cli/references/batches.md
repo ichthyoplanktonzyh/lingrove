@@ -28,8 +28,6 @@ batch, and example IDs/revisions with values read from the chosen notebook.
             "sourceKind": "generated",
             "translation": "银行开门了。",
             "translationLanguage": "zh-Hans",
-            "meaning": "银行",
-            "meaningLanguage": "zh-Hans",
             "completeness": "sentence"
           }
         ],
@@ -48,10 +46,10 @@ Required add fields are `expression`, `language`, `kind`, and nonempty `meaning`
 and senses. Each add creates a distinct sense; neither identical meaning text nor a shared
 dictionary form performs a sense merge.
 
-Sense `meaning` names the saved sense. Example `meaning` describes that expression's meaning
-in its specific context, while `translation` translates the whole example. These are separate
-fields, with separate language codes. Put learning notes in `note` or `content`; there is no
-`explanations` input field.
+Sense `meaning` names the saved sense. Example `translation` translates the whole example;
+examples do not accept `meaning`/`meaningLanguage`. Put detailed explanations in sense `content`
+(or capture's `explanation`) and personal annotations in `note`. Raw generation records are not
+an authoring surface.
 
 ## Append to an existing sense
 
@@ -84,8 +82,7 @@ At least one nonempty `examples`, `content`, or `tags` array is required. Append
 update replaces the tag array. Append cannot edit a sense's meaning or note.
 
 A repeated occurrence within the target sense keeps its existing usage ID and primary
-translation, collecting distinct translations as variants. A conflicting contextual meaning
-fails instead of overwriting saved material. If another sense owns the occurrence, append to
+translation, collecting distinct translations as variants. If another sense owns the occurrence, append to
 that owner when appropriate or use an explicitly authorized [resource organization batch](organization.md). Creating another sense is not
 a conflict-resolution mechanism. Retrying rich-text appends with a new key can duplicate blocks.
 
@@ -113,10 +110,40 @@ Use the latest get's `result.revision` as `expectedRevision`. All updates in one
 the same baseline notebook revision; do not increment it between operations. A stale revision
 rejects the whole batch. Reread and reconcile with the current content before a revised write.
 
-Only supplied `meaning`, `meaningLanguage`, `note`, and `tags` are replaced. Omit fields that
+Only supplied `meaning`, `meaningLanguage`, `explanation`, `note`, and `tags` are replaced.
+`explanation` replaces the complete sense body; an empty string explicitly clears it. Omit fields that
 should stay unchanged; do not use null as a clearing command. `note: ""` and `tags: []` clear
 those fields. Meaning must remain nonempty. Update cannot rename an entry, replace examples,
 delete senses, or move usages; use [version 2 resource operations](organization.md) for those actions.
+
+## Merge duplicate senses
+
+Read both senses and choose the survivor deliberately. Use a version 2 batch with the original
+`notebookScope` and `expectedRevision`; do not combine senses from different entries.
+
+```json
+{
+  "version": 2,
+  "idempotencyKey": "REPLACE-WITH-A-FRESH-UUID",
+  "expectedRevision": 12,
+  "notebookScope": {
+    "workspaceID": "WORKSPACE_FROM_READ",
+    "notebookID": "11111111-1111-4111-8111-111111111111",
+    "generation": "GENERATION_FROM_READ"
+  },
+  "operations": [{"merge": {
+    "entryID": "22222222-2222-4222-8222-222222222222",
+    "sourceSenseID": "33333333-3333-4333-8333-333333333333",
+    "targetSenseID": "44444444-4444-4444-8444-444444444444"
+  }}]
+}
+```
+
+The target keeps its ID, definition, explanation, notes, tags and semantic links. Source examples
+move with their translations and provenance; shared source content is removed. Same sentence text
+from different sources stays distinct. Source-only semantic links are removed without deleting
+shared nodes. Preview and commit reuse the same JSON/key; MCP uses its existing reviewed
+`notebook_preview`/`notebook_commit` path. A committed retry returns the original receipt.
 
 ## Context and UTF-16 ranges
 
@@ -170,7 +197,7 @@ are rejected at every input level, so do not copy a get response into apply.
 | Content and examples per batch | 512 content blocks and 1,000 examples |
 | Each operation | 64 content blocks and 100 examples |
 | Each example | 64 ranges |
-| Expression, dictionary form, sense/example meaning | 32,000 UTF-8 bytes per field |
+| Expression, dictionary form, sense meaning | 32,000 UTF-8 bytes per field |
 | Note, example text/translation, content text | 262,144 UTF-8 bytes per field |
 | Image caption | 16,384 UTF-8 bytes |
 | Tags on a sense | 100 tags, each nonempty after trimming and at most 200 UTF-8 bytes |

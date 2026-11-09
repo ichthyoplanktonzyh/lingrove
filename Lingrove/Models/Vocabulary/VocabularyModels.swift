@@ -105,3 +105,13 @@ nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
     let exampleID: UUID?
     var scope: VocabularyOperationScope?
 }
+
+/// One in-memory undo receipt belongs to the store's last explicit sense merge. Retaining
+/// removed image bytes makes undo independent of media garbage collection. The saved scope
+/// requires the same account and exact post-merge revision before restoring the before-image.
+nonisolated struct VocabularySenseMergeUndo: Sendable {
+    let before: VocabularyDocument
+    let after: VocabularyOperationScope
+    let images: [String: Data]
+    let selection: VocabularySelection
+}

@@ -35,12 +35,13 @@ for the full workflow and readback.
       "senses": [
         {
           "meaning": "推迟；把活动安排到更晚的时间。",
+          "explanation": "postpone 后接活动或事件，常用于预先安排的活动。",
           "tags": ["scheduling"],
           "examples": [
             {"text": "We need to postpone the meeting.", "translation": "我们需要推迟会议。"}
           ],
           "associations": [
-            {"meaning": "delay", "usage": "postpone + event", "nuance": "常用于预先安排的活动。"}
+            {"meaning": "delay"}
           ]
         }
       ]
@@ -69,7 +70,7 @@ a capture otherwise uses the archive's serialized current snapshot without repla
 
 - Entry language comes from the entry or `defaults.language`; it must be specified somewhere.
   `kind` defaults to `word`; dictionary form defaults to expression.
-- Sense/example meaning language and meaning label language inherit `defaults.meaningLanguage`.
+- Sense meaning language and meaning label language inherit `defaults.meaningLanguage`.
   Translation language inherits `defaults.translationLanguage`, falling back to meaning language.
 - Examples default to `sourceKind: generated`. Set captured/imported/authored truthfully when
   the material comes from those sources. Completeness defaults to sentence; mark fragments or
@@ -91,10 +92,11 @@ a capture otherwise uses the archive's serialized current snapshot without repla
   only for independent classification edits, custom parents or local overrides. Omission leaves
   current membership unchanged.
 - An association names a meaning ref. `usage` creates a pattern; optional formality, medium and
-  collocations describe that pattern. Nuance and conditions describe the association. The app
+  collocations describe that pattern. Keep usage explanations in the sense body; conditions
+  describe genuine restrictions on the association. The app
   infers expressesContent/realizesFunction from the node kind and attaches this capture's examples
   as evidence. Omit usage for a whole-sense association. Roles/slots need resource operations.
-  Omit nuance when it only repeats the saved definition. Conditions are optional and should name
+  Prefer omitting nuance; the sense body is the explanation surface. Conditions are optional and should name
   an actual restriction (for example, a specific register or situation); do not fill them with
   "only this example/sense/usage". Do not copy the same explanation into several fields.
 - Optional `relations` link refs using from/to/kind and optional note/status. `narrower` points
@@ -105,7 +107,7 @@ a capture otherwise uses the archive's serialized current snapshot without repla
 Exact normalized expression/language/kind selects an existing lexical entry. A sense without
 `id` always creates a distinct sense; capture never guesses synonymy or merges definitions.
 Read existing material first. To extend a known sense, supply its `id` plus examples, tags and
-associations. Existing meanings/languages/notes cannot be replaced by capture; use update/resource
+associations. Existing meanings/languages/explanations/notes cannot be replaced by capture; use update/resource
 operations for explicit edits. Existing-node references and new local nodes may coexist.
 
 Capture collects every selected sense and its examples. It preserves existing collection notes,
@@ -117,3 +119,11 @@ Unknown fields, unsupported language codes, dangling refs and invalid relationsh
 entire task. Capture accepts text material; use traditional append for rich text/images. Low-level
 resource batches remain available for independent evidence, candidate interpretations, explicit
 replacement, deletion and detailed graph maintenance.
+
+
+Detailed explanation belongs on the sense through `explanation`. Example `meaning` and
+`meaningLanguage` are not accepted by capture/add/append. Put useful usage prose in the sense
+body, retaining semantic associations for node links and genuine applicability restrictions.
+Generic CSV/TXT import is not an app operation: read the file, determine the intended senses,
+search existing material and use these explicit commands. A bare word list does not establish
+which senses the learner intends to collect; agree on the scope rather than expanding all senses.

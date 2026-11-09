@@ -115,7 +115,7 @@ extension VocabularyArchive {
             guard supplied == CLINotebookScope(workspaceID: scope.workspaceId, notebookID: scope.notebookId,
                 generation: scope.generation) else { throw VocabularyError.editConflict }
         } else if batch.expectedRevision != nil || batch.operations.contains(where: {
-            $0.append != nil || $0.update != nil || $0.put != nil || $0.delete != nil || $0.capture?.referencesExistingRecords == true
+            $0.append != nil || $0.update != nil || $0.put != nil || $0.delete != nil || $0.merge != nil || $0.capture?.referencesExistingRecords == true
         }) {
             throw CLIError(code: .conflict,
                 message: "Read the notebook again and include its notebookScope when editing existing records.")

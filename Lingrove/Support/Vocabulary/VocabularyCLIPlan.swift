@@ -24,7 +24,7 @@ nonisolated struct VocabularyCLIPlan {
             throw CLIError.invalid("Invalid batch version, idempotency key or operation count.")
         }
         document = snapshot.document
-        if batch.operations.contains(where: { $0.put != nil || $0.delete != nil }) {
+        if batch.operations.contains(where: { $0.put != nil || $0.delete != nil || $0.merge != nil }) {
             guard batch.version == 2, let expected = batch.expectedRevision else {
                 throw CLIError.invalid("Resource operations require batch version 2 and expectedRevision.")
             }
@@ -69,8 +69,19 @@ nonisolated struct VocabularyCLIPlan {
         _ change: CLIChange, context: OperationContext, revision: UInt64, prepared: [String: VocabularyPreparedImage]
     ) throws {
         guard [change.add != nil, change.append != nil, change.update != nil,
-               change.put != nil, change.delete != nil, change.capture != nil].filter({ $0 }).count == 1 else {
+               change.put != nil, change.delete != nil, change.capture != nil, change.merge != nil].filter({ $0 }).count == 1 else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if let merge = change.merge {
+            guard document.entries.contains(where: { $0.id == merge.entryID }) else {
+                throw CLIError(code: .notFound, message: "Entry no longer exists. Read it again before merging.")
+            }
+            try VocabularySenseEditingPolicy.merge(entryID: merge.entryID, source: merge.sourceSenseID,
+                into: merge.targetSenseID, in: &document, now: context.now)
+            outcomes.append(.object(["operation": .integer(Int64(context.index)), "action": .string("merge"),
+                "entryID": .string(merge.entryID.uuidString), "senseID": .string(merge.targetSenseID.uuidString),
+                "removedSenseID": .string(merge.sourceSenseID.uuidString)]))
+            return
         }
         if let capture = change.capture {
             let plan = try VocabularyCLICapturePlan(capture, document: document, now: context.now, id: context.id)

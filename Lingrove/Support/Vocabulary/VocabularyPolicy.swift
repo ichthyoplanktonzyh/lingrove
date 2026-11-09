@@ -185,6 +185,9 @@ nonisolated enum VocabularyPolicy {
                 guard LearningExplanationPolicy.input(
                     LearningExplanationPolicy.capture(entry, sense: sense, example: sense.examples[usage])) == record.input
                 else { continue }
+                // A delayed answer may fill its original, still-unedited sense. Once senses
+                // have been merged, only the retained destination's authored content is used.
+                fillExplanation(record, in: &entry.senses[index])
                 append(record, to: &entry.senses[index].examples[usage].explanations)
                 if sense.examples[usage].meaningOrigin != .user {
                     entry.senses[index].examples[usage].meaning = record.result.meaning
@@ -200,10 +203,20 @@ nonisolated enum VocabularyPolicy {
     static func storeGeneralExplanation(_ record: LearningExplanationRecord, in sense: inout VocabularySense) {
         guard LearningExplanationPolicy.isValid(record.input), LearningExplanationPolicy.isValid(record.result) else { return }
         append(record, to: &sense.explanations)
+        fillExplanation(record, in: &sense)
+    }
+
+    /// nil is an untouched explanation; [] is an explicitly cleared editor value. Filling
+    /// only the former keeps delayed lookups from undoing a user's edit or a merge decision.
+    private static func fillExplanation(_ record: LearningExplanationRecord, in sense: inout VocabularySense) {
+        guard sense.mergedFrom.isEmpty else { return }
         if sense.meaning.isEmpty, sense.meaningOrigin != .user {
             sense.meaning = record.result.meaning
             sense.meaningLanguage = record.language
             sense.meaningOrigin = .ai
+        }
+        if sense.content == nil {
+            sense.content = [.init(id: record.id, content: .text(.init(text: record.result.explanation)))]
         }
     }
 

@@ -285,9 +285,32 @@ actor VocabularyArchive {
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        try VocabularySensePolicy.merge(source: source, into: target, in: &next.entries[index], now: Date())
+        try VocabularySenseEditingPolicy.merge(entryID: entryID, source: source, into: target, in: &next, now: Date())
         return try commit(next)
+    }
+
+    /// Capture undo state inside the same archive operation as the merge. No view owns a
+    /// database snapshot or reads media directly, and failed commits publish no undo receipt.
+    func mergeSensesWithUndo(entryID: UUID, source: UUID, target: UUID, expectedRevision: UInt64?)
+        throws -> (VocabularyArchiveSnapshot, VocabularySenseMergeUndo) {
+        let before = try load()
+        if let expectedRevision, expectedRevision != before.revision { throw VocabularyError.editConflict }
+        var next = before.document
+        try VocabularySenseEditingPolicy.merge(entryID: entryID, source: source, into: target, in: &next, now: Date())
+        let removedImages = Set(Self.imageReferences(before.document)).subtracting(Self.imageReferences(next))
+        guard let originalScope = before.scope else { throw VocabularyError.invalidArchive }
+        let images = try imagesForUndo(removedImages, scope: originalScope)
+        let saved = try commit(next)
+        guard let scope = saved.scope else { throw VocabularyError.invalidArchive }
+        return (saved, .init(before: before.document, after: scope, images: images,
+            selection: .init(entryID: entryID, senseID: source)))
+    }
+
+    func undoSenseMerge(_ undo: VocabularySenseMergeUndo) throws -> VocabularyArchiveSnapshot {
+        let current = try load()
+        guard let scope = current.scope, scope.hasSameOwner(as: undo.after),
+              current.revision == undo.after.revision else { throw VocabularyError.editConflict }
+        return try commitWithImages(undo.before, supplied: undo.images)
     }
 
     func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularyArchiveSnapshot {

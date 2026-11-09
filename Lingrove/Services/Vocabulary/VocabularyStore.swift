@@ -38,7 +38,10 @@ final class VocabularyStore: ObservableObject {
     private var activeAccesses = 0
     private var drainWaiters: [CheckedContinuation<Void, Never>] = []
     private var loadWork: Task<Void, Never>?
+    @Published private(set) var canUndoSenseMerge = false
+    private var senseMergeUndo: VocabularySenseMergeUndo?
     private var revision: UInt64 = 0
+    var currentRevision: UInt64 { revision }
     private var savedKeys: Set<String> = []
     private var pendingCounts: [String: Int] = [:]
     private var entryKeys: Set<String> = []
@@ -208,7 +211,7 @@ final class VocabularyStore: ObservableObject {
     func userMeaning(at destination: VocabularyExplanationDestination) -> String? {
         guard let entry = entries.first(where: { $0.id == destination.entryID }) else { return nil }
         if let id = destination.exampleID {
-            return entry.examples.first { $0.id == id && $0.meaningOrigin == .user }?.meaning
+            return entry.senses.first { $0.examples.contains { $0.id == id } && $0.meaningOrigin == .user }?.meaning
         }
         guard let index = VocabularySensePolicy.index(destination.senseID, in: entry) else { return nil }
         let sense = entry.senses[index]
@@ -225,9 +228,9 @@ final class VocabularyStore: ObservableObject {
                   let index = original.senses[owner].examples.firstIndex(where: { $0.id == exampleID }),
                   LearningExplanationPolicy.input(LearningExplanationPolicy.capture(original, sense: original.senses[owner],
                     example: original.senses[owner].examples[index])) == record.input else { return false }
-            edited.senses[owner].examples[index].meaning = record.result.meaning
-            edited.senses[owner].examples[index].meaningLanguage = record.language
-            edited.senses[owner].examples[index].meaningOrigin = .user
+            edited.senses[owner].meaning = record.result.meaning
+            edited.senses[owner].meaningLanguage = record.language
+            edited.senses[owner].meaningOrigin = .user
         } else {
             guard let owner = VocabularySensePolicy.index(destination.senseID, in: original),
                   original.senses[owner].supportsGeneralExplanation,
@@ -249,10 +252,27 @@ final class VocabularyStore: ObservableObject {
         do { apply(try await access(scope: scope, operation)); return true } catch { report(error); return false }
     }
 
-    func mergeSenses(entryID: UUID, source: UUID, target: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
-        await mutation(scope: scope) { archive in
-            try archive.mergeSenses(entryID: entryID, source: source, target: target)
-        }
+    func mergeSenses(entryID: UUID, source: UUID, target: UUID, scope: VocabularyOperationScope? = nil,
+                     expectedRevision: UInt64? = nil) async -> Bool {
+        do {
+            let (snapshot, undo) = try await access(scope: scope) { archive in
+                try archive.mergeSensesWithUndo(entryID: entryID, source: source, target: target,
+                    expectedRevision: expectedRevision)
+            }
+            apply(snapshot)
+            guard matches(undo.after), revision == undo.after.revision else { return true }
+            senseMergeUndo = undo; canUndoSenseMerge = true
+            return true
+        } catch { report(error); return false }
+    }
+
+    func undoLastSenseMerge() async -> VocabularySelection? {
+        guard let undo = senseMergeUndo else { return nil }
+        do {
+            let snapshot = try await access(scope: undo.after) { archive in try archive.undoSenseMerge(undo) }
+            apply(snapshot)
+            return undo.selection
+        } catch { report(error); return nil }
     }
 
     func moveExample(
@@ -277,16 +297,6 @@ final class VocabularyStore: ObservableObject {
         let (snapshot, result) = try await access(scope: scope) { archive in try archive.addEntries(inputs) }
         apply(snapshot)
         return result
-    }
-
-    func readWordList(at source: URL) async throws -> VocabularyWordList {
-        try await access { archive in try archive.readWordList(at: source) }
-    }
-
-    func previewWordList(
-        _ table: VocabularyWordList, configuration: VocabularyWordListConfiguration, scope: VocabularyOperationScope? = nil
-    ) async throws -> VocabularyWordListPreview {
-        try await access(scope: scope) { archive in try archive.previewWordList(table, configuration: configuration) }
     }
 
     func removeSense(entryID: UUID, senseID: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
@@ -442,6 +452,9 @@ final class VocabularyStore: ObservableObject {
         }
         guard snapshot.revision >= revision else { return }
         if let scope = snapshot.scope { operationScope = scope }
+        if let undo = senseMergeUndo, snapshot.revision != undo.after.revision {
+            senseMergeUndo = nil; canUndoSenseMerge = false
+        }
         entries = snapshot.document.entries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
@@ -460,6 +473,7 @@ final class VocabularyStore: ObservableObject {
     /// or its files are removed. Closing an ordinary vocabulary window never calls this method.
     func shutdown() async {
         isShutDown = true
+        senseMergeUndo = nil; canUndoSenseMerge = false
         repositorySubscription = nil; explanationScopeSubscription = nil
         loadWork?.cancel()
         await loadWork?.value
@@ -474,6 +488,7 @@ final class VocabularyStore: ObservableObject {
     /// revision zero. Rebuilding the window subtree discards all unsaved sheets and selections.
     private func resetScope(to scope: VocabularyOperationScope?) {
         loadIdentity = UUID(); loadWork?.cancel(); loadWork = nil; reloadRequested = false
+        senseMergeUndo = nil; canUndoSenseMerge = false
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
         savedKeys = []; entryKeys = []; pending = []; pendingCounts = [:]

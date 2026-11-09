@@ -11,9 +11,9 @@ repeated explanations. Test fixtures belong outside the learner's notebook.
 | Record | Responsibility |
 | --- | --- |
 | Semantic node | A reusable concept or communicative function that different expressions can share. |
-| Sense | One expression's particular meaning; preserve distinctions between its senses. |
+| Sense | One expression's particular meaning, owning its concise definition and detailed usage explanation. |
 | Expression / pattern | The wording, grammatical structure, collocations and useful replaceable slots. |
-| Example / interpretation | Concrete participants, setting, actual use, contextual meaning and sentence translation. |
+| Example / interpretation | Concrete source use, participants, setting, provenance and sentence translation supporting the sense. |
 
 Do not turn a whole example's translation into a node definition. Keep source
 wording intact; a useful generalized pattern does not replace the encountered
@@ -182,3 +182,19 @@ receipt IDs, particularly after semantic changes. Check that the saved meaning,
 type, pattern and classification agree. Keep operational IDs in the receipt or
 report, not in learning notes. A replay acknowledges the earlier operation and
 does not establish that subsequently edited records still have those values.
+
+
+## Explicit sense consolidation and external material
+
+The app does not call a model to classify or merge senses during collection. Users may drag one
+sense onto another within the same expression; agents make the equivalent explicit choice through
+`vocab apply` / MCP apply using a version 2 `merge` action. Read both senses, then specify `entryID`,
+`sourceSenseID`, `targetSenseID`, and the original notebook scope/revision. The target keeps its
+definition, explanation, personal notes, tags and semantic links; source examples move to it.
+Shared source content is removed, so review the direction and use the existing authorized
+preview/commit path. Refer to [batches.md](batches.md#merge-duplicate-senses) for the payload.
+
+For external CSV/TXT material, the agent reads and interprets it before issuing normal sense
+writes. There is no automatic row-to-sense import. Use context or a stated collection strategy;
+a bare headword alone does not establish its intended sense. Detailed explanation belongs to the
+sense body, not repeated across examples and semantic associations.

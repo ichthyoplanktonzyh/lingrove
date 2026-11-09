@@ -58,10 +58,23 @@ nonisolated struct CLIChange: Codable, Sendable {
     var put: CLIResourcePut?
     var delete: CLIResourceDelete?
     var capture: CLICapture?
+    var merge: CLIMerge?
 }
 
 typealias CLIResourcePut = NotebookResourcePut
 typealias CLIResourceDelete = NotebookResourceDelete
+
+/// Explicit consolidation chooses a surviving sense; the app never classifies meanings.
+/// The batch supplies the notebook scope and revision for this destructive structural edit.
+nonisolated struct CLIMerge: Codable, Sendable {
+    var entryID: UUID
+    var sourceSenseID: UUID
+    var targetSenseID: UUID
+
+    static let shape = CLIResourceContract.Shape(fields: ["entryID": .uuid,
+        "sourceSenseID": .uuid, "targetSenseID": .uuid],
+        required: ["entryID", "sourceSenseID", "targetSenseID"])
+}
 
 nonisolated struct CLINewSense: Codable, Sendable {
     var expression: String

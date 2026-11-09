@@ -3,66 +3,52 @@ import Foundation
 /// Detached editors and archive transactions use one merge/move rule. Stable aliases retain
 /// historical review ownership; source evidence and tool memory remain independently owned.
 public nonisolated enum VocabularySenseEditingPolicy {
+    /// Both GUI and CLI submit one complete graph change. Reconcile before dry-run validation
+    /// as well as persistence, so source associations cannot become dangling references.
+    public static func merge(entryID: UUID, source: UUID, into target: UUID,
+                             in document: inout VocabularyDocument, now: Date) throws {
+        let before = document
+        var entries = document.entries
+        guard let index = entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        try merge(source: source, into: target, in: &entries[index], now: now)
+        document.entries = entries
+        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, entries: entries)
+    }
+
     public static func merge(source: UUID, into target: UUID, in entry: inout VocabularyEntry, now: Date) throws {
         guard let from = entry.senses.firstIndex(where: { $0.id == source }),
               let to = entry.senses.firstIndex(where: { $0.id == target }), from != to else {
             throw VocabularyError.invalidContent
         }
-        guard Set((entry.senses[from].examples + entry.senses[to].examples).map {
-            VocabularyIdentityPolicy.exampleKey($0)
-        }).count == entry.senses[from].examples.count + entry.senses[to].examples.count else { throw VocabularyError.editConflict }
         let original = entry.senses[from]
         var merged = entry.senses[to]
-        // Both sets of annotations survive. Choosing the destination chooses its displayed
-        // core wording; the source's wording and identity remain in the exported sense record.
-        if merged.meaning.isEmpty {
-            merged.meaning = original.meaning; merged.meaningLanguage = original.meaningLanguage
-            merged.meaningOrigin = original.meaningOrigin
-        } else if !original.meaning.isEmpty && (original.meaning != merged.meaning || original.meaningLanguage != merged.meaningLanguage) {
-            merged.alternateMeanings.append(.init(text: original.meaning, language: original.meaningLanguage))
+        // The drop destination owns all authored content, even an intentionally empty field.
+        // Only evidence moves. Equal sentence text from different sources remains distinct.
+        for example in original.examples {
+            if let index = merged.examples.firstIndex(where: {
+                $0.id == example.id || ($0.sourceID == example.sourceID &&
+                    $0.ranges == example.ranges && $0.text == example.text &&
+                    $0.completeness == example.completeness)
+            }) {
+                let translations = [VocabularyMeaning(text: example.translation, language: example.translationLanguage)]
+                    + example.translationVariants
+                for value in translations where !value.text.isEmpty &&
+                    !merged.examples[index].translationVariants.contains(value) {
+                    merged.examples[index].translationVariants.append(value)
+                }
+            } else { merged.examples.append(example) }
         }
-        merged.alternateMeanings += original.alternateMeanings
-        if !original.note.isEmpty, original.note != merged.note {
-            merged.note = [merged.note, original.note].filter { !$0.isEmpty }.joined(separator: "\n\n")
-        }
-        merged.tags = Array(Set(merged.tags + original.tags)).sorted()
-        merged.content = (merged.content ?? []) + (original.content ?? []).filter { block in
-            !(merged.content ?? []).contains { $0.id == block.id }
-        }
-        merged.examples += original.examples
-        merged.standaloneMeanings += original.standaloneMeanings.filter { !merged.standaloneMeanings.contains($0) }
+        // Collection and review receipts are lifecycle identities, not shared explanation text.
+        // Keeping aliases prevents in-flight receipts and historical review ownership from dangling.
         merged.isSavedWithoutContext = merged.isSavedWithoutContext || original.isSavedWithoutContext
-        if original.createdWithoutContext == true { merged.createdWithoutContext = true }
-        merged.explanations += original.explanations.filter { record in !merged.explanations.contains { $0.id == record.id } }
-        merged.mergedFrom += [original.id] + original.mergedFrom
-        merged.explanations = reboundGeneralExplanations(merged.explanations, entry: entry, sense: merged)
+        merged.mergedFrom = Array(Set(merged.mergedFrom + [original.id] + original.mergedFrom))
+            .sorted { $0.uuidString < $1.uuidString }
         merged.reviewCards = (merged.reviewCards ?? []) + (original.reviewCards ?? [])
         merged.review = mergedReview(merged.review, original.review)
         merged.updatedAt = now
         entry.senses[to] = merged
         entry.senses.remove(at: from)
         entry.updatedAt = now
-    }
-
-    /// Explicit merge transfers ownership. Rebind only a known local general-meaning receipt;
-    /// model input text, record UUID, timestamps and answers stay intact. A legacy favorite
-    /// retains its nil receipt so future floating captures still reach that unique slot.
-    private static func reboundGeneralExplanations(
-        _ records: [LearningExplanationRecord], entry: VocabularyEntry, sense: VocabularySense
-    ) -> [LearningExplanationRecord] {
-        let expected = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: nil)
-        let aliases = Set(([sense.id] + sense.mergedFrom).map { "sense:" + $0.uuidString })
-        return records.map { record in
-            guard record.input.contextKind == .none,
-                  record.input.occurrenceIdentity == nil || aliases.contains(record.input.occurrenceIdentity ?? "") else { return record }
-            let old = record.input
-            let input = LearningExplanationInput(target: old.target, dictionaryForm: old.dictionaryForm,
-                language: old.language, kind: old.kind, context: old.context, ranges: old.ranges,
-                contextKind: old.contextKind, occurrenceIdentity: expected.occurrenceIdentity)
-            guard input == expected else { return record }
-            return .init(id: record.id, input: input, language: record.language, result: record.result,
-                model: record.model, createdAt: record.createdAt)
-        }
     }
 
     public static func move(exampleID: UUID, from source: UUID, to target: UUID?, in entry: inout VocabularyEntry, now: Date) throws -> UUID {

@@ -11,6 +11,41 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func explicitMergeUsesDestinationContentAndSupportsDryRunReplayAndConflict() async throws {
+        let fixture = try await Fixture()
+        do {
+            let initial = try await fixture.archive.addEntries([
+                .init(expression: "bank", meaning: "financial institution", note: "Keep target", example: "The bank opened."),
+                .init(expression: "bank", meaning: "provider of banking services", note: "Drop source", example: "I visited the bank.")
+            ]).0
+            let entry = initial.document.entries[0]
+            var linked = initial.document
+            let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Financial services")])
+            linked.semantics.nodes = [node]
+            linked.semantics.mappings = [.init(nodeID: node.id, senseID: entry.senses[1].id)]
+            let linkedSnapshot = try await fixture.archive.commit(linked)
+            let merge: [String: Any] = ["merge": ["entryID": entry.id.uuidString,
+                "sourceSenseID": entry.senses[1].id.uuidString, "targetSenseID": entry.senses[0].id.uuidString]]
+            let input: [String: Any] = ["version": 2, "idempotencyKey": "explicit-merge", "expectedRevision": linkedSnapshot.revision,
+                "operations": [merge]]
+            #expect(try await fixture.apply(input, dry: true).0 == 0)
+            #expect(try await fixture.archive.load().document == linkedSnapshot.document)
+            #expect(try await fixture.apply(input).0 == 0)
+            let saved = try await fixture.archive.load()
+            #expect(saved.document.entries[0].senses.count == 1)
+            #expect(saved.document.entries[0].senses[0].note == "Keep target")
+            #expect(Set(saved.document.entries[0].examples.map(\.id)) == Set(entry.examples.map(\.id)))
+            #expect(try await fixture.apply(input).0 == 0)
+            #expect(try await fixture.archive.load().revision == saved.revision)
+            var stale = input; stale["idempotencyKey"] = "stale-merge"
+            #expect(try await fixture.apply(stale).0 != 0)
+            var missing = input; missing.removeValue(forKey: "expectedRevision")
+            #expect(throws: CLIError.self) { try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: missing)) }
+            #expect(try await fixture.archive.load().document == saved.document)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func legacyAndStaleRequestsNeverReachTheArchive() async throws {
         let fixture = try await Fixture()
         do {

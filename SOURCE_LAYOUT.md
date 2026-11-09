@@ -1070,59 +1070,27 @@ Tests mirror these boundaries under Models/Runtime, Support/Runtime, Services/La
 and UI/Settings; offscreen UI captures are written only under the ignored build directory.
 
 
-## Vocabulary Entry Creation And Word-List Import
+## Vocabulary Creation And Explicit Sense Merge
 
-`Models/Vocabulary/VocabularyEntryInput.swift` defines unsaved user input, bounded source rows,
-column mappings, previews and acknowledged counts. Inputs have no durable IDs. The pure
-`Support/Vocabulary/VocabularyWordListPolicy.swift` parses CSV/TXT and applies explicit mappings;
-its transient CSV reader owns quoting/newline state separately from field interpretation.
-`VocabularyEntryInputPolicy.swift` normalizes inputs, groups existing headword identities and
-plans append-only changes. Exact content is skipped; distinct content becomes a new sense.
-Primary, preserved standalone and merged meanings participate in duplicate recognition.
+`VocabularyEntryInputPolicy` validates explicit manual drafts and always creates a new sense under
+an existing or new headword. It does not identify senses by definition, notes or tags. The creation
+sheet owns the unsaved value, while `VocabularyArchive+EntryImport` retains transactional save and
+scope checking. Generic CSV/TXT decoding, column mapping, preview sessions and file-import UI were
+removed. External material is interpreted by an agent and submitted through CLI/MCP commands;
+native backup/restore remains independent.
 
-`Services/Vocabulary/VocabularyArchive+EntryImport.swift` performs bounded, permission-scoped
-file reads on the existing archive actor. Preview is read-only. Confirmation holds the existing
-SQLite write lock across the latest snapshot, re-planning and one atomic commit. The app-owned
-`VocabularyStore` publishes only acknowledged results. `VocabularyWordListImportSession` lives
-for one sheet, cancels old previews immediately when mappings/defaults change, and never retains
-an obsolete document to commit later.
+`VocabularySenseEditingPolicy` owns the shared deterministic merge rule: keep the target's authored
+content, move source examples, preserve lifecycle aliases/receipts, and remove the source sense.
+`VocabularySemanticPolicy` drops source-specific associations without deleting shared nodes.
+`VocabularySenseMergeInteraction` adds scoped, revision-bound native drag/drop to existing rows;
+the notebook also exposes the same action through row menus. The store retains one in-memory undo
+receipt, including removed image bytes. The archive restores it only while its exact post-merge
+revision and account still match, so undo cannot overwrite intervening writes.
 
-`UI/Vocabulary/VocabularyEntryCreationSheet.swift` owns a draft until Save. Its annotation-language
-picker is shared with the import sheet. `VocabularyWordListImportSheet.swift` owns the preview
-session and displays mappings, defaults, counts and a bounded table. The notebook owns sheet/file
-selection state and reveals acknowledged sense IDs after clearing filters. Its empty state and
-toolbar expose both entry creation and word-list import; whole-notebook restore remains separate.
-
-A new optional `VocabularySense.createdWithoutContext` flag enables general explanations for
-manual/imported senses without claiming the unique legacy favorite slot. Their existing
-`LearningExplanationInput.occurrenceIdentity` carries a local `sense:<UUID>` receipt, which is
-excluded from prompts. Saved lookup, cache identity and the existing fresh-result persistence
-callback therefore resolve one sense. Explicit merge rebinds only known local receipts while
-preserving record IDs, text, results and the legacy nil-receipt favorite behavior. No additional
-runtime, provider request or automatic model generation is introduced by creation or import.
-
-
-## CSV Example Import
-
-`VocabularyEntryInput` carries optional example sentence/translation text through the same
-bounded mapping, preview and commit flow. `VocabularyWordListPolicy` distinguishes the existing
-word-translation header alias from sentence translation when an example column is supplied.
-A translation with no sentence is rejected with its physical source line.
-
-`Support/Vocabulary/VocabularyImportedExamplePolicy.swift` owns pure usage append/translation
-merge rules. `VocabularyEntryInputPolicy.EntryIndex` caches per-headword sense keys and usage
-locations for one plan, avoiding a repeated scan for each CSV row. Explicit, unambiguous core
-meanings may group examples; new unclassified contexts retain independent sense identities.
-Existing usage ownership never changes through import. Different translations become variants,
-and unknown translation-language provenance stays unknown. Full sentence cells remain intact;
-existing Unicode-safe reconciliation finds highlight spans where literal matches are available.
-
-`VocabularyEntryImportResult.hasChanges` includes example/translation changes, so preview,
-confirmation gating and the archive's transaction guard do not discard an example-only batch.
-The existing store and archive remain the sole UI publication and disk transaction boundaries;
-no additional model or dictionary work is introduced. Regression tests cover sentence ownership,
-translation preservation, replay, stale preview, rollback, Unicode and reopen under
-`Services/Vocabulary/VocabularyExampleImportTests.swift`.
+`VocabularyCLIPlan` exposes `merge` as an atomic version 2 batch action with explicit source/target
+IDs, notebook scope and expected revision. The MCP adapter carries the same batch through its
+existing preview/commit workflow. Capture fills canonical sense fields from already available
+results; it never starts a classifier. Delayed explanation writes only fill untouched content.
 
 ## Staged Contextual Lookup
 
@@ -1201,7 +1169,7 @@ identity/index columns and CSV/TXT interchange. When context classification is k
 snapshots remain version 3 for known-source entries and use version 4 for unknown-source entries.
 The SQLite table schema is unchanged.
 Portable learning exports similarly retain version 1 for known-only data and use version 2 when
-source language is absent. CSV import recognizes explicit `und` without applying the default language.
+source language is absent. Manual creation also retains an explicitly unspecified language.
 The existing archive remains the sole persistence boundary; the canonical envelope version follows
 the features present in the current snapshot.
 
