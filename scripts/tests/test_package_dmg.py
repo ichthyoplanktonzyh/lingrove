@@ -114,7 +114,7 @@ class DMGPackageTests(unittest.TestCase):
                 expected_architectures=("arm64", "x86_64"),
             )
 
-        self.assertEqual(dmg.name, "Lingrove-0.8.1-universal.dmg")
+        self.assertEqual(dmg.name, "Lingrove-0.9.0-universal.dmg")
         self.assertTrue(dmg.is_file())
         self.assertEqual(
             checksum_file.read_text(encoding="utf-8"),
@@ -122,8 +122,8 @@ class DMGPackageTests(unittest.TestCase):
         )
         metadata = json.loads(info_file.read_text(encoding="utf-8"))
         self.assertEqual(metadata["bundleIdentifier"], packaging.EXPECTED_BUNDLE_ID)
-        self.assertEqual(metadata["version"], "0.8.1")
-        self.assertEqual(metadata["build"], "6")
+        self.assertEqual(metadata["version"], "0.9.0")
+        self.assertEqual(metadata["build"], "7")
         self.assertEqual(metadata["architectures"], ["arm64", "x86_64"])
         self.assertEqual(metadata["minimumMacOS"], "14.0")
         self.assertEqual(metadata["codeIdentity"], "ad-hoc")
@@ -229,7 +229,7 @@ class DMGPackageTests(unittest.TestCase):
                 packaging.validate_app(self.app, ("arm64", "x86_64"))
 
     def test_never_overwrites_any_existing_package_output(self):
-        existing = self.output / "Lingrove-0.8.1-universal.dmg"
+        existing = self.output / "Lingrove-0.9.0-universal.dmg"
         existing.write_bytes(b"previous package")
         run, output = self.package_mocks([])
         with (
@@ -282,7 +282,7 @@ class DMGPackageTests(unittest.TestCase):
         derived_data = (build_dir / "DerivedData").resolve()
         lock_path = build_dir / ".DerivedData.dmg.lock"
         package_outputs = (
-            self.output / "Lingrove-0.8.1-universal.dmg",
+            self.output / "Lingrove-0.9.0-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )
@@ -383,7 +383,7 @@ class DMGPackageTests(unittest.TestCase):
         sentinel = derived_data / "another-build-product"
         sentinel.write_text("preserve")
         package_outputs = (
-            self.output / "Lingrove-0.8.1-universal.dmg",
+            self.output / "Lingrove-0.9.0-universal.dmg",
             self.output / "SHA256SUMS.txt",
             self.output / "build-info.json",
         )

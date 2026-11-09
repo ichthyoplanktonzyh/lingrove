@@ -5,7 +5,14 @@ version/build metadata. `scripts/package_dmg.py` validates the production app an
 explicit installer/legal inputs; `scripts/build_dmg.sh` is its shell entry point. GitHub Actions
 retains the separate future Developer ID/notarization/update workflow.
 
-## Current release: 0.8.1 (build 6)
+## 0.9.0 release candidate (build 7)
+
+Build a universal package and stage it as a GitHub Release draft. The production app uses SQLite
+schema 41 and corpus sync v9. Existing production databases do not migrate automatically. The
+one-time Dev corpus migration was performed separately. Account sync requires a server with v9
+support. See [the release notes](releases/lingrove-0.9.0.md) for the upgrade boundary.
+
+## Current public release: 0.8.1 (build 6)
 
 Publish the clean current source as **Lingrove（拾语）v0.8.1**, tag `v0.8.1`, with GitHub's
 prerelease flag disabled and the release marked latest. The universal artifact is
@@ -75,7 +82,7 @@ Hold `/tmp/lingrove-mobile-validation.lock` for Xcode, native preparation and pa
 Build from a clean committed source revision:
 
 ```sh
-scripts/build_dmg.sh --output-dir build/distributions/v0.8.1
+scripts/build_dmg.sh --output-dir build/distributions/v0.9.0
 ```
 
 The script prepares the pinned inference/native helpers, builds Release for arm64 and x86_64,
