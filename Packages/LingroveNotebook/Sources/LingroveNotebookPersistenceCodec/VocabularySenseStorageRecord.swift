@@ -13,36 +13,14 @@ nonisolated struct VocabularySenseStorageRecord: Codable, Equatable, Identifiabl
     var content: [VocabularyContentBlock]?
     var review: VocabularyReview?
     var reviewCards: [VocabularyReview]?
-    var savedAt: Date
-
-    init(
-        senseID: UUID,
-        interpretationIDs: [UUID] = [],
-        isSavedWithoutContext: Bool = false,
-        note: String = "",
-        tags: [String] = [],
-        content: [VocabularyContentBlock]? = nil,
-        review: VocabularyReview? = nil,
-        reviewCards: [VocabularyReview]? = nil,
-        savedAt: Date
-    ) {
-        self.senseID = senseID
-        self.interpretationIDs = interpretationIDs
-        self.isSavedWithoutContext = isSavedWithoutContext
-        self.note = note
-        self.tags = tags
-        self.content = content
-        self.review = review
-        self.reviewCards = reviewCards
-        self.savedAt = savedAt
-    }
+    var savedAt: Date?
 
     static func records(for document: VocabularyDocument) -> [Self] {
         document.catalog.flatMap(\.senses).map { sense in
             .init(senseID: sense.id,
                 isSavedWithoutContext: sense.isSavedWithoutContext, note: sense.note, tags: sense.tags,
                 content: sense.content, review: sense.review, reviewCards: sense.reviewCards,
-                savedAt: sense.savedAt ?? sense.createdAt)
+                savedAt: sense.savedAt)
         }
     }
 
@@ -65,7 +43,7 @@ nonisolated struct VocabularySenseStorageRecord: Codable, Equatable, Identifiabl
         sense.isSavedWithoutContext = isSavedWithoutContext
         sense.note = note; sense.tags = tags; sense.content = content
         sense.review = review; sense.reviewCards = reviewCards
-        sense.savedAt = savedAt == sense.createdAt ? nil : savedAt
+        sense.savedAt = savedAt
     }
 
     static func stripFields(from sense: inout VocabularySense) {
