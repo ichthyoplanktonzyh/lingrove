@@ -46,4 +46,51 @@ struct NotebookCapturePlanTests {
         #expect(plan.document.classification.memberships.first?.nodeID == node.id)
         #expect(plan.document.classification.memberships.first?.categoryID == category.id)
     }
+    @Test func senseExplanationIsCanonicalAndExamplesCannotSupplyAnotherMeaning() throws {
+        let input = Data(#"""
+        {"defaults":{"language":"en"},"entries":[{"expression":"put off","senses":[{
+          "meaning":"postpone", "explanation":"Use with an event or an activity.", "note":"My reminder",
+          "examples":[{"text":"We put off the meeting.","translation":"我们推迟了会议。"}]
+        }]}]}
+        """#.utf8)
+        let task = try NotebookCaptureContract.decodeMaterial(input)
+        let plan = try NotebookCapturePlan(task, document: .init(), now: Date()) { _ in UUID() }
+        try VocabularyDocumentValidation.validate(plan.document)
+        let sense = try #require(plan.document.entries.first?.senses.first)
+        #expect(sense.meaning == "postpone")
+        #expect(sense.note == "My reminder")
+        #expect(sense.content?.count == 1)
+        guard case .text(let body) = try #require(sense.content?.first).content else {
+            Issue.record("Expected the authored sense explanation"); return
+        }
+        #expect(body.text == "Use with an event or an activity.")
+        #expect(sense.examples.first?.meaning == "")
+        #expect(sense.examples.first?.explanations.isEmpty == true)
+        #expect(sense.explanations.isEmpty)
+        // Obsolete authoring fields fail closed instead of being silently copied or migrated.
+        let obsolete = String(decoding: input, as: UTF8.self)
+            .replacingOccurrences(of: "We put off the meeting.\"", with: "We put off the meeting.\",\"meaning\":\"postpone this meeting\"")
+        #expect(throws: (any Error).self) {
+            try NotebookCaptureContract.decodeMaterial(Data(obsolete.utf8))
+        }
+    }
+
+    @Test func captureCannotReplaceExistingSenseExplanation() throws {
+        let now = Date(), senseID = UUID()
+        let sense = VocabularySense(id: senseID, meaning: "postpone",
+            content: [.init(content: .text(.init(text: "Saved explanation")))], createdAt: now, updatedAt: now)
+        let entry = VocabularyEntry(id: UUID(), expression: "put off", dictionaryForm: "put off",
+            language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now)
+        let task = try NotebookCaptureContract.decodeMaterial(Data("""
+        {"defaults":{"language":"en"},"entries":[{"expression":"put off","senses":[{
+          "id":"\(senseID.uuidString)","explanation":"Unreviewed replacement"
+        }]}]}
+        """.utf8))
+        let document = VocabularyDocument(entries: [entry])
+        #expect(throws: (any Error).self) {
+            try NotebookCapturePlan(task, document: document, now: now) { _ in UUID() }
+        }
+        #expect(document.entries.first?.senses.first?.content == sense.content)
+    }
+
 }

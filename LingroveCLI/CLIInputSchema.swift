@@ -161,12 +161,6 @@ enum CLIInputSchema {
         "translationLanguage": {
           "type": "string"
         },
-        "meaning": {
-          "type": "string"
-        },
-        "meaningLanguage": {
-          "type": "string"
-        },
         "completeness": {
           "enum": [
             "sentence",
@@ -373,6 +367,10 @@ enum CLIInputSchema {
             "minLength": 1,
             "maxLength": 200
           }
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 262144
         }
       },
       "required": [
@@ -399,6 +397,11 @@ enum CLIInputSchema {
         {
           "required": [
             "tags"
+          ]
+        },
+        {
+          "required": [
+            "explanation"
           ]
         }
       ]

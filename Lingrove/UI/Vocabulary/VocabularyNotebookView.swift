@@ -1311,14 +1311,7 @@ struct VocabularyNotebookView: View {
             VocabularyEntryDetail(entry: entry, sense: sense, speech: speech, store: store, learning: learning,
                 review: review, builtInReview: builtInReview,
                 edit: { editing = entry }, delete: { deleting = .init(entryID: entry.id, senseID: sense.id) },
-                newSense: {
-                    Task { [scope = store.operationScope] in
-                        if let id = await store.createSense(entryID: entry.id, scope: scope) { showSense(id) } }
-                }, merge: { target in
-                    Task { [scope = store.operationScope] in
-                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target, scope: scope) { showSense(target) }
-                    }
-                }, selectSense: { id in
+                selectSense: { id in
                     withAnimation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 1.0)) {
                         showSense(id)
                     }
@@ -1430,13 +1423,13 @@ struct VocabularyEntryDetail: View {
     var builtInReview: BuiltInReviewSession?
     let edit: () -> Void
     let delete: () -> Void
-    let newSense: () -> Void
-    let merge: (UUID) -> Void
     var selectSense: ((UUID) -> Void)?
     var filterByTag: ((String) -> Void)?
     var openMeaning: ((UUID) -> Void)?
     var breadcrumb: AnyView?
     @Environment(\.vocabularyTextSize) private var textSize
+
+    @State private var definitionLanguageID = ""
 
     private var hasSemanticContent: Bool {
         VocabularySenseSemanticSection.hasContent(in: store.semantics, for: sense.id)
@@ -1468,7 +1461,7 @@ struct VocabularyEntryDetail: View {
                         if let builtInReview {
                             VocabularyBuiltInReviewSection(entry: entry, sense: sense, store: store, session: builtInReview)
                         }
-                        if let review { VocabularyReviewSection(entry: entry, sense: sense, controller: review) }
+                        if let review { VocabularyReviewSection(entry: entry, sense: sense, controller: review, compact: true) }
                     }
                 }
                 if let learning {
@@ -1484,7 +1477,7 @@ struct VocabularyEntryDetail: View {
     }
 
     /// Editorial headword block with inline audio playback, tactile copy confirmation, and
-    /// metadata pills (language, entry kind, lemma, and clickable tags).
+    /// metadata pills (language, lemma, and clickable tags).
     private var heroHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -1500,29 +1493,11 @@ struct VocabularyEntryDetail: View {
                         title: String(localized: "Copy expression", table: "Vocabulary"),
                         text: entry.expression
                     )
-                    VocabularySenseOrganizeMenuButton(
-                        store: store,
-                        selection: .init(entryID: entry.id, senseID: sense.id),
-                        openMeaning: openMeaning
-                    )
-                    Button(action: edit) {
-                        Label(String(localized: "Edit", table: "Vocabulary"), systemImage: "pencil")
-                            .font(.caption.weight(.medium))
-                    }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
                     Menu {
-                        Button(action: newSense) {
-                            Label(String(localized: "New sense", table: "Vocabulary"), systemImage: "plus")
+                        Button(action: edit) {
+                            Label(String(localized: "Edit", table: "Vocabulary"), systemImage: "pencil")
                         }
-                        if entry.senses.count >= 2 {
-                            Menu(String(localized: "Merge sense", table: "Vocabulary")) {
-                                ForEach(entry.senses.filter { $0.id != sense.id }) { target in
-                                    Button(target.displayTitle) { merge(target.id) }
-                                }
-                            }
-                        }
-                        if let openReview = store.onRequestBuiltInReview {
+                        if builtInReview == nil, let openReview = store.onRequestBuiltInReview {
                             Button {
                                 openReview(.init(entryID: entry.id, senseID: sense.id))
                             } label: {
@@ -1552,8 +1527,6 @@ struct VocabularyEntryDetail: View {
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .help(String(localized: "Edit", table: "Vocabulary"))
-                    VocabularyFavoriteIcon(isSaved: true)
-                        .frame(width: 18, height: 18)
                 }
                 .fixedSize(horizontal: true, vertical: false)
                 .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
@@ -1561,7 +1534,6 @@ struct VocabularyEntryDetail: View {
 
             HStack(spacing: 6) {
                 metadataBadge((entry.language?.label ?? String(localized: "Unspecified", table: "Learning")), tint: LingroveBrand.accent)
-                metadataBadge(entry.kind.label, tint: .secondary)
                 if entry.dictionaryForm != entry.expression {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.turn.down.right")
@@ -1645,75 +1617,39 @@ struct VocabularyEntryDetail: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Button(action: newSense) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.primary.opacity(0.05)))
-                }
-                .buttonStyle(.plain)
-                .help(String(localized: "New sense", table: "Vocabulary"))
+
             }
         }
     }
 
-    /// Unboxed editorial core definition block. Always highlights the primary meaning with strong
-    /// typographic presence and pairs it with the general AI explanation card when saved without context.
+    /// The saved sense supplies its current summary. Capture receipts and prior model
+    /// wordings are provenance, never additional definitions in the reading surface.
     @ViewBuilder
     private var coreMeaningSection: some View {
-        let otherMeanings = sense.standaloneMeanings.filter { !$0.text.isEmpty && $0.language != sense.meaningLanguage }
-        if sense.supportsGeneralExplanation || !sense.meaning.isEmpty || !otherMeanings.isEmpty || !sense.alternateMeanings.isEmpty {
+        let variants = VocabularyContentPolicy.languageVariants(text: sense.meaning,
+            language: sense.meaningLanguage, variants: sense.standaloneMeanings)
+        if let meaning = variants.first(where: { $0.id == definitionLanguageID }) ?? variants.first {
             VStack(alignment: .leading, spacing: 10) {
-                if !sense.meaning.isEmpty {
-                    Text(sense.meaning)
-                        .font(textSize.font(19, weight: .semibold))
-                        .lineSpacing(3)
-                        .foregroundStyle(.primary)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if sense.supportsGeneralExplanation, let learning {
-                    VocabularyExplanationSection(entry: entry, sense: sense, store: store, learning: learning)
-                }
-                ForEach(Array(otherMeanings.enumerated()), id: \.offset) { _, meaning in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        if let language = meaning.language {
-                            Text(language.compactLabel)
-                                .font(textSize.font(11, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
+                if variants.count > 1 {
+                    Picker(String(localized: "Meaning language", table: "Vocabulary"),
+                        selection: Binding(get: { meaning.id }, set: { definitionLanguageID = $0 })) {
+                        ForEach(variants) { value in
+                            Text(value.language?.label ?? String(localized: "Unspecified", table: "Learning")).tag(value.id)
                         }
-                        Text(meaning.text)
-                            .font(textSize.font(15.5))
-                            .lineSpacing(3)
-                            .textSelection(.enabled)
-                    }
+                    }.pickerStyle(.menu).fixedSize()
                 }
-                if !sense.alternateMeanings.isEmpty {
-                    DisclosureGroup(String(localized: "Other wordings", table: "Vocabulary")) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(Array(sense.alternateMeanings.enumerated()), id: \.offset) { _, wording in
-                                Text(wording.text)
-                                    .font(textSize.font(14))
-                                    .foregroundStyle(.secondary)
-                                    .textSelection(.enabled)
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
-                    .font(textSize.font(12.5, weight: .medium))
-                    .foregroundStyle(.secondary)
-                }
+                Text(meaning.text)
+                    .font(textSize.font(19, weight: .semibold))
+                    .lineSpacing(3)
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    /// Combines user-authored rich content blocks and personal notes into a cohesive editorial
-    /// callout card. When neither exists yet, presents a quiet inline prompt instead of two
-    /// empty gray boxes.
+    /// The current explanation and usage patterns share the existing callout. Personal notes
+    /// retain their ownership; missing optional content creates no editing task in the reader.
     @ViewBuilder
     private var senseExplanationAndNotesSection: some View {
         let hasBlocks = !(sense.content ?? []).isEmpty
@@ -1726,10 +1662,6 @@ struct VocabularyEntryDetail: View {
                             Label(String(localized: "Sense explanation", table: "Vocabulary"), systemImage: "text.book.closed")
                                 .font(textSize.font(12, weight: .semibold))
                                 .foregroundStyle(.secondary)
-                            Spacer()
-                            Button(String(localized: "Edit", table: "Vocabulary"), action: edit)
-                                .font(textSize.font(12, weight: .medium))
-                                .buttonStyle(.link)
                         }
                         VocabularyContentView(blocks: blocks, store: store)
                     }
@@ -1761,23 +1693,6 @@ struct VocabularyEntryDetail: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.075), lineWidth: 0.5)
             )
-        } else {
-            Button(action: edit) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle")
-                        .font(textSize.font(12, weight: .semibold))
-                    Text(String(localized: "Add explanation", table: "Vocabulary"))
-                        .font(textSize.font(12, weight: .medium))
-                }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 0.75, dash: [3, 2]))
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -1788,10 +1703,7 @@ struct VocabularyEntryDetail: View {
                     entry: entry,
                     sense: sense,
                     example: example,
-                    speech: speech,
-                    store: store,
-                    learning: learning,
-                    move: { target in move(example, to: target) }
+                    speech: speech
                 )
             }
         }
@@ -1808,11 +1720,6 @@ struct VocabularyEntryDetail: View {
         .padding(.top, 2)
     }
 
-    private func move(_ example: VocabularyExample, to target: UUID?) {
-        Task { [scope = store.operationScope] in
-            _ = await store.moveExample(entryID: entry.id, exampleID: example.id, source: sense.id, target: target, scope: scope) }
-    }
-
     private func speaker(text: String, item: String, language: LearningLanguage?) -> some View {
         LearningSpeechButton(speech: speech, request: SpeechRequest(target: SpeechTarget(ownerID: sense.id, itemID: "vocabulary." + item),
             text: text, language: language), playLabel: String(localized: "Read aloud", table: "Vocabulary"),
@@ -1821,18 +1728,16 @@ struct VocabularyEntryDetail: View {
 }
 
 /// Elevated card for one encountered usage example. Highlights the target expression with a soft
-/// accent marker tint, pairs source and translation with inline TTS buttons, and reveals the
-/// "Move usage" menu on hover or VoiceOver focus to keep reading uncluttered.
+/// accent marker tint and pairs source and translation with the existing inline TTS buttons and
+/// source provenance. Organization commands are owned by the agent, outside reading.
 private struct VocabularyExampleCard: View {
     let entry: VocabularyEntry
     let sense: VocabularySense
     let example: VocabularyExample
     let speech: LearningSpeechController
-    @ObservedObject var store: VocabularyStore
-    var learning: VocabularyNotebookSession?
-    let move: (UUID?) -> Void
     @Environment(\.vocabularyTextSize) private var textSize
     @State private var hovering = false
+    @State private var translationLanguageID = ""
 
     private var contextTitle: String {
         switch example.completeness {
@@ -1852,19 +1757,7 @@ private struct VocabularyExampleCard: View {
                     .font(textSize.font(12, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Menu {
-                    ForEach(entry.senses.filter { $0.id != sense.id }) { target in
-                        Button(target.displayTitle) { move(target.id) }
-                    }
-                    Button(String(localized: "New sense", table: "Vocabulary")) { move(nil) }
-                } label: {
-                    Text(String(localized: "Move usage", table: "Vocabulary"))
-                        .font(textSize.font(11.5, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .opacity(hovering ? 1.0 : 0.45)
+
             }
 
             VStack(alignment: .leading, spacing: 7) {
@@ -1876,35 +1769,28 @@ private struct VocabularyExampleCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     speaker(text: example.text, item: example.id.uuidString, language: entry.language)
                 }
-                if !example.translation.isEmpty {
+                let variants = VocabularyContentPolicy.languageVariants(text: example.translation,
+                    language: example.translationLanguage, variants: example.translationVariants)
+                if let translation = variants.first(where: { $0.id == translationLanguageID }) ?? variants.first {
+                    if variants.count > 1 {
+                        Picker(String(localized: "Translation", table: "Vocabulary"),
+                            selection: Binding(get: { translation.id }, set: { translationLanguageID = $0 })) {
+                            ForEach(variants) { value in
+                                Text(value.language?.label ?? String(localized: "Unspecified", table: "Learning")).tag(value.id)
+                            }
+                        }.pickerStyle(.menu).fixedSize()
+                    }
                     HStack(alignment: .top, spacing: 8) {
-                        Text(example.translation)
+                        Text(translation.text)
                             .font(textSize.font(14.5))
                             .lineSpacing(3)
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        speaker(text: example.translation, item: example.id.uuidString + ".translation",
-                            language: example.translationLanguage ?? entry.language)
+                        speaker(text: translation.text, item: example.id.uuidString + ".translation",
+                            language: translation.language)
                     }
                 }
-                ForEach(Array(example.translationVariants.filter {
-                    $0.text != example.translation || $0.language != example.translationLanguage
-                }.enumerated()), id: \.offset) { _, variant in
-                    Text(variant.text)
-                        .font(textSize.font(14))
-                        .lineSpacing(3)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-            }
-
-            if let learning {
-                VocabularyExplanationSection(entry: entry, sense: sense, example: example, store: store, learning: learning)
-            } else if !example.meaning.isEmpty {
-                Text(example.meaning)
-                    .font(textSize.font(15, weight: .medium))
-                    .textSelection(.enabled)
             }
 
             if let app = example.appBundleIdentifier,

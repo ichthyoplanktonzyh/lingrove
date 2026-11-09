@@ -88,6 +88,7 @@ nonisolated struct CLIUpdate: Codable, Sendable {
     var entryID: UUID
     var senseID: UUID
     var expectedRevision: UInt64
+    var explanation: String?
     var meaning: String?
     var meaningLanguage: String?
     var note: String?

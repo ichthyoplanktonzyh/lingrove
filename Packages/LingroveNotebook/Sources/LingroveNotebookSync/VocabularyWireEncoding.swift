@@ -23,9 +23,13 @@ nonisolated enum VocabularyWireCoding {
     static func content(_ value: VocabularyContentBlock.Content) -> J {
         switch value {
         case let .text(text):
-            .object(["type": .string("text"), "text": .string(text.text), "style": .string(text.style.rawValue), "bold": .bool(text.bold), "italic": .bool(text.italic)])
+            var fields: [String: J] = ["type": .string("text"), "text": .string(text.text), "style": .string(text.style.rawValue), "bold": .bool(text.bold), "italic": .bool(text.italic)]
+            if let runs = text.runs {
+                fields["runs"] = .array(runs.map { .object(["location": .number(Double($0.location)), "length": .number(Double($0.length)), "bold": .bool($0.bold), "italic": .bool($0.italic)]) })
+            }
+            return .object(fields)
         case let .image(image, caption):
-            .object(["type": .string("image"), "image": .object(["digest": .string(image.digest), "width": .number(Double(image.width)),
+            return .object(["type": .string("image"), "image": .object(["digest": .string(image.digest), "width": .number(Double(image.width)),
                  "height": .number(Double(image.height)), "byteCount": .number(Double(image.byteCount))]), "caption": .string(caption)])
         }
     }

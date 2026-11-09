@@ -14,14 +14,14 @@ struct ReviewMaterialResolverTests {
         let entry = VocabularyEntry(id: UUID(), expression: "take", dictionaryForm: "take", language: .english,
             kind: .word, senses: [sense], createdAt: now, updatedAt: now)
         let plan = ReviewMaterialPlan(name: "choice", layout: .init(front: [.init(source: .gapSentence), .init(source: .senseImage, blockID: block.id)],
-            back: [.init(source: .meaning), .init(source: .translation), .init(source: .contextualMeaning), .init(source: .notes),
+            back: [.init(source: .meaning), .init(source: .translation), .init(source: .explanation), .init(source: .notes),
                    .init(source: .custom, content: [.init(content: .text(.init(text: "owned")))])]), exampleID: example.id)
         let encoded = try JSONEncoder().encode(plan)
         #expect(try JSONDecoder().decode(ReviewMaterialPlan.self, from: encoded) == plan)
         let content = try ReviewMaterialResolver.resolve(entry: entry, sense: sense, plan: plan)
         #expect(content.front[0] == .text("take the ___"))
         #expect(content.front[1] == .blocks([.init(id: block.id, content: .image(image, caption: ""))]))
-        #expect(Array(content.back.prefix(4)) == [.text("meaning"), .text("translation"), .text("contextual"), .text("note")])
+        #expect(Array(content.back.prefix(4)) == [.text("meaning"), .text("translation"), .blocks([block]), .text("note")])
         var removed = sense; removed.examples = []
         #expect(throws: ReviewMaterialError.missingContent(.gapSentence)) {
             try ReviewMaterialResolver.resolve(entry: entry, sense: removed, plan: plan)

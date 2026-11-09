@@ -111,6 +111,9 @@ struct VocabularyNotebookViewTests {
         await store.save(capture)
         let before = try #require(store.entries.first)
         var annotated = before
+        annotated.senses[0].meaning = "随时告诉我最新进展"
+        annotated.senses[0].meaningOrigin = .user
+        annotated.senses[0].examples[0].meaning = "OBSOLETE EXAMPLE DEFINITION MUST NOT APPEAR"
         let image = try await store.prepareImage(VocabularyImageTestFixture.png())
         annotated.senses[0].content = [.init(content: .text(.init(text: "Keep someone informed", bold: true))),
             .init(content: .image(image.reference, caption: "An explanation image"))]
@@ -124,8 +127,9 @@ struct VocabularyNotebookViewTests {
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { window.close() }
+        let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
         let view = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
-            selectedID: entry.id, preferences: defaults))
+            selectedID: entry.id, learning: learning, preferences: defaults))
         window.contentView = view
         window.orderFrontRegardless()
         for _ in 0..<5 { try await Task.sleep(for: .milliseconds(40)); view.layoutSubtreeIfNeeded() }

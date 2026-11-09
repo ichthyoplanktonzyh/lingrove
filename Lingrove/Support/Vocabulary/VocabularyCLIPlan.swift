@@ -99,7 +99,7 @@ nonisolated struct VocabularyCLIPlan {
             target = try existingTarget(for: change)
         }
         var sense = document.entries[target.entry].senses[target.sense]
-        if let update = change.update { try Self.applyUpdate(update, to: &sense, revision: revision) }
+        if let update = change.update { try Self.applyUpdate(update, to: &sense, revision: revision, contentID: context.id("explanation")) }
         let examples = change.add?.examples ?? change.append?.examples ?? []
         let blocks = change.add?.content ?? change.append?.content ?? []
         if let append = change.append { try Self.appendTags(append, to: &sense) }
@@ -153,11 +153,11 @@ nonisolated struct VocabularyCLIPlan {
         return (entry, sense)
     }
 
-    private static func applyUpdate(_ update: CLIUpdate, to sense: inout VocabularySense, revision: UInt64) throws {
+    private static func applyUpdate(_ update: CLIUpdate, to sense: inout VocabularySense, revision: UInt64, contentID: UUID) throws {
         guard update.expectedRevision == revision else {
             throw CLIError(code: .conflict, message: "Notebook revision changed. Read the entry again.")
         }
-        guard update.meaning != nil || update.meaningLanguage != nil || update.note != nil || update.tags != nil else {
+        guard update.meaning != nil || update.meaningLanguage != nil || update.explanation != nil || update.note != nil || update.tags != nil else {
             throw CLIError.invalid("An update needs at least one field.")
         }
         if let meaning = update.meaning {
@@ -167,6 +167,12 @@ nonisolated struct VocabularyCLIPlan {
         if let code = update.meaningLanguage {
             sense.meaningLanguage = try language(code)
             sense.meaningOrigin = .user
+        }
+        if let explanation = update.explanation {
+            let value = try text(explanation, limit: 262_144)
+            // A revision-bound replacement owns the whole explanation. Personal notes,
+            // examples, review identities and unrelated senses stay outside this edit.
+            sense.content = value.isEmpty ? [] : [.init(id: contentID, content: .text(.init(text: value)))]
         }
         if let note = update.note { sense.note = try text(note, limit: 262_144) }
         if let values = update.tags { sense.tags = try tags(values) }
@@ -204,10 +210,6 @@ nonisolated struct VocabularyCLIPlan {
     /// Duplicate captures may add a translation, but never overwrite an explicitly edited meaning
     /// (including an intentionally empty one). The retained usage keeps its original identity.
     private static func mergeExample(_ value: VocabularyExample, into retained: inout VocabularyExample) throws {
-        if !value.meaning.isEmpty, !retained.meaning.isEmpty || retained.meaningOrigin == .user,
-           value.meaning != retained.meaning || value.meaningLanguage != retained.meaningLanguage {
-            throw CLIError(code: .conflict, message: "This usage has a different saved meaning. Edit it in the app.")
-        }
         if !value.translation.isEmpty {
             if retained.translation.isEmpty {
                 retained.translation = value.translation
@@ -218,11 +220,7 @@ nonisolated struct VocabularyCLIPlan {
                    !retained.translationVariants.contains(variant) { retained.translationVariants.append(variant) }
             }
         }
-        if retained.meaning.isEmpty, retained.meaningOrigin != .user, !value.meaning.isEmpty {
-            retained.meaning = value.meaning
-            retained.meaningLanguage = value.meaningLanguage
-            retained.meaningOrigin = .user
-        }
+
     }
 
     private mutating func appendBlocks(

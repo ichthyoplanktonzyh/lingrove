@@ -14,14 +14,11 @@ nonisolated enum ReviewCardPolicy {
         guard plan.exampleID == nil || example != nil else {
             throw AnkiReviewError.message(String(localized: "Choose a review example again.", table: "Vocabulary"))
         }
-        let contextual = example?.meaning.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let fallback = contextual.isEmpty ? sense.meaning : contextual
-        let preferred = sense.meaningOrigin == .user || example == nil ? sense.meaning : fallback
-        let answer = (plan.answer ?? preferred).trimmingCharacters(in: .whitespacesAndNewlines)
+        let answer = (plan.answer ?? sense.meaning).trimmingCharacters(in: .whitespacesAndNewlines)
         let sentence = example?.text ?? ""
         let ranges = example?.ranges ?? []
         let gap = gap(in: sentence, ranges: ranges, kind: entry.kind)
-        let blocks = plan.includeSenseContent == true ? sense.content ?? [] : []
+        let blocks = plan.includeSenseContent == true || plan.includeExplanation ? sense.content ?? [] : []
         try VocabularyContentPolicy.validate(blocks)
         guard !answer.isEmpty || VocabularyContentPolicy.meaningful(blocks) else {
             throw AnkiReviewError.message(String(localized: "Add a review answer before sending.", table: "Vocabulary"))
@@ -29,10 +26,8 @@ nonisolated enum ReviewCardPolicy {
         guard plan.recognition || plan.gap, !plan.gap || gap != nil else {
             throw AnkiReviewError.message(String(localized: "Choose valid expression positions for a gap card.", table: "Vocabulary"))
         }
-        let records = example?.explanations ?? sense.explanations
-        let explanation = plan.includeExplanation ? records.last?.result.explanation ?? "" : ""
         return .init(expression: entry.expression, answer: answer, sentence: sentence, ranges: ranges,
-            translation: example?.translation ?? "", explanation: explanation, notes: plan.includeNotes ? sense.note : "",
+            translation: example?.translation ?? "", explanation: "", notes: plan.includeNotes ? sense.note : "",
             gapPrompt: gap?.prompt ?? "", gapAnswer: gap?.answer ?? "", recognition: plan.recognition, gap: plan.gap, senseContent: blocks)
     }
 

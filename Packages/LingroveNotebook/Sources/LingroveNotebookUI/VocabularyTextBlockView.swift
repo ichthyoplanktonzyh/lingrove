@@ -16,9 +16,22 @@ public struct VocabularyTextBlockView: View {
     }
 
     public var body: some View {
-        Text((content.style == .bullet ? "• " : "") + content.text)
+        Text(attributedText)
             .font(font)
             .lineSpacing(3.5)
-            .bold(content.bold).italic(content.italic).textSelection(.enabled)
+            .textSelection(.enabled)
     }
+    private var attributedText: AttributedString {
+        var result = AttributedString(content.style == .bullet ? "• " : "")
+        for segment in content.segments {
+            var part = AttributedString(segment.text)
+            var intent: InlinePresentationIntent = []
+            if segment.bold { intent.insert(.stronglyEmphasized) }
+            if segment.italic { intent.insert(.emphasized) }
+            part.inlinePresentationIntent = intent
+            result.append(part)
+        }
+        return result
+    }
+
 }

@@ -155,7 +155,9 @@ struct ReviewMaterialEditor: View {
 
     private func saveTemplate() {
         guard operation == nil else { return }
-        let snapshot = plan.layout, images = importedImages, name = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let snapshot = plan.layout, name = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let referenced = Set(VocabularyContentPolicy.images(snapshot.customContent).map(\.filename))
+        let images = importedImages.filter { referenced.contains($0.key) }
         operation = Task {
             defer { operation = nil }
             do {

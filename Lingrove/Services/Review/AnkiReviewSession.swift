@@ -211,8 +211,9 @@ final class AnkiReviewSession: ObservableObject {
             // that disappeared. Confirmed notes never move decks as a side effect of an update.
             next.bindings[index].deck = deck
         }
+        let referenced = Set(VocabularyContentPolicy.images(plan.layout?.customContent ?? []).map(\.filename))
         try await controller.store.saveReview(entryID: entryID, senseID: senseID, value: next, expected: baseline, cardID: cardID,
-            importedImages: importedImages, scope: notebookScope)
+            importedImages: importedImages.filter { referenced.contains($0.key) }, scope: notebookScope)
         baseline = next
         importedImages = [:]
     }

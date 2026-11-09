@@ -7,6 +7,7 @@ struct VocabularyReviewSection: View {
     let entry: VocabularyEntry
     let sense: VocabularySense
     @ObservedObject var controller: AnkiReviewController
+    var compact = false
     @State private var editing: CardSelection?
     @State private var removing: VocabularyReview?
     @State private var failure: String?
@@ -24,7 +25,7 @@ struct VocabularyReviewSection: View {
                     .foregroundStyle(cards.isEmpty ? Color.secondary : LingroveBrand.accent)
                 Text("Anki")
                     .font(.subheadline.weight(.semibold))
-                if !cards.isEmpty {
+                if !compact && !cards.isEmpty {
                     Text("\(cards.count)")
                         .font(.caption2.weight(.semibold))
                         .monospacedDigit()
@@ -44,7 +45,7 @@ struct VocabularyReviewSection: View {
                 .controlSize(.small)
                 .buttonStyle(.bordered)
             }
-            if !cards.isEmpty {
+            if !compact && !cards.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(cards, id: \.plan.id) { card in
                         let isSynced = card.activeBinding?.noteID != nil

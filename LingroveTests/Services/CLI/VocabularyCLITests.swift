@@ -612,7 +612,7 @@ struct VocabularyCLITests {
         ]
         let input = batch("ordered", [
             ["update": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
-                "expectedRevision": 7, "note": "After update"]],
+                "expectedRevision": 7, "explanation": "Current usage explanation", "note": "After update"]],
             ["append": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
                 "tags": ["finance", "finance"], "examples": [variant, variant, ["text": "We reached the bank."]]]]
         ])
@@ -621,6 +621,10 @@ struct VocabularyCLITests {
         let plan = try VocabularyCLIPlan(batch: decoded, snapshot: snapshot, fingerprint: "fixture", prepared: [:], now: now)
         let updated = try #require(plan.document.entries.first?.senses.first)
         #expect(updated.id == sense.id && updated.note == "After update")
+        #expect(updated.content?.count == 1)
+        if case .text(let text) = updated.content?.first?.content {
+            #expect(text.text == "Current usage explanation")
+        } else { Issue.record("The revision-bound update must replace the canonical explanation") }
         #expect(updated.tags == ["finance"] && updated.examples.count == 2)
         #expect(updated.examples[0].id == usage.id && updated.examples[0].translation == usage.translation)
         #expect(updated.examples[0].translationVariants == [.init(text: "La banque est ouverte.", language: .french)])
@@ -810,24 +814,18 @@ struct VocabularyCLITests {
         #expect(try database.connection.rows("PRAGMA user_version") == [[.integer(2)]])
     }
 
-    @Test func utf16RangesHandleEmojiAndAppendedMeaningConflictsAreExplicit() async throws {
+    @Test func utf16RangesSurviveAndObsoleteExampleMeaningsAreRejected() async throws {
         let fixture = try await Fixture()
         do {
             let input = batch("emoji", [["add": ["expression": "know", "language": "en", "kind": "word", "meaning": "知道",
-                "examples": [["text": "👩🏽‍💻 I know you know", "meaning": "了解", "meaningLanguage": "zh-Hans",
-                    "ranges": [["location": 10, "length": 4]]]]]]])
+                "examples": [["text": "👩🏽‍💻 I know you know", "ranges": [["location": 10, "length": 4]]]]]]])
             #expect(try await fixture.apply(input).0 == 0)
             let entry = try #require(fixture.store.entries.first), sense = try #require(entry.senses.first)
             #expect(sense.examples[0].ranges == [.init(NSRange(location: 10, length: 4))])
-            let conflict = batch("different-meaning", [["append": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
-                "examples": [["text": "👩🏽‍💻 I know you know", "meaning": "不同的含义", "meaningLanguage": "zh-Hans", "ranges": [["location": 10, "length": 4]]]]]]])
-            #expect(try await fixture.apply(conflict).0 == 4)
-            #expect(fixture.store.entries[0].senses[0].examples[0].meaning == "了解")
-            var cleared = fixture.store.entries[0]
-            cleared.senses[0].examples[0].meaning = ""
-            #expect(await fixture.store.update(cleared, basedOn: fixture.store.entries[0]))
-            #expect(try await fixture.apply(conflict).0 == 4)
-            #expect(fixture.store.entries[0].senses[0].examples[0].meaning.isEmpty)
+            let obsolete = batch("different-meaning", [["append": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
+                "examples": [["text": "👩🏽‍💻 I know you know", "meaning": "另一份释义", "ranges": [["location": 10, "length": 4]]]]]]])
+            #expect(try await fixture.apply(obsolete).0 == 2)
+            #expect(fixture.store.entries[0].senses[0] == sense)
         } catch { await fixture.close(); throw error }; await fixture.close()
     }
 

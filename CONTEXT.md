@@ -16,8 +16,10 @@ An expression groups the same normalized word, phrase, pattern or sentence in on
 _Avoid_: using “word” for every saved phrase or sentence.
 
 **Sense / 义项**:
-One core meaning or interpretation of an expression. Its identity remains the same when its label
-is reworded, translated or explained again; different wording alone does not establish a new sense.
+One reusable meaning or use of an expression, and the first-class unit of corpus content.
+It owns the current concise definition, detailed explanation and supporting examples. Its identity
+remains the same when it is reworded, translated or explained again; collecting another occurrence
+does not itself establish a new sense. Agents organize this knowledge; users primarily read it.
 _Avoid_: treating a generated definition string as the sense itself.
 
 **Meaning category / 意义类别**:
@@ -88,11 +90,12 @@ example. Removing one example leaves its sense available for editing.
 
 **Usage / 用例**:
 An expression occurrence in a specific sentence or fragment, interpreted under one sense. It
-retains its source, exact text spans, translations and contextual explanation.
+retains its source, exact text spans and translations. An optional contextual annotation adds only
+information not already supplied by the sense explanation or sentence translation.
 _Avoid_: treating a different translation of the same occurrence as a different meaning.
 
-**Contextual meaning / 此处含义**:
-The interpretation of the chosen expression given the available sentence or fragment. It may
+**Contextual lookup / 语境查读**:
+During acquisition, the interpretation of the chosen expression given the available sentence or fragment. It may
 remain uncertain when the evidence does not support a single interpretation.
 _Avoid_: presenting it as the expression’s only general definition.
 

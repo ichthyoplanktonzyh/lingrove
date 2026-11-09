@@ -47,6 +47,10 @@ nonisolated struct VocabularyWireFields {
     mutating func optional<T>(_ key: String, _ transform: (J) throws -> T) throws -> T? {
         let value = try take(key); if value == .null { return nil }; return try transform(value)
     }
+    mutating func optionalIfPresent<T>(_ key: String, _ transform: (J) throws -> T) throws -> T? {
+        guard values[key] != nil else { return nil }
+        return try optional(key, transform)
+    }
     func finish() throws { guard values.isEmpty else { throw VocabularyWireError.invalidRecord } }
 
     static func string(_ value: J) throws -> String {
@@ -100,7 +104,13 @@ nonisolated enum VocabularyWireReading {
         let result: VocabularyContentBlock.Content
         switch type {
         case "text":
-            result = .text(.init(text: try f.string("text"), style: try f.raw("style", VocabularyTextContent.Style.self), bold: try f.bool("bold"), italic: try f.bool("italic")))
+            result = .text(.init(text: try f.string("text"), style: try f.raw("style", VocabularyTextContent.Style.self), bold: try f.bool("bold"), italic: try f.bool("italic"), runs: try f.optionalIfPresent("runs") { value in
+                try F.array(value).map { item in
+                    var run = try F(item)
+                    let result = VocabularyTextRun(location: try run.integer("location", minimum: 0), length: try run.integer("length", minimum: 1), bold: try run.bool("bold"), italic: try run.bool("italic"))
+                    try run.finish(); return result
+                }
+            }))
         case "image":
             var image = try F(f.take("image")); let reference = VocabularyImageReference(digest: try image.string("digest"),
                 width: try image.integer("width", minimum: 1), height: try image.integer("height", minimum: 1), byteCount: try image.integer("byteCount", minimum: 1))

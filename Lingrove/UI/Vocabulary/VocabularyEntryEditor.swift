@@ -1,5 +1,6 @@
 import LingroveNotebook
 import SwiftUI
+import AppKit
 
 /// A sheet owns a value draft. Cancel leaves the store untouched; Save awaits durable storage
 /// before dismissing. Editing an example's text re-anchors expression highlight spans through
@@ -42,17 +43,7 @@ struct VocabularyEntryEditor: View {
             Form {
                 if let sense = draft.senses.firstIndex(where: { $0.id == senseID }) {
                     Section {
-                        TextField(String(localized: "Expression", table: "Vocabulary"), text: $draft.expression)
-                            .onChange(of: draft.expression) { _, updatedExpression in
-                                for index in draft.senses[sense].examples.indices {
-                                    draft.senses[sense].examples[index].ranges = VocabularyPolicy.reconciledRanges(
-                                        in: draft.senses[sense].examples[index].text,
-                                        expression: updatedExpression,
-                                        dictionaryForm: draft.dictionaryForm
-                                    )
-                                }
-                            }
-                        TextField(String(localized: "Dictionary form", table: "Vocabulary"), text: $draft.dictionaryForm)
+                        Text(draft.expression).font(.headline).textSelection(.enabled)
                         TextField(String(localized: "Core meaning", table: "Vocabulary"),
                             text: $draft.senses[sense].meaning, axis: .vertical)
                         TextField(String(localized: "Notes", table: "Vocabulary"), text: $draft.senses[sense].note, axis: .vertical)
@@ -78,8 +69,6 @@ struct VocabularyEntryEditor: View {
                                     )
                                 }
                             TextField(String(localized: "Translation", table: "Vocabulary"), text: $example.translation, axis: .vertical)
-                            TextField(String(localized: "Meaning in this context", table: "Vocabulary"),
-                                text: $example.meaning, axis: .vertical)
                             Picker(String(localized: "Context type", table: "Vocabulary"), selection: $example.completeness) {
                                 Text(String(localized: "Example sentence", table: "Vocabulary"))
                                     .tag(VocabularyExample.Completeness.sentence)
@@ -199,13 +188,17 @@ struct VocabularyEntryEditor: View {
                 .keyboardShortcut(.cancelAction)
                 .disabled(saving)
             Button(String(localized: "Save", table: "Vocabulary")) {
+                // Commit the active native composition before taking the value snapshot.
+                NSApp.keyWindow?.makeFirstResponder(nil)
                 commitPendingTags()
                 saving = true
                 var value = draft
                 guard let sense = value.senses.firstIndex(where: { $0.id == senseID }) else { saving = false; return }
                 value.senses[sense].tags = Array(Set(tagList)).sorted()
+                let referenced = Set(value.senses.flatMap { VocabularyContentPolicy.images($0.content ?? []).map(\.filename) })
+                let imagesToSave = importedImages.filter { referenced.contains($0.key) }
                 Task {
-                    if await store.update(value, basedOn: baseline, importedImages: importedImages, scope: notebookScope) {
+                    if await store.update(value, basedOn: baseline, importedImages: imagesToSave, scope: notebookScope) {
                         dismiss()
                     } else { failure = store.errorMessage }
                     saving = false

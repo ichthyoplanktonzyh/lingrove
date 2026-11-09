@@ -134,7 +134,7 @@ public nonisolated struct NotebookCapturePlan {
     private mutating func addSense(_ input: NotebookCaptureTask.Sense, entry: Int, path: String) throws -> NotebookToolJSON {
         let senseID: UUID
         if let existing = input.id {
-            guard input.meaning == nil, input.meaningLanguage == nil, input.note == nil else {
+            guard input.meaning == nil, input.meaningLanguage == nil, input.note == nil, input.explanation == nil else {
                 throw NotebookToolError.invalid("Existing senses accept examples, tags and associations; use update for replacements.")
             }
             guard document.catalog[entry].senses.contains(where: { $0.id == existing }) else {
@@ -153,6 +153,12 @@ public nonisolated struct NotebookCapturePlan {
             throw VocabularyError.invalidArchive
         }
         if let note = input.note { document.catalog[entry].senses[sense].note = note }
+        if let explanation = input.explanation {
+            let text = try NotebookCaptureFields.text(explanation, limit: 262_144, nonempty: true)
+            document.catalog[entry].senses[sense].content = [
+                .init(id: id(path + ".explanation"), content: .text(.init(text: text)))
+            ]
+        }
         document.catalog[entry].senses[sense].tags = try NotebookCaptureFields.tags(
             document.catalog[entry].senses[sense].tags + (input.tags ?? []))
         var associations: [NotebookToolJSON] = []
@@ -169,7 +175,6 @@ public nonisolated struct NotebookCapturePlan {
         var result: [UUID] = []
         for (index, input) in inputs.enumerated() {
             var input = input
-            input.meaningLanguage = input.meaningLanguage ?? defaults.meaningLanguage
             input.translationLanguage = input.translationLanguage ?? defaults.translationLanguage ?? defaults.meaningLanguage
             input.sourceKind = input.sourceKind ?? defaults.sourceKind ?? "generated"
             let usage = try NotebookCaptureFields.example(input, expression: entry.expression, id: id(path + ".example.\(index)"), now: now)
@@ -181,12 +186,10 @@ public nonisolated struct NotebookCapturePlan {
                 guard owner == senseID else {
                     throw NotebookToolError(code: .conflict, message: "This usage belongs to another sense. Append to its owner.")
                 }
-                // A capture is additive. Reusing evidence never overwrites a saved translation or meaning.
-                let meaningMatches = usage.meaning.isEmpty || usage.meaning == retained.meaning &&
-                    usage.meaningLanguage == retained.meaningLanguage
+                // An example supplies evidence and translation, never another sense definition.
                 let translationMatches = usage.translation.isEmpty || usage.translation == retained.translation &&
                     usage.translationLanguage == retained.translationLanguage
-                guard meaningMatches, translationMatches else {
+                guard translationMatches else {
                     throw NotebookToolError(code: .conflict, message: "Existing usage differs. Use append or explicit resource edits.")
                 }
                 result.append(retained.id)
@@ -197,8 +200,7 @@ public nonisolated struct NotebookCapturePlan {
                 appBundleIdentifier: nil, encounteredAt: now))
             document.occurrences.append(.init(id: occurrenceID, sourceID: usage.sourceID, ranges: usage.ranges))
             document.interpretations.append(.init(id: usage.id, occurrenceID: occurrenceID, senseID: senseID,
-                status: .accepted, meaning: usage.meaning, meaningLanguage: usage.meaningLanguage,
-                meaningOrigin: input.meaning == nil ? .captured : .ai, translation: usage.translation,
+                status: .accepted, translation: usage.translation,
                 translationLanguage: usage.translationLanguage, completeness: usage.completeness,
                 provenance: try provenance(nil), createdAt: now))
             result.append(usage.id)

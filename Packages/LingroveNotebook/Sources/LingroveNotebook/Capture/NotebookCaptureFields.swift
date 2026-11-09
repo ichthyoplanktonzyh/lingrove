@@ -47,7 +47,6 @@ public nonisolated enum NotebookCaptureFields {
         return .init(id: id, sourceID: id, sourceKind: VocabularyExample.SourceKind(rawValue: input.sourceKind ?? "authored") ?? .authored,
             text: text, translation: try self.text(input.translation ?? "", limit: 262_144),
             translationLanguage: try language(input.translationLanguage), ranges: ranges, completeness: completeness,
-            meaning: try self.text(input.meaning ?? "", limit: 32_000), meaningLanguage: try language(input.meaningLanguage),
-            meaningOrigin: input.meaning == nil ? .captured : .user, createdAt: now)
+            meaning: "", createdAt: now)
     }
 }

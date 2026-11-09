@@ -42,7 +42,6 @@ extension ReviewContentSource {
         case .meaning: String(localized: "Core meaning", table: "Vocabulary")
         case .sentence: String(localized: "Example sentence", table: "Vocabulary")
         case .translation: String(localized: "Example translation", table: "Vocabulary")
-        case .contextualMeaning: String(localized: "Contextual meaning", table: "Vocabulary")
         case .explanation: String(localized: "AI explanation", table: "Learning")
         case .notes: String(localized: "Notes", table: "Vocabulary")
         case .gapSentence: String(localized: "Gap question", table: "Vocabulary")

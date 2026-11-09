@@ -59,10 +59,7 @@ struct VocabularyReviewSheet: View {
         .frame(width: 680, height: 690).interactiveDismissDisabled(session.busy || session.importingImage)
         .task(id: session.bindingID) { await session.load() }
         .onDisappear { operation?.cancel(); session.audio.discard() }
-        .onChange(of: session.plan.layout) { _, layout in
-            let referenced = Set(VocabularyContentPolicy.images(layout?.customContent ?? []).map(\.filename))
-            session.importedImages = session.importedImages.filter { referenced.contains($0.key) }
-        }
+
     }
 
     private var destination: some View {

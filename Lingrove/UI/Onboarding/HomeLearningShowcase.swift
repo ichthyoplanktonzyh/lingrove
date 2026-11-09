@@ -250,16 +250,6 @@ private struct HomeLearningSenseDetail: View {
                     learning: model.notebook, review: model.review, edit: { editing = true },
                     delete: { Task {
                         if await store.removeSense(entryID: entry.id, senseID: sense.id) { model.bookSelection = nil }
-                    } },
-                    newSense: { Task {
-                        if let selection = await store.createSense(entryID: entry.id) {
-                            model.selectSense(.init(entryID: entry.id, senseID: selection))
-                        }
-                    } },
-                    merge: { target in Task {
-                        if await store.mergeSenses(entryID: entry.id, source: sense.id, target: target) {
-                            model.selectSense(.init(entryID: entry.id, senseID: target))
-                        }
                     } })
                     .sheet(isPresented: $editing) { VocabularyEntryEditor(entry: entry, store: model.store, senseID: sense.id) }
             }

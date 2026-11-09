@@ -1,4 +1,5 @@
 import Foundation
+import LingroveTextRules
 
 /// Pure content rules are shared by archive validation, editing and review. No file access or
 /// model work occurs here; both notebook and Anki use the same meaningful-content definition.
@@ -6,6 +7,15 @@ public nonisolated enum VocabularyContentPolicy {
     public static let maximumImageBytes = 4 * 1_024 * 1_024
     public static let maximumSenseImageBytes = 16 * 1_024 * 1_024
     public static let maximumDimension = 1_600
+
+    /// Language variants are alternative renderings of one field. The primary value wins
+    /// within its language, so capture history cannot produce several competing visible rows.
+    public static func languageVariants(text: String, language: LearningLanguage?, variants: [VocabularyMeaning]) -> [VocabularyMeaning] {
+        var seen = Set<String>()
+        return ([VocabularyMeaning(text: text, language: language)] + variants).filter {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && seen.insert($0.id).inserted
+        }
+    }
 
     public static func images(_ blocks: [VocabularyContentBlock]) -> [VocabularyImageReference] {
         blocks.compactMap { if case let .image(image, _) = $0.content { image } else { nil } }
@@ -33,7 +43,15 @@ public nonisolated enum VocabularyContentPolicy {
         for block in blocks {
             switch block.content {
             case let .text(value):
-                guard value.text.utf8.count <= 262_144 else { throw VocabularyError.invalidContent }
+                guard value.text.utf8.count <= 262_144, (value.runs?.count ?? 0) <= 4096 else { throw VocabularyError.invalidContent }
+                var end = 0
+                for run in value.runs ?? [] {
+                    guard run.location >= end, run.length > 0,
+                          UTF16TextRangePolicy.isValid(NSRange(location: run.location, length: run.length), in: value.text) else {
+                        throw VocabularyError.invalidContent
+                    }
+                    end = run.location + run.length
+                }
             case let .image(image, caption):
                 guard valid(image), caption.utf8.count <= 16_384 else { throw VocabularyError.invalidContent }
             }

@@ -35,9 +35,12 @@ public nonisolated enum ReviewNoteProjection {
                 return "<figure><img src=\"" + image.filename + "\" alt=\"" + ReviewTemplateRenderer.escapeHTML(caption)
                     + "\">" + (caption.isEmpty ? "" : "<figcaption>" + text(caption) + "</figcaption>") + "</figure>"
             case let .text(value):
-                var body = text(value.text)
-                if value.bold { body = "<strong>" + body + "</strong>" }
-                if value.italic { body = "<em>" + body + "</em>" }
+                let body = value.segments.map { segment in
+                    var part = text(segment.text)
+                    if segment.bold { part = "<strong>" + part + "</strong>" }
+                    if segment.italic { part = "<em>" + part + "</em>" }
+                    return part
+                }.joined()
                 switch value.style {
                 case .heading: return "<h3>" + body + "</h3>"
                 case .bullet: return "<ul><li>" + body + "</li></ul>"

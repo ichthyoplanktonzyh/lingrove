@@ -26,15 +26,13 @@ public nonisolated enum ReviewMaterialResolver {
             }
             switch part.source {
             case .expression: return try text(entry.expression)
-            case .meaning:
-                let value = sense.meaning.trimmingCharacters(in: .whitespacesAndNewlines)
-                return try text(value.isEmpty ? example?.meaning : value)
+            case .meaning: return try text(sense.meaning)
             case .sentence: return try text(example?.text)
             case .translation: return try text(example?.translation)
-            case .contextualMeaning: return try text(example?.meaning)
             case .explanation:
-                let records = plan.exampleID == nil ? sense.explanations : example?.explanations
-                return try text(records?.last?.result.explanation)
+                let blocks = sense.content ?? []
+                guard VocabularyContentPolicy.meaningful(blocks) else { return try text(nil) }
+                return .blocks(blocks)
             case .notes: return try text(sense.note)
             case .gapSentence: return try text(example.flatMap { gap(in: $0.text, ranges: $0.ranges, kind: entry.kind)?.prompt })
             case .expressionAudio: _ = try text(entry.expression); return .audio(.expression)

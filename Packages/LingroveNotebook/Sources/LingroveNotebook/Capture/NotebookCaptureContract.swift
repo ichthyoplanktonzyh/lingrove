@@ -14,7 +14,7 @@ public nonisolated enum NotebookCaptureContract {
         "definition": .text(16_384), "cues": .array(.text(4_096), 64), "status": status,
         "categories": .array(.text(200), 64)], required: ["ref"])
     private static let example = Shape(fields: ["text": .text(262_144), "translation": .text(262_144),
-        "translationLanguage": .text(100), "meaning": .text(32_000), "meaningLanguage": .text(100),
+        "translationLanguage": .text(100),
         "completeness": .enumeration(["sentence", "fragment", "unknown"]), "sourceKind": sourceKind,
         "ranges": .array(.object(Shape(fields: ["location": .integer, "length": .integer], required: ["location", "length"])), 64)], required: ["text"])
     private static let association = Shape(fields: ["meaning": .text(200), "usage": .text(8_192),
@@ -22,7 +22,7 @@ public nonisolated enum NotebookCaptureContract {
         "medium": .enumeration(["unspecified", "spoken", "written", "both"]), "collocations": .array(.text(1_024), 128),
         "status": status], required: ["meaning"])
     private static let sense = Shape(fields: ["id": .uuid, "meaning": .text(32_000), "meaningLanguage": .text(100),
-        "note": .text(262_144), "tags": .array(.text(200), 100), "examples": .array(.object(example), 100),
+        "explanation": .text(262_144), "note": .text(262_144), "tags": .array(.text(200), 100), "examples": .array(.object(example), 100),
         "associations": .array(.object(association), 64)])
     private static let entry = Shape(fields: ["expression": .text(32_000), "language": .text(100),
         "kind": .enumeration(["word", "expression", "pattern", "sentence"]), "dictionaryForm": .text(32_000),

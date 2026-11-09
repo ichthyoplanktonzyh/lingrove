@@ -51,7 +51,7 @@ public nonisolated struct ReviewCardPart: Codable, Hashable, Identifiable, Senda
 }
 
 public nonisolated enum ReviewContentSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    case expression, meaning, sentence, translation, contextualMeaning, explanation, notes, gapSentence
+    case expression, meaning, sentence, translation, explanation, notes, gapSentence
     case senseText, senseImage, expressionAudio, sentenceAudio, custom
     public var id: String { rawValue }
 }

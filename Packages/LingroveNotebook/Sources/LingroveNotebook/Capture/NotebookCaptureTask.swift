@@ -44,6 +44,8 @@ public nonisolated struct NotebookCaptureTask: Codable, Sendable {
         var id: UUID?
         var meaning: String?
         var meaningLanguage: String?
+        /// The current sense explanation is stored as rich content, independently of examples.
+        var explanation: String?
         var note: String?
         var tags: [String]?
         public var examples: [NotebookCaptureExample]?
@@ -85,8 +87,6 @@ public nonisolated struct NotebookCaptureExample: Codable, Sendable {
     public var text: String
     public var translation: String?
     public var translationLanguage: String?
-    public var meaning: String?
-    public var meaningLanguage: String?
     public var completeness: String?
     public var sourceKind: String?
     public var ranges: [Range]?

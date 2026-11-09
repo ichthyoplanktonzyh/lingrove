@@ -8,6 +8,15 @@ import LingroveNotebookSync
 /// This suite owns contract-level assertions over the transport value boundary.
 /// Each test builds its own value fixture and never shares mutable state across runs.
 struct VocabularyWireProjectionCodecTests {
+    @Test func inlineMarksRoundTripWithoutChangingPlainTextWireRecords() throws {
+        var document = try VocabularyWireTestFixture.document()
+        document.catalog[0].senses[0].content = [.init(content: .text(.init(text: "one two", runs: [.init(location: 4, length: 3, bold: true)])))]
+        let projection = try VocabularyWireProjectionCodec.project(document, notebookID: VocabularyWireTestFixture.notebookID)
+        let restored = try VocabularyWireProjectionCodec.materializeComplete(projection.entities,
+            notebookID: VocabularyWireTestFixture.notebookID, preserving: projection.privateState)
+        #expect(restored.document.catalog[0].senses[0].content == document.catalog[0].senses[0].content)
+    }
+
     @Test("A strict-valid graph round-trips all wire entity families and ordering")
     func completeGraphRoundTripsInRankOrder() throws {
         let document = try VocabularyWireTestFixture.document()

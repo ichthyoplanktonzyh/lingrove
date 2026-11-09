@@ -63,7 +63,7 @@ nonisolated enum CLIInputPolicy {
         case "append":
             ["entryID", "senseID", "examples", "content", "tags"]
         default:
-            ["entryID", "senseID", "expectedRevision", "meaning", "meaningLanguage", "note", "tags"]
+            ["entryID", "senseID", "expectedRevision", "meaning", "meaningLanguage", "explanation", "note", "tags"]
         }
         let fields = try object(payload, keys: keys, at: path)
         if let blocks = fields["content"] { try validateContentShape(blocks, path: path + ".content") }
@@ -88,7 +88,7 @@ nonisolated enum CLIInputPolicy {
         }
         for example in examples {
             let fields = try object(example, keys: [
-                "text", "translation", "translationLanguage", "meaning", "meaningLanguage", "completeness", "ranges", "sourceKind"
+                "text", "translation", "translationLanguage", "completeness", "ranges", "sourceKind"
             ], at: path)
             if let ranges = fields["ranges"] { try validateRangeShape(ranges, path: path + ".ranges") }
         }

@@ -312,6 +312,7 @@ struct VocabularyMeaningMappingSummary: View {
     let sense: VocabularySense?
     var showsExample = true
     var showsActionsMenu = true
+    var showsProvenance = true
     let edit: () -> Void
     @Environment(\.vocabularyTextSize) private var textSize
     @State private var saving = false
@@ -327,7 +328,7 @@ struct VocabularyMeaningMappingSummary: View {
 
     private var hasBodyContent: Bool {
         pattern != nil || !mapping.nuance.isEmpty || !mapping.conditions.isEmpty ||
-            resolvedExample != nil || !mapping.provenance.source.isEmpty
+            resolvedExample != nil || (showsProvenance && !mapping.provenance.source.isEmpty)
     }
 
     var body: some View {
@@ -382,7 +383,7 @@ struct VocabularyMeaningMappingSummary: View {
                                     .frame(width: 2.5)
                             }
                         }
-                        if !mapping.provenance.source.isEmpty {
+                        if showsProvenance && !mapping.provenance.source.isEmpty {
                             DisclosureGroup(String(localized: "Source note", table: "Vocabulary")) {
                                 Text(mapping.provenance.source)
                                     .font(textSize.font(12.5))

@@ -35,6 +35,23 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
   review keyboard scoping and hidden-destination suspension. Window navigation cannot change
   the active account/workspace or reset a practice merely to refresh its appearance.
 
+## Sense detail content
+
+The sense detail reads the current definition, one rich explanation, examples and adopted semantic
+links. Agent capture writes `sense.explanation` into sense content; it rejects example-level meaning
+fields. Revision-bound CLI updates can replace the explanation without editing the headword, personal
+notes, source evidence or review ownership. Stored interpretation/generation receipts remain evidence;
+they are not competing definitions or fallback review answers.
+
+Keep the existing icons, native components, typography and callout styling. Dictionary lookup stays
+in the detail page. Reading retains speech, copy, sense switching and semantic navigation. One Edit
+command in More edits the selected sense, without renaming its headword. Structural commands (new or
+merge sense, move usage, mapping/pattern CRUD) belong to organization tools, not the sense reader.
+Review stays explicit through compact Lingrove/Anki entries; card lists and editing belong to Review.
+No general legacy compatibility fallback is part of this change. The user explicitly authorized a
+one-time migration and replacement of their current Dev installation; review-data compatibility
+was excluded. The original application and complete notebook/media backup remain recoverable.
+
 ## Appearance and controls
 
 - Follow the system-resolved appearance used by the existing Lingrove windows. Do not add a
@@ -135,3 +152,41 @@ Synthetic native checks and their historical evidence do not establish real Anki
 service deployment, physical-device sync, VoiceOver, every locale, or final visual acceptance.
 The Note implementation and its specific validation limits are recorded in
 [REVIEW_TEMPLATE_DESIGN.md](REVIEW_TEMPLATE_DESIGN.md). Historical checkpoint reports remain in Git.
+
+### Sense detail validation
+
+The content consolidation passed 8 focused shared-package tests and 46 native Mac tests with no
+failures or skips. Native coverage includes CLI writes/replay, revision checks, rich-content
+persistence and reader/editor rendering. The Dev Release build was installed at the existing app
+path after a successful signature check and one revision-bound corpus migration. Its existing
+icons/components and in-page dictionary remain. Bitmap-only test captures were insufficient for
+complete visual QA; the user chose to inspect the installed interface themselves. Test DerivedData
+and the disposable validation host were removed. No review-data migration was implemented.
+
+### Continuous explanation editing
+
+The explanation is edited in one native rich-text buffer with one selection and undo history.
+The existing paragraph/heading/bullet picker, bold/italic and image icons are reused in a single
+toolbar. Images and captions retain the existing media registry; imported bytes live for the draft
+so deleting and undoing an image cannot discard its staged data. Save publishes only referenced
+media. Native IME composition is committed before taking the save snapshot.
+
+`VocabularyRichTextEditor` owns platform selection and commands; `VocabularyRichTextCodec` converts
+native attributes to portable UTF-16 inline marks. Shared reading and HTML rendering consume those
+same marks. Paragraph/media identities remain an internal storage detail, not separate input boxes.
+The semantic section contains node links only. A migration to move existing pattern/association
+explanations into the sense body with their exact meaning/pattern scope has passed a dry run;
+relation identities and restrictions are preserved. The user paused Dev updates, so this migration
+and the continuous editor have not been installed. The translation-preview capture path is deferred,
+including the reported Working capture issue.
+
+The continuous editor passed 7 focused native tests covering formatting, Unicode, image identity,
+undo/redo, rich paste, selection, IME commit and save/reopen. Shared formatting and wire-codec suites
+passed 15 tests; the environment-gated native wire interop bridge was skipped. These checks do not
+establish cross-device sync or visual acceptance. Build-for-testing also succeeded; test DerivedData
+and the disposable validation host were removed after validation.
+
+The current Dev installation is local-only. Inline marks are supported by local storage, portable
+backups, HTML and the shared wire codec. The deployed backend's strict content schema and older mobile
+clients still need the matching rich-text contract rollout before syncing formatted text; this change
+performs no backend deployment or mobile snapshot update.

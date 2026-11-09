@@ -48,7 +48,6 @@ public nonisolated enum VocabularyNotebookQuery {
         for block in sense.content ?? [] {
             if case .text(let text) = block.content, !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text.text }
         }
-        if let text = sense.examples.first(where: { !$0.meaning.isEmpty })?.meaning { return text }
         if !VocabularyContentPolicy.images(sense.content ?? []).isEmpty { return String(localized: "Image explanation", table: "Vocabulary") }
         return String(localized: "Meaning pending", table: "Vocabulary")
     }
