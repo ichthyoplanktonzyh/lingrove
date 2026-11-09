@@ -1,3 +1,4 @@
+import LingroveNotebook
 import Foundation
 
 /// Negotiation precedes any corpus body. These fixed requirements describe the
@@ -12,7 +13,7 @@ public nonisolated struct VocabularyWireCapabilities: Decodable, Sendable {
         stagedUploads = try values.removeValue(forKey: "stagedUploads").map(VocabularyWireStagedCapabilities.init)
         var f = VocabularyWireFields(values)
         guard try f.string("lane") == "lingrove.corpus", try f.integer("protocolVersion") == 1,
-              try f.integer("documentVersion") == 8, try f.bool("terminalGroups"), try f.bool("readWindows"), try f.bool("readOnlyCatalog"),
+              try f.integer("documentVersion") == VocabularyDocument.currentVersion, try f.bool("terminalGroups"), try f.bool("readWindows"), try f.bool("readOnlyCatalog"),
               try f.integer("maximumGroupBytes") == 2 * 1024 * 1024, try f.integer("maximumGroupMembers") == 10_000,
               try f.integer("pageBytes") == 256 * 1024, try f.integer("windowLifetimeMilliseconds", minimum: 1) > 0 else {
             throw VocabularyWireError.invalidRecord

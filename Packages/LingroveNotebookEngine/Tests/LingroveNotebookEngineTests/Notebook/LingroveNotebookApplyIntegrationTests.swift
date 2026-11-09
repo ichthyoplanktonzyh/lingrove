@@ -47,23 +47,23 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.allRows() == after)
         #expect(try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(second, binding: f.binding, now: Date()), now: Date()) == editor)
         #expect(try f.db.core.scalarInt(sql: "SELECT revision FROM notebook_remote_state", values: []) == 3)
-        var edited = editor.document; edited.collections[0].note = "draft survived two polls"
+        var edited = editor.document; edited.catalog[0].senses[0].note = "draft survived two polls"
         #expect(try f.db.saveLingroveNotebook(edited, basedOn: editor, operationId: "editor-before-idle-polls").revision == editor.revision + 1)
     }
 
     @Test("A Unicode byte-only remote edit advances the document revision and persists the exact text")
     func canonicalUnicodeEqualityDoesNotHideChangedRows() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
-        var original = Self.document(); original.collections[0].note = "caf\u{00E9}"
+        var original = Self.document(); original.catalog[0].senses[0].note = "caf\u{00E9}"
         let initial = try f.apply(original)
-        var remote = original; remote.collections[0].note = "cafe\u{0301}"
+        var remote = original; remote.catalog[0].senses[0].note = "cafe\u{0301}"
         #expect(original == remote)
         let proof = try f.window(remote, previous: original)
         let result = try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date()), now: Date())
         #expect(result.revision == initial.revision + 1)
         try f.reopen()
         let persisted = try f.db.loadLingroveNotebook(workspaceId: f.workspaceID)
-        #expect(Data(persisted.document.collections[0].note.utf8) == Data(remote.collections[0].note.utf8))
+        #expect(Data(persisted.document.catalog[0].senses[0].note.utf8) == Data(remote.catalog[0].senses[0].note.utf8))
     }
 
     @Test("Converged local intent retires atomically without receipts or releasing held review operations")
@@ -73,7 +73,7 @@ struct LingroveNotebookApplyIntegrationTests {
         let draft = try LingroveNotebookCardMaterial.draft(snapshot: first,
             selection: .init(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id), intentId: UUID())
         _ = try f.db.enrollLingroveNotebookSense(draft)
-        var changed = original; changed.collections[0].note = "temporary local edit"
+        var changed = original; changed.catalog[0].senses[0].note = "temporary local edit"
         let edited = try f.db.saveLingroveNotebook(changed, basedOn: first, operationId: "converged-first")
         let restored = try f.db.saveLingroveNotebook(original, basedOn: edited, operationId: "converged-second")
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 2)
@@ -101,15 +101,15 @@ struct LingroveNotebookApplyIntegrationTests {
     func privateAndTimestampEditsNeedNoFabricatedServerReceipt() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         var original = Self.document()
-        original.collections[0].review = .init(plan: .init(audioKinds: []))
-        let first = try f.apply(original), sense = original.collections[0].senseID
+        original.catalog[0].senses[0].review = .init(plan: .init(audioKinds: []))
+        let first = try f.apply(original), sense = original.catalog[0].senses[0].id
         let anki = AnkiNoteBinding(originSenseID: sense, endpoint: "http://localhost:8765", profile: "private-retirement",
             noteID: 42, model: "Model", deck: "Deck", identityField: ReviewField.identity.rawValue,
             mapping: [.identity: ReviewField.identity.rawValue, .expression: "Expression", .meaning: "Meaning"],
             fields: [ReviewField.identity.rawValue: sense.uuidString.lowercased()])
         var local = first.document
-        local.collections[0].review?.bindings = [anki]
-        local.collections[0].review?.activeBindingID = anki.id
+        local.catalog[0].senses[0].review?.bindings = [anki]
+        local.catalog[0].senses[0].review?.activeBindingID = anki.id
         local.catalog[0].updatedAt = local.catalog[0].updatedAt.addingTimeInterval(60)
         let saved = try f.db.saveLingroveNotebook(local, basedOn: first, operationId: "private-and-timestamp")
         #expect(try f.db.core.scalarInt(sql: "SELECT has_public_change FROM notebook_pending_transactions WHERE operation_id='private-and-timestamp'", values: []) == 0)
@@ -122,14 +122,14 @@ struct LingroveNotebookApplyIntegrationTests {
         let idle = try f.emptyDelta(sequence: "1")
         let after = try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(idle, binding: f.binding, now: Date()), now: Date())
         #expect(after == saved)
-        #expect(after.document.collections[0].review?.bindings == [anki])
+        #expect(after.document.catalog[0].senses[0].review?.bindings == [anki])
     }
 
     @Test("Convergence after freezing cannot discard an unknown server outcome")
     func convergedCurrentDocumentStillRetainsItsFrozenRequest() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var local = original; local.collections[0].note = "might already be committed remotely"
+        var local = original; local.catalog[0].senses[0].note = "might already be committed remotely"
         let saved = try f.db.saveLingroveNotebook(local, basedOn: first, operationId: "uncertain-before-convergence")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         _ = try f.db.saveLingroveNotebook(original, basedOn: saved, operationId: "converged-after-freeze")
@@ -163,23 +163,23 @@ struct LingroveNotebookApplyIntegrationTests {
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"))
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM review_events", values: []) == 2)
         var local = first.document
-        local.collections[0].note = "local note\u{0000}"
+        local.catalog[0].senses[0].note = "local note\u{0000}"
         let edited = try f.db.saveLingroveNotebook(local, basedOn: first, operationId: "apply-local-note")
         let protected = try f.reviewProgressRows()
         var remote = original
-        remote.collections[0].tags.append("remote tag")
+        remote.catalog[0].senses[0].tags.append("remote tag")
         let proof = try f.window(remote, previous: original)
         let plan = try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
         let applied = try f.db.commitLingroveNotebookApply(plan, now: Date())
         #expect(applied.revision == edited.revision + 1)
-        #expect(applied.document.collections[0].note == local.collections[0].note)
-        #expect(applied.document.collections[0].tags == remote.collections[0].tags)
+        #expect(applied.document.catalog[0].senses[0].note == local.catalog[0].senses[0].note)
+        #expect(applied.document.catalog[0].senses[0].tags == remote.catalog[0].senses[0].tags)
         #expect(try f.reviewProgressRows() == protected)
-        #expect(try f.db.loadActiveCard(workspaceId: f.workspaceID, cardId: managedID).tags == remote.collections[0].tags)
+        #expect(try f.db.loadActiveCard(workspaceId: f.workspaceID, cardId: managedID).tags == remote.catalog[0].senses[0].tags)
         try f.reopen()
         #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspaceID) == applied)
         #expect(try f.db.confirmedLingroveNotebookShadow(binding: f.binding)?.sequence.rawValue == "2")
-        var later = applied.document; later.collections[0].note = "later local edit"
+        var later = applied.document; later.catalog[0].senses[0].note = "later local edit"
         let savedLater = try f.db.saveLingroveNotebook(later, basedOn: applied, operationId: "apply-later-note")
         let afterLater = try f.reviewProgressRows()
         #expect(try f.db.commitLingroveNotebookApply(plan, now: Date()) == savedLater)
@@ -190,7 +190,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func staleApplyCannotOverwriteNewerLocalOrRemoteRevision() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var remote = original; remote.collections[0].note = "server note"
+        var remote = original; remote.catalog[0].senses[0].note = "server note"
         let proof = try f.window(remote, previous: original)
         let stale = try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
         var local = first.document; local.catalog[0].senses[0].meaning = "locally revised meaning"
@@ -203,7 +203,7 @@ struct LingroveNotebookApplyIntegrationTests {
         let concurrent = try f.db.prepareLingroveNotebookApply(differentLease, binding: f.binding, now: Date())
         let result = try f.db.commitLingroveNotebookApply(fresh, now: Date())
         #expect(result.document.catalog[0].senses[0].meaning == saved.document.catalog[0].senses[0].meaning)
-        #expect(result.document.collections[0].note == remote.collections[0].note)
+        #expect(result.document.catalog[0].senses[0].note == remote.catalog[0].senses[0].note)
         let after = try f.allRows()
         #expect(throws: LingroveNotebookSyncStoreError.stalePreparation) { try f.db.commitLingroveNotebookApply(concurrent, now: Date()) }
         #expect(try f.allRows() == after)
@@ -213,9 +213,9 @@ struct LingroveNotebookApplyIntegrationTests {
     func lateSQLFailureRollsBackTheWholeApply() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(); let initial = try f.apply(original)
-        var remote = original; remote.collections[0].note = "remote transaction"
+        var remote = original; remote.catalog[0].senses[0].note = "remote transaction"
         let proof = try f.window(remote, previous: original)
-        var conflicting = original; conflicting.collections[0].note = "local transaction"
+        var conflicting = original; conflicting.catalog[0].senses[0].note = "local transaction"
         let local = try f.db.saveLingroveNotebook(conflicting, basedOn: initial, operationId: "conflicting-note")
         let conflictBefore = try f.allRows()
         #expect(throws: VocabularyWireRebaseError.self) { try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date()) }
@@ -239,7 +239,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func leaseExpiryDuringSQLRollsBackApply() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(); _ = try f.apply(original)
-        var remote = original; remote.collections[0].note = "expires during SQL"
+        var remote = original; remote.catalog[0].senses[0].note = "expires during SQL"
         let proof = try f.window(remote, previous: original)
         let plan = try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
         let before = try f.allRows()
@@ -288,21 +288,21 @@ struct LingroveNotebookApplyIntegrationTests {
         let card = try f.db.core.scalarText(sql: "SELECT card_id FROM notebook_review_exercises LIMIT 1", values: [])
         _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: card, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"))
-        var sent = original; sent.collections[0].note = "sent note"; sent.collections[0].tags += ["b", "c"]
+        var sent = original; sent.catalog[0].senses[0].note = "sent note"; sent.catalog[0].senses[0].tags += ["b", "c"]
         let saved = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "upload-sent")
         let plainWindow = try f.window(original, previous: original)
         let plainPlan = try f.db.prepareLingroveNotebookApply(plainWindow, binding: f.binding, now: Date())
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         #expect(throws: LingroveNotebookSyncStoreError.stalePreparation) { try f.db.commitLingroveNotebookApply(plainPlan, now: Date()) }
         let protected = try f.reviewProgressRows()
-        var later = sent; later.collections[0].note = "later note"; later.collections[0].tags.append("later tag")
+        var later = sent; later.catalog[0].senses[0].note = "later note"; later.catalog[0].senses[0].tags.append("later tag")
         _ = try f.db.saveLingroveNotebook(later, basedOn: saved, operationId: "upload-later")
         try f.reopen()
         let replay = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         #expect(replay.body == pending.body); #expect(replay.frozenSHA256 == pending.frozenSHA256)
         var server = sent
         // c was already appended by a peer before our [b,c] request arrived.
-        server.collections[0].tags = original.collections[0].tags + ["c", "b"]
+        server.catalog[0].senses[0].tags = original.catalog[0].senses[0].tags + ["c", "b"]
         let proof = try f.window(server, previous: original)
         #expect(throws: LingroveNotebookUploadStoreError.awaitingReceipt) {
             try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
@@ -314,12 +314,12 @@ struct LingroveNotebookApplyIntegrationTests {
         try f.reopen()
         let plan = try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
         let applied = try f.db.commitLingroveNotebookApply(plan, now: Date())
-        #expect(applied.document.collections[0].note == "later note")
-        #expect(applied.document.collections[0].tags == original.collections[0].tags + ["c", "b", "later tag"])
+        #expect(applied.document.catalog[0].senses[0].note == "later note")
+        #expect(applied.document.catalog[0].senses[0].tags == original.catalog[0].senses[0].tags + ["c", "b", "later tag"])
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions WHERE operation_id='upload-sent'", values: []) == 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions WHERE operation_id='upload-later'", values: []) == 1)
         #expect(try f.reviewProgressRows() == protected)
-        #expect(try f.db.loadActiveCard(workspaceId: f.workspaceID, cardId: card).tags == applied.document.collections[0].tags)
+        #expect(try f.db.loadActiveCard(workspaceId: f.workspaceID, cardId: card).tags == applied.document.catalog[0].senses[0].tags)
         let next = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         #expect(next.batch.request.groupID != pending.batch.request.groupID)
         try f.db.recordLingroveNotebookReceipt(receipt, bodySHA256: pending.bodySHA256, binding: f.binding)
@@ -330,7 +330,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func uploadRejectsPartialReceiptsAndFalseCoverage() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "sent"; sent.catalog[0].senses[0].meaning = "new meaning"
+        var sent = original; sent.catalog[0].senses[0].note = "sent"; sent.catalog[0].senses[0].meaning = "new meaning"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "upload-two-members")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         #expect(pending.batch.request.members.count == 2)
@@ -361,7 +361,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func uploadFinalizationFailureIsAtomicAndRetryable() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "sent transaction"
+        var sent = original; sent.catalog[0].senses[0].note = "sent transaction"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "upload-atomic")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         let receipt = try Self.uploadReceipt(pending)
@@ -413,7 +413,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func cancellationIntentSurvivesReopenWithoutInventingAnOutcome() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "cancel uncertain request"
+        var sent = original; sent.catalog[0].senses[0].note = "cancel uncertain request"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "cancel-intent")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         let protected = try f.protectedRows()
@@ -435,7 +435,7 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_upload_terminal_state", values: []) == 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_upload_receipts", values: []) == 1)
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 0)
-        var later = applied.document; later.collections[0].tags.append("new batch after committed cancellation race")
+        var later = applied.document; later.catalog[0].senses[0].tags.append("new batch after committed cancellation race")
         _ = try f.db.saveLingroveNotebook(later, basedOn: applied, operationId: "after-cancel-race")
         let next = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding)), completed = try f.allRows()
         #expect(throws: LingroveNotebookUploadStoreError.receiptConflict) {
@@ -463,10 +463,10 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM review_events", values: []) == 2)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_held_card_operations", values: []) > 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM outbox", values: []) > 0)
-        var sent = original; sent.collections[0].note = "not committed"
+        var sent = original; sent.catalog[0].senses[0].note = "not committed"
         let saved = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "rejected-original")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
-        var later = sent; later.collections[0].tags.append("after rejection request")
+        var later = sent; later.catalog[0].senses[0].tags.append("after rejection request")
         _ = try f.db.saveLingroveNotebook(later, basedOn: saved, operationId: "rejected-later")
         let rejection = try Self.uploadRejection(pending)
         try f.db.recordLingroveNotebookOutcome(.rejected(rejection), bodySHA256: pending.bodySHA256, binding: f.binding)
@@ -495,21 +495,21 @@ struct LingroveNotebookApplyIntegrationTests {
     func rejectedGroupStillRequiresAnExplicitConflictResolution() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var local = original; local.collections[0].note = "mine"
+        var local = original; local.catalog[0].senses[0].note = "mine"
         let edited = try f.db.saveLingroveNotebook(local, basedOn: first, operationId: "terminal-conflict")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         try f.db.recordLingroveNotebookOutcome(.rejected(Self.uploadRejection(pending, reason: "entity_conflict")), bodySHA256: pending.bodySHA256, binding: f.binding)
-        var remote = original; remote.collections[0].note = "remote"
+        var remote = original; remote.catalog[0].senses[0].note = "remote"
         let proof = try f.window(remote, previous: original), before = try f.allRows()
         #expect(throws: VocabularyWireRebaseError.self) { try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date()) }
         #expect(try f.allRows().filter { $0.key != "notebook_sync_conflicts" } == before.filter { $0.key != "notebook_sync_conflicts" })
         // An explicit local edit can also converge with the account value.
         // The sync layer still cannot choose it or erase pending journals.
-        var resolved = edited.document; resolved.collections[0].note = remote.collections[0].note
+        var resolved = edited.document; resolved.catalog[0].senses[0].note = remote.catalog[0].senses[0].note
         _ = try f.db.saveLingroveNotebook(resolved, basedOn: edited, operationId: "accept-server-field")
         let protected = try f.protectedRows()
         let applied = try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date()), now: Date())
-        #expect(applied.document.collections[0].note == "remote")
+        #expect(applied.document.catalog[0].senses[0].note == "remote")
         #expect(try f.protectedRows() == protected)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_upload_rejections", values: []) == 1)
     }
@@ -518,7 +518,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func invalidCorpusRetrySurvivesRestartAndFreezeRollback() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var changed = original; changed.collections[0].note = "rejected public intent"
+        var changed = original; changed.catalog[0].senses[0].note = "rejected public intent"
         _ = try f.db.saveLingroveNotebook(changed, basedOn: first, operationId: "rejected-persistent")
         let frozen = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         try f.db.recordLingroveNotebookOutcome(.rejected(Self.uploadRejection(frozen, reason: "invalid_corpus")),
@@ -553,7 +553,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func rejectionFinalizationFailurePreservesAllPendingWork() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "rejected transaction"
+        var sent = original; sent.catalog[0].senses[0].note = "rejected transaction"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "rejection-atomic")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         try f.db.recordLingroveNotebookOutcome(.rejected(Self.uploadRejection(pending)), bodySHA256: pending.bodySHA256, binding: f.binding)
@@ -566,7 +566,7 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.allRows() == before)
         try f.db.core.executeScript(sql: "DROP TRIGGER fail_rejection_retirement;", errorContext: "Remove negative finalization fault")
         let result = try f.db.commitLingroveNotebookApply(plan, now: Date())
-        #expect(result.document.collections[0].note == "rejected transaction")
+        #expect(result.document.catalog[0].senses[0].note == "rejected transaction")
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 1)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_upload_rejections", values: []) == 1)
     }
@@ -575,7 +575,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func rejectionCallbacksRejectMismatchesAndStaleGenerations() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "pending"; sent.catalog[0].senses[0].meaning = "pending meaning"
+        var sent = original; sent.catalog[0].senses[0].note = "pending"; sent.catalog[0].senses[0].meaning = "pending meaning"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "terminal-identity")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding)), before = try f.allRows()
         let partial = try Self.uploadRejection(pending, members: [pending.batch.request.members[0].memberID])
@@ -610,7 +610,7 @@ struct LingroveNotebookApplyIntegrationTests {
         for converged in [false,true] {
             let f = try ApplyFixture(); defer { f.cleanUp() }
             let original = Self.document(), first = try f.apply(original)
-            var sent = original; sent.collections[0].note = "expired but then cancelled"
+            var sent = original; sent.catalog[0].senses[0].note = "expired but then cancelled"
             _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "closure-race")
             let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding, transport: .staged))
             let manifest = try Self.uploadClosureManifest(pending, state: "expired")
@@ -628,7 +628,7 @@ struct LingroveNotebookApplyIntegrationTests {
             #expect(try f.allRows() == cancelledRows)
             try f.db.core.executeScript(sql: "DROP TRIGGER closure_retire_fault;", errorContext: "Remove closure retirement fault")
             let applied = try f.db.commitLingroveNotebookApply(fresh, now: Date())
-            #expect(applied.document.collections[0].note == sent.collections[0].note)
+            #expect(applied.document.catalog[0].senses[0].note == sent.catalog[0].senses[0].note)
             #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 1)
             #expect(try f.db.core.scalarInt(sql: "SELECT retry_blocked FROM notebook_completed_upload_closures", values: []) == 1)
             try f.reopen()
@@ -641,7 +641,7 @@ struct LingroveNotebookApplyIntegrationTests {
             #expect(try f.db.core.scalarInt(sql: "SELECT has_public_change FROM notebook_pending_transactions WHERE operation_id='timestamp-does-not-resume'", values: []) == 0)
             #expect(throws: LingroveNotebookUploadStoreError.cancelledUpload) { try f.db.nextLingroveNotebookUpload(binding: f.binding) }
             let current = try f.db.loadLingroveNotebook(workspaceId: f.workspaceID)
-            var edited = current.document; edited.collections[0].note = converged ? original.collections[0].note : "new authorized edit"
+            var edited = current.document; edited.catalog[0].senses[0].note = converged ? original.catalog[0].senses[0].note : "new authorized edit"
             _ = try f.db.saveLingroveNotebook(edited, basedOn: current, operationId: "new-intent")
             if converged {
                 #expect(try f.db.nextLingroveNotebookUpload(binding: f.binding, transport: .staged) == nil)
@@ -664,7 +664,7 @@ struct LingroveNotebookApplyIntegrationTests {
     func externalAbortIsNotUserCancellation() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        var sent = original; sent.collections[0].note = "external abort"
+        var sent = original; sent.catalog[0].senses[0].note = "external abort"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "external-abort")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding, transport: .staged))
         try f.db.recordLingroveNotebookUploadClosure(Self.uploadClosureManifest(pending, state: "aborted"), pending: pending, binding: f.binding)

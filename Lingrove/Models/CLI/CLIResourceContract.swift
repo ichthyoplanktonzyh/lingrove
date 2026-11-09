@@ -72,7 +72,7 @@ nonisolated enum CLIResourceContract {
         }
     }
 
-    static let names = ["entries", "senses", "sources", "occurrences", "interpretations", "collections",
+    static let names = ["entries", "senses", "sources", "occurrences", "interpretations",
                         "nodes", "patterns", "mappings", "relations", "cues", "cueTargets",
                         "frameworks", "categories", "categoryParents", "categoryMemberships", "categoryOverrides"]
     static let provenance = Shape(fields: ["origin": .enumeration(["user", "imported", "model"]),
@@ -128,7 +128,7 @@ nonisolated enum CLIResourceContract {
             return .init(fields: ["id": .uuid, "entryID": .uuid, "meaning": .text(32_000), "meaningLanguage": .nullable(.text(100)),
                 "meaningOrigin": .enumeration(["captured", "ai", "user"]),
                 "alternateMeanings": .array(.object(meaning), 64), "mergedFrom": .array(.uuid, 128),
-                "createdWithoutContext": .nullable(.bool),
+                "createdWithoutContext": .nullable(.bool), "note": .text(262_144), "tags": .array(.text(200), 100),
                 "createdAt": .date, "updatedAt": .date], required: ["id", "entryID", "meaning"])
         case "sources":
             return .init(fields: ["id": .uuid, "text": .text(262_144),
@@ -145,10 +145,6 @@ nonisolated enum CLIResourceContract {
                 "translationVariants": .array(.object(meaning), 64),
                 "completeness": .enumeration(["sentence", "fragment", "unknown"]),
                 "provenance": .object(provenance), "createdAt": .date], required: ["id", "occurrenceID"])
-        case "collections":
-            return .init(fields: ["senseID": .uuid, "interpretationIDs": .array(.uuid, 10_000),
-                "isSavedWithoutContext": .bool, "note": .text(262_144), "tags": .array(.text(200), 100), "savedAt": .date],
-                required: ["senseID"])
         case "nodes":
             return .init(fields: ["id": .uuid, "kind": .enumeration(["concept", "function"]),
                 "labels": .array(.object(label), 64), "definition": .text(16_384), "scopeNote": .text(16_384),

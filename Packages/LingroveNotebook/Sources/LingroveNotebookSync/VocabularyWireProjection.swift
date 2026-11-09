@@ -9,7 +9,7 @@ public nonisolated enum VocabularyWireProjectionCodec {
         _ document: VocabularyDocument, notebookID: UUID,
         retaining unattached: VocabularyWirePrivateState? = nil
     ) throws -> VocabularyWireProjection {
-        guard document.schemaVersion == 8, VocabularyDocument.currentVersion == 8 else { throw VocabularyWireError.unsupportedVersion }
+        guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyWireError.unsupportedVersion }
         do { try VocabularyDocumentValidation.validate(document) } catch { throw VocabularyWireError.invalidDocument }
         if let unattached, unattached.notebookID != notebookID { throw VocabularyWireError.privateScopeMismatch }
         var encoder = VocabularyWireEncoder()
@@ -32,7 +32,6 @@ public nonisolated enum VocabularyWireProjectionCodec {
         _ entities: [VocabularyWireEntity], notebookID: UUID,
         preserving state: VocabularyWirePrivateState? = nil
     ) throws -> VocabularyWireMaterialization {
-        guard VocabularyDocument.currentVersion == 8 else { throw VocabularyWireError.unsupportedVersion }
         let local = state ?? .init(notebookID: notebookID)
         guard local.notebookID == notebookID else { throw VocabularyWireError.privateScopeMismatch }
         var decoder = try VocabularyWireDecoder(entities, notebookID: notebookID)

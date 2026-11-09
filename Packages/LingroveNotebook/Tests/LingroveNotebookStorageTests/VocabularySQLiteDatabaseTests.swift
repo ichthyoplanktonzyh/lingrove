@@ -50,8 +50,7 @@ struct VocabularySQLiteDatabaseTests {
             "50000000-0000-0000-0000-000000000001",
             "50000000-0000-0000-0000-000000000002"
         ])
-        #expect(snapshot.document.collections.map(\.senseID) == snapshot.document.catalog[0].senses.map(\.id))
-        #expect(snapshot.document.collections[1].reviewCards?.first?.plan.name == "Meaning recall")
+        #expect(snapshot.document.catalog[0].senses[1].reviewCards?.first?.plan.name == "Meaning recall")
         #expect(snapshot.document.semantics.nodes.map(\.id.uuidString) == [
             "60000000-0000-0000-0000-000000000001",
             "60000000-0000-0000-0000-000000000002"

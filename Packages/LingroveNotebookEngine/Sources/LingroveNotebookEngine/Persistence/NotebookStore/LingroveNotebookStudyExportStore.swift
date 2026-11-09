@@ -9,13 +9,13 @@ public nonisolated struct LingroveNotebookStudyExportStore {
     public let core: DatabaseCore
 
     public func read(binding: LingroveNotebookBackupBinding, selections: [VocabularySelection],
-              collectedOnly: Bool, configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
+              configuration: VocabularyExportConfiguration) throws -> VocabularyExportPackage {
         let frozen = try core.inReadTransaction {
             let admission = LingroveNotebookBackupStore(core: core)
             try admission.checkInTransaction(binding)
             let snapshot = try LingroveNotebookStore(core: core).readSnapshot(workspaceId: binding.workspaceId)
             let entries = try VocabularyExportPolicy.selected(
-                collectedOnly ? snapshot.document.collectedEntries : snapshot.document.entries, selections: selections)
+                snapshot.document.entries, selections: selections)
             let references = VocabularyExportPolicy.images(entries, configuration: configuration)
             guard references.reduce(0, { $0 + $1.byteCount }) <= VocabularyDocumentValidation.maximumMediaBytes else {
                 throw VocabularyExportError.tooLarge

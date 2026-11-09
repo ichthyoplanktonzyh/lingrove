@@ -58,11 +58,12 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
                 try next.replaceGroup(key, records: records, delta: &delta)
             } else { try next.reposition(key, position: position, delta: &delta) }
         }
-        let liveCollections = Set(document.collections.map(\.id))
-        for collection in previous.collections where senses.contains(collection.senseID) && !liveCollections.contains(collection.id) {
+        let recordsBySense = VocabularySenseStorageRecord.records(for: document)
+        let liveCollections = Set(recordsBySense.map(\.id))
+        for collection in VocabularySenseStorageRecord.records(for: previous) where senses.contains(collection.senseID) && !liveCollections.contains(collection.id) {
             try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: [], delta: &delta)
         }
-        for (position, collection) in document.collections.enumerated() {
+        for (position, collection) in recordsBySense.enumerated() {
             let key = Key(entity: .collections, id: collection.id.uuidString)
             if senses.contains(collection.senseID) {
                 records = []; VocabularyDatabaseProjection.append(collection, position: position, to: &records)

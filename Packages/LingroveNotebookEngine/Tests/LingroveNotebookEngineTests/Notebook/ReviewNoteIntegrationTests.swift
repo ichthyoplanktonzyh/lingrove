@@ -104,7 +104,7 @@ struct ReviewNoteIntegrationTests {
     private func source(_ fixture: NotebookMediaDatabaseFixture) throws -> (LingroveNotebookSnapshot, VocabularySelection) {
         let scope = try fixture.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))
-        let entry = try #require(scope.document.collectedEntries.first), sense = try #require(entry.senses.first)
+        let entry = try #require(scope.document.entries.first), sense = try #require(entry.senses.first)
         return (scope, .init(entryID: entry.id, senseID: sense.id))
     }
 }

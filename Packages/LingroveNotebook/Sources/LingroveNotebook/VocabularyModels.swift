@@ -45,9 +45,9 @@ public nonisolated struct VocabularyEntry: Codable, Equatable, Identifiable, Sen
     }
 }
 
-/// A stable learning identity for one core meaning. Catalog records keep the lexical fields;
-/// notebook projections overlay selected examples and personal notes/cards from independent
-/// records. Rewording a summary never changes its UUID or its review/meaning-graph references.
+/// One saved meaning owns its personal notes and content. The notebook joins its accepted
+/// interpretations to their source evidence when an editor needs examples. Rewording a
+/// summary preserves the UUID used by references to this sense.
 public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public var meaning: String
@@ -61,15 +61,15 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
     public var explanations: [LearningExplanationRecord] = []
     public var alternateMeanings: [VocabularyMeaning] = []
     public var mergedFrom: [UUID] = []
-    /// Projected from the personal collection; absence is distinct from an empty draft.
+    /// Absence is distinct from an empty review draft.
     public var review: VocabularyReview?
     /// Flexible cards have independent review identities. Legacy review records are not migrated.
     public var reviewCards: [VocabularyReview]?
     public var content: [VocabularyContentBlock]?
+    public var savedAt: Date?
     public let createdAt: Date
     public var updatedAt: Date
-    /// Manual/imported meanings support general explanations independently of whether the
-    /// personal collection claims the context-free favorite slot.
+    /// Imported and manually created meanings also support explanations without a use example.
     public var createdWithoutContext: Bool?
     public var supportsGeneralExplanation: Bool { isSavedWithoutContext || createdWithoutContext == true }
 
@@ -89,6 +89,7 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
         review: VocabularyReview? = nil,
         reviewCards: [VocabularyReview]? = nil,
         content: [VocabularyContentBlock]? = nil,
+        savedAt: Date? = nil,
         createdAt: Date,
         updatedAt: Date,
         createdWithoutContext: Bool? = nil
@@ -108,6 +109,7 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
         self.review = review
         self.reviewCards = reviewCards
         self.content = content
+        self.savedAt = savedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.createdWithoutContext = createdWithoutContext
@@ -266,29 +268,27 @@ public nonisolated struct VocabularySourceOccurrence: Codable, Equatable, Identi
 /// The immutable notebook value is shared by UI snapshots, backup and JSON interchange. SQLite
 /// stores its entities separately; this version describes the portable representation only.
 public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 8
+    public static let currentVersion = 9
     public var schemaVersion: Int
-    /// Canonical lexical records contain no examples or personal learning state. The joined
-    /// entries adapter below keeps existing editors independent of persistence relationships.
+    /// Saved entries and senses. Example text is joined from interpretations and source
+    /// evidence by the entries projection, so editing a sense never duplicates its evidence.
     public var catalog: [VocabularyEntry]
     public var sources: [VocabularySourceSnapshot]
     public var occurrences: [VocabularySourceOccurrence]
     public var interpretations: [VocabularyInterpretation]
-    public var collections: [VocabularyCollectionItem]
     public var reviewTemplates: [ReviewLayoutTemplate]?
     public var semantics: VocabularySemanticIndex
     public var classification: VocabularyClassificationIndex
 
     public var entries: [VocabularyEntry] {
-        get { VocabularyNotebookProjection.entries(self, collectedOnly: false) }
+        get { VocabularyNotebookProjection.entries(self) }
         set { VocabularyNotebookProjection.replace(newValue, in: &self) }
     }
-    public var collectedEntries: [VocabularyEntry] { VocabularyNotebookProjection.entries(self, collectedOnly: true) }
 
     public init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil,
          semantics: VocabularySemanticIndex = .init(), classification: VocabularyClassificationIndex = .init()) {
         self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
-        self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []; self.collections = []
+        self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []
         self.reviewTemplates = reviewTemplates
         self.semantics = semantics
         self.classification = classification
@@ -296,35 +296,31 @@ public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     }
 
     public init(catalog: [VocabularyEntry], sources: [VocabularySourceSnapshot], occurrences: [VocabularySourceOccurrence],
-         interpretations: [VocabularyInterpretation], collections: [VocabularyCollectionItem],
+         interpretations: [VocabularyInterpretation],
          reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init(),
          classification: VocabularyClassificationIndex = .init()) {
         schemaVersion = Self.currentVersion
         self.catalog = catalog; self.sources = sources; self.occurrences = occurrences
-        self.interpretations = interpretations; self.collections = collections
+        self.interpretations = interpretations
         self.reviewTemplates = reviewTemplates; self.semantics = semantics
         self.classification = classification
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, catalog, sources, occurrences, interpretations, collections, reviewTemplates, semantics, classification
+        case schemaVersion, catalog, sources, occurrences, interpretations, reviewTemplates, semantics, classification
     }
 
-    /// Version seven already has the canonical evidence/meaning graph. Upgrading adds an empty
-    /// directory without synthesizing memberships or changing any existing identity or receipt.
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        let version = try values.decode(Int.self, forKey: .schemaVersion)
-        guard version == 7 || version == Self.currentVersion else { throw VocabularyError.unsupportedVersion }
-        schemaVersion = Self.currentVersion
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        guard schemaVersion == Self.currentVersion else { throw VocabularyError.unsupportedVersion }
         catalog = try values.decode([VocabularyEntry].self, forKey: .catalog)
         sources = try values.decode([VocabularySourceSnapshot].self, forKey: .sources)
         occurrences = try values.decode([VocabularySourceOccurrence].self, forKey: .occurrences)
         interpretations = try values.decode([VocabularyInterpretation].self, forKey: .interpretations)
-        collections = try values.decode([VocabularyCollectionItem].self, forKey: .collections)
         reviewTemplates = try values.decodeIfPresent([ReviewLayoutTemplate].self, forKey: .reviewTemplates)
         semantics = try values.decode(VocabularySemanticIndex.self, forKey: .semantics)
-        classification = version == 7 ? .init() : try values.decode(VocabularyClassificationIndex.self, forKey: .classification)
+        classification = try values.decode(VocabularyClassificationIndex.self, forKey: .classification)
     }
 
     /// Optional language/context metadata does not change the portable format per document.

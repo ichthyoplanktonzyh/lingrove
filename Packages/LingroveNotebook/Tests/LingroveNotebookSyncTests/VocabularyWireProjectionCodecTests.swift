@@ -17,7 +17,7 @@ struct VocabularyWireProjectionCodecTests {
             document, notebookID: VocabularyWireTestFixture.notebookID
         )
         #expect(Set(projection.entities.map(\.entityType)) == Set(VocabularyWireEntityKind.allCases))
-        #expect(VocabularyWireEntityKind.allCases.count == 29)
+        #expect(VocabularyWireEntityKind.allCases.count == 27)
 
         // Exercise Codable as well as the mapper. A server may return rows in any physical order;
         // domain arrays are rebuilt from their explicit rank fields.
@@ -35,7 +35,7 @@ struct VocabularyWireProjectionCodecTests {
         #expect(materialized.document.sources.map(\.id) == document.sources.map(\.id))
         #expect(materialized.document.occurrences.map(\.id) == document.occurrences.map(\.id))
         #expect(materialized.document.interpretations.map(\.id) == document.interpretations.map(\.id))
-        #expect(materialized.document.collections.map(\.senseID) == document.collections.map(\.senseID))
+        #expect(materialized.document.savedSenses.map(\.id) == document.savedSenses.map(\.id))
         #expect(materialized.document.semantics.nodes.map(\.id) == document.semantics.nodes.map(\.id))
         #expect(materialized.document.classification.categories.map(\.id) == document.classification.categories.map(\.id))
         #expect(materialized.document.catalog[0].createdAt.timeIntervalSinceReferenceDate == 811_111_111.125)
@@ -50,13 +50,13 @@ struct VocabularyWireProjectionCodecTests {
     func nilAndEmptyPresenceRoundTrips() throws {
         var nilDocument = try VocabularyWireTestFixture.document()
         nilDocument.reviewTemplates = nil
-        nilDocument.collections[1].content = nil
-        nilDocument.collections[1].reviewCards = nil
+        nilDocument.savedSenses[1].content = nil
+        nilDocument.savedSenses[1].reviewCards = nil
 
         var emptyDocument = nilDocument
         emptyDocument.reviewTemplates = []
-        emptyDocument.collections[1].content = []
-        emptyDocument.collections[1].reviewCards = []
+        emptyDocument.savedSenses[1].content = []
+        emptyDocument.savedSenses[1].reviewCards = []
         try VocabularyDocumentValidation.validate(nilDocument)
         try VocabularyDocumentValidation.validate(emptyDocument)
 
@@ -82,7 +82,7 @@ struct VocabularyWireProjectionCodecTests {
         invalidSense.catalog[0].senses[0].updatedAt = Date(timeIntervalSinceReferenceDate: -.infinity)
 
         var invalidCollection = baseline
-        invalidCollection.collections[0].savedAt = Date(timeIntervalSinceReferenceDate: .infinity)
+        invalidCollection.savedSenses[0].savedAt = Date(timeIntervalSinceReferenceDate: .infinity)
 
         var invalidExplanation = baseline
         let originalExplanation = invalidExplanation.catalog[0].senses[0].explanations[0]
@@ -213,12 +213,9 @@ struct VocabularyWireProjectionCodecTests {
         #expect(crossOwnerResult.document == crossOwner)
     }
 
-    @Test("An uncollected accepted explanation gets identity from current evidence")
-    func uncollectedAcceptedExplanationUsesDerivedIdentity() throws {
-        var document = try VocabularyWireTestFixture.document()
-        document.collections[0].interpretationIDs.removeAll {
-            $0 == VocabularyWireTestFixture.acceptedInterpretationID
-        }
+    @Test("An accepted explanation gets identity from current evidence")
+    func acceptedExplanationUsesDerivedIdentity() throws {
+        let document = try VocabularyWireTestFixture.document()
         try VocabularyDocumentValidation.validate(document)
 
         let projection = try VocabularyWireProjectionCodec.project(
@@ -372,8 +369,8 @@ struct VocabularyWireProjectionCodecTests {
             withoutLegacyPlan, notebookID: VocabularyWireTestFixture.notebookID,
             preserving: projection.privateState
         )
-        let collection = try #require(materialized.document.collections.first {
-            $0.senseID == VocabularyWireTestFixture.targetSenseID
+        let collection = try #require(materialized.document.savedSenses.first {
+            $0.id == VocabularyWireTestFixture.targetSenseID
         })
         #expect(collection.review == nil)
         let residue = try #require(materialized.unattachedPrivateState.reviews.first)
@@ -410,11 +407,11 @@ struct VocabularyWireProjectionCodecTests {
                 editedRemote, notebookID: VocabularyWireTestFixture.notebookID,
                 preserving: projection.privateState
             )
-            let firstReview = try #require(first.document.collections.first {
-                $0.senseID == VocabularyWireTestFixture.targetSenseID
+            let firstReview = try #require(first.document.savedSenses.first {
+                $0.id == VocabularyWireTestFixture.targetSenseID
             }?.review)
-            let originalReview = try #require(document.collections.first {
-                $0.senseID == VocabularyWireTestFixture.targetSenseID
+            let originalReview = try #require(document.savedSenses.first {
+                $0.id == VocabularyWireTestFixture.targetSenseID
             }?.review)
             #expect(firstReview.bindings == originalReview.bindings)
             #expect(firstReview.activeBindingID == originalReview.activeBindingID)
@@ -434,8 +431,8 @@ struct VocabularyWireProjectionCodecTests {
                 editedRemote, notebookID: VocabularyWireTestFixture.notebookID,
                 preserving: secondProjection.privateState
             )
-            let secondReview = try #require(second.document.collections.first {
-                $0.senseID == VocabularyWireTestFixture.targetSenseID
+            let secondReview = try #require(second.document.savedSenses.first {
+                $0.id == VocabularyWireTestFixture.targetSenseID
             }?.review)
             #expect(secondReview.bindings == originalReview.bindings)
             #expect(secondReview.activeBindingID == originalReview.activeBindingID)
@@ -475,8 +472,8 @@ struct VocabularyWireProjectionCodecTests {
             projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
             preserving: twoExplicitAgree
         )
-        let agreeingReview = try #require(agreeingResult.document.collections.first {
-            $0.senseID == VocabularyWireTestFixture.targetSenseID
+        let agreeingReview = try #require(agreeingResult.document.savedSenses.first {
+            $0.id == VocabularyWireTestFixture.targetSenseID
         }?.review)
         #expect(agreeingReview.bindings.map(\.id) == [firstBinding.id, mergedBinding.id])
         #expect(agreeingReview.activeBindingID == mergedBinding.id)
@@ -492,8 +489,8 @@ struct VocabularyWireProjectionCodecTests {
             projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
             preserving: conflicting
         )
-        let conflictingReview = try #require(conflictingResult.document.collections.first {
-            $0.senseID == VocabularyWireTestFixture.targetSenseID
+        let conflictingReview = try #require(conflictingResult.document.savedSenses.first {
+            $0.id == VocabularyWireTestFixture.targetSenseID
         }?.review)
         #expect(conflictingReview.bindings.map(\.id) == [firstBinding.id, mergedBinding.id])
         #expect(conflictingReview.activeBindingID == nil)
@@ -509,8 +506,8 @@ struct VocabularyWireProjectionCodecTests {
             projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
             preserving: nilAndExplicit
         )
-        let nilAndExplicitReview = try #require(nilAndExplicitResult.document.collections.first {
-            $0.senseID == VocabularyWireTestFixture.targetSenseID
+        let nilAndExplicitReview = try #require(nilAndExplicitResult.document.savedSenses.first {
+            $0.id == VocabularyWireTestFixture.targetSenseID
         }?.review)
         #expect(nilAndExplicitReview.activeBindingID == nil)
     }

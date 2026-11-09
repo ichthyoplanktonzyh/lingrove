@@ -40,12 +40,11 @@ struct VocabularyPersistenceCodecTests {
         #expect(reopened.sources.map(\.id) == historical.sources.map(\.id))
         #expect(reopened.occurrences.map(\.id) == historical.occurrences.map(\.id))
         #expect(reopened.interpretations.map(\.id) == historical.interpretations.map(\.id))
-        #expect(reopened.collections.map(\.id) == historical.collections.map(\.id))
     }
 
     @Test func frozenCoreGraphEmitsEveryPersistenceFamily() throws {
         let fixtureURL = try #require(Bundle.module.url(
-            forResource: "document-v8-codec",
+            forResource: "document-v9-codec",
             withExtension: "json",
             subdirectory: "Fixtures"
         ))
@@ -128,7 +127,6 @@ struct VocabularyPersistenceCodecTests {
             "occurrences": [],
             "usages": ["occurrence_id", "sense_id", "status"],
             "collections": ["sense_id"],
-            "collection_interpretations": ["usage_id"],
             "sense_explanations": [],
             "usage_explanations": [],
             "blocks": [],

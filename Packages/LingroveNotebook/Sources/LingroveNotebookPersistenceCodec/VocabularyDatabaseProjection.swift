@@ -1,9 +1,8 @@
 import Foundation
 import LingroveNotebook
 
-/// Lossless row mapping follows lifecycle ownership: catalog, source evidence, interpretations
-/// and collections each have their own roots. Reopening never regenerates raw evidence from
-/// whichever examples happen to be personally collected.
+/// SQLite keeps evidence and rich sense fields in separate rows for bounded writes. The codec
+/// reconstructs one saved corpus. Accepted interpretations are the persisted example links.
 nonisolated enum VocabularyDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
     private struct Owner: Hashable { let table: Row.Table; let parent: String? }
@@ -21,7 +20,7 @@ nonisolated enum VocabularyDatabaseProjection {
         }
         for (position, claim) in document.interpretations.enumerated() { append(claim, position: position, to: &rows) }
         for (position, entry) in document.catalog.enumerated() { append(entry, position: position, to: &rows) }
-        for (position, collection) in document.collections.enumerated() { append(collection, position: position, to: &rows) }
+        for (position, collection) in VocabularySenseStorageRecord.records(for: document).enumerated() { append(collection, position: position, to: &rows) }
         for (position, template) in (document.reviewTemplates ?? []).enumerated() {
             rows.append(.init(table: .templates, id: template.id.uuidString, parentID: nil,
                 position: position, payload: .template(template)))
@@ -47,13 +46,14 @@ nonisolated enum VocabularyDatabaseProjection {
             extra: [VocabularyIdentityPolicy.entryKey(entry), entry.language?.rawValue ?? "und", entry.expression]))
         for (position, sense) in entry.senses.enumerated() {
             var header = sense; header.explanations = []
+            VocabularySenseStorageRecord.stripFields(from: &header)
             rows.append(.init(table: .senses, id: sense.id.uuidString, parentID: entry.id.uuidString,
                 position: position, payload: .sense(header), extra: [sense.meaning]))
             append(sense.explanations, parent: sense.id.uuidString, table: .senseExplanations, to: &rows)
         }
     }
 
-    static func append(_ collection: VocabularyCollectionItem, position: Int, to rows: inout [Row]) {
+    static func append(_ collection: VocabularySenseStorageRecord, position: Int, to rows: inout [Row]) {
         let id = collection.id.uuidString
         var header = collection
         header.interpretationIDs = []; header.review = nil
@@ -61,10 +61,6 @@ nonisolated enum VocabularyDatabaseProjection {
         header.reviewCards = collection.reviewCards == nil ? nil : []
         rows.append(.init(table: .collections, id: id, parentID: nil, position: position,
             payload: .collection(header), extra: [collection.senseID.uuidString]))
-        for (position, interpretationID) in collection.interpretationIDs.enumerated() {
-            rows.append(.init(table: .collectionInterpretations, id: id + ":" + interpretationID.uuidString,
-                parentID: id, position: position, payload: .evidence(interpretationID), extra: [interpretationID.uuidString]))
-        }
         for (position, block) in (collection.content ?? []).enumerated() {
             rows.append(.init(table: .blocks, id: block.id.uuidString, parentID: id, position: position, payload: .block(block)))
         }
@@ -91,7 +87,7 @@ nonisolated enum VocabularyDatabaseProjection {
         }
     }
 
-    static func document(_ rows: [Row], hasTemplates: Bool) throws -> VocabularyDocument {
+    static func document(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyDocument {
         guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
         let graph = Graph(rows: rows)
         let entries = try graph.children(.entries).map { row in
@@ -115,16 +111,67 @@ nonisolated enum VocabularyDatabaseProjection {
         let templates = try graph.children(.templates).map { row in
             guard case let .template(value) = row.payload else { throw VocabularyError.invalidArchive }; return value
         }
-        let result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
-            interpretations: interpretations, collections: try graph.all(.collections).map { try graph.collection($0) },
+        var result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
+            interpretations: interpretations,
             reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(rows),
             classification: try VocabularyClassificationRows.index(rows))
+        let records = try graph.all(.collections).map { try graph.collection($0) }
+        if migratingDevCorpus { return try migrateDevCorpus(result, records: records) }
+        try VocabularySenseStorageRecord.materialize(records, in: &result)
         // Round-tripping rejects orphan records, inconsistent indexes and nested children
         // smuggled into scalar headers instead of discarding evidence on reopen.
         guard try self.rows(result) == Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) }) else {
             throw VocabularyError.invalidArchive
         }
         return result
+    }
+
+    /// The old notebook listed only its saved senses and selected examples. Preserve that exact
+    /// visible graph during the one-time cutover. The external SQLite backup retains the rest.
+    private static func migrateDevCorpus(
+        _ original: VocabularyDocument, records: [VocabularySenseStorageRecord]
+    ) throws -> VocabularyDocument {
+        let metadata = Dictionary(grouping: records, by: \.senseID)
+        let senses = Set(original.catalog.flatMap(\.senses).map(\.id))
+        let claims = Dictionary(grouping: original.interpretations, by: \.id)
+        var selected = Set<UUID>()
+        for (sense, values) in metadata {
+            guard senses.contains(sense), values.count == 1, let record = values.first else {
+                throw VocabularyError.invalidArchive
+            }
+            for id in record.interpretationIDs {
+                guard selected.insert(id).inserted, let values = claims[id], values.count == 1,
+                      let claim = values.first, claim.senseID == sense, claim.status == .accepted else {
+                    throw VocabularyError.invalidArchive
+                }
+            }
+        }
+        var next = original
+        next.catalog = original.catalog.compactMap { original in
+            var entry = original
+            entry.senses = original.senses.compactMap { original in
+                guard let record = metadata[original.id]?.first else { return nil }
+                var sense = original
+                record.apply(to: &sense)
+                return sense
+            }
+            return entry.senses.isEmpty ? nil : entry
+        }
+        let visibleOccurrences = Set(original.interpretations.filter { selected.contains($0.id) }.map(\.occurrenceID))
+        next.interpretations = original.interpretations.compactMap { original in
+            if original.status == .accepted { return selected.contains(original.id) ? original : nil }
+            guard visibleOccurrences.contains(original.occurrenceID) else { return nil }
+            var claim = original
+            if let sense = claim.senseID, metadata[sense] == nil { claim.senseID = nil }
+            return claim
+        }
+        next.occurrences.removeAll { !visibleOccurrences.contains($0.id) }
+        let sourceIDs = Set(next.occurrences.map(\.sourceID))
+        next.sources.removeAll { !sourceIDs.contains($0.id) }
+        let visible = next.entries
+        VocabularySemanticPolicy.reconcile(&next.semantics, previous: original, entries: visible)
+        try VocabularyDocumentValidation.validate(next)
+        return next
     }
 
     private struct Graph {
@@ -147,7 +194,7 @@ nonisolated enum VocabularyDatabaseProjection {
                 guard case let .explanation(value) = row.payload else { throw VocabularyError.invalidArchive }; return value
             }
         }
-        func collection(_ row: Row) throws -> VocabularyCollectionItem {
+        func collection(_ row: Row) throws -> VocabularySenseStorageRecord {
             guard case var .collection(value) = row.payload else { throw VocabularyError.invalidArchive }
             value.interpretationIDs = try children(.collectionInterpretations, parent: row.id).map { row in
                 guard case let .evidence(id) = row.payload else { throw VocabularyError.invalidArchive }; return id

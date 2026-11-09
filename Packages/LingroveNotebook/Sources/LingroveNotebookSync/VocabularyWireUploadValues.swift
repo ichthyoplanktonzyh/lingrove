@@ -171,16 +171,15 @@ public nonisolated struct VocabularyWireGroupReceipt: Codable, Equatable, Sendab
 /// server owns final validation; this small policy only distinguishes append
 /// intent from a deliberate replacement/removal in a native request.
 nonisolated enum VocabularyWireMutationPolicy {
-    /// Only fixed-owner personal relationships may be re-adopted. Their exact
+    /// Only fixed-owner auxiliary records may be re-created. Their exact
     /// tombstone version is sent; content/evidence deletions remain final.
     static func canRestore(_ kind: VocabularyWireEntityKind) -> Bool {
-        [.collection, .selectedInterpretation, .mappingEvidence, .categoryOverride, .reviewDraft].contains(kind)
+        [.mappingEvidence, .categoryOverride, .reviewDraft].contains(kind)
     }
 
     static func isAdditive(_ kind: VocabularyWireEntityKind, _ field: String) -> Bool {
         switch kind {
-        case .sense: ["mergedFrom", "standaloneMeanings", "alternateMeanings"].contains(field)
-        case .collection: field == "tags"
+        case .sense: ["mergedFrom", "standaloneMeanings", "alternateMeanings", "tags"].contains(field)
         case .interpretation: field == "translationVariants"
         case .usagePattern: field == "collocations"
         case .category: ["examples", "references", "localizations"].contains(field)

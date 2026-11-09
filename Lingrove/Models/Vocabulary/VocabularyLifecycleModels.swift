@@ -9,4 +9,3 @@ typealias VocabularyInterpretation = LingroveNotebook.VocabularyInterpretation
 /// A local user's relationship to one sense owns learning state and selected interpretations.
 /// Removing this value never deletes linguistic knowledge or evidence. It has the sense's UUID
 /// as its key because a local notebook has exactly one personal collection, not multiple users.
-typealias VocabularyCollectionItem = LingroveNotebook.VocabularyCollectionItem

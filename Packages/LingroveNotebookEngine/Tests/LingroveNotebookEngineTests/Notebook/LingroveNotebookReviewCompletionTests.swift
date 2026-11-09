@@ -83,7 +83,11 @@ struct LingroveNotebookReviewCompletionTests {
         group = try #require(try f.db.loadLingroveNotebookReviewSnapshot(scope: saved).groups[selection.senseID])
         _ = try f.db.setLingroveNotebookReviewStatus(.withdrawn, enrollments: group.enrollments)
         var uncollected = saved.document
-        for index in uncollected.collections.indices { uncollected.collections[index].isSavedWithoutContext = false }
+        for entry in uncollected.catalog.indices {
+            for sense in uncollected.catalog[entry].senses.indices {
+                uncollected.catalog[entry].senses[sense].isSavedWithoutContext = false
+            }
+        }
         saved = try f.db.saveLingroveNotebook(uncollected, basedOn: saved, restoringBackup: true)
         _ = try f.db.enrollLingroveNotebookSense(try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection))
         group = try #require(try f.db.loadLingroveNotebookReviewSnapshot(scope: saved).groups[selection.senseID])

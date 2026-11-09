@@ -18,7 +18,7 @@ nonisolated enum BuiltInReviewOverviewState: Equatable {
         }
         if groups.contains(where: { $0.status == .paused }) { self = .paused; return }
         if !groups.isEmpty { self = .withdrawn; return }
-        self = content.scope.document.collectedEntries.isEmpty ? .noCorpus : .noSelection
+        self = content.scope.document.entries.isEmpty ? .noCorpus : .noSelection
     }
 
     var titleKey: String {

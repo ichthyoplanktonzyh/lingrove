@@ -70,15 +70,15 @@ struct VocabularyExplanationTests {
         _ = try await archive.save(first); _ = try await archive.save(second)
         _ = try await archive.saveExplanation(record(first)); _ = try await archive.saveExplanation(record(second))
         let removed = try await archive.remove(first)
-        #expect(removed.document.collectedEntries[0].explanations?.map(\.input.context) == [second.example!.text])
+        #expect(removed.document.entries[0].explanations?.map(\.input.context) == [second.example!.text])
         _ = try await archive.saveExplanation(record(first))
-        let baseline = try #require(try await archive.load().document.collectedEntries.first)
+        let baseline = try #require(try await archive.load().document.entries.first)
         var edited = baseline
         edited.senses[0].examples[0].text = "The user changed this example."; edited.senses[0].examples[0].ranges = []
         let updated = try await archive.update(edited, basedOn: baseline)
-        #expect(updated.document.collectedEntries[0].explanations == nil)
+        #expect(updated.document.entries[0].explanations == nil)
         #expect(!LearningExplanationPolicy.isValid(LearningExplanationPolicy.input(
-            LearningExplanationPolicy.capture(updated.document.collectedEntries[0], example: edited.senses[0].examples[0]))))
+            LearningExplanationPolicy.capture(updated.document.entries[0], example: edited.senses[0].examples[0]))))
     }
 
     @Test func floatingSessionLoadsSavedAnnotationBeforeModelConfiguration() async throws {

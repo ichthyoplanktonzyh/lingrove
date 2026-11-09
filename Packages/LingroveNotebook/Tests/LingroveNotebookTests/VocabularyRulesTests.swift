@@ -99,7 +99,7 @@ struct VocabularyRulesTests {
         )
 
         let evidenceOnly = VocabularyDocument(
-            catalog: [], sources: [source], occurrences: [occurrence], interpretations: [], collections: []
+            catalog: [], sources: [source], occurrences: [occurrence], interpretations: []
         )
         try VocabularyLifecyclePolicy.validate(evidenceOnly)
 
@@ -109,7 +109,7 @@ struct VocabularyRulesTests {
         )
         let claimWithoutCollection = VocabularyDocument(
             catalog: [], sources: [source], occurrences: [occurrence],
-            interpretations: [uncollectedClaim], collections: []
+            interpretations: [uncollectedClaim]
         )
         try VocabularyLifecyclePolicy.validate(claimWithoutCollection)
 

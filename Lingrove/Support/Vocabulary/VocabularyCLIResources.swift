@@ -3,7 +3,7 @@ import Foundation
 
 /// Resource access is deliberately a pure planner. External agents decide how to organize
 /// material; this boundary enforces IDs, immutable evidence, typed fields and explicit links.
-/// Catalog writes never create personal collection membership as an incidental side effect.
+/// Typed entry and sense writes go straight into the same corpus the app browses.
 nonisolated enum VocabularyCLIResources {
     // One branch per typed resource keeps dispatch exhaustive without dynamic SQL or reflection.
     // swiftlint:disable:next cyclomatic_complexity
@@ -27,7 +27,6 @@ nonisolated enum VocabularyCLIResources {
         case "sources": return try document.sources.map { try filtered($0, resource: resource) }
         case "occurrences": return try document.occurrences.map { try filtered($0, resource: resource) }
         case "interpretations": return try document.interpretations.map { try filtered($0, resource: resource) }
-        case "collections": return try document.collections.map { try filtered($0, resource: resource) }
         case "nodes": return try document.semantics.nodes.map { try filtered($0, resource: resource) }
         case "patterns": return try document.semantics.patterns.map { try filtered($0, resource: resource) }
         case "mappings": return try document.semantics.mappings.map { try filtered($0, resource: resource) }
@@ -46,7 +45,6 @@ nonisolated enum VocabularyCLIResources {
     }
 
     private static func identityField(_ resource: String) -> String {
-        if resource == "collections" { return "senseID" }
         return resource == "categoryOverrides" ? "categoryID" : "id"
     }
 
@@ -107,9 +105,6 @@ nonisolated enum VocabularyCLIResources {
             upsert(try updated(input, values: document.interpretations, id: id,
                 fallback: VocabularyInterpretation(id: id, occurrenceID: id, meaningOrigin: .ai, provenance: adopted, createdAt: now)),
                 in: &document.interpretations)
-        case "collections":
-            upsert(try updated(input, values: document.collections, id: id,
-                fallback: VocabularyCollectionItem(senseID: id, savedAt: now)), in: &document.collections)
         case "nodes":
             upsert(try updated(input, values: document.semantics.nodes, id: id,
                 fallback: VocabularyMeaningNode(id: id, labels: [], provenance: adopted, createdAt: now, updatedAt: now)),
@@ -178,7 +173,6 @@ nonisolated enum VocabularyCLIResources {
         case "sources": document.sources.removeAll { $0.id == input.id }
         case "occurrences": document.occurrences.removeAll { $0.id == input.id }
         case "interpretations": document.interpretations.removeAll { $0.id == input.id }
-        case "collections": document.collections.removeAll { $0.id == input.id }
         case "nodes": document.semantics.nodes.removeAll { $0.id == input.id }
         case "patterns": document.semantics.patterns.removeAll { $0.id == input.id }
         case "mappings": document.semantics.mappings.removeAll { $0.id == input.id }

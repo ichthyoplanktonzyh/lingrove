@@ -98,8 +98,6 @@ nonisolated struct VocabularyCLIPlan {
         } else {
             target = try existingTarget(for: change)
         }
-        VocabularyNotebookProjection.collect(senseID: document.entries[target.entry].senses[target.sense].id,
-            interpretationID: nil, in: &document, now: context.now)
         var sense = document.entries[target.entry].senses[target.sense]
         if let update = change.update { try Self.applyUpdate(update, to: &sense, revision: revision) }
         let examples = change.add?.examples ?? change.append?.examples ?? []
@@ -112,10 +110,6 @@ nonisolated struct VocabularyCLIPlan {
         sense.updatedAt = context.now
         document.entries[target.entry].senses[target.sense] = sense
         document.entries[target.entry].updatedAt = context.now
-        for id in usageIDs {
-            VocabularyNotebookProjection.collect(senseID: sense.id, interpretationID: id, in: &document, now: context.now)
-        }
-        VocabularyNotebookProjection.collect(senseID: sense.id, interpretationID: nil, in: &document, now: context.now)
         outcomes.append(.object([
             "operation": .integer(Int64(context.index)), "entryID": .string(document.entries[target.entry].id.uuidString),
             "senseID": .string(sense.id.uuidString), "createdEntry": .bool(document.entries.count > entryCount),

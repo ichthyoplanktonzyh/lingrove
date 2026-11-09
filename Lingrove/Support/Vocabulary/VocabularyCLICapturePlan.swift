@@ -150,12 +150,12 @@ nonisolated struct VocabularyCLICapturePlan {
                 meaningOrigin: .ai, createdAt: now, updatedAt: now, createdWithoutContext: true))
         }
         let usageIDs = try addExamples(input.examples ?? [], entry: document.catalog[entry], senseID: senseID, path: path)
-        let collectionIndex = document.collections.firstIndex { $0.senseID == senseID }
-        var collection = collectionIndex.map { document.collections[$0] } ?? .init(senseID: senseID, savedAt: now)
-        if let note = input.note { collection.note = note }
-        collection.tags = try VocabularyCLIPlan.tags(collection.tags + (input.tags ?? []))
-        for usageID in usageIDs where !collection.interpretationIDs.contains(usageID) { collection.interpretationIDs.append(usageID) }
-        if let collectionIndex { document.collections[collectionIndex] = collection } else { document.collections.append(collection) }
+        guard let sense = document.catalog[entry].senses.firstIndex(where: { $0.id == senseID }) else {
+            throw VocabularyError.invalidArchive
+        }
+        if let note = input.note { document.catalog[entry].senses[sense].note = note }
+        document.catalog[entry].senses[sense].tags = try VocabularyCLIPlan.tags(
+            document.catalog[entry].senses[sense].tags + (input.tags ?? []))
         var associations: [CLIJSON] = []
         for (index, association) in (input.associations ?? []).enumerated() {
             let mappingID = try addAssociation(association, senseID: senseID, evidence: usageIDs, path: path + ".mapping.\(index)")

@@ -113,18 +113,16 @@ public nonisolated enum VocabularyDocumentValidation {
     }
 
     public static func imageReferences(_ document: VocabularyDocument) -> [VocabularyImageReference] {
-        let personal = document.collections.flatMap { collection in
-            VocabularyContentPolicy.images(collection.content ?? []) + collectionLayouts(collection).flatMap {
+        let personal = document.catalog.flatMap(\.senses).flatMap { sense in
+            VocabularyContentPolicy.images(sense.content ?? []) + senseLayouts(sense).flatMap {
                 VocabularyContentPolicy.images($0.customContent)
             }
         }
         return personal + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
     }
 
-    /// Media belongs to collection records, not a second joined copy of every lexical entry.
-    /// Retained plans still participate, including hidden layouts and independent card drafts.
-    private static func collectionLayouts(_ collection: VocabularyCollectionItem) -> [ReviewLayout] {
-        ([collection.review].compactMap { $0 } + (collection.reviewCards ?? [])).flatMap {
+    private static func senseLayouts(_ sense: VocabularySense) -> [ReviewLayout] {
+        ([sense.review].compactMap { $0 } + (sense.reviewCards ?? [])).flatMap {
             ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
         }
     }
@@ -132,9 +130,9 @@ public nonisolated enum VocabularyDocumentValidation {
     /// Image staging precedes whole-document preparation. Checking only media here preserves
     /// legitimate edits that still carry stale explanation snapshots until prepare prunes them.
     public static func validateMediaContent(_ next: VocabularyDocument) throws {
-        for collection in next.collections {
-            try VocabularyContentPolicy.validate(collection.content ?? [])
-            for layout in collectionLayouts(collection) { try VocabularyReviewValidation.validate(layout) }
+        for sense in next.catalog.flatMap(\.senses) {
+            try VocabularyContentPolicy.validate(sense.content ?? [])
+            for layout in senseLayouts(sense) { try VocabularyReviewValidation.validate(layout) }
         }
         try VocabularyReviewValidation.validateTemplates(next.reviewTemplates ?? [])
     }

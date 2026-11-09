@@ -29,8 +29,8 @@ struct VocabularyWireWindowInteropBridgeTests {
         let privateState = try VocabularyWireProjectionCodec.project(original, notebookID: scope.notebookID).privateState
         let bootstrapEnvelope = try envelope("LINGROVE_NATIVE_WINDOW_BOOTSTRAP")
         let bootstrap = try verify(bootstrapEnvelope)
-        #expect(bootstrap.manifest.recordCount == 41)
-        #expect(Set(bootstrap.records.map(\.entity.entityType)).count == 29)
+        #expect(bootstrap.manifest.recordCount == 38)
+        #expect(Set(bootstrap.records.map(\.entity.entityType)).count == 27)
         let initial = try VocabularyWireServerShadow.empty(scope: scope).applying(bootstrap, now: Date())
         #expect(initial.sequence.rawValue == "1")
         let initialMaterial = try initial.materialize(preserving: privateState)
@@ -46,13 +46,13 @@ struct VocabularyWireWindowInteropBridgeTests {
             return first & 0xC0 == 0x80
         })
         let delta = try verify(deltaEnvelope)
-        #expect(delta.records.contains { $0.deleted && $0.entity.entityType == .selectedInterpretation && $0.entity.fields.isEmpty })
+        #expect(delta.records.contains { $0.deleted && $0.entity.entityType == .contentBlock && $0.entity.fields.isEmpty })
         let updated = try initial.applying(delta, now: Date())
         #expect(updated.sequence.rawValue == "4")
         var expected = original
-        let collection = try #require(expected.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
-        expected.collections[collection].note = "From native window DB fixture"
-        expected.collections[collection].interpretationIDs = []
+        let collection = try #require(expected.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
+        expected.savedSenses[collection].note = "From native window DB fixture"
+        expected.savedSenses[collection].content = []
         let pattern = try #require(expected.semantics.patterns.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
         expected.semantics.patterns[pattern].collocations += (0..<100).map { String(format: "%03d", $0) + String(repeating: "猫", count: 10_900) }
         let material = try updated.materialize(preserving: privateState)

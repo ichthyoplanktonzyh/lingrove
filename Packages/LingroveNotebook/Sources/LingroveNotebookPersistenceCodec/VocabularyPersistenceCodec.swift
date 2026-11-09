@@ -93,4 +93,10 @@ public nonisolated enum VocabularyPersistenceCodec {
     public static func decode(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
         try VocabularyDatabaseProjection.document(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
     }
+
+    /// Used by the explicit Dev migration command. Ordinary database reads require v9 rows.
+    public static func migrateDevCorpus(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
+        try VocabularyDatabaseProjection.document(encoded.rows.map(\.record),
+            hasTemplates: encoded.reviewTemplatesPresent, migratingDevCorpus: true)
+    }
 }

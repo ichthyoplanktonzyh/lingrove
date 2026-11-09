@@ -29,7 +29,7 @@ struct MacWave3OnscreenAcceptanceTests {
             await store.save(.init(expression: "harbor", dictionaryForm: "harbor", language: .english,
                 kind: .word, meaning: "a sheltered place for boats", meaningLanguage: .english))
             let saved = try fixture.repository.snapshot()
-            let entry = try #require(saved.document.collectedEntries.first)
+            let entry = try #require(saved.document.entries.first)
             let selection = VocabularySelection(entryID: entry.id, senseID: entry.senses[0].id)
             #expect(try fixture.repository.engine.loadLingroveNotebookReviewEnrollments(workspaceId: saved.workspaceId).isEmpty)
             let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)

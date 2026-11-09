@@ -65,9 +65,11 @@ struct VocabularyFavoriteButton: View {
                     menu.wrappedValue = false
                     store.show(capture)
                 }
-                Button(String(localized: "Remove this saved usage", table: "Vocabulary")) {
-                    menu.wrappedValue = false
-                    Task { [scope = store.operationScope] in await store.remove(capture, scope: scope); failure = store.errorMessage }
+                if capture.example != nil {
+                    Button(String(localized: "Remove this saved usage", table: "Vocabulary")) {
+                        menu.wrappedValue = false
+                        Task { [scope = store.operationScope] in await store.remove(capture, scope: scope); failure = store.errorMessage }
+                    }
                 }
             }.buttonStyle(.plain).padding(14)
         }

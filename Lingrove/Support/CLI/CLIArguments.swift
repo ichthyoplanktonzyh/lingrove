@@ -173,13 +173,13 @@ nonisolated struct CLIArguments {
     Images use explicit local paths, relative to the input file (stdin: current directory).
     Writes are atomic. Retry an uncertain write with the SAME idempotencyKey and content.
     New meanings create distinct senses; append uses exact IDs; update needs expectedRevision.
-    Resources: entries, senses, sources, occurrences, interpretations, collections,
+    Resources: entries, senses, sources, occurrences, interpretations,
       nodes, patterns, mappings, relations, cues, cueTargets,
       frameworks, categories, categoryParents, categoryMemberships, categoryOverrides.
     --summary returns compact category/node candidates; data get returns their full guidance.
     --query uses substring matching; whitespace-separated terms must all match, without ranking.
     Resource put/delete use batch version 2 and expectedRevision. Put merges fields;
-    arrays replace, null clears optional fields. UUIDs are caller supplied (collections: senseID).
+    arrays replace, null clears optional fields. UUIDs are caller supplied.
     --status filters interpretations: candidate, accepted, rejected. --related matches UUID fields.
     Resource timestamps are Unix seconds. Catalog/graph writes do not implicitly collect material.
     Successful requests and errors use JSON on stdout. Exit codes: 0 success, 2 input,

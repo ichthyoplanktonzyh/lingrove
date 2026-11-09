@@ -44,7 +44,7 @@ struct VocabularyUnknownLanguageTests {
         _ = try await archive.remove(unknown)
         let afterRemoval = try await VocabularyArchive(url: url).load()
         #expect(afterRemoval.document.schemaVersion == VocabularyDocument.currentVersion)
-        #expect(afterRemoval.document.collectedEntries.count == 1 && afterRemoval.document.collectedEntries[0].language == .english)
+        #expect(afterRemoval.document.entries.count == 1 && afterRemoval.document.entries[0].language == .english)
     }
 
     @Test func currentFormatRetainsKnownLanguagesAndRejectsOldPayloads() async throws {

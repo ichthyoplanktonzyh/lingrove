@@ -2,15 +2,13 @@ import Foundation
 import Testing
 import LingroveNotebook
 
-/// These fixtures were encoded by the pre-extraction declarations frozen from `HEAD` under
-/// `build/notebook-domain-baseline`, not by the package types under test. The round-trip test
-/// therefore compares the new public module against an independent historical encoder.
+/// A fixed corpus graph pins the portable shape independently of SQLite and sync.
 struct VocabularyDocumentCodableCompatibilityTests {
-    @Test func frozenVersionEightDocumentRetainsWireShapeAndRelationships() throws {
-        let fixture = try Self.fixture("document-v8.json")
+    @Test func versionNineDocumentRetainsSavedSenseFieldsAndEvidence() throws {
+        let fixture = try Self.fixture("document-v9.json")
         let document = try JSONDecoder().decode(VocabularyDocument.self, from: fixture)
 
-        #expect(document.schemaVersion == 8)
+        #expect(document.schemaVersion == 9)
         #expect(document.catalog.count == 1)
         #expect(document.catalog[0].expression == "bank")
         #expect(document.catalog[0].senses.map(\.meaning) == [
@@ -43,23 +41,17 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(explanation.input.occurrenceIdentity == "occurrence-bank-finance")
         #expect(explanation.result.meaning == "お金を預けたり借りたりする金融機関。")
 
-        let financeCollection = try #require(document.collections.first {
-            $0.senseID.uuidString == "00000000-0000-4000-8000-000000000101"
-        })
-        let riverCollection = try #require(document.collections.first {
-            $0.senseID.uuidString == "00000000-0000-4000-8000-000000000102"
-        })
-        #expect(financeCollection.interpretationIDs.map(\.uuidString) == [
-            "00000000-0000-4000-8000-000000000301"
-        ])
-        #expect(!financeCollection.isSavedWithoutContext)
-        #expect(riverCollection.interpretationIDs.isEmpty)
-        #expect(riverCollection.isSavedWithoutContext)
-        #expect(riverCollection.content?.isEmpty == true)
-        #expect(riverCollection.review == nil)
-        #expect(riverCollection.reviewCards?.isEmpty == true)
+        let finance = document.entries[0].senses[0]
+        let river = document.entries[0].senses[1]
+        #expect(finance.examples.map(\.id.uuidString) == ["00000000-0000-4000-8000-000000000301"])
+        #expect(!finance.isSavedWithoutContext)
+        #expect(river.examples.isEmpty)
+        #expect(river.isSavedWithoutContext)
+        #expect(river.content?.isEmpty == true)
+        #expect(river.review == nil)
+        #expect(river.reviewCards?.isEmpty == true)
 
-        let richContent = try #require(financeCollection.content)
+        let richContent = try #require(finance.content)
         #expect(richContent.count == 2)
         guard case let .text(textContent) = richContent[0].content else {
             Issue.record("The first rich-content block should keep its text discriminator.")
@@ -74,7 +66,7 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(imageReference.digest == "0123456789abcdef")
         #expect(caption == "Downtown branch")
 
-        let review = try #require(financeCollection.review)
+        let review = try #require(finance.review)
         #expect(review.plan.audioKinds == [.expression])
         #expect(review.plan.audioReceipts?[.expression]?.filename == "bank-expression-fixture.mp3")
         #expect(review.preservedPlans.count == 1)
@@ -115,33 +107,11 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(try Self.canonicalJSON(currentJSON) == Self.canonicalJSON(historicalJSON))
     }
 
-    @Test func versionSevenAddsOnlyAnEmptyClassificationDirectoryAndPreservesAbsentOptionals() throws {
-        let fixture = try Self.fixture("document-v7-missing-classification.json")
-        let historicalJSON = try Self.jsonObject(fixture)
-        #expect(historicalJSON["schemaVersion"] as? Int == 7)
-        #expect(historicalJSON["classification"] == nil)
-        #expect(historicalJSON["reviewTemplates"] == nil)
-
-        let document = try JSONDecoder().decode(VocabularyDocument.self, from: fixture)
-        #expect(document.schemaVersion == VocabularyDocument.currentVersion)
-        #expect(document.classification.frameworks.isEmpty)
-        #expect(document.classification.categories.isEmpty)
-        #expect(document.classification.parents.isEmpty)
-        #expect(document.classification.memberships.isEmpty)
-        #expect(document.classification.overrides.isEmpty)
-        #expect(document.reviewTemplates == nil)
-        #expect(document.catalog[0].senses.map(\.id.uuidString) == [
-            "00000000-0000-4000-8000-000000000101",
-            "00000000-0000-4000-8000-000000000102"
-        ])
-        #expect(document.occurrences.count == 2)
-        #expect(document.interpretations.map(\.status) == [.accepted, .candidate, .rejected])
-
-        let upgraded = try Self.jsonObject(JSONEncoder().encode(document))
-        #expect(upgraded["schemaVersion"] as? Int == 8)
-        #expect(upgraded["reviewTemplates"] == nil)
-        let classification = try #require(upgraded["classification"] as? [String: Any])
-        #expect((classification["categories"] as? [Any])?.isEmpty == true)
+    @Test func oldPortableDocumentsRequireExplicitMigration() throws {
+        let fixture = try Self.fixture("document-v8.json")
+        #expect(throws: VocabularyError.unsupportedVersion) {
+            try JSONDecoder().decode(VocabularyDocument.self, from: fixture)
+        }
     }
 
     @Test func categoryGuidanceFieldsDefaultWithoutChangingOptionalOrEmptyMeaning() throws {
@@ -185,33 +155,14 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(overrides[0]["examples"] == nil)
     }
 
-    @Test func removingACollectionDoesNotDeleteCatalogOrUncollectedEvidence() throws {
-        var document = try JSONDecoder().decode(VocabularyDocument.self, from: Self.fixture("document-v8.json"))
-        let sourceIDs = document.sources.map(\.id)
-        let occurrenceIDs = document.occurrences.map(\.id)
-        let interpretationIDs = document.interpretations.map(\.id)
-
-        let allEntries = VocabularyNotebookProjection.entries(document, collectedOnly: false)
-        #expect(allEntries[0].senses.map(\.note) == ["Compare with the river sense.", ""])
-        #expect(allEntries[0].senses[0].examples.map(\.id.uuidString) == [
+    @Test func acceptedInterpretationsAreVisibleWithoutAnExtraSave() throws {
+        let document = try JSONDecoder().decode(VocabularyDocument.self, from: Self.fixture("document-v9.json"))
+        let entries = document.entries
+        #expect(entries[0].senses.map(\.note) == ["Compare with the river sense.", ""])
+        #expect(entries[0].senses[0].examples.map(\.id.uuidString) == [
             "00000000-0000-4000-8000-000000000301"
         ])
-        #expect(allEntries[0].senses[1].examples.isEmpty)
-
-        document.collections.removeAll { $0.senseID.uuidString == "00000000-0000-4000-8000-000000000102" }
-        let collected = VocabularyNotebookProjection.entries(document, collectedOnly: true)
-        #expect(collected.count == 1)
-        #expect(collected[0].senses.map(\.id.uuidString) == ["00000000-0000-4000-8000-000000000101"])
-
-        #expect(document.catalog[0].senses.map(\.id.uuidString) == [
-            "00000000-0000-4000-8000-000000000101",
-            "00000000-0000-4000-8000-000000000102"
-        ])
-        #expect(document.sources.map(\.id) == sourceIDs)
-        #expect(document.occurrences.map(\.id) == occurrenceIDs)
-        #expect(document.interpretations.map(\.id) == interpretationIDs)
-        #expect(document.interpretations.first(where: { $0.status == .candidate })?.senseID == nil)
-        #expect(document.interpretations.first(where: { $0.status == .rejected }) != nil)
+        #expect(entries[0].senses[1].examples.isEmpty)
     }
 
     @Test func publicConstructorsKeepDefaultsUUIDIdentityAndLanguageRawValues() throws {
@@ -245,7 +196,7 @@ struct VocabularyDocumentCodableCompatibilityTests {
 
         let document = VocabularyDocument()
         #expect(document.schemaVersion == VocabularyDocument.currentVersion)
-        #expect(document.catalog.isEmpty && document.collections.isEmpty)
+        #expect(document.catalog.isEmpty)
         #expect(document.reviewTemplates == nil)
         #expect(VocabularyBackup(document: document, images: [:]).version == 1)
         #expect(LearningLanguage.allCases.map(\.rawValue) == [
@@ -254,7 +205,7 @@ struct VocabularyDocumentCodableCompatibilityTests {
     }
 
     @Test func snapshotBackupAndUnsupportedVersionUseTheSharedPublicContracts() throws {
-        let document = try JSONDecoder().decode(VocabularyDocument.self, from: Self.fixture("document-v8.json"))
+        let document = try JSONDecoder().decode(VocabularyDocument.self, from: Self.fixture("document-v9.json"))
         let snapshot = VocabularySnapshot(revision: 12, document: document)
         #expect(snapshot.revision == 12)
         #expect(snapshot.document == document)
@@ -266,8 +217,8 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(decodedBackup.document == document)
         #expect(decodedBackup.images["image.png"] == Data([0x01, 0x02, 0xFF]))
 
-        var unsupported = try Self.jsonObject(Self.fixture("document-v8.json"))
-        unsupported["schemaVersion"] = 9
+        var unsupported = try Self.jsonObject(Self.fixture("document-v9.json"))
+        unsupported["schemaVersion"] = 10
         let unsupportedData = try JSONSerialization.data(withJSONObject: unsupported)
         do {
             _ = try JSONDecoder().decode(VocabularyDocument.self, from: unsupportedData)

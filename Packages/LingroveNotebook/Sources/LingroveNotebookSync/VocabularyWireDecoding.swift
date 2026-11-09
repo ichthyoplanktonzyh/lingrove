@@ -59,7 +59,7 @@ nonisolated struct VocabularyWireDecoder {
         guard roots.count == 1, let root = roots.first else { throw VocabularyWireError.incompleteSnapshot }
         guard root.entityID == id(notebookID) else { throw VocabularyWireError.notebookMismatch }
         var settings = try fields(root)
-        guard try settings.integer("documentVersion") == 8 else { throw VocabularyWireError.unsupportedVersion }
+        guard try settings.integer("documentVersion") == VocabularyDocument.currentVersion else { throw VocabularyWireError.unsupportedVersion }
         let hasTemplates = try settings.bool("reviewTemplatesPresent"); try settings.finish()
         var entries: [VocabularyEntry] = []
         for row in rows(.entry) {
@@ -94,8 +94,6 @@ nonisolated struct VocabularyWireDecoder {
             try f.finish(); value.explanations = try explanations(.interpretationExplanation, owner: claimID, field: "interpretationId")
             interpretations.append(value)
         }
-        var collections: [VocabularyCollectionItem] = []
-        for row in rows(.collection) { collections.append(try collection(row)) }
         var templates: [ReviewLayoutTemplate] = []
         for row in rows(.reviewTemplate) {
             var f = try fields(row); let value = ReviewLayoutTemplate(id: try uuid(row), name: try f.string("name"), layout: try R.layout(f.take("layout")))
@@ -104,8 +102,8 @@ nonisolated struct VocabularyWireDecoder {
         guard hasTemplates || templates.isEmpty else { throw VocabularyWireError.invalidRecord }
         let semantics = try semantic(), classification = try classification()
         guard used == all else { throw VocabularyWireError.incompleteSnapshot }
-        return VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences, interpretations: interpretations,
-            collections: collections, reviewTemplates: hasTemplates ? templates : nil, semantics: semantics, classification: classification)
+        return VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
+            interpretations: interpretations, reviewTemplates: hasTemplates ? templates : nil, semantics: semantics, classification: classification)
     }
 
     private mutating func sense(_ row: E, entryID: UUID) throws -> VocabularySense {
@@ -115,29 +113,13 @@ nonisolated struct VocabularyWireDecoder {
             meaningOrigin: try f.raw("meaningOrigin", VocabularyMeaningOrigin.self), standaloneMeanings: try R.meanings(f.take("standaloneMeanings")),
             alternateMeanings: try R.meanings(f.take("alternateMeanings")), mergedFrom: try f.array("mergedFrom").map { try F.uuid(F.string($0)) },
             createdAt: try f.date("createdAt"), updatedAt: try f.date("updatedAt"), createdWithoutContext: try f.optional("createdWithoutContext", F.bool))
-        try f.finish(); value.explanations = try explanations(.senseExplanation, owner: senseID, field: "senseId"); return value
-    }
-    private mutating func explanations(_ kind: Kind, owner: UUID, field: String) throws -> [LearningExplanationRecord] {
-        var result: [LearningExplanationRecord] = []
-        for row in children(kind, field, owner) {
-            var f = try fields(row); guard try f.uuid(field) == owner else { throw VocabularyWireError.invalidRecord }
-            let explanationID = try f.uuid("explanationId"); try key(row, id(owner) + ":" + id(explanationID))
-            let input = try R.input(f.take("input")), language = try f.raw("language", LearningLanguage.self)
-            var body = try F(f.take("result")); let text = LearningExplanationResult(meaning: try body.string("meaning"), explanation: try body.string("explanation")); try body.finish()
-            let value = LearningExplanationRecord(id: explanationID, input: input, language: language, result: text, model: try f.string("model"), createdAt: try f.date("createdAt"))
-            try f.finish(); result.append(value)
-        }
-        return result
-    }
-    private mutating func collection(_ row: E) throws -> VocabularyCollectionItem {
-        let senseID = try uuid(row); var f = try fields(row)
-        let standalone = try f.bool("isSavedWithoutContext"), note = try f.string("note"), tags = try f.array("tags").map(F.string)
-        let contentPresent = try f.bool("contentPresent"), cardsPresent = try f.bool("reviewCardsPresent"), saved = try f.date("savedAt"); try f.finish()
-        var selected: [UUID] = []
-        for edge in children(.selectedInterpretation, "senseId", senseID) {
-            var body = try fields(edge); guard try body.uuid("senseId") == senseID else { throw VocabularyWireError.invalidRecord }
-            let claim = try body.uuid("interpretationId"); try key(edge, id(senseID) + ":" + id(claim)); try body.finish(); selected.append(claim)
-        }
+        value.isSavedWithoutContext = try f.bool("isSavedWithoutContext")
+        value.note = try f.string("note")
+        value.tags = try f.array("tags").map(F.string)
+        value.savedAt = try f.optional("savedAt", F.date)
+        let contentPresent = try f.bool("contentPresent"), cardsPresent = try f.bool("reviewCardsPresent")
+        try f.finish()
+        value.explanations = try explanations(.senseExplanation, owner: senseID, field: "senseId")
         var blocks: [VocabularyContentBlock] = []
         for block in children(.contentBlock, "senseId", senseID) {
             var body = try fields(block); guard try body.uuid("senseId") == senseID else { throw VocabularyWireError.invalidRecord }
@@ -155,10 +137,24 @@ nonisolated struct VocabularyWireDecoder {
             } else { throw VocabularyWireError.invalidRecord }
         }
         guard contentPresent || blocks.isEmpty, cardsPresent || cards.isEmpty else { throw VocabularyWireError.invalidRecord }
-        return .init(senseID: senseID, interpretationIDs: selected, isSavedWithoutContext: standalone, note: note, tags: tags,
-                     content: contentPresent ? blocks : nil, review: legacy, reviewCards: cardsPresent ? cards : nil, savedAt: saved)
+        value.content = contentPresent ? blocks : nil
+        value.review = legacy
+        value.reviewCards = cardsPresent ? cards : nil
+        return value
     }
 
+    private mutating func explanations(_ kind: Kind, owner: UUID, field: String) throws -> [LearningExplanationRecord] {
+        var result: [LearningExplanationRecord] = []
+        for row in children(kind, field, owner) {
+            var f = try fields(row); guard try f.uuid(field) == owner else { throw VocabularyWireError.invalidRecord }
+            let explanationID = try f.uuid("explanationId"); try key(row, id(owner) + ":" + id(explanationID))
+            let input = try R.input(f.take("input")), language = try f.raw("language", LearningLanguage.self)
+            var body = try F(f.take("result")); let text = LearningExplanationResult(meaning: try body.string("meaning"), explanation: try body.string("explanation")); try body.finish()
+            let value = LearningExplanationRecord(id: explanationID, input: input, language: language, result: text, model: try f.string("model"), createdAt: try f.date("createdAt"))
+            try f.finish(); result.append(value)
+        }
+        return result
+    }
     private mutating func semantic() throws -> VocabularySemanticIndex {
         var result = VocabularySemanticIndex()
         for row in rows(.meaningNode) {

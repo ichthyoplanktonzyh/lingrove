@@ -91,7 +91,7 @@ final class ExpressionAssistCandidateRow: NSButton {
                 assetName: isSaving ? nil : (isSaved ? "FavoriteFishFilled" : "FavoriteFishOutline"),
                 active: isSaved,
                 tooltip: isSaved
-                    ? String(localized: "Remove this saved usage", table: "Vocabulary")
+                    ? String(localized: "Show in vocabulary", table: "Vocabulary")
                     : String(localized: "Save to vocabulary", table: "Vocabulary"),
                 action: #selector(handleFavorite)
             )

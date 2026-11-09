@@ -86,7 +86,7 @@ nonisolated struct VocabularyWireEncoder {
     static func id(_ value: UUID) -> String { value.uuidString.lowercased() }
 
     mutating func encode(_ document: VocabularyDocument, notebookID: UUID) throws -> [VocabularyWireEntity] {
-        append(.notebookSettings, Self.id(notebookID), ["documentVersion": .number(8), "reviewTemplatesPresent": .bool(document.reviewTemplates != nil)])
+        append(.notebookSettings, Self.id(notebookID), ["documentVersion": .number(Double(VocabularyDocument.currentVersion)), "reviewTemplatesPresent": .bool(document.reviewTemplates != nil)])
         for (rank, entry) in document.catalog.enumerated() {
             append(.entry, Self.id(entry.id), rank: rank, ["expression": .string(entry.expression), "dictionaryForm": .string(entry.dictionaryForm),
                 "language": C.language(entry.language), "kind": .string(entry.kind.rawValue), "createdAt": .date(entry.createdAt), "updatedAt": .date(entry.updatedAt)])
@@ -95,7 +95,10 @@ nonisolated struct VocabularyWireEncoder {
                     "meaningLanguage": C.language(sense.meaningLanguage), "meaningOrigin": .string(sense.meaningOrigin.rawValue),
                     "standaloneMeanings": C.meanings(sense.standaloneMeanings), "alternateMeanings": C.meanings(sense.alternateMeanings),
                     "mergedFrom": .array(sense.mergedFrom.map(J.uuid)), "createdWithoutContext": .optional(sense.createdWithoutContext, J.bool),
-                    "createdAt": .date(sense.createdAt), "updatedAt": .date(sense.updatedAt)])
+                    "createdAt": .date(sense.createdAt), "updatedAt": .date(sense.updatedAt),
+                    "isSavedWithoutContext": .bool(sense.isSavedWithoutContext), "note": .string(sense.note),
+                    "tags": .array(sense.tags.map(J.string)), "savedAt": .optional(sense.savedAt, J.date),
+                    "contentPresent": .bool(sense.content != nil), "reviewCardsPresent": .bool(sense.reviewCards != nil)])
                 explanations(sense.explanations, kind: .senseExplanation, owner: sense.id, field: "senseId")
             }
         }
@@ -114,20 +117,13 @@ nonisolated struct VocabularyWireEncoder {
                 "provenance": C.provenance(claim.provenance), "createdAt": .date(claim.createdAt)])
             explanations(claim.explanations, kind: .interpretationExplanation, owner: claim.id, field: "interpretationId")
         }
-        for (rank, collection) in document.collections.enumerated() {
-            append(.collection, Self.id(collection.senseID), rank: rank, ["isSavedWithoutContext": .bool(collection.isSavedWithoutContext),
-                "note": .string(collection.note), "tags": .array(collection.tags.map(J.string)), "contentPresent": .bool(collection.content != nil),
-                "reviewCardsPresent": .bool(collection.reviewCards != nil), "savedAt": .date(collection.savedAt)])
-            for (rank, claim) in collection.interpretationIDs.enumerated() {
-                append(.selectedInterpretation, Self.id(collection.senseID) + ":" + Self.id(claim), rank: rank,
-                       ["senseId": .uuid(collection.senseID), "interpretationId": .uuid(claim)])
+        for sense in document.catalog.flatMap(\.senses) {
+            for (rank, block) in (sense.content ?? []).enumerated() {
+                append(.contentBlock, Self.id(block.id), rank: rank, ["senseId": .uuid(sense.id), "content": C.content(block.content)])
             }
-            for (rank, block) in (collection.content ?? []).enumerated() {
-                append(.contentBlock, Self.id(block.id), rank: rank, ["senseId": .uuid(collection.senseID), "content": C.content(block.content)])
-            }
-            if let review = collection.review { reviewDraft(review, senseID: collection.senseID, legacy: true, rank: 0) }
-            for (rank, review) in (collection.reviewCards ?? []).enumerated() {
-                reviewDraft(review, senseID: collection.senseID, legacy: false, rank: rank + (collection.review == nil ? 0 : 1))
+            if let review = sense.review { reviewDraft(review, senseID: sense.id, legacy: true, rank: 0) }
+            for (rank, review) in (sense.reviewCards ?? []).enumerated() {
+                reviewDraft(review, senseID: sense.id, legacy: false, rank: rank + (sense.review == nil ? 0 : 1))
             }
         }
         for (rank, template) in (document.reviewTemplates ?? []).enumerated() {

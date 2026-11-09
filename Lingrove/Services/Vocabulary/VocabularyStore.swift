@@ -41,7 +41,7 @@ final class VocabularyStore: ObservableObject {
     private var revision: UInt64 = 0
     private var savedKeys: Set<String> = []
     private var pendingCounts: [String: Int] = [:]
-    private var standaloneKeys: Set<String> = []
+    private var entryKeys: Set<String> = []
 
     /// Standalone fixtures retain the same public surface without discovering application data.
     init(archive: VocabularyArchive) {
@@ -173,8 +173,12 @@ final class VocabularyStore: ObservableObject {
     func load() async { loadIfNeeded(); await loadWork?.value }
 
     func contains(_ capture: VocabularyCapture) -> Bool {
+        if capture.example == nil {
+            guard let sense = capture.senseID else { return entryKeys.contains(VocabularyPolicy.entryKey(capture)) }
+            return entries.contains { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) &&
+                VocabularySensePolicy.index(sense, in: $0) != nil }
+        }
         if capture.senseID != nil { return VocabularyPolicy.contains(capture, in: entries) }
-        if capture.example == nil { return standaloneKeys.contains(VocabularyPolicy.captureKey(capture)) }
         return savedKeys.contains(VocabularyPolicy.captureKey(capture))
     }
     func isPending(_ capture: VocabularyCapture) -> Bool { pending.contains(VocabularyPolicy.captureKey(capture)) }
@@ -400,6 +404,9 @@ final class VocabularyStore: ObservableObject {
     func show(_ capture: VocabularyCapture) {
         let destination = explanationDestination(capture)
         let selection = destination.map { VocabularySelection(entryID: $0.entryID, senseID: $0.senseID) }
+            ?? entries.first { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }.flatMap { entry in
+                entry.senses.first.map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
+            }
         LingroveLogger.learning.debug("Vocabulary open requested", metadata: [
             "sense_found": .stringConvertible(selection != nil), "handler_available": .stringConvertible(openSelection != nil)
         ])
@@ -435,12 +442,10 @@ final class VocabularyStore: ObservableObject {
         }
         guard snapshot.revision >= revision else { return }
         if let scope = snapshot.scope { operationScope = scope }
-        entries = snapshot.document.collectedEntries
+        entries = snapshot.document.entries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
-        standaloneKeys = Set(entries.flatMap { entry in
-            entry.senses.filter(\.isSavedWithoutContext).map { _ in VocabularyPolicy.entryKey(entry) + ":standalone" }
-        })
+        entryKeys = Set(entries.filter { !$0.senses.isEmpty }.map(VocabularyPolicy.entryKey))
         savedKeys = Set(entries.flatMap { entry in
             entry.examples.map { VocabularyPolicy.entryKey(entry) + ":" + VocabularyPolicy.exampleKey($0) }
         })
@@ -471,7 +476,7 @@ final class VocabularyStore: ObservableObject {
         loadIdentity = UUID(); loadWork?.cancel(); loadWork = nil; reloadRequested = false
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
-        savedKeys = []; standaloneKeys = []; pending = []; pendingCounts = [:]
+        savedKeys = []; entryKeys = []; pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil
     }
 

@@ -96,8 +96,8 @@ nonisolated struct VocabularyArchiveTests {
         #expect(entry.examples[0].ranges != entry.examples[1].ranges)
         let fresh = VocabularyArchive(url: url)
         let removed = try await fresh.remove(first)
-        #expect(removed.document.collectedEntries[0].examples.count == 1)
-        #expect(VocabularyPolicy.contains(second, in: removed.document.collectedEntries))
+        #expect(removed.document.entries[0].examples.count == 1)
+        #expect(VocabularyPolicy.contains(second, in: removed.document.entries))
     }
 
     @Test @MainActor func notebookWorkflowPersistsEditsExportAndSelectiveRemoval() async throws {
@@ -132,7 +132,7 @@ nonisolated struct VocabularyArchiveTests {
         #expect(!store.contains(first) && store.contains(second))
         #expect(store.entries[0].senses[0].note == edited.senses[0].note && store.entries[0].senses[0].tags == edited.senses[0].tags)
         #expect(await store.remove(id: baseline.id))
-        #expect(try await VocabularyArchive(url: url).load().document.collectedEntries.isEmpty)
+        #expect(try await VocabularyArchive(url: url).load().document.entries.isEmpty)
     }
 
     @Test func savedItemSurvivesReopenWithStableIDsAndEditableContent() async throws {
@@ -169,9 +169,9 @@ nonisolated struct VocabularyArchiveTests {
         _ = try await archive.save(first)
         _ = try await archive.save(second)
         let snapshot = try await archive.remove(first)
-        #expect(snapshot.document.collectedEntries.count == 1)
-        #expect(snapshot.document.collectedEntries[0].examples.count == 1)
-        #expect(snapshot.document.collectedEntries[0].examples[0].text == second.example?.text)
+        #expect(snapshot.document.entries.count == 1)
+        #expect(snapshot.document.entries[0].examples.count == 1)
+        #expect(snapshot.document.entries[0].examples[0].text == second.example?.text)
     }
 
     @Test func corruptArchiveIsPreservedAndCannotBeOverwrittenBySave() async throws {
@@ -256,9 +256,9 @@ nonisolated struct VocabularyArchiveTests {
         _ = try await archive.save(withContext)
         _ = try await archive.save(standalone)
         let removed = try await archive.remove(standalone)
-        #expect(removed.document.collectedEntries.count == 1)
-        #expect(removed.document.collectedEntries[0].examples.count == 1)
-        #expect(!removed.document.collectedEntries[0].senses.contains { $0.isSavedWithoutContext })
+        #expect(removed.document.entries.count == 1)
+        #expect(removed.document.entries[0].examples.count == 1)
+        #expect(!removed.document.entries[0].senses.contains { $0.isSavedWithoutContext })
     }
 
     @Test func invalidArchiveRangesFailWithoutChangingTheFile() async throws {
@@ -299,8 +299,8 @@ nonisolated struct VocabularyArchiveTests {
         #expect(VocabularyPolicy.contains(chinese, in: result.document.entries))
         #expect(VocabularyPolicy.contains(spanish, in: result.document.entries))
         let removed = try await archive.remove(chinese)
-        #expect(!VocabularyPolicy.contains(chinese, in: removed.document.collectedEntries))
-        #expect(!VocabularyPolicy.contains(spanish, in: removed.document.collectedEntries))
+        #expect(!VocabularyPolicy.contains(chinese, in: removed.document.entries))
+        #expect(!VocabularyPolicy.contains(spanish, in: removed.document.entries))
     }
 
     @Test func manuallyAddedExampleSurvivesSaveAndCanBeRemovedWithoutDeletingTheWord() async throws {
@@ -317,9 +317,9 @@ nonisolated struct VocabularyArchiveTests {
         edited = withExample
         edited.senses[0].examples = []
         let removed = try await archive.update(edited, basedOn: withExample)
-        #expect(removed.document.collectedEntries.count == 1)
-        #expect(removed.document.collectedEntries[0].examples.isEmpty)
-        #expect(removed.document.collectedEntries[0].senses[0].isSavedWithoutContext)
+        #expect(removed.document.entries.count == 1)
+        #expect(removed.document.entries[0].examples.isEmpty)
+        #expect(removed.document.entries[0].senses[0].isSavedWithoutContext)
     }
 
     @Test func deletingLastExampleDoesNotResurrectARemovedGeneralSense() async throws {
@@ -335,7 +335,7 @@ nonisolated struct VocabularyArchiveTests {
         var edited = baseline
         edited.senses[0].examples = []
         _ = try await archive.update(edited, basedOn: baseline)
-        let current = try await archive.load().document.collectedEntries[0]
+        let current = try await archive.load().document.entries[0]
         #expect(!current.senses[0].isSavedWithoutContext)
         #expect(current.senses[0].standaloneMeanings.isEmpty)
         #expect(current.examples.isEmpty)

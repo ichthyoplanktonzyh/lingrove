@@ -13,7 +13,7 @@ extension VocabularyArchive {
             let core = try persistence().core
             let binding = try LingroveNotebookBackupStore(core: core).capture(scope)
             let package = try LingroveNotebookStudyExportStore(core: core).read(binding: binding, selections: selections,
-                collectedOnly: true, configuration: configuration)
+                configuration: configuration)
             try Task.checkCancellation()
             return package
         }

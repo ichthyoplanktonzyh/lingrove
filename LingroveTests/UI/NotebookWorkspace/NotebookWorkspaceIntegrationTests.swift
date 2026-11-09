@@ -124,7 +124,7 @@ struct NotebookWorkspaceIntegrationTests {
             workspaceExpect(fixture.progress.visibility.last == false)
             // The corpus owner survives window Close and accepts a normal durable edit.
             _ = try await fixture.seed("anchorage")
-            workspaceExpect(try fixture.repository.snapshot().document.collectedEntries.count == 2)
+            workspaceExpect(try fixture.repository.snapshot().document.entries.count == 2)
             fixture.window.show()
             workspaceExpect(fixture.window.corpusHost === original)
             await fixture.cleanUp()

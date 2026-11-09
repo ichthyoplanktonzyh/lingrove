@@ -42,7 +42,7 @@ extension LingroveNotebookEngine {
     private func previewReviewNoteInTransaction(selection: VocabularySelection, type: ReviewNoteType,
                                                 scope: LingroveNotebookSnapshot) throws -> ReviewNote {
         try requireCurrentScopeInTransaction(scope, requireRevision: true)
-        guard let entry = scope.document.collectedEntries.first(where: { $0.id == selection.entryID }),
+        guard let entry = scope.document.entries.first(where: { $0.id == selection.entryID }),
               let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
         let existing = try ReviewNoteStore(core: core).notes(scope: scope)
         if let note = existing.first(where: { $0.noteTypeID == type.id && ($0.senseID == sense.id || sense.mergedFrom.contains($0.senseID)) }) { return note }
@@ -89,7 +89,7 @@ extension LingroveNotebookEngine {
             try store.put(expected, workspace: scope.workspaceId)
             var result: [ReviewNote] = []
             for selection in selections {
-                guard let entry = scope.document.collectedEntries.first(where: { $0.id == selection.entryID }),
+                guard let entry = scope.document.entries.first(where: { $0.id == selection.entryID }),
                       let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
                 let note = try previewReviewNoteInTransaction(selection: selection, type: expected, scope: scope)
                 try store.put(note, scope: scope)

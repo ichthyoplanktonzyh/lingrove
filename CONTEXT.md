@@ -71,7 +71,7 @@ _Avoid_: treating an ambiguous cue as a strict synonym or an automatically confi
 **Source snapshot / 来源快照**:
 The retained wording and provenance of a source. Several occurrences may refer to one snapshot;
 correcting one occurrence's source wording creates a new snapshot and does not rewrite other occurrences' evidence.
-Sources and occurrences can exist before any lexical destination, interpretation or collection.
+Sources and occurrences can exist before a lexical destination or interpretation is known.
 
 **Occurrence / 出现位置**:
 An immutable source reference and exact UTF-16 spans, independent of an interpretation.
@@ -81,11 +81,10 @@ An independently identified claim about an occurrence, optionally linked to a se
 candidates or rejected readings may coexist; at most one accepted reading owns a sense destination.
 _Avoid_: identifying a claim with its source or requiring uncertain material to have a sense.
 
-**Personal collection / 个人收藏**:
-The user's explicit inclusion of a sense and selected interpretations in their personal corpus,
-with notes, tags and personal content. Collection is independent of review enrollment, and
-uncollecting preserves catalog knowledge, evidence and interpretations.
-_Avoid_: treating a record's existence as proof that it is personally collected.
+**Capture / 收录**:
+Saving language material to the personal corpus. A saved expression and its senses can be
+browsed and edited immediately. An accepted interpretation attached to a sense is a use
+example. Removing one example leaves its sense available for editing.
 
 **Usage / 用例**:
 An expression occurrence in a specific sentence or fragment, interpreted under one sense. It
@@ -123,7 +122,7 @@ _Avoid_: using “Anki” as the general name for all review capabilities.
 **Review enrollment / 复习选入**:
 The user's explicit choice to practice a corpus sense in a review tool, with its participation
 state. Collecting or preparing material alone does not create this choice.
-_Avoid_: equating enrollment with collection, knowledge adoption or the existence of a review draft.
+_Avoid_: equating enrollment with saving, adopting an interpretation or preparing a review draft.
 
 **Paused review participation / 暂停复习**:
 Temporarily stopping a selected sense from entering practice while retaining its exercises and

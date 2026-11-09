@@ -8,7 +8,7 @@ extension LingroveNotebookEngine {
     public func enrollBuiltInNotebookSense(_ draft: LingroveNotebookCardDraft, input: CardEditorInput,
                                           media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction) throws -> [LingroveNotebookReviewEnrollment] {
         guard action.cards.isEmpty, draft.source.senseId == action.selection.senseID,
-              action.scope.document.collectedEntries.contains(where: { entry in
+              action.scope.document.entries.contains(where: { entry in
                   entry.id == action.selection.entryID && entry.senses.contains { $0.id == action.selection.senseID }
               }) else { throw VocabularyError.editConflict }
         return try enrollLingroveNotebookSenses([draft], scope: action.scope,

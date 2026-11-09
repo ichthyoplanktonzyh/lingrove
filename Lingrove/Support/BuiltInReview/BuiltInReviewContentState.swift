@@ -18,23 +18,20 @@ nonisolated struct BuiltInReviewContentState {
     init(_ content: NotebookBuiltInReviewSnapshot) {
         groups = content.review.groups
         let document = content.scope.document
-        let collectedIDs = Set(document.collections.map(\.senseID))
         var hasCorpus = false
         var addable: [VocabularySelection] = []
         var sources: [UUID: Source] = [:]
-        // List rows only need lexical labels and collection membership. Joining source
-        // examples and media would allocate values this browser never uses.
+        // The list only needs labels from the saved senses. Joining source examples would
+        // allocate values that this browser never uses.
         for entry in document.catalog {
             for sense in entry.senses {
                 let source = Source(expression: entry.expression, meaning: sense.meaning)
                 for id in [sense.id] + sense.mergedFrom where sources[id] == nil {
                     sources[id] = source
                 }
-                if collectedIDs.contains(sense.id) {
-                    hasCorpus = true
-                    if groups[sense.id]?.cards.isEmpty != false {
-                        addable.append(.init(entryID: entry.id, senseID: sense.id))
-                    }
+                hasCorpus = true
+                if groups[sense.id]?.cards.isEmpty != false {
+                    addable.append(.init(entryID: entry.id, senseID: sense.id))
                 }
             }
         }

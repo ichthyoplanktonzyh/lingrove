@@ -215,26 +215,6 @@ struct ReviewMaterialIntegrationTests {
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM media_transfer_queue WHERE workspace_id=?", values: [.text(target)]) == 0)
     }
 
-    @Test func schema38UpgradePreservesCurrentCorpusManualEditsAndRatings() throws {
-        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
-        let saved = try f.db.saveLingroveNotebook(Self.document(), basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let entry = saved.document.entries[0]
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: .init(entryID: entry.id, senseID: entry.senses[0].id))
-        _ = try f.db.enrollLingroveNotebookSense(draft)
-        let link = try #require(try f.db.loadLingroveNotebookCardLinks(workspaceId: f.workspace).first)
-        var card = try f.db.loadActiveCard(workspaceId: f.workspace, cardId: link.cardId)
-        card = try f.db.saveCard(workspaceId: f.workspace, input: .init(frontText: "manual", backText: card.backText, tags: ["personal"]), cardId: card.cardId, mediaAssetIdsReadyForUpload: [])
-        card = try f.db.submitReview(workspaceId: f.workspace, reviewSubmission: .init(cardId: card.cardId, rating: .good, reviewedAtClient: "2026-11-03T05:00:00.000Z", reviewedTimeZone: "UTC"))
-        let events = try f.db.cardStore.loadReviewEvents(workspaceId: f.workspace)
-        try f.db.core.executeScript(sql: "DROP TABLE notebook_review_media; ALTER TABLE notebook_card_links DROP COLUMN material_plan_json; PRAGMA user_version=38;", errorContext: "Synthetic current schema38")
-        try f.reopen()
-        #expect(try f.db.core.scalarInt(sql: "PRAGMA user_version", values: []) == LocalDatabaseSchema.currentVersion)
-        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
-        #expect(try f.db.loadActiveCard(workspaceId: f.workspace, cardId: card.cardId) == card)
-        #expect(try f.db.cardStore.loadReviewEvents(workspaceId: f.workspace) == events)
-        #expect(try f.db.loadLingroveNotebookCardLinks(workspaceId: f.workspace).first?.materialPlan == nil)
-    }
-
     private struct Exercise: Encodable { let enrollmentId: UUID; let link: LingroveNotebookCardLink; let card: Card }
     private static func json<T: Encodable>(_ value: T) throws -> VocabularyWireJSON { try JSONDecoder().decode(VocabularyWireJSON.self, from: JSONEncoder().encode(value)) }
     private static func oversizedMedia() -> [ReviewMaterialPreparedMedia] {

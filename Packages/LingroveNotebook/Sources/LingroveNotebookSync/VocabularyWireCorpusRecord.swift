@@ -42,7 +42,7 @@ public nonisolated struct VocabularyWireCorpusRecord: Codable, Equatable, Sendab
     private func validateIdentity() throws {
         let id = entity.entityID, kind = entity.entityType
         let uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-        let composite: Set<VocabularyWireEntityKind> = [.selectedInterpretation, .senseExplanation, .interpretationExplanation, .mappingEvidence]
+        let composite: Set<VocabularyWireEntityKind> = [.senseExplanation, .interpretationExplanation, .mappingEvidence]
         let grammar = kind == .reviewDraft ? "\(uuid):(legacy|card:\(uuid))" : composite.contains(kind) ? "\(uuid):\(uuid)" : uuid
         guard let match = id.range(of: "^\(grammar)$", options: .regularExpression), match == id.startIndex..<id.endIndex,
               !(deleted && kind == .notebookSettings) else { throw VocabularyWireWindowError.invalidRecord }
@@ -50,7 +50,6 @@ public nonisolated struct VocabularyWireCorpusRecord: Codable, Equatable, Sendab
         var f = VocabularyWireFields(entity.fields)
         let expected: String
         switch kind {
-        case .selectedInterpretation: expected = try f.string("senseId") + ":" + f.string("interpretationId")
         case .senseExplanation: expected = try f.string("senseId") + ":" + f.string("explanationId")
         case .interpretationExplanation: expected = try f.string("interpretationId") + ":" + f.string("explanationId")
         case .mappingEvidence: expected = try f.string("mappingId") + ":" + f.string("interpretationId")

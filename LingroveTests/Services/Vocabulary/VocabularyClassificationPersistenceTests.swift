@@ -45,7 +45,7 @@ struct VocabularyClassificationPersistenceTests {
         let archive = VocabularyArchive(url: url, installsBundledClassification: true)
         let upgraded = try await archive.load()
         #expect(upgraded.revision == original.revision + 1)
-        #expect(upgraded.document.catalog == document.catalog && upgraded.document.collections == document.collections)
+        #expect(upgraded.document.catalog == document.catalog)
         #expect(upgraded.document.sources == document.sources && upgraded.document.occurrences == document.occurrences)
         #expect(upgraded.document.interpretations == document.interpretations && upgraded.document.semantics == document.semantics)
         let index = upgraded.document.classification
@@ -62,7 +62,7 @@ struct VocabularyClassificationPersistenceTests {
         #expect(again.revision == upgraded.revision && again.document == upgraded.document)
     }
 
-    @Test func fullBackupRetainsClassificationAndOldBackupRestoresWithoutInventingLinks() async throws {
+    @Test func fullBackupRetainsClassificationAndRejectsOlderFormats() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -79,9 +79,9 @@ struct VocabularyClassificationPersistenceTests {
         var old = try #require(envelope["document"] as? [String: Any])
         old["schemaVersion"] = 7; old.removeValue(forKey: "classification"); envelope["document"] = old
         try JSONSerialization.data(withJSONObject: envelope).write(to: backup)
-        let upgraded = try await VocabularyArchive(url: nil).restore(from: backup)
-        #expect(upgraded.document.entries == document.entries && upgraded.document.semantics == document.semantics)
-        #expect(upgraded.document.classification == .init())
+        await #expect(throws: VocabularyError.self) {
+            try await VocabularyArchive(url: nil).restore(from: backup)
+        }
     }
 
     @Test func SQLiteUpgradePreservesEvidenceReceiptsAndRevision() throws {

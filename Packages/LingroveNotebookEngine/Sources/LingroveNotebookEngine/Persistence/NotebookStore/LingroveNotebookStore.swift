@@ -198,6 +198,75 @@ public struct LingroveNotebookStore {
            cached.snapshot.revision == header.1, cached.snapshot.generation == generation {
             return cached.snapshot
         }
+        let rows = try readRows(workspaceId: workspaceId)
+        let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: header.2))
+        let state = try VocabularyEntrySaveState(validating: document)
+        let snapshot = LingroveNotebookSnapshot(workspaceId: workspaceId, notebookId: header.0,
+            revision: header.1, document: document, generation: generation)
+        core.notebookSaveCache = .init(snapshot: snapshot, state: state,
+            projection: try .init(.init(rows: rows, reviewTemplatesPresent: header.2)), token: token, lineage: UUID())
+        return snapshot
+    }
+
+    /// An explicit one-time operation for the Dev database. The normal engine opens only
+    /// the current schema. Rewriting the corpus and recording the version share a transaction;
+    /// interruption leaves the original format available for another attempt.
+    public static func migrateDevCorpus(databaseURL: URL, mediaDirectoryURL: URL) throws -> Int {
+        let core = try DatabaseCore(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL) { _ in nil }
+        defer { try? core.close() }
+        let store = Self(core: core)
+        return try core.inTransaction {
+            let version = try core.scalarInt(sql: "PRAGMA user_version", values: [])
+            if version == LocalDatabaseSchema.currentVersion { return 0 }
+            guard version == 40 else { throw VocabularyError.unsupportedVersion }
+            // A v8 server shadow cannot be reused against the v9 document contract. This command
+            // migrates the local Dev corpus only, so a previously synchronized book requires a
+            // separate coordinated cutover rather than rewriting its pending network state.
+            guard try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_remote_state", values: []) == 0,
+                  try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_remote_records", values: []) == 0,
+                  try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_upload_batches", values: []) == 0,
+                  try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_staged_uploads", values: []) == 0 else {
+                throw LocalStoreError.database("Dev corpus is bound to an older sync format")
+            }
+            let scopes = try core.query(sql: "SELECT workspace_id,notebook_id,revision,has_templates FROM notebook_state",
+                values: []) { row -> (String, UUID, UInt64, Bool) in
+                let revision = sqlite3_column_int64(row, 2)
+                guard let id = UUID(uuidString: try Self.requiredText(row, 1)),
+                      revision >= 0, revision < Int64.max else { throw VocabularyError.invalidArchive }
+                return (try Self.requiredText(row, 0), id, UInt64(revision), sqlite3_column_int64(row, 3) == 1)
+            }
+            var migratedEntries = 0
+            let generation = try LingroveNotebookLocalScopeStore(core: core).generationInTransaction()
+            for (workspace, notebook, revision, hasTemplates) in scopes {
+                let before = VocabularyPersistenceRows(rows: try store.readRows(workspaceId: workspace),
+                    reviewTemplatesPresent: hasTemplates)
+                let document = try VocabularyPersistenceCodec.migrateDevCorpus(before)
+                let after = try VocabularyPersistenceCodec.encode(document)
+                let old = try before.keyedRows(), new = try after.keyedRows()
+                let changed = after.rows.filter { old[$0.key] != $0 }
+                let removed = before.rows.filter { new[$0.key] == nil }
+                try store.writeRows(changed: changed, removed: removed, workspaceId: workspace)
+                if !changed.isEmpty || !removed.isEmpty {
+                    let now = nowIsoTimestamp()
+                    let updated = try core.execute(sql: "UPDATE notebook_state SET revision=?,updated_at=? WHERE workspace_id=? AND revision=?",
+                        values: [.integer(Int64(revision + 1)), .text(now), .text(workspace), .integer(Int64(revision))])
+                    guard updated == 1 else { throw VocabularyError.editConflict }
+                    let baseline = LingroveNotebookSnapshot(workspaceId: workspace, notebookId: notebook, revision: revision,
+                        document: document, generation: generation)
+                    try store.recordPending(current: baseline, revision: revision + 1, changed: changed, removed: removed,
+                        reviewTemplatesPresent: hasTemplates, publicChange: true, operationId: UUID().uuidString.lowercased(), now: now)
+                }
+                let reopened = try store.readSnapshot(workspaceId: workspace)
+                guard reopened.document == document else { throw VocabularyError.invalidArchive }
+                migratedEntries += document.catalog.count
+            }
+            try core.executeScript(sql: "PRAGMA user_version = \(LocalDatabaseSchema.currentVersion);",
+                errorContext: "Record the unified Dev corpus schema")
+            return migratedEntries
+        }
+    }
+
+    private func readRows(workspaceId: String) throws -> [VocabularyPersistenceRow] {
         var rows: [VocabularyPersistenceRow] = []
         for entity in VocabularyPersistenceEntity.allCases {
             let columns = ["id", "parent_id", "position", "payload_json"] + entity.indexKeys.map(\.rawValue)
@@ -214,13 +283,7 @@ public struct LingroveNotebookStore {
                     payload: Data(Self.requiredText(statement, 3).utf8), indexValues: indexes)
             }
         }
-        let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: header.2))
-        let state = try VocabularyEntrySaveState(validating: document)
-        let snapshot = LingroveNotebookSnapshot(workspaceId: workspaceId, notebookId: header.0,
-            revision: header.1, document: document, generation: generation)
-        core.notebookSaveCache = .init(snapshot: snapshot, state: state,
-            projection: try .init(.init(rows: rows, reviewTemplatesPresent: header.2)), token: token, lineage: UUID())
-        return snapshot
+        return rows
     }
 
     private func upsert(_ row: VocabularyPersistenceRow, workspaceId: String) throws {

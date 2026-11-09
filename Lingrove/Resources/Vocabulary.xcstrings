@@ -6777,13 +6777,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法收藏"
+            "value": "无法加入语料库"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法收藏"
+            "value": "無法加入語料庫"
           }
         }
       }
@@ -7441,13 +7441,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除这条收藏？"
+            "value": "删除这个义项？"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "刪除這條收藏？"
+            "value": "刪除這個義項？"
           }
         }
       }
@@ -15260,13 +15260,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近收藏优先"
+            "value": "最近收录优先"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近收藏優先"
+            "value": "最近收錄優先"
           }
         }
       }
@@ -15639,13 +15639,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有匹配的收藏"
+            "value": "没有匹配的语料"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "沒有符合的收藏"
+            "value": "沒有符合的語料"
           }
         }
       }
@@ -15734,13 +15734,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂无收藏"
+            "value": "语料库为空"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "暫無收藏"
+            "value": "語料庫為空"
           }
         }
       }
@@ -16114,13 +16114,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未收藏"
+            "value": "未加入语料库"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未收藏"
+            "value": "未加入语料库"
           }
         }
       }
@@ -16583,13 +16583,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最早收藏优先"
+            "value": "最早收录优先"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "最早收藏優先"
+            "value": "最早收錄優先"
           }
         }
       }
@@ -18562,13 +18562,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消本次收藏"
+            "value": "删除此用例"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消本次收藏"
+            "value": "删除此用例"
           }
         }
       }
@@ -20340,13 +20340,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "收藏当前学习内容"
+            "value": "加入语料库"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "收藏目前學習內容"
+            "value": "加入語料庫"
           }
         }
       }
@@ -20530,13 +20530,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已收藏"
+            "value": "已加入语料库"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已收藏"
+            "value": "已加入语料库"
           }
         }
       }
@@ -20625,13 +20625,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已收藏 · 查看操作"
+            "value": "已加入语料库 · 查看操作"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已收藏 · 檢視操作"
+            "value": "已加入語料庫 · 檢視操作"
           }
         }
       }

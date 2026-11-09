@@ -23,8 +23,8 @@ struct VocabularyCLICaptureTests {
         #expect(doc.semantics.nodes[0].provenance.status == .proposed)
         #expect(doc.semantics.mappings[0].provenance.status == .proposed)
         #expect(doc.semantics.patterns[0].provenance.status == .proposed)
-        #expect(VocabularyMeaningBrowserProjection.unclassified(index: doc.semantics, entries: doc.collectedEntries).count == 1)
-        #expect(VocabularyMeaningBrowserProjection.items(index: doc.semantics, entries: doc.collectedEntries, query: "晚点").isEmpty)
+        #expect(VocabularyMeaningBrowserProjection.unclassified(index: doc.semantics, entries: doc.entries).count == 1)
+        #expect(VocabularyMeaningBrowserProjection.items(index: doc.semantics, entries: doc.entries, query: "晚点").isEmpty)
     }
 
     @Test(arguments: [

@@ -2,34 +2,32 @@ import Foundation
 import LingroveTextRules
 
 /// Referential integrity is checked before every archive transaction, including dry runs.
-/// Evidence can exist without claims and claims without collection membership; these are valid
-/// states rather than orphans to collect automatically. Deletion must explicitly remove links.
+/// Source evidence may outlive an interpretation. Only accepted interpretations with a saved
+/// sense appear as examples, while tentative readings remain available for later editing.
 public nonisolated enum VocabularyLifecyclePolicy {
     public static func validate(_ document: VocabularyDocument) throws {
         let senses = document.catalog.flatMap(\.senses)
         let senseIDs = Set(senses.map(\.id))
         guard Set(document.sources.map(\.id)).count == document.sources.count,
               Set(document.occurrences.map(\.id)).count == document.occurrences.count,
-              Set(document.interpretations.map(\.id)).count == document.interpretations.count,
-              Set(document.collections.map(\.senseID)).count == document.collections.count else {
+              Set(document.interpretations.map(\.id)).count == document.interpretations.count else {
             throw VocabularyError.invalidArchive
         }
         for sense in senses {
-            guard sense.examples.isEmpty, sense.note.isEmpty, sense.tags.isEmpty, !sense.isSavedWithoutContext,
-                  sense.content == nil, sense.review == nil, sense.reviewCards == nil else { throw VocabularyError.invalidArchive }
+            guard sense.examples.isEmpty, sense.note.utf8.count <= 262_144, sense.tags.count <= 100,
+                  sense.tags.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 200 }),
+                  sense.savedAt?.timeIntervalSinceReferenceDate.isFinite != false else {
+                throw VocabularyError.invalidArchive
+            }
         }
         let sources = Dictionary(uniqueKeysWithValues: document.sources.map { ($0.id, $0) })
         let occurrences = Dictionary(uniqueKeysWithValues: document.occurrences.map { ($0.id, $0) })
-        let claims = Dictionary(uniqueKeysWithValues: document.interpretations.map { ($0.id, $0) })
-        let standalone = Set(document.collections.filter(\.isSavedWithoutContext).map(\.senseID))
-        // A floating word-only favorite has no sense destination. Preserve its unique slot;
-        // other collected senses remain independent manual meanings with this flag unset.
-        guard document.catalog.allSatisfy({ entry in
-            entry.senses.filter { standalone.contains($0.id) }.count <= 1
-        }) else { throw VocabularyError.invalidArchive }
+        // The context-free capture control needs one stable destination per headword.
+        guard document.catalog.allSatisfy({ $0.senses.filter(\.isSavedWithoutContext).count <= 1 }) else {
+            throw VocabularyError.invalidArchive
+        }
         try validateEvidence(document, sources: sources)
         try validateClaims(document.interpretations, senseIDs: senseIDs, occurrences: occurrences)
-        try validateCollections(document.collections, senseIDs: senseIDs, claims: claims)
     }
 
     private static func validateEvidence(_ document: VocabularyDocument, sources: [UUID: VocabularySourceSnapshot]) throws {
@@ -62,18 +60,6 @@ public nonisolated enum VocabularyLifecyclePolicy {
                     throw VocabularyError.invalidArchive
                 }
             }
-        }
-    }
-
-    private static func validateCollections(_ collections: [VocabularyCollectionItem], senseIDs: Set<UUID>,
-                                            claims: [UUID: VocabularyInterpretation]) throws {
-        for collection in collections {
-            guard senseIDs.contains(collection.senseID), collection.interpretationIDs.count <= 10_000,
-                  Set(collection.interpretationIDs).count == collection.interpretationIDs.count,
-                  collection.interpretationIDs.allSatisfy({
-                      claims[$0]?.senseID == collection.senseID && claims[$0]?.status == .accepted
-                  }), collection.note.utf8.count <= 262_144, collection.tags.count <= 100,
-                  collection.tags.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 200 }) else { throw VocabularyError.invalidArchive }
         }
     }
 }

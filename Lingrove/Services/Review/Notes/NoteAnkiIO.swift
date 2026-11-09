@@ -37,7 +37,7 @@ actor NoteAnkiIO {
     ) throws -> Material {
         try engine { engine in
             guard try engine.reviewNoteTypes(scope: scope).contains(type),
-                let entry = scope.document.collectedEntries.first(where: { $0.id == selection.entryID }),
+                let entry = scope.document.entries.first(where: { $0.id == selection.entryID }),
                 let sense = entry.senses.first(where: { $0.id == selection.senseID })
             else { throw VocabularyError.editConflict }
             let note =

@@ -17,8 +17,7 @@ public nonisolated enum VocabularyWirePublicIntent {
         let before = change.previous, after = change.document
         if before.catalog.map(\.id) != after.catalog.map(\.id) || before.sources.map(\.id) != after.sources.map(\.id) ||
             before.occurrences.map(\.id) != after.occurrences.map(\.id) ||
-            before.interpretations.map(\.id) != after.interpretations.map(\.id) ||
-            before.collections.map(\.senseID) != after.collections.map(\.senseID) { return true }
+            before.interpretations.map(\.id) != after.interpretations.map(\.id) { return true }
         let senses = change.affectedSenseIDs
         let claims = Set((before.interpretations + after.interpretations).filter {
             $0.senseID.map(senses.contains) == true
@@ -26,7 +25,6 @@ public nonisolated enum VocabularyWirePublicIntent {
         func fragment(_ document: VocabularyDocument) -> VocabularyDocument {
             .init(catalog: document.catalog.filter { $0.id == change.entryID }, sources: [], occurrences: [],
                 interpretations: document.interpretations.filter { claims.contains($0.id) },
-                collections: document.collections.filter { senses.contains($0.senseID) },
                 semantics: before.semantics == after.semantics ? .init() : document.semantics)
         }
         var oldEncoder = VocabularyWireEncoder(), newEncoder = VocabularyWireEncoder()

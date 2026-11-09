@@ -18,7 +18,7 @@ struct ReviewNoteTypeEditor: View {
     init(session: BuiltInReviewSession, draft: ReviewNoteTypeEditorDraft) {
         self.session = session; self.draft = draft; original = draft.type
         _selectedTemplate = State(initialValue: draft.type.templates[0].id)
-        _sampleID = State(initialValue: draft.scope.document.collectedEntries.first?.senses.first?.id)
+        _sampleID = State(initialValue: draft.scope.document.entries.first?.senses.first?.id)
     }
     private var changed: Bool { draft.type != original || draft.makeDefault }
     private var validation: String? {
@@ -28,7 +28,7 @@ struct ReviewNoteTypeEditor: View {
         } catch { return ReviewNoteEditorCopy.message(error) }
     }
     private var source: (VocabularyEntry, VocabularySense)? {
-        for entry in draft.scope.document.collectedEntries {
+        for entry in draft.scope.document.entries {
             if let sense = entry.senses.first(where: { $0.id == sampleID }) { return (entry, sense) }
         }
         return nil
@@ -183,7 +183,7 @@ struct ReviewNoteTypeEditor: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Picker(BuiltInReviewCopy.text("material.preview"), selection: $sampleID) {
-                    ForEach(draft.scope.document.collectedEntries) { entry in
+                    ForEach(draft.scope.document.entries) { entry in
                         ForEach(entry.senses) { sense in
                             Text(entry.expression + " · " + sense.meaning).tag(Optional(sense.id))
                         }

@@ -9,7 +9,7 @@ struct ReviewNoteTargetTests {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let scope = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let entry = scope.document.collectedEntries[0], sense = entry.senses[0]
+        let entry = scope.document.entries[0], sense = entry.senses[0]
         let selection = VocabularySelection(entryID: entry.id, senseID: sense.id)
         let preview = try f.db.previewReviewNote(selection: selection, type: ReviewNoteDefaults.type, scope: scope)
         #expect(try ReviewNoteStore(core: f.db.core).notes(scope: scope).isEmpty)

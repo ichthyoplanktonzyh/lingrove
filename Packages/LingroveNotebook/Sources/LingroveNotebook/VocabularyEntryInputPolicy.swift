@@ -7,29 +7,6 @@ public nonisolated enum VocabularyEntryInputPolicy {
     public struct Plan: Sendable {
         public var document: VocabularyDocument
         public var result = VocabularyEntryImportResult()
-        var selectedInterpretations: [UUID: Set<UUID>] = [:]
-
-        mutating func collect(senseID: UUID, interpretationID: UUID? = nil) {
-            if selectedInterpretations[senseID] == nil { selectedInterpretations[senseID] = [] }
-            if let interpretationID { selectedInterpretations[senseID]?.insert(interpretationID) }
-        }
-
-        /// Importing is an explicit personal save even when an external agent already created
-        /// the knowledge. Collect by identity without rebuilding or duplicating that knowledge.
-        mutating func applyCollections(now: Date) {
-            let offsets = Dictionary(uniqueKeysWithValues: document.collections.enumerated().map { ($0.element.senseID, $0.offset) })
-            for (senseID, ids) in selectedInterpretations {
-                let index = offsets[senseID]
-                var collection = index.map { document.collections[$0] } ?? .init(senseID: senseID, savedAt: now)
-                let before = collection
-                let retained = Set(collection.interpretationIDs)
-                collection.interpretationIDs += ids.subtracting(retained).sorted { $0.uuidString < $1.uuidString }
-                if let index {
-                    if collection != before { document.collections[index] = collection; result.changedCollections += 1 }
-                } else { document.collections.append(collection); result.changedCollections += 1 }
-            }
-        }
-
         mutating func record(_ change: VocabularyImportedExamplePolicy.Change, entryID: UUID) {
             if change.changed && !result.hasChanges || result.selection == nil {
                 result.selection = .init(entryID: entryID, senseID: change.senseID)
@@ -111,7 +88,6 @@ public nonisolated enum VocabularyEntryInputPolicy {
             if let found = indices[key] { index = found } else {
                 index = entries.count
                 indices[key] = index
-                if value.language == nil, plan.document.schemaVersion == 3 { plan.document.schemaVersion = 4 }
                 entries.append(VocabularyEntry(id: UUID(), expression: value.expression,
                     dictionaryForm: value.dictionaryForm, language: value.language, kind: value.kind,
                     senses: [], createdAt: now, updatedAt: now))
@@ -129,22 +105,19 @@ public nonisolated enum VocabularyEntryInputPolicy {
                 let change = try VocabularyImportedExamplePolicy.append(value, example: example, to: &entries[index],
                     lookup: .init(matching: matching, existing: existing), now: now)
                 plan.record(change, entryID: entries[index].id)
-                plan.collect(senseID: change.senseID,
-                    interpretationID: entries[index].senses[change.location.sense].examples[change.location.example].id)
                 keys[index]?.record(change, key: VocabularyIdentityPolicy.exampleKey(example), entry: entries[index])
                 continue
             }
             let entry = entries[index]
             if !entry.senses.isEmpty, bareWord || !matching.isEmpty {
-                plan.collect(senseID: entry.senses[matching.first ?? 0].id)
                 plan.result.skippedRows += 1
                 if plan.result.selection == nil {
                     plan.result.selection = .init(entryID: entry.id, senseID: entry.senses[matching.first ?? 0].id)
                 }
                 continue
             }
-            // Explicit senses are not the single context-free capture slot used by favorite
-            // buttons. This preserves independent imported meanings and the existing graph invariant.
+            // An explicit imported meaning owns its own identity, independent of the
+            // context-free capture destination used by the lookup card.
             let sense = VocabularySense(id: UUID(), meaning: value.meaning, meaningLanguage: value.meaningLanguage,
                 meaningOrigin: value.meaning.isEmpty ? .captured : .user, note: value.note, tags: value.tags,
                 createdAt: now, updatedAt: now, createdWithoutContext: true)
@@ -156,7 +129,6 @@ public nonisolated enum VocabularyEntryInputPolicy {
             plan.result.addedSenses += 1
         }
         plan.document.entries = entries
-        plan.applyCollections(now: now)
         return plan
     }
 

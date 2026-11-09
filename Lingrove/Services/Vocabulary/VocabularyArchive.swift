@@ -129,16 +129,16 @@ actor VocabularyArchive {
 
     func save(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
         let document = try load().document
-        let edit = try VocabularyPolicy.entryForSave(capture, in: document, now: Date())
-        return try commitEntry(edit.entry, collections: edit.collections)
+        let entry = try VocabularyPolicy.entryForSave(capture, in: document, now: Date())
+        return try commitEntry(entry)
     }
 
-    private func commitEntry(_ entry: VocabularyEntry, collections: [VocabularyCollectionItem],
+    private func commitEntry(_ entry: VocabularyEntry,
                              images: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         try storageAccess(write: true) {
             let baseline = try transactionBaseline()
             if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
-            let result = try persistence().saveNotebookEntry(entry, collections: collections, basedOn: baseline, images: images)
+            let result = try persistence().saveNotebookEntry(entry, basedOn: baseline, images: images)
             saved = result
             return .init(result)
         }
@@ -147,8 +147,7 @@ actor VocabularyArchive {
     func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
                 importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         let document = try load().document
-        guard let original = VocabularyNotebookProjection.entry(entry.id, in: document) else { throw VocabularyError.invalidContent }
-        try validatePersonalEdit(entry, baseline: baseline, collections: document.collections)
+        guard let original = VocabularyNotebookProjection.entry(entry.id, in: document) else { throw VocabularyError.editConflict }
         guard baseline.id == entry.id,
               Set(entry.senses.map(\.id)).count == entry.senses.count,
               Set(entry.examples.map(\.id)).count == entry.examples.count else { throw VocabularyError.invalidContent }
@@ -166,41 +165,8 @@ actor VocabularyArchive {
             values.count <= 1 || values.count <= (priorOccurrences[key]?.count ?? 0)
         }) else { throw VocabularyError.editConflict }
         merged.updatedAt = Date()
-        let collections = editorCollections(merged, baseline: baseline, edited: entry, original: original, document: document)
-        return try commitEntry(merged, collections: collections, images: importedImages)
-    }
-
-    /// Personal membership is independent of lexical retention. Merge keeps uncollected senses
-    /// addressable, while newly authored examples/senses receive the editor's intended membership.
-    private func editorCollections(_ merged: VocabularyEntry, baseline: VocabularyEntry, edited: VocabularyEntry,
-                                   original: VocabularyEntry, document: VocabularyDocument) -> [VocabularyCollectionItem] {
-        let senseIDs = Set(original.senses.map(\.id))
-        let priorClaims = Set(document.interpretations.filter { $0.status == .accepted && $0.senseID != nil }.map(\.id))
-        var collections = document.collections.filter { senseIDs.contains($0.senseID) }
-        for sense in merged.senses {
-            if !senseIDs.contains(sense.id) {
-                collections.append(.init(senseID: sense.id, interpretationIDs: sense.examples.map(\.id),
-                    isSavedWithoutContext: sense.isSavedWithoutContext, savedAt: sense.createdAt))
-            }
-            guard let index = collections.firstIndex(where: { $0.senseID == sense.id }) else { continue }
-            let selected = Set(collections[index].interpretationIDs)
-            collections[index].interpretationIDs = sense.examples.filter {
-                selected.contains($0.id) || !priorClaims.contains($0.id)
-            }.map(\.id)
-            collections[index].note = sense.note; collections[index].tags = sense.tags
-            collections[index].content = sense.content; collections[index].review = sense.review
-            collections[index].reviewCards = sense.reviewCards
-        }
-        for before in baseline.senses {
-            guard let value = edited.senses.first(where: { $0.id == before.id }) else {
-                collections.removeAll { $0.senseID == before.id }; continue
-            }
-            let removed = Set(before.examples.map(\.id)).subtracting(value.examples.map(\.id))
-            if let collection = collections.firstIndex(where: { $0.senseID == before.id }) {
-                collections[collection].interpretationIDs.removeAll { removed.contains($0) }
-            }
-        }
-        return collections
+        if merged.senses.isEmpty { return try remove(id: merged.id) }
+        return try commitEntry(merged, images: importedImages)
     }
 
     /// A sheet edits one sense while cards may append another. Merge by stable IDs and fields;
@@ -239,7 +205,7 @@ actor VocabularyArchive {
             if let live = result.first(where: { $0.id == before.id }), try !VocabularySaveLiteralEquality.equal(live, before) {
                 throw VocabularyError.editConflict
             }
-            // An editor removes a personal collection relationship, not the catalog sense.
+            result.removeAll { $0.id == before.id }
         }
         return result
     }
@@ -250,20 +216,6 @@ actor VocabularyArchive {
             throw VocabularyError.editConflict
         }
         return edited
-    }
-
-    /// A detached editor cannot recreate personal state after an agent or another window
-    /// uncollects it. Unchanged hidden senses can remain in the editor's stale baseline.
-    private func validatePersonalEdit(_ entry: VocabularyEntry, baseline: VocabularyEntry,
-                                      collections: [VocabularyCollectionItem]) throws {
-        let ids = Set(collections.map(\.senseID))
-        guard entry.senses.contains(where: { ids.contains($0.id) }) else { throw VocabularyError.editConflict }
-        for sense in entry.senses {
-            if let before = baseline.senses.first(where: { $0.id == sense.id }),
-               try !VocabularySaveLiteralEquality.equal(sense, before), !ids.contains(sense.id) {
-                throw VocabularyError.editConflict
-            }
-        }
     }
 
     /// Example IDs distinguish edits/deletions from captures appended after the editor opened.
@@ -294,7 +246,7 @@ actor VocabularyArchive {
             if let item = merged.first(where: { $0.id == before.id }), try !VocabularySaveLiteralEquality.equal(item, before) {
                 throw VocabularyError.editConflict
             }
-            // Uncollect below the entry merge; keep the interpretation available to agents.
+            merged.removeAll { $0.id == before.id }
         }
         return merged
     }
@@ -311,49 +263,37 @@ actor VocabularyArchive {
         return result
     }
 
-    /// Notebook deletion removes personal membership. Catalog identities, raw evidence and
-    /// interpretations remain addressable to an agent until an explicit resource deletion.
     func remove(id: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        let senseIDs = Set(next.catalog.first { $0.id == id }?.senses.map(\.id) ?? [])
-        next.collections.removeAll { senseIDs.contains($0.senseID) }
+        next.entries.removeAll { $0.id == id }
         return try commit(next)
     }
 
     func remove(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        guard let entry = next.collectedEntries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
-              let destination = VocabularySensePolicy.destination(capture, in: entry),
-              let index = next.collections.firstIndex(where: { $0.senseID == destination.senseID }) else {
+        var entries = next.entries
+        guard let entry = entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
+              let destination = VocabularySensePolicy.destination(capture, in: entries[entry]),
+              let sense = entries[entry].senses.firstIndex(where: { $0.id == destination.senseID }),
+              let usage = destination.exampleID else {
             return .init(try transactionBaseline())
         }
-        if let id = destination.exampleID { next.collections[index].interpretationIDs.removeAll { $0 == id } } else {
-            next.collections[index].isSavedWithoutContext = false
-        }
-        let collection = next.collections[index]
-        if collection.interpretationIDs.isEmpty, !collection.isSavedWithoutContext, collection.note.isEmpty,
-           collection.tags.isEmpty, (collection.content ?? []).isEmpty, collection.review == nil,
-           (collection.reviewCards ?? []).isEmpty {
-            next.collections.remove(at: index)
-        }
+        entries[entry].senses[sense].examples.removeAll { $0.id == usage }
+        next.entries = entries
         return try commit(next)
     }
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        let selected = next.collections.first { $0.senseID == source }?.interpretationIDs ?? []
         try VocabularySensePolicy.merge(source: source, into: target, in: &next.entries[index], now: Date())
-        for id in selected { VocabularyNotebookProjection.collect(senseID: target, interpretationID: id, in: &next, now: Date()) }
         return try commit(next)
     }
 
     func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
         guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        let wasCollected = next.collections.first { $0.senseID == source }?.interpretationIDs.contains(exampleID) == true
-        let targetID = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
-        if wasCollected { VocabularyNotebookProjection.collect(senseID: targetID, interpretationID: exampleID, in: &next, now: Date()) }
+        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
         return try commit(next)
     }
 
@@ -368,10 +308,13 @@ actor VocabularyArchive {
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        guard next.catalog.contains(where: { $0.id == entryID && $0.senses.contains { $0.id == senseID } }) else {
+        var entries = next.entries
+        guard let entry = entries.firstIndex(where: { $0.id == entryID && $0.senses.contains { $0.id == senseID } }) else {
             throw VocabularyError.invalidContent
         }
-        next.collections.removeAll { $0.senseID == senseID }
+        entries[entry].senses.removeAll { $0.id == senseID }
+        if entries[entry].senses.isEmpty { entries.remove(at: entry) }
+        next.entries = entries
         return try commit(next)
     }
 
@@ -381,8 +324,7 @@ actor VocabularyArchive {
                     expected: VocabularyReview?, cardID: UUID? = nil,
                     importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        guard next.collections.contains(where: { $0.senseID == senseID }),
-              let entry = next.entries.firstIndex(where: { $0.id == entryID }),
+        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
               let sense = next.entries[entry].senses.firstIndex(where: { $0.id == senseID }),
               next.entries[entry].senses[sense].reviewValue(cardID) == expected else { throw VocabularyError.editConflict }
         guard cardID == nil || value.plan.id == cardID else { throw VocabularyError.invalidContent }
@@ -416,10 +358,9 @@ actor VocabularyArchive {
 
     func saveExplanation(_ record: LearningExplanationRecord) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        // Uncollecting retains catalog evidence. That historical knowledge is not permission
-        // to persist a new floating explanation: only a currently saved destination may receive it.
-        guard let collected = next.collectedEntries.first(where: { VocabularyPolicy.accepts(record, entry: $0) }),
-              let index = next.entries.firstIndex(where: { $0.id == collected.id }) else {
+        // The lookup may finish after the user removes its destination. Resolve the
+        // destination against the current corpus before attaching the explanation.
+        guard let index = next.entries.firstIndex(where: { VocabularyPolicy.accepts(record, entry: $0) }) else {
             return .init(try transactionBaseline())
         }
         VocabularyPolicy.storeExplanation(record, in: &next.entries[index])

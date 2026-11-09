@@ -9,7 +9,7 @@ struct ReviewNoteSyncTests {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let scope = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let entry = try #require(scope.document.collectedEntries.first)
+        let entry = try #require(scope.document.entries.first)
         _ = try f.db.enrollReviewNotes(selections: [.init(entryID: entry.id, senseID: entry.senses[0].id)],
             type: ReviewNoteDefaults.type, scope: scope)
         let store = ReviewNoteStore(core: f.db.core), sync = LingroveNotebookReviewSyncStore(core: f.db.core)

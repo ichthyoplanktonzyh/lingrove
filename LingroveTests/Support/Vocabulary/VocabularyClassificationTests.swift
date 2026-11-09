@@ -102,12 +102,13 @@ struct VocabularyClassificationTests {
         #expect(throws: VocabularyError.editConflict) { try VocabularyClassificationPolicy.merge(edited, baseline: baseline, current: current) }
     }
 
-    @Test func versionSevenPortableDocumentUpgradesWithoutChangingEvidence() throws {
+    @Test func portableDecoderRejectsUnsupportedVersions() throws {
         let document = VocabularySemanticTests.fixture()
         var fields = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(document)) as? [String: Any])
         fields["schemaVersion"] = 7; fields.removeValue(forKey: "classification")
-        let upgraded = try JSONDecoder().decode(VocabularyDocument.self, from: JSONSerialization.data(withJSONObject: fields))
-        #expect(upgraded == document)
+        #expect(throws: VocabularyError.unsupportedVersion) {
+            try JSONDecoder().decode(VocabularyDocument.self, from: JSONSerialization.data(withJSONObject: fields))
+        }
         fields["schemaVersion"] = 99
         #expect(throws: VocabularyError.unsupportedVersion) {
             try JSONDecoder().decode(VocabularyDocument.self, from: JSONSerialization.data(withJSONObject: fields))

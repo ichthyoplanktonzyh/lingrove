@@ -20,16 +20,15 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         self.document = document; self.entries = entries; self.identifiers = identifiers
     }
 
-    /// The command can change just this lexical subtree and its personal memberships. It cannot
+    /// The command can change just this saved entry and its examples. It cannot
     /// replace a category, source snapshot, unrelated interpretation, template or semantic node.
     /// Canonical evidence is appended/reused by the projection, then global relationships are
     /// checked once. That is why cached validation of the other entries/directory remains valid.
-    public func replacing(_ input: VocabularyEntry, collections: [VocabularyCollectionItem]) throws -> VocabularyEntrySaveChange {
+    public func replacing(_ input: VocabularyEntry) throws -> VocabularyEntrySaveChange {
         try Task.checkCancellation()
         let old = entries.first { $0.id == input.id }
-        let oldSenses = Set(old?.senses.map(\.id) ?? []), senses = Set(input.senses.map(\.id))
-        guard collections.allSatisfy({ senses.contains($0.senseID) }),
-              !entries.contains(where: { $0.id != input.id && VocabularyIdentityPolicy.entryKey($0) == VocabularyIdentityPolicy.entryKey(input) }) else {
+        let oldSenses = Set(old?.senses.map(\.id) ?? [])
+        guard !entries.contains(where: { $0.id != input.id && VocabularyIdentityPolicy.entryKey($0) == VocabularyIdentityPolicy.entryKey(input) }) else {
             throw VocabularyError.invalidArchive
         }
         // A reused interpretation ID must already belong to this entry, or be an unresolved
@@ -41,15 +40,7 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
 
         var next = document
         VocabularyNotebookProjection.replaceEntry(VocabularyDocumentValidation.pruningExplanations(input), in: &next)
-        let desired = Set(collections.map(\.senseID)), affected = oldSenses.union(senses)
-        next.collections.removeAll { affected.contains($0.senseID) && !desired.contains($0.senseID) }
-        for collection in collections {
-            if let index = next.collections.firstIndex(where: { $0.senseID == collection.senseID }) {
-                next.collections[index] = collection
-            } else { next.collections.append(collection) }
-        }
         guard let entry = VocabularyNotebookProjection.entry(input.id, in: next) else { throw VocabularyError.invalidArchive }
-        guard Set(next.collections.map(\.id)).count == next.collections.count else { throw VocabularyError.invalidArchive }
         let ids = try VocabularyDocumentValidation.entryIdentifiers(entry)
         for (id, other) in identifiers where id != entry.id {
             guard ids.isDisjoint(with: other) else { throw VocabularyError.invalidArchive }

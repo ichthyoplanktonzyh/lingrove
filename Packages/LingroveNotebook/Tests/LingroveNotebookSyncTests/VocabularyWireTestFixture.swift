@@ -174,17 +174,6 @@ enum VocabularyWireTestFixture {
         let collectionContent = [VocabularyContentBlock(
             id: id(431), content: .text(.init(text: "Personal study note", style: .heading, italic: true))
         )]
-        let targetCollection = VocabularyCollectionItem(
-            senseID: targetSenseID, interpretationIDs: [acceptedInterpretationID],
-            note: "Keep the evidence with this sense.", tags: ["review", "ordered"],
-            content: collectionContent, review: privateReview, reviewCards: [reviewCard], savedAt: savedAt
-        )
-        let otherCollection = VocabularyCollectionItem(
-            senseID: otherSenseID, interpretationIDs: [], note: "Candidate is not selected.",
-            tags: ["candidate"], content: nil, review: nil, reviewCards: nil,
-            savedAt: Date(timeIntervalSinceReferenceDate: 811_111_139.25)
-        )
-
         let conceptID = id(501)
         let secondConceptID = id(502)
         let roleID = id(513)
@@ -265,10 +254,20 @@ enum VocabularyWireTestFixture {
                 back: [ReviewCardPart(id: id(563), source: .meaning)]
             )
         )
+        var target = targetEntry, other = otherEntry
+        target.senses[0].note = "Keep the evidence with this sense."
+        target.senses[0].tags = ["review", "ordered"]
+        target.senses[0].content = collectionContent
+        target.senses[0].review = privateReview
+        target.senses[0].reviewCards = [reviewCard]
+        target.senses[0].savedAt = savedAt
+        other.senses[0].note = "Candidate has no accepted reading."
+        other.senses[0].tags = ["candidate"]
+        other.senses[0].savedAt = Date(timeIntervalSinceReferenceDate: 811_111_139.25)
         let document = VocabularyDocument(
-            catalog: [targetEntry, otherEntry], sources: [candidateSource, acceptedSource],
+            catalog: [target, other], sources: [candidateSource, acceptedSource],
             occurrences: [candidateOccurrence, acceptedOccurrence],
-            interpretations: [candidateWithExplanation, accepted], collections: [targetCollection, otherCollection],
+            interpretations: [candidateWithExplanation, accepted],
             reviewTemplates: [template], semantics: semantic, classification: classification
         )
         try VocabularyDocumentValidation.validate(document)
@@ -299,5 +298,21 @@ enum VocabularyWireTestFixture {
             result: .init(meaning: "A concise meaning.", explanation: "A short learner-facing explanation."),
             model: "fixture-explainer", createdAt: createdAt
         )
+    }
+}
+
+// Fixtures use this flattened view when a test already knows a sense's position.
+extension VocabularyDocument {
+    var savedSenses: [VocabularySense] {
+        get { catalog.flatMap(\.senses) }
+        set {
+            let byID = Dictionary(uniqueKeysWithValues: newValue.map { ($0.id, $0) })
+            for entry in catalog.indices {
+                for index in catalog[entry].senses.indices {
+                    let sense = catalog[entry].senses[index]
+                    if let value = byID[sense.id] { catalog[entry].senses[index] = value }
+                }
+            }
+        }
     }
 }

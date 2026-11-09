@@ -19,8 +19,8 @@ struct BuiltInReviewSenseView: View {
     private var currentSelection: VocabularySelection {
         source.map { .init(entryID: $0.entry.id, senseID: $0.sense.id) } ?? selection
     }
-    private var isCollected: Bool {
-        content.scope.document.collectedEntries.contains { entry in
+    private var hasSavedSense: Bool {
+        content.scope.document.entries.contains { entry in
             entry.id == currentSelection.entryID && entry.senses.contains { $0.id == currentSelection.senseID }
         }
     }
@@ -80,7 +80,7 @@ struct BuiltInReviewSenseView: View {
                                 }
                             }
                         }
-                    } else if source == nil || !isCollected {
+                    } else if source == nil || !hasSavedSense {
                         HStack(spacing: 10) {
                             Image(systemName: "info.circle")
                                 .foregroundStyle(.secondary)
@@ -138,7 +138,7 @@ struct BuiltInReviewSenseView: View {
             if let group, !group.cards.isEmpty {
                 Divider().opacity(0.5)
                 participation(group)
-            } else if source != nil, isCollected {
+            } else if source != nil, hasSavedSense {
                 Divider().opacity(0.5)
                 HStack {
                     Button(BuiltInReviewCopy.text("action.enroll"), systemImage: "checkmark.circle.fill") {

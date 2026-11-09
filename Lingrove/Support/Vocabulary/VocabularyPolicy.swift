@@ -105,11 +105,10 @@ nonisolated enum VocabularyPolicy {
             startsAtBoundary: window.location == 0, endsAtBoundary: NSMaxRange(window) == text.length, app: app)
     }
 
-    /// Ordinary capture prepares one joined entry plus its memberships. It does not repeatedly
-    /// round-trip the complete document through `entries`' computed getter/setter. The engine
-    /// reconstructs this bounded edit from its own current SQL state and validates relationships.
+    /// Prepare one saved entry. The engine reconstructs its evidence from its own current
+    /// SQL state, avoiding a round trip through every entry for one capture.
     static func entryForSave(_ input: VocabularyCapture, in document: VocabularyDocument, now: Date)
-        throws -> (entry: VocabularyEntry, collections: [VocabularyCollectionItem]) {
+        throws -> VocabularyEntry {
         try validate(input)
         var capture = input
         let header = document.catalog.first { entryKey($0) == entryKey(capture) }
@@ -124,18 +123,11 @@ nonisolated enum VocabularyPolicy {
             $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
         }) { capture.example = example.copiedWithNewID() }
         try VocabularySensePolicy.save(capture, in: &entry, now: now)
-        var membership = VocabularyDocument()
-        membership.collections = document.collections.filter { oldSenses.contains($0.senseID) }
-        if let destination = VocabularySensePolicy.destination(capture, in: entry) {
-            VocabularyNotebookProjection.collect(senseID: destination.senseID, interpretationID: destination.exampleID,
-                withoutContext: capture.example == nil, in: &membership, now: now)
-        }
-        return (entry, membership.collections)
+        return entry
     }
 
     static func save(_ capture: VocabularyCapture, in document: inout VocabularyDocument, now: Date) throws -> UUID {
         try validate(capture)
-        if capture.language == nil, document.schemaVersion == 3 { document.schemaVersion = 4 }
         var capture = capture
         if let example = capture.example, document.entries.contains(where: {
             entryKey($0) != entryKey(capture) && $0.examples.contains { $0.id == example.id }
@@ -148,11 +140,6 @@ nonisolated enum VocabularyPolicy {
             index = document.entries.count - 1
         }
         try VocabularySensePolicy.save(capture, in: &document.entries[index], now: now)
-        if let destination = VocabularySensePolicy.destination(capture, in: document.entries[index]) {
-            VocabularyNotebookProjection.collect(senseID: destination.senseID, interpretationID: destination.exampleID,
-                withoutContext: capture.example == nil, in: &document, now: now)
-        }
-        document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
         return document.entries[index].id
     }
 

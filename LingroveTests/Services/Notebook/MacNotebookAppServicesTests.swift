@@ -70,7 +70,7 @@ struct MacNotebookAppServicesTests {
         let reopened = try MacNotebookRepository(databaseURL: database, mediaDirectoryURL: media)
         defer { try? reopened.shutdown() }
         let persisted = try reopened.snapshot()
-        #expect(persisted.document.collectedEntries[0].senses[0].note == after.senses[0].note)
+        #expect(persisted.document.entries[0].senses[0].note == after.senses[0].note)
         let result = try reopened.engine.loadBuiltInNotebookReview(scope: persisted, now: Date())
         #expect(result.statistics.activeSenses == 1 && result.statistics.ratingRecords == 1)
         #expect(result.review.groups[selection.senseID]?.cards.first?.reps == 1)

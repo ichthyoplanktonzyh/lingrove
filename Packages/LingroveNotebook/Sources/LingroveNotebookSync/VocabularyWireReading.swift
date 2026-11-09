@@ -29,7 +29,11 @@ nonisolated struct VocabularyWireFields {
         guard value >= Double(minimum), value <= Double(maximum), value.rounded(.towardZero) == value else { throw VocabularyWireError.invalidRecord }
         return Int(value)
     }
-    mutating func date(_ key: String) throws -> Date { Date(timeIntervalSinceReferenceDate: try number(key)) }
+    mutating func date(_ key: String) throws -> Date { try Self.date(take(key)) }
+    static func date(_ value: J) throws -> Date {
+        guard case let .number(seconds) = value, seconds.isFinite else { throw VocabularyWireError.invalidRecord }
+        return Date(timeIntervalSinceReferenceDate: seconds)
+    }
     mutating func uuid(_ key: String) throws -> UUID { try Self.uuid(string(key)) }
     static func uuid(_ text: String) throws -> UUID {
         guard text == text.lowercased(), let id = UUID(uuidString: text), id.uuidString.lowercased() == text else { throw VocabularyWireError.invalidRecord }; return id

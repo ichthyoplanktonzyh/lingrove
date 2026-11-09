@@ -14,7 +14,7 @@ struct VocabularyLifecycleTests {
             appBundleIdentifier: nil, encounteredAt: now)
         let occurrence = VocabularySourceOccurrence(id: UUID(), sourceID: source.id,
             ranges: [.init(NSRange(location: 4, length: 4))])
-        return .init(catalog: [], sources: [source], occurrences: [occurrence], interpretations: [], collections: [])
+        return .init(catalog: [], sources: [source], occurrences: [occurrence], interpretations: [])
     }
 
     @Test func sourceAndUnresolvedCandidatesRoundTripWithoutLexicalOrCollectionOwnership() async throws {
@@ -29,14 +29,14 @@ struct VocabularyLifecycleTests {
             .init(id: UUID(), occurrenceID: document.occurrences[0].id, meaning: "河岸", createdAt: now)
         ]
         let snapshot = try await archive.commit(document)
-        #expect(snapshot.document.entries.isEmpty && snapshot.document.collectedEntries.isEmpty)
+        #expect(snapshot.document.entries.isEmpty)
         #expect(try await VocabularyArchive(url: url).load().document == document)
         let backup = folder.appendingPathComponent("backup.lingrove")
         try await archive.backup(to: backup)
         #expect(try await VocabularyArchive(url: folder.appendingPathComponent("restore.sqlite")).restore(from: backup).document == document)
     }
 
-    @Test func collectionCanBeRemovedAndRestoredWithoutDeletingEvidenceOrGraph() async throws {
+    @Test func deletingAnExampleKeepsTheSenseAndRetiresItsEvidenceLink() async throws {
         let archive = VocabularyArchive(url: nil)
         var document = material()
         let senseID = UUID(), entryID = UUID()
@@ -48,25 +48,20 @@ struct VocabularyLifecycleTests {
         let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "金融机构")])
         document.semantics.nodes = [node]
         document.semantics.mappings = [.init(nodeID: node.id, senseID: senseID, evidenceIDs: [claim.id])]
-        let knowledgeOnly = try await archive.commit(document)
-        #expect(knowledgeOnly.document.entries[0].examples.count == 1 && knowledgeOnly.document.collectedEntries.isEmpty)
-        VocabularyNotebookProjection.collect(senseID: senseID, interpretationID: claim.id, in: &document, now: now)
         let saved = try await archive.commit(document)
-        let example = try #require(saved.document.collectedEntries.first?.examples.first)
+        let example = try #require(saved.document.entries.first?.examples.first)
         let removed = try await archive.remove(.init(expression: "bank", dictionaryForm: "bank", language: .english,
             kind: .word, example: example, senseID: senseID))
-        #expect(removed.document.collectedEntries.isEmpty)
-        #expect(removed.document.interpretations == document.interpretations && removed.document.sources == document.sources)
-        #expect(removed.document.occurrences == document.occurrences && removed.document.semantics == document.semantics)
-        let resaved = try await archive.save(.init(expression: "bank", dictionaryForm: "bank", language: .english,
-            kind: .word, example: example, senseID: senseID))
-        #expect(resaved.document.collectedEntries[0].examples[0].id == claim.id)
-        #expect(resaved.document.interpretations.count == 2)
-        #expect(try await archive.remove(id: entryID).document.collectedEntries.isEmpty)
-        #expect(try await archive.load().document.catalog.count == 1)
+        #expect(removed.document.entries[0].senses[0].id == senseID)
+        #expect(removed.document.entries[0].examples.isEmpty)
+        #expect(!removed.document.interpretations.contains { $0.id == claim.id })
+        #expect(removed.document.sources == document.sources && removed.document.occurrences == document.occurrences)
+        #expect(removed.document.semantics.mappings.first?.evidenceIDs.isEmpty == true)
+        #expect(try await archive.remove(id: entryID).document.entries.isEmpty)
+        #expect(try await archive.load().document.catalog.isEmpty)
     }
 
-    @Test func invalidClaimsAndCollectionReferencesAreRejectedBeforeCommit() async throws {
+    @Test func invalidClaimsAndCaptureDestinationsAreRejectedBeforeCommit() async throws {
         let archive = VocabularyArchive(url: nil)
         let original = material()
         _ = try await archive.commit(original)
@@ -77,7 +72,7 @@ struct VocabularyLifecycleTests {
         invalid.interpretations = [.init(id: UUID(), occurrenceID: original.occurrences[0].id, status: .accepted, createdAt: now)]
         await #expect(throws: VocabularyError.self) { _ = try await archive.commit(invalid) }
         invalid = original
-        invalid.collections = [.init(senseID: UUID(), savedAt: now)]
+        invalid.interpretations = [.init(id: UUID(), occurrenceID: original.occurrences[0].id, senseID: UUID(), status: .accepted, createdAt: now)]
         await #expect(throws: VocabularyError.self) { _ = try await archive.commit(invalid) }
         invalid = original; invalid.sources = []
         await #expect(throws: VocabularyError.self) { _ = try await archive.commit(invalid) }
@@ -86,10 +81,10 @@ struct VocabularyLifecycleTests {
         invalid.catalog = [.init(id: UUID(), expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
             senses: [.init(id: first, meaning: "银行", createdAt: now, updatedAt: now),
                      .init(id: second, meaning: "河岸", createdAt: now, updatedAt: now)], createdAt: now, updatedAt: now)]
-        invalid.collections = [.init(senseID: first, isSavedWithoutContext: true, savedAt: now),
-                               .init(senseID: second, isSavedWithoutContext: true, savedAt: now)]
+        invalid.catalog[0].senses[0].isSavedWithoutContext = true
+        invalid.catalog[0].senses[1].isSavedWithoutContext = true
         await #expect(throws: VocabularyError.self) { _ = try await archive.commit(invalid) }
-        invalid.collections = []
+        invalid.catalog[0].senses[1].isSavedWithoutContext = false
         invalid.interpretations = [.init(id: UUID(), occurrenceID: original.occurrences[0].id, senseID: first,
             status: .accepted, createdAt: now), .init(id: UUID(), occurrenceID: original.occurrences[0].id,
             senseID: second, status: .accepted, createdAt: now)]
@@ -107,7 +102,7 @@ struct VocabularyLifecycleTests {
         let original = document.interpretations[0]
         document.interpretations.append(.init(id: UUID(), occurrenceID: original.occurrenceID, meaning: "候选解释", createdAt: now))
         _ = try await archive.commit(document)
-        let before = document.collectedEntries[0]
+        let before = document.entries[0]
         var edited = before; edited.senses[0].examples[0].text = "The bank is open."
         let changed = try await archive.update(edited, basedOn: before)
         #expect(changed.document.sources.count == 2 && changed.document.occurrences.count == 2)
@@ -117,29 +112,28 @@ struct VocabularyLifecycleTests {
         #expect(changed.document.interpretations[0].occurrenceID != original.occurrenceID)
     }
 
-    @Test func reimportingRetainedKnowledgeChangesOnlyPersonalMembership() async throws {
+    @Test func reimportingADeletedWordCreatesANewCorpusEntry() async throws {
         let archive = VocabularyArchive(url: nil)
         let capture = VocabularyCapture(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
             meaning: "银行", meaningLanguage: .chinese)
         let initial = try await archive.save(capture)
         _ = try await archive.remove(id: initial.document.entries[0].id)
-        let before = try await archive.load()
         let input = VocabularyEntryInput(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
             meaning: "银行", meaningLanguage: .chinese)
         let (restored, result) = try await archive.addEntries([input])
-        #expect(result.changedCollections == 1 && result.hasChanges)
-        #expect(restored.document.catalog == before.document.catalog)
-        #expect(restored.document.collectedEntries.count == 1 && restored.document.collections.count == 1)
+        #expect(result.addedEntries == 1 && result.hasChanges)
+        #expect(restored.document.entries.count == 1)
+        #expect(restored.document.entries.first?.id != initial.document.entries[0].id)
     }
 
-    @Test func aStaleEditorCannotRecreateUncollectedPersonalState() async throws {
+    @Test func aStaleEditorCannotRecreateADeletedEntry() async throws {
         let archive = VocabularyArchive(url: nil)
         let saved = try await archive.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word))
-        let baseline = saved.document.collectedEntries[0]
+        let baseline = saved.document.entries[0]
         _ = try await archive.remove(id: baseline.id)
         var edited = baseline; edited.senses[0].note = "Stale note"
         await #expect(throws: VocabularyError.editConflict) { _ = try await archive.update(edited, basedOn: baseline) }
-        #expect(try await archive.load().document.collectedEntries.isEmpty)
+        #expect(try await archive.load().document.entries.isEmpty)
     }
 
     @Test func echoingACapturedSourcePreservesItsExactTimestampAcrossTheCLIUnixEpoch() async throws {

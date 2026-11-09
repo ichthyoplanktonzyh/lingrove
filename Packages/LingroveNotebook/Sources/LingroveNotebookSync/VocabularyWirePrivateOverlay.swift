@@ -34,10 +34,10 @@ nonisolated enum VocabularyWirePrivateOverlay {
         for claim in document.interpretations {
             explanations += try claim.explanations.map { try explanation($0, owner: claim.id, kind: .interpretationExplanation) }
         }
-        for collection in document.collections {
-            if let value = collection.review, let local = try review(value, sense: collection.senseID, role: .legacy) { reviews.append(local) }
-            for value in collection.reviewCards ?? [] {
-                if let local = try review(value, sense: collection.senseID, role: .card(value.plan.id)) { reviews.append(local) }
+        for sense in document.catalog.flatMap(\.senses) {
+            if let value = sense.review, let local = try review(value, sense: sense.id, role: .legacy) { reviews.append(local) }
+            for value in sense.reviewCards ?? [] {
+                if let local = try review(value, sense: sense.id, role: .card(value.plan.id)) { reviews.append(local) }
             }
         }
         return .init(notebookID: notebookID, reviews: reviews, explanations: explanations)
@@ -111,12 +111,15 @@ nonisolated enum VocabularyWirePrivateOverlay {
             for index in result.preservedPlans.indices { result.preservedPlans[index] = try restoreAudio(result.preservedPlans[index], position: index) }
             return result
         }
-        for index in document.collections.indices {
-            let sense = document.collections[index].senseID
-            if let value = document.collections[index].review { document.collections[index].review = try restoreReview(value, senseID: sense, role: .legacy) }
-            if var cards = document.collections[index].reviewCards {
-                for card in cards.indices { cards[card] = try restoreReview(cards[card], senseID: sense, role: .card(cards[card].plan.id)) }
-                document.collections[index].reviewCards = cards
+        for entry in document.catalog.indices {
+            for index in document.catalog[entry].senses.indices {
+                var sense = document.catalog[entry].senses[index]
+                if let value = sense.review { sense.review = try restoreReview(value, senseID: sense.id, role: .legacy) }
+                if var cards = sense.reviewCards {
+                    for card in cards.indices { cards[card] = try restoreReview(cards[card], senseID: sense.id, role: .card(cards[card].plan.id)) }
+                    sense.reviewCards = cards
+                }
+                document.catalog[entry].senses[index] = sense
             }
         }
 

@@ -299,9 +299,9 @@ struct VocabularyWireWindowIntegrationTests {
     @Test("Corpus records reject unknown keys, unsupported types, bad composite identity, and invalid clocks")
     func corpusRecordMetadataIsStrict() throws {
         let entity = VocabularyWireEntity(
-            entityType: .selectedInterpretation,
+            entityType: .mappingEvidence,
             entityID: "00000000-0000-0000-0000-000000000001:00000000-0000-0000-0000-000000000002",
-            fields: ["senseId": .string("00000000-0000-0000-0000-000000000001"),
+            fields: ["mappingId": .string("00000000-0000-0000-0000-000000000001"),
                      "interpretationId": .string("00000000-0000-0000-0000-000000000002")]
         )
         let valid = try Self.row(from: entity)
@@ -398,7 +398,7 @@ struct VocabularyWireWindowIntegrationTests {
         #expect(result.unattachedPrivateState.reviews.isEmpty)
         #expect(result.unattachedPrivateState.explanations.isEmpty)
 
-        let review = try #require(result.document.collections.first { $0.senseID == VocabularyWireTestFixture.targetSenseID }?.review)
+        let review = try #require(result.document.savedSenses.first { $0.id == VocabularyWireTestFixture.targetSenseID }?.review)
         #expect(review.bindings.map(\.id) == [
             VocabularyWireTestFixture.currentBindingID,
             VocabularyWireTestFixture.mergedBindingID
@@ -560,7 +560,7 @@ struct VocabularyWireWindowIntegrationTests {
         // Editing an expression also requires replacing its saved explanation
         // inputs. An independent note edit exercises clocks without constructing
         // a graph the real typed writer would reject for stale explanations.
-        let collection = try #require(rows.first { $0["entityType"] as? String == "collection" })
+        let collection = try #require(rows.first { $0["entityType"] as? String == "sense" })
         let collectionID = try Self.string(collection["entityId"])
         let changedFields = try Self.dictionary(collection["fields"]).merging(["note": "changed on server"]) { _, new in new }
         var advancedVersions = try Self.stringDictionary(collection["fieldVersions"])
@@ -568,11 +568,11 @@ struct VocabularyWireWindowIntegrationTests {
         advancedVersions["note"] = "3"
         advancedResets["note"] = "3"
         let validDelta = try Self.verify(Self.window(records: [Self.row(
-            entityType: "collection", entityID: collectionID, version: "3", fields: changedFields,
+            entityType: "sense", entityID: collectionID, version: "3", fields: changedFields,
             fieldVersions: advancedVersions, fieldResets: advancedResets
         )], scope: Self.scope, mode: .incremental, afterSequence: "2", highWaterSequence: "3", initialized: true))
         let updated = try shadow.applying(validDelta, now: Self.now).materialize().document
-        #expect(updated.collections.first { $0.senseID.uuidString.lowercased() == collectionID }?.note == "changed on server")
+        #expect(updated.savedSenses.first { $0.id.uuidString.lowercased() == collectionID }?.note == "changed on server")
         try Self.assertUnchangedClockRejectsCanonicalEquivalentText(in: rows)
     }
 
@@ -626,18 +626,18 @@ extension VocabularyWireWindowIntegrationTests {
     func rebaseCombinesPublicIntentWithoutUploadingPrivateState() throws {
         let original = try VocabularyWireTestFixture.document()
         let base = try Self.rebaseBase(original)
-        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        let index = try #require(original.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
         var local = original, remote = original, expected = original
-        local.collections[index].note = "local note\u{0000}"
-        local.collections[index].tags.append("local tag")
-        remote.collections[index].tags.append("remote tag")
-        expected.collections[index].note = "local note\u{0000}"
-        expected.collections[index].tags += ["remote tag", "local tag"]
+        local.savedSenses[index].note = "local note\u{0000}"
+        local.savedSenses[index].tags.append("local tag")
+        remote.savedSenses[index].tags.append("remote tag")
+        expected.savedSenses[index].note = "local note\u{0000}"
+        expected.savedSenses[index].tags += ["remote tag", "local tag"]
         let result = try VocabularyWireRebase.prepare(local: local, base: base,
             window: Self.rebaseDelta(original: original, remote: remote, additiveTags: true), now: Self.now)
         #expect(result.shadow.sequence.rawValue == "2")
         #expect(result.materialization.document == expected)
-        #expect(try result.shadow.materialize().document.collections[index].note == original.collections[index].note)
+        #expect(try result.shadow.materialize().document.savedSenses[index].note == original.savedSenses[index].note)
         #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(result.materialization.unattachedPrivateState.explanations.isEmpty)
     }
@@ -646,19 +646,19 @@ extension VocabularyWireWindowIntegrationTests {
     func rebaseConflictsRespectFieldClocksAndResets() throws {
         let original = try VocabularyWireTestFixture.document()
         let base = try Self.rebaseBase(original)
-        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        let index = try #require(original.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
         var local = original, remote = original
-        local.collections[index].note = "cafe\u{0301}"
-        remote.collections[index].note = "caf\u{00E9}"
+        local.savedSenses[index].note = "cafe\u{0301}"
+        remote.savedSenses[index].note = "caf\u{00E9}"
         try Self.expectRebaseConflict(local, base: base, window: Self.rebaseDelta(original: original, remote: remote), field: "note")
         local = original; remote = original
-        local.collections[index].tags.append("mine")
-        remote.collections[index].tags.append("theirs")
+        local.savedSenses[index].tags.append("mine")
+        remote.savedSenses[index].tags.append("theirs")
         try Self.expectRebaseConflict(local, base: base, window: Self.rebaseDelta(original: original, remote: remote), field: "tags")
         // An intervening replacement can restore the same visible value. Its
         // advanced clock still prevents blindly rebasing an older local edit.
         var row = try #require(Self.rows(from: VocabularyWireProjectionCodec.project(original, notebookID: Self.scope.notebookID).entities)
-            .first { $0["entityType"] as? String == "collection" && $0["entityId"] as? String == VocabularyWireTestFixture.targetSenseID.uuidString.lowercased() })
+            .first { $0["entityType"] as? String == "sense" && $0["entityId"] as? String == VocabularyWireTestFixture.targetSenseID.uuidString.lowercased() })
         row["version"] = "2"
         var versions = try Self.stringDictionary(row["fieldVersions"]), resets = try Self.stringDictionary(row["fieldResets"])
         versions["tags"] = "2"; resets["tags"] = "2"
@@ -672,12 +672,12 @@ extension VocabularyWireWindowIntegrationTests {
     func rebaseReturnsUnattachedPrivateStateAcrossPlanDeletion() throws {
         let original = try VocabularyWireTestFixture.document()
         let base = try Self.rebaseBase(original)
-        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        let index = try #require(original.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
         var remote = original
-        remote.collections[index].review = nil
+        remote.savedSenses[index].review = nil
         let result = try VocabularyWireRebase.prepare(local: original, base: base,
             window: Self.rebaseDelta(original: original, remote: remote), now: Self.now)
-        #expect(result.materialization.document.collections[index].review == nil)
+        #expect(result.materialization.document.savedSenses[index].review == nil)
         #expect(result.materialization.unattachedPrivateState.reviews.contains {
             $0.senseID == VocabularyWireTestFixture.targetSenseID && $0.role == .legacy && !$0.bindings.isEmpty && !$0.audio.isEmpty
         })
@@ -693,7 +693,7 @@ extension VocabularyWireWindowIntegrationTests {
     func rebaseRejectsCreationAndRetiredIdentityCollisions() throws {
         let original = try VocabularyWireTestFixture.document()
         var local = original
-        local.collections[0].note = "independent creator"
+        local.savedSenses[0].note = "independent creator"
         let rows = try Self.rows(from: VocabularyWireProjectionCodec.project(original, notebookID: Self.scope.notebookID).entities)
         let bootstrap = try Self.verify(Self.window(records: rows, scope: Self.scope, initialized: true))
         #expect(throws: VocabularyWireRebaseError.self) {
@@ -781,8 +781,8 @@ extension VocabularyWireWindowIntegrationTests {
     func uploadInitialPublicGraphAndRestore() throws {
         let original = try VocabularyWireTestFixture.document(), base = VocabularyWireServerShadow.empty(scope: Self.scope)
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: original, base: base))
-        #expect(batch.request.members.count == 41)
-        #expect(Set(batch.request.members.map(\.change.entityType)).count == 29)
+        #expect(batch.request.members.count == 38)
+        #expect(Set(batch.request.members.map(\.change.entityType)).count == 27)
         let bytes = try batch.encodedBody(), text = String(decoding: bytes, as: UTF8.self)
         #expect(!text.contains("private-profile")); #expect(!text.contains("http://localhost:8765"))
         let restored = try VocabularyWireUploadPlanner.restore(body: bytes, targetEntities: batch.targetEntities,
@@ -796,7 +796,7 @@ extension VocabularyWireWindowIntegrationTests {
     func uploadDiffAndFrozenBaselineValidation() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
         var local = original
-        local.collections[0].note = "pending note"; local.collections[0].tags.append("append tag")
+        local.savedSenses[0].note = "pending note"; local.savedSenses[0].tags.append("append tag")
         local.catalog[1].updatedAt = original.catalog[1].updatedAt.addingTimeInterval(1)
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: local, base: base))
         #expect(batch.request.members.count == 1)
@@ -829,21 +829,21 @@ extension VocabularyWireWindowIntegrationTests {
     func uploadAcknowledgementPreservesPostSendEdits() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
         var sent = original
-        sent.collections[0].note = "sent value"; sent.collections[0].tags += ["b", "c"]
+        sent.savedSenses[0].note = "sent value"; sent.savedSenses[0].tags += ["b", "c"]
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
         let receipt = try Self.uploadReceipt(batch)
         let acknowledgement = try VocabularyWireUploadAcknowledgement(batch: batch, receipt: receipt)
-        var server = sent; server.collections[0].tags = original.collections[0].tags + ["c", "b"]
+        var server = sent; server.savedSenses[0].tags = original.savedSenses[0].tags + ["c", "b"]
         let window = try Self.rebaseDelta(original: original, remote: server, additiveTags: true)
-        var later = sent; later.collections[0].note = "later value"; later.collections[0].tags.append("later")
+        var later = sent; later.savedSenses[0].note = "later value"; later.savedSenses[0].tags.append("later")
         let result = try VocabularyWireRebase.prepare(local: later, base: base, window: window, acknowledging: acknowledgement, now: Self.now)
-        #expect(result.materialization.document.collections[0].note == "later value")
-        #expect(result.materialization.document.collections[0].tags == original.collections[0].tags + ["c", "b", "later"])
+        #expect(result.materialization.document.savedSenses[0].note == "later value")
+        #expect(result.materialization.document.savedSenses[0].tags == original.savedSenses[0].tags + ["c", "b", "later"])
         #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(throws: VocabularyWireRebaseError.self) {
             try VocabularyWireRebase.prepare(local: later, base: base, window: window, now: Self.now)
         }
-        let row = try #require(window.records.first { $0.entity.entityType == .collection })
+        let row = try #require(window.records.first { $0.entity.entityType == .sense })
         var object = try Self.jsonObject(JSONEncoder.wireEncoder().encode(row))
         object["version"] = "3"
         var fields = try Self.dictionary(object["fields"]), clocks = try Self.stringDictionary(object["fieldVersions"]), resets = try Self.stringDictionary(object["fieldResets"])
@@ -859,7 +859,7 @@ extension VocabularyWireWindowIntegrationTests {
     @Test("Receipt validation requires exact ordered members and canonical records covering the actual write")
     func uploadReceiptRequiresExactCoverage() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
-        var sent = original; sent.collections[0].note = "accepted note"
+        var sent = original; sent.savedSenses[0].note = "accepted note"
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
         let receipt = try Self.uploadReceipt(batch)
         var wrong = try Self.jsonObject(JSONEncoder().encode(receipt)); wrong["groupId"] = UUID().uuidString.lowercased()
@@ -871,7 +871,7 @@ extension VocabularyWireWindowIntegrationTests {
         #expect(throws: VocabularyWireUploadError.incompleteReceiptCoverage) {
             try VocabularyWireRebase.prepare(local: sent, base: base, window: missing, acknowledging: ack, now: Self.now)
         }
-        var different = original; different.collections[0].note = "not the accepted note"
+        var different = original; different.savedSenses[0].note = "not the accepted note"
         #expect(throws: VocabularyWireUploadError.incompleteReceiptCoverage) {
             try VocabularyWireRebase.prepare(local: sent, base: base, window: Self.rebaseDelta(original: original, remote: different), acknowledging: ack, now: Self.now)
         }
@@ -885,7 +885,7 @@ extension VocabularyWireWindowIntegrationTests {
         try VocabularyDocumentValidation.validate(oversized)
         #expect(throws: VocabularyWireUploadError.requestTooLarge) { try VocabularyWireUploadPlanner.make(local: oversized, base: base) }
         let source = VocabularySourceSnapshot(id: UUID(), text: "original evidence", kind: .captured, appBundleIdentifier: nil, encounteredAt: Self.now)
-        let small = VocabularyDocument(catalog: [], sources: [source], occurrences: [], interpretations: [], collections: [])
+        let small = VocabularyDocument(catalog: [], sources: [source], occurrences: [], interpretations: [])
         var changed = small
         changed.sources[0] = .init(id: source.id, text: "replacement evidence", kind: source.kind, appBundleIdentifier: source.appBundleIdentifier, encounteredAt: source.encounteredAt)
         #expect(throws: VocabularyWireUploadError.invalidTransition) { try VocabularyWireUploadPlanner.make(local: changed, base: Self.rebaseBase(small)) }
@@ -894,7 +894,7 @@ extension VocabularyWireWindowIntegrationTests {
     @Test("Closed positive and negative outcomes cross the planner/codec boundary without inventing a document or cursor")
     func terminalOutcomeRoundTripsAndMatchesTheFrozenGroup() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
-        var sent = original; sent.collections[0].note = "local pending"
+        var sent = original; sent.savedSenses[0].note = "local pending"
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
         let negative: [String: Any] = ["status":"rejected","rejection":["protocolVersion":1,
             "notebookId":batch.request.notebookID.uuidString.lowercased(),"groupId":batch.request.groupID.uuidString.lowercased(),
@@ -913,7 +913,7 @@ extension VocabularyWireWindowIntegrationTests {
     @Test("Negative confirmations reject missing/reordered members, foreign identities, unknown reasons and extra fields")
     func terminalOutcomeRejectsUnmatchedOrOpenEndedConfirmation() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
-        var sent = original; sent.collections[0].note = "pending note"; sent.catalog[0].senses[0].meaning = "pending meaning"
+        var sent = original; sent.savedSenses[0].note = "pending note"; sent.catalog[0].senses[0].meaning = "pending meaning"
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
         let valid: [String: Any] = ["protocolVersion":1,"notebookId":batch.request.notebookID.uuidString.lowercased(),
             "groupId":batch.request.groupID.uuidString.lowercased(),"memberIds":batch.request.members.map { $0.memberID.uuidString.lowercased() },"reason":"entity_conflict"]
@@ -985,7 +985,7 @@ private extension VocabularyWireWindowIntegrationTests {
         #expect(Data(nfc.utf8) != Data(nfd.utf8))
 
         let originalEntry = try #require(rows.first {
-            $0["entityType"] as? String == "collection" &&
+            $0["entityType"] as? String == "sense" &&
                 $0["entityId"] as? String == VocabularyWireTestFixture.targetSenseID.uuidString.lowercased()
         })
         let identity = try #require(originalEntry["entityId"] as? String)
@@ -998,7 +998,7 @@ private extension VocabularyWireWindowIntegrationTests {
         baselineResets["note"] = "1"
 
         let baselineRows = rows.map { row -> [String: Any] in
-            guard row["entityType"] as? String == "collection", row["entityId"] as? String == identity else { return row }
+            guard row["entityType"] as? String == "sense", row["entityId"] as? String == identity else { return row }
             var copy = row
             copy["version"] = "2"
             copy["fields"] = baselineFields
@@ -1014,7 +1014,7 @@ private extension VocabularyWireWindowIntegrationTests {
         var advancedReset = baselineResets
         advancedReset["note"] = "2"
         let resetOnlyRewrite = Self.row(
-            entityType: "collection", entityID: identity, version: "3", fields: baselineFields,
+            entityType: "sense", entityID: identity, version: "3", fields: baselineFields,
             fieldVersions: baselineVersions, fieldResets: advancedReset
         )
         let resetOnlyWindow = try Self.verify(Self.window(
@@ -1028,7 +1028,7 @@ private extension VocabularyWireWindowIntegrationTests {
         var rewrittenFields = baselineFields
         rewrittenFields["note"] = nfd
         let rewritten = Self.row(
-            entityType: "collection", entityID: identity, version: "3", fields: rewrittenFields,
+            entityType: "sense", entityID: identity, version: "3", fields: rewrittenFields,
             fieldVersions: baselineVersions, fieldResets: baselineResets
         )
         let window = try Self.verify(Self.window(

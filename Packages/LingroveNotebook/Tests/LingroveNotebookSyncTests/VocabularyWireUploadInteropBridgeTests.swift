@@ -17,7 +17,7 @@ struct VocabularyWireUploadInteropBridgeTests {
         func uuid(_ key: String) throws -> UUID { try #require(UUID(uuidString: value(key))) }
         let scope = try VocabularyWireWindowScope(ownerUserID: value("OWNER"), workspaceID: uuid("WORKSPACE"), notebookID: uuid("BOOK"), replicaID: uuid("REPLICA"))
         let original = try VocabularyWireTestFixture.document()
-        let index = try #require(original.collections.firstIndex { $0.senseID == VocabularyWireTestFixture.targetSenseID })
+        let index = try #require(original.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
         func verified(_ path: String) throws -> VocabularyWireVerifiedWindow {
             let envelope = try JSONDecoder().decode(Envelope.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
             var verifier = try VocabularyWireWindowAccumulator(manifest: envelope.manifest, expecting: scope, now: Date()), bytes = Data()
@@ -31,13 +31,13 @@ struct VocabularyWireUploadInteropBridgeTests {
         let phase = try value("BRIDGE_PHASE")
         if phase == "seed" {
             let batch = try #require(try VocabularyWireUploadPlanner.make(local: original, base: .empty(scope: scope)))
-            #expect(batch.request.members.count == 41); try write(batch); return
+            #expect(batch.request.members.count == 38); try write(batch); return
         }
         let base = try VocabularyWireServerShadow.empty(scope: scope).applying(verified(value("BOOTSTRAP")), now: Date())
         #expect(base.sequence.rawValue == "1")
         var sent = original
-        sent.collections[index].note = "upload bridge sent"
-        sent.collections[index].tags += ["b", "c"]
+        sent.savedSenses[index].note = "upload bridge sent"
+        sent.savedSenses[index].tags += ["b", "c"]
         sent.catalog[1].updatedAt = original.catalog[1].updatedAt.addingTimeInterval(1)
         if phase == "prepare" {
             let batch = try #require(try VocabularyWireUploadPlanner.make(local: sent, base: base))
@@ -51,12 +51,12 @@ struct VocabularyWireUploadInteropBridgeTests {
         #expect(receipt.committedSequence.rawValue == "3")
         let ack = try VocabularyWireUploadAcknowledgement(batch: batch, receipt: receipt)
         var later = sent
-        later.collections[index].note = "upload bridge later"
-        later.collections[index].tags.append("later")
+        later.savedSenses[index].note = "upload bridge later"
+        later.savedSenses[index].tags.append("later")
         let result = try VocabularyWireRebase.prepare(local: later, base: base,
             window: verified(value("DELTA")), acknowledging: ack, now: Date())
         var expected = later
-        expected.collections[index].tags = original.collections[index].tags + ["c", "b", "later"]
+        expected.savedSenses[index].tags = original.savedSenses[index].tags + ["c", "b", "later"]
         #expect(result.shadow.sequence.rawValue == "3")
         #expect(result.materialization.document == expected)
         #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)

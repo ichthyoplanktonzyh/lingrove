@@ -62,11 +62,11 @@ struct VocabularyUnifiedRepositoryTests {
                 createdAt: Date(), updatedAt: Date()))
             #expect(await f.store.update(literal, basedOn: baseline))
             let saved = try f.repository.snapshot()
-            let coffee = try #require(saved.document.collectedEntries.first { $0.id == original.id })
+            let coffee = try #require(saved.document.entries.first { $0.id == original.id })
             #expect(coffee.senses[0].note.utf8.elementsEqual("cafe\u{0301}".utf8))
             #expect(coffee.senses[0].examples.count == 1)
             #expect(coffee.senses.last?.note == "a new personal sense")
-            #expect(saved.document.collectedEntries.first { $0.id == other.id } == other)
+            #expect(saved.document.entries.first { $0.id == other.id } == other)
             #expect(saved.document.classification == before.document.classification)
             #expect(try f.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
         }
@@ -80,12 +80,12 @@ struct VocabularyUnifiedRepositoryTests {
             await f.store.save(capture)
             let original = try #require(f.store.entries.first)
             let baseline = try #require(f.store.operationScope)
-            #expect(try f.repository.snapshot().document.collectedEntries == f.store.entries)
+            #expect(try f.repository.snapshot().document.entries == f.store.entries)
             #expect(try f.repository.engine.loadLingroveNotebookReviewEnrollments(workspaceId: baseline.workspaceId).isEmpty)
             let initialSequence = f.repository.changeSequence
             var cancelled = original
             cancelled.senses[0].note = "cancelled draft"
-            #expect(try f.repository.snapshot().document.collectedEntries[0].senses[0].note.isEmpty)
+            #expect(try f.repository.snapshot().document.entries[0].senses[0].note.isEmpty)
             let png = try await f.store.prepareImage(VocabularyImageTestFixture.png())
             var edited = original
             edited.senses[0].note = "authored on Mac"
@@ -100,8 +100,8 @@ struct VocabularyUnifiedRepositoryTests {
             oldSheet.senses[0].tags = ["finance"]
             #expect(await f.store.update(oldSheet, basedOn: original, scope: baseline))
             let saved = try f.repository.snapshot()
-            #expect(saved.document.collectedEntries[0].senses[0].note == "authored on Mac")
-            #expect(saved.document.collectedEntries[0].dictionaryForm == "bank (noun)")
+            #expect(saved.document.entries[0].senses[0].note == "authored on Mac")
+            #expect(saved.document.entries[0].dictionaryForm == "bank (noun)")
             #expect(await f.store.image(png.reference, scope: saved) == png.data)
             #expect(try f.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_media_assets", values: []) == 1)
             let backup = f.root.appendingPathComponent("corpus.lingrove")
@@ -112,14 +112,14 @@ struct VocabularyUnifiedRepositoryTests {
             #expect(await f.store.removeSense(entryID: original.id, senseID: original.senses[0].id, scope: saved))
             #expect(f.store.entries.isEmpty)
             await f.store.restore(from: backup, scope: try f.repository.snapshot())
-            #expect(f.store.entries == saved.document.collectedEntries)
+            #expect(f.store.entries == saved.document.entries)
             #expect(try f.repository.engine.loadLingroveNotebookReviewEnrollments(workspaceId: saved.workspaceId).isEmpty)
             await f.store.shutdown()
             try f.repository.shutdown()
             let reopened = try MacNotebookRepository(databaseURL: f.repository.databaseURL, mediaDirectoryURL: f.repository.mediaDirectoryURL)
             defer { try? reopened.shutdown() }
             let store = VocabularyStore(repository: reopened); await store.load()
-            #expect(store.entries == saved.document.collectedEntries)
+            #expect(store.entries == saved.document.entries)
             #expect(await store.image(png.reference) == png.data)
             #expect(try reopened.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
             await store.shutdown()
@@ -244,7 +244,7 @@ struct VocabularyUnifiedRepositoryTests {
             #expect(try f.repository.snapshot().document.entries[0].explanations?.contains(first) == true)
             await f.store.remove(capture)
             let removed = try f.repository.snapshot()
-            #expect(removed.document.collectedEntries.isEmpty && !removed.document.catalog.isEmpty)
+            #expect(removed.document.entries.isEmpty && !removed.document.catalog.isEmpty)
             let later = LearningExplanationRecord(id: UUID(), input: input, language: .english,
                 result: .init(meaning: "new temporary result", explanation: "must stay temporary"), model: "synthetic", createdAt: Date())
             await f.store.saveExplanation(later, scope: removed)
@@ -292,8 +292,8 @@ struct VocabularyUnifiedRepositoryTests {
             try f.repository.shutdown()
             let reopened = try MacNotebookRepository(databaseURL: f.repository.databaseURL, mediaDirectoryURL: f.repository.mediaDirectoryURL)
             defer { try? reopened.shutdown() }
-            #expect(try reopened.snapshot().document.collectedEntries == saved.document.collectedEntries)
-            try JSONSerialization.data(withJSONObject: ["entries": saved.document.collectedEntries.count,
+            #expect(try reopened.snapshot().document.entries == saved.document.entries)
+            try JSONSerialization.data(withJSONObject: ["entries": saved.document.entries.count,
                 "expression": entry.expression, "meaning": entry.senses[0].meaning, "note": entry.senses[0].note,
                 "revision": saved.revision, "reopened": true], options: [.prettyPrinted, .sortedKeys])
                 .write(to: output.appendingPathComponent("stored-proof.json"))

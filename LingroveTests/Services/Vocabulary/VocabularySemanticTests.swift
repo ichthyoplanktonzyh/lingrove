@@ -177,7 +177,7 @@ struct VocabularySemanticTests {
         #expect(merged.document.semantics.mappings[0].evidenceIDs == document.semantics.mappings[0].evidenceIDs)
         let removed = try await archive.removeSense(entryID: entry.id, senseID: target)
         #expect(removed.document.semantics == merged.document.semantics)
-        #expect(!removed.document.collectedEntries.contains { $0.senses.contains { $0.id == target } })
+        #expect(!removed.document.entries.contains { $0.senses.contains { $0.id == target } })
         #expect(removed.document.semantics.nodes == document.semantics.nodes)
     }
 
@@ -259,7 +259,7 @@ struct VocabularySemanticTests {
         _ = try await archive.commit(document)
         let backup = folder.appendingPathComponent("before-correction.lingrove")
         try await archive.backup(to: backup)
-        let original = document.collectedEntries[0]
+        let original = document.entries[0]
         var edited = original
         edited.senses[0].examples[0].text = "They pushed back against the demand."
         let saved = try await archive.update(edited, basedOn: original)
@@ -279,9 +279,9 @@ struct VocabularySemanticTests {
     @Test func translationEditsKeepEvidenceButReinterpretingTheSameOccurrenceDoesNot() async throws {
         let archive = VocabularyArchive(url: nil), document = Self.fixture()
         _ = try await archive.commit(document)
-        var edited = document.collectedEntries[0]
+        var edited = document.entries[0]
         edited.senses[0].examples[0].translation = "我们将会议推迟到了周五。"
-        let translated = try await archive.update(edited, basedOn: document.collectedEntries[0])
+        let translated = try await archive.update(edited, basedOn: document.entries[0])
         #expect(translated.document.semantics == document.semantics)
         var reinterpreted = translated.document
         reinterpreted.interpretations[0].meaning = "反对要求"

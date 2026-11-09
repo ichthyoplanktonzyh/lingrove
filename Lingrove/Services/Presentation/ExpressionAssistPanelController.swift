@@ -459,7 +459,7 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
                 onSpeak: speech == nil ? nil : { [weak self] in self?.toggleSpeech(for: candidate, index: index) },
                 isSaved: state.savedIndices.contains(index),
                 isSaving: state.savingIndices.contains(index),
-                onToggleFavorite: vocabulary == nil ? nil : { [weak self] in self?.toggleFavorite(for: candidate) }
+                onToggleFavorite: vocabulary == nil ? nil : { [weak self] in self?.saveOrShowInCorpus(for: candidate) }
             )
             row.tag = index
             if index == selected { selectedRow = row }
@@ -598,14 +598,11 @@ final class ExpressionAssistPanelController: NSObject, ExpressionAssistPresentin
         speech.toggle(SpeechRequest(target: speechTarget(for: index), text: text, language: language))
     }
 
-    private func toggleFavorite(for candidate: ExpressionAssistCandidate) {
+    private func saveOrShowInCorpus(for candidate: ExpressionAssistCandidate) {
         guard let vocabulary, let itemCapture = capture(for: candidate) else { return }
+        if vocabulary.contains(itemCapture) { vocabulary.show(itemCapture); return }
         Task { @MainActor [scope = vocabulary.operationScope] in
-            if vocabulary.contains(itemCapture) {
-                await vocabulary.remove(itemCapture, scope: scope)
-            } else {
-                await vocabulary.save(itemCapture, scope: scope)
-            }
+            await vocabulary.save(itemCapture, scope: scope)
         }
     }
 

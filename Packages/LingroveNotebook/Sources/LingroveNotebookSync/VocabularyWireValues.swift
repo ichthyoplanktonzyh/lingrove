@@ -39,8 +39,8 @@ public nonisolated indirect enum VocabularyWireJSON: Codable, Equatable, Sendabl
 /// Explicit remote families match the version-one corpus contract. They do not
 /// include the local codec's Anki binding family or derived searchable indexes.
 public nonisolated enum VocabularyWireEntityKind: String, Codable, CaseIterable, Hashable, Sendable {
-    case notebookSettings, entry, sense, source, occurrence, interpretation, collection
-    case selectedInterpretation, senseExplanation, interpretationExplanation, contentBlock
+    case notebookSettings, entry, sense, source, occurrence, interpretation
+    case senseExplanation, interpretationExplanation, contentBlock
     case reviewDraft, reviewTemplate, meaningNode, meaningLabel, meaningRole, usagePattern
     case patternSlot, meaningMapping, roleBinding, mappingEvidence, meaningRelation
     case retrievalCue, cueTarget, classificationFramework, category, categoryParent, categoryMembership, categoryOverride

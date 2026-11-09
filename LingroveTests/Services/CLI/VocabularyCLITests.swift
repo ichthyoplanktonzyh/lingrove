@@ -103,7 +103,7 @@ struct VocabularyCLITests {
             #expect(saved.localizations.first?.language == "tr")
             #expect(VocabularyCategoryLocalizationPolicy.presentation(saved, identifiers: ["tr"]).name == "Olumsuzlama")
             #expect(saved.references.first?.license == "CC-BY-SA-4.0")
-            #expect(snapshot.document.catalog.isEmpty && snapshot.document.collections.isEmpty)
+            #expect(snapshot.document.catalog.isEmpty)
             let reply = try result(try await fixture.call(["data", "get", "categories", custom.uuidString]).1)
             #expect((reply["record"] as? [String: Any])?["scopeNote"] as? String == saved.scopeNote)
             let overlay: [String: Any] = ["categoryID": base.id.uuidString,
@@ -317,7 +317,7 @@ struct VocabularyCLITests {
                 JSONSerialization.data(withJSONObject: #require(saved), options: .sortedKeys))
             let snapshot = try await fixture.archive.load()
             let document = snapshot.document
-            #expect(document.collectedEntries.count == 2 && document.collections.count == 3)
+            #expect(document.entries.count == 2 && document.entries.flatMap(\.senses).count == 3)
             #expect(document.sources.count == 3 && document.occurrences.count == 3 && document.interpretations.count == 3)
             #expect(document.sources.allSatisfy { $0.kind == .generated })
             #expect(document.semantics.mappings.allSatisfy { $0.provenance.origin == .model && $0.provenance.status == .confirmed })
@@ -325,7 +325,7 @@ struct VocabularyCLITests {
             #expect(document.semantics.mappings.last?.relation == .realizesFunction)
             #expect(document.occurrences.first?.ranges.first?.location == 7) // Emoji uses two UTF-16 code units.
             let matches = VocabularyMeaningBrowserProjection.items(index: document.semantics,
-                entries: document.collectedEntries, query: "存钱的地方")
+                entries: document.entries, query: "存钱的地方")
             #expect(matches.count == 1 && matches[0].selections.count == 1)
             #expect(try result(try await capture(input).1)["replayed"] as? Bool == true)
             var changed = input; changed["relations"] = []
@@ -336,7 +336,7 @@ struct VocabularyCLITests {
             #expect(try await capture(invalid).0 == 2)
             #expect(try await fixture.archive.load().revision == snapshot.revision)
             #expect(try await fixture.archive.load().document == snapshot.document)
-            let first = try #require(document.collectedEntries.first { $0.expression == "bank" })
+            let first = try #require(document.entries.first { $0.expression == "bank" })
             let sense = try #require(first.senses.first { $0.meaning == "银行" })
             let node = try #require(document.semantics.nodes.first { $0.title == "金融机构" })
             let append: [String: Any] = ["version": 1, "idempotencyKey": "capture-existing", "expectedRevision": snapshot.revision,
@@ -349,7 +349,7 @@ struct VocabularyCLITests {
             let updated = try await fixture.archive.load().document
             #expect(updated.catalog.count == 2 && updated.catalog.flatMap(\.senses).count == 3)
             #expect(updated.semantics.nodes.count == 3)
-            #expect(updated.collectedEntries.first { $0.id == first.id }?.senses.first { $0.id == sense.id }?.note == sense.note)
+            #expect(updated.entries.first { $0.id == first.id }?.senses.first { $0.id == sense.id }?.note == sense.note)
             var stale = append; stale["idempotencyKey"] = "capture-stale"
             #expect(try await capture(stale).0 == 4)
             let schema = try await Self.run(Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove"),
@@ -361,7 +361,7 @@ struct VocabularyCLITests {
         await fixture.close()
     }
 
-    @Test func externalAgentCanOrganizeUncollectedMaterialThenCollectAndUncollectIt() async throws {
+    @Test func externalAgentWritesDirectlyToTheCorpus() async throws {
         let fixture = try await Fixture()
         do {
             let entry = UUID().uuidString, sense = UUID().uuidString, source = UUID().uuidString
@@ -392,16 +392,16 @@ struct VocabularyCLITests {
             #expect(try await fixture.archive.load().document.sources.isEmpty)
             let committed = try await fixture.apply(input)
             #expect(committed.0 == 0)
-            #expect(fixture.store.entries.isEmpty)
+            #expect(fixture.store.entries.first?.examples.first?.id.uuidString == accepted)
             let catalog = try await fixture.call(["data", "get", "senses", sense])
             #expect(catalog.0 == 0)
             let unresolved = try await fixture.call(["data", "list", "interpretations", "--related", occurrence, "--status", "candidate"])
             #expect(unresolved.0 == 0)
             #expect(try result(unresolved.1)["total"] as? Int == 1)
             #expect(try await fixture.call(["vocab", "list"]).1["ok"] as? Bool == true)
-            let collect = resourceBatch("collect", 1, [put("collections", ["senseID": sense, "interpretationIDs": [accepted],
+            let annotate = resourceBatch("annotate", 1, [put("senses", ["id": sense,
                 "note": "Personal note", "tags": ["scheduling"]])])
-            #expect(try await fixture.apply(collect).0 == 0)
+            #expect(try await fixture.apply(annotate).0 == 0)
             #expect(fixture.store.entries.first?.examples.first?.id.uuidString == accepted)
             #expect(fixture.store.entries.first?.senses.first?.note == "Personal note")
             let replayed = try await fixture.apply(input)
@@ -416,9 +416,6 @@ struct VocabularyCLITests {
             #expect(try await fixture.apply(unknown).0 == 2)
             let immutable = resourceBatch("source-edit", 2, [put("sources", ["id": source, "text": "Edited evidence"] )])
             #expect(try await fixture.apply(immutable).0 == 4)
-            let uncollect = resourceBatch("uncollect", 2, [["delete": ["resource": "collections", "id": sense]]])
-            #expect(try await fixture.apply(uncollect).0 == 0)
-            #expect(fixture.store.entries.isEmpty)
             let retained = try await fixture.archive.load()
             #expect(retained.document.sources.count == 1 && retained.document.interpretations.count == 2)
             #expect(retained.document.semantics.mappings[0].evidenceIDs.map(\.uuidString) == [accepted])
@@ -426,10 +423,10 @@ struct VocabularyCLITests {
             #expect(retained.document.semantics.mappings[0].provenance.status == .confirmed)
             #expect(retained.document.semantics.cueTargets[0].provenance.status == .confirmed)
             #expect(try await fixture.call(["data", "get", "sources", source]).0 == 0)
-            let traditional = batch("legacy-recollect", [["update": ["entryID": entry, "senseID": sense,
-                "expectedRevision": 3, "note": "Collected through the traditional CLI"]]])
+            let traditional = batch("edit-saved-sense", [["update": ["entryID": entry, "senseID": sense,
+                "expectedRevision": 2, "note": "Edited through the CLI"]]])
             #expect(try await fixture.apply(traditional).0 == 0)
-            #expect(fixture.store.entries.first?.senses.first?.note == "Collected through the traditional CLI")
+            #expect(fixture.store.entries.first?.senses.first?.note == "Edited through the CLI")
         } catch { await fixture.close(); throw error }
         await fixture.close()
     }

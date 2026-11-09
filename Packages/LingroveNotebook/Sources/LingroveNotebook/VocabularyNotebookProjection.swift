@@ -1,44 +1,32 @@
 import Foundation
 
-/// Existing cards and editors consume joined notebook values. This pure adapter is the sole
-/// translation between that shape and independently owned catalog, evidence, claims and personal
-/// state. It performs no IO, classification or graph construction and is owned by no UI object.
+/// Joins saved senses to their accepted interpretations and source evidence for notebook
+/// readers. Editors write through the same boundary so corrected text keeps independent evidence.
 public nonisolated enum VocabularyNotebookProjection {
-    public static func entries(_ document: VocabularyDocument, collectedOnly: Bool) -> [VocabularyEntry] {
-        entries(document.catalog, in: document, collectedOnly: collectedOnly)
+    public static func entries(_ document: VocabularyDocument) -> [VocabularyEntry] {
+        entries(document.catalog, in: document)
     }
 
-    /// Entry editors/captures need one join, not a copy of every joined entry. Evidence remains
-    /// owned by the canonical document; this short-lived value carries only the requested view.
     public static func entry(_ id: UUID, in document: VocabularyDocument) -> VocabularyEntry? {
-        guard let header = document.catalog.first(where: { $0.id == id }) else { return nil }
-        return entries([header], in: document, collectedOnly: false).first
+        guard let entry = document.catalog.first(where: { $0.id == id }) else { return nil }
+        return entries([entry], in: document).first
     }
 
-    private static func entries(_ catalog: [VocabularyEntry], in document: VocabularyDocument,
-                                collectedOnly: Bool) -> [VocabularyEntry] {
+    private static func entries(_ catalog: [VocabularyEntry], in document: VocabularyDocument) -> [VocabularyEntry] {
         let sources = Dictionary(document.sources.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let occurrences = Dictionary(document.occurrences.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let collections = Dictionary(document.collections.map { ($0.senseID, $0) }, uniquingKeysWith: { first, _ in first })
         let claims = Dictionary(grouping: document.interpretations.filter { $0.status == .accepted }, by: \.senseID)
-        return catalog.compactMap { header in
+        return catalog.map { header in
             var entry = header
-            entry.senses = header.senses.compactMap { header in
-                let collection = collections[header.id]
-                if collectedOnly && collection == nil { return nil }
-                let selected = Set(collection?.interpretationIDs ?? [])
+            entry.senses = header.senses.map { header in
                 var sense = header
                 sense.examples = (claims[header.id] ?? []).compactMap { claim in
-                    if collectedOnly && !selected.contains(claim.id) { return nil }
                     guard let occurrence = occurrences[claim.occurrenceID], let source = sources[occurrence.sourceID] else { return nil }
                     return example(claim, occurrence: occurrence, source: source)
                 }
-                sense.note = collection?.note ?? ""; sense.tags = collection?.tags ?? []
-                sense.content = collection?.content; sense.review = collection?.review; sense.reviewCards = collection?.reviewCards
-                sense.isSavedWithoutContext = collection?.isSavedWithoutContext ?? false
                 return sense
             }
-            return collectedOnly && entry.senses.isEmpty ? nil : entry
+            return entry
         }
     }
 
@@ -51,15 +39,12 @@ public nonisolated enum VocabularyNotebookProjection {
             appBundleIdentifier: source.appBundleIdentifier, createdAt: claim.createdAt, explanations: claim.explanations)
     }
 
-    /// This adapter handles explicit lexical edits. Raw sources/occurrences are never inferred
-    /// to be garbage merely because the last displayed interpretation was removed. CLI resource
-    /// mutations edit canonical records directly and therefore never implicitly collect them.
+    /// Deleting a use removes the accepted interpretation. The original evidence can still
+    /// be cited by another interpretation or associated source record.
     public static func replace(_ entries: [VocabularyEntry], in document: inout VocabularyDocument) {
-        let priorSenseIDs = Set(document.catalog.flatMap(\.senses).map(\.id))
         let priorClaimIDs = Set(document.interpretations.filter { $0.status == .accepted && $0.senseID != nil }.map(\.id))
         let senseIDs = Set(entries.flatMap(\.senses).map(\.id))
         let claimIDs = Set(entries.flatMap(\.examples).map(\.id))
-        document.collections.removeAll { !senseIDs.contains($0.senseID) }
         document.interpretations.removeAll { priorClaimIDs.contains($0.id) && !claimIDs.contains($0.id) }
         // Unresolved candidates survive a deleted lexical destination. They retain their claim
         // identity and evidence and can be assigned another destination in a later transaction.
@@ -69,35 +54,14 @@ public nonisolated enum VocabularyNotebookProjection {
                 document.interpretations[index].status = .candidate
             }
         }
-        document.catalog = entries.map { entry in
-            var header = entry
-            header.senses = entry.senses.map { sense in
-                var header = sense
-                header.examples = []; header.note = ""; header.tags = []; header.isSavedWithoutContext = false
-                header.content = nil; header.review = nil; header.reviewCards = nil
-                return header
-            }
-            return header
-        }
+        document.catalog = entries.map(header)
         var offsets = Offsets(document)
         for sense in entries.flatMap(\.senses) {
-            let oldCollection = offsets.collections[sense.id].map { document.collections[$0] }
-            if oldCollection != nil || !priorSenseIDs.contains(sense.id) {
-                var collection = oldCollection ?? .init(senseID: sense.id, savedAt: sense.createdAt)
-                collection.note = sense.note; collection.tags = sense.tags; collection.content = sense.content
-                collection.review = sense.review; collection.reviewCards = sense.reviewCards
-                collection.isSavedWithoutContext = sense.isSavedWithoutContext
-                let selected = Set(collection.interpretationIDs)
-                collection.interpretationIDs = sense.examples.filter {
-                    selected.contains($0.id) || !priorClaimIDs.contains($0.id)
-                }.map(\.id)
-                upsert(collection, in: &document.collections, offsets: &offsets.collections, id: \.senseID)
-            }
             for example in sense.examples { retain(example, senseID: sense.id, in: &document, offsets: &offsets) }
         }
     }
 
-    /// A save command replaces one lexical subtree. Unrelated catalog/claim/collection values
+    /// A save command replaces one lexical subtree. Unrelated entries and interpretations
     /// are never projected back through an editor, so their literal bytes and ownership survive.
     /// Sources and occurrences are immutable evidence: retain can only reuse them or append new
     /// identities. The validated entry-save boundary checks all resulting relationships.
@@ -105,7 +69,6 @@ public nonisolated enum VocabularyNotebookProjection {
         let previous = document.catalog.first { $0.id == entry.id }
         let oldSenses = Set(previous?.senses.map(\.id) ?? [])
         let senses = Set(entry.senses.map(\.id)), claims = Set(entry.examples.map(\.id))
-        document.collections.removeAll { oldSenses.contains($0.senseID) && !senses.contains($0.senseID) }
         document.interpretations.removeAll {
             $0.status == .accepted && $0.senseID.map(oldSenses.contains) == true && !claims.contains($0.id)
         }
@@ -115,18 +78,17 @@ public nonisolated enum VocabularyNotebookProjection {
                 document.interpretations[index].status = .candidate
             }
         }
-        var header = entry
-        header.senses = entry.senses.map { sense in
-            var value = sense
-            value.examples = []; value.note = ""; value.tags = []; value.isSavedWithoutContext = false
-            value.content = nil; value.review = nil; value.reviewCards = nil
-            return value
-        }
-        upsert(header, in: &document.catalog, id: \.id)
+        upsert(header(entry), in: &document.catalog, id: \.id)
         var offsets = Offsets(document)
         for sense in entry.senses {
             for example in sense.examples { retain(example, senseID: sense.id, in: &document, offsets: &offsets) }
         }
+    }
+
+    private static func header(_ entry: VocabularyEntry) -> VocabularyEntry {
+        var header = entry
+        for index in header.senses.indices { header.senses[index].examples = [] }
+        return header
     }
 
     /// One reconciliation indexes each table once. A word-list import can contain thousands
@@ -135,10 +97,9 @@ public nonisolated enum VocabularyNotebookProjection {
         var sources: [UUID: Int]
         var occurrences: [UUID: Int]
         var claims: [UUID: Int]
-        var collections: [UUID: Int]
         init(_ document: VocabularyDocument) {
             sources = Self.index(document.sources.map(\.id)); occurrences = Self.index(document.occurrences.map(\.id))
-            claims = Self.index(document.interpretations.map(\.id)); collections = Self.index(document.collections.map(\.senseID))
+            claims = Self.index(document.interpretations.map(\.id))
         }
         private static func index(_ ids: [UUID]) -> [UUID: Int] {
             Dictionary(ids.enumerated().map { ($0.element, $0.offset) }, uniquingKeysWith: { first, _ in first })
@@ -182,14 +143,6 @@ public nonisolated enum VocabularyNotebookProjection {
         case let (lhs?, rhs?): lhs.utf8.elementsEqual(rhs.utf8)
         default: false
         }
-    }
-
-    public static func collect(senseID: UUID, interpretationID: UUID?, withoutContext: Bool = false,
-                        in document: inout VocabularyDocument, now: Date) {
-        var value = document.collections.first { $0.senseID == senseID } ?? .init(senseID: senseID, savedAt: now)
-        if let interpretationID, !value.interpretationIDs.contains(interpretationID) { value.interpretationIDs.append(interpretationID) }
-        value.isSavedWithoutContext = value.isSavedWithoutContext || withoutContext
-        upsert(value, in: &document.collections, id: \.senseID)
     }
 
     private static func upsert<T, ID: Equatable>(_ value: T, in values: inout [T], id: KeyPath<T, ID>) {

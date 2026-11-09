@@ -11,7 +11,7 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
     /// JSON is restricted to one entity's scalar/leaf fields. Relationships and ordering live
     /// in SQL columns, while stripping children prevents a note edit from rewriting its usages.
     enum Payload: Equatable, Sendable {
-        case entry(VocabularyEntry), sense(VocabularySense), usage(VocabularyInterpretation), collection(VocabularyCollectionItem)
+        case entry(VocabularyEntry), sense(VocabularySense), usage(VocabularyInterpretation), collection(VocabularySenseStorageRecord)
         case source(VocabularySourceSnapshot), occurrence(VocabularySourceOccurrence)
         case explanation(LearningExplanationRecord), block(VocabularyContentBlock)
         case review(VocabularyReview), binding(AnkiNoteBinding), template(ReviewLayoutTemplate)
@@ -73,7 +73,7 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
             case .entries: return .entry(try decoder.decode(VocabularyEntry.self, from: bytes))
             case .senses: return .sense(try decoder.decode(VocabularySense.self, from: bytes))
             case .usages: return .usage(try decoder.decode(VocabularyInterpretation.self, from: bytes))
-            case .collections: return .collection(try decoder.decode(VocabularyCollectionItem.self, from: bytes))
+            case .collections: return .collection(try decoder.decode(VocabularySenseStorageRecord.self, from: bytes))
             case .collectionInterpretations: return .evidence(try decoder.decode(UUID.self, from: bytes))
             case .sources: return .source(try decoder.decode(VocabularySourceSnapshot.self, from: bytes))
             case .occurrences: return .occurrence(try decoder.decode(VocabularySourceOccurrence.self, from: bytes))
