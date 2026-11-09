@@ -91,4 +91,3 @@ public nonisolated struct NotebookCaptureExample: Codable, Sendable {
     public var sourceKind: String?
     public var ranges: [Range]?
 }
-

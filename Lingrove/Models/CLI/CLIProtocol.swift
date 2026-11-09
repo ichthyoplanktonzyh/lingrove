@@ -57,18 +57,8 @@ nonisolated struct CLIChange: Codable, Sendable {
     var capture: CLICapture?
 }
 
-/// Resource writes name stable caller-supplied UUIDs, so a single batch can create linked
-/// records without guessing the IDs of earlier operations. The app validates typed domain
-/// records; the executable shares only this bounded wire contract and never opens SQLite.
-nonisolated struct CLIResourcePut: Codable, Sendable {
-    var resource: String
-    var value: CLIJSON
-}
-
-nonisolated struct CLIResourceDelete: Codable, Sendable {
-    var resource: String
-    var id: UUID
-}
+typealias CLIResourcePut = NotebookResourcePut
+typealias CLIResourceDelete = NotebookResourceDelete
 
 nonisolated struct CLINewSense: Codable, Sendable {
     var expression: String

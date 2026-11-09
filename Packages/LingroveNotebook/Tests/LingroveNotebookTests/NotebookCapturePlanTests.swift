@@ -3,6 +3,22 @@ import LingroveNotebook
 import Testing
 
 struct NotebookCapturePlanTests {
+    @Test func editingAnExistingResourceRetainsItsUnmentionedFields() throws {
+        let id = UUID()
+        let entry = VocabularyEntry(id: id, expression: "take a rain check", dictionaryForm: "take a rain check",
+            language: .english, kind: .expression, senses: [], createdAt: Date(), updatedAt: Date())
+        var document = VocabularyDocument(catalog: [entry], sources: [], occurrences: [], interpretations: [], collections: [])
+        let patch = NotebookResourcePut(resource: "entries", value: .object([
+            "id": .string(id.uuidString), "expression": .string("rain check"),
+        ]))
+        _ = try NotebookResources.put(patch, in: &document, now: Date())
+        let updated = try #require(document.catalog.first)
+        #expect(updated.expression == "rain check")
+        #expect(updated.language == .english)
+        #expect(updated.dictionaryForm == "take a rain check")
+        try VocabularyDocumentValidation.validate(document)
+    }
+
     @Test func capturesEvidenceAndClassificationUsingTheSharedMaterialSchema() throws {
         let categoryId = UUID()
         let task = try NotebookCaptureContract.decodeMaterial(Data("""
