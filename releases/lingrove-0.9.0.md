@@ -1,6 +1,6 @@
 ## [⬇ 下载 macOS 安装包](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v0.9.0/Lingrove-0.9.0-universal.dmg)
 
-**Lingrove 0.9.0（build 7） · macOS 14 或更新版本 · Apple Silicon / Intel 通用**
+**Lingrove 0.9.0（build 7） · macOS 14 或更新版本 · Apple Silicon / Intel 通用 · 64.3 MB**
 
 ### 安装
 
@@ -26,5 +26,7 @@
 <summary>校验文件与构建信息</summary>
 
 [SHA-256 校验](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v0.9.0/SHA256SUMS.txt) · [构建信息](https://github.com/ichthyoplanktonzyh/lingrove/releases/download/v0.9.0/build-info.json)
+
+通用 Release 构建和 17 项打包测试已通过。已检查挂载内容、嵌套签名及 11 个可执行文件的双架构，四个 GitHub 附件的 SHA-256 与本地一致。Intel 实机及其他 Mac 下载后的首次安装流程未验证。
 
 </details>

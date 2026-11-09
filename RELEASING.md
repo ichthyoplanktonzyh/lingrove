@@ -5,29 +5,34 @@ version/build metadata. `scripts/package_dmg.py` validates the production app an
 explicit installer/legal inputs; `scripts/build_dmg.sh` is its shell entry point. GitHub Actions
 retains the separate future Developer ID/notarization/update workflow.
 
-## 0.9.0 release candidate (build 7)
+## Current public release: 0.9.0 (build 7)
 
-Build a universal package and stage it as a GitHub Release draft. The production app uses SQLite
-schema 41 and corpus sync v9. Existing production databases do not migrate automatically. The
-one-time Dev corpus migration was performed separately. Account sync requires a server with v9
-support. See [the release notes](releases/lingrove-0.9.0.md) for the upgrade boundary.
+The latest GitHub Release is **Lingrove（拾语）v0.9.0**. The universal installer is
+`Lingrove-0.9.0-universal.dmg`. See the [release notes](releases/lingrove-0.9.0.md).
 
-## Current public release: 0.8.1 (build 6)
+The production app uses SQLite schema 41 and corpus sync v9. Existing production databases do
+not migrate automatically. The one-time Dev corpus migration was performed separately. Account
+sync requires a server with v9 support.
 
-Publish the clean current source as **Lingrove（拾语）v0.8.1**, tag `v0.8.1`, with GitHub's
-prerelease flag disabled and the release marked latest. The universal artifact is
-`Lingrove-0.8.1-universal.dmg`; it has no test designation. Release notes live in
-[releases/lingrove-0.8.1.md](releases/lingrove-0.8.1.md).
-
-The package remains **ad-hoc signed and unnotarized** because the distribution identity is not
-configured. Stable version naming does not establish Developer ID signing or notarization.
-Keep these facts visible in the install guide and notes. Sparkle remains disabled, with no feed
-or public key; manual update opens this repository's Releases page. Leave
-`LINGROVE_RELEASES_ENABLED` unset until the independent signing/update setup below is complete.
+The package uses **ad-hoc signing and has not been notarized**. The app uses manual updates through
+this repository's Releases page. Leave `LINGROVE_RELEASES_ENABLED` unset until the independent
+signing and Sparkle setup below is complete.
 
 The production scheme produces `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Lingrove Dev
-has its separate bundle, storage and credentials. Do not launch, replace or read the installed
-user app/data for release validation. Validate with synthetic fixtures and a private host.
+has its separate bundle, storage and credentials. Use synthetic fixtures and a private host for
+release validation to keep the installed user's application and data outside the test environment.
+
+## 0.9.0 acceptance checkpoint — 2026-11-09
+
+- The installer and `v0.9.0` tag identify source `caed73eaa6f403e1284f091332d465cc2ce99385`.
+  The universal Release build and all 17 packaging regression tests passed.
+- The mounted DMG contents, nested signatures, both slices of all 11 Mach-O files, test bundle
+  and entitlement exclusion, and local SHA-256 passed verification. DerivedData was removed.
+- All four GitHub attachment digests match the local files. The public installer returned HTTP
+  200 with a size of 64,312,836 bytes and served a byte-range request.
+- After verifying the new download, the superseded v0.8.1 GitHub Release and attachments were
+  removed. Its source tag remains available. Intel hardware and a fresh Gatekeeper installation
+  were outside this checkpoint.
 
 ## 0.8.1 acceptance checkpoint — 2026-11-06
 
