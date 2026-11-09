@@ -42,7 +42,7 @@ struct VocabularyPersistenceCodecTests {
         #expect(reopened.interpretations.map(\.id) == historical.interpretations.map(\.id))
     }
 
-    @Test func frozenCoreGraphEmitsEveryPersistenceFamily() throws {
+    @Test func frozenCoreGraphEmitsCurrentPersistenceFamilies() throws {
         let fixtureURL = try #require(Bundle.module.url(
             forResource: "document-v9-codec",
             withExtension: "json",
@@ -89,8 +89,8 @@ struct VocabularyPersistenceCodecTests {
         try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
         let frozenRows = try VocabularyPersistenceCodec.encode(document)
         let initiallyEmitted = Set(frozenRows.rows.map { $0.entity.rawValue })
-        let missingFromFrozenCore = Set(VocabularyPersistenceEntity.allCases.map(\.rawValue))
-            .subtracting(initiallyEmitted)
+        let currentFamilies = Set(VocabularyPersistenceEntity.allCases.filter { $0 != .collectionInterpretations }.map(\.rawValue))
+        let missingFromFrozenCore = currentFamilies.subtracting(initiallyEmitted)
         #expect(missingFromFrozenCore == ["sense_explanations", "templates"])
 
         // The frozen graph predates one independent sense explanation and has no review-layout
@@ -115,7 +115,7 @@ struct VocabularyPersistenceCodecTests {
         )]
 
         let encoded = try VocabularyPersistenceCodec.encode(document)
-        #expect(Set(encoded.rows.map { $0.entity.rawValue }) == Set(VocabularyPersistenceEntity.allCases.map(\.rawValue)))
+        #expect(Set(encoded.rows.map { $0.entity.rawValue }) == currentFamilies)
         #expect(try VocabularyPersistenceCodec.decode(encoded) == document)
     }
 
@@ -127,6 +127,7 @@ struct VocabularyPersistenceCodecTests {
             "occurrences": [],
             "usages": ["occurrence_id", "sense_id", "status"],
             "collections": ["sense_id"],
+            "collection_interpretations": ["usage_id"],
             "sense_explanations": [],
             "usage_explanations": [],
             "blocks": [],
