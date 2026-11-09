@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// A small deterministic parser is shared with app-hosted tests. It rejects duplicate/irrelevant
 /// flags instead of accepting a write that differs from an agent's intent; IO belongs to the CLI.

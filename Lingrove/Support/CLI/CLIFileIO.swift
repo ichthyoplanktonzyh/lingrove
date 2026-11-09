@@ -1,4 +1,5 @@
 import Darwin
+import LingroveNotebook
 import Foundation
 
 /// The app and bundled CLI exchange bounded, owner-only files inside one application-specific

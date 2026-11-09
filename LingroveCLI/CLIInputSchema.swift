@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// The CLI publishes its input contract without launching the app. Paths and UUIDs belong to
 /// the caller; semantic language support, UTF-8 byte limits and ownership are checked by the app.

@@ -250,50 +250,12 @@ nonisolated struct VocabularyCLIPlan {
     }
 
     static func text(_ value: String, limit: Int, nonempty: Bool = false) throws -> String {
-        guard value.utf8.count <= limit, !nonempty || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw CLIError.invalid("Text is empty or exceeds its field limit.")
-        }
-        return value
+        try NotebookCaptureFields.text(value, limit: limit, nonempty: nonempty)
     }
-    static func language(_ value: String?) throws -> LearningLanguage? {
-        guard let value else { return nil }
-        guard let language = LearningLanguage(rawValue: value) else { throw CLIError.invalid("Unknown language code.") }
-        return language
-    }
-    static func tags(_ values: [String]) throws -> [String] {
-        guard values.count <= 100 else { throw CLIError.invalid("At most 100 tags are allowed.") }
-        var result: [String] = []
-        for value in values {
-            let tag = try text(value.trimmingCharacters(in: .whitespacesAndNewlines), limit: 200, nonempty: true)
-            if !result.contains(tag) { result.append(tag) }
-        }
-        return result
-    }
+
+    static func language(_ value: String?) throws -> LearningLanguage? { try NotebookCaptureFields.language(value) }
+    static func tags(_ values: [String]) throws -> [String] { try NotebookCaptureFields.tags(values) }
     static func example(_ input: CLIExample, expression: String, id: UUID, now: Date) throws -> VocabularyExample {
-        let text = try text(input.text, limit: 262_144, nonempty: true)
-        let ranges: [VocabularyTextRange]
-        if let supplied = input.ranges {
-            ranges = supplied.map { .init(NSRange(location: $0.location, length: $0.length)) }
-        } else {
-            let range = (text as NSString).range(of: expression)
-            if range.location != NSNotFound {
-                // Start after the first start, not its end: targets such as "ana" in
-                // "banana" have overlapping occurrences and still require disambiguation.
-                let tail = NSRange(location: range.location + 1, length: text.utf16.count - range.location - 1)
-                guard (text as NSString).range(of: expression, range: tail).location == NSNotFound else {
-                    throw CLIError.invalid("Expression occurs more than once. Supply explicit UTF-16 ranges.")
-                }
-            }
-            ranges = range.location == NSNotFound ? [] : [.init(range)]
-        }
-        guard ranges.count <= 64, ranges.allSatisfy({ VocabularyPolicy.valid($0.nsRange, in: text) }),
-              let completeness = VocabularyExample.Completeness(rawValue: input.completeness ?? "sentence") else {
-            throw CLIError.invalid("Invalid UTF-16 ranges or context completeness.")
-        }
-        return .init(id: id, sourceID: id, sourceKind: VocabularyExample.SourceKind(rawValue: input.sourceKind ?? "authored") ?? .authored,
-            text: text, translation: try self.text(input.translation ?? "", limit: 262_144),
-            translationLanguage: try language(input.translationLanguage), ranges: ranges, completeness: completeness,
-            meaning: try self.text(input.meaning ?? "", limit: 32_000), meaningLanguage: try language(input.meaningLanguage),
-            meaningOrigin: input.meaning == nil ? .captured : .user, createdAt: now)
+        try NotebookCaptureFields.example(input, expression: expression, id: id, now: now)
     }
 }

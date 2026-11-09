@@ -218,7 +218,6 @@
 		16A4A76F20BF5E229C63E40B /* LearningReadingSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9010131DCFFDA386CECFA88 /* LearningReadingSettingsTests.swift */; };
 		16CC0B34E96DAC57B5914FDD /* SuggestionOverlayStabilityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 693BD68273FE6ECBD6612436 /* SuggestionOverlayStabilityGate.swift */; };
 		16D7C960C28F2425459FE660 /* BuiltInReview.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 59E6A3055A60A819F136E6E9 /* BuiltInReview.xcstrings */; };
-		16ECF2DD107CB4BDC47D433B /* CLICaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67A49D3DBC2B00D612434308 /* CLICaptureModels.swift */; };
 		171645ACB6ED2F3932D50745 /* VisualContextStartCoalescer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57F49C3BEB3DD3F22EB6D09 /* VisualContextStartCoalescer.swift */; };
 		1717DA8EC494B96F7D3721B9 /* LearningModelCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F704CDC4D6E651A0495DF1BC /* LearningModelCollection.swift */; };
 		17356523540939505C0FE372 /* LingroveTextRules in Frameworks */ = {isa = PBXBuildFile; productRef = F1F143DB98D5392E3E138178 /* LingroveTextRules */; };
@@ -247,7 +246,6 @@
 		18EE1995374B62F483A01FD9 /* SuggestionEngineRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 299854B6656B13CCCA7AA550 /* SuggestionEngineRouter.swift */; };
 		190C8A63EC0120136C0A4165 /* DiagnosticFileMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40041BD9C027290BF9914AAD /* DiagnosticFileMigrationTests.swift */; };
 		1914FE2FE2FE3027DCBF1207 /* SettingsSearchRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 299A62FD94FF487A3761FD96 /* SettingsSearchRanker.swift */; };
-		19493A2823A96DEFF41920B1 /* CLICaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67A49D3DBC2B00D612434308 /* CLICaptureModels.swift */; };
 		19696A96D88714C0CA4F62AF /* NotebookWorkspaceNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A75DC439F3A09E54786E46 /* NotebookWorkspaceNavigation.swift */; };
 		1975D91051A266B0BDD312D2 /* TypingHistoryScrubberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3451DE60783F641103861F69 /* TypingHistoryScrubberTests.swift */; };
 		19E1C3BD4A4539B8419303D0 /* VocabularyReviewSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76548F46B30B96CDAAB8CB82 /* VocabularyReviewSection.swift */; };
@@ -1042,7 +1040,6 @@
 		71458AAB68D366665C06AF5B /* SettingsAdvancedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD3C7289906C3014358D5AA /* SettingsAdvancedSections.swift */; };
 		714EF0AECF6E4BE43064129F /* SuggestionSettingsModelDoubleTapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD3ACC45FD0868237393B24 /* SuggestionSettingsModelDoubleTapTests.swift */; };
 		7186DCE17F2B6FDFE065F536 /* SystemResourceSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953EAC6564C6E56C62A82CCC /* SystemResourceSamplerTests.swift */; };
-		718B11A87849B4EDCEEF4E63 /* VocabularyCLIClassificationResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7015D8CABF3CF1EC579897 /* VocabularyCLIClassificationResources.swift */; };
 		71AE2D53C11378067E58EF65 /* LingroveTestHostPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09673DA4940AB8A62CA7A636 /* LingroveTestHostPolicy.swift */; };
 		71BA5DD10D2AEAEAA327F9F1 /* TypingHistoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84CB9F85F322B1CE128E050C /* TypingHistoryModels.swift */; };
 		71C900F21552A1A184531E2A /* ExpressionAssistShortcutSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91488DC8DC2E43673D46323D /* ExpressionAssistShortcutSection.swift */; };
@@ -1412,6 +1409,7 @@
 		9D127F7BD45FB05240871A35 /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = 79D9612285A5B930C49D9479 /* Logging */; };
 		9D33A26B90ADC0922BCCE037 /* NotebookProgressFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54B683479CBBDA2A405FAA5 /* NotebookProgressFormatting.swift */; };
 		9D365075DDD604E2591833E6 /* CLIArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 652D6734D1B5DA60270A6023 /* CLIArguments.swift */; };
+		9D3C3C2404E3D82C6668A972 /* LingroveNotebook in Frameworks */ = {isa = PBXBuildFile; productRef = C9A1F7EF7A763B46660DC0AA /* LingroveNotebook */; };
 		9D5BFAB227F59C456F52FD14 /* LearningSelectionReplacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92B6D7108A3B0B2D59D57BD /* LearningSelectionReplacement.swift */; };
 		9D7477DD0F9C617E361006A8 /* es.txt in Resources */ = {isa = PBXBuildFile; fileRef = A99D9BF1DD595986014D089D /* es.txt */; };
 		9D7AE56394AF076478BACB7A /* BuiltInReviewMaterialPreparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E92CD5B6DAB2AAF61F39079 /* BuiltInReviewMaterialPreparation.swift */; };
@@ -1918,7 +1916,6 @@
 		D76AF6D97A62CBD2C2E7E216 /* VocabularyClassificationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC90CCE24F20FE287F0A932 /* VocabularyClassificationPolicy.swift */; };
 		D77891FD133A3DF8269738FD /* MDict-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7F4514CC34FC8EB14F672C1B /* MDict-LICENSE.txt */; };
 		D78DBA1CC9994E98D0F6668F /* TokenHealingPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAF6F3AF1DA9AD3CBC66C06 /* TokenHealingPlan.swift */; };
-		D7A140BFBA99E2A6CC48DFAB /* CLICaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67A49D3DBC2B00D612434308 /* CLICaptureModels.swift */; };
 		D7AFD1722F5017B62931F193 /* TextDirectionDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1B84B7C637B546626207271 /* TextDirectionDetectorTests.swift */; };
 		D7F0544A1F255FA6388C3AE8 /* LingroveCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD47BABD15642C244D1866E4 /* LingroveCompatibility.swift */; };
 		D7FE8EF373F8A0A996F1FC7B /* DictionarySourceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AC0E815A86A7135CACABD2 /* DictionarySourceRow.swift */; };
@@ -2247,7 +2244,6 @@
 		FECB8A56DA30C2B11ADE3E7B /* WindowScreenshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AB9DC40C9D749B100FB828 /* WindowScreenshotService.swift */; };
 		FEE45D9D2E8A1625D00BAB12 /* LearningLocalPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73BDC1CCA24255632F46CBCC /* LearningLocalPrompt.swift */; };
 		FEE59CF9FCAED7EF5D4DC9D3 /* NotebookProgressPresentationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6725C25882166EE644695ED /* NotebookProgressPresentationFactory.swift */; };
-		FF26F472CB7CCB847FF51F9C /* VocabularyCLIClassificationResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7015D8CABF3CF1EC579897 /* VocabularyCLIClassificationResources.swift */; };
 		FF39E87E14685926B184B9D5 /* VocabularyLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED29C2F397C5CBF2304D667 /* VocabularyLifecycleTests.swift */; };
 		FF438EB293B1CFEFA1B18545 /* LlamaRuntimeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2DD65AC29918D9CB382233 /* LlamaRuntimeModels.swift */; };
 		FF682FCCE55FA6FD98688D8A /* MacNotebookSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C150D7FA6F114FE22C84FB /* MacNotebookSyncModels.swift */; };
@@ -2820,7 +2816,6 @@
 		66F4DBD300B97A12FE2AED5D /* SystemMetricsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMetricsStoreTests.swift; sourceTree = "<group>"; };
 		675947057A5F698B19C94905 /* LearningTranslationInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningTranslationInput.swift; sourceTree = "<group>"; };
 		6779976489B3EDB809A224E1 /* narrow-columns.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "narrow-columns.png"; sourceTree = "<group>"; };
-		67A49D3DBC2B00D612434308 /* CLICaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLICaptureModels.swift; sourceTree = "<group>"; };
 		67D1537E0D665EB43901A77A /* DictionaryLinkPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryLinkPolicy.swift; sourceTree = "<group>"; };
 		680F5C44E6B68D7B2E08CCFA /* PerAppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerAppSettingsTests.swift; sourceTree = "<group>"; };
 		68824E0F6D16FA6E1B99DF68 /* VocabularyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyModels.swift; sourceTree = "<group>"; };
@@ -2858,7 +2853,6 @@
 		6ED29C2F397C5CBF2304D667 /* VocabularyLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyLifecycleTests.swift; sourceTree = "<group>"; };
 		6F225F46B4A2B46BFA9F371D /* FocusedInputPollingSignatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedInputPollingSignatureTests.swift; sourceTree = "<group>"; };
 		6F4C1BF3B5604521F791BC94 /* ReviewAudioPreparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewAudioPreparation.swift; sourceTree = "<group>"; };
-		6F7015D8CABF3CF1EC579897 /* VocabularyCLIClassificationResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyCLIClassificationResources.swift; sourceTree = "<group>"; };
 		6FC644DF02B58D017BD5BF60 /* LearningCapturePolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningCapturePolicyTests.swift; sourceTree = "<group>"; };
 		6FDCF571D6963D496D3D2312 /* SystemSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSpeechProvider.swift; sourceTree = "<group>"; };
 		6FE8CB7177FBDB23C2B73A88 /* ExpressionAssistLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressionAssistLayout.swift; sourceTree = "<group>"; };
@@ -3667,6 +3661,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		706952DC835DFC57A6CB5753 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D3C3C2404E3D82C6668A972 /* LingroveNotebook in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		94B722247B2E1DCE42A67B18 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -6771,7 +6773,6 @@
 				7AC90CCE24F20FE287F0A932 /* VocabularyClassificationPolicy.swift */,
 				8A721E6E5B8B10026AE79E11 /* VocabularyClassificationProjection.swift */,
 				16900E443A30CC5C368E6EB5 /* VocabularyCLICapturePlan.swift */,
-				6F7015D8CABF3CF1EC579897 /* VocabularyCLIClassificationResources.swift */,
 				03141D9A9B28C7EB3719DD67 /* VocabularyCLIPlan.swift */,
 				06CC0326500E913459DD8038 /* VocabularyCLIReadBudget.swift */,
 				1EBD1104F0836B602321104B /* VocabularyCLIResources.swift */,
@@ -6934,7 +6935,6 @@
 			isa = PBXGroup;
 			children = (
 				9B3DCF127D4AF300BB3DA9A2 /* CLICaptureContract.swift */,
-				67A49D3DBC2B00D612434308 /* CLICaptureModels.swift */,
 				613481D96CC5A4E6FF18486F /* CLIProtocol.swift */,
 				7CC25684F76903C89918AC90 /* CLIResourceContract.swift */,
 				FEE92CB621D7BAC2794E06D1 /* CLIServiceIdentity.swift */,
@@ -7240,6 +7240,7 @@
 			buildConfigurationList = 94A007B52CECB8C9C85DB324 /* Build configuration list for PBXNativeTarget "LingroveCLI" */;
 			buildPhases = (
 				C5BE6BC83D865D7F12EAD560 /* Sources */,
+				706952DC835DFC57A6CB5753 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -7247,6 +7248,7 @@
 			);
 			name = LingroveCLI;
 			packageProductDependencies = (
+				C9A1F7EF7A763B46660DC0AA /* LingroveNotebook */,
 			);
 			productName = LingroveCLI;
 			productReference = CFBBAEA4B2263A1ED34A74A1 /* LingroveCLI */;
@@ -8290,7 +8292,6 @@
 				445BA1A38F1E3F9128BEADA7 /* BundledRuntimeLocator.swift in Sources */,
 				549E9E35354BBE53C6081A96 /* CLIArguments.swift in Sources */,
 				90F767B3F12240A93836D661 /* CLICaptureContract.swift in Sources */,
-				D7A140BFBA99E2A6CC48DFAB /* CLICaptureModels.swift in Sources */,
 				97C3F03F87E6170CE43FD4AE /* CLIFileIO.swift in Sources */,
 				BD1DBDAF723500E9DF537E87 /* CLIInputPolicy.swift in Sources */,
 				15B95CE7A507E81CD74C143A /* CLIInstallation.swift in Sources */,
@@ -8897,7 +8898,6 @@
 				7F170612677B31F195E0D17A /* VocabularyArchive.swift in Sources */,
 				45859040CBE8E7110AD4E8B5 /* VocabularyBuiltInReviewSection.swift in Sources */,
 				FDA753D1D68E5573D8750B51 /* VocabularyCLICapturePlan.swift in Sources */,
-				718B11A87849B4EDCEEF4E63 /* VocabularyCLIClassificationResources.swift in Sources */,
 				1D38BA14B3DAE464342A512C /* VocabularyCLIPlan.swift in Sources */,
 				6096D2D6F7D0AFE3C2170899 /* VocabularyCLIReadBudget.swift in Sources */,
 				83C9546DB7E9D01C7A5DC656 /* VocabularyCLIReceipt.swift in Sources */,
@@ -9003,7 +9003,6 @@
 			files = (
 				9D365075DDD604E2591833E6 /* CLIArguments.swift in Sources */,
 				59F1D959740870A9B1507226 /* CLICaptureContract.swift in Sources */,
-				16ECF2DD107CB4BDC47D433B /* CLICaptureModels.swift in Sources */,
 				851A606033BE306AD111679D /* CLIFileIO.swift in Sources */,
 				C50BCABF3D4D6B97D7523D3E /* CLIInputPolicy.swift in Sources */,
 				E72CEB2902BD5FCAB1EE7E7C /* CLIInputSchema.swift in Sources */,
@@ -9100,7 +9099,6 @@
 				915B19C5CFE1105B26A01701 /* BundledRuntimeLocator.swift in Sources */,
 				BD8B59FFFAC8C3EE679719A8 /* CLIArguments.swift in Sources */,
 				1E6F16E7F90A6C479D356E3D /* CLICaptureContract.swift in Sources */,
-				19493A2823A96DEFF41920B1 /* CLICaptureModels.swift in Sources */,
 				0CC512D51BFC4F6824E6D55D /* CLIFileIO.swift in Sources */,
 				A89F54A197084D6679EC1741 /* CLIInputPolicy.swift in Sources */,
 				3FC7A41AA2C553E54C536863 /* CLIInstallation.swift in Sources */,
@@ -9707,7 +9705,6 @@
 				323ED559F4F6E97088448475 /* VocabularyArchive.swift in Sources */,
 				F67994A63BCB7DA749DBDD94 /* VocabularyBuiltInReviewSection.swift in Sources */,
 				3A003E10EF5737711FC819A7 /* VocabularyCLICapturePlan.swift in Sources */,
-				FF26F472CB7CCB847FF51F9C /* VocabularyCLIClassificationResources.swift in Sources */,
 				D5A9F5359827FB27055DA931 /* VocabularyCLIPlan.swift in Sources */,
 				5958D1E78A53E70DAB36F585 /* VocabularyCLIReadBudget.swift in Sources */,
 				948AB076D2E09E0DBA1F0EEE /* VocabularyCLIReceipt.swift in Sources */,
@@ -10438,6 +10435,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E8FA3C160FEC162F2BD9854D /* XCRemoteSwiftPackageReference "cotabbyinference" */;
 			productName = CotabbyInference;
+		};
+		C9A1F7EF7A763B46660DC0AA /* LingroveNotebook */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LingroveNotebook;
 		};
 		D9B85752444AD41BE048BD8B /* MDictReader */ = {
 			isa = XCSwiftPackageProductDependency;

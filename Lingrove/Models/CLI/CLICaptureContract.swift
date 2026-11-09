@@ -1,42 +1,12 @@
 import Foundation
+import LingroveNotebook
 
 /// One closed task descriptor produces both validation and `schema capture`. Keeping schema
 /// and parsing together prevents a misspelled association or default from being discarded by
 /// Codable. This module depends only on wire values, so app and client use identical rules.
 nonisolated enum CLICaptureContract {
-    private typealias Shape = CLIResourceContract.Shape
-    private typealias Field = CLIResourceContract.Field
-    private static let status = Field.enumeration(["confirmed", "proposed"])
-    private static let sourceKind = Field.enumeration(["unspecified", "captured", "authored", "generated", "imported"])
-    private static let label = Shape(fields: ["text": .text(4_096), "language": .text(100)], required: ["text"])
-    private static let defaults = Shape(fields: ["language": .text(100), "meaningLanguage": .text(100),
-        "translationLanguage": .text(100), "sourceKind": sourceKind, "status": status, "source": .text(4_096)])
-    private static let meaning = Shape(fields: ["ref": .text(200), "id": .uuid, "title": .text(4_096),
-        "language": .text(100), "kind": .enumeration(["concept", "function"]), "aliases": .array(.object(label), 63),
-        "definition": .text(16_384), "cues": .array(.text(4_096), 64), "status": status,
-        "categories": .array(.text(200), 64)], required: ["ref"])
-    private static let example = Shape(fields: ["text": .text(262_144), "translation": .text(262_144),
-        "translationLanguage": .text(100), "meaning": .text(32_000), "meaningLanguage": .text(100),
-        "completeness": .enumeration(["sentence", "fragment", "unknown"]), "sourceKind": sourceKind,
-        "ranges": .array(.object(CLIResourceContract.range), 64)], required: ["text"])
-    private static let association = Shape(fields: ["meaning": .text(200), "usage": .text(8_192),
-        "nuance": .text(8_192), "conditions": .text(8_192), "formality": .enumeration(["unspecified", "informal", "neutral", "formal"]),
-        "medium": .enumeration(["unspecified", "spoken", "written", "both"]), "collocations": .array(.text(1_024), 128),
-        "status": status], required: ["meaning"])
-    private static let sense = Shape(fields: ["id": .uuid, "meaning": .text(32_000), "meaningLanguage": .text(100),
-        "note": .text(262_144), "tags": .array(.text(200), 100), "examples": .array(.object(example), 100),
-        "associations": .array(.object(association), 64)])
-    private static let entry = Shape(fields: ["expression": .text(32_000), "language": .text(100),
-        "kind": .enumeration(["word", "expression", "pattern", "sentence"]), "dictionaryForm": .text(32_000),
-        "senses": .array(.object(sense), 100)], required: ["expression", "senses"])
-    private static let relation = Shape(fields: ["from": .text(200), "to": .text(200),
-        "kind": .enumeration(["narrower", "opposite", "related"]), "note": .text(8_192), "status": status],
-        required: ["from", "to", "kind"])
-    static var shape: CLIResourceContract.Shape {
-        .init(fields: ["defaults": .object(defaults), "meanings": .array(.object(meaning), 100),
-            "entries": .array(.object(entry), 100), "relations": .array(.object(relation), 200)], required: ["entries"])
-    }
-    private static var document: Shape {
+    static var shape: CLIResourceContract.Shape { NotebookCaptureContract.shape }
+    private static var document: CLIResourceContract.Shape {
         // Header is separate from material so it cannot become stored learning data.
         .init(fields: shape.fields.merging(["version": .integer, "idempotencyKey": .text(200),
             "expectedRevision": .integer, "notebookScope": .object(CLINotebookScope.shape)]) { _, new in new },
@@ -98,11 +68,6 @@ nonisolated enum CLICaptureContract {
     }
 
     static func validate(_ capture: CLICapture) throws {
-        _ = try shape.normalized(CLIJSON.value(capture))
-        guard !capture.entries.isEmpty, capture.entries.allSatisfy({ !$0.senses.isEmpty }),
-              capture.entries.reduce(0, { $0 + $1.senses.count }) <= 100,
-              capture.entries.flatMap(\.senses).reduce(0, { $0 + ($1.examples?.count ?? 0) }) <= 1_000 else {
-            throw CLIError.invalid("Capture requires entries and senses, at most 100 senses and 1000 examples.")
-        }
+        try NotebookCaptureContract.validate(capture)
     }
 }

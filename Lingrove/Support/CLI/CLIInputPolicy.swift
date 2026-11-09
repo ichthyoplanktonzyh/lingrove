@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// Shared input validation fails on misspelled keys instead of silently dropping an agent's
 /// intended note or example. The published schema and domain validation serve different roles:

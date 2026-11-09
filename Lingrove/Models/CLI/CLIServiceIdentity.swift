@@ -1,4 +1,5 @@
 import Foundation
+import LingroveNotebook
 
 /// A mailbox lease owns one identity for its lifetime. The client learns it before sending
 /// material, then pins every request to that instance and app path. Notebook scope remains a
