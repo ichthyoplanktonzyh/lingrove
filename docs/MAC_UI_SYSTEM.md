@@ -239,3 +239,20 @@ Configuration, credentials, drafts and the CLI/app destination were retained. Th
 returned the new Dev process identity, the `merge` schema and the updated guide. This verifies the
 actual existing connection, beyond a local health probe. On-screen drag feel and cross-device
 behavior remain unverified. Release DerivedData was removed after installation checks.
+
+
+### Click selection after adding drag support
+
+The initial merge interaction attached `onDrag` to every sidebar sense row, including single-sense
+headwords that cannot have an eligible same-headword merge target. Native mouse-event A/B checks
+reproduced missed List selection with that drag modifier, while identical plain rows selected.
+Single-sense headwords now retain unmodified native List selection. Draggable child senses explicitly
+handle a completed tap through the notebook's selection callback; drag/drop continues to use the
+same revision-scoped merge path. Existing icons, components and corpus data are unchanged.
+
+A permanent UI regression sends mouse down/up through AppKit to both text-side and trailing row
+areas, with and without dragging enabled. It verifies repeated selection and that clicks never
+merge. That test (both argument cases) and the existing selection-persistence test passed in an
+isolated native host; build-for-testing also passed. The before/after probe used synthetic rows and
+no user corpus. This fixes an input-dispatch regression, rather than changing dictionary or model
+execution. The matching Dev Release is installed at the same path after signature/content checks.

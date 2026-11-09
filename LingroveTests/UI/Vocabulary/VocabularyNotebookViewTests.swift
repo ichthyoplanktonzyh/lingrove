@@ -8,6 +8,48 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyNotebookViewTests {
+    @Test(arguments: [false, true])
+    func mouseClicksSelectRowsWithOrWithoutSenseDragging(_ draggingEnabled: Bool) async throws {
+        let model = ClickSelectionProbe()
+        let previousApp = NSWorkspace.shared.frontmostApplication
+        let host = NSHostingView(rootView: ClickSelectionRows(model: model, draggingEnabled: draggingEnabled))
+        let window = NSWindow(contentRect: .init(x: 100, y: 100, width: 400, height: 320),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host
+        window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        defer { window.close(); previousApp?.activate(options: []) }
+        try await Task.sleep(for: .milliseconds(350))
+        host.layoutSubtreeIfNeeded()
+        let table = try #require(tableView(in: host))
+        // Deliver actual mouse down/up events through AppKit. Calling selectRowIndexes would
+        // bypass the drag recognizer and miss the click-swallowing regression entirely.
+        for (row, rightSide) in [(1, false), (2, true), (0, false), (1, true)] {
+            let rect = table.rect(ofRow: row)
+            let point = table.convert(.init(x: rightSide ? rect.maxX - 30 : rect.minX + 30, y: rect.midY), to: nil)
+            let stamp = ProcessInfo.processInfo.systemUptime, number = window.windowNumber
+            let down = try #require(NSEvent.mouseEvent(with: .leftMouseDown, location: point, modifierFlags: [],
+                timestamp: stamp, windowNumber: number, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+            NSApp.postEvent(down, atStart: false)
+            let release = Timer(timeInterval: 0.03, repeats: false) { _ in
+                // The timer is installed only on the main run loop, including event tracking.
+                MainActor.assumeIsolated {
+                    if let up = NSEvent.mouseEvent(with: .leftMouseUp, location: point, modifierFlags: [],
+                        timestamp: stamp + 0.03, windowNumber: number, context: nil, eventNumber: 1, clickCount: 1, pressure: 0) {
+                        NSApp.postEvent(up, atStart: false)
+                    }
+                }
+            }
+            RunLoop.main.add(release, forMode: .common)
+            for _ in 0..<50 {
+                try await Task.sleep(for: .milliseconds(20))
+                host.layoutSubtreeIfNeeded()
+                if model.selection == row && table.selectedRow == row { break }
+            }
+            #expect(model.selection == row && table.selectedRow == row)
+        }
+        #expect(model.mergeCount == 0, "Ordinary clicks select but never merge senses")
+    }
+
     @Test func ordinaryLibraryCommandInstallsAndRetainsTheHostedRoot() throws {
         let suite = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -153,5 +195,40 @@ struct VocabularyNotebookViewTests {
             editor.cacheDisplay(in: editor.bounds, to: bitmap)
             try bitmap.representation(using: .png, properties: [:])?.write(to: output.appendingPathComponent("content-editor.png"))
         }
+    }
+}
+
+
+/// A private UI-only fixture shares the production drag modifier. It has no store, database,
+/// dictionary or runtime; its selection is the observable result of real AppKit mouse dispatch.
+@MainActor
+private final class ClickSelectionProbe: ObservableObject {
+    @Published var selection: Int? = 0
+    @Published var dragging: VocabularySenseDrag?
+    let entryID = UUID(), scopeIdentity = UUID()
+    let senseIDs = (0..<3).map { _ in UUID() }
+    var mergeCount = 0
+}
+
+private struct ClickSelectionRows: View {
+    @ObservedObject var model: ClickSelectionProbe
+    let draggingEnabled: Bool
+
+    var body: some View {
+        List(selection: $model.selection) {
+            ForEach(0..<3) { row in
+                if draggingEnabled {
+                    label(row).tag(row)
+                        .modifier(VocabularySenseMergeInteraction(target: .init(entryID: model.entryID,
+                            senseID: model.senseIDs[row], scopeIdentity: model.scopeIdentity, revision: 0),
+                            dragging: $model.dragging, onSelect: { model.selection = row },
+                            onMerge: { _, _ in model.mergeCount += 1 }))
+                } else { label(row).tag(row) }
+            }
+        }
+    }
+
+    private func label(_ row: Int) -> some View {
+        Text("Sense \(row)").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
     }
 }

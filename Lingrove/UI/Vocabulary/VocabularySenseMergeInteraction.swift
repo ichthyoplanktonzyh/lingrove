@@ -22,6 +22,7 @@ struct VocabularySenseDrag: Codable, Equatable, Sendable {
 struct VocabularySenseMergeInteraction: ViewModifier {
     let target: VocabularySenseDrag
     @Binding var dragging: VocabularySenseDrag?
+    let onSelect: () -> Void
     let onMerge: (VocabularySenseDrag, VocabularySenseDrag) -> Void
     @State private var targeted = false
 
@@ -36,6 +37,9 @@ struct VocabularySenseMergeInteraction: ViewModifier {
                         .allowsHitTesting(false)
                 }
             }
+            // SwiftUI's macOS drag source consumes the row's ordinary List selection click.
+            // Resolve a completed tap explicitly; a drag still owns its movement/drop path.
+            .onTapGesture(perform: onSelect)
             .onDrag {
                 dragging = target
                 let provider = NSItemProvider()

@@ -673,8 +673,6 @@ struct VocabularyNotebookView: View {
                         }
                         .padding(.vertical, isDetailedList ? 4 : 2.5)
                         .tag(singleSense.id)
-                        .modifier(VocabularySenseMergeInteraction(target: dragValue(entryID: entry.id, senseID: singleSense.id),
-                            dragging: $draggingSense, onMerge: { mergeSense($0, into: $1) }))
                         .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: singleSense.id)) }
                     } else {
                         let isSelected = isEntrySelected(entry)
@@ -703,7 +701,8 @@ struct VocabularyNotebookView: View {
                                 .padding(.vertical, 3)
                                 .tag(sense.id)
                                 .modifier(VocabularySenseMergeInteraction(target: dragValue(entryID: entry.id, senseID: sense.id),
-                                    dragging: $draggingSense, onMerge: { mergeSense($0, into: $1) }))
+                                    dragging: $draggingSense, onSelect: { showSense(sense.id) },
+                                    onMerge: { mergeSense($0, into: $1) }))
                                 .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: sense.id)) }
                             }
                         } label: {
