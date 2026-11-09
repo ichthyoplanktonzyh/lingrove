@@ -3,7 +3,7 @@ import Foundation
 /// Task-shaped input shared by the executable and app. A capture is a short-lived value owned
 /// by one batch: callers describe language material and local meaning references, while the
 /// app planner owns durable IDs, evidence, collection membership and graph construction.
-nonisolated struct CLICapture: Codable, Sendable {
+public nonisolated struct NotebookCaptureTask: Codable, Sendable {
     /// One task shares these authoring defaults; per-entry/example values can override them.
     struct Defaults: Codable, Sendable {
         var language: String?
@@ -32,21 +32,21 @@ nonisolated struct CLICapture: Codable, Sendable {
         var categories: [String]?
     }
     /// A lexical header groups the distinct senses being collected in this task.
-    struct Entry: Codable, Sendable {
+    public struct Entry: Codable, Sendable {
         var expression: String
         var language: String?
         var kind: String?
         var dictionaryForm: String?
-        var senses: [Sense]
+        public var senses: [Sense]
     }
     /// A new definition or an exact existing sense receives additive examples and associations.
-    struct Sense: Codable, Sendable {
+    public struct Sense: Codable, Sendable {
         var id: UUID?
         var meaning: String?
         var meaningLanguage: String?
         var note: String?
         var tags: [String]?
-        var examples: [CLIExample]?
+        public var examples: [NotebookCaptureExample]?
         var associations: [Association]?
     }
     /// One authored meaning link may restrict itself to a concrete usage pattern.
@@ -68,11 +68,27 @@ nonisolated struct CLICapture: Codable, Sendable {
         var note: String?
         var status: String?
     }
-    var referencesExistingRecords: Bool {
+    public var referencesExistingRecords: Bool {
         meanings?.contains(where: { $0.id != nil }) == true || entries.contains { $0.senses.contains { $0.id != nil } }
     }
     var defaults: Defaults?
     var meanings: [Meaning]?
-    var entries: [Entry]
+    public var entries: [Entry]
     var relations: [Relation]?
 }
+
+public nonisolated struct NotebookCaptureExample: Codable, Sendable {
+    public struct Range: Codable, Sendable {
+        public var location: Int
+        public var length: Int
+    }
+    public var text: String
+    public var translation: String?
+    public var translationLanguage: String?
+    public var meaning: String?
+    public var meaningLanguage: String?
+    public var completeness: String?
+    public var sourceKind: String?
+    public var ranges: [Range]?
+}
+

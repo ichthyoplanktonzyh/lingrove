@@ -239,6 +239,9 @@ targets:
         includes:
           - Models/CLI/**
           - Support/CLI/**
+    dependencies:
+      - package: LingroveNotebook
+        product: LingroveNotebook
     settings:
       base:
         PRODUCT_NAME: lingrove
