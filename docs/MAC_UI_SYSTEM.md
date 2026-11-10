@@ -361,3 +361,34 @@ repeat, persistence after reopen, stale-scope rejection and preserved concurrent
 The context action is compiled into the production editor; no live-user menu click or data
 cleanup was performed. Evidence is under `build/tag-delete/` (build 1, native run 1). The private
 host and DerivedData were removed after validation. No Dev/CLI/private MCP update was installed.
+
+
+## Dev/CLI/private MCP rollout — 2026-11-10
+
+The user explicitly authorized committing and installing the completed corpus changes. Source
+commit `4944787d` was built as the signed Lingrove Dev Release and installed over the existing
+checkout-specific `39dfea632597/Release/Lingrove Dev.app` bundle. The signing team and designated
+requirement matched the prior installation; the installed app/helper hashes match the build and
+the binary timestamp advanced. The existing `lingrove-dev` symlink still resolves to its bundled
+helper. The active app remains 0.9.0 build 7; the helper is CLI 5 / protocol 3 with canonical sense,
+image, edit, preview and batch-read capabilities.
+
+The previous app, notebook SQLite snapshot/media, preferences and MCP runtime were backed up at
+`~/Library/Application Support/Lingrove Dev/Backups/corpus-tools-20261110-103231` before replacement.
+All notebook tables (including revision state) and media hashes matched across the app replacement;
+SQLite integrity and foreign-key checks passed. The notebook remained at revision 61 with 82
+headwords, 85 senses, 96 sources and 93 interpretations. This rollout required no data migration
+and performed no test writes or tag deletion on real material.
+
+The private MCP runtime was updated to 1.3.0 and its existing server/tunnel LaunchAgents restarted.
+Connection config, credentials, tunnel identity, app/CLI destination and draft state were retained.
+Local SDK discovery returned 15 tools; read-only checks fetched two ordered entries and two senses
+through the batch route and verified the served guide and CLI version. Remote notebook_status and
+notebook_cli_info reached the new Dev process (PID 69285), reporting protocol 3 at unchanged revision
+61. The existing ChatGPT connector's Refresh tools action completed; its visible catalog showed 2
+write and 13 read tools, including notebook_image and the entryIDs/senseIDs read contract.
+
+Rollout evidence is retained under `build/corpus-tools-release/` and the backup manifest. DerivedData
+and the temporary MCP staging dependencies were removed after verification; installed runtime files
+and rollback backups remain. No source changes followed the installed code commit; this record is
+an additional documentation-only commit.

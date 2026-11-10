@@ -226,3 +226,12 @@ Batch-read extension validation (2026-11-10): all 16 bridge tests and 7 targeted
 passed. Coverage includes one-snapshot ordered details, missing/invalid IDs, scope and aggregate
 bounds, large-response pagination, and practice capture/classification/replay followed by batch
 readback. CLI contract discovery, SwiftLint and skill validation passed. This remains source-only.
+
+
+Installed rollout, 2026-11-10: source `4944787d` now runs in the existing signed Dev installation,
+with CLI 5 / protocol 3 and MCP 1.3.0. Existing credentials, tunnel identity, destination and drafts
+were preserved. Local SDK discovery and ordered batch entry/sense reads passed with 15 tools.
+The connected remote tools reported the new Dev process and current helper version. ChatGPT's
+Refresh tools completed and its visible catalog lists 2 write + 13 read tools, including image
+fetching and multi-ID reads. Notebook revision remained 61; real writes were zero. The previous
+app, notebook/media, preferences and runtime are retained in the corpus-tools-20261110-103231 backup.
