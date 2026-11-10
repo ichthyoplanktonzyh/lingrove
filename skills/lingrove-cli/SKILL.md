@@ -23,7 +23,7 @@ If that client is unavailable, report it instead of switching notebooks. Install
 
 Set `lingrove_cli` to the selected executable in each shell invocation; variables may not persist
 between tools. `status` supplies the current revision, study
-languages and expression kinds. CLI 4 replies also identify the actual serving app in top-level
+languages and expression kinds. CLI 5 replies also identify the actual serving app in top-level
 `server` (path, version/build, process, instance and capabilities). Requests handshake before
 sending material and reject mismatched app destinations. `--version` identifies the local helper;
 it does not identify the server. Inspect `schema capture` for capture tasks; reserve the much
@@ -36,17 +36,29 @@ Requests launch the app if needed; `--no-launch` requires a running app. `--time
 ```sh
 "$lingrove_cli" vocab list --query 'bank' --language en --limit 20 --offset 0
 "$lingrove_cli" vocab get ENTRY_UUID
+"$lingrove_cli" vocab sense SENSE_UUID
+"$lingrove_cli" vocab read --sense-ids SENSE_UUID_1,SENSE_UUID_2
 ```
 
 Search before saving. List entries use `entryID`/`senseID`; full `get` results use `entry.id` and
 `entry.senses[].id`. Summaries may be truncated; get the entry before selecting a sense or reusing
-its text. Paginate while offset is below `result.total`; list limits are 1–200.
+its text. Paginate using `result.nextOffset`; list limits are 1–200.
+Canonical senses return plain text and image references in `explanation`, plus examples and semantic
+links. Read saved images with `vocab image SENSE_UUID IMAGE_ID --scope JSON_FROM_READ`; MCP
+`notebook_image` returns native image content. Formatting is omitted from reads but preserved by
+`update.contentEdits`. Never reconstruct an entire rich body from its plain-text read.
+For several full details, use `vocab read --entry-ids ID,ID` or `--sense-ids ID,ID` (1–100 distinct
+IDs). MCP accepts the corresponding `entryIDs`/`senseIDs` arrays on `notebook_read`. Choose one
+selector, preserve order, and retain the shared returned revision/scope. Missing IDs fail the
+whole read; oversized results require smaller batches. Follow MCP `notebook_result_read` pages
+until complete. This also supports readback after a practice capture without changing its save flow.
+
 
 | Intent | Interface |
 | --- | --- |
 | Save expressions, examples, meaning nodes and their categories together | **One `vocab capture` task**; read [capture.md](references/capture.md). |
 | Append examples/content, edit a sense, or merge duplicate senses | `vocab apply`; read [batches.md](references/batches.md). |
-| Resolve interpretations, manage collection membership or organize semantic links | `data list/get` and resource `put`/`delete`; read [organization.md](references/organization.md). |
+| Resolve interpretations or maintain advanced semantic resources | `data list/get` and resource `put`/`delete`; read [organization.md](references/organization.md). |
 | Only classify an existing node, or edit category definitions/hierarchy | Read [classification.md](references/classification.md); use resource operations. |
 
 For capture or semantic maintenance, read [semantic-modeling.md](references/semantic-modeling.md).
@@ -58,7 +70,7 @@ follow the complete example in [Capture after language practice](references/sema
 
 1. Search the expression; get a matching entry only when choosing an existing sense.
 2. Search relevant `nodes` and `categories` with `data list ... --query TEXT --summary --limit 10`.
-   CLI 4 provides summary output; inspect `--help` once if its availability is unknown.
+   CLI 5 provides summary output; inspect `--help` once if its availability is unknown.
    Read a shortlisted category's full record only to distinguish its scope from alternatives.
 3. Put nodes in `meanings`, classification keys in each meaning's `categories`, and sense-to-node
    links in `associations`. A single capture generates IDs and persists all of them atomically.
@@ -78,8 +90,7 @@ mark requested illustrative model-written examples as generated.
 
 Keep usage, syntax and register explanations in the sense's `explanation`/content. Semantic links
 identify nodes; conditions state actual applicability restrictions. Avoid duplicating prose in
-association nuance or example meaning fields. Omit
-redundant or generic filler. Agent semantic assertions retain model authorship and default to
+association nuance or example meaning fields; these fields are rejected. Omit redundant or generic filler. Agent semantic assertions retain model authorship and default to
 active adoption; `confirmed` does not claim human review. Use proposed/candidate states for
 uncertain readings or requested alternatives.
 
@@ -102,7 +113,7 @@ authorized additive commit internally; no previewID or second approval is requir
 Retry the same requestID and unchanged task after busy/timeout. Read back affected records from
 returned IDs; do not store transport IDs or operational commentary in learning fields.
 
-Inspect `ok`, `result.dryRun`, `result.replayed` and `result.operations`. A fresh save has
+Inspect `ok`, `result.dryRun`, `result.replayed`, `result.operations` and the before/after `result.changes`. A fresh save has
 `ok: true`, `dryRun: false`. Report the material saved and any limitation. Read affected records
 when needed to confirm their current state; a replay only acknowledges an earlier write.
 Capture meaning receipts include category IDs/keys, membership IDs and whether they were created.

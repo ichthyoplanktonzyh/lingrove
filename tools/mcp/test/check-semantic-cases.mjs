@@ -44,7 +44,7 @@ for(const [i,c] of cases.entries()) {
  }
  meanings.push(meaning);
  // Examples already exist: do not duplicate them. Associate the exact sense.
- entries.push({expression:full.result.entry.expression,kind:full.result.entry.kind,language:'en',senses:[{id:sense.id,associations:[{meaning:ref,...(c.usage?{usage:c.usage}:{})}]}]});
+ entries.push({expression:full.result.entry.expression,kind:full.result.entry.kind,language:'en',senses:[{id:sense.id,associations:[{meaning:ref}]}]});
  report.push({expression:c.expression,kind:c.node.kind,reuse:c.reuseExpected,category:category.key,needsExistingNodeReview:!c.reuseExpected});
 }
 const preview=await b.call('notebook_preview',{task:{version:1,notebookScope,expectedRevision:revision,defaults:{language:'en',meaningLanguage:'zh-Hans'},meanings,entries}});

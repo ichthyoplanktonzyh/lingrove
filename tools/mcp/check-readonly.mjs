@@ -4,12 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { Bridge,RESOURCES } from './bridge.mjs';
+import { Bridge } from './bridge.mjs';
 const config=JSON.parse(await readFile(join(homedir(),'Library/Application Support/Lingrove MCP/config.json'),'utf8'));
 // Isolate validation previews from user drafts; no commit tool is ever called.
 const bridge=new Bridge({...config,state:join(homedir(),'Library/Application Support/Lingrove MCP/validation-drafts')});
 const initial=await bridge.call('notebook_status',{}); assert.equal(initial.ok,true);
 const {revision,notebookScope}=initial.result;
+const RESOURCES=(await bridge.call('notebook_schema',{format:'batch'}))['x-resources'];
 assert.deepEqual([...RESOURCES].sort(),[...initial.result.resources].sort());
 for(const resource of RESOURCES) {
  const result=await bridge.call('notebook_catalog_search',{resource,limit:1,offset:0});
@@ -23,7 +24,7 @@ for(const resource of RESOURCES) {
 }
 const batchSchema=await bridge.call('notebook_schema',{format:'batch'});
 assert.equal(batchSchema.title,'Lingrove vocabulary and resource batch');
-assert.match((await bridge.call('notebook_cli_info',{topic:'version'})).text,/CLI 4/);
+assert.match((await bridge.call('notebook_cli_info',{topic:'version'})).text,/CLI 5/);
 assert.match((await bridge.call('notebook_cli_info',{topic:'help'})).text,/vocab apply/);
 // Replace a membership inside one hypothetical resource transaction. All IDs are synthetic.
 const node=randomUUID(),oldCategory=randomUUID(),newCategory=randomUUID(),oldMembership=randomUUID();

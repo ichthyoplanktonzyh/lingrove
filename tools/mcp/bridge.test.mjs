@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp,rm,readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Bridge } from './bridge.mjs';
+import { Bridge, toolResult } from './bridge.mjs';
 
 test('preview never commits; exact file and key survive restart and uncertain retry',async()=>{
   const state=await mkdtemp(join(tmpdir(),'lingrove-mcp-test-'));
@@ -72,7 +72,7 @@ test('apply classification changes preserve mode, baseline and uncertain commit 
 
 test('resource filters, rich read schema and request options preserve CLI semantics',async()=>{
   const calls=[];
-  const b=new Bridge({state:'/unused',run:async(args,opts)=>{calls.push({args,opts});return {ok:true};}});
+  const b=new Bridge({state:'/unused',run:async(args,opts)=>{calls.push({args,opts});return args[0]==='schema'?{'x-resources':['entries','senses','nodes','categories','interpretations','categoryMemberships']}:{ok:true};}});
   const id='00000000-0000-4000-8000-000000000001';
   await b.call('notebook_catalog_search',{resource:'interpretations',related:id,status:'candidate',offset:200,limit:200,options:{noLaunch:true,timeoutSeconds:120}});
   assert.deepEqual(calls[0],{args:['data','list','interpretations','--limit','200','--offset','200','--related',id,'--status','candidate'],opts:{noLaunch:true,timeoutSeconds:120}});
@@ -82,7 +82,7 @@ test('resource filters, rich read schema and request options preserve CLI semant
   await assert.rejects(()=>b.call('notebook_catalog_search',{resource:'mappings',summary:true}),/summary/);
   await assert.rejects(()=>b.call('notebook_catalog_search',{resource:'senses',status:'accepted'}),/status/);
   await assert.rejects(()=>b.call('constructor',{}),/Unknown tool/);
-  const schemas=b.tools();
+  const schemas=await b.tools();
   assert.ok(!schemas.find(t=>t.name==='notebook_search').inputSchema.required?.includes('offset'));
   assert.equal(schemas.find(t=>t.name==='notebook_commit').annotations.destructiveHint,true);
 });
@@ -223,13 +223,13 @@ test('busy validation and same-ID concurrent calls preserve one durable intent',
 });
 
 test('guide is the skill source, with case-specific regressions kept outside production instructions',async()=>{
-  const b=new Bridge({state:'/unused'});
+  const b=new Bridge({state:'/unused',run:async()=>({'x-resources':['entries','senses','nodes']})});
   const result=await b.call('notebook_guide',{});
   assert.equal(result.guide,await readFile(new URL('../../skills/lingrove-cli/references/semantic-modeling.md',import.meta.url),'utf8'));
   const cases=JSON.parse(await readFile(new URL('./test/semantic-regression.json',import.meta.url),'utf8'));
   const skill=await readFile(new URL('../../skills/lingrove-cli/SKILL.md',import.meta.url),'utf8');
   const server=await readFile(new URL('./server.mjs',import.meta.url),'utf8');
-  for(const c of cases) for(const text of [result.guide,skill,server,...b.tools().map(t=>t.description)]) assert.equal(text.includes(c.expression),false,c.expression+' leaked into instructions');
+  for(const c of cases) for(const text of [result.guide,skill,server,...(await b.tools()).map(t=>t.description)]) assert.equal(text.includes(c.expression),false,c.expression+' leaked into instructions');
 });
 
 test('case-specific material writes and reads back through the normal additive entry point',async()=>{
@@ -238,7 +238,7 @@ test('case-specific material writes and reads back through the normal additive e
     const cases=JSON.parse(await readFile(new URL('./test/semantic-regression.json',import.meta.url),'utf8'));
     const task={version:1,defaults:{language:'en',meaningLanguage:'zh-Hans'},
       meanings:cases.map((c,i)=>({ref:'case-'+i,...c.node,categories:[c.categoryKey]})),
-      entries:cases.map((c,i)=>({expression:c.expression,language:'en',kind:'expression',senses:[{meaning:c.sense,examples:[{text:c.source,translation:c.translation,sourceKind:'captured'}],associations:[{meaning:'case-'+i,...(c.usage?{usage:c.usage}:{})}]}]}))};
+      entries:cases.map((c,i)=>({expression:c.expression,language:'en',kind:'expression',senses:[{meaning:c.sense,examples:[{text:c.source,translation:c.translation,sourceKind:'captured'}],...(c.usage?{explanation:c.usage}:{}),associations:[{meaning:'case-'+i}]}]}))};
     const b=new Bridge({state,run:db.run});
     const r=await b.call('notebook_write',{requestID:'00000000-0000-4000-8000-000000000041',task});
     assert.equal(r.ok,true); assert.equal(r.requiresUserConfirmation,false); assert.equal(db.revision,1);
@@ -275,4 +275,86 @@ test('sense merge requires the original scope and stays on the reviewed write pa
     await b.call('notebook_commit',{previewID:preview.previewID});
     assert.equal(calls.filter(args=>args[0]==='vocab'&&!args.includes('--dry-run')).length,1);
   } finally { await rm(state,{recursive:true,force:true}); }
+});
+
+
+test('resource discovery is sourced from the CLI schema, including future additions',async()=>{
+  let reads=0;
+  const b=new Bridge({state:'/unused',run:async args=>{assert.deepEqual(args,['schema']);reads++;return {'x-resources':['senses','nodes','futureResource']};}});
+  const tools=await b.tools();
+  assert.deepEqual(tools.find(x=>x.name==='notebook_catalog_search').inputSchema.properties.resource.enum,['senses','nodes','futureResource']);
+  assert.equal(JSON.stringify(tools).includes('collections'),false);
+  await b.tools(); assert.equal(reads,1);
+});
+
+test('sense and image reads preserve scope and emit visible image content without text pagination',async()=>{
+  const state=await mkdtemp(join(tmpdir(),'lingrove-image-read-'));
+  const scope={workspaceID:'synthetic',notebookID:'00000000-0000-4000-8000-000000000001',generation:'test'};
+  const senseID='00000000-0000-4000-8000-000000000002',imageID='a'.repeat(64);
+  const dataBase64=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),Buffer.alloc(600*1024,1)]).toString('base64');
+  const calls=[];
+  const b=new Bridge({state,run:async args=>{
+    calls.push(args);
+    return args[1]==='image'?{ok:true,result:{senseID,imageID,mimeType:'image/png',dataBase64,notebookScope:scope}}:{ok:true,result:{sense:{id:senseID}}};
+  }});
+  try {
+    await b.call('notebook_read',{senseID,notebookScope:scope});
+    assert.deepEqual(calls[0],['vocab','sense',senseID,'--scope',JSON.stringify(scope)]);
+    await assert.rejects(()=>b.call('notebook_read',{senseID,entryID:senseID}),/exactly one/);
+    const result=await b.call('notebook_image',{senseID,imageID,notebookScope:scope});
+    assert.equal(result.paged,undefined);
+    const response=toolResult(result);
+    assert.equal(response.content[1].type,'image');assert.equal(response.content[1].data,dataBase64);
+    assert.equal(response.content[0].text.includes('dataBase64'),false);
+    await assert.rejects(()=>b.call('notebook_image',{senseID,imageID}),/notebookScope/);
+  } finally {await rm(state,{recursive:true,force:true});}
+});
+
+test('batch read uses one CLI snapshot and rejects ambiguous, duplicate and oversized selectors',async()=>{
+  const calls=[];
+  const b=new Bridge({state:'/unused',run:async args=>{
+    calls.push(args);return args[0]==='schema'?{'x-resources':['entries','senses']}:{ok:true,result:{revision:8,senses:[]}};
+  }});
+  const first='AAAAAAAA-0000-4000-8000-000000000001',second='00000000-0000-4000-8000-000000000002';
+  const scope={workspaceID:'synthetic',notebookID:second,generation:'test'};
+  await b.call('notebook_read',{senseIDs:[second,first],notebookScope:scope});
+  assert.deepEqual(calls,[['vocab','read','--sense-ids',[second,first].join(','),'--scope',JSON.stringify(scope)]]);
+  await b.call('notebook_read',{entryIDs:[first]});
+  assert.deepEqual(calls.at(-1),['vocab','read','--entry-ids',first]);
+  const count=calls.length;
+  for(const input of [{},{entryID:first,senseIDs:[second]},{entryIDs:[first],senseIDs:[second]},
+    {senseIDs:[]},{senseIDs:[first,first.toLowerCase()]},{entryIDs:Array(101).fill(first)}]) {
+    await assert.rejects(()=>b.call('notebook_read',input));
+  }
+  assert.equal(calls.length,count);
+  const read=(await b.tools()).find(t=>t.name==='notebook_read').inputSchema;
+  assert.deepEqual(read.oneOf,[{required:['entryID']},{required:['senseID']},{required:['entryIDs']},{required:['senseIDs']}]);
+  assert.equal(read.properties.senseIDs.maxItems,100);
+  assert.equal(read.properties.entryIDs.uniqueItems,true);
+});
+
+test('large batch details are preserved for complete paged readback and missing IDs stay errors',async()=>{
+  const state=await mkdtemp(join(tmpdir(),'lingrove-batch-read-'));
+  const id='00000000-0000-4000-8000-000000000001';
+  const value={ok:true,result:{revision:9,notebookScope:{generation:'test'},senses:[
+    {id,explanation:[{type:'text',text:'练习正文'.repeat(60000)}]}
+  ]}};
+  let missing=false,reads=0;
+  const b=new Bridge({state,run:async args=>{
+    assert.equal(args[1],'read');reads++;
+    return missing?{ok:false,error:{code:'not_found',message:'Missing sense; no partial batch returned.'}}:value;
+  }});
+  try {
+    const paged=await b.call('notebook_read',{senseIDs:[id]});
+    assert.equal(paged.paged,true);assert.equal(paged.revision,9);
+    let offset=0,text='';
+    do {
+      const part=await b.call('notebook_result_read',{resultID:paged.resultID,offset,limit:16000});
+      text+=part.text;offset=part.nextOffset;
+    } while(offset!==null);
+    assert.deepEqual(JSON.parse(text),value);assert.equal(reads,1);
+    missing=true;
+    const failed=await b.call('notebook_read',{senseIDs:[id]});
+    assert.equal(failed.ok,false);assert.equal(failed.error.code,'not_found');assert.equal(failed.result,undefined);
+  } finally {await rm(state,{recursive:true,force:true});}
 });

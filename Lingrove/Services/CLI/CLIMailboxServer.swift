@@ -133,7 +133,9 @@ actor CLIMailboxServer {
             var failure = CLIReply.failure(id, error)
             // A legacy client can decode the upgrade instruction only in its own envelope.
             // This is an error-only compatibility path; no old request reaches the archive.
-            if receivedVersion == 1 { failure.version = 1 }
+            if (1..<CLIServiceIdentity.protocolVersion).contains(receivedVersion) {
+                failure.version = receivedVersion
+            }
             return failure
         } catch {
             return .failure(id, .invalid("Invalid CLI request JSON."))

@@ -60,6 +60,14 @@ nonisolated struct CLIArguments {
             request.language = parsed.options.removeValue(forKey: "--language")
             request.limit = try parsed.integerOption("--limit")
             request.offset = try parsed.integerOption("--offset")
+        case ["vocab", "read"]:
+            try configureBatchRead(from: &parsed)
+        case let words where words.count == 3 && words[0] == "vocab" && words[1] == "sense":
+            guard let id = UUID(uuidString: words[2]) else { throw CLIError.invalid("Sense requires a UUID.") }
+            request.command = .sense; request.senseID = id
+            try configureReadScope(from: &parsed)
+        case let words where words.count == 4 && words[0] == "vocab" && words[1] == "image":
+            try configureImageRequest(words, from: &parsed)
         case ["vocab", "apply"], ["vocab", "capture"]:
             captureInput = parsed.words[1] == "capture"
             try configureApplyRequest(from: &parsed)
@@ -74,6 +82,45 @@ nonisolated struct CLIArguments {
             }
             request.command = .get
             request.entryID = identifier
+            try configureReadScope(from: &parsed)
+        }
+    }
+
+    private mutating func configureBatchRead(from parsed: inout ParsedArguments) throws {
+        let entries = parsed.options.removeValue(forKey: "--entry-ids")
+        let senses = parsed.options.removeValue(forKey: "--sense-ids")
+        guard (entries != nil) != (senses != nil), let text = entries ?? senses, text.utf8.count <= 4_096 else {
+            throw CLIError.invalid("Use vocab read with exactly one of --entry-ids or --sense-ids (comma-separated UUIDs).")
+        }
+        let ids = try text.split(separator: ",", omittingEmptySubsequences: false).map { value in
+            guard let id = UUID(uuidString: String(value)) else { throw CLIError.invalid("Each batch read ID must be a UUID.") }
+            return id
+        }
+        let selection = CLIReadSelection(kind: entries != nil ? .entries : .senses, ids: ids)
+        try selection.validate()
+        request.command = .readMany; request.readSelection = selection
+        try configureReadScope(from: &parsed)
+    }
+
+    /// Unlike text reads, a delayed image fetch must retain the notebook identity of its reference.
+    private mutating func configureImageRequest(_ words: [String], from parsed: inout ParsedArguments) throws {
+        guard let id = UUID(uuidString: words[2]), words[3].count == 64,
+              words[3].utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw CLIError.invalid("Image requires SENSE_UUID and the imageID returned by a sense read.")
+        }
+        request.command = .image; request.senseID = id; request.imageID = words[3]
+        try configureReadScope(from: &parsed)
+        guard request.readScope != nil else { throw CLIError.invalid("Image reads require --scope from the original sense read.") }
+    }
+
+    private mutating func configureReadScope(from parsed: inout ParsedArguments) throws {
+        if let scope = parsed.options.removeValue(forKey: "--scope") {
+            guard scope.utf8.count <= 4_096 else { throw CLIError.invalid("Read scope is too large.") }
+            do {
+                let value = try JSONDecoder().decode(CLIJSON.self, from: Data(scope.utf8))
+                let checked = try CLINotebookScope.shape.normalized(value)
+                request.readScope = try JSONDecoder().decode(CLINotebookScope.self, from: JSONEncoder().encode(checked))
+            } catch { throw CLIError.invalid("--scope must be the notebookScope JSON returned by the original read.") }
         }
     }
 
@@ -124,7 +171,7 @@ nonisolated struct CLIArguments {
         init(_ arguments: [String]) throws {
             let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin", "--summary"]
             let valued: Set<String> = ["--app", "--timeout", "--query", "--language", "--limit", "--offset", "--file",
-                                       "--related", "--status"]
+                                       "--related", "--status", "--scope", "--entry-ids", "--sense-ids"]
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
@@ -157,7 +204,11 @@ nonisolated struct CLIArguments {
     Usage: lingrove [--app APP_PATH] [--no-launch] [--timeout SECONDS] COMMAND
       status                                     Storage status and revision
       vocab list [--query TEXT] [--language CODE] [--limit N] [--offset N]
-      vocab get ENTRY_UUID                       Portable entry and current revision
+      vocab get ENTRY_UUID [--scope JSON]        Current entry, plain explanation text and image references
+      vocab sense SENSE_UUID [--scope JSON]      Complete current sense, examples and semantic links
+      vocab read (--entry-ids UUID,UUID | --sense-ids UUID,UUID) [--scope JSON]
+                                                Up to 100 full records in request order, from one snapshot
+      vocab image SENSE_UUID IMAGE_ID --scope JSON  PNG bytes as JSON/base64
       vocab apply (--file PATH | --stdin) [--dry-run]
       vocab capture (--file PATH | --stdin) [--dry-run]  Task-shaped material and meaning organization
       data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N] [--summary]

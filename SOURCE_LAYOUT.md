@@ -805,7 +805,7 @@ bundles. `Models/CLI` and `Support/CLI` compile into both targets: the versioned
 strict batch shape/count validation, deterministic argument parsing and bounded atomic file IO.
 The CLI reads explicitly supplied image paths, transports bytes, and lets its containing bundle
 choose Dev/production identity. It never opens SQLite or calls an AI/Anki provider.
-`CLIServiceIdentity` is the shared transport value for protocol 2: each mailbox lease gets an
+`CLIServiceIdentity` is the shared transport value for protocol 3: each mailbox lease gets an
 instance UUID, app path/version/build, process ID and explicit capabilities. A material-free
 handshake verifies the destination before the client sends a business request pinned to that
 lease. The server rejects legacy protocols or mismatched leases before calling the archive;
@@ -826,9 +826,28 @@ Version 2 resource batches require CAS and explicit
 UUIDs, support linked records in one transaction, and reject dangling deletion references. The
 external agent owns classification; no internal classifier or vector service is constructed.
 `skills/lingrove-cli/references/organization.md` documents the independent-resource workflow.
-`VocabularyCLIReadBudget` bounds whole-entry response construction before JSON encoding.
+`CLIReadSelection` is a request-owned, validated ordered selection of 1–100 entry or sense IDs.
+`VocabularyCLIBatchRead` resolves all IDs from the archive's one captured document, fails on missing
+IDs, and reuses `NotebookSenseProjection` for complete details. It does not call the archive again,
+perform writes or infer meanings. `VocabularyCLIReadBudget` shares one cumulative allowance across
+the batch before projection, followed by the archive's encoded wire-size check. MCP translates its
+array selector to this command, preserving the same order, notebook scope and revision.
 
-`VocabularyArchive+CLI` owns query projection, image preparation, dry runs and replay lookup.
+`NotebookSenseProjection` is a request-owned canonical read model: it indexes evidence/node links
+and returns plain explanation text, saved-image references, examples/provenance and semantic links.
+Native formatting and historical generation records stay out of ordinary Agent reads.
+`NotebookChangePreview` compares the same canonical projections for before/after receipts;
+resource changes are included only for changed groups. These shared pure boundaries do not own IO.
+`NotebookExampleWriting` applies source-aware capture/append/edit/removal to a detached document;
+`VocabularyContentEditingPolicy` patches exact text fragments while retaining native marks/images.
+`VocabularyCLIPlan` composes those rules, owns deterministic command identities and node-link edits,
+and returns one candidate document and operation identities. The archive validates the graph,
+constructs its preview through `NotebookChangePreview`, then commits it.
+
+`VocabularyArchive+CLI` owns query projection, scoped saved-image reads, image preparation,
+dry runs and replay lookup. Image reads require the original notebook scope and sense ownership;
+MCP converts the CLI PNG response to native image content. Resource enums come from CLI schema.
+Read output and before/after receipts are bounded before transport/commit.
 SQLite schema 2 adds `cli_receipts`; upgrading schema 1 preserves the accepted SQLite content,
 while retired JSON files are still ignored. A content commit, revision and receipt are one SQL
 transaction, with the existing media staging/rollback lock. CLI receipts are operational state,
@@ -1078,6 +1097,11 @@ sheet owns the unsaved value, while `VocabularyArchive+EntryImport` retains tran
 scope checking. Generic CSV/TXT decoding, column mapping, preview sessions and file-import UI were
 removed. External material is interpreted by an agent and submitted through CLI/MCP commands;
 native backup/restore remains independent.
+
+`VocabularySenseEditingPolicy.removeTag` is also shared by the archive's whole-notebook tag
+removal and the editor's narrow draft rebase. `VocabularyStore` owns the scoped command and
+publishes only the committed snapshot; the editor keeps its existing chips and adds only a
+Delete context action to suggestions. No separate tag catalog or background classification exists.
 
 `VocabularySenseEditingPolicy` owns the shared deterministic merge rule: keep the target's authored
 content, move source examples, preserve lifecycle aliases/receipts, and remove the source sense.

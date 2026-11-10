@@ -1,6 +1,5 @@
 import LingroveNotebookStorage
 import LingroveNotebookEngine
-import LingroveStudyExport
 import LingroveNotebook
 import Foundation
 
@@ -8,6 +7,8 @@ import Foundation
 /// without Anki credentials/receipts. A batch's media, content and idempotency receipt share the
 /// existing transaction boundary; no CLI code interprets SQL or invokes an AI provider.
 extension VocabularyArchive {
+    // One closed command switch keeps scope admission and the common response budget in view.
+    // swiftlint:disable:next cyclomatic_complexity
     func executeCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
         guard request.version == CLIServiceIdentity.protocolVersion, request.expiresAt > Date() else {
             throw CLIError(code: .timeout, message: "Request expired or protocol version is unsupported.")
@@ -16,6 +17,11 @@ extension VocabularyArchive {
             return try storageAccess(write: true) { try applyCLI(request) }
         }
         let snapshot = try load()
+        if let supplied = request.readScope {
+            guard let scope = snapshot.scope,
+                  supplied == CLINotebookScope(workspaceID: scope.workspaceId, notebookID: scope.notebookId,
+                    generation: scope.generation) else { throw VocabularyError.editConflict }
+        }
         let result: CLIJSON
         switch request.command {
         case .hello: throw CLIError.invalid("Handshake belongs to the CLI transport.")
@@ -43,24 +49,51 @@ extension VocabularyArchive {
                 CLIJSON.object(["entryID": .string(entry.id.uuidString), "expression": .string(Self.cliSummary(entry.expression)),
                     "expressionTruncated": .bool(entry.expression.unicodeScalars.prefix(201).count > 200),
                     "language": .string(entry.language?.rawValue ?? "und"), "kind": .string(entry.kind.rawValue),
-                    "senseCount": .integer(Int64(entry.senses.count)),
+                    "senseCount": .integer(Int64(entry.senses.count)), "sensesTruncated": .bool(entry.senses.count > 50),
                     "senses": .array(entry.senses.prefix(50).map { .object(["senseID": .string($0.id.uuidString),
                         "meaning": .string(Self.cliSummary($0.meaning)),
                         "meaningTruncated": .bool($0.meaning.unicodeScalars.prefix(201).count > 200),
-                        "usageCount": .integer(Int64($0.examples.count))]) })])
+                        "exampleCount": .integer(Int64($0.examples.count))]) })])
             }
             result = .object(["revision": .integer(Int64(snapshot.revision)), "total": .integer(Int64(values.count)),
-                "offset": .integer(Int64(offset)), "entries": .array(page)])
+                "offset": .integer(Int64(offset)), "entries": .array(page),
+                "nextOffset": offset < values.count && page.count < values.count - offset ? .integer(Int64(offset + page.count)) : .null])
         case .get:
             guard let id = request.entryID, let entry = snapshot.document.entries.first(where: { $0.id == id }) else {
                 throw CLIError(code: .notFound, message: "Entry not found.")
             }
             try VocabularyCLIReadBudget.validate(entry)
-            var options = VocabularyExportConfiguration(); options.explanation = true
             result = .object(["revision": .integer(Int64(snapshot.revision)),
-                "entry": try .value(VocabularyExportPolicy.document([entry], configuration: options).entries[0])])
+                "entry": try NotebookSenseProjection(snapshot.document).entry(entry)])
+        case .sense:
+            guard let id = request.senseID,
+                  var entry = snapshot.document.entries.first(where: { $0.senses.contains { $0.id == id } }) else {
+                throw CLIError(code: .notFound, message: "Sense not found.")
+            }
+            entry.senses.removeAll { $0.id != id }
+            try VocabularyCLIReadBudget.validate(entry)
+            result = .object(["revision": .integer(Int64(snapshot.revision)),
+                "sense": try NotebookSenseProjection(snapshot.document).sense(id)])
+        case .readMany:
+            guard let selection = request.readSelection else { throw CLIError.invalid("Batch read selection is missing.") }
+            let values = try VocabularyCLIBatchRead.read(selection, from: snapshot.document)
+            result = .object(["revision": .integer(Int64(snapshot.revision)), selection.kind.rawValue: .array(values)])
+        case .image:
+            guard request.readScope != nil, let senseID = request.senseID, let digest = request.imageID,
+                  let sense = snapshot.document.catalog.lazy.flatMap(\.senses).first(where: { $0.id == senseID }),
+                  let reference = VocabularyContentPolicy.images(sense.content ?? []).first(where: { $0.digest == digest }),
+                  let scope = snapshot.scope else {
+                throw CLIError(code: .notFound, message: "Image is not present in this sense and notebook scope.")
+            }
+            let bytes = try LingroveNotebookMediaStore(core: persistence().core)
+                .image(reference, scope: scope, requireActiveWorkspace: true)
+            result = .object(["revision": .integer(Int64(snapshot.revision)), "senseID": .string(senseID.uuidString),
+                "imageID": .string(digest), "mimeType": .string("image/png"), "dataBase64": .string(bytes.base64EncodedString())])
         case .resourceList, .resourceGet: result = try readCLIResources(request, snapshot: snapshot)
         case .apply: preconditionFailure("Handled before the read path")
+        }
+        guard try JSONEncoder().encode(result).count <= CLIInputPolicy.maximumBytes - 8_192 else {
+            throw CLIError.invalid("Read result is too large. Read one sense or a smaller resource page.")
         }
         return (try addingScope(to: result, snapshot: snapshot), snapshot)
     }
@@ -96,9 +129,8 @@ extension VocabularyArchive {
             throw CLIError.invalid(
                 "Invalid resource relationships or content. Check references, accepted claims and graph constraints.")
         }
+        let result = try previewCLI(plan, snapshot: snapshot, dryRun: request.dryRun)
         guard request.expiresAt > Date() else { throw CLIError(code: .timeout, message: "Request expired before commit.") }
-        let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision) + (request.dryRun ? 0 : 1)),
-            "dryRun": .bool(request.dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes)])
         if request.dryRun { return (try addingScope(to: result, snapshot: snapshot), snapshot) }
         let receipt = VocabularyCLIReceipt(key: batch.idempotencyKey, fingerprint: fingerprint, result: try JSONEncoder().encode(result))
         let committed = try commitCLI(plan.document, images: plan.images, receipt: receipt)
@@ -110,12 +142,26 @@ extension VocabularyArchive {
         return (try addingScope(to: .object(acknowledgement), snapshot: saved), saved)
     }
 
+    /// Projection assumes a valid graph; callers validate before joining source/node references.
+    /// The same bounded value becomes either the dry run or durable acknowledgement, so a write
+    /// cannot succeed and then discover that its receipt is too large to return.
+    private func previewCLI(_ plan: VocabularyCLIPlan, snapshot: VocabularyArchiveSnapshot, dryRun: Bool) throws -> CLIJSON {
+        let changes = try NotebookChangePreview.make(before: snapshot.document, after: plan.document)
+        let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision) + (dryRun ? 0 : 1)),
+            "dryRun": .bool(dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes), "changes": changes])
+        guard try JSONEncoder().encode(result).count <= 16 * 1_024 * 1_024 else {
+            throw CLIError.invalid("Change preview exceeds 16 MiB. Split this material into smaller batches.")
+        }
+        return result
+    }
+
     private func validateCLIScope(_ batch: CLIBatch, current scope: VocabularyOperationScope) throws {
         if let supplied = batch.notebookScope {
             guard supplied == CLINotebookScope(workspaceID: scope.workspaceId, notebookID: scope.notebookId,
                 generation: scope.generation) else { throw VocabularyError.editConflict }
         } else if batch.expectedRevision != nil || batch.operations.contains(where: {
-            $0.append != nil || $0.update != nil || $0.put != nil || $0.delete != nil || $0.merge != nil || $0.capture?.referencesExistingRecords == true
+            $0.append != nil || $0.update != nil || $0.put != nil || $0.delete != nil || $0.merge != nil || $0.remove != nil ||
+                $0.capture?.referencesExistingRecords == true || $0.add?.examples?.contains(where: { $0.sourceID != nil }) == true
         }) {
             throw CLIError(code: .conflict,
                 message: "Read the notebook again and include its notebookScope when editing existing records.")

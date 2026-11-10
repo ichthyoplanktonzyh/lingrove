@@ -5,9 +5,10 @@ import LingroveNotebook
 /// material, then pins every request to that instance and app path. Notebook scope remains a
 /// separate archive concern: matching a process must never authorize a different notebook.
 nonisolated struct CLIServiceIdentity: Codable, Equatable, Sendable {
-    static let protocolVersion = 2
-    static let clientVersion = 4
-    static let capabilities = ["notebookScope", "captureCategories", "categorySummary", "categoryReceipts"]
+    static let protocolVersion = 3
+    static let clientVersion = 5
+    static let capabilities = ["notebookScope", "captureCategories", "categorySummary", "categoryReceipts",
+        "canonicalSenses", "senseImages", "senseEdits", "changePreview", "batchSenseReads"]
 
     var instanceID = UUID()
     var processID: Int32

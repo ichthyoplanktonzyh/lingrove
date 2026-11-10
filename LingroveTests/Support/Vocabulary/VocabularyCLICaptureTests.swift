@@ -16,13 +16,13 @@ struct VocabularyCLICaptureTests {
         let result = try plan(#"""
         {"version":1,"idempotencyKey":"proposed","defaults":{"language":"en","status":"proposed"},
          "meanings":[{"ref":"delay","title":"推迟","cues":["晚点"]}],
-         "entries":[{"expression":"defer","senses":[{"meaning":"推迟",
-           "associations":[{"meaning":"delay","usage":"defer + noun"}]}]}]}
+         "entries":[{"expression":"defer","senses":[{"meaning":"推迟","explanation":"defer + noun",
+           "associations":[{"meaning":"delay"}]}]}]}
         """#)
         let doc = result.document
         #expect(doc.semantics.nodes[0].provenance.status == .proposed)
         #expect(doc.semantics.mappings[0].provenance.status == .proposed)
-        #expect(doc.semantics.patterns[0].provenance.status == .proposed)
+        #expect(doc.semantics.patterns.isEmpty)
         #expect(VocabularyMeaningBrowserProjection.unclassified(index: doc.semantics, entries: doc.entries).count == 1)
         #expect(VocabularyMeaningBrowserProjection.items(index: doc.semantics, entries: doc.entries, query: "晚点").isEmpty)
     }

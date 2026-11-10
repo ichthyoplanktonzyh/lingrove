@@ -61,9 +61,7 @@ public nonisolated enum NotebookResourceContract {
                 "createdAt": .date, "updatedAt": .date], required: ["id", "expression", "kind"])
         case "senses":
             return .init(fields: ["id": .uuid, "entryID": .uuid, "meaning": .text(32_000), "meaningLanguage": .nullable(.text(100)),
-                "meaningOrigin": .enumeration(["captured", "ai", "user"]),
-                "alternateMeanings": .array(.object(meaning), 64), "mergedFrom": .array(.uuid, 128),
-                "createdWithoutContext": .nullable(.bool), "note": .text(262_144), "tags": .array(.text(200), 100),
+                "note": .text(262_144), "tags": .array(.text(200), 100),
                 "createdAt": .date, "updatedAt": .date], required: ["id", "entryID", "meaning"])
         case "sources":
             return .init(fields: ["id": .uuid, "text": .text(262_144),
@@ -74,8 +72,7 @@ public nonisolated enum NotebookResourceContract {
                 required: ["id", "sourceID", "ranges"])
         case "interpretations":
             return .init(fields: ["id": .uuid, "occurrenceID": .uuid, "senseID": .nullable(.uuid),
-                "status": .enumeration(["candidate", "accepted", "rejected"]), "meaning": .text(32_000),
-                "meaningLanguage": .nullable(.text(100)), "meaningOrigin": .enumeration(["captured", "ai", "user"]),
+                "status": .enumeration(["candidate", "accepted", "rejected"]),
                 "translation": .text(262_144), "translationLanguage": .nullable(.text(100)),
                 "translationVariants": .array(.object(meaning), 64),
                 "completeness": .enumeration(["sentence", "fragment", "unknown"]),
@@ -88,11 +85,11 @@ public nonisolated enum NotebookResourceContract {
         case "patterns":
             return .init(fields: ["id": .uuid, "senseID": .uuid, "template": .text(8_192), "slots": .array(.object(slot), 32),
                 "formality": .enumeration(["unspecified", "informal", "neutral", "formal"]),
-                "medium": .enumeration(["unspecified", "spoken", "written", "both"]), "region": .text(200), "note": .text(8_192),
+                "medium": .enumeration(["unspecified", "spoken", "written", "both"]), "region": .text(200),
                 "collocations": .array(.text(1_024), 128), "provenance": .object(provenance)], required: ["id", "senseID", "template"])
         case "mappings":
             return .init(fields: ["id": .uuid, "nodeID": .uuid, "senseID": .uuid, "patternID": .nullable(.uuid),
-                "relation": .enumeration(["expressesContent", "realizesFunction"]), "conditions": .text(8_192), "nuance": .text(8_192),
+                "relation": .enumeration(["expressesContent", "realizesFunction"]), "conditions": .text(8_192),
                 "roleBindings": .array(.object(binding), 32), "evidenceIDs": .array(.uuid, 128), "provenance": .object(provenance)],
                 required: ["id", "nodeID", "senseID"])
         case "relations":

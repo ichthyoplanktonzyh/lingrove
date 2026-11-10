@@ -11,6 +11,199 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyCLITests {
+    @Test func batchReadsReturnOrderedCompleteRecordsFromOneScopeWithoutWrites() async throws {
+        let fixture = try await Fixture()
+        do {
+            let png = fixture.directory.appendingPathComponent("image.png")
+            try VocabularyImageTestFixture.png().write(to: png)
+            #expect(try await fixture.apply(batch("batch-read-seed", [
+                add(content: [["text": "Current explanation", "bold": true], ["image": ["path": png.path]]]), add("defer"), add()
+            ])).0 == 0)
+            let before = try await fixture.archive.load()
+            let entries = before.document.entries
+            let bank = try #require(entries.first { $0.expression == "bank" })
+            let other = try #require(entries.first { $0.expression == "defer" })
+            let header = try result(try await fixture.call(["vocab", "get", bank.id.uuidString]).1)
+            let scope = try #require(header["notebookScope"] as? [String: Any])
+            let scopeJSON = String(decoding: try JSONSerialization.data(withJSONObject: scope), as: UTF8.self)
+            let entryIDs = [other.id, bank.id]
+            let reply = try await fixture.call(["vocab", "read", "--entry-ids", entryIDs.map(\.uuidString).joined(separator: ","),
+                "--scope", scopeJSON])
+            #expect(reply.0 == 0)
+            let read = try result(reply.1), values = try #require(read["entries"] as? [[String: Any]])
+            #expect(values.compactMap { $0["id"] as? String } == entryIDs.map(\.uuidString))
+            #expect(read["revision"] as? UInt64 == before.revision)
+            #expect(NSDictionary(dictionary: try #require(read["notebookScope"] as? [String: Any])).isEqual(to: scope))
+            #expect(NSDictionary(dictionary: values[1]).isEqual(to: try #require(header["entry"] as? [String: Any])))
+            let senseIDs = [bank.senses[1].id, other.senses[0].id, bank.senses[0].id]
+            let sensesReply = try await fixture.call(["vocab", "read", "--sense-ids", senseIDs.map(\.uuidString).joined(separator: ",")])
+            #expect(sensesReply.0 == 0)
+            let senses = try #require(try result(sensesReply.1)["senses"] as? [[String: Any]])
+            #expect(senses.compactMap { $0["id"] as? String } == senseIDs.map(\.uuidString))
+            let parts = try #require(senses[2]["explanation"] as? [[String: Any]])
+            #expect(parts[0]["text"] as? String == "Current explanation" && parts[0]["bold"] == nil)
+            #expect(parts[1]["imageID"] != nil && senses[2]["examples"] != nil && senses[2]["semanticLinks"] != nil)
+            let missing = try await fixture.call(["vocab", "read", "--sense-ids", senseIDs[0].uuidString + "," + UUID().uuidString])
+            #expect(missing.0 == 3 && missing.1["result"] == nil)
+            var stale = scope; stale["generation"] = "another-notebook-session"
+            let staleJSON = String(decoding: try JSONSerialization.data(withJSONObject: stale), as: UTF8.self)
+            #expect(try await fixture.call(["vocab", "read", "--entry-ids", bank.id.uuidString, "--scope", staleJSON]).0 == 4)
+            let after = try await fixture.archive.load()
+            #expect(after.document == before.document && after.revision == before.revision)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test func batchReadSelectorsAndAggregateBudgetRejectInvalidRequests() throws {
+        let id = UUID().uuidString
+        let invalid = [
+            ["vocab", "read"], ["vocab", "read", "--sense-ids", ""], ["vocab", "read", "--entry-ids", "bad"],
+            ["vocab", "read", "--entry-ids", id, "--sense-ids", id],
+            ["vocab", "read", "--sense-ids", id + ","],
+            ["vocab", "read", "--sense-ids", id + "," + id.lowercased()],
+            ["vocab", "read", "--entry-ids", (0..<101).map { _ in UUID().uuidString }.joined(separator: ",")]
+        ]
+        for args in invalid { #expect(throws: CLIError.self) { try CLIArguments(args) } }
+        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("budget", [
+            add(content: [["text": String(repeating: "x", count: 8_000)]])
+        ])))
+        let plan = try VocabularyCLIPlan(batch: decoded, snapshot: .init(revision: 0, document: .init()),
+            fingerprint: "budget", prepared: [:], now: Date())
+        let entry = try #require(plan.document.entries.first)
+        try VocabularyCLIReadBudget.validate(entry, maximum: 100_000)
+        #expect(throws: CLIError.self) { try VocabularyCLIReadBudget.validate([entry, entry], maximum: 100_000) }
+        for ids in [[], [entry.id, entry.id], (0..<101).map { _ in UUID() }] {
+            #expect(throws: CLIError.self) {
+                try VocabularyCLIBatchRead.read(.init(kind: .entries, ids: ids), from: plan.document)
+            }
+        }
+    }
+
+    @Test func canonicalSenseReadAndImageTransportUseOriginalNotebookScope() async throws {
+        let fixture = try await Fixture()
+        do {
+            let png = fixture.directory.appendingPathComponent("image.png")
+            try VocabularyImageTestFixture.png().write(to: png)
+            #expect(try await fixture.apply(batch("read-image", [add(content: [
+                ["text": "A financial institution", "bold": true], ["image": ["path": png.path, "caption": "Bank"]]
+            ])])).0 == 0)
+            let snapshot = try await fixture.archive.load(), entry = snapshot.document.entries[0], sense = entry.senses[0]
+            let response = try await fixture.call(["vocab", "sense", sense.id.uuidString])
+            #expect(response.0 == 0)
+            let read = try result(response.1), value = try #require(read["sense"] as? [String: Any])
+            let parts = try #require(value["explanation"] as? [[String: Any]])
+            #expect(parts[0]["text"] as? String == "A financial institution" && parts[0]["bold"] == nil)
+            #expect(value["alternateMeanings"] == nil && value["explanations"] == nil)
+            let examples = try #require(value["examples"] as? [[String: Any]])
+            #expect(examples[0]["source"] is [String: Any] && examples[0]["meaning"] == nil)
+            let imageID = try #require(parts[1]["imageID"] as? String)
+            let scope = try #require(read["notebookScope"] as? [String: Any])
+            let scopeJSON = String(decoding: try JSONSerialization.data(withJSONObject: scope), as: UTF8.self)
+            let image = try await fixture.call(["vocab", "image", sense.id.uuidString, imageID, "--scope", scopeJSON])
+            #expect(image.0 == 0)
+            let encoded = try #require(try result(image.1)["dataBase64"] as? String)
+            let bytes = try #require(Data(base64Encoded: encoded))
+            let reference = try #require(VocabularyContentPolicy.images(sense.content ?? []).first)
+            #expect(bytes == (try await fixture.archive.image(reference)))
+            #expect(try await fixture.call(["vocab", "image", sense.id.uuidString, imageID]).0 == 2)
+            #expect(try await fixture.call(["vocab", "image", UUID().uuidString, imageID, "--scope", scopeJSON]).0 == 3)
+            var wrong = scope; wrong["generation"] = "another-session"
+            let wrongJSON = String(decoding: try JSONSerialization.data(withJSONObject: wrong), as: UTF8.self)
+            #expect(try await fixture.call(["vocab", "image", sense.id.uuidString, imageID, "--scope", wrongJSON]).0 == 4)
+            #expect(try await fixture.call(["vocab", "sense", sense.id.uuidString, "--scope", "{"]).0 == 2)
+            #expect(try await fixture.archive.load().document == snapshot.document)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test func senseEditsPreviewThenPreserveImagesAndUpdateOwnedExamplesAndLinks() async throws {
+        let fixture = try await Fixture()
+        do {
+            let png = fixture.directory.appendingPathComponent("image.png")
+            try VocabularyImageTestFixture.png().write(to: png)
+            #expect(try await fixture.apply(batch("edit-seed", [add(content: [
+                ["text": "A financial institution", "bold": true], ["image": ["path": png.path, "caption": "Bank"]]
+            ])])).0 == 0)
+            var document = try await fixture.archive.load().document
+            let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Banking")])
+            document.semantics.nodes.append(node)
+            let initial = try await fixture.archive.commit(document), entry = initial.document.entries[0], sense = entry.senses[0]
+            let blocks = try #require(sense.content), example = sense.examples[0]
+            func update(_ key: String, _ fields: [String: Any], revision: UInt64? = nil) -> [String: Any] {
+                var fields = fields
+                fields["entryID"] = entry.id.uuidString; fields["senseID"] = sense.id.uuidString
+                fields["expectedRevision"] = revision ?? initial.revision
+                return batch(key, [["update": fields]])
+            }
+            #expect(try await fixture.apply(update("unsafe-replace", ["explanation": "Flattened"])).0 == 2)
+            let edits = update("safe-edits", [
+                "contentEdits": [["blockID": blocks[0].id.uuidString, "find": "financial", "replacement": "banking"],
+                    ["blockID": blocks[1].id.uuidString, "caption": "Updated caption"]],
+                "exampleEdits": [["id": example.id.uuidString, "text": "The bank opens early.", "source": "Article A"]],
+                "linkNodes": [["nodeID": node.id.uuidString]]
+            ])
+            let preview = try await fixture.apply(edits, dry: true)
+            #expect(preview.0 == 0)
+            let changes = try #require(try result(preview.1)["changes"] as? [String: Any])
+            let changed = try #require(changes["senses"] as? [[String: Any]])
+            #expect(changed.count == 1 && changed[0]["action"] as? String == "updated")
+            #expect(changed[0]["before"] is [String: Any] && changed[0]["after"] is [String: Any])
+            #expect(try await fixture.archive.load().document == initial.document)
+            #expect(try await fixture.apply(edits).0 == 0)
+            let saved = try await fixture.archive.load(), current = saved.document.entries[0].senses[0]
+            if case let .text(value) = current.content?[0].content {
+                #expect(value.text == "A banking institution" && value.bold)
+            } else { Issue.record("Styled text must remain text.") }
+            #expect(VocabularyContentPolicy.images(current.content ?? []) == VocabularyContentPolicy.images(blocks))
+            #expect(current.examples[0].id == example.id && current.examples[0].text == "The bank opens early.")
+            #expect(saved.document.interpretations[0].provenance.source == "Article A")
+            #expect(saved.document.semantics.mappings.contains { $0.nodeID == node.id && $0.senseID == sense.id })
+            #expect(try await fixture.apply(edits).0 == 0)
+            #expect(try await fixture.archive.load().revision == saved.revision)
+            let invalid = update("invalid-rollback", ["note": "Must not survive",
+                "removeExamples": [UUID().uuidString]], revision: saved.revision)
+            #expect(try await fixture.apply(invalid).0 == 3)
+            #expect(try await fixture.archive.load().document == saved.document)
+            let removal = update("detach", ["removeExamples": [example.id.uuidString],
+                "unlinkNodes": [node.id.uuidString]], revision: saved.revision)
+            #expect(try await fixture.apply(removal).0 == 0)
+            let detached = try await fixture.archive.load().document
+            #expect(detached.entries[0].examples.isEmpty && detached.semantics.mappings.isEmpty)
+            #expect(detached.semantics.nodes.contains(node))
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test func senseRemovalPreservesOtherSensesSharedNodesAndSourceEvidence() async throws {
+        let fixture = try await Fixture()
+        do {
+            let seeded = try await fixture.archive.addEntries([
+                .init(expression: "bank", meaning: "Financial institution", example: "The bank opened."),
+                .init(expression: "bank", meaning: "River edge", example: "We reached the bank.")
+            ]).0
+            var document = seeded.document
+            let entry = document.entries[0], node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Shared node")])
+            document.semantics.nodes = [node]
+            document.semantics.mappings = entry.senses.map { .init(nodeID: node.id, senseID: $0.id) }
+            let before = try await fixture.archive.commit(document)
+            let input: [String: Any] = ["version": 2, "idempotencyKey": "remove-sense", "expectedRevision": before.revision,
+                "operations": [["remove": ["entryID": entry.id.uuidString, "senseID": entry.senses[0].id.uuidString]]]]
+            #expect(try await fixture.apply(input, dry: true).0 == 0)
+            #expect(try await fixture.archive.load().document == before.document)
+            #expect(try await fixture.apply(input).0 == 0)
+            let after = try await fixture.archive.load()
+            #expect(after.document.entries[0].senses.map(\.id) == [entry.senses[1].id])
+            #expect(after.document.entries[0].examples.map(\.id) == entry.senses[1].examples.map(\.id))
+            #expect(after.document.semantics.nodes == [node] && after.document.semantics.mappings.count == 1)
+            #expect(after.document.sources == before.document.sources)
+            #expect(try await fixture.apply(input).0 == 0)
+            var stale = input; stale["idempotencyKey"] = "stale-removal"
+            #expect(try await fixture.apply(stale).0 == 4)
+            #expect(try await fixture.archive.load().document == after.document)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func explicitMergeUsesDestinationContentAndSupportsDryRunReplayAndConflict() async throws {
         let fixture = try await Fixture()
         do {
@@ -53,7 +246,7 @@ struct VocabularyCLITests {
             let identity = try #require(greeting.server)
             for legacy in [true, false] {
                 var request = CLIRequest(command: .apply)
-                request.version = legacy ? 1 : CLIServiceIdentity.protocolVersion
+                request.version = legacy ? CLIServiceIdentity.protocolVersion - 1 : CLIServiceIdentity.protocolVersion
                 request.targetAppPath = identity.appPath
                 request.serverInstanceID = legacy ? identity.instanceID : UUID()
                 request.batch = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("rejected", [add()])))
@@ -299,12 +492,16 @@ struct VocabularyCLITests {
             let secondIDs = try await verifyEntry(in: second, example: secondExample)
             #expect(secondIDs.nodeID == firstIDs.nodeID)
             #expect(try await capture(reuse)["replayed"] as? Bool == true)
+            let batchRead = try await read(["vocab", "read", "--sense-ids", firstIDs.senseID + "," + secondIDs.senseID])
+            let savedSenses = try #require(batchRead["senses"] as? [[String: Any]])
+            #expect(savedSenses.compactMap { $0["id"] as? String } == [firstIDs.senseID, secondIDs.senseID])
             let reverse = try await records("mappings", related: firstIDs.nodeID)
             #expect(reverse.count == 2)
             #expect(Set(reverse.compactMap { $0["senseID"] as? String }) == [firstIDs.senseID, secondIDs.senseID])
             let snapshot = try await fixture.archive.load()
             #expect(snapshot.document.semantics.nodes.count == 1)
             #expect(snapshot.document.classification.memberships.count == 1)
+            #expect(snapshot.document.entries.flatMap(\.senses).allSatisfy { $0.review == nil && ($0.reviewCards ?? []).isEmpty })
         } catch { await fixture.close(); throw error }
         await fixture.close()
     }
@@ -323,13 +520,13 @@ struct VocabularyCLITests {
                     ["expression": "bank", "senses": [
                         ["meaning": "银行", "note": "Keep this personal note", "tags": ["finance"],
                             "examples": [["text": "🏦 The bank is open.", "translation": "银行开门了。"]],
-                            "associations": [["meaning": "finance", "usage": "the bank"]]],
+                            "explanation": "the bank", "associations": [["meaning": "finance"]]],
                         ["meaning": "河岸", "examples": [["text": "We sat on the bank.", "translation": "我们坐在河岸上。"]],
                             "associations": [["meaning": "water"]]]
                     ]],
                     ["expression": "Could you", "kind": "pattern", "senses": [
                         ["meaning": "委婉请求", "examples": [["text": "Could you help me?", "translation": "你能帮我吗？"]],
-                            "associations": [["meaning": "request", "usage": "Could you + verb?", "formality": "neutral"]]]
+                            "explanation": "Could you + verb? (neutral)", "associations": [["meaning": "request"]]]
                     ]]
                 ], "relations": [["from": "finance", "to": "water", "kind": "related", "note": "同形词，不是同义关系"]]]
             func capture(_ value: [String: Any], dry: Bool = false) async throws -> (Int32, [String: Any]) {
@@ -415,8 +612,8 @@ struct VocabularyCLITests {
                 put("entries", ["id": entry, "expression": "push back", "language": "en", "kind": "expression"]),
                 put("senses", ["id": sense, "entryID": entry, "meaning": "推迟", "meaningLanguage": "zh-Hans"]),
                 put("interpretations", ["id": accepted, "occurrenceID": occurrence, "senseID": sense,
-                    "status": "accepted", "meaning": "推迟会议"]),
-                put("interpretations", ["id": candidate, "occurrenceID": occurrence, "meaning": "抵制", "status": "candidate"]),
+                    "status": "accepted", "translation": "我们推迟了会议。"]),
+                put("interpretations", ["id": candidate, "occurrenceID": occurrence, "status": "candidate"]),
                 put("nodes", ["id": node, "labels": [["id": UUID().uuidString, "text": "推迟安排", "language": "zh-Hans"]]]),
                 put("patterns", ["id": pattern, "senseID": sense, "template": "push [event] back"]),
                 put("mappings", ["id": mapping, "nodeID": node, "senseID": sense, "patternID": pattern, "evidenceIDs": [accepted]]),
@@ -628,13 +825,13 @@ struct VocabularyCLITests {
         #expect(plan.outcomes == [.object([
             "operation": .integer(0), "entryID": .string(entry.id.uuidString),
             "senseID": .string(sense.id.uuidString), "createdEntry": .bool(true),
-            "usageIDs": .array([.string("6019CF31-390A-57AC-A0E9-1A85017573DE")]),
+            "exampleIDs": .array([.string("6019CF31-390A-57AC-A0E9-1A85017573DE")]),
             "blockIDs": .array([.string("F0F952BC-AA29-55DA-B9AD-B75FC03874B4")])
         ])])
     }
 
-    /// Later operations see earlier changes, while repeated captures keep the saved usage and translations.
-    @Test func sequentialPlanningRetainsUsageIdentityAndDeduplicatesVariants() throws {
+    /// Explicit source reuse keeps the example and translations; text equality alone does not.
+    @Test func sequentialPlanningRetainsExampleIdentityAndDeduplicatesVariants() throws {
         let seed = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("seed", [add()])))
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let initial = try VocabularyCLIPlan(batch: seed, snapshot: .init(revision: 0, document: .init()),
@@ -643,7 +840,8 @@ struct VocabularyCLITests {
         let sense = try #require(entry.senses.first)
         let usage = try #require(sense.examples.first)
         let variant: [String: Any] = [
-            "text": usage.text, "translation": "La banque est ouverte.", "translationLanguage": "fr"
+            "text": usage.text, "sourceID": usage.sourceID.uuidString,
+            "translation": "La banque est ouverte.", "translationLanguage": "fr"
         ]
         let input = batch("ordered", [
             ["update": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
@@ -667,19 +865,23 @@ struct VocabularyCLITests {
         #expect(plan.outcomes.count == 2)
     }
 
-    @Test func addingAnotherSenseCannotStealAnExistingUsage() throws {
+    @Test func addingAnotherSenseCannotStealAnExplicitSourceOccurrence() throws {
         let seed = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("seed", [add()])))
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let initial = try VocabularyCLIPlan(batch: seed, snapshot: .init(revision: 0, document: .init()),
             fingerprint: "fixture", prepared: [:], now: now)
-        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("another-sense", [add()])))
+        var operation = add()
+        var material = try #require(operation["add"] as? [String: Any])
+        material["examples"] = [["text": "The bank is open.", "sourceID": initial.document.sources[0].id.uuidString]]
+        operation["add"] = material
+        let decoded = try CLIInputPolicy.decode(JSONSerialization.data(withJSONObject: batch("another-sense", [operation])))
         do {
             _ = try VocabularyCLIPlan(batch: decoded, snapshot: .init(revision: 1, document: initial.document),
                 fingerprint: "fixture", prepared: [:], now: now)
-            Issue.record("An existing usage must remain with its current sense.")
+            Issue.record("An explicit source occurrence must remain with its current sense.")
         } catch let error as CLIError {
             #expect(error.code == .conflict)
-            #expect(error.message == "This usage already belongs to another sense. Append to its current owner.")
+            #expect(error.message.contains("belongs to another sense"))
         }
         #expect(initial.document.entries[0].senses.count == 1)
     }
@@ -774,13 +976,14 @@ struct VocabularyCLITests {
         } catch { await fixture.close(); throw error }; await fixture.close()
     }
 
-    @Test func repeatedUsageRetainsTranslationVariantsAndRejectsMeaningConflicts() async throws {
+    @Test func explicitSourceReuseRetainsTranslationVariantsAndRejectsAmbiguousRanges() async throws {
         let fixture = try await Fixture()
         do {
             _ = try await fixture.apply(batch("initial", [add()]))
             let entry = try #require(fixture.store.entries.first), sense = try #require(entry.senses.first)
             let extra = batch("fr", [["append": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
-                "examples": [["text": "The bank is open.", "translation": "La banque est ouverte.", "translationLanguage": "fr"]]]]])
+                "examples": [["text": "The bank is open.", "sourceID": sense.examples[0].sourceID.uuidString,
+                    "translation": "La banque est ouverte.", "translationLanguage": "fr"]]]]])
             #expect(try await fixture.apply(extra).0 == 0); #expect(try await fixture.apply(extra).0 == 0)
             let usage = fixture.store.entries[0].senses[0].examples
             #expect(usage.count == 1 && usage[0].translation == "银行开门了。")

@@ -2,13 +2,14 @@ import LingroveNotebook
 import SwiftUI
 import AppKit
 
-/// A sheet owns a value draft. Cancel leaves the store untouched; Save awaits durable storage
-/// before dismissing. Editing an example's text re-anchors expression highlight spans through
+/// A sheet owns a value draft; Save awaits durable storage before dismissing. Explicit global
+/// tag deletions commit immediately, while Cancel discards the remaining form edits.
+/// Editing an example's text re-anchors expression highlight spans through
 /// `VocabularyPolicy.reconciledRanges` while preserving existing translations and contextual meanings.
 struct VocabularyEntryEditor: View {
     @ObservedObject var store: VocabularyStore
     @State private var notebookScope: VocabularyOperationScope?
-    private let baseline: VocabularyEntry
+    @State private var baseline: VocabularyEntry
     private let senseID: UUID
     @State private var draft: VocabularyEntry
     @State private var tagList: [String]
@@ -22,7 +23,7 @@ struct VocabularyEntryEditor: View {
     init(entry: VocabularyEntry, store: VocabularyStore, senseID: UUID? = nil) {
         _notebookScope = State(initialValue: store.operationScope)
         self.store = store
-        baseline = entry
+        _baseline = State(initialValue: entry)
         let resolvedSenseID = senseID ?? entry.senses.first?.id ?? UUID()
         self.senseID = resolvedSenseID
         _draft = State(initialValue: entry)
@@ -174,11 +175,35 @@ struct VocabularyEntryEditor: View {
                         AddableTagChip(text: suggestion) {
                             appendTag(suggestion)
                         }
+                        .contextMenu {
+                            Button(String(localized: "Delete", table: "Vocabulary"), role: .destructive) {
+                                removeSuggestedTag(suggestion)
+                            }
+                            .disabled(saving || importingImage)
+                        }
                     }
                 }
             }
         }
         .padding(.vertical, 2)
+    }
+
+    private func removeSuggestedTag(_ tag: String) {
+        guard !saving, !importingImage else { return }
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        commitPendingTags()
+        saving = true
+        failure = nil
+        Task {
+            if await store.removeTag(tag, scope: notebookScope), store.matches(notebookScope) {
+                // Rebase only our explicit deletion. Replacing the baseline with the entire
+                // latest entry would make unrelated concurrent edits look safe to overwrite.
+                VocabularySenseEditingPolicy.removeTag(tag, from: &baseline)
+                VocabularySenseEditingPolicy.removeTag(tag, from: &draft)
+                tagList.removeAll { $0 == tag }
+            } else { failure = store.errorMessage }
+            saving = false
+        }
     }
 
     private var editorFooter: some View {

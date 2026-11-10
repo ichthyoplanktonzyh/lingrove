@@ -81,10 +81,11 @@ an authoring surface.
 At least one nonempty `examples`, `content`, or `tags` array is required. Append adds tags;
 update replaces the tag array. Append cannot edit a sense's meaning or note.
 
-A repeated occurrence within the target sense keeps its existing usage ID and primary
-translation, collecting distinct translations as variants. If another sense owns the occurrence, append to
-that owner when appropriate or use an explicitly authorized [resource organization batch](organization.md). Creating another sense is not
-a conflict-resolution mechanism. Retrying rich-text appends with a new key can duplicate blocks.
+Omitting `sourceID` creates a new source; identical sentence text from different sources stays
+distinct. Explicitly reusing the original source ID and ranges keeps the existing example ID and
+primary translation, collecting distinct translations as variants. Capture and append share this
+rule. Another sense owning that occurrence is a conflict. `source` records an optional citation;
+editing the citation requires `exampleEdits`. Retrying appends with a new key can duplicate content.
 
 ## Update only intended fields
 
@@ -110,11 +111,32 @@ Use the latest get's `result.revision` as `expectedRevision`. All updates in one
 the same baseline notebook revision; do not increment it between operations. A stale revision
 rejects the whole batch. Reread and reconcile with the current content before a revised write.
 
-Only supplied `meaning`, `meaningLanguage`, `explanation`, `note`, and `tags` are replaced.
-`explanation` replaces the complete sense body; an empty string explicitly clears it. Omit fields that
-should stay unchanged; do not use null as a clearing command. `note: ""` and `tags: []` clear
-those fields. Meaning must remain nonempty. Update cannot rename an entry, replace examples,
-delete senses, or move usages; use [version 2 resource operations](organization.md) for those actions.
+Only supplied fields change. `note: ""` and `tags: []` clear those fields; meaning stays nonempty.
+`explanation` replaces a plain, unformatted, image-free body only; an empty string clears it.
+A rich body rejects this shortcut. Use `contentEdits` with part IDs from a canonical read:
+
+```json
+"contentEdits": [
+  {"blockID":"TEXT_PART_UUID", "find":"exact unique fragment", "replacement":"corrected fragment"},
+  {"blockID":"IMAGE_PART_UUID", "caption":"New caption"}
+]
+```
+
+A fragment must match exactly once, including overlapping matches. Untouched formatting, paragraph
+styles and images survive. An explicit `{"blockID":"PART_UUID","remove":true}` removes one part.
+Append new text/images through `append.content`; do not rebuild rich text from a plain read.
+Do not combine `explanation` and `contentEdits` in one update.
+
+`exampleEdits` accepts `{id, text?, translation?, translationLanguage?, completeness?, ranges?,
+sourceKind?, source?}`. Changed source text creates new evidence while retaining the example ID
+and original source snapshot. Omitted fields stay unchanged. `removeExamples: [EXAMPLE_UUID]`
+removes only examples owned by this sense. `linkNodes: [{nodeID, conditions?}]` adds existing nodes;
+`unlinkNodes: [NODE_UUID]` detaches all this sense's mappings to those nodes, preserving shared nodes.
+All edits participate in the same revision check and atomic before/after preview.
+
+Delete a sense using `{"remove":{"entryID":"ENTRY_UUID","senseID":"SENSE_UUID"}}` in a version 2
+batch with root `expectedRevision` and `notebookScope`. Its examples/links are removed; shared nodes
+and independent source evidence survive. An empty headword is removed as part of the same operation.
 
 ## Merge duplicate senses
 

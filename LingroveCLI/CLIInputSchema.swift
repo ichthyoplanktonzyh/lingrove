@@ -21,11 +21,16 @@ enum CLIInputSchema {
                 "properties": ["capture": CLICaptureContract.shape.schema]])
             alternatives.append(["type": "object", "additionalProperties": false, "required": ["merge"],
                 "properties": ["merge": CLIMerge.shape.schema]])
+            alternatives.append(["type": "object", "additionalProperties": false, "required": ["remove"],
+                "properties": ["remove": CLIRemoveSense.shape.schema]])
+            root["x-resources"] = CLIResourceContract.names
+            root["x-batchRead"] = ["maximumIDs": CLIReadSelection.maximumIDs, "selectors": ["entryIDs", "senseIDs"],
+                "ordered": true, "singleSnapshot": true, "missingIDPolicy": "fail"]
             root["x-readOnlyResources"] = ["frameworks"]
             alternatives += try CLIResourceContract.names.filter { $0 != "frameworks" }.map { name in
                 var shape = try CLIResourceContract.shape(name).schema
                 shape["x-requiredOnCreate"] = shape["required"]
-                let identity = name == "collections" ? "senseID" : name == "categoryOverrides" ? "categoryID" : "id"
+                let identity = name == "categoryOverrides" ? "categoryID" : "id"
                 shape["required"] = [identity]
                 return ["type": "object", "additionalProperties": false, "required": ["put"], "properties": [
                     "put": ["type": "object", "additionalProperties": false, "required": ["resource", "value"],
@@ -38,7 +43,7 @@ enum CLIInputSchema {
             items["oneOf"] = alternatives; operations["items"] = items; properties["operations"] = operations
             root["properties"] = properties
             root["allOf"] = [["if": ["properties": ["operations": ["contains": ["anyOf": [
-                ["required": ["put"]], ["required": ["delete"]], ["required": ["merge"]]]]]]],
+                ["required": ["put"]], ["required": ["delete"]], ["required": ["merge"]], ["required": ["remove"]]]]]]],
                 "then": ["required": ["expectedRevision", "notebookScope"], "properties": ["version": ["const": 2]]]]]
             var rules = root["allOf"] as? [[String: Any]] ?? []
             rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"]]]]],
@@ -46,16 +51,24 @@ enum CLIInputSchema {
             rules.append(["if": ["properties": ["operations": ["contains": ["anyOf": [
                 ["required": ["append"]], ["required": ["update"]]]]]]], "then": ["required": ["notebookScope"]]])
             rules.append(["if": ["required": ["expectedRevision"]], "then": ["required": ["notebookScope"]]])
+            let sourceReference: [String: Any] = ["required": ["add"],
+                "properties": ["add": CLICaptureContract.existingExampleSourceCondition]]
+            rules.append(["if": ["properties": ["operations": ["contains": sourceReference]]],
+                "then": ["required": ["notebookScope"]]])
             rules.append(["if": ["properties": ["operations": ["contains": ["required": ["capture"],
                 "properties": ["capture": CLICaptureContract.existingReferenceCondition]]]]],
                 "then": ["required": ["notebookScope"]]])
             root["allOf"] = rules
             var definitions = root["$defs"] as? [String: Any] ?? [:]
-            var example = definitions["example"] as? [String: Any] ?? [:]
-            var fields = example["properties"] as? [String: Any] ?? [:]
-            fields["completeness"] = ["enum": ["sentence", "fragment", "unknown"]]
-            fields["sourceKind"] = ["enum": ["unspecified", "captured", "authored", "generated", "imported"]]
-            example["properties"] = fields; definitions["example"] = example; root["$defs"] = definitions
+            definitions["example"] = NotebookCaptureContract.example.schema
+            var update = definitions["update"] as? [String: Any] ?? [:]
+            var fields = update["properties"] as? [String: Any] ?? [:]
+            let editFields = CLIResourceContract.Shape(fields: CLIUpdate.editFields).schema["properties"] as? [String: Any] ?? [:]
+            fields.merge(editFields) { _, new in new }
+            update["properties"] = fields
+            update["anyOf"] = (["meaning", "meaningLanguage", "explanation", "note", "tags"] + CLIUpdate.editFields.keys.sorted())
+                .map { ["required": [$0]] }
+            definitions["update"] = update; root["$defs"] = definitions
             let data = try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
             guard let json = String(data: data, encoding: .utf8) else {
                 preconditionFailure("JSONSerialization must produce UTF-8 schema data.")

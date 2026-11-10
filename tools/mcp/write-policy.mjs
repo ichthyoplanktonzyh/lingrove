@@ -14,7 +14,7 @@ export async function assessWrite(mode,task,run,options={}) {
     if(['categoryOverrides','categoryParents','frameworks'].includes(resource)) {
       reasons.push({operation:index,resource,reason:'Catalog overrides/hierarchy and read-only resources require review.'}); continue;
     }
-    const id=value?.id??(resource==='collections'?value?.senseID:undefined);
+    const id=value?.id;
     if(!id || !resource) { reasons.push({operation:index,reason:'Resource identity is missing.'}); continue; }
     const key=resource+':'+id;
     // Even an edit to an earlier new record is a put/replace operation; a normal

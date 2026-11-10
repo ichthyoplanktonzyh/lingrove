@@ -1,10 +1,38 @@
 import Foundation
 
-/// Detached editors and archive transactions use one merge/move rule. Stable aliases retain
+/// Detached editors and archive transactions share sense edits. Stable aliases retain
 /// historical review ownership; source evidence and tool memory remain independently owned.
 public nonisolated enum VocabularySenseEditingPolicy {
+    /// Tags are sense annotations, not a separate catalog. The archive applies this to every
+    /// entry in one transaction; an open editor uses it without dates to rebase only the deleted
+    /// tag in its baseline/draft, preserving all other unsaved fields and conflict detection.
+    @discardableResult
+    public static func removeTag(_ tag: String, from entry: inout VocabularyEntry, now: Date? = nil) -> Bool {
+        var changed = false
+        for index in entry.senses.indices where entry.senses[index].tags.contains(tag) {
+            entry.senses[index].tags.removeAll { $0 == tag }
+            if let now { entry.senses[index].updatedAt = now }
+            changed = true
+        }
+        if changed, let now { entry.updatedAt = now }
+        return changed
+    }
+
     /// Both GUI and CLI submit one complete graph change. Reconcile before dry-run validation
     /// as well as persistence, so source associations cannot become dangling references.
+    public static func remove(entryID: UUID, senseID: UUID, from document: inout VocabularyDocument) throws {
+        let before = document
+        var entries = document.entries
+        guard let index = entries.firstIndex(where: { $0.id == entryID }),
+              entries[index].senses.contains(where: { $0.id == senseID }) else {
+            throw NotebookToolError(code: .notFound, message: "Sense does not belong to this entry.")
+        }
+        entries[index].senses.removeAll { $0.id == senseID }
+        if entries[index].senses.isEmpty { entries.remove(at: index) }
+        document.entries = entries
+        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, entries: entries)
+    }
+
     public static func merge(entryID: UUID, source: UUID, into target: UUID,
                              in document: inout VocabularyDocument, now: Date) throws {
         let before = document

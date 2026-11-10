@@ -16,11 +16,16 @@ nonisolated enum CLICaptureContract {
     /// These conditions mirror the optional scope's admission without making a pure new
     /// capture depend on an account. Both published schemas reuse this same descriptor.
     static var existingReferenceCondition: [String: Any] {
-        ["anyOf": [
+        let sense: [String: Any] = ["anyOf": [["required": ["id"]], existingExampleSourceCondition]]
+        let entry: [String: Any] = ["required": ["senses"], "properties": ["senses": ["contains": sense]]]
+        return ["anyOf": [
             ["required": ["meanings"], "properties": ["meanings": ["contains": ["required": ["id"]]]]],
-            ["required": ["entries"], "properties": ["entries": ["contains": ["properties": [
-                "senses": ["contains": ["required": ["id"]]]]]]]]
+            ["required": ["entries"], "properties": ["entries": ["contains": entry]]]
         ]]
+    }
+
+    static var existingExampleSourceCondition: [String: Any] {
+        ["required": ["examples"], "properties": ["examples": ["contains": ["required": ["sourceID"]]]]]
     }
 
     static var schema: [String: Any] {

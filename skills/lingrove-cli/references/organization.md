@@ -28,8 +28,7 @@ only for interpretations: `candidate`, `accepted`, `rejected`. Reads do not perf
 | `senses` | Core meaning, with `id` and parent `entryID`; can exist without an interpretation or meaning node. |
 | `sources` | Immutable text snapshot: `id`, `text`, `kind`, optional application metadata and encounter time. |
 | `occurrences` | Immutable `id`, `sourceID`, UTF-16 `ranges`; may exist without any interpretation. |
-| `interpretations` | Independent `id`, `occurrenceID`, optional `senseID`, status, contextual meaning and translations. Several candidates may share an occurrence. |
-| `collections` | Personal relation keyed by `senseID`, with selected `interpretationIDs`, standalone favorite flag, note and tags. |
+| `interpretations` | Independent `id`, `occurrenceID`, optional `senseID`, status and sentence translations. Several candidates may share an occurrence. |
 | `nodes` | A concept or communicative function, multilingual labels and optional roles. |
 | `patterns` | One sense's syntax template and optional slots and usage features. |
 | `mappings` | A sense's claim about a node, optionally restricted to a pattern; `evidenceIDs` name accepted interpretation IDs. |
@@ -38,10 +37,10 @@ only for interpretations: `candidate`, `accepted`, `rejected`. Reads do not perf
 | `frameworks` / `categories` | Versioned built-in directory and user categories above meaning nodes; see [classification.md](classification.md). |
 | `categoryParents` / `categoryMemberships` / `categoryOverrides` | Category hierarchy, many-to-many meaning membership, and local display overrides. |
 
-Keep optional learning copy specific and nonredundant. Pattern notes describe syntax/register;
-mapping nuances distinguish expression choices, and conditions name actual applicability limits.
-Do not duplicate a pattern note in mapping nuance or fill conditions with generic "only this
-example/sense/usage" text. An empty optional field is better than boilerplate.
+Detailed explanation belongs to the sense body. Resource authoring rejects interpretation
+`meaning`, pattern `note`, mapping `nuance`, and sense history fields. Conditions describe genuine
+applicability restrictions. Ordinary reads/edits use `vocab sense` and `update`; low-level sense
+records contain metadata rather than the complete explanation/image projection.
 
 Resource reads omit private Anki bindings and review configuration. Use existing traditional
 add/append actions for rich text or image content; resource writes cannot replace those fields.
@@ -55,8 +54,7 @@ Final reference validation occurs after all operations, so status changes and de
 be updated together atomically. There are no symbolic references to operation outcomes.
 
 `put` creates or patches one resource. Existing omitted fields are preserved; arrays replace,
-optional nulls clear, and provenance fields merge. Root `id` is required, except collections use
-`senseID`, and categoryOverrides use `categoryID`. Published schema `x-requiredOnCreate` lists additional creation fields. Timestamps are
+optional nulls clear, and provenance fields merge. Root `id` is required, except categoryOverrides use `categoryID`. Published schema `x-requiredOnCreate` lists additional creation fields. Timestamps are
 Unix seconds in UTC, defaulting to the write time. Enum values and supported languages come from
 `schema`/`status`; unknown or misspelled nested fields fail.
 
@@ -91,7 +89,7 @@ revision before actual use; the example is illustrative rather than a captured o
       "id": "55555555-5555-4555-8555-555555555555",
       "occurrenceID": "44444444-4444-4444-8444-444444444444",
       "senseID": "22222222-2222-4222-8222-222222222222",
-      "status": "accepted", "meaning": "银行", "completeness": "sentence"
+      "status": "accepted", "completeness": "sentence"
     }}},
     {"put": {"resource": "nodes", "value": {
       "id": "66666666-6666-4666-8666-666666666666",
@@ -121,28 +119,16 @@ whether the assertion is adopted for use. New agent graph assertions and interpr
 `origin: model`, `status: confirmed`; adoption does not claim human review. Set `proposed` explicitly
 for uncertain assertions. Existing proposed records are preserved until explicitly adopted.
 
-## Manage membership and corrections
+## Corrections and removal
 
-To collect an existing sense, put a `collections` value with its `senseID` and selected accepted
-`interpretationIDs`; use `isSavedWithoutContext: true` for a context-free favorite. Collections can
-also be empty of examples, as with a manually saved meaning. Notes and tags belong to membership.
-Only one sense per entry can claim the floating context-free favorite slot; leave that flag false
-for other manually collected senses. This does not limit how many senses can be collected.
-The normal notebook displays only these collected senses and selected examples.
+There is no collections resource. Notes, tags and the explanation belong to the sense.
+Use domain `update.exampleEdits`, `removeExamples`, `linkNodes`/`unlinkNodes`, or version 2
+`remove`/`merge` for ordinary organization; see [batches.md](batches.md).
 
-To uncollect, use `{"delete":{"resource":"collections","id":"SENSE_UUID"}}` in a version 2
-batch. This leaves catalog, sources, interpretations and meaning mappings available. Deleting a
-single collection relation also removes its personal notes/cards, so preserve those if the user
-only requests removing one selected example; patch `interpretationIDs` in that case.
-
-To resolve an occurrence, patch its chosen interpretation's `senseID` and `status`. Demote any
-previous accepted claim and update collection selections and mapping evidence in the same batch.
-Moving an accepted claim to another sense likewise requires adjusting dependent membership and
-mapping evidence. Prefer exact read IDs to creating duplicates based on similar labels.
-
-Sources and occurrences are immutable snapshots. For a correction, create new source/occurrence
-UUIDs and patch the interpretation's `occurrenceID`; other claims keep their original evidence.
-Retained evidence is never automatically garbage-collected after uncollecting or moving a claim.
+To resolve advanced candidates, patch the chosen interpretation's sense/status and demote any
+previous accepted claim, adjusting dependent mapping evidence in the same batch. Sources and
+occurrences are immutable; a source correction creates new evidence. The high-level example
+edit handles this while retaining the example identity and previous source snapshot.
 
 Except for custom-category deletion (documented in [classification.md](classification.md)),
 `delete` removes exactly the requested record. Remove or redirect all incoming references in the

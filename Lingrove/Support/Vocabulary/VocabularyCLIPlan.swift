@@ -24,7 +24,7 @@ nonisolated struct VocabularyCLIPlan {
             throw CLIError.invalid("Invalid batch version, idempotency key or operation count.")
         }
         document = snapshot.document
-        if batch.operations.contains(where: { $0.put != nil || $0.delete != nil || $0.merge != nil }) {
+        if batch.operations.contains(where: { $0.put != nil || $0.delete != nil || $0.merge != nil || $0.remove != nil }) {
             guard batch.version == 2, let expected = batch.expectedRevision else {
                 throw CLIError.invalid("Resource operations require batch version 2 and expectedRevision.")
             }
@@ -65,12 +65,21 @@ nonisolated struct VocabularyCLIPlan {
         }
     }
 
+    // Keep the closed action dispatch visible together; each specialized rule owns its planning below.
+    // swiftlint:disable:next cyclomatic_complexity
     private mutating func apply(
         _ change: CLIChange, context: OperationContext, revision: UInt64, prepared: [String: VocabularyPreparedImage]
     ) throws {
         guard [change.add != nil, change.append != nil, change.update != nil,
-               change.put != nil, change.delete != nil, change.capture != nil, change.merge != nil].filter({ $0 }).count == 1 else {
+               change.put != nil, change.delete != nil, change.capture != nil,
+               change.merge != nil, change.remove != nil].filter({ $0 }).count == 1 else {
             throw CLIError.invalid("Each operation needs exactly one action.")
+        }
+        if let removal = change.remove {
+            try VocabularySenseEditingPolicy.remove(entryID: removal.entryID, senseID: removal.senseID, from: &document)
+            outcomes.append(.object(["operation": .integer(Int64(context.index)), "action": .string("remove"),
+                "entryID": .string(removal.entryID.uuidString), "senseID": .string(removal.senseID.uuidString)]))
+            return
         }
         if let merge = change.merge {
             guard document.entries.contains(where: { $0.id == merge.entryID }) else {
@@ -109,22 +118,36 @@ nonisolated struct VocabularyCLIPlan {
         } else {
             target = try existingTarget(for: change)
         }
-        var sense = document.entries[target.entry].senses[target.sense]
+        let before = document
+        var entry = document.entries[target.entry]
+        var sense = entry.senses[target.sense]
         if let update = change.update { try Self.applyUpdate(update, to: &sense, revision: revision, contentID: context.id("explanation")) }
         let examples = change.add?.examples ?? change.append?.examples ?? []
         let blocks = change.add?.content ?? change.append?.content ?? []
         if let append = change.append { try Self.appendTags(append, to: &sense) }
         guard examples.count <= 100, blocks.count <= 64 else { throw CLIError.invalid("Too many examples or content blocks.") }
-        let usageIDs = try Self.appendExamples(examples, to: &sense, entry: document.entries[target.entry], context: context)
         let blockIDs = try appendBlocks(blocks, to: &sense, prepared: prepared, context: context)
         try VocabularyContentPolicy.validate(sense.content ?? [])
-        sense.updatedAt = context.now
-        document.entries[target.entry].senses[target.sense] = sense
-        document.entries[target.entry].updatedAt = context.now
+        sense.updatedAt = context.now; entry.senses[target.sense] = sense; entry.updatedAt = context.now
+        document.entries[target.entry] = entry
+        let exampleIDs = try examples.enumerated().map { position, input in
+            try NotebookExampleWriting.append(input, entry: entry, senseID: sense.id, in: &document,
+                id: context.id("example." + String(position)), occurrenceID: context.id("occurrence." + String(position)), now: context.now)
+        }
+        if let update = change.update {
+            for (position, edit) in (update.exampleEdits ?? []).enumerated() {
+                try NotebookExampleWriting.edit(edit, entry: entry, senseID: sense.id, in: &document,
+                    sourceID: context.id("editedSource." + String(position)),
+                    occurrenceID: context.id("editedOccurrence." + String(position)), now: context.now)
+            }
+            try NotebookExampleWriting.remove(update.removeExamples ?? [], senseID: sense.id, from: &document)
+            try updateLinks(update, senseID: sense.id, context: context)
+        }
+        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, entries: document.entries)
         outcomes.append(.object([
             "operation": .integer(Int64(context.index)), "entryID": .string(document.entries[target.entry].id.uuidString),
             "senseID": .string(sense.id.uuidString), "createdEntry": .bool(document.entries.count > entryCount),
-            "usageIDs": .array(usageIDs.map { .string($0.uuidString) }),
+            "exampleIDs": .array(exampleIDs.map { .string($0.uuidString) }),
             "blockIDs": .array(blockIDs.map { .string($0.uuidString) })
         ]))
     }
@@ -164,11 +187,16 @@ nonisolated struct VocabularyCLIPlan {
         return (entry, sense)
     }
 
-    private static func applyUpdate(_ update: CLIUpdate, to sense: inout VocabularySense, revision: UInt64, contentID: UUID) throws {
+    private static func applyUpdate(
+        _ update: CLIUpdate, to sense: inout VocabularySense, revision: UInt64, contentID: UUID
+    ) throws {
         guard update.expectedRevision == revision else {
             throw CLIError(code: .conflict, message: "Notebook revision changed. Read the entry again.")
         }
-        guard update.meaning != nil || update.meaningLanguage != nil || update.explanation != nil || update.note != nil || update.tags != nil else {
+        guard update.meaning != nil || update.meaningLanguage != nil || update.explanation != nil ||
+            update.note != nil || update.tags != nil ||
+            !(update.contentEdits ?? []).isEmpty || !(update.exampleEdits ?? []).isEmpty || !(update.removeExamples ?? []).isEmpty ||
+            !(update.linkNodes ?? []).isEmpty || !(update.unlinkNodes ?? []).isEmpty else {
             throw CLIError.invalid("An update needs at least one field.")
         }
         if let meaning = update.meaning {
@@ -179,12 +207,13 @@ nonisolated struct VocabularyCLIPlan {
             sense.meaningLanguage = try language(code)
             sense.meaningOrigin = .user
         }
-        if let explanation = update.explanation {
-            let value = try text(explanation, limit: 262_144)
-            // A revision-bound replacement owns the whole explanation. Personal notes,
-            // examples, review identities and unrelated senses stay outside this edit.
-            sense.content = value.isEmpty ? [] : [.init(id: contentID, content: .text(.init(text: value)))]
+        guard update.explanation == nil || update.contentEdits == nil else {
+            throw CLIError.invalid("Choose a plain explanation replacement or contentEdits, not both.")
         }
+        if let explanation = update.explanation {
+            try VocabularyContentEditingPolicy.replacePlainExplanation(explanation, in: &sense, id: contentID)
+        }
+        if let edits = update.contentEdits { try VocabularyContentEditingPolicy.apply(edits, to: &sense) }
         if let note = update.note { sense.note = try text(note, limit: 262_144) }
         if let values = update.tags { sense.tags = try tags(values) }
     }
@@ -197,41 +226,23 @@ nonisolated struct VocabularyCLIPlan {
         sense.tags = try tags(sense.tags)
     }
 
-    private static func appendExamples(
-        _ examples: [CLIExample], to sense: inout VocabularySense, entry: VocabularyEntry, context: OperationContext
-    ) throws -> [UUID] {
-        var usageIDs: [UUID] = []
-        for (position, input) in examples.enumerated() {
-            let value = try example(input, expression: entry.expression, id: context.id("example." + String(position)), now: context.now)
-            let key = VocabularyPolicy.exampleKey(value)
-            if let existing = sense.examples.firstIndex(where: { VocabularyPolicy.exampleKey($0) == key }) {
-                try mergeExample(value, into: &sense.examples[existing])
-                usageIDs.append(sense.examples[existing].id)
-                continue
-            }
-            guard !entry.examples.contains(where: { VocabularyPolicy.exampleKey($0) == key }) else {
-                throw CLIError(code: .conflict, message: "This usage already belongs to another sense. Append to its current owner.")
-            }
-            sense.examples.append(value)
-            usageIDs.append(value.id)
+    private mutating func updateLinks(_ update: CLIUpdate, senseID: UUID, context: OperationContext) throws {
+        let removed = Set(update.unlinkNodes ?? [])
+        guard removed.allSatisfy({ nodeID in document.semantics.mappings.contains { $0.senseID == senseID && $0.nodeID == nodeID } }) else {
+            throw CLIError(code: .notFound, message: "A semantic node is not linked to this sense.")
         }
-        return usageIDs
-    }
-
-    /// Duplicate captures may add a translation, but never overwrite an explicitly edited meaning
-    /// (including an intentionally empty one). The retained usage keeps its original identity.
-    private static func mergeExample(_ value: VocabularyExample, into retained: inout VocabularyExample) throws {
-        if !value.translation.isEmpty {
-            if retained.translation.isEmpty {
-                retained.translation = value.translation
-                retained.translationLanguage = value.translationLanguage
-            } else {
-                let variant = VocabularyMeaning(text: value.translation, language: value.translationLanguage)
-                if variant != VocabularyMeaning(text: retained.translation, language: retained.translationLanguage),
-                   !retained.translationVariants.contains(variant) { retained.translationVariants.append(variant) }
+        document.semantics.mappings.removeAll { $0.senseID == senseID && removed.contains($0.nodeID) }
+        for (index, link) in (update.linkNodes ?? []).enumerated() {
+            guard let node = document.semantics.nodes.first(where: { $0.id == link.nodeID }) else {
+                throw CLIError(code: .notFound, message: "Semantic node not found.")
             }
+            let conditions = try Self.text(link.conditions ?? "", limit: 8_192)
+            if document.semantics.mappings.contains(where: { $0.senseID == senseID && $0.nodeID == node.id &&
+                $0.patternID == nil && $0.conditions == conditions }) { continue }
+            document.semantics.mappings.append(.init(id: context.id("link." + String(index)), nodeID: node.id, senseID: senseID,
+                relation: node.kind == .concept ? .expressesContent : .realizesFunction, conditions: conditions,
+                provenance: .init(origin: .model, status: .confirmed)))
         }
-
     }
 
     private mutating func appendBlocks(

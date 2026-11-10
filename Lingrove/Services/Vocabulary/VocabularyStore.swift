@@ -303,6 +303,10 @@ final class VocabularyStore: ObservableObject {
         await mutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
     }
 
+    func removeTag(_ tag: String, scope: VocabularyOperationScope? = nil) async -> Bool {
+        await mutation(scope: scope) { archive in try archive.removeTag(tag) }
+    }
+
     func updateSemantics(
         _ value: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex, scope: VocabularyOperationScope? = nil
     ) async -> Bool {

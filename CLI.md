@@ -29,7 +29,7 @@ Install CLI also updates a user-owned symlink to an earlier installation of the 
 It preserves ordinary files, unrelated links and links to the other product (Dev versus production).
 An old target whose bundle identity cannot be verified requires manual inspection.
 
-CLI 4 uses transport protocol 2. Before sending material, it verifies the serving app path and
+CLI 5 uses transport protocol 3. Before sending material, it verifies the serving app path and
 capabilities, then pins the request to that server instance. Incompatible clients are rejected
 before notebook writes. `--version` reports the local CLI contract and its containing app's
 version/build/path; replies expose the actual serving identity under top-level `server`.
@@ -48,6 +48,10 @@ lingrove status
 lingrove schema capture
 lingrove vocab list --query bank --language en --limit 20 --offset 0
 lingrove vocab get ENTRY_UUID
+lingrove vocab sense SENSE_UUID
+lingrove vocab read --entry-ids ENTRY_UUID_1,ENTRY_UUID_2
+lingrove vocab read --sense-ids SENSE_UUID_1,SENSE_UUID_2
+lingrove vocab image SENSE_UUID IMAGE_ID --scope '{"workspaceID":"FROM_READ","notebookID":"UUID_FROM_READ","generation":"FROM_READ"}'
 ```
 
 `status` reports the notebook revision, supported study languages and expression kinds.
@@ -58,9 +62,31 @@ or workspace change invalidates the draft even if the new notebook has the same 
 version commands without request options. The installed schema is the authority for available fields.
 
 `vocab list/get` reads collected material. Lists return summaries with `entryID`, `senseID`,
-`total` and truncation flags; `get` returns the full entry under `result.entry`, using `id` fields.
-List pages accept 1–200 entries. Read the full entry before choosing an existing sense or reusing
-truncated text. Use the app's export if an entry is too large for a CLI response.
+`total`, `nextOffset` and truncation flags; `get` returns the current entry under `result.entry`, using `id` fields.
+List pages accept 1–200 entries. `vocab sense` returns one complete current sense under `result.sense`.
+Read it before choosing or editing a sense. Large entries can be read one sense at a time; oversized
+individual responses fail explicitly rather than truncate content.
+
+Canonical senses contain definition, ordered `explanation` parts (plain text or image references),
+notes, tags, examples with source provenance, and semantic links. Text formatting and historical
+generated explanations are omitted. Part IDs address edits; they do not imply multiple UI editors.
+`vocab image` verifies the original notebook scope and that the image belongs to the sense, then
+returns PNG `dataBase64`. MCP `notebook_image` emits an actual image content block.
+`data get senses` is low-level metadata, not the complete sense reading interface.
+
+`vocab read` accepts exactly one of `--entry-ids` or `--sense-ids`, with 1–100 distinct,
+comma-separated UUIDs. Optional `--scope JSON` retains an earlier notebook identity. It returns
+`result.entries` or `result.senses` in input order, with a single `revision` and `notebookScope`
+for the entire snapshot. Each item uses the same complete projection as a single read. Missing
+IDs reject the whole request (`not_found`); duplicates, empty/mixed selections and excessive IDs
+are invalid input. The combined response is bounded; request fewer IDs if it is too large.
+This is one read-only request, with no revision increment or receipt write. The JSON schema
+publishes the selection contract in `x-batchRead`.
+
+MCP uses `notebook_read` with exactly one of `entryID`, `senseID`, `entryIDs`, or `senseIDs`.
+Large MCP results retain their full JSON for `notebook_result_read` pagination. Images remain
+references in batch details and use the existing scoped image read when needed.
+
 
 ## Save entries, examples and meanings
 
@@ -117,11 +143,12 @@ See [capture fields and examples](skills/lingrove-cli/references/capture.md).
 | --- | --- |
 | `add` | Add a distinct sense, with optional examples, notes, tags and rich content. |
 | `append` | Add examples, content or tags to an exact entry/sense ID. |
-| `update` | Replace specified sense meaning, language, explanation, note or tags; requires the current notebook revision. |
+| `update` | Edit sense metadata, explanation fragments, examples and node links; requires the current notebook revision. |
+| `remove` | Delete an exact sense and its examples/links, retaining shared nodes and independent source evidence. |
 | `merge` | Merge a source sense into an explicitly selected target within one entry; keep target content and move examples. |
 | `put` / `delete` | Create, patch or remove catalog resources and explicit relationships. |
 
-Use batch `version: 1` for `add`/`append`/`update`; resource and merge batches use `version: 2` and a
+Use batch `version: 1` for `add`/`append`/`update`; resource, merge and remove batches use `version: 2` and a
 batch-level `expectedRevision`. Both require a fresh `idempotencyKey` for each new intent.
 `append`, `update`, resource operations and any batch/capture with `expectedRevision` also
 include the unchanged `notebookScope` returned by the read that the edit is based on:
@@ -134,7 +161,7 @@ include the unchanged `notebookScope` returned by the read that the edit is base
 }
 ```
 
-Pure new v1 captures/additions without existing sense/meaning IDs can omit scope; the app captures the active notebook once when
+Pure new v1 captures/additions without existing sense/meaning/source IDs can omit scope; the app captures the active notebook once when
 it admits that command. A completed key remains bound to its first business owner and notebook,
 so retrying it in a different account fails. Retrying the identical completed request in its own
 business scope returns its original acknowledgement without collecting again.
@@ -148,7 +175,7 @@ lingrove vocab apply --stdin < changes.json
 ```
 
 Use `--file` or `--stdin`. Preview and commit the same material and key. A dry run returns a
-validated plan without saving it. On a stale-revision conflict, reread and reconcile the changes.
+validated `changes` result with before/after senses, entries and affected resources, without saving it. On a stale-revision conflict, reread and reconcile the changes.
 See [batch payloads, rich content and limits](skills/lingrove-cli/references/batches.md).
 
 ## Read and organize catalog resources
@@ -165,7 +192,6 @@ lingrove data get senses SENSE_UUID
 | --- | --- |
 | `entries`, `senses` | Lexical headers and distinct senses, including uncollected knowledge. |
 | `sources`, `occurrences`, `interpretations` | Source text, selected spans and contextual readings. |
-| `collections` | Collected senses, selected interpretations, notes and tags; keyed by `senseID`. |
 | `nodes`, `patterns`, `mappings`, `relations` | Reusable meanings, usage patterns and their explicit links. |
 | `cues`, `cueTargets` | Retrieval wording and its targets. |
 | `frameworks`, `categories`, `categoryParents`, `categoryMemberships`, `categoryOverrides` | Classification directory, hierarchy, memberships and local overrides. |
@@ -177,7 +203,7 @@ UUID-valued references; `--status` applies only to interpretations. Timestamps a
 Resource writes use explicit UUIDs. Sources and occurrences are immutable; corrections create
 new records. Except for custom-category deletion described below, deletions must remove or
 redirect incoming dependencies in the same batch.
-Uncollecting removes collection membership while retaining the lexical sense and its evidence.
+Use the domain `remove` action to delete a sense and reconcile its dependents. There is no collections resource.
 See [resource fields and organization](skills/lingrove-cli/references/organization.md).
 
 ## Classify meanings
@@ -214,7 +240,9 @@ See [category fields, localization and overrides](skills/lingrove-cli/references
 ## Results and recovery
 
 Requests return JSON on stdout. Inspect `ok`, including when the command exits nonzero.
-A write result includes `revision`, `operations`, `dryRun` and `replayed`.
+A write result includes `revision`, `operations`, `changes`, `dryRun` and `replayed`.
+`changes` uses the same canonical sense projection as reads; it shows the actual before/after content.
+Previews exceeding 16 MiB fail before saving; split large tasks.
 
 If a reply is lost or times out, retry the same key, material and image bytes. Reusing a key
 with different content is a conflict. `replayed: true` acknowledges the original write; it does

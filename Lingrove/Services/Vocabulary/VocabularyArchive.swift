@@ -331,14 +331,22 @@ actor VocabularyArchive {
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
         var next = try load().document
-        var entries = next.entries
-        guard let entry = entries.firstIndex(where: { $0.id == entryID && $0.senses.contains { $0.id == senseID } }) else {
-            throw VocabularyError.invalidContent
-        }
-        entries[entry].senses.removeAll { $0.id == senseID }
-        if entries[entry].senses.isEmpty { entries.remove(at: entry) }
-        next.entries = entries
+        try VocabularySenseEditingPolicy.remove(entryID: entryID, senseID: senseID, from: &next)
         return try commit(next)
+    }
+
+    /// The selected notebook owns the tag's entire lifetime. One transaction updates all
+    /// occurrences; source evidence, explanation/media and semantic links remain untouched.
+    func removeTag(_ tag: String) throws -> VocabularyArchiveSnapshot {
+        guard !tag.isEmpty, tag.utf8.count <= 200 else { throw VocabularyError.invalidContent }
+        let snapshot = try load()
+        var next = snapshot.document, changed = false
+        let now = Date()
+        for index in next.catalog.indices {
+            let removed = VocabularySenseEditingPolicy.removeTag(tag, from: &next.catalog[index], now: now)
+            changed = removed || changed
+        }
+        return changed ? try commit(next) : snapshot
     }
 
     /// Review drafts use compare-and-swap rather than whole-entry replacement. A sheet cannot

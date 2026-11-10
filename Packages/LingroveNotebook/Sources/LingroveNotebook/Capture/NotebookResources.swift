@@ -141,9 +141,10 @@ public nonisolated enum NotebookResources {
             throw NotebookToolError(code: .notFound, message: "Create the parent entry before writing its sense.")
         }
         let old = previous?.senses.first { $0.id == id }
-        let value = try updated(input, values: old.map { [$0] } ?? [], id: id,
+        var value = try updated(input, values: old.map { [$0] } ?? [], id: id,
             fallback: VocabularySense(id: id, meaning: "", meaningOrigin: .ai, createdAt: now, updatedAt: now,
                 createdWithoutContext: true))
+        if fields["meaning"] != nil || fields["meaningLanguage"] != nil { value.meaningOrigin = .user }
         if previous?.id == parentID, let index = document.catalog[parent].senses.firstIndex(where: { $0.id == id }) {
             document.catalog[parent].senses[index] = value
         } else {

@@ -13,14 +13,19 @@ public nonisolated enum NotebookCaptureContract {
         "language": .text(100), "kind": .enumeration(["concept", "function"]), "aliases": .array(.object(label), 63),
         "definition": .text(16_384), "cues": .array(.text(4_096), 64), "status": status,
         "categories": .array(.text(200), 64)], required: ["ref"])
-    private static let example = Shape(fields: ["text": .text(262_144), "translation": .text(262_144),
+    public static let example = Shape(fields: ["text": .text(262_144), "translation": .text(262_144),
         "translationLanguage": .text(100),
         "completeness": .enumeration(["sentence", "fragment", "unknown"]), "sourceKind": sourceKind,
+        "sourceID": .uuid, "source": .text(4_096),
         "ranges": .array(.object(Shape(fields: ["location": .integer, "length": .integer], required: ["location", "length"])), 64)], required: ["text"])
-    private static let association = Shape(fields: ["meaning": .text(200), "usage": .text(8_192),
-        "nuance": .text(8_192), "conditions": .text(8_192), "formality": .enumeration(["unspecified", "informal", "neutral", "formal"]),
-        "medium": .enumeration(["unspecified", "spoken", "written", "both"]), "collocations": .array(.text(1_024), 128),
-        "status": status], required: ["meaning"])
+    private static let association = Shape(fields: ["meaning": .text(200),
+        "conditions": .text(8_192), "status": status], required: ["meaning"])
+    public static var exampleEdit: Shape {
+        var fields = example.fields
+        fields.removeValue(forKey: "sourceID")
+        fields["id"] = .uuid
+        return .init(fields: fields, required: ["id"])
+    }
     private static let sense = Shape(fields: ["id": .uuid, "meaning": .text(32_000), "meaningLanguage": .text(100),
         "explanation": .text(262_144), "note": .text(262_144), "tags": .array(.text(200), 100), "examples": .array(.object(example), 100),
         "associations": .array(.object(association), 64)])

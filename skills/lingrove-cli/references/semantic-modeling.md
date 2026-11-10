@@ -148,7 +148,9 @@ with `mode: "capture"` and a fresh UUID `requestID` in MCP. When supplying an
 
 ### Read back the saved material
 
-Use the receipt IDs to read the entry and confirm the sense and example. Read
+Use the receipt IDs to read the entry and confirm the sense and example. Multiple saved senses
+can be checked together with `vocab read --sense-ids ID,ID` or MCP `notebook_read(senseIDs)`;
+the same practice task still uses one `capture` write. Read
 mappings by sense ID and check the node ID, then read the node and its category
 memberships. When verifying reuse, read mappings by node ID and confirm both
 senses point to that node. The CLI uses `vocab get` and `data get/list` with
@@ -198,3 +200,21 @@ For external CSV/TXT material, the agent reads and interprets it before issuing 
 writes. There is no automatic row-to-sense import. Use context or a stated collection strategy;
 a bare headword alone does not establish its intended sense. Detailed explanation belongs to the
 sense body, not repeated across examples and semantic associations.
+
+## Read and edit the current sense
+
+Use `notebook_read(senseID)` / `vocab sense` for definition, plain explanation text, image
+references, examples with provenance and semantic links. This is current authored content;
+historical model output and text styles are deliberately omitted. Retrieve a saved image with
+`notebook_image(senseID, imageID, notebookScope)` so it is visible to the model. Keep the exact
+scope returned by the original read. CLI provides the equivalent `vocab image ... --scope JSON`.
+
+Use `update.contentEdits` for exact unique text-fragment changes and image captions. It retains
+untouched formatting/images. Whole-body plain replacement rejects rich bodies; do not reconstruct
+formatted content from a plain-text read. Example edits/removals and node link/unlink operations
+stay sense-owned. Previews return actual before/after content under `changes`.
+
+For capture and append, equal sentence text is not evidence identity. Omit sourceID for a new
+source; explicitly reuse the read source ID and ranges for an existing occurrence. The primary
+translation survives and additional translations become variants. A citation is descriptive
+provenance, not an identity key. Another sense's ownership requires an explicit organization action.

@@ -41,10 +41,11 @@ public nonisolated enum NotebookCaptureFields {
             ranges = range.location == NSNotFound ? [] : [.init(range)]
         }
         guard ranges.count <= 64, ranges.allSatisfy({ UTF16TextRangePolicy.isValid($0.nsRange, in: text) }),
-              let completeness = VocabularyExample.Completeness(rawValue: input.completeness ?? "sentence") else {
-            throw NotebookToolError.invalid("Invalid UTF-16 ranges or context completeness.")
+              let completeness = VocabularyExample.Completeness(rawValue: input.completeness ?? "sentence"),
+              let sourceKind = VocabularyExample.SourceKind(rawValue: input.sourceKind ?? "authored") else {
+            throw NotebookToolError.invalid("Invalid UTF-16 ranges, context completeness or source kind.")
         }
-        return .init(id: id, sourceID: id, sourceKind: VocabularyExample.SourceKind(rawValue: input.sourceKind ?? "authored") ?? .authored,
+        return .init(id: id, sourceID: input.sourceID ?? id, sourceKind: sourceKind,
             text: text, translation: try self.text(input.translation ?? "", limit: 262_144),
             translationLanguage: try language(input.translationLanguage), ranges: ranges, completeness: completeness,
             meaning: "", createdAt: now)

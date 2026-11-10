@@ -39,8 +39,9 @@ rules remain as described in PRODUCT_MODEL.md and MAC_WORKSPACE.md.
 
 The sense detail reads the current definition, one rich explanation, examples and adopted semantic
 links. Agent capture writes `sense.explanation` into sense content; it rejects example-level meaning
-fields. Revision-bound CLI updates can replace the explanation without editing the headword, personal
-notes, source evidence or review ownership. Stored interpretation/generation receipts remain evidence;
+fields. Revision-bound CLI text-fragment edits preserve explanation formatting and images. Whole-body
+plain replacement is restricted to an unformatted, image-free body. Metadata, examples and semantic
+links have explicit operations rather than implicit changes to the headword or review ownership. Stored interpretation/generation receipts remain evidence;
 they are not competing definitions or fallback review answers.
 
 Keep the existing icons, native components, typography and callout styling. Dictionary lookup stays
@@ -277,3 +278,86 @@ mouse clicks on the production notebook list, selection persistence, merge/undo 
 conflicts, detail-editor example deletion across reopen, and the saved-favorite walkthrough's
 read-only navigation. No Dev/CLI/MCP deployment or live-data mutation was performed. Test DerivedData
 and the disposable host were removed after validation.
+
+
+## CLI/MCP sense authoring checkpoint — 2026-11-10
+
+The source now exposes canonical headword/sense reads: current definition, plain explanation text,
+saved-image references, examples with provenance and semantic links. Historical generated copy
+and native text styling stay out of Agent reads. Saved-image fetches require the original notebook
+scope and sense ownership; MCP emits native PNG content. Internal part IDs support safe edits and
+do not introduce separate explanation editors or any UI/icon/component change.
+
+Revision-bound `contentEdits` preserves untouched styles/images; whole-body plain replacement
+rejects styled or image-containing content. Example edits/removals and node link/unlink changes
+are explicit sense operations. `remove` reconciles sense dependents while retaining shared nodes
+and independent evidence. Capture/append share source-ID ownership and translation-variant rules;
+identical sentence text alone does not merge sources. Obsolete duplicate prose fields are rejected.
+
+Dry runs/receipts show canonical before/after changes. The archive validates references before
+constructing a preview and bounds the receipt before commit. Resource discovery comes from CLI
+schema, removing the retired collections advertisement. The new contract is CLI 5 / protocol 3;
+MCP source package is 1.3.0 and must later deploy with the matching app/helper.
+
+Build-for-testing and all 32 selected native CLI/capture tests passed (including parameterized
+cases), plus 10 shared content/evidence tests and 14 MCP bridge tests. Published batch/capture
+JSON schemas passed validation, including source-reference scope requirements. Strict SwiftLint
+passed for changed app/CLI sources; the CLI skill validator and diff whitespace check passed.
+Evidence is in `build/cli-sense/` (native run 3, build 6, shared log, lint and schema check).
+The validation caught and fixed preview-before-validation error classification, and the previous
+protocol's error-envelope response. Private fixture notebooks were used throughout.
+
+No installed Dev app, CLI link, private MCP runtime, account configuration or live corpus was
+updated. The running client has not been used to verify protocol 3. Repository DerivedData and
+the private test host/state were removed; dependency source inputs and validation logs remain.
+
+
+## Batch detail reads and practice capture — 2026-11-10
+
+CLI `vocab read --entry-ids ID,ID` / `--sense-ids ID,ID` and MCP `notebook_read(entryIDs|senseIDs)`
+accept 1–100 distinct IDs of one kind. The archive captures one snapshot, validates the original
+optional notebook scope, resolves every requested ID, and returns complete canonical entries/senses
+in request order with a common revision/scope. Missing IDs fail the entire read; mixed/empty/duplicate
+or excessive selectors fail input validation. One cumulative pre-projection budget and the existing
+encoded wire bound protect the batch; large MCP JSON retains complete pagination. Images retain
+the existing scoped single-image retrieval path. Reads never write receipts or advance revisions.
+
+Normal practice capture still searches existing material, saves expressions/senses/examples and
+semantic classification in one capture, then verifies the receipt IDs. Batch readback reduces
+round trips without replacing that flow or adding inference/review enrollment. Everyday corpus
+management now has query, full batch reads, atomic batch writes, edits, associations, merge and
+removal within the agreed user/Agent-organized model; no automatic sense consolidation is added.
+
+Build-for-testing and 7 targeted native tests passed, including ordered entry/sense details,
+missing IDs/scope mismatch, aggregate budgets, image references, practice capture/classification
+reuse and batch readback, unchanged capture replay, and protocol admission. All 16 MCP tests
+passed, including one-request batch routing, invalid selectors and lossless large-result readback.
+CLI schema/help discovery, changed-source SwiftLint, the skill validator and whitespace checks
+passed. Evidence is under `build/cli-batch-read/` (build 2, native run 1). Validation used private
+synthetic notebooks; no live Dev, installed CLI or private MCP update was performed. DerivedData
+and private validation host/state were removed after checking results.
+
+
+## Suggested tag deletion — 2026-11-10
+
+Sense-editor tag suggestions are the union of saved sense tags, not a built-in catalog. Their
+existing add chips now offer a context menu containing only the localized Delete action. The
+command immediately removes the exact tag from every sense in the original notebook, without a
+confirmation dialog or additional copy. New tags still use the existing input; the selected
+chip's × still removes only the current draft association. No chip style/icon or other shared
+TagChip consumer changes.
+
+`VocabularyStore.removeTag` carries the editor's original scope into one archive transaction.
+The shared sense editing policy changes tags only, updating timestamps for affected saved records;
+no match is a no-op. After a successful deletion, the open editor rebases only that tag in its
+baseline and draft, preserving unsaved fields and unrelated concurrent-edit conflicts. Cancel
+still discards the form draft; it does not undo an explicitly completed global tag deletion.
+
+
+Validation: build-for-testing, changed-source strict SwiftLint and all 3 targeted native tests
+passed (2 persistence/scope/draft tests plus the existing notebook/editor render test). Synthetic
+fixtures verified all-sense removal, unaffected examples/explanation/images/other tags, a no-op
+repeat, persistence after reopen, stale-scope rejection and preserved concurrent-field conflicts.
+The context action is compiled into the production editor; no live-user menu click or data
+cleanup was performed. Evidence is under `build/tag-delete/` (build 1, native run 1). The private
+host and DerivedData were removed after validation. No Dev/CLI/private MCP update was installed.

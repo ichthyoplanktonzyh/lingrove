@@ -44,13 +44,14 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateOperationShape(_ value: Any, path: String) throws {
-        let operation = try object(value, keys: ["add", "append", "update", "put", "delete", "capture", "merge"], at: path)
+        let operation = try object(value, keys: ["add", "append", "update", "put", "delete", "capture", "merge", "remove"], at: path)
         guard operation.count == 1, let kind = operation.keys.first, let payload = operation[kind] else {
             throw CLIError.invalid("Each operation needs exactly one action.")
         }
-        if kind == "merge" {
+        if kind == "merge" || kind == "remove" {
             let bytes = try JSONSerialization.data(withJSONObject: payload)
-            _ = try CLIMerge.shape.normalized(JSONDecoder().decode(CLIJSON.self, from: bytes))
+            let shape = kind == "merge" ? CLIMerge.shape : CLIRemoveSense.shape
+            _ = try shape.normalized(JSONDecoder().decode(CLIJSON.self, from: bytes))
             return
         }
         if kind == "capture" {
@@ -68,9 +69,15 @@ nonisolated enum CLIInputPolicy {
         case "append":
             ["entryID", "senseID", "examples", "content", "tags"]
         default:
-            ["entryID", "senseID", "expectedRevision", "meaning", "meaningLanguage", "explanation", "note", "tags"]
+            Set(["entryID", "senseID", "expectedRevision", "meaning", "meaningLanguage", "explanation", "note", "tags"])
+                .union(CLIUpdate.editFields.keys)
         }
         let fields = try object(payload, keys: keys, at: path)
+        if kind == "update" {
+            let edits = fields.filter { CLIUpdate.editFields[$0.key] != nil }
+            let bytes = try JSONSerialization.data(withJSONObject: edits)
+            _ = try CLIResourceContract.Shape(fields: CLIUpdate.editFields).normalized(JSONDecoder().decode(CLIJSON.self, from: bytes))
+        }
         if let blocks = fields["content"] { try validateContentShape(blocks, path: path + ".content") }
         if let examples = fields["examples"] { try validateExampleShape(examples, path: path + ".examples") }
     }
@@ -93,7 +100,7 @@ nonisolated enum CLIInputPolicy {
         }
         for example in examples {
             let fields = try object(example, keys: [
-                "text", "translation", "translationLanguage", "completeness", "ranges", "sourceKind"
+                "text", "translation", "translationLanguage", "completeness", "ranges", "sourceKind", "sourceID", "source"
             ], at: path)
             if let ranges = fields["ranges"] { try validateRangeShape(ranges, path: path + ".ranges") }
         }
@@ -124,10 +131,16 @@ nonisolated enum CLIInputPolicy {
         var images = 0, blocks = 0, examples = 0, imageBytes = 0
         for operation in batch.operations {
             guard [operation.add != nil, operation.append != nil, operation.update != nil,
-                   operation.put != nil, operation.delete != nil, operation.capture != nil, operation.merge != nil].filter({ $0 }).count == 1 else {
+                   operation.put != nil, operation.delete != nil, operation.capture != nil,
+                   operation.merge != nil, operation.remove != nil].filter({ $0 }).count == 1 else {
                 throw CLIError.invalid("Each operation needs exactly one action.")
             }
             try validateResourceOperation(operation, batch: batch)
+            if let update = operation.update {
+                blocks += update.contentEdits?.count ?? 0
+                examples += (update.exampleEdits?.count ?? 0) + (update.removeExamples?.count ?? 0)
+                try validateUpdateEdits(update)
+            }
             if let capture = operation.capture {
                 examples += try captureExampleCount(capture, version: batch.version)
             }
@@ -137,20 +150,32 @@ nonisolated enum CLIInputPolicy {
                 throw CLIError.invalid("Operation content count exceeds its limit.")
             }
             try validateExamples(usages)
-            for block in content {
-                guard (block.text != nil) != (block.image != nil) else { throw CLIError.invalid("Each block needs text or an image.") }
-                if let image = block.image {
-                    guard (image.path != nil) != (image.data != nil), block.bold == nil, block.italic == nil else {
-                        throw CLIError.invalid("Invalid image block.")
-                    }
-                    imageBytes += image.data?.count ?? 0
-                }
-            }
+            imageBytes += try validateBlocks(content)
             images += content.filter { $0.image != nil }.count; blocks += content.count; examples += usages.count
         }
         guard images <= 64, blocks <= 512, examples <= 1_000, imageBytes <= 16 * 1_024 * 1_024 else {
             throw CLIError.invalid("Batch exceeds 64 images, 16 MiB image bytes, 512 blocks or 1000 examples.")
         }
+    }
+
+    private static func validateBlocks(_ content: [CLIBlock]) throws -> Int {
+        var bytes = 0
+        for block in content {
+            guard (block.text != nil) != (block.image != nil) else { throw CLIError.invalid("Each block needs text or an image.") }
+            if let image = block.image {
+                guard (image.path != nil) != (image.data != nil), block.bold == nil, block.italic == nil else {
+                    throw CLIError.invalid("Invalid image block.")
+                }
+                bytes += image.data?.count ?? 0
+            }
+        }
+        return bytes
+    }
+
+    private static func validateUpdateEdits(_ update: CLIUpdate) throws {
+        guard case let .object(fields) = try CLIJSON.value(update) else { throw CLIError.invalid("Invalid update.") }
+        _ = try CLIResourceContract.Shape(fields: CLIUpdate.editFields)
+            .normalized(.object(fields.filter { CLIUpdate.editFields[$0.key] != nil }))
     }
 
     private static func captureExampleCount(_ capture: CLICapture, version: Int) throws -> Int {
@@ -160,9 +185,9 @@ nonisolated enum CLIInputPolicy {
     }
 
     private static func validateResourceOperation(_ operation: CLIChange, batch: CLIBatch) throws {
-        guard operation.put != nil || operation.delete != nil || operation.merge != nil else { return }
+        guard operation.put != nil || operation.delete != nil || operation.merge != nil || operation.remove != nil else { return }
         guard batch.version == 2, batch.expectedRevision != nil else {
-            throw CLIError.invalid("Resource edits and merges require version 2 and expectedRevision.")
+            throw CLIError.invalid("Resource edits, merges and removals require version 2 and expectedRevision.")
         }
         if let put = operation.put {
             _ = try CLIResourceContract.shape(put.resource).normalized(put.value, creating: false)

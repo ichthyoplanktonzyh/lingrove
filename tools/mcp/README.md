@@ -21,7 +21,7 @@ it does not create an OpenAI resource, OAuth account, public listener or databas
 The runtime is independent of this source checkout and its ignored build files.
 
 After Tunnel readiness succeeds, refresh the existing Lingrove app's tools in
-ChatGPT settings. Discovery must show the fourteen CLI adapter tools, with none of
+ChatGPT settings. Discovery must show the fifteen CLI adapter tools, with none of
 the previous SQL/review tools. Confirm `notebook_status` and `notebook_search`
 through the connected ChatGPT app before calling the remote connection ready.
 Renaming the app does not change its development distribution status.
@@ -50,10 +50,11 @@ The app's capture/batch schemas remain authoritative for wire shape.
 | Semantic/material guidance | `notebook_guide`, shared with the CLI skill |
 | `--version`, `--help` | `notebook_cli_info(topic=version/help)` |
 | `schema capture`, `schema` | `notebook_schema(format=capture/batch)` |
-| `vocab list/get` | `notebook_search/read`, all list filters and pagination |
-| `data list/get RESOURCE` | `notebook_catalog_search/read` for all 17 resource kinds, including `related`, `status`, and `summary` where supported |
+| `vocab list/get/sense/read` | `notebook_search/read`, single/batch full details and list pagination |
+| `vocab image` | `notebook_image`, saved PNG returned as native MCP image content |
+| `data list/get RESOURCE` | `notebook_catalog_search/read` for the resource kinds discovered from CLI schema, including `related`, `status`, and `summary` where supported |
 | `vocab capture --dry-run` | `notebook_preview(mode=capture)` |
-| `vocab apply --dry-run` | `notebook_preview(mode=apply)`; v1 add/append/update and v2 capture/merge/put/delete |
+| `vocab apply --dry-run` | `notebook_preview(mode=apply)`; v1 add/append/update and v2 capture/merge/remove/put/delete |
 | Authorized additive capture/apply | `notebook_write(requestID, mode, task)` validates and commits internally |
 | Reviewed replacement/delete | `notebook_preview` then `notebook_commit(previewID)` reuses exact validated material |
 | Local image input | `notebook_upload(kind=image)` followed by `image.path: upload:UUID` in add/append content; user must supply the image |
@@ -192,3 +193,36 @@ restarted after installing the matching signed Dev Release and bundled CLI from 
 Runtime files/guide matched repository bytes; existing credentials, drafts and destination paths
 were preserved. The connected MCP returned the new running process, an explicit `merge` batch
 schema and the revised consolidation guide. Validation performed no trial merges in learner data.
+
+## Canonical sense reads and edits (CLI 5 / protocol 3)
+
+`notebook_read` takes exactly one of `entryID`, `senseID`, `entryIDs`, or `senseIDs`. Arrays accept
+1–100 distinct IDs and invoke one CLI `vocab read` request. Full records preserve request order
+and share one revision/notebook scope. Missing IDs fail the entire read; they are never omitted.
+Combined output limits still apply, and large MCP JSON uses complete result pagination. The
+canonical sense contains plain
+explanation text, image references, example provenance and semantic links; historical generated
+explanations and native formatting are omitted. `notebook_image(senseID, imageID, notebookScope)`
+checks ownership in the original notebook and returns native MCP PNG content, not paginated text.
+No local path is accepted for an image read. Saved PNGs are bounded to 4 MiB.
+
+`update.contentEdits` patches unique text fragments or image captions and preserves untouched
+formatting/images. Plain `update.explanation` rejects styled/image-containing bodies. Example
+edits/removals and node links/unlinks use the same atomic domain update; version 2 `remove`
+deletes a sense with dependency reconciliation. Previews and receipts contain before/after
+`changes`; existing authorization still applies. See the [batch contract](../../skills/lingrove-cli/references/batches.md).
+
+Resource enums are discovered from the selected CLI's `schema.x-resources`; there is no separate
+MCP resource list and no collections resource. Deploy this adapter with the matching app/helper.
+The source-only checkpoint does not update the installed private MCP runtime.
+
+Validation for this source checkpoint (2026-11-10): all 14 isolated bridge tests passed, including
+CLI-sourced resource discovery, scoped sense/image reads and native image-result conversion.
+The actual bundled CLI passed 32 native tests against private synthetic notebooks; shared
+content/evidence policies passed 10 tests. Protocol/schema checks and changed app/CLI SwiftLint
+also passed. Installed-runtime/tunnel verification is intentionally deferred with deployment.
+
+Batch-read extension validation (2026-11-10): all 16 bridge tests and 7 targeted native tests
+passed. Coverage includes one-snapshot ordered details, missing/invalid IDs, scope and aggregate
+bounds, large-response pagination, and practice capture/classification/replay followed by batch
+readback. CLI contract discovery, SwiftLint and skill validation passed. This remains source-only.

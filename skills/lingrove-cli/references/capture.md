@@ -91,14 +91,11 @@ a capture otherwise uses the archive's serialized current snapshot without repla
   capture; there is no separate membership write. Read [classification.md](classification.md)
   only for independent classification edits, custom parents or local overrides. Omission leaves
   current membership unchanged.
-- An association names a meaning ref. `usage` creates a pattern; optional formality, medium and
-  collocations describe that pattern. Keep usage explanations in the sense body; conditions
-  describe genuine restrictions on the association. The app
-  infers expressesContent/realizesFunction from the node kind and attaches this capture's examples
-  as evidence. Omit usage for a whole-sense association. Roles/slots need resource operations.
-  Prefer omitting nuance; the sense body is the explanation surface. Conditions are optional and should name
-  an actual restriction (for example, a specific register or situation); do not fill them with
-  "only this example/sense/usage". Do not copy the same explanation into several fields.
+- An association accepts only `meaning`, optional `conditions`, and `status`. It links the whole
+  sense to the named node; relation kind follows the node kind. `conditions` describes a real
+  restriction. Syntax, register and usage explanations belong to the sense body. `usage`, `nuance`,
+  formality and collocations are not capture association fields. Advanced pattern constraints
+  remain available through resource operations.
 - Optional `relations` link refs using from/to/kind and optional note/status. `narrower` points
   from the narrower meaning to its broader parent. Final graph validation rejects invalid cycles.
 
@@ -110,9 +107,13 @@ Read existing material first. To extend a known sense, supply its `id` plus exam
 associations. Existing meanings/languages/explanations/notes cannot be replaced by capture; use update/resource
 operations for explicit edits. Existing-node references and new local nodes may coexist.
 
-Capture collects every selected sense and its examples. It preserves existing collection notes,
-review state and selected examples. Duplicate example evidence can be reused within its owning
-sense; conflicting meanings/translations or another sense's ownership fail without overwriting.
+Capture adds each selected sense and its examples, preserving existing notes and review state.
+Without `sourceID`, each example is a new source even if its sentence text matches another source.
+To reuse existing evidence, supply its read `source.id` as `sourceID`, preserve its exact text/ranges,
+and retain notebook scope. Capture and append both keep the primary translation and add distinct
+translations as variants. Another sense's ownership is a conflict; use an explicit merge/edit.
+An example's optional `source` is a citation (for example an article title/URL), defaulting to
+`defaults.source`. It does not establish identity; only `sourceID` does.
 
 One task permits at most 100 entries, 100 senses total, 100 meaning declarations and 1000 examples.
 Unknown fields, unsupported language codes, dangling refs and invalid relationships reject the

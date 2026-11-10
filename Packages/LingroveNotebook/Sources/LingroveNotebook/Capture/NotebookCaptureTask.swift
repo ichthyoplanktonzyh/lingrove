@@ -51,15 +51,10 @@ public nonisolated struct NotebookCaptureTask: Codable, Sendable {
         public var examples: [NotebookCaptureExample]?
         var associations: [Association]?
     }
-    /// One authored meaning link may restrict itself to a concrete usage pattern.
+    /// One whole-sense node link retains only genuine applicability conditions and adoption status.
     struct Association: Codable, Sendable {
         var meaning: String
-        var usage: String?
-        var nuance: String?
         var conditions: String?
-        var formality: String?
-        var medium: String?
-        var collocations: [String]?
         var status: String?
     }
     /// Local refs describe an explicit node relation, validated with the final graph.
@@ -71,7 +66,7 @@ public nonisolated struct NotebookCaptureTask: Codable, Sendable {
         var status: String?
     }
     public var referencesExistingRecords: Bool {
-        meanings?.contains(where: { $0.id != nil }) == true || entries.contains { $0.senses.contains { $0.id != nil } }
+        meanings?.contains(where: { $0.id != nil }) == true || entries.contains { $0.senses.contains { $0.id != nil || $0.examples?.contains(where: { $0.sourceID != nil }) == true } }
     }
     var defaults: Defaults?
     var meanings: [Meaning]?
@@ -89,5 +84,22 @@ public nonisolated struct NotebookCaptureExample: Codable, Sendable {
     public var translationLanguage: String?
     public var completeness: String?
     public var sourceKind: String?
+    /// Reuse an explicit immutable source when adding another translation of its occurrence.
+    /// Without this ID, a new capture is distinct even when its sentence text is identical.
+    public var sourceID: UUID?
+    public var source: String?
     public var ranges: [Range]?
+}
+
+/// A revision-bound edit names one accepted example. Omitted fields preserve saved values;
+/// changed source text creates new evidence while retaining the example's editor identity.
+public nonisolated struct NotebookExampleEdit: Codable, Sendable {
+    public var id: UUID
+    public var text: String?
+    public var translation: String?
+    public var translationLanguage: String?
+    public var completeness: String?
+    public var sourceKind: String?
+    public var source: String?
+    public var ranges: [NotebookCaptureExample.Range]?
 }

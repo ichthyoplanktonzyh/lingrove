@@ -161,6 +161,7 @@ public nonisolated struct NotebookCapturePlan {
         }
         document.catalog[entry].senses[sense].tags = try NotebookCaptureFields.tags(
             document.catalog[entry].senses[sense].tags + (input.tags ?? []))
+        document.catalog[entry].senses[sense].updatedAt = now
         var associations: [NotebookToolJSON] = []
         for (index, association) in (input.associations ?? []).enumerated() {
             let mappingID = try addAssociation(association, senseID: senseID, evidence: usageIDs, path: path + ".mapping.\(index)")
@@ -168,44 +169,18 @@ public nonisolated struct NotebookCapturePlan {
         }
         senseCount += 1; exampleCount += usageIDs.count
         return .object(["senseID": .string(senseID.uuidString), "created": .bool(input.id == nil),
-            "usageIDs": .array(usageIDs.map { .string($0.uuidString) }), "associationIDs": .array(associations)])
+            "exampleIDs": .array(usageIDs.map { .string($0.uuidString) }), "associationIDs": .array(associations)])
     }
 
     private mutating func addExamples(_ inputs: [NotebookCaptureExample], entry: VocabularyEntry, senseID: UUID, path: String) throws -> [UUID] {
-        var result: [UUID] = []
-        for (index, input) in inputs.enumerated() {
-            var input = input
-            input.translationLanguage = input.translationLanguage ?? defaults.translationLanguage ?? defaults.meaningLanguage
-            input.sourceKind = input.sourceKind ?? defaults.sourceKind ?? "generated"
-            let usage = try NotebookCaptureFields.example(input, expression: entry.expression, id: id(path + ".example.\(index)"), now: now)
-            let existing = document.entries.first { $0.id == entry.id }?.senses.flatMap { sense in
-                sense.examples.map { (sense.id, $0) }
-            }.first { VocabularyIdentityPolicy.exampleKey($0.1) == VocabularyIdentityPolicy.exampleKey(usage) }
-            if let existing {
-                let (owner, retained) = existing
-                guard owner == senseID else {
-                    throw NotebookToolError(code: .conflict, message: "This usage belongs to another sense. Append to its owner.")
-                }
-                // An example supplies evidence and translation, never another sense definition.
-                let translationMatches = usage.translation.isEmpty || usage.translation == retained.translation &&
-                    usage.translationLanguage == retained.translationLanguage
-                guard translationMatches else {
-                    throw NotebookToolError(code: .conflict, message: "Existing usage differs. Use append or explicit resource edits.")
-                }
-                result.append(retained.id)
-                continue
-            }
-            let occurrenceID = id(path + ".occurrence.\(index)")
-            document.sources.append(.init(id: usage.sourceID, text: usage.text, kind: usage.sourceKind,
-                appBundleIdentifier: nil, encounteredAt: now))
-            document.occurrences.append(.init(id: occurrenceID, sourceID: usage.sourceID, ranges: usage.ranges))
-            document.interpretations.append(.init(id: usage.id, occurrenceID: occurrenceID, senseID: senseID,
-                status: .accepted, translation: usage.translation,
-                translationLanguage: usage.translationLanguage, completeness: usage.completeness,
-                provenance: try provenance(nil), createdAt: now))
-            result.append(usage.id)
+        try inputs.enumerated().map { index, input in
+            var value = input
+            value.translationLanguage = value.translationLanguage ?? defaults.translationLanguage ?? defaults.meaningLanguage
+            if value.sourceID == nil { value.sourceKind = value.sourceKind ?? defaults.sourceKind ?? "generated" }
+            value.source = value.source ?? defaults.source
+            return try NotebookExampleWriting.append(value, entry: entry, senseID: senseID, in: &document,
+                id: id(path + ".example.\(index)"), occurrenceID: id(path + ".occurrence.\(index)"), now: now)
         }
-        return result
     }
 
     private mutating func addAssociation(_ input: NotebookCaptureTask.Association, senseID: UUID, evidence: [UUID], path: String) throws -> UUID {
@@ -213,25 +188,10 @@ public nonisolated struct NotebookCapturePlan {
             throw NotebookToolError.invalid("Unknown meaning ref in association.")
         }
         let provenance = try provenance(input.status)
-        let patternID: UUID?
-        if let template = input.usage {
-            patternID = id(path + ".pattern")
-            guard let formality = VocabularyUsagePattern.Formality(rawValue: input.formality ?? "unspecified"),
-                  let medium = VocabularyUsagePattern.Medium(rawValue: input.medium ?? "unspecified") else {
-                throw NotebookToolError.invalid("Unknown usage formality or medium.")
-            }
-            document.semantics.patterns.append(.init(id: id(path + ".pattern"), senseID: senseID, template: template,
-                formality: formality, medium: medium, collocations: input.collocations ?? [], provenance: provenance))
-        } else {
-            guard input.formality == nil, input.medium == nil, input.collocations == nil else {
-                throw NotebookToolError.invalid("Usage attributes require usage.")
-            }
-            patternID = nil
-        }
         let mappingID = id(path)
-        document.semantics.mappings.append(.init(id: mappingID, nodeID: nodeID, senseID: senseID, patternID: patternID,
+        document.semantics.mappings.append(.init(id: mappingID, nodeID: nodeID, senseID: senseID,
             relation: node.kind == .concept ? .expressesContent : .realizesFunction, conditions: input.conditions ?? "",
-            nuance: input.nuance ?? "", evidenceIDs: Array(Set(evidence)).sorted { $0.uuidString < $1.uuidString }, provenance: provenance))
+            evidenceIDs: Array(Set(evidence)).sorted { $0.uuidString < $1.uuidString }, provenance: provenance))
         mappingCount += 1
         return mappingID
     }
