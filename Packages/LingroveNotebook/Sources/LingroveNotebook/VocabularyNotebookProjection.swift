@@ -9,25 +9,39 @@ public nonisolated enum VocabularyNotebookProjection {
 
     public static func entry(_ id: UUID, in document: VocabularyDocument) -> VocabularyEntry? {
         guard let entry = document.catalog.first(where: { $0.id == id }) else { return nil }
-        return entries([entry], in: document).first
+        // A single-entry caller needs only its own accepted claims and the evidence they name.
+        // Scanning canonical arrays avoids building three dictionaries for the entire notebook.
+        let senseIDs = Set(entry.senses.map(\.id))
+        let claims = document.interpretations.filter { $0.status == .accepted && $0.senseID.map(senseIDs.contains) == true }
+        let occurrenceIDs = Set(claims.map(\.occurrenceID))
+        let occurrences = Dictionary(document.occurrences.lazy.filter { occurrenceIDs.contains($0.id) }.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first })
+        let sourceIDs = Set(occurrences.values.map(\.sourceID))
+        let sources = Dictionary(document.sources.lazy.filter { sourceIDs.contains($0.id) }.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first })
+        return joined(entry, claims: Dictionary(grouping: claims, by: \.senseID), occurrences: occurrences, sources: sources)
     }
 
     private static func entries(_ catalog: [VocabularyEntry], in document: VocabularyDocument) -> [VocabularyEntry] {
         let sources = Dictionary(document.sources.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let occurrences = Dictionary(document.occurrences.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let claims = Dictionary(grouping: document.interpretations.filter { $0.status == .accepted }, by: \.senseID)
-        return catalog.map { header in
-            var entry = header
-            entry.senses = header.senses.map { header in
-                var sense = header
-                sense.examples = (claims[header.id] ?? []).compactMap { claim in
-                    guard let occurrence = occurrences[claim.occurrenceID], let source = sources[occurrence.sourceID] else { return nil }
-                    return example(claim, occurrence: occurrence, source: source)
-                }
-                return sense
+        return catalog.map { joined($0, claims: claims, occurrences: occurrences, sources: sources) }
+    }
+
+    private static func joined(_ header: VocabularyEntry, claims: [UUID?: [VocabularyInterpretation]],
+                               occurrences: [UUID: VocabularySourceOccurrence], sources: [UUID: VocabularySourceSnapshot])
+        -> VocabularyEntry {
+        var entry = header
+        entry.senses = header.senses.map { header in
+            var sense = header
+            sense.examples = (claims[header.id] ?? []).compactMap { claim in
+                guard let occurrence = occurrences[claim.occurrenceID], let source = sources[occurrence.sourceID] else { return nil }
+                return example(claim, occurrence: occurrence, source: source)
             }
-            return entry
+            return sense
         }
+        return entry
     }
 
     public static func example(_ claim: VocabularyInterpretation, occurrence: VocabularySourceOccurrence,

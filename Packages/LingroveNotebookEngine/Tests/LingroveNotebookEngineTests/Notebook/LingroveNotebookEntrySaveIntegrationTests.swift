@@ -125,6 +125,80 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(try f.pending() == pending)
     }
 
+    @Test("Removing the first sense compacts positions without replacing survivors or losing review history")
+    func narrowRemovalPreservesSurvivors() throws {
+        let f = try Fixture(); defer { f.cleanUp() }
+        var document = Self.document()
+        var entries = document.entries
+        let firstExample = entries[0].senses[0].examples[0]
+        entries[1].senses[0].examples[0].sourceID = firstExample.sourceID
+        entries[1].senses[0].examples[0].text = firstExample.text
+        document = .init(entries: entries)
+        let nodes = entries.map {
+            VocabularyMeaningNode(id: UUID(), labels: [.init(text: $0.expression, language: .english, preferred: true)])
+        }
+        document.semantics = .init(nodes: nodes, mappings: zip(entries, nodes).map { entry, node in
+            .init(nodeID: node.id, senseID: entry.senses[0].id, evidenceIDs: [entry.senses[0].examples[0].id])
+        })
+        let original = try f.engine.saveLingroveNotebook(document, basedOn: f.load())
+        let selection = VocabularySelection(entryID: entries[0].id, senseID: entries[0].senses[0].id)
+        let draft = try LingroveNotebookCardMaterial.draft(snapshot: original, selection: selection)
+        let enrollment = try #require(try f.engine.enrollNotebookSenses([draft], basedOn: original).first)
+        let exercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(enrollment).first)
+        let otherSelection = VocabularySelection(entryID: entries[1].id, senseID: entries[1].senses[0].id)
+        let otherDraft = try LingroveNotebookCardMaterial.draft(snapshot: original, selection: otherSelection)
+        let otherEnrollment = try #require(try f.engine.enrollNotebookSenses([otherDraft], basedOn: original).first)
+        let otherExercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(otherEnrollment).first)
+        let otherLink = try #require(try f.engine.lingroveNotebookCardLinkStore.find(workspaceId: f.workspace, id: otherExercise.linkId))
+        _ = try f.engine.submitNotebookRating(.init(cardId: exercise.cardId, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: original)
+        let rated = try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId)
+        let survivor = entries[1].senses[0].examples[0].id.uuidString
+        try f.engine.core.executeScript(sql: """
+            CREATE TRIGGER keep_surviving_usage BEFORE DELETE ON notebook_usages WHEN OLD.id='\(survivor)'
+            BEGIN SELECT RAISE(ABORT, 'position-only move must use update'); END;
+            CREATE TRIGGER fail_position_journal BEFORE INSERT ON notebook_pending_rows WHEN NEW.entity_id='\(survivor)'
+            BEGIN SELECT RAISE(ABORT, 'position journal must share the write transaction'); END;
+            """, errorContext: "Install synthetic position check")
+        let before = try f.load()
+        let pending = try f.pending()
+        #expect(throws: (any Error).self) {
+            try f.engine.removeNotebookSense(selection.senseID, from: selection.entryID, basedOn: before)
+        }
+        #expect(try f.load() == before)
+        #expect(try f.pending() == pending)
+        try f.engine.core.executeScript(sql: "DROP TRIGGER fail_position_journal", errorContext: "Allow synthetic journal retry")
+        let saved = try f.engine.removeNotebookSense(selection.senseID, from: selection.entryID, basedOn: before)
+        #expect(saved.document.entries == [entries[1]])
+        #expect(saved.document.sources == before.document.sources)
+        #expect(saved.document.occurrences == before.document.occurrences)
+        #expect(saved.document.semantics.mappings == [document.semantics.mappings[1]])
+        #expect(try f.engine.loadReviewEventCount() == 1)
+        #expect(try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId) == rated)
+        #expect(try f.engine.lingroveNotebookCardLinkStore.find(workspaceId: f.workspace, id: otherExercise.linkId) == otherLink)
+        #expect(try f.engine.core.scalarText(sql: "SELECT status FROM notebook_review_material_state WHERE card_id=?",
+            values: [.text(exercise.cardId)]) == "sourceMissing")
+        #expect(try f.engine.core.scalarInt(sql: """
+            SELECT count(*) FROM notebook_pending_rows r JOIN notebook_pending_transactions t USING(operation_id)
+            WHERE t.revision=? AND r.entity='usages' AND r.entity_id=? AND r.action='upsert' AND r.entity_position=0
+            """, values: [.integer(Int64(saved.revision)), .text(survivor)]) == 1)
+        try assertRows(f.engine, document: saved.document)
+        try f.reopen()
+        #expect(try f.load() == saved)
+        #expect(try f.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
+    }
+
+    @Test("Existing databases get evidence indexes without changing their saved revision")
+    func addsIndexesOnReopen() throws {
+        let f = try Fixture(); defer { f.cleanUp() }
+        let saved = try f.engine.saveLingroveNotebook(Self.document(), basedOn: f.load())
+        try f.engine.core.executeScript(sql: "DROP INDEX notebook_mapping_evidence_usage_fk", errorContext: "Simulate prior schema")
+        try f.reopen()
+        #expect(try f.load() == saved)
+        #expect(try f.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM sqlite_master WHERE name='notebook_mapping_evidence_usage_fk'",
+            values: []) == 1)
+    }
+
     @Test("A deferred reader stays pinned while another connection commits, then invalidates")
     func deferredReaderRemainsCoherent() throws {
         let f = try Fixture(); defer { f.cleanUp() }

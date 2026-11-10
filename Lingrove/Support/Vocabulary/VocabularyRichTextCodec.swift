@@ -60,11 +60,16 @@ enum VocabularyRichTextCodec {
         }
         func appendText(_ range: NSRange) {
             var range = range
-            let rawStyle = range.location < value.length ? value.attribute(styleKey, at: range.location, effectiveRange: nil) as? String : nil
+            let rawStyle = range.location < value.length
+                ? value.attribute(styleKey, at: range.location, effectiveRange: nil) as? String : nil
             var style = VocabularyTextContent.Style(rawValue: rawStyle ?? "") ?? .paragraph
             if style == .bullet {
-                if source.substring(with: range).hasPrefix("• ") { range.location += 2; range.length -= 2 }
-                else { style = .paragraph }
+                if source.substring(with: range).hasPrefix("• ") {
+                    range.location += 2
+                    range.length -= 2
+                } else {
+                    style = .paragraph
+                }
             }
             let text = source.substring(with: range)
             var runs: [VocabularyTextRun] = []
@@ -76,7 +81,8 @@ enum VocabularyRichTextCodec {
                     runs.append(.init(location: selection.location - range.location, length: selection.length, bold: bold, italic: italic))
                 }
             }
-            result.append(.init(id: identity(at: range.location), content: .text(.init(text: text, style: style, runs: runs.isEmpty ? nil : runs))))
+            let content = VocabularyTextContent(text: text, style: style, runs: runs.isEmpty ? nil : runs)
+            result.append(.init(id: identity(at: range.location), content: .text(content)))
         }
         while cursor < source.length {
             let paragraph = source.paragraphRange(for: NSRange(location: cursor, length: 0))
@@ -85,7 +91,9 @@ enum VocabularyRichTextCodec {
             var textStart = cursor
             if cursor == end { appendText(NSRange(location: cursor, length: 0)) }
             for index in cursor..<end {
-                guard let attachment = value.attribute(.attachment, at: index, effectiveRange: nil) as? VocabularyRichTextAttachment else { continue }
+                guard let attachment = value.attribute(.attachment, at: index, effectiveRange: nil) as? VocabularyRichTextAttachment else {
+                    continue
+                }
                 if index > textStart { appendText(NSRange(location: textStart, length: index - textStart)) }
                 let id = seen.insert(attachment.contentID).inserted ? attachment.contentID : UUID()
                 result.append(.init(id: id, content: .image(attachment.reference, caption: attachment.caption)))
@@ -126,5 +134,5 @@ final class VocabularyRichTextAttachment: NSTextAttachment {
             attachmentCell = NSTextAttachmentCell(textCell: String(localized: "Image unavailable", table: "Vocabulary"))
         }
     }
-    required init?(coder: NSCoder) { return nil }
+    required init?(coder: NSCoder) { nil }
 }

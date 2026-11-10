@@ -41,7 +41,9 @@ final class VocabularyRichTextEditorModel: ObservableObject {
         if range.length == 0 {
             var attributes = view.typingAttributes
             let font = attributes[.font] as? NSFont ?? VocabularyRichTextCodec.bodyFont
-            attributes[.font] = enable ? NSFontManager.shared.convert(font, toHaveTrait: trait) : NSFontManager.shared.convert(font, toNotHaveTrait: trait)
+            attributes[.font] = enable
+                ? NSFontManager.shared.convert(font, toHaveTrait: trait)
+                : NSFontManager.shared.convert(font, toNotHaveTrait: trait)
             view.typingAttributes = attributes
             bold = NSFontManager.shared.traits(of: attributes[.font] as? NSFont ?? font).contains(.boldFontMask)
             italic = NSFontManager.shared.traits(of: attributes[.font] as? NSFont ?? font).contains(.italicFontMask)
@@ -81,7 +83,8 @@ final class VocabularyRichTextEditorModel: ObservableObject {
             var length = paragraph.length
             if hasMarker { value.deleteCharacters(in: NSRange(location: paragraph.location, length: 2)); length -= 2 }
             if style == .bullet {
-                value.insert(NSAttributedString(string: "• ", attributes: VocabularyRichTextCodec.defaults(style: style)), at: paragraph.location)
+                let marker = NSAttributedString(string: "• ", attributes: VocabularyRichTextCodec.defaults(style: style))
+                value.insert(marker, at: paragraph.location)
                 length += 2
             }
             let target = NSRange(location: paragraph.location, length: length)
@@ -258,11 +261,13 @@ struct VocabularyRichTextEditor: NSViewRepresentable {
         view.textStorage?.enumerateAttribute(.attachment, in: NSRange(location: 0, length: view.string.utf16.count)) { value, _, _ in
             guard let attachment = value as? VocabularyRichTextAttachment, !attachment.pixelsLoaded,
                   let image = images[attachment.reference.filename] else { return }
-            let display = VocabularyRichTextAttachment(id: attachment.contentID, reference: attachment.reference, caption: attachment.caption, image: image)
+            let display = VocabularyRichTextAttachment(
+                id: attachment.contentID, reference: attachment.reference, caption: attachment.caption, image: image)
             attachment.attachmentCell = display.attachmentCell
             attachment.fileWrapper = display.fileWrapper; attachment.contents = display.contents
             attachment.pixelsLoaded = true
-            view.layoutManager?.invalidateLayout(forCharacterRange: NSRange(location: 0, length: view.string.utf16.count), actualCharacterRange: nil)
+            let documentRange = NSRange(location: 0, length: view.string.utf16.count)
+            view.layoutManager?.invalidateLayout(forCharacterRange: documentRange, actualCharacterRange: nil)
         }
         view.needsDisplay = true
     }

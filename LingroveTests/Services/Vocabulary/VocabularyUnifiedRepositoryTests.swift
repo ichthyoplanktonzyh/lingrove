@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import LingroveNotebook
 import LingroveNotebookEngine
@@ -12,6 +13,29 @@ import SwiftUI
 @Suite(.serialized)
 @MainActor
 struct VocabularyUnifiedRepositoryTests {
+    @Test func localCaptureAndRemovalPublishAdmittedStateOnce() async throws {
+        try await withFixture { f in
+            await f.store.load()
+            let capture = VocabularyCapture(expression: "harbor", dictionaryForm: "harbor", language: .english, kind: .word,
+                example: .init(id: UUID(), text: "The harbor is quiet.", translation: "", ranges: [], completeness: .sentence,
+                    meaning: "", createdAt: Date()))
+            var publications = [Bool]()
+            let observer = f.repository.$changeSequence.dropFirst().sink { _ in
+                publications.append(f.store.contains(capture))
+            }
+            defer { observer.cancel() }
+            await f.store.save(capture)
+            let entry = try #require(f.store.entries.first)
+            let sense = try #require(entry.senses.first)
+            #expect(publications == [true])
+            #expect(f.store.readIndex.entry(forSense: sense.id) == entry)
+            #expect(await f.store.removeSense(entryID: entry.id, senseID: sense.id))
+            #expect(publications == [true, false])
+            #expect(f.store.readIndex.entry(forSense: sense.id) == nil)
+            #expect(f.store.entries.isEmpty && f.store.isLoaded)
+        }
+    }
+
     @Test func cachedArchiveSeesExternalCommitsAndRejectsRetiredGenerationWithoutNotification() async throws {
         try await withFixture { f in
             await f.store.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word,
@@ -241,7 +265,10 @@ struct VocabularyUnifiedRepositoryTests {
             #expect(try f.repository.snapshot().document.entries[0].explanations?.contains(first) == true)
             await f.store.remove(capture)
             let removed = try f.repository.snapshot()
-            #expect(removed.document.entries.isEmpty && !removed.document.catalog.isEmpty)
+            let retained = try #require(removed.document.entries.first)
+            #expect(retained.examples.isEmpty)
+            #expect(removed.document.sources.contains { $0.id == occurrence.sourceID })
+            #expect(!f.store.contains(capture))
             let later = LearningExplanationRecord(id: UUID(), input: input, language: .english,
                 result: .init(meaning: "new temporary result", explanation: "must stay temporary"), model: "synthetic", createdAt: Date())
             await f.store.saveExplanation(later, scope: removed)

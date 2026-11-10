@@ -15,16 +15,16 @@ extension ReviewNoteStore {
 
     /// Updates render caches only. Note/template definitions remain authoritative and the
     /// existing CardStore keeps FSRS/reps/events when replacing its readable face projection.
-    func refreshInTransaction(_ scope: LingroveNotebookSnapshot) throws {
+    func refreshInTransaction(_ scope: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil) throws {
         let definitions = try types(workspace: scope.workspaceId)
         let admitted = Set(try memberships(workspace: scope.workspaceId).map(\.noteID))
-        for note in try notes(scope: scope) where admitted.contains(note.id) {
+        for note in try notes(scope: scope) where admitted.contains(note.id) && (senseIDs?.contains(note.senseID) ?? true) {
             guard let type = definitions.first(where: { $0.id == note.noteTypeID }) else { throw VocabularyError.invalidArchive }
             try reconcile(note, type: type, scope: scope)
         }
         let cards = CardStore(core: core), links = LingroveNotebookCardLinkStore(core: core)
         let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
-        for (cardID, model) in try cardModels(scope: scope) {
+        for (cardID, model) in try cardModels(scope: scope) where senseIDs?.contains(model.note.senseID) ?? true {
             guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: scope.workspaceId, cardId: cardID), card.deletedAt == nil else { continue }
             let rendered = try? model.render(in: scope)
             let input = try rendered.map { try cardInput($0, note: model.note, scope: scope) }

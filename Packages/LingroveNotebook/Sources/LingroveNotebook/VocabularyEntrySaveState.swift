@@ -28,15 +28,16 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         try Task.checkCancellation()
         let old = entries.first { $0.id == input.id }
         let oldSenses = Set(old?.senses.map(\.id) ?? [])
-        guard !entries.contains(where: { $0.id != input.id && VocabularyIdentityPolicy.entryKey($0) == VocabularyIdentityPolicy.entryKey(input) }) else {
+        let inputKey = VocabularyIdentityPolicy.entryKey(input)
+        guard !entries.contains(where: { $0.id != input.id && VocabularyIdentityPolicy.entryKey($0) == inputKey }) else {
             throw VocabularyError.invalidArchive
         }
         // A reused interpretation ID must already belong to this entry, or be an unresolved
         // candidate. A detached editor cannot steal another entry's accepted interpretation.
-        let otherClaims = Set(document.interpretations.filter {
-            $0.senseID.map { !oldSenses.contains($0) } == true
-        }.map(\.id))
-        guard otherClaims.isDisjoint(with: Set(input.examples.map(\.id))) else { throw VocabularyError.invalidArchive }
+        let incomingClaims = Set(input.examples.map(\.id))
+        guard !document.interpretations.contains(where: {
+            incomingClaims.contains($0.id) && $0.senseID.map { !oldSenses.contains($0) } == true
+        }) else { throw VocabularyError.invalidArchive }
 
         var next = document
         VocabularyNotebookProjection.replaceEntry(VocabularyDocumentValidation.pruningExplanations(input), in: &next)
@@ -56,6 +57,20 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         // were copied from this validated state, so their previous relationship proof still holds.
         return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs), entryID: entry.id)
     }
+
+    /// Removing an existing sense cannot introduce an ID. Reuse the proof for unrelated entries
+    /// and recheck the changed graph, including candidates that lost their saved destination.
+    public func removingSense(_ senseID: UUID, from entryID: UUID) throws -> VocabularyEntrySaveChange {
+        try Task.checkCancellation()
+        var next = document
+        let joined = try VocabularySenseEditingPolicy.remove(entryID: entryID, senseID: senseID,
+            from: &next, previousEntries: entries)
+        var checkedIDs = identifiers
+        checkedIDs[entryID] = try joined.first { $0.id == entryID }.map(VocabularyDocumentValidation.entryIdentifiers)
+        try VocabularyLifecyclePolicy.validate(next)
+        try VocabularySemanticPolicy.validate(next.semantics, entries: joined)
+        return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs), entryID: entryID)
+    }
 }
 
 /// Only the validated state's narrow command can construct this change. Codec and public-intent
@@ -69,6 +84,13 @@ public nonisolated struct VocabularyEntrySaveChange: Sendable {
     public var affectedSenseIDs: Set<UUID> {
         Set((previous.catalog.first { $0.id == entryID }?.senses.map(\.id) ?? []) +
             (document.catalog.first { $0.id == entryID }?.senses.map(\.id) ?? []))
+    }
+
+    /// Review links can still name a historical alias even after its sense has been merged.
+    public var affectedReviewSenseIDs: Set<UUID> {
+        let before = previous.catalog.first { $0.id == entryID }?.senses ?? []
+        let after = document.catalog.first { $0.id == entryID }?.senses ?? []
+        return Set((before + after).flatMap { [$0.id] + $0.mergedFrom })
     }
 
     fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState, entryID: UUID) {

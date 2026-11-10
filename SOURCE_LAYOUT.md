@@ -1401,9 +1401,11 @@ in the shared engine; only explicit built-in enrollment creates scheduler member
 
 ## Corpus browsing at scale
 
-`VocabularyReadIndex` is the immutable per-revision lookup surface used by corpus selection,
-row menus and tags. `VocabularyReadIndexWorker` builds it off MainActor; `VocabularyStore`
-publishes acknowledged revisions once and rejects stale results after the actor hop.
+`VocabularyReadIndex` is the per-revision lookup surface used by corpus selection, row menus and
+tags. `VocabularyReadIndexWorker` builds full snapshots off MainActor. A local entry receipt
+lets `VocabularyStore` update only that entry's capture keys, tags and sense aliases when the
+store holds its exact base revision. The store applies the local receipt before broadcasting
+the commit to other notebook subsystems.
 `VocabularyBrowserCache` and `VocabularyMeaningReadCache` are window/detail-owned bounded
 memos, independent of durable content. `VocabularyBrowserRow` gives the native List one
 stable row per projected identity, including explicitly disclosed senses.

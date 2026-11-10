@@ -46,9 +46,7 @@ final class VocabularyStore: ObservableObject {
     private var senseMergeUndo: VocabularySenseMergeUndo?
     private var revision: UInt64 = 0
     var currentRevision: UInt64 { revision }
-    private var savedKeys: Set<String> = []
     private var pendingCounts: [String: Int] = [:]
-    private var entryKeys: Set<String> = []
 
     /// Standalone fixtures retain the same public surface without discovering application data.
     init(archive: VocabularyArchive) {
@@ -112,6 +110,7 @@ final class VocabularyStore: ObservableObject {
 
     private func access<T: Sendable>(
         scope: VocabularyOperationScope? = nil,
+        publishesChanges: Bool = true,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> T
     ) async throws -> T {
         guard !isShutDown else { throw VocabularyError.editConflict }
@@ -128,9 +127,21 @@ final class VocabularyStore: ObservableObject {
         let original = scope.map(LingroveNotebookVersion.init) ?? live ?? operationScope.map(LingroveNotebookVersion.init)
         if let scope, let live, !live.hasSameOwner(as: scope) { throw VocabularyError.editConflict }
         let result = try await archive.perform(basedOn: original, operation)
-        if !isShutDown, let repository, let live, let after = try? repository.version(),
+        if publishesChanges, !isShutDown, let repository, let live, let after = try? repository.version(),
            after.hasSameOwner(as: live), after.revision != live.revision { repository.publishChange() }
         return result
+    }
+
+    /// The same store receives its own repository notification. Publish after admitting the
+    /// local receipt so the subscribers see the commit without scheduling a redundant readback.
+    private func applyEntryMutation(
+        scope: VocabularyOperationScope?,
+        _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveSnapshot
+    ) async throws {
+        let snapshot = try await access(scope: scope, publishesChanges: false, operation)
+        await apply(snapshot)
+        if !isShutDown, let repository, let saved = snapshot.scope, let current = try? repository.version(),
+           current.hasSameOwner(as: saved), current.revision >= saved.revision { repository.publishChange() }
     }
 
     /// The mailbox borrows this process-wide store. Applying the archive's acknowledged snapshot
@@ -181,19 +192,19 @@ final class VocabularyStore: ObservableObject {
     func load() async { loadIfNeeded(); await loadWork?.value }
 
     func contains(_ capture: VocabularyCapture) -> Bool {
+        let entry = readIndex.entry(forKey: VocabularyPolicy.entryKey(capture))
         if capture.example == nil {
-            guard let sense = capture.senseID else { return entryKeys.contains(VocabularyPolicy.entryKey(capture)) }
-            return entries.contains { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) &&
-                VocabularySensePolicy.index(sense, in: $0) != nil }
+            guard let sense = capture.senseID else { return entry != nil }
+            return entry.map { VocabularySensePolicy.index(sense, in: $0) != nil } ?? false
         }
-        if capture.senseID != nil { return VocabularyPolicy.contains(capture, in: entries) }
-        return savedKeys.contains(VocabularyPolicy.captureKey(capture))
+        if capture.senseID != nil { return entry.flatMap { VocabularySensePolicy.destination(capture, in: $0) } != nil }
+        return readIndex.savedKeys.contains(VocabularyPolicy.captureKey(capture))
     }
     func isPending(_ capture: VocabularyCapture) -> Bool { pending.contains(VocabularyPolicy.captureKey(capture)) }
 
     func save(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         let enriched = enrichCapture?(capture) ?? capture
-        await change(capture) { try await self.access(scope: scope) { archive in try archive.save(enriched) } }
+        await change(capture) { try await self.applyEntryMutation(scope: scope) { archive in try archive.save(enriched) } }
     }
 
     func saveExplanation(_ record: LearningExplanationRecord, scope: VocabularyOperationScope? = nil) async {
@@ -305,7 +316,10 @@ final class VocabularyStore: ObservableObject {
     }
 
     func removeSense(entryID: UUID, senseID: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
-        await mutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
+        do {
+            try await applyEntryMutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
+            return true
+        } catch { report(error); return false }
     }
 
     func removeTag(_ tag: String, scope: VocabularyOperationScope? = nil) async -> Bool {
@@ -373,7 +387,7 @@ final class VocabularyStore: ObservableObject {
 
     func remove(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         LingroveLogger.learning.debug("Vocabulary remove requested")
-        await change(capture) { try await self.access(scope: scope) { archive in try archive.remove(capture) } }
+        await change(capture) { await apply(try await access(scope: scope) { archive in try archive.remove(capture) }) }
     }
 
     func update(
@@ -432,7 +446,7 @@ final class VocabularyStore: ObservableObject {
         openSelection?(selection)
     }
 
-    private func change(_ capture: VocabularyCapture, operation: () async throws -> VocabularyArchiveSnapshot) async {
+    private func change(_ capture: VocabularyCapture, operation: () async throws -> Void) async {
         let identity = scopeIdentity
         let key = VocabularyPolicy.captureKey(capture)
         pendingCounts[key, default: 0] += 1
@@ -443,7 +457,7 @@ final class VocabularyStore: ObservableObject {
                 if remaining == 0 { pendingCounts.removeValue(forKey: key); pending.remove(key) } else { pendingCounts[key] = remaining }
             }
         }
-        do { await apply(try await operation()) } catch { report(error) }
+        do { try await operation() } catch { report(error) }
     }
 
     private func admits(_ snapshot: VocabularyArchiveSnapshot) -> Bool {
@@ -452,6 +466,8 @@ final class VocabularyStore: ObservableObject {
             if let repository {
                 guard let current = try? repository.version(), current.hasSameOwner(as: scope) else { return false }
                 if current.revision > scope.revision {
+                    if hasAppliedSnapshot, operationScope?.hasSameOwner(as: scope) == true,
+                       current.revision == revision { return false }
                     reloadRequested = true; isLoaded = false
                     if loadWork == nil { reloadRequested = false; loadIfNeeded() }
                     return false
@@ -472,11 +488,18 @@ final class VocabularyStore: ObservableObject {
             if errorMessage != nil { errorMessage = nil }
             return
         }
-        let identity = scopeIdentity
-        let prepared = await indexWorker.prepare(snapshot)
-        guard scopeIdentity == identity, admits(snapshot) else { return }
-        // Another acknowledged operation may have finished while the projection was queued.
-        guard !hasAppliedSnapshot || snapshot.revision > revision else { return }
+        let prepared: VocabularyReadIndex
+        if let change = snapshot.entryChange, hasAppliedSnapshot, change.baseRevision == revision {
+            var updated = readIndex
+            updated.apply(change)
+            prepared = updated
+        } else {
+            let identity = scopeIdentity
+            prepared = await indexWorker.prepare(snapshot)
+            guard scopeIdentity == identity, admits(snapshot) else { return }
+            // Another acknowledged operation may have finished while the projection was queued.
+            guard !hasAppliedSnapshot || snapshot.revision > revision else { return }
+        }
         if let scope = snapshot.scope { operationScope = scope }
         if let undo = senseMergeUndo, snapshot.revision != undo.after.revision {
             senseMergeUndo = nil; canUndoSenseMerge = false
@@ -485,8 +508,6 @@ final class VocabularyStore: ObservableObject {
         entries = prepared.entries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
-        entryKeys = prepared.entryKeys
-        savedKeys = prepared.savedKeys
         reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
         hasAppliedSnapshot = true
@@ -519,7 +540,7 @@ final class VocabularyStore: ObservableObject {
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
         hasAppliedSnapshot = false; readIndex = .init(); contentRevision = UUID()
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
-        savedKeys = []; entryKeys = []; pending = []; pendingCounts = [:]
+        pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil
     }
 

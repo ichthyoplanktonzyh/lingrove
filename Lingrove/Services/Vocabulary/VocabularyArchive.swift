@@ -140,7 +140,7 @@ actor VocabularyArchive {
             if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
             let result = try persistence().saveNotebookEntry(entry, basedOn: baseline, images: images)
             saved = result
-            return .init(result)
+            return entryChange(result, from: baseline, entryID: entry.id)
         }
     }
 
@@ -330,9 +330,17 @@ actor VocabularyArchive {
     }
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        try VocabularySenseEditingPolicy.remove(entryID: entryID, senseID: senseID, from: &next)
-        return try commit(next)
+        let baseline = try load()
+        guard let scope = baseline.scope else { throw VocabularyError.invalidArchive }
+        let result = try persistence().removeNotebookSense(senseID, from: entryID, basedOn: scope)
+        saved = result
+        return entryChange(result, from: scope, entryID: entryID)
+    }
+
+    private func entryChange(_ result: LingroveNotebookSnapshot, from baseline: LingroveNotebookSnapshot,
+                             entryID: UUID) -> VocabularyArchiveSnapshot {
+        .init(result, entryChange: .init(baseRevision: baseline.revision, entryID: entryID,
+            entry: VocabularyNotebookProjection.entry(entryID, in: result.document)))
     }
 
     /// The selected notebook owns the tag's entire lifetime. One transaction updates all

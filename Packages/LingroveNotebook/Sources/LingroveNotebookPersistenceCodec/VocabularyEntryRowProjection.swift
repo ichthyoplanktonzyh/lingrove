@@ -32,12 +32,18 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         var next = self, delta = Delta()
         let document = change.document, previous = change.previous
         let senses = change.affectedSenseIDs
-        guard let entryPosition = document.catalog.firstIndex(where: { $0.id == change.entryID }) else {
-            throw VocabularyError.invalidArchive
-        }
+        let entryKey = Key(entity: .entries, id: change.entryID.uuidString)
         var records: [VocabularyDatabaseRecord] = []
-        VocabularyDatabaseProjection.append(document.catalog[entryPosition], position: entryPosition, to: &records)
-        try next.replaceGroup(.init(entity: .entries, id: change.entryID.uuidString), records: records, delta: &delta)
+        if let position = document.catalog.firstIndex(where: { $0.id == change.entryID }) {
+            VocabularyDatabaseProjection.append(document.catalog[position], position: position, to: &records)
+            try next.replaceGroup(entryKey, records: records, delta: &delta)
+        } else {
+            guard let position = keyed[entryKey]?.position else { throw VocabularyError.invalidArchive }
+            try next.replaceGroup(entryKey, records: [], delta: &delta)
+            for (offset, entry) in document.catalog.enumerated().dropFirst(position) {
+                try next.reposition(.init(entity: .entries, id: entry.id.uuidString), position: offset, delta: &delta)
+            }
+        }
 
         // replaceEntry never rewrites retained evidence: a correction appends new identities.
         for (position, source) in document.sources.enumerated().dropFirst(previous.sources.count) {
@@ -78,15 +84,16 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         // it cannot introduce a canonically equal Unicode edit into this unchanged graph.
         if previous.semantics != document.semantics {
             records = VocabularySemanticDatabaseProjection.rows(document.semantics)
-            try next.replace(keys: semanticKeys, records: records, delta: &delta)
+            try next.replace(keys: semanticKeys, records: records, preservingLiteralPayloads: false, delta: &delta)
             next.semanticKeys = Set(records.map { .init(entity: $0.table, id: $0.id) })
         }
-        return .init(projection: next, changed: delta.changed, removed: delta.removed)
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 
     private struct Delta {
         var changed: [VocabularyPersistenceRow] = []
         var removed: [VocabularyPersistenceRow] = []
+        var repositioned: [VocabularyPersistenceRow] = []
     }
 
     private mutating func replaceGroup(_ root: Key, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
@@ -94,7 +101,8 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         groups[root] = records.isEmpty ? nil : Set(records.map { .init(entity: $0.table, id: $0.id) })
     }
 
-    private mutating func replace(keys: Set<Key>, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
+    private mutating func replace(keys: Set<Key>, records: [VocabularyDatabaseRecord],
+                                  preservingLiteralPayloads: Bool = true, delta: inout Delta) throws {
         let rows = try records.map(VocabularyPersistenceRow.init(record:))
         let incoming = Set(rows.map(\.key))
         guard incoming.count == rows.count else { throw VocabularyError.invalidArchive }
@@ -104,7 +112,17 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         for row in rows {
             let old = keyed[row.key]
             guard old == nil || keys.contains(row.key) else { throw VocabularyError.invalidArchive }
-            if let old, old == row, try old.encodedPayload() == row.encodedPayload() { continue }
+            // An unchanged foreign key should not be deleted and reinserted just because a
+            // preceding sibling left. For authored rows compare literal payload bytes as well.
+            if let old, old.parentID == row.parentID, old.record.extra == row.record.extra,
+               old.record.payload == row.record.payload,
+               try !preservingLiteralPayloads || old.encodedPayload() == row.encodedPayload() {
+                if old.position != row.position {
+                    keyed[row.key] = row
+                    delta.repositioned.append(row)
+                }
+                continue
+            }
             keyed[row.key] = row; delta.changed.append(row)
         }
     }
@@ -115,7 +133,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         let record = old.record
         let row = try VocabularyPersistenceRow(record: .init(table: record.table, id: record.id,
             parentID: record.parentID, position: position, payload: record.payload, extra: record.extra))
-        keyed[key] = row; delta.changed.append(row)
+        keyed[key] = row; delta.repositioned.append(row)
     }
 
     private static func root(_ row: VocabularyPersistenceRow, rows: [Key: VocabularyPersistenceRow]) throws -> Key? {
@@ -144,4 +162,5 @@ public nonisolated struct VocabularyEntryRowChange: Sendable {
     public let projection: VocabularyEntryRowProjection
     public let changed: [VocabularyPersistenceRow]
     public let removed: [VocabularyPersistenceRow]
+    public let repositioned: [VocabularyPersistenceRow]
 }

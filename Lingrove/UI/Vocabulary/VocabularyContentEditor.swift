@@ -55,8 +55,11 @@ struct VocabularyContentEditor: View {
         .task(id: VocabularyContentPolicy.images(blocks).map(\.filename).joined(separator: "|")) {
             for reference in VocabularyContentPolicy.images(blocks) where images[reference.filename] == nil {
                 let data: Data?
-                if let staged = importedImages[reference.filename] { data = staged }
-                else { data = await store.image(reference) }
+                if let staged = importedImages[reference.filename] {
+                    data = staged
+                } else {
+                    data = await store.image(reference)
+                }
                 guard !Task.isCancelled else { return }
                 if let data, let image = NSImage(data: data) { images[reference.filename] = image }
             }
@@ -108,32 +111,36 @@ struct VocabularyContentEditor: View {
                 value.enumerateAttribute(.font, in: NSRange(location: 0, length: value.length)) { font, range, _ in
                     let font = font as? NSFont ?? VocabularyRichTextCodec.bodyFont
                     let traits = NSFontManager.shared.traits(of: font)
-                    let heading = value.attribute(VocabularyRichTextCodec.styleKey, at: range.location, effectiveRange: nil) as? String == "heading"
+                    let style = value.attribute(VocabularyRichTextCodec.styleKey, at: range.location, effectiveRange: nil) as? String
                     value.addAttributes([.font: VocabularyRichTextCodec.font(bold: traits.contains(.boldFontMask),
-                        italic: traits.contains(.italicFontMask), heading: heading), .foregroundColor: NSColor.labelColor], range: range)
+                        italic: traits.contains(.italicFontMask), heading: style == "heading"),
+                        .foregroundColor: NSColor.labelColor], range: range)
                 }
-                if !attachments.isEmpty {
-                    // Images occupy their own paragraph inside the single continuous editor.
-                    // This is document layout, not an additional field or editing surface.
-                    var imageRanges: [NSRange] = []
-                    value.enumerateAttribute(.attachment, in: NSRange(location: 0, length: value.length)) { attachment, range, _ in
-                        if attachment != nil { imageRanges.append(range) }
-                    }
-                    for range in imageRanges.reversed() {
-                        if NSMaxRange(range) == value.length || (value.string as NSString).character(at: NSMaxRange(range)) != 10 {
-                            value.insert(NSAttributedString(string: "\n", attributes: VocabularyRichTextCodec.defaults()), at: NSMaxRange(range))
-                        }
-                        if range.location == 0 || (value.string as NSString).character(at: range.location - 1) != 10 {
-                            value.insert(NSAttributedString(string: "\n", attributes: VocabularyRichTextCodec.defaults()), at: range.location)
-                        }
-                    }
-                }
+                if !attachments.isEmpty { separateImageParagraphs(in: value) }
                 // Use the same portable subset immediately, so pasted attributes cannot look
                 // supported in the editor and then disappear after Save/reopen.
                 let normalized = VocabularyRichTextCodec.blocks(value)
                 editor.insert(VocabularyRichTextCodec.attributed(normalized, images: images))
             } catch is CancellationError { } catch {
                 failure = String(localized: "Unable to add this image. Try a smaller image.", table: "Vocabulary")
+            }
+        }
+    }
+
+    /// Insert the missing paragraph breaks from the end so earlier attachment ranges stay valid.
+    private func separateImageParagraphs(in value: NSMutableAttributedString) {
+        var imageRanges: [NSRange] = []
+        value.enumerateAttribute(.attachment, in: NSRange(location: 0, length: value.length)) { attachment, range, _ in
+            if attachment != nil { imageRanges.append(range) }
+        }
+        let newline = NSAttributedString(string: "\n", attributes: VocabularyRichTextCodec.defaults())
+        for range in imageRanges.reversed() {
+            let end = NSMaxRange(range)
+            if end == value.length || (value.string as NSString).character(at: end) != 10 {
+                value.insert(newline, at: end)
+            }
+            if range.location == 0 || (value.string as NSString).character(at: range.location - 1) != 10 {
+                value.insert(newline, at: range.location)
             }
         }
     }

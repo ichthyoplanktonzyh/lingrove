@@ -21,16 +21,33 @@ public nonisolated enum VocabularySenseEditingPolicy {
     /// Both GUI and CLI submit one complete graph change. Reconcile before dry-run validation
     /// as well as persistence, so source associations cannot become dangling references.
     public static func remove(entryID: UUID, senseID: UUID, from document: inout VocabularyDocument) throws {
+        let previousEntries = document.entries
+        _ = try remove(entryID: entryID, senseID: senseID, from: &document, previousEntries: previousEntries)
+    }
+
+    /// The connection may already have the joined entries. Work on the canonical header and
+    /// claims directly so deleting one sense never recreates the surviving source evidence.
+    static func remove(entryID: UUID, senseID: UUID, from document: inout VocabularyDocument,
+                       previousEntries: [VocabularyEntry]) throws -> [VocabularyEntry] {
         let before = document
-        var entries = document.entries
+        var entries = previousEntries
         guard let index = entries.firstIndex(where: { $0.id == entryID }),
-              entries[index].senses.contains(where: { $0.id == senseID }) else {
+              let sense = entries[index].senses.firstIndex(where: { $0.id == senseID }) else {
             throw NotebookToolError(code: .notFound, message: "Sense does not belong to this entry.")
         }
-        entries[index].senses.removeAll { $0.id == senseID }
-        if entries[index].senses.isEmpty { entries.remove(at: index) }
-        document.entries = entries
-        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, entries: entries)
+        entries[index].senses.remove(at: sense)
+        document.catalog[index].senses.remove(at: sense)
+        if entries[index].senses.isEmpty {
+            entries.remove(at: index)
+            document.catalog.remove(at: index)
+        }
+        document.interpretations.removeAll { $0.senseID == senseID && $0.status == .accepted }
+        for index in document.interpretations.indices where document.interpretations[index].senseID == senseID {
+            document.interpretations[index].senseID = nil
+            document.interpretations[index].status = .candidate
+        }
+        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, previousEntries: previousEntries, entries: entries)
+        return entries
     }
 
     public static func merge(entryID: UUID, source: UUID, into target: UUID,

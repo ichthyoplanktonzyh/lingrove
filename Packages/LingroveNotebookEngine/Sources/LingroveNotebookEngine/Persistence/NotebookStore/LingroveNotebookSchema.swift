@@ -7,6 +7,31 @@ import LingroveNotebook
 public enum LingroveNotebookSchema {
     public static func table(_ entity: VocabularyPersistenceEntity) -> String { "notebook_" + entity.rawValue }
 
+    private static let evidenceForeignKeyIndexes = [
+        ("notebook_usages_sense_fk", "notebook_usages", "sense_id"),
+        ("notebook_usages_occurrence_fk", "notebook_usages", "occurrence_id"),
+        ("notebook_mapping_evidence_usage_fk", "notebook_mapping_evidence", "usage_id"),
+        ("notebook_collection_interpretations_usage_fk", "notebook_collection_interpretations", "usage_id")
+    ]
+
+    private static var evidenceForeignKeyIndexSQL: String {
+        evidenceForeignKeyIndexes.map { name, table, key in
+            "CREATE INDEX IF NOT EXISTS \(name) ON \(table)(workspace_id,\(key));"
+        }.joined(separator: "\n")
+    }
+
+    /// Index-only upgrade for existing notebooks. Index creation can be retried and preserves
+    /// the row format so older clients can still open the database.
+    static func ensureEvidenceForeignKeyIndexes(in core: DatabaseCore) throws {
+        let names = evidenceForeignKeyIndexes.map { SQLiteValue.text($0.0) }
+        let placeholders = Array(repeating: "?", count: names.count).joined(separator: ",")
+        guard try core.scalarInt(sql: "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name IN (\(placeholders))",
+                                 values: names) != names.count else { return }
+        try core.inTransaction {
+            try core.executeScript(sql: evidenceForeignKeyIndexSQL, errorContext: "Index notebook evidence references")
+        }
+    }
+
     public static var createSQL: String {
         var statements = ["""
         CREATE TABLE IF NOT EXISTS notebook_state (
@@ -64,6 +89,7 @@ public enum LingroveNotebookSchema {
         );
         CREATE INDEX IF NOT EXISTS notebook_pending_workspace ON notebook_pending_transactions(workspace_id,revision);
         """)
+        statements.append(evidenceForeignKeyIndexSQL)
         statements.append(LingroveNotebookCLIStore.createSQL)
         statements.append(mediaSQL)
         statements.append(LingroveNotebookCardLinkSchema.createSQL)

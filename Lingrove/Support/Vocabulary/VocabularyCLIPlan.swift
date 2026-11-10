@@ -117,7 +117,8 @@ nonisolated struct VocabularyCLIPlan {
         if let update = change.update {
             try NotebookSenseWriting.update(update, in: &document, revision: revision, now: context.now, id: context.id)
             outcomes.append(.object(["operation": .integer(Int64(context.index)), "entryID": .string(update.entryID.uuidString),
-                "senseID": .string(update.senseID.uuidString), "createdEntry": .bool(false), "exampleIDs": .array([]), "blockIDs": .array([])]))
+                "senseID": .string(update.senseID.uuidString), "createdEntry": .bool(false),
+                "exampleIDs": .array([]), "blockIDs": .array([])]))
             return
         }
         let entryCount = document.entries.count

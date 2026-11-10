@@ -35,6 +35,8 @@ public final class LingroveNotebookEngine {
                     try core.executeScript(sql: LocalDatabaseSchema.baseMigrationSQL, errorContext: "Create notebook engine schema")
                     try core.executeScript(sql: "PRAGMA user_version = \(LocalDatabaseSchema.currentVersion)", errorContext: "Record notebook engine schema")
                 }
+            } else {
+                try LingroveNotebookSchema.ensureEvidenceForeignKeyIndexes(in: core)
             }
             return try LocalDatabaseBootstrapper(core: core).ensureDefaultState()
         }

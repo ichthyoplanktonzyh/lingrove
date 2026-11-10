@@ -108,7 +108,8 @@ public struct LingroveNotebookStore {
     /// Scheduling and append-only review history stay with the existing material adapter.
     func finishSave(_ next: VocabularyDocument, current: LingroveNotebookSnapshot,
                     changed: [VocabularyPersistenceRow], removed: [VocabularyPersistenceRow],
-                    publicChange: Bool, operationId: String) throws -> LingroveNotebookSnapshot {
+                    repositioned: [VocabularyPersistenceRow] = [], publicChange: Bool,
+                    operationId: String, reviewSenseIDs: Set<UUID>? = nil) throws -> LingroveNotebookSnapshot {
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
             let count = try self.core.execute(sql: """
@@ -119,8 +120,10 @@ public struct LingroveNotebookStore {
             guard count == 1 else { throw VocabularyError.editConflict }
             try self.recordPending(current: current, revision: revision, changed: changed, removed: removed,
                 reviewTemplatesPresent: next.reviewTemplates != nil, publicChange: publicChange, operationId: operationId, now: now)
+        try recordRepositioned(repositioned, workspaceId: current.workspaceId, operationId: operationId,
+            journalOffset: changed.count + removed.count)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
-            try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved)
+        try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved, senseIDs: reviewSenseIDs)
             return saved
     }
 
@@ -339,16 +342,57 @@ public struct LingroveNotebookStore {
         let mutations = changed.map { ($0, "upsert") } + removed.map { ($0, "delete") }
         for (position, mutation) in mutations.enumerated() {
             let (row, action) = mutation
-            let indexes = Dictionary(uniqueKeysWithValues: row.indexValues.map { ($0.key.rawValue, $0.value) })
-            let indexesJSON = try self.core.encodeJsonString(value: indexes)
             let payload = action == "delete" ? nil : String(data: try row.encodedPayload(), encoding: .utf8)
             try self.core.execute(sql: """
                 INSERT INTO notebook_pending_rows(operation_id,position,entity,entity_id,action,parent_id,entity_position,payload_json,indexes_json)
                 VALUES(?,?,?,?,?,?,?,?,?)
                 """, values: [.text(operationId), .integer(Int64(position)), .text(row.entity.rawValue), .text(row.id),
                     .text(action), row.parentID.map(SQLiteValue.text) ?? .null, .integer(Int64(row.position)),
-                    payload.map(SQLiteValue.text) ?? .null, .text(indexesJSON)])
+                    payload.map(SQLiteValue.text) ?? .null, .text(try journalIndexes(row))])
         }
+    }
+
+    /// A position-only move keeps the existing row and all its foreign keys. Reuse the stored
+    /// payload in the journal so compaction does not re-encode every surviving example.
+    private func recordRepositioned(_ rows: [VocabularyPersistenceRow], workspaceId: String,
+                                    operationId: String, journalOffset: Int) throws {
+        let grouped = Dictionary(grouping: rows, by: \.entity)
+        var ordinal = journalOffset
+        for entity in VocabularyPersistenceEntity.allCases {
+            guard let group = grouped[entity] else { continue }
+            let table = LingroveNotebookSchema.table(entity)
+            // Four binds per row keeps the batch under SQLite's older 999-variable limit.
+            for start in stride(from: 0, to: group.count, by: 200) {
+                try Task.checkCancellation()
+                let batch = group[start..<min(start + 200, group.count)]
+                let placeholders = Array(repeating: "(?,?,?,?)", count: batch.count).joined(separator: ",")
+                let positions = "WITH moved(id, next_position, journal_position, indexes) AS (VALUES \(placeholders))"
+                var values: [SQLiteValue] = []
+                for row in batch {
+                    values += [.text(row.id), .integer(Int64(row.position)), .integer(Int64(ordinal)), .text(try journalIndexes(row))]
+                    ordinal += 1
+                }
+                let updated = try core.execute(sql: """
+                    \(positions)
+                    UPDATE \(table) SET position=(SELECT next_position FROM moved WHERE moved.id=\(table).id)
+                    WHERE workspace_id=? AND id IN (SELECT id FROM moved)
+                    """, values: values + [.text(workspaceId)])
+                guard updated == batch.count else { throw VocabularyError.editConflict }
+                let recorded = try core.execute(sql: """
+                    \(positions)
+                    INSERT INTO notebook_pending_rows(
+                        operation_id,position,entity,entity_id,action,parent_id,entity_position,payload_json,indexes_json)
+                    SELECT ?,moved.journal_position,?,r.id,'upsert',r.parent_id,r.position,r.payload_json,moved.indexes
+                    FROM moved JOIN \(table) r ON r.workspace_id=? AND r.id=moved.id
+                    """, values: values + [.text(operationId), .text(entity.rawValue), .text(workspaceId)])
+                guard recorded == batch.count else { throw VocabularyError.editConflict }
+            }
+        }
+    }
+
+    private func journalIndexes(_ row: VocabularyPersistenceRow) throws -> String {
+        let indexes = Dictionary(uniqueKeysWithValues: row.indexValues.map { ($0.key.rawValue, $0.value) })
+        return try core.encodeJsonString(value: indexes)
     }
 
     public init(core: DatabaseCore) {

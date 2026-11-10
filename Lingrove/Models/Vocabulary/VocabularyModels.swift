@@ -72,16 +72,27 @@ typealias VocabularyDocument = LingroveNotebook.VocabularyDocument
 typealias VocabularySnapshot = LingroveNotebook.VocabularySnapshot
 
 nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
+    /// A narrow transaction knows which joined entry changed. The store can apply it only
+    /// to the exact revision it was prepared against, within the same notebook generation.
+    struct EntryChange: Equatable, Sendable {
+        let baseRevision: UInt64
+        let entryID: UUID
+        let entry: VocabularyEntry?
+    }
+
     let revision: UInt64
     let document: VocabularyDocument
     let scope: VocabularyOperationScope?
+    let entryChange: EntryChange?
 
     init(revision: UInt64, document: VocabularyDocument, scope: VocabularyOperationScope? = nil) {
         self.revision = revision; self.document = document; self.scope = scope
+        entryChange = nil
     }
 
-    init(_ saved: LingroveNotebookSnapshot) {
+    init(_ saved: LingroveNotebookSnapshot, entryChange: EntryChange? = nil) {
         revision = saved.revision; document = saved.document; scope = saved
+        self.entryChange = entryChange
     }
 
     var portable: VocabularySnapshot { .init(revision: revision, document: document) }

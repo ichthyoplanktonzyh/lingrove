@@ -14,6 +14,24 @@ extension LingroveNotebookEngine {
         let mediaDocument = VocabularyDocument(entries: [entry])
         let media = LingroveNotebookMediaStore(core: core)
         let staged = try media.stageSuppliedImages(document: mediaDocument, supplied: images)
+        return try saveEntryChange(basedOn: baseline, staged: staged, operationId: operationId) {
+            try $0.replacing(entry)
+        }
+    }
+
+    /// A removal uses the same checked state and transaction as an entry edit. Its baseline
+    /// fences the workspace, while SQL supplies the document and owns the resulting revision.
+    public func removeNotebookSense(_ senseID: UUID, from entryID: UUID, basedOn baseline: LingroveNotebookSnapshot,
+        operationId: String = UUID().uuidString.lowercased()) throws -> LingroveNotebookSnapshot {
+        try saveEntryChange(basedOn: baseline, staged: [], operationId: operationId) {
+            try $0.removingSense(senseID, from: entryID)
+        }
+    }
+
+    private func saveEntryChange(basedOn baseline: LingroveNotebookSnapshot, staged: Set<VocabularyImageReference>,
+                                 operationId: String, prepare: (VocabularyEntrySaveState) throws -> VocabularyEntrySaveChange)
+        throws -> LingroveNotebookSnapshot {
+        try Task.checkCancellation()
         return try core.inTransaction {
             let store = lingroveNotebookStore
             try store.checkActiveWorkspace(baseline.workspaceId, required: true)
@@ -21,14 +39,16 @@ extension LingroveNotebookEngine {
             guard current.notebookId == baseline.notebookId, current.revision == baseline.revision,
                   current.generation == baseline.generation, current.revision < UInt64(Int64.max),
                   let cached = core.notebookSaveCache else { throw VocabularyError.editConflict }
-            let change = try cached.state.replacing(entry)
+            let change = try prepare(cached.state)
             let rows = try cached.projection.applying(change)
             let publicChange = try VocabularyWirePublicIntent.hasChanges(change, notebookID: current.notebookId)
-            try media.registerImages(document: change.document, previous: current.document, staged: staged, workspaceId: current.workspaceId)
+            try LingroveNotebookMediaStore(core: core).registerImages(document: change.document,
+                previous: current.document, staged: staged, workspaceId: current.workspaceId)
             try Task.checkCancellation()
             try store.writeRows(changed: rows.changed, removed: rows.removed, workspaceId: current.workspaceId)
             let saved = try store.finishSave(change.document, current: current, changed: rows.changed,
-                removed: rows.removed, publicChange: publicChange, operationId: operationId)
+                removed: rows.removed, repositioned: rows.repositioned, publicChange: publicChange, operationId: operationId,
+                reviewSenseIDs: change.affectedReviewSenseIDs)
             core.notebookSaveCache = .init(snapshot: saved, state: change.state, projection: rows.projection,
                 token: try core.notebookCacheToken(), lineage: cached.lineage)
             return saved
