@@ -104,12 +104,7 @@ nonisolated struct CLIRemoveSense: Codable, Sendable {
     static let shape = CLIResourceContract.Shape(fields: ["entryID": .uuid, "senseID": .uuid], required: ["entryID", "senseID"])
 }
 
-/// A request-local addition connects a sense to an existing shared node. The planner derives
-/// relation kind from that node and keeps any explanation on the sense itself.
-nonisolated struct CLISenseLink: Codable, Sendable {
-    var nodeID: UUID
-    var conditions: String?
-}
+typealias CLISenseLink = NotebookSenseLink
 
 nonisolated struct CLINewSense: Codable, Sendable {
     var expression: String
@@ -132,33 +127,7 @@ nonisolated struct CLIAppend: Codable, Sendable {
     var tags: [String]?
 }
 
-nonisolated struct CLIUpdate: Codable, Sendable {
-    var entryID: UUID
-    var senseID: UUID
-    var expectedRevision: UInt64
-    var explanation: String?
-    var contentEdits: [VocabularyContentEdit]?
-    var exampleEdits: [NotebookExampleEdit]?
-    var removeExamples: [UUID]?
-    var linkNodes: [CLISenseLink]?
-    var unlinkNodes: [UUID]?
-    var meaning: String?
-    var meaningLanguage: String?
-    var note: String?
-    var tags: [String]?
-}
-
-extension CLIUpdate {
-    /// One descriptor feeds the executable schema and app validation for nested sense edits.
-    nonisolated static let editFields: [String: CLIResourceContract.Field] = [
-        "contentEdits": .array(.object(.init(fields: ["blockID": .uuid, "find": .text(262_144),
-            "replacement": .text(262_144), "caption": .text(16_384), "remove": .bool], required: ["blockID"])), 64),
-        "exampleEdits": .array(.object(NotebookCaptureContract.exampleEdit), 100),
-        "removeExamples": .array(.uuid, 100),
-        "linkNodes": .array(.object(.init(fields: ["nodeID": .uuid, "conditions": .text(8_192)], required: ["nodeID"])), 64),
-        "unlinkNodes": .array(.uuid, 64)
-    ]
-}
+typealias CLIUpdate = NotebookSenseUpdate
 
 /// File paths exist only in CLI input. The executable reads explicitly supplied images and sends
 /// bounded bytes; the app never opens an arbitrary path supplied by an automation request.

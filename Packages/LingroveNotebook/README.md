@@ -157,3 +157,5 @@ independent of an Anki connection and independent of a Card schedule. Preparing 
 Audio bytes stay in transient `ReviewMaterialPreparedMedia` values until explicit save/export;
 a source text hash prevents reusing speech for edited wording. The engine owns saved built-in
 resources and the optional linked recipe; this package performs no IO or model request.
+
+Native sense editing uses `NotebookSenseUpdate` and `NotebookSenseWriting`: a closed, revision-bound value contract and an atomic detached-document planner shared by Mac CLI and iOS tools. Hosts retain account/generation admission, media access, final graph validation and transactional persistence. Failed field/example/link edits never publish a partial document.
