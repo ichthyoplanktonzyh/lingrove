@@ -116,6 +116,54 @@ struct VocabularyCLITests {
         await fixture.close()
     }
 
+    @Test func batchCaptureAndUpdateStoreCoreDefinitionsByLanguage() async throws {
+        let fixture = try await Fixture()
+        do {
+            let japaneseText = "預金を預かる金融機関。"
+            let japanese = ["text": japaneseText, "language": "ja"]
+            let spanish = ["text": "Entidad que recibe depósitos.", "language": "es"]
+            let french = ["text": "Établissement qui reçoit des dépôts.", "language": "fr"]
+            let input: [String: Any] = ["version": 1, "idempotencyKey": "localized-definitions",
+                "defaults": ["language": "en", "meaningLanguage": "ja"], "entries": [
+                    ["expression": "bank", "senses": [["meaning": japaneseText,
+                        "addMeaningVariants": [spanish], "tags": ["A1"], "examples": [["text": "The bank is open."]]]]],
+                    ["expression": "tree", "senses": [["meaning": "木。", "addMeaningVariants": [
+                        ["text": "Planta con un tronco.", "language": "es"]]]]]
+                ]]
+            let data = try JSONSerialization.data(withJSONObject: input)
+            #expect(try await fixture.call(["vocab", "capture", "--stdin", "--dry-run"], stdin: data).0 == 0)
+            #expect(try await fixture.archive.load().document.catalog.isEmpty)
+            #expect(try await fixture.call(["vocab", "capture", "--stdin"], stdin: data).0 == 0)
+            let initial = try await fixture.archive.load()
+            #expect(initial.document.catalog.count == 2)
+            let entry = try #require(initial.document.catalog.first { $0.expression == "bank" })
+            let sense = try #require(entry.senses.first)
+            #expect(entry.senses.count == 1)
+            #expect(sense.standaloneMeanings == [.init(text: "Entidad que recibe depósitos.", language: .spanish)])
+
+            func update(_ key: String, variants: [[String: String]], revision: UInt64) -> [String: Any] {
+                batch(key, [["update": ["entryID": entry.id.uuidString, "senseID": sense.id.uuidString,
+                    "expectedRevision": revision, "addMeaningVariants": variants]]])
+            }
+            #expect(try await fixture.apply(update("new-language", variants: [spanish, french], revision: initial.revision)).0 == 0)
+            let saved = try await fixture.archive.load()
+            let reply = try await fixture.call(["vocab", "sense", sense.id.uuidString])
+            #expect(reply.0 == 0)
+            let record = try #require(try result(reply.1)["sense"] as? [String: Any])
+            #expect(record["meaning"] as? String == japaneseText)
+            #expect(record["meaningLanguage"] as? String == "ja")
+            #expect(record["meaningVariants"] as? [[String: String]] == [japanese, spanish, french])
+            #expect(record["tags"] as? [String] == ["A1"])
+            #expect(saved.document.interpretations == initial.document.interpretations)
+
+            let conflict = update("same-language", variants: [
+                ["text": "Une autre définition.", "language": "fr"]], revision: saved.revision)
+            #expect(try await fixture.apply(conflict).0 == 4)
+            #expect(try await fixture.archive.load().document == saved.document)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
     @Test func senseEditsPreviewThenPreserveImagesAndUpdateOwnedExamplesAndLinks() async throws {
         let fixture = try await Fixture()
         do {

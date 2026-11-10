@@ -14,9 +14,12 @@ public nonisolated struct NotebookSenseUpdate: Codable, Sendable {
     public var unlinkNodes: [UUID]?
     public var meaning: String?
     public var meaningLanguage: String?
+    /// Extra core definitions for explicitly selected languages. The primary definition remains in place.
+    public var addMeaningVariants: [VocabularyMeaning]?
     public var note: String?
     public var tags: [String]?
-    public init(entryID: UUID,
+    public init(
+        entryID: UUID,
         senseID: UUID,
         expectedRevision: UInt64,
         explanation: String? = nil,
@@ -27,8 +30,10 @@ public nonisolated struct NotebookSenseUpdate: Codable, Sendable {
         unlinkNodes: [UUID]? = nil,
         meaning: String? = nil,
         meaningLanguage: String? = nil,
+        addMeaningVariants: [VocabularyMeaning]? = nil,
         note: String? = nil,
-        tags: [String]? = nil) {
+        tags: [String]? = nil
+    ) {
         self.entryID = entryID
         self.senseID = senseID
         self.expectedRevision = expectedRevision
@@ -40,6 +45,7 @@ public nonisolated struct NotebookSenseUpdate: Codable, Sendable {
         self.unlinkNodes = unlinkNodes
         self.meaning = meaning
         self.meaningLanguage = meaningLanguage
+        self.addMeaningVariants = addMeaningVariants
         self.note = note
         self.tags = tags
     }
@@ -60,7 +66,8 @@ extension NotebookSenseUpdate {
         "exampleEdits": .array(.object(NotebookCaptureContract.exampleEdit), 100),
         "removeExamples": .array(.uuid, 100),
         "linkNodes": .array(.object(.init(fields: ["nodeID": .uuid, "conditions": .text(8_192)], required: ["nodeID"])), 64),
-        "unlinkNodes": .array(.uuid, 64)
+        "unlinkNodes": .array(.uuid, 64),
+        "addMeaningVariants": NotebookCaptureContract.meaningVariants
     ]
     public static var shape: NotebookToolShape.Shape {
         var fields: [String: NotebookToolShape.Field] = [

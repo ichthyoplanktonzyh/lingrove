@@ -14,6 +14,25 @@ public nonisolated enum NotebookCaptureFields {
         guard let language = LearningLanguage(rawValue: value) else { throw NotebookToolError.invalid("Unknown language code.") }
         return language
     }
+
+    /// The reader picks one definition per language. Use that same view of saved variants when
+    /// checking conflicts so an additive write cannot silently hide or replace learner wording.
+    static func addMeaningVariants(_ variants: [VocabularyMeaning], to sense: inout VocabularySense) throws {
+        var visible = VocabularyContentPolicy.languageVariants(
+            text: sense.meaning, language: sense.meaningLanguage, variants: sense.standaloneMeanings)
+        for variant in variants {
+            _ = try text(variant.text, limit: 32_000, nonempty: true)
+            if let existing = visible.first(where: { $0.language == variant.language }) {
+                guard existing == variant else {
+                    throw NotebookToolError(code: .conflict, message: "A core meaning already exists in this language.")
+                }
+                continue
+            }
+            sense.standaloneMeanings.append(variant)
+            visible.append(variant)
+        }
+    }
+
     public static func tags(_ values: [String]) throws -> [String] {
         guard values.count <= 100 else { throw NotebookToolError.invalid("At most 100 tags are allowed.") }
         var result: [String] = []

@@ -87,9 +87,13 @@ public nonisolated struct NotebookSenseProjection {
                 "conditions": .string(mapping.conditions), "status": .string(mapping.provenance.status.rawValue),
                 "pattern": pattern])
         }
-        return .object(["id": .string(sense.id.uuidString), "entry": .object(header(entry)),
+        var value: [String: NotebookToolJSON] = ["id": .string(sense.id.uuidString), "entry": .object(header(entry)),
             "meaning": .string(sense.meaning), "meaningLanguage": sense.meaningLanguage.map { .string($0.rawValue) } ?? .null,
             "explanation": .array(content), "note": .string(sense.note), "tags": .array(sense.tags.map(NotebookToolJSON.string)),
-            "examples": .array(evidence), "semanticLinks": .array(semanticLinks)])
+            "examples": .array(evidence), "semanticLinks": .array(semanticLinks)]
+        let variants = VocabularyContentPolicy.languageVariants(
+            text: sense.meaning, language: sense.meaningLanguage, variants: sense.standaloneMeanings)
+        if variants.count > 1 { value["meaningVariants"] = try .value(variants) }
+        return .object(value)
     }
 }

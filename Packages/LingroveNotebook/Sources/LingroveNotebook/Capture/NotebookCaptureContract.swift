@@ -20,6 +20,9 @@ public nonisolated enum NotebookCaptureContract {
         "ranges": .array(.object(Shape(fields: ["location": .integer, "length": .integer], required: ["location", "length"])), 64)], required: ["text"])
     private static let association = Shape(fields: ["meaning": .text(200),
         "conditions": .text(8_192), "status": status], required: ["meaning"])
+    static let meaningVariants: NotebookToolShape.Field = .array(.object(.init(fields: ["text": .text(32_000),
+        "language": .enumeration(LearningLanguage.allCases.map(\.rawValue))], required: ["text", "language"])),
+        LearningLanguage.allCases.count)
     public static var exampleEdit: Shape {
         var fields = example.fields
         fields.removeValue(forKey: "sourceID")
@@ -28,7 +31,7 @@ public nonisolated enum NotebookCaptureContract {
     }
     private static let sense = Shape(fields: ["id": .uuid, "meaning": .text(32_000), "meaningLanguage": .text(100),
         "explanation": .text(262_144), "note": .text(262_144), "tags": .array(.text(200), 100), "examples": .array(.object(example), 100),
-        "associations": .array(.object(association), 64)])
+        "associations": .array(.object(association), 64), "addMeaningVariants": meaningVariants])
     private static let entry = Shape(fields: ["expression": .text(32_000), "language": .text(100),
         "kind": .enumeration(["word", "expression", "pattern", "sentence"]), "dictionaryForm": .text(32_000),
         "senses": .array(.object(sense), 100)], required: ["expression", "senses"])

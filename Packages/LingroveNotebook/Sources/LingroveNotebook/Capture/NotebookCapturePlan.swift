@@ -135,7 +135,7 @@ public nonisolated struct NotebookCapturePlan {
         let senseID: UUID
         if let existing = input.id {
             guard input.meaning == nil, input.meaningLanguage == nil, input.note == nil, input.explanation == nil else {
-                throw NotebookToolError.invalid("Existing senses accept examples, tags and associations; use update for replacements.")
+                throw NotebookToolError.invalid("Capture cannot replace an existing sense's core meaning, language, note or explanation.")
             }
             guard document.catalog[entry].senses.contains(where: { $0.id == existing }) else {
                 throw NotebookToolError(code: .notFound, message: "Referenced sense does not belong to the selected entry.")
@@ -153,6 +153,9 @@ public nonisolated struct NotebookCapturePlan {
             throw VocabularyError.invalidArchive
         }
         if let note = input.note { document.catalog[entry].senses[sense].note = note }
+        if let variants = input.addMeaningVariants {
+            try NotebookCaptureFields.addMeaningVariants(variants, to: &document.catalog[entry].senses[sense])
+        }
         if let explanation = input.explanation {
             let text = try NotebookCaptureFields.text(explanation, limit: 262_144, nonempty: true)
             document.catalog[entry].senses[sense].content = [

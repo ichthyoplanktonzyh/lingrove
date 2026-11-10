@@ -37,7 +37,7 @@ public nonisolated enum NotebookSenseWriting {
             throw NotebookToolError(code: .conflict, message: "Notebook revision changed. Read the entry again.")
         }
         guard update.meaning != nil || update.meaningLanguage != nil || update.explanation != nil ||
-            update.note != nil || update.tags != nil ||
+            update.note != nil || update.tags != nil || !(update.addMeaningVariants ?? []).isEmpty ||
             !(update.contentEdits ?? []).isEmpty || !(update.exampleEdits ?? []).isEmpty || !(update.removeExamples ?? []).isEmpty ||
             !(update.linkNodes ?? []).isEmpty || !(update.unlinkNodes ?? []).isEmpty else {
             throw NotebookToolError.invalid("An update needs at least one field.")
@@ -50,6 +50,7 @@ public nonisolated enum NotebookSenseWriting {
             sense.meaningLanguage = try NotebookCaptureFields.language(code)
             sense.meaningOrigin = .user
         }
+        if let variants = update.addMeaningVariants { try NotebookCaptureFields.addMeaningVariants(variants, to: &sense) }
         guard update.explanation == nil || update.contentEdits == nil else {
             throw NotebookToolError.invalid("Choose a plain explanation replacement or contentEdits, not both.")
         }

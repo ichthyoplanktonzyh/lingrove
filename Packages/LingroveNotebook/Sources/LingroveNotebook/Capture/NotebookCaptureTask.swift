@@ -39,11 +39,12 @@ public nonisolated struct NotebookCaptureTask: Codable, Sendable {
         var dictionaryForm: String?
         public var senses: [Sense]
     }
-    /// A new definition or an exact existing sense receives additive examples and associations.
+    /// A new or existing sense can collect localized definitions, examples and associations.
     public struct Sense: Codable, Sendable {
         var id: UUID?
         var meaning: String?
         var meaningLanguage: String?
+        var addMeaningVariants: [VocabularyMeaning]?
         /// The current sense explanation is stored as rich content, independently of examples.
         var explanation: String?
         var note: String?
