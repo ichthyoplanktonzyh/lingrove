@@ -1,10 +1,10 @@
-Lingrove（拾语）v0.9.0（build 7）
+Lingrove（拾语）v0.9.1（build 8）
 安装与快速体验
 本说明在 DMG 根目录中的文件名为 INSTALL.txt。
 
 适用范围
 
-此说明适用于 Lingrove v0.9.0。当前采用手动更新，包内应用使用 ad-hoc
+此说明适用于 Lingrove v0.9.1。当前采用手动更新，包内应用使用 ad-hoc
 （临时）签名，尚未使用 Apple Developer ID 签名或公证。构建来源和架构以安装包旁的
 build-info.json 为准。请从下面的官方 Releases 页面下载 DMG，无需使用终端。
 本说明已附在 DMG 内：
@@ -24,7 +24,7 @@ LearningExpressions-NOTICE.md，以及 ThirdPartyLicenses/ 第三方许可资料
 
 一、安装并启动
 
-1. 从上面的官方发布页面下载 Lingrove-0.9.0-universal.dmg。
+1. 从上面的官方发布页面下载 Lingrove-0.9.1-universal.dmg。
 2. 双击打开 DMG，将 Lingrove.app 拖到 Applications（应用程序）快捷方式。
 3. 安装完成后，在 Finder 侧边栏中推出 Lingrove 磁盘映像。
 4. 从“应用程序”文件夹启动 Lingrove。不要直接从已挂载的 DMG 运行它。
@@ -124,8 +124,8 @@ Lingrove 内置复习后，才会产生相应卡片；可编辑笔记、笔记�
 
 六、更新版本与反馈
 
-0.9.0 使用 SQLite schema 41 和语料同步 v9。旧版正式应用的语料库不会自动迁移，旧
-数据库会保留。已有旧语料的用户请保留旧应用和数据备份。账号同步要求服务端也支持 v9。
+0.9.1 使用 SQLite schema 41 和语料同步 v9。从 0.9.0 更新时数据库版本保持不变。
+使用更早数据库格式的用户请保留旧应用和数据备份。账号同步要求服务端也支持 v9。
 Lingrove 和 Lingrove Dev 使用各自的数据目录。
 
 新版本不会自动安装。更新时先退出 Lingrove，再将新 DMG 中的 Lingrove.app 拖入“应用
