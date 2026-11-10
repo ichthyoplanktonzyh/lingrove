@@ -1082,8 +1082,8 @@ native backup/restore remains independent.
 `VocabularySenseEditingPolicy` owns the shared deterministic merge rule: keep the target's authored
 content, move source examples, preserve lifecycle aliases/receipts, and remove the source sense.
 `VocabularySemanticPolicy` drops source-specific associations without deleting shared nodes.
-`VocabularySenseMergeInteraction` adds scoped, revision-bound native drag/drop to existing rows;
-the notebook also exposes the same action through row menus. The store retains one in-memory undo
+The notebook invokes scoped, revision-bound consolidation only through its row context menus;
+list selection has no drag/drop modifier. The store retains one in-memory undo
 receipt, including removed image bytes. The archive restores it only while its exact post-merge
 revision and account still match, so undo cannot overwrite intervening writes.
 

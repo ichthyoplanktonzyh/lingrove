@@ -17,7 +17,8 @@ struct VocabularyFavoriteIcon: View {
 }
 
 /// The card supplies one immutable capture. A successful disk transaction changes the fish to
-/// blue; pending/failed writes never masquerade as saved. Reopening the library is explicit.
+/// blue; pending/failed writes never masquerade as saved. Once saved, the menu only opens
+/// the library. Sense/example deletion belongs to the explicit notebook detail editor.
 struct VocabularyFavoriteButton: View {
     @ObservedObject var store: VocabularyStore
     let capture: VocabularyCapture
@@ -64,12 +65,6 @@ struct VocabularyFavoriteButton: View {
                 Button(String(localized: "Show in vocabulary", table: "Vocabulary")) {
                     menu.wrappedValue = false
                     store.show(capture)
-                }
-                if capture.example != nil {
-                    Button(String(localized: "Remove this saved usage", table: "Vocabulary")) {
-                        menu.wrappedValue = false
-                        Task { [scope = store.operationScope] in await store.remove(capture, scope: scope); failure = store.errorMessage }
-                    }
                 }
             }.buttonStyle(.plain).padding(14)
         }

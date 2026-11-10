@@ -186,8 +186,8 @@ does not establish that subsequently edited records still have those values.
 
 ## Explicit sense consolidation and external material
 
-The app does not call a model to classify or merge senses during collection. Users may drag one
-sense onto another within the same expression; agents make the equivalent explicit choice through
+The app does not call a model to classify or merge senses during collection. Users choose a source and target
+through the sense context menu within one expression; agents make the equivalent explicit choice through
 `vocab apply` / MCP apply using a version 2 `merge` action. Read both senses, then specify `entryID`,
 `sourceSenseID`, `targetSenseID`, and the original notebook scope/revision. The target keeps its
 definition, explanation, personal notes, tags and semantic links; source examples move to it.

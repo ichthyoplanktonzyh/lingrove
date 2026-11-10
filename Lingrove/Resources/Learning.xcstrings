@@ -1,6 +1,29 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Use the fish-tail menu to view the saved sense in Vocabulary." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the fish-tail menu to view the saved sense in Vocabulary."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过收藏菜单，在语料库中查看已保存的义项。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "透過收藏選單，在語料庫中查看已儲存的義項。"
+          }
+        }
+      }
+    },
     "Your existing endpoints will receive requests for enabled features." : {
       "localizations" : {
         "ar" : {

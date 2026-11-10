@@ -93,11 +93,11 @@ Saving language material to the personal corpus. A saved expression and its sens
 browsed and edited immediately. An accepted interpretation attached to a sense is a use
 example. Removing one example leaves its sense available for editing.
 
-**Usage / 用例**:
-An expression occurrence in a specific sentence or fragment, interpreted under one sense. It
-retains its source, exact text spans and translations. An optional contextual annotation adds only
-information not already supplied by the sense explanation or sentence translation.
-_Avoid_: treating a different translation of the same occurrence as a different meaning.
+**Example / 例句**:
+A sentence or fragment supporting one sense, with its original wording, highlighted expression,
+translation and source. It is content within the sense, not a separate collection unit.
+_Avoid_: exposing “usage / 用例” as an independent user-managed concept; treating another translation
+of the same example as a different meaning.
 
 **Contextual lookup / 语境查读**:
 During acquisition, the interpretation of the chosen expression given the available sentence or fragment. It may

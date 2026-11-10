@@ -256,3 +256,24 @@ merge. That test (both argument cases) and the existing selection-persistence te
 isolated native host; build-for-testing also passed. The before/after probe used synthetic rows and
 no user corpus. This fixes an input-dispatch regression, rather than changing dictionary or model
 execution. The matching Dev Release is installed at the same path after signature/content checks.
+
+
+### Menu-only consolidation and saved-capture actions, 2026-11-10
+
+The user chose to remove drag-to-merge after trying its interaction. Sidebar rows now use native
+List selection without drag/drop modifiers, and the existing context-menu merge keeps its explicit
+target, account/revision checks and undo receipt. CLI/MCP merge behavior is unchanged.
+
+Saved favorite menus offer only Show in vocabulary. The old Remove this saved usage command was
+removed from that surface; deletion is performed in the sense detail (delete sense, or edit/delete
+an example and save). Examples remain supporting sense content, not independently managed capture
+units. The glossary, list/export labels and walkthrough use Example / 例句 consistently.
+
+This is a source-only checkpoint at the user's request. Do not replace the running Dev, bundled
+CLI or private MCP runtime until the user requests deployment. No live corpus changes are needed.
+
+Build-for-testing and 9 focused native tests passed for this checkpoint. Coverage includes actual
+mouse clicks on the production notebook list, selection persistence, merge/undo and revision
+conflicts, detail-editor example deletion across reopen, and the saved-favorite walkthrough's
+read-only navigation. No Dev/CLI/MCP deployment or live-data mutation was performed. Test DerivedData
+and the disposable host were removed after validation.

@@ -38,7 +38,6 @@ struct VocabularyNotebookView: View {
     @State private var exporting: VocabularyExportRequest?
     @State private var reviewError: String?
     @State private var creatingEntry = false
-    @State private var draggingSense: VocabularySenseDrag?
     @State private var meaningDestination: VocabularyMeaningDestination?
     @State private var creatingMeaning = false
 
@@ -624,8 +623,7 @@ struct VocabularyNotebookView: View {
             Menu(String(localized: "Merge into…", table: "Vocabulary")) {
                 ForEach(entry.senses.filter { $0.id != target.senseID }) { sense in
                     Button(sense.displayTitle) {
-                        mergeSense(dragValue(entryID: entry.id, senseID: target.senseID),
-                            into: dragValue(entryID: entry.id, senseID: sense.id))
+                        mergeSense(target, into: sense.id)
                     }
                 }
             }
@@ -638,17 +636,17 @@ struct VocabularyNotebookView: View {
         }
     }
 
-    private func dragValue(entryID: UUID, senseID: UUID) -> VocabularySenseDrag {
-        .init(entryID: entryID, senseID: senseID, scopeIdentity: store.scopeIdentity,
-            revision: store.currentRevision)
-    }
-
-    private func mergeSense(_ source: VocabularySenseDrag, into target: VocabularySenseDrag) {
-        guard source.canMerge(into: target), source.scopeIdentity == store.scopeIdentity else { return }
-        let scope = store.operationScope
+    /// Only the explicit row menu selects a merge destination. Capture scope and revision at
+    /// the click so a delayed command cannot follow an account switch or overwrite newer edits.
+    private func mergeSense(_ source: VocabularySelection, into target: UUID) {
+        guard source.senseID != target,
+              let entry = store.entries.first(where: { $0.id == source.entryID }),
+              entry.senses.contains(where: { $0.id == source.senseID }),
+              entry.senses.contains(where: { $0.id == target }) else { return }
+        let scope = store.operationScope, revision = store.currentRevision
         Task {
-            if await store.mergeSenses(entryID: target.entryID, source: source.senseID, target: target.senseID,
-                scope: scope, expectedRevision: source.revision) { showSense(target.senseID) }
+            if await store.mergeSenses(entryID: source.entryID, source: source.senseID, target: target,
+                scope: scope, expectedRevision: revision) { showSense(target) }
         }
     }
 
@@ -700,9 +698,6 @@ struct VocabularyNotebookView: View {
                                 }
                                 .padding(.vertical, 3)
                                 .tag(sense.id)
-                                .modifier(VocabularySenseMergeInteraction(target: dragValue(entryID: entry.id, senseID: sense.id),
-                                    dragging: $draggingSense, onSelect: { showSense(sense.id) },
-                                    onMerge: { mergeSense($0, into: $1) }))
                                 .contextMenu { senseContextMenu(.init(entryID: entry.id, senseID: sense.id)) }
                             }
                         } label: {
@@ -2066,7 +2061,7 @@ struct VocabularySenseSummary: View {
                     .font(textSize.font(14, weight: .medium))
                     .lineLimit(2)
                 Spacer(minLength: 4)
-                Text(String(localized: "\(sense.examples.count) usages", table: "Vocabulary"))
+                Text(String(localized: "\(sense.examples.count) examples", table: "Vocabulary"))
                     .font(textSize.font(11))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)

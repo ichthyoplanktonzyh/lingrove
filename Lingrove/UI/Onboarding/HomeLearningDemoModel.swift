@@ -94,7 +94,7 @@ enum HomeLearningDemoAction: String {
         case .expand, .collapse: String(localized: "Expand the card to compare the original and translation.", table: "Learning")
         case .explain: String(localized: "Use AI to explain the current sentence or expression.", table: "Learning")
         case .favorite: String(localized: "Save the current sentence or expression with its context.", table: "Learning")
-        case .favoriteMenu: String(localized: "Use the fish-tail menu to view or remove this saved usage.", table: "Learning")
+        case .favoriteMenu: String(localized: "Use the fish-tail menu to view the saved sense in Vocabulary.", table: "Learning")
         case .speak: String(localized: "Click the speaker to start reading; click it again to stop.", table: "Learning")
         case .replace: String(localized: "Replace only the preview's saved source range.", table: "Learning")
         case .dismiss: String(localized: "Close the preview without changing the text.", table: "Learning")

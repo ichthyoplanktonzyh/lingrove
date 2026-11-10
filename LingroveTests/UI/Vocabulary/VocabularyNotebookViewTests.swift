@@ -8,12 +8,22 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularyNotebookViewTests {
-    @Test(arguments: [false, true])
-    func mouseClicksSelectRowsWithOrWithoutSenseDragging(_ draggingEnabled: Bool) async throws {
-        let model = ClickSelectionProbe()
+    @Test func mouseClicksSelectNotebookRowsAcrossTextAndTrailingSpace() async throws {
+        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+        let suite = "VocabularyClickTests." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for word in ["alpha", "beta", "gamma"] {
+            await store.save(.init(expression: word, dictionaryForm: word, language: .english, kind: .word,
+                meaning: "Definition of " + word))
+        }
+        let ordered = store.entries.sorted { $0.updatedAt > $1.updatedAt }
+        let learning = VocabularyNotebookSession(provider: LearningLexiconService(resourceURL: nil))
+        let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let previousApp = NSWorkspace.shared.frontmostApplication
-        let host = NSHostingView(rootView: ClickSelectionRows(model: model, draggingEnabled: draggingEnabled))
-        let window = NSWindow(contentRect: .init(x: 100, y: 100, width: 400, height: 320),
+        let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech,
+            selectedID: ordered[0].id, learning: learning, preferences: defaults))
+        let window = NSWindow(contentRect: .init(x: 100, y: 100, width: 940, height: 640),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host
         window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
@@ -21,8 +31,9 @@ struct VocabularyNotebookViewTests {
         try await Task.sleep(for: .milliseconds(350))
         host.layoutSubtreeIfNeeded()
         let table = try #require(tableView(in: host))
-        // Deliver actual mouse down/up events through AppKit. Calling selectRowIndexes would
-        // bypass the drag recognizer and miss the click-swallowing regression entirely.
+        #expect(table.numberOfRows == ordered.count)
+        // Real events protect ordinary List selection; direct selectRowIndexes would bypass
+        // gesture interception and could pass even when the user cannot select these rows.
         for (row, rightSide) in [(1, false), (2, true), (0, false), (1, true)] {
             let rect = table.rect(ofRow: row)
             let point = table.convert(.init(x: rightSide ? rect.maxX - 30 : rect.minX + 30, y: rect.midY), to: nil)
@@ -31,7 +42,6 @@ struct VocabularyNotebookViewTests {
                 timestamp: stamp, windowNumber: number, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
             NSApp.postEvent(down, atStart: false)
             let release = Timer(timeInterval: 0.03, repeats: false) { _ in
-                // The timer is installed only on the main run loop, including event tracking.
                 MainActor.assumeIsolated {
                     if let up = NSEvent.mouseEvent(with: .leftMouseUp, location: point, modifierFlags: [],
                         timestamp: stamp + 0.03, windowNumber: number, context: nil, eventNumber: 1, clickCount: 1, pressure: 0) {
@@ -43,11 +53,11 @@ struct VocabularyNotebookViewTests {
             for _ in 0..<50 {
                 try await Task.sleep(for: .milliseconds(20))
                 host.layoutSubtreeIfNeeded()
-                if model.selection == row && table.selectedRow == row { break }
+                if learning.entryID == ordered[row].id && table.selectedRow == row { break }
             }
-            #expect(model.selection == row && table.selectedRow == row)
+            #expect(learning.entryID == ordered[row].id && table.selectedRow == row)
         }
-        #expect(model.mergeCount == 0, "Ordinary clicks select but never merge senses")
+        await store.shutdown()
     }
 
     @Test func ordinaryLibraryCommandInstallsAndRetainsTheHostedRoot() throws {
@@ -195,40 +205,5 @@ struct VocabularyNotebookViewTests {
             editor.cacheDisplay(in: editor.bounds, to: bitmap)
             try bitmap.representation(using: .png, properties: [:])?.write(to: output.appendingPathComponent("content-editor.png"))
         }
-    }
-}
-
-
-/// A private UI-only fixture shares the production drag modifier. It has no store, database,
-/// dictionary or runtime; its selection is the observable result of real AppKit mouse dispatch.
-@MainActor
-private final class ClickSelectionProbe: ObservableObject {
-    @Published var selection: Int? = 0
-    @Published var dragging: VocabularySenseDrag?
-    let entryID = UUID(), scopeIdentity = UUID()
-    let senseIDs = (0..<3).map { _ in UUID() }
-    var mergeCount = 0
-}
-
-private struct ClickSelectionRows: View {
-    @ObservedObject var model: ClickSelectionProbe
-    let draggingEnabled: Bool
-
-    var body: some View {
-        List(selection: $model.selection) {
-            ForEach(0..<3) { row in
-                if draggingEnabled {
-                    label(row).tag(row)
-                        .modifier(VocabularySenseMergeInteraction(target: .init(entryID: model.entryID,
-                            senseID: model.senseIDs[row], scopeIdentity: model.scopeIdentity, revision: 0),
-                            dragging: $model.dragging, onSelect: { model.selection = row },
-                            onMerge: { _, _ in model.mergeCount += 1 }))
-                } else { label(row).tag(row) }
-            }
-        }
-    }
-
-    private func label(_ row: Int) -> some View {
-        Text("Sense \(row)").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
     }
 }

@@ -60,7 +60,7 @@ struct VocabularySenseMergeTests {
         await store.shutdown()
     }
 
-    @Test func staleUndoAndDragCannotOverwriteAnInterveningWrite() async throws {
+    @Test func staleUndoAndMergeCannotOverwriteAnInterveningWrite() async throws {
         let archive = VocabularyArchive(url: nil)
         _ = try await archive.save(capture("The bank opens early.", meaning: "银行"))
         let before = try await archive.save(capture("I visited the bank.", meaning: "金融机构"))
@@ -111,12 +111,26 @@ struct VocabularySenseMergeTests {
         #expect(Set(entry.senses[0].examples.map(\.sourceID)).count == 2)
     }
 
-    @Test func dragRejectsOtherHeadwordsScopesRevisionsAndSelf() {
-        let value = VocabularySenseDrag(entryID: UUID(), senseID: UUID(), scopeIdentity: UUID(), revision: 4)
-        #expect(!value.canMerge(into: value))
-        #expect(value.canMerge(into: .init(entryID: value.entryID, senseID: UUID(), scopeIdentity: value.scopeIdentity, revision: 4)))
-        #expect(!value.canMerge(into: .init(entryID: UUID(), senseID: UUID(), scopeIdentity: value.scopeIdentity, revision: 4)))
-        #expect(!value.canMerge(into: .init(entryID: value.entryID, senseID: UUID(), scopeIdentity: UUID(), revision: 4)))
-        #expect(!value.canMerge(into: .init(entryID: value.entryID, senseID: UUID(), scopeIdentity: value.scopeIdentity, revision: 5)))
+    @Test func detailEditingRemovesOnlyTheChosenExampleAndPersists() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("notebook.sqlite")
+        let store = VocabularyStore(archive: VocabularyArchive(url: url))
+        await store.save(capture("The bank opens early.", meaning: "银行"))
+        await store.save(capture("I visited the bank.", meaning: "金融机构"))
+        let collected = try #require(store.entries.first)
+        #expect(await store.mergeSenses(entryID: collected.id, source: collected.senses[1].id, target: collected.senses[0].id))
+        let before = try #require(store.entries.first)
+        var edited = before
+        let removedID = try #require(edited.senses[0].examples.first?.id)
+        edited.senses[0].examples.removeAll { $0.id == removedID }
+        #expect(await store.update(edited, basedOn: before))
+        let saved = try #require(store.entries.first)
+        #expect(saved.senses[0].id == before.senses[0].id && saved.senses[0].meaning == before.senses[0].meaning)
+        #expect(saved.senses[0].examples == before.senses[0].examples.filter { $0.id != removedID })
+        await store.shutdown()
+        let reopened = VocabularyArchive(url: url)
+        #expect(try await reopened.load().document.entries == [saved])
+        await reopened.shutdown()
     }
 }

@@ -29,7 +29,7 @@ struct VocabularyExportSheet: View {
                         HStack {
                             count(String(localized: "Expressions", table: "Vocabulary"), package.entryCount)
                             Spacer(); count(String(localized: "Senses", table: "Vocabulary"), package.senseCount)
-                            Spacer(); count(String(localized: "Usages", table: "Vocabulary"), package.exampleCount)
+                            Spacer(); count(String(localized: "Example sentences", table: "Vocabulary"), package.exampleCount)
                         }.font(.caption).foregroundStyle(.secondary)
                     }
                 }

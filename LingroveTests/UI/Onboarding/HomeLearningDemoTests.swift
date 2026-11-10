@@ -101,8 +101,9 @@ struct HomeLearningDemoTests {
         try await wait { model.favoriteMenuPresented }
         let capture = model.currentCapture
         #expect(model.store.contains(capture))
-        await model.store.remove(capture)
-        #expect(!model.store.contains(capture))
+        let before = model.store.entries
+        model.store.show(capture)
+        #expect(model.store.entries == before && model.store.contains(capture))
         model.select(.speech)
         #expect(!model.favoriteMenuPresented)
         #expect(!model.isPlaying)
