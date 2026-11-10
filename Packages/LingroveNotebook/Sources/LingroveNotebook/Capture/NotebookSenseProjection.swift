@@ -93,7 +93,11 @@ public nonisolated struct NotebookSenseProjection {
             "examples": .array(evidence), "semanticLinks": .array(semanticLinks)]
         let variants = VocabularyContentPolicy.languageVariants(
             text: sense.meaning, language: sense.meaningLanguage, variants: sense.standaloneMeanings)
-        if variants.count > 1 { value["meaningVariants"] = try .value(variants) }
+        // A manually authored sense may have no primary definition. Its first added
+        // language still needs to be visible to readers and change previews.
+        if variants.count > 1 || (!variants.isEmpty && sense.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+            value["meaningVariants"] = try .value(variants)
+        }
         return .object(value)
     }
 }

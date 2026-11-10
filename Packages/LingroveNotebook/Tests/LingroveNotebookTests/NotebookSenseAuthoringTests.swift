@@ -66,6 +66,22 @@ struct NotebookSenseAuthoringTests {
         #expect(document.interpretations[0].provenance.source == "Corrected quotation")
     }
 
+    @Test func firstLocalizedDefinitionIsReadableWithoutAPrimaryDefinition() throws {
+        var document = try capture(material(["meaning": "financial institution"]))
+        let senseID = document.catalog[0].senses[0].id
+        for primary in ["", "  \n"] {
+            document.catalog[0].senses[0].meaning = primary
+            document.catalog[0].senses[0].meaningLanguage = nil
+            let saved = try capture(material(["id": senseID.uuidString,
+                "addMeaningVariants": [["text": "金融機関", "language": "ja"]]]), into: document)
+            #expect(saved.catalog[0].senses[0].meaning == primary)
+            guard case .object(let value) = try NotebookSenseProjection(saved).sense(senseID) else {
+                Issue.record("Missing sense projection"); return
+            }
+            #expect(value["meaningVariants"] == (try .value([VocabularyMeaning(text: "金融機関", language: .japanese)])))
+        }
+    }
+
     @Test func ordinaryContractsRejectDuplicateExplanationFields() throws {
         #expect(throws: (any Error).self) {
             try capture(["defaults": ["language": "en"], "meanings": [["ref": "bank", "title": "Banking"]],
