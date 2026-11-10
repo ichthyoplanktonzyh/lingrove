@@ -6,6 +6,15 @@ import Testing
 /// These checks protect the transport boundary independently of notebook validation: an old
 /// client or a delayed request for another lease must never reach the archive's write handler.
 struct CLIServiceIdentityTests {
+    @Test func compactReceiptRequiresAdvertisedSupport() throws {
+        let appURL = URL(fileURLWithPath: "/Synthetic.app")
+        var identity = CLIServiceIdentity(appURL: appURL)
+        try identity.validate(appURL: appURL, compactReceipt: true)
+        identity.capabilities.removeAll { $0 == CLIServiceIdentity.compactReceiptCapability }
+        try identity.validate(appURL: appURL)
+        #expect(throws: CLIError.self) { try identity.validate(appURL: appURL, compactReceipt: true) }
+    }
+
     @Test func requiresCurrentProtocolPathAndLease() throws {
         let identity = CLIServiceIdentity(appURL: URL(fileURLWithPath: "/Synthetic.app"))
         var request = CLIRequest(command: .apply)

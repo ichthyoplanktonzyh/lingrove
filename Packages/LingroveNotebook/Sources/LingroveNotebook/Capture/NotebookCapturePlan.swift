@@ -8,7 +8,9 @@ public nonisolated struct NotebookCapturePlan {
     public private(set) var document: VocabularyDocument
     public private(set) var entries: [NotebookToolJSON] = []
     public private(set) var meanings: [NotebookToolJSON] = []
+    public private(set) var addsOnlyNewEntries = true
     private var nodes: [String: UUID] = [:]
+    private var entryPositions: [String: Int]
     private let defaults: NotebookCaptureTask.Defaults
     private let now: Date
     private let id: (String) -> UUID
@@ -27,6 +29,8 @@ public nonisolated struct NotebookCapturePlan {
     public init(_ capture: NotebookCaptureTask, document: VocabularyDocument, now: Date, id: @escaping (String) -> UUID) throws {
         try NotebookCaptureContract.validate(capture)
         self.document = document; self.now = now; self.id = id
+        entryPositions = Dictionary(document.catalog.enumerated().map { (VocabularyIdentityPolicy.entryKey($0.element), $0.offset) },
+            uniquingKeysWith: { first, _ in first })
         defaults = capture.defaults ?? .init()
         _ = try NotebookCaptureFields.language(defaults.language)
         _ = try NotebookCaptureFields.language(defaults.meaningLanguage)
@@ -85,8 +89,9 @@ public nonisolated struct NotebookCapturePlan {
         }
         var categories: [NotebookToolJSON] = []
         for (offset, reference) in (input.categories ?? []).enumerated() {
+            let categoryID = UUID(uuidString: reference)
             let matches = document.classification.categories.filter {
-                $0.id == UUID(uuidString: reference) || $0.key == reference
+                $0.id == categoryID || $0.key == reference
             }
             guard matches.count == 1, let category = matches.first, !category.isRetired else {
                 throw NotebookToolError.invalid("Category reference must name one active category UUID or catalog key.")
@@ -115,12 +120,16 @@ public nonisolated struct NotebookCapturePlan {
         }
         let dictionary = try NotebookCaptureFields.text(input.dictionaryForm ?? expression, limit: 32_000, nonempty: true)
         let key = VocabularyIdentityPolicy.entryKey(expression: expression, language: language, kind: kind)
-        let existing = document.catalog.firstIndex { VocabularyIdentityPolicy.entryKey($0) == key }
+        let existing = entryPositions[key]
         let entry: Int
-        if let existing { entry = existing } else {
+        if let existing {
+            entry = existing
+            addsOnlyNewEntries = false
+        } else {
             entry = document.catalog.count
             document.catalog.append(.init(id: id(path), expression: expression, dictionaryForm: dictionary,
                 language: language, kind: kind, senses: [], createdAt: now, updatedAt: now))
+            entryPositions[key] = entry
         }
         var outcomes: [NotebookToolJSON] = []
         for (index, sense) in input.senses.enumerated() {

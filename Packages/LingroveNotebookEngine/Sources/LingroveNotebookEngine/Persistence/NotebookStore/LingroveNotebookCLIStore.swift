@@ -90,7 +90,7 @@ extension LingroveNotebookEngine {
     /// PNG staging grants no ownership. Inside one existing writer transaction, replay is checked
     /// before CAS, then the shared corpus writer and acknowledgement either both commit or roll back.
     public func saveNotebookCLI(_ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
-        images: [String: Data], receipt: VocabularyCLIReceipt) throws -> LingroveNotebookCLICommit {
+        images: [String: Data], receipt: VocabularyCLIReceipt, addingNewCaptureEntries: Bool = false) throws -> LingroveNotebookCLICommit {
         let staged = try LingroveNotebookMediaStore(core: core).stageSuppliedImages(document: document, supplied: images)
         try Task.checkCancellation()
         return try core.inTransaction {
@@ -102,7 +102,8 @@ extension LingroveNotebookEngine {
                     receipt: previous, replayed: true)
             }
             let saved = try lingroveNotebookStore.saveInTransaction(document, basedOn: baseline, restoringBackup: false,
-                staged: staged, requireActiveWorkspace: true, operationId: UUID().uuidString.lowercased())
+                staged: staged, requireActiveWorkspace: true, operationId: UUID().uuidString.lowercased(),
+                addingNewCaptureEntries: addingNewCaptureEntries)
             try receipts.insertInTransaction(receipt, scope: saved)
             return .init(snapshot: saved, receipt: receipt, replayed: false)
         }

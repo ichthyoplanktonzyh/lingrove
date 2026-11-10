@@ -46,7 +46,8 @@ struct LingroveCLI {
                 throw CLIError(code: .unavailable, message: "CLI/app handshake unsupported. " +
                     "Update the app and install its bundled CLI; no material was sent.")
             }
-            try server.validate(appURL: appURL)
+            try server.validate(appURL: appURL, compactReceipt: arguments.request.compactReceipt == true,
+                selection: arguments.request.readSelection)
             var request = arguments.request; requestID = request.id
             request.serverInstanceID = server.instanceID
             request.targetAppPath = server.appPath

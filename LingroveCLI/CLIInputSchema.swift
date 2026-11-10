@@ -24,7 +24,8 @@ enum CLIInputSchema {
             alternatives.append(["type": "object", "additionalProperties": false, "required": ["remove"],
                 "properties": ["remove": CLIRemoveSense.shape.schema]])
             root["x-resources"] = CLIResourceContract.names
-            root["x-batchRead"] = ["maximumIDs": CLIReadSelection.maximumIDs, "selectors": ["entryIDs", "senseIDs"],
+            root["x-batchRead"] = ["maximumIDs": CLIReadSelection.maximumIDs,
+                "maximumSenseIDs": CLIReadSelection.maximumSenseIDs, "includeClassification": true, "selectors": ["entryIDs", "senseIDs"],
                 "ordered": true, "singleSnapshot": true, "missingIDPolicy": "fail"]
             root["x-readOnlyResources"] = ["frameworks"]
             alternatives += try CLIResourceContract.names.filter { $0 != "frameworks" }.map { name in

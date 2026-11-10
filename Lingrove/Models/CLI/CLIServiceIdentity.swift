@@ -7,6 +7,8 @@ import LingroveNotebook
 nonisolated struct CLIServiceIdentity: Codable, Equatable, Sendable {
     static let protocolVersion = 3
     static let clientVersion = 5
+    static let compactReceiptCapability = "compactCaptureReceipt"
+    static let extendedReadCapability = "extendedCaptureRead"
     static let capabilities = ["notebookScope", "captureCategories", "categorySummary", "categoryReceipts",
         "canonicalSenses", "senseImages", "senseEdits", "changePreview", "batchSenseReads"]
 
@@ -27,10 +29,10 @@ nonisolated struct CLIServiceIdentity: Codable, Equatable, Sendable {
         appVersion = bundle?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         appBuild = bundle?.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
         protocolVersion = Self.protocolVersion
-        capabilities = Self.capabilities
+        capabilities = Self.capabilities + [Self.compactReceiptCapability, Self.extendedReadCapability]
     }
 
-    func validate(appURL: URL) throws {
+    func validate(appURL: URL, compactReceipt: Bool = false, selection: CLIReadSelection? = nil) throws {
         guard appPath == appURL.resolvingSymlinksInPath().path else {
             throw CLIError(code: .unavailable, message: "CLI destination mismatch. Mailbox is served by " + appPath +
                 "; selected " + appURL.path + ". Use the serving app's bundled CLI or update the CLI installation.")
@@ -38,6 +40,14 @@ nonisolated struct CLIServiceIdentity: Codable, Equatable, Sendable {
         guard protocolVersion == Self.protocolVersion, Set(Self.capabilities).isSubset(of: Set(capabilities)) else {
             throw CLIError(code: .unavailable, message: "CLI/app capabilities differ. " +
                 "Update the app and install its bundled CLI; do not remove notebookScope.")
+        }
+        guard !compactReceipt || capabilities.contains(Self.compactReceiptCapability) else {
+            throw CLIError(code: .unavailable, message: "This app does not support --compact-receipt. No material was sent.")
+        }
+        if let selection, selection.includeClassification == true || selection.ids.count > CLIReadSelection.maximumIDs {
+            guard capabilities.contains(Self.extendedReadCapability) else {
+                throw CLIError(code: .unavailable, message: "Update the app to use larger sense reads or include classification.")
+            }
         }
     }
 

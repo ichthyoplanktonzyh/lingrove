@@ -9,6 +9,7 @@ nonisolated struct VocabularyCLIPlan {
     var document: VocabularyDocument
     var outcomes: [CLIJSON] = []
     var images: [String: Data] = [:]
+    private(set) var addsOnlyNewCaptureEntries = false
 
     static func fingerprint(_ batch: CLIBatch) throws -> String {
         let encoder = JSONEncoder()
@@ -38,6 +39,7 @@ nonisolated struct VocabularyCLIPlan {
             let context = OperationContext(index: index, batchKey: batch.idempotencyKey, fingerprint: fingerprint, now: now)
             try apply(change, context: context, revision: snapshot.revision, prepared: prepared)
         }
+        addsOnlyNewCaptureEntries = batch.operations.count == 1 && addsOnlyNewCaptureEntries
         document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
     }
 
@@ -95,6 +97,7 @@ nonisolated struct VocabularyCLIPlan {
         if let capture = change.capture {
             let plan = try VocabularyCLICapturePlan(capture, document: document, now: context.now, id: context.id)
             document = plan.document
+            addsOnlyNewCaptureEntries = plan.addsOnlyNewEntries
             outcomes.append(.object(["operation": .integer(Int64(context.index)), "action": .string("capture"),
                 "entries": .array(plan.entries), "meanings": .array(plan.meanings), "summary": plan.summary]))
             return

@@ -73,11 +73,12 @@ extension VocabularyArchive {
             entry.senses.removeAll { $0.id != id }
             try VocabularyCLIReadBudget.validate(entry)
             result = .object(["revision": .integer(Int64(snapshot.revision)),
-                "sense": try NotebookSenseProjection(snapshot.document).sense(id)])
+                "sense": try NotebookSenseProjection(snapshot.document).sense(id, in: entry)])
         case .readMany:
             guard let selection = request.readSelection else { throw CLIError.invalid("Batch read selection is missing.") }
-            let values = try VocabularyCLIBatchRead.read(selection, from: snapshot.document)
-            result = .object(["revision": .integer(Int64(snapshot.revision)), selection.kind.rawValue: .array(values)])
+            var material = try VocabularyCLIBatchRead.read(selection, from: snapshot.document)
+            material["revision"] = .integer(Int64(snapshot.revision))
+            result = .object(material)
         case .image:
             guard request.readScope != nil, let senseID = request.senseID, let digest = request.imageID,
                   let sense = snapshot.document.catalog.lazy.flatMap(\.senses).first(where: { $0.id == senseID }),
@@ -105,15 +106,17 @@ extension VocabularyArchive {
     private func applyCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
         guard let batch = request.batch else { throw CLIError.invalid("The apply command needs a batch.") }
         try CLIInputPolicy.validate(batch)
+        let compactReceipt = request.compactReceipt == true
+        guard !compactReceipt || (batch.operations.count == 1 && batch.operations.first?.capture != nil) else {
+            throw CLIError.invalid("A compact receipt requires a single capture task.")
+        }
         let snapshot = try load(), fingerprint = try VocabularyCLIPlan.fingerprint(batch)
         guard let scope = snapshot.scope else { throw VocabularyError.editConflict }
         if let receipt = try persistence().notebookCLIReceipt(key: batch.idempotencyKey, basedOn: scope) {
             guard receipt.fingerprint == fingerprint else {
                 throw CLIError(code: .conflict, message: "Idempotency key was already used for different content.")
             }
-            guard case var .object(result) = try JSONDecoder().decode(CLIJSON.self, from: receipt.result) else {
-                throw VocabularyError.invalidArchive
-            }
+            var result = try decodeCLIReceipt(receipt, compact: compactReceipt)
             result["replayed"] = .bool(true)
             result["currentRevision"] = .integer(Int64(snapshot.revision))
             return (try addingScope(to: .object(result), snapshot: snapshot), snapshot)
@@ -129,30 +132,45 @@ extension VocabularyArchive {
             throw CLIError.invalid(
                 "Invalid resource relationships or content. Check references, accepted claims and graph constraints.")
         }
-        let result = try previewCLI(plan, snapshot: snapshot, dryRun: request.dryRun)
+        let (result, encoded) = try cliWriteResult(plan, snapshot: snapshot, dryRun: request.dryRun, compactReceipt: compactReceipt)
         guard request.expiresAt > Date() else { throw CLIError(code: .timeout, message: "Request expired before commit.") }
-        if request.dryRun { return (try addingScope(to: result, snapshot: snapshot), snapshot) }
-        let receipt = VocabularyCLIReceipt(key: batch.idempotencyKey, fingerprint: fingerprint, result: try JSONEncoder().encode(result))
-        let committed = try commitCLI(plan.document, images: plan.images, receipt: receipt)
-        guard case var .object(acknowledgement) = try JSONDecoder().decode(CLIJSON.self, from: committed.receipt.result) else {
-            throw VocabularyError.invalidArchive
-        }
+        if request.dryRun { return (try addingScope(to: .object(result), snapshot: snapshot), snapshot) }
+        let receipt = VocabularyCLIReceipt(key: batch.idempotencyKey, fingerprint: fingerprint, result: encoded)
+        let committed = try commitCLI(plan.document, images: plan.images, receipt: receipt,
+            addingNewCaptureEntries: plan.addsOnlyNewCaptureEntries)
+        var acknowledgement = committed.replayed ? try decodeCLIReceipt(committed.receipt, compact: compactReceipt) : result
         acknowledgement["replayed"] = .bool(committed.replayed)
         let saved = VocabularyArchiveSnapshot(committed.snapshot)
         return (try addingScope(to: .object(acknowledgement), snapshot: saved), saved)
     }
 
-    /// Projection assumes a valid graph; callers validate before joining source/node references.
-    /// The same bounded value becomes either the dry run or durable acknowledgement, so a write
-    /// cannot succeed and then discover that its receipt is too large to return.
-    private func previewCLI(_ plan: VocabularyCLIPlan, snapshot: VocabularyArchiveSnapshot, dryRun: Bool) throws -> CLIJSON {
-        let changes = try NotebookChangePreview.make(before: snapshot.document, after: plan.document)
-        let result = CLIJSON.object(["revision": .integer(Int64(snapshot.revision) + (dryRun ? 0 : 1)),
-            "dryRun": .bool(dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes), "changes": changes])
-        guard try JSONEncoder().encode(result).count <= 16 * 1_024 * 1_024 else {
-            throw CLIError.invalid("Change preview exceeds 16 MiB. Split this material into smaller batches.")
+    private func decodeCLIReceipt(_ receipt: VocabularyCLIReceipt, compact: Bool) throws -> [String: CLIJSON] {
+        guard case let .object(result) = try JSONDecoder().decode(CLIJSON.self, from: receipt.result) else {
+            throw VocabularyError.invalidArchive
+        }
+        guard (result["receiptFormat"] == .string("compact")) == compact else {
+            throw CLIError(code: .conflict, message: "Retry this key with its original receipt option.")
         }
         return result
+    }
+
+    private func cliWriteResult(
+        _ plan: VocabularyCLIPlan, snapshot: VocabularyArchiveSnapshot, dryRun: Bool, compactReceipt: Bool
+    ) throws -> ([String: CLIJSON], Data) {
+        var result: [String: CLIJSON] = ["revision": .integer(Int64(snapshot.revision) + (dryRun ? 0 : 1)),
+            "dryRun": .bool(dryRun), "replayed": .bool(false), "operations": .array(plan.outcomes)]
+        // A compact commit preserves operation IDs for readback without building before/after projections.
+        if dryRun || !compactReceipt {
+            result["changes"] = try NotebookChangePreview.make(before: snapshot.document, after: plan.document)
+        } else {
+            result["receiptFormat"] = .string("compact")
+        }
+        let encoded = try JSONEncoder().encode(CLIJSON.object(result))
+        guard encoded.count <= 16 * 1_024 * 1_024 else {
+            let kind = result["changes"] == nil ? "Capture receipt" : "Change preview"
+            throw CLIError.invalid(kind + " exceeds 16 MiB. Split this material into smaller batches.")
+        }
+        return (result, encoded)
     }
 
     private func validateCLIScope(_ batch: CLIBatch, current scope: VocabularyOperationScope) throws {

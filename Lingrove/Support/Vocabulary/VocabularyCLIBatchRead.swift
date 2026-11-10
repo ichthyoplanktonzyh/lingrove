@@ -5,7 +5,7 @@ import LingroveNotebook
 /// Keeping selection and cumulative budgeting here prevents a CLI/MCP batch from becoming a
 /// loop of separate reads with mismatched revisions, or silently returning only the found IDs.
 nonisolated enum VocabularyCLIBatchRead {
-    static func read(_ selection: CLIReadSelection, from document: VocabularyDocument) throws -> [CLIJSON] {
+    static func read(_ selection: CLIReadSelection, from document: VocabularyDocument) throws -> [String: CLIJSON] {
         try selection.validate()
         let entries = document.entries
         let selected: [VocabularyEntry]
@@ -26,9 +26,28 @@ nonisolated enum VocabularyCLIBatchRead {
         }
         try VocabularyCLIReadBudget.validate(selected)
         let projection = NotebookSenseProjection(document)
-        switch selection.kind {
-        case .entries: return try selected.map { try projection.entry($0) }
-        case .senses: return try selection.ids.map { try projection.sense($0) }
+        let values = switch selection.kind {
+        case .entries: try selected.map { try projection.entry($0) }
+        case .senses: try zip(selection.ids, selected).map { id, entry in try projection.sense(id, in: entry) }
+        }
+        var result = [selection.kind.rawValue: CLIJSON.array(values)]
+        if selection.includeClassification == true {
+            let senses = Set(selected.lazy.flatMap(\.senses).map(\.id))
+            result["categoryMemberships"] = .array(memberships(in: document, senses: senses))
+        }
+        return result
+    }
+
+    private static func memberships(in document: VocabularyDocument, senses: Set<UUID>) -> [CLIJSON] {
+        let nodes = Set(document.semantics.mappings.lazy.filter { senses.contains($0.senseID) }.map(\.nodeID))
+        let keys = Dictionary(uniqueKeysWithValues: document.classification.categories.compactMap { category in
+            category.key.map { (category.id, $0) }
+        })
+        return document.classification.memberships.compactMap { membership -> CLIJSON? in
+            guard nodes.contains(membership.nodeID) else { return nil }
+            return .object(["id": .string(membership.id.uuidString), "nodeID": .string(membership.nodeID.uuidString),
+                "categoryID": .string(membership.categoryID.uuidString),
+                "key": keys[membership.categoryID].map(CLIJSON.string) ?? .null])
         }
     }
 

@@ -47,8 +47,9 @@ Canonical senses return plain text and image references in `explanation`, plus e
 links. Read saved images with `vocab image SENSE_UUID IMAGE_ID --scope JSON_FROM_READ`; MCP
 `notebook_image` returns native image content. Formatting is omitted from reads but preserved by
 `update.contentEdits`. Never reconstruct an entire rich body from its plain-text read.
-For several full details, use `vocab read --entry-ids ID,ID` or `--sense-ids ID,ID` (1–100 distinct
-IDs). MCP accepts the corresponding `entryIDs`/`senseIDs` arrays on `notebook_read`. Choose one
+For several full details, use `vocab read --entry-ids ID,ID` (up to 100) or `--sense-ids ID,ID`
+(up to 1,000). Add `--include-classification` to verify linked nodes' direct category memberships
+in the same snapshot. MCP accepts `entryIDs`/`senseIDs` arrays of up to 100 on `notebook_read`. Choose one
 selector, preserve order, and retain the shared returned revision/scope. Missing IDs fail the
 whole read; oversized results require smaller batches. Follow MCP `notebook_result_read` pages
 until complete. This also supports readback after a practice capture without changing its save flow.

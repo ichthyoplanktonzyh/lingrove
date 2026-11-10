@@ -74,14 +74,16 @@ generated explanations are omitted. Part IDs address edits; they do not imply mu
 returns PNG `dataBase64`. MCP `notebook_image` emits an actual image content block.
 `data get senses` is low-level metadata, not the complete sense reading interface.
 
-`vocab read` accepts exactly one of `--entry-ids` or `--sense-ids`, with 1–100 distinct,
-comma-separated UUIDs. Optional `--scope JSON` retains an earlier notebook identity. It returns
+`vocab read` accepts up to 100 entry IDs or 1,000 sense IDs as distinct, comma-separated UUIDs.
+Optional `--scope JSON` retains an earlier notebook identity. It returns
 `result.entries` or `result.senses` in input order, with a single `revision` and `notebookScope`
 for the entire snapshot. Each item uses the same complete projection as a single read. Missing
 IDs reject the whole request (`not_found`); duplicates, empty/mixed selections and excessive IDs
 are invalid input. The combined response is bounded; request fewer IDs if it is too large.
 This is one read-only request, with no revision increment or receipt write. The JSON schema
-publishes the selection contract in `x-batchRead`.
+publishes the selection contract in `x-batchRead`. Add `--include-classification` to return
+`result.categoryMemberships` from the same revision. It lists the direct memberships of the
+returned senses' linked nodes, with membership, node and category IDs and the category key.
 
 MCP uses `notebook_read` with exactly one of `entryID`, `senseID`, `entryIDs`, or `senseIDs`.
 Large MCP results retain their full JSON for `notebook_result_read` pagination. Images remain
@@ -124,6 +126,13 @@ Save this illustrative task as `capture.json`, replacing the idempotency key for
 lingrove vocab capture --file capture.json --dry-run
 lingrove vocab capture --file capture.json
 ```
+
+One capture supports up to 1,000 senses, 1,000 entries and meaning declarations, and 3,000 examples.
+The CLI request and response byte budgets still apply. For bulk capture, add
+`--compact-receipt` to the commit to keep its revision, operation counts
+and entry, sense, example, node and membership IDs without the before/after snapshots.
+`--dry-run` still returns full changes. Retry the same committed request with its original
+receipt option and read the returned sense IDs with `vocab read` to verify saved content.
 
 Capture reuses an exact expression/language/kind header. Every sense without an `id` is new;
 meaning similarity does not merge senses. Supply a sense's exact `id` to extend it. An existing

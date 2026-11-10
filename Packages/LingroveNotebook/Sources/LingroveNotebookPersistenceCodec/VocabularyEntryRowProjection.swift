@@ -24,6 +24,10 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         .init(rows: Array(keyed.values), reviewTemplatesPresent: reviewTemplatesPresent)
     }
 
+    public func canAppend(_ rows: [VocabularyPersistenceRow]) -> Bool {
+        rows.allSatisfy { keyed[$0.key] == nil }
+    }
+
     public func applying(_ change: VocabularyEntrySaveChange) throws -> VocabularyEntryRowChange {
         var next = self, delta = Delta()
         let document = change.document, previous = change.previous
@@ -58,9 +62,9 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
                 try next.replaceGroup(key, records: records, delta: &delta)
             } else { try next.reposition(key, position: position, delta: &delta) }
         }
-        let recordsBySense = VocabularySenseStorageRecord.records(for: document)
+        let recordsBySense = VocabularySenseStorageRecord.records(for: document.catalog)
         let liveCollections = Set(recordsBySense.map(\.id))
-        for collection in VocabularySenseStorageRecord.records(for: previous) where senses.contains(collection.senseID) && !liveCollections.contains(collection.id) {
+        for collection in VocabularySenseStorageRecord.records(for: previous.catalog) where senses.contains(collection.senseID) && !liveCollections.contains(collection.id) {
             try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: [], delta: &delta)
         }
         for (position, collection) in recordsBySense.enumerated() {

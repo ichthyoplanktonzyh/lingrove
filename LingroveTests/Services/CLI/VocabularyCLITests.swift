@@ -543,6 +543,14 @@ struct VocabularyCLITests {
             let batchRead = try await read(["vocab", "read", "--sense-ids", firstIDs.senseID + "," + secondIDs.senseID])
             let savedSenses = try #require(batchRead["senses"] as? [[String: Any]])
             #expect(savedSenses.compactMap { $0["id"] as? String } == [firstIDs.senseID, secondIDs.senseID])
+            let classifiedRead = try await read([
+                "vocab", "read", "--sense-ids", firstIDs.senseID + "," + secondIDs.senseID, "--include-classification"
+            ])
+            let attached = try #require(classifiedRead["categoryMemberships"] as? [[String: Any]])
+            #expect(attached.count == 1)
+            #expect(attached.first?["id"] as? String == memberships.first?["id"] as? String)
+            #expect(attached.first?["key"] as? String == "content.general")
+            #expect(classifiedRead["revision"] as? Int == batchRead["revision"] as? Int)
             let reverse = try await records("mappings", related: firstIDs.nodeID)
             #expect(reverse.count == 2)
             #expect(Set(reverse.compactMap { $0["senseID"] as? String }) == [firstIDs.senseID, secondIDs.senseID])
@@ -554,7 +562,65 @@ struct VocabularyCLITests {
         await fixture.close()
     }
 
-    @Test func captureTaskBuildsActiveMeaningGraphWithStableIDsAndReplay() async throws {
+    @Test func capturesAndReadsOneThousandClassifiedSenses() async throws {
+        let fixture = try await Fixture()
+        do {
+            var baseline = VocabularyDocument()
+            try VocabularyClassificationCatalog.bundled().install(in: &baseline.classification, nodes: [])
+            _ = try await fixture.archive.commit(baseline)
+            func entry(_ index: Int) -> [String: Any] {
+                let word = "item\(index)"
+                return ["expression": word, "senses": [[
+                    "meaning": "测试用义项", "addMeaningVariants": [["language": "en", "text": "Example item"]],
+                    "examples": (1...3).map { ["text": "This is \(word), example \($0).", "translation": "这是测试例句。"] },
+                    "associations": [["meaning": word]]
+                ]]]
+            }
+            let entries = (0..<1_000).map(entry)
+            var task: [String: Any] = [
+                "version": 1, "idempotencyKey": "large-classified-capture",
+                "defaults": ["language": "en", "meaningLanguage": "zh-Hans"],
+                "meanings": (0..<1_000).map { ["ref": "item\($0)", "title": "测试概念\($0)", "categories": ["content.general"]] },
+                "entries": entries
+            ]
+            let args = ["vocab", "capture", "--stdin", "--compact-receipt"]
+            task["entries"] = entries + [entry(1_000)]
+            let invalid = try await fixture.call(args, stdin: JSONSerialization.data(withJSONObject: task))
+            #expect(invalid.0 == 2)
+            task["entries"] = entries
+            let input = try JSONSerialization.data(withJSONObject: task)
+            let preview = try await fixture.call(args + ["--dry-run"], stdin: input, timeout: 120)
+            try #require(preview.0 == 0, "\(preview.1["error"] ?? "")")
+            #expect(try result(preview.1)["changes"] != nil)
+            #expect(try await fixture.archive.load().document.catalog.isEmpty)
+            let capture = try await fixture.call(args, stdin: input, timeout: 120)
+            try #require(capture.0 == 0, "\(capture.1["error"] ?? "")")
+            let receipt = try result(capture.1)
+            let operations = try #require(receipt["operations"] as? [[String: Any]])
+            let savedEntries = try #require(operations.first?["entries"] as? [[String: Any]])
+            let savedNodes = try #require(operations.first?["meanings"] as? [[String: Any]])
+            let membershipIDs = savedNodes.compactMap { ($0["categories"] as? [[String: Any]])?.first?["membershipID"] as? String }
+            let ids = savedEntries.compactMap { ($0["senses"] as? [[String: Any]])?.first?["senseID"] as? String }
+            try #require(ids.count == 1_000)
+            let read = try await fixture.call([
+                "vocab", "read", "--sense-ids", ids.joined(separator: ","), "--include-classification"
+            ], timeout: 120)
+            try #require(read.0 == 0, "\(read.1["error"] ?? "")")
+            let material = try result(read.1)
+            let senses = try #require(material["senses"] as? [[String: Any]])
+            let memberships = try #require(material["categoryMemberships"] as? [[String: Any]])
+            #expect(senses.compactMap { $0["id"] as? String } == ids)
+            #expect(senses.allSatisfy { ($0["examples"] as? [[String: Any]])?.count == 3 })
+            #expect(memberships.count == 1_000)
+            #expect(Set(memberships.compactMap { $0["id"] as? String }) == Set(membershipIDs))
+            #expect(memberships.allSatisfy { $0["key"] as? String == "content.general" })
+            #expect(material["revision"] as? Int == receipt["revision"] as? Int)
+        } catch { await fixture.close(); throw error }
+        await fixture.close()
+    }
+
+    @Test(arguments: [false, true])
+    func captureTaskBuildsActiveMeaningGraphWithStableIDsAndReplay(compactReceipt: Bool) async throws {
         let fixture = try await Fixture()
         do {
             let input: [String: Any] = ["version": 1, "idempotencyKey": "capture-bank",
@@ -577,20 +643,25 @@ struct VocabularyCLITests {
                             "explanation": "Could you + verb? (neutral)", "associations": [["meaning": "request"]]]
                     ]]
                 ], "relations": [["from": "finance", "to": "water", "kind": "related", "note": "同形词，不是同义关系"]]]
-            func capture(_ value: [String: Any], dry: Bool = false) async throws -> (Int32, [String: Any]) {
+            func capture(_ value: [String: Any], dry: Bool = false, compact: Bool? = nil) async throws -> (Int32, [String: Any]) {
                 var scoped = value
                 if scoped["expectedRevision"] != nil, let scope = try await fixture.archive.load().scope {
                     scoped["notebookScope"] = ["workspaceID": scope.workspaceId, "notebookID": scope.notebookId.uuidString,
                         "generation": scope.generation]
                 }
-                return try await fixture.call(["vocab", "capture", "--stdin"] + (dry ? ["--dry-run"] : []),
-                    stdin: JSONSerialization.data(withJSONObject: scoped))
+                var arguments = ["vocab", "capture", "--stdin"]
+                if dry { arguments.append("--dry-run") }
+                if compact ?? compactReceipt { arguments.append("--compact-receipt") }
+                return try await fixture.call(arguments, stdin: JSONSerialization.data(withJSONObject: scoped))
             }
             let preview = try await capture(input, dry: true)
             #expect(preview.0 == 0)
             #expect(try await fixture.archive.load().document.catalog.isEmpty)
             let committed = try await capture(input)
             #expect(committed.0 == 0)
+            #expect(try result(preview.1)["changes"] != nil)
+            #expect((try result(committed.1)["changes"] == nil) == compactReceipt)
+            #expect(try result(committed.1)["receiptFormat"] as? String == (compactReceipt ? "compact" : nil))
             let planned = try result(preview.1)["operations"] as? [[String: Any]]
             let saved = try result(committed.1)["operations"] as? [[String: Any]]
             #expect(try JSONSerialization.data(withJSONObject: #require(planned), options: .sortedKeys) ==
@@ -607,7 +678,10 @@ struct VocabularyCLITests {
             let matches = VocabularyMeaningBrowserProjection.items(index: document.semantics,
                 entries: document.entries, query: "存钱的地方")
             #expect(matches.count == 1 && matches[0].selections.count == 1)
-            #expect(try result(try await capture(input).1)["replayed"] as? Bool == true)
+            let replay = try result(try await capture(input).1)
+            #expect(replay["replayed"] as? Bool == true)
+            #expect((replay["changes"] == nil) == compactReceipt)
+            #expect(try await capture(input, compact: !compactReceipt).0 == 4)
             var changed = input; changed["relations"] = []
             #expect(try await capture(changed).0 == 4)
             var invalid = input; invalid["idempotencyKey"] = "invalid-reference"
@@ -801,10 +875,11 @@ struct VocabularyCLITests {
             }
             throw CLIError(code: .timeout, message: "Synthetic mailbox did not reply.")
         }
-        func call(_ arguments: [String], stdin: Data? = nil) async throws -> (Int32, [String: Any]) {
+        func call(_ arguments: [String], stdin: Data? = nil, timeout: Int = 5) async throws -> (Int32, [String: Any]) {
             let tool = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/lingrove")
             #expect(FileManager.default.isExecutableFile(atPath: tool.path))
-            let result = try await VocabularyCLITests.run(tool, arguments: ["--app", app.path, "--no-launch", "--timeout", "5"] + arguments, stdin: stdin)
+            let arguments = ["--app", app.path, "--no-launch", "--timeout", String(timeout)] + arguments
+            let result = try await VocabularyCLITests.run(tool, arguments: arguments, stdin: stdin)
             let object = try #require(JSONSerialization.jsonObject(with: result.1) as? [String: Any])
             return (result.0, object)
         }

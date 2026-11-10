@@ -94,6 +94,34 @@ public nonisolated enum VocabularyPersistenceCodec {
         try VocabularyDatabaseProjection.document(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
     }
 
+    /// A validated capture that only added material can keep every old row and its position.
+    /// The caller must know that the capture did not edit old text, including its literal Unicode.
+    public static func appendedCaptureRows(
+        from previous: VocabularyDocument, to document: VocabularyDocument
+    ) throws -> [VocabularyPersistenceRow]? {
+        guard document.catalog.count > previous.catalog.count,
+              document.catalog.starts(with: previous.catalog),
+              document.sources.starts(with: previous.sources),
+              document.occurrences.starts(with: previous.occurrences),
+              document.interpretations.starts(with: previous.interpretations),
+              document.reviewTemplates == previous.reviewTemplates,
+              appends(document.semantics, to: previous.semantics),
+              appends(document.classification, to: previous.classification) else { return nil }
+        return try VocabularyDatabaseProjection.rows(document, appendingTo: previous).values.map(VocabularyPersistenceRow.init(record:))
+    }
+
+    private static func appends(_ next: VocabularySemanticIndex, to previous: VocabularySemanticIndex) -> Bool {
+        next.nodes.starts(with: previous.nodes) && next.patterns.starts(with: previous.patterns) &&
+            next.mappings.starts(with: previous.mappings) && next.relations.starts(with: previous.relations) &&
+            next.cues.starts(with: previous.cues) && next.cueTargets.starts(with: previous.cueTargets)
+    }
+
+    private static func appends(_ next: VocabularyClassificationIndex, to previous: VocabularyClassificationIndex) -> Bool {
+        next.frameworks.starts(with: previous.frameworks) && next.categories.starts(with: previous.categories) &&
+            next.parents.starts(with: previous.parents) && next.memberships.starts(with: previous.memberships) &&
+            next.overrides.starts(with: previous.overrides)
+    }
+
     /// Used by the explicit Dev migration command. Ordinary database reads require v9 rows.
     public static func migrateDevCorpus(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
         try VocabularyDatabaseProjection.document(encoded.rows.map(\.record),

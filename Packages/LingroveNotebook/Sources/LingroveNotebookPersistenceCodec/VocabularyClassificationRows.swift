@@ -6,25 +6,25 @@ import Foundation
 nonisolated enum VocabularyClassificationRows {
     private typealias Row = VocabularyDatabaseRecord
 
-    static func rows(_ index: VocabularyClassificationIndex) -> [VocabularyDatabaseRecord] {
+    static func rows(_ index: VocabularyClassificationIndex, appendingTo previous: VocabularyClassificationIndex? = nil) -> [VocabularyDatabaseRecord] {
         var rows: [Row] = []
-        for (position, value) in index.frameworks.enumerated() {
+        for (position, value) in index.frameworks.enumerated().dropFirst(previous?.frameworks.count ?? 0) {
             rows.append(.init(table: .classificationFrameworks, id: value.id.uuidString, parentID: nil,
                 position: position, payload: .classificationFramework(value), extra: [value.key]))
         }
-        for (position, value) in index.categories.enumerated() {
+        for (position, value) in index.categories.enumerated().dropFirst(previous?.categories.count ?? 0) {
             rows.append(.init(table: .categories, id: value.id.uuidString, parentID: nil, position: position,
                 payload: .category(value), extra: [value.frameworkID?.uuidString, value.key, value.axis.rawValue]))
         }
-        for (position, value) in index.parents.enumerated() {
+        for (position, value) in index.parents.enumerated().dropFirst(previous?.parents.count ?? 0) {
             rows.append(.init(table: .categoryParents, id: value.id.uuidString, parentID: nil, position: position,
                 payload: .categoryParent(value), extra: [value.categoryID.uuidString, value.parentID.uuidString]))
         }
-        for (position, value) in index.memberships.enumerated() {
+        for (position, value) in index.memberships.enumerated().dropFirst(previous?.memberships.count ?? 0) {
             rows.append(.init(table: .categoryMemberships, id: value.id.uuidString, parentID: nil, position: position,
                 payload: .categoryMembership(value), extra: [value.nodeID.uuidString, value.categoryID.uuidString]))
         }
-        for (position, value) in index.overrides.enumerated() {
+        for (position, value) in index.overrides.enumerated().dropFirst(previous?.overrides.count ?? 0) {
             rows.append(.init(table: .categoryOverrides, id: value.id.uuidString, parentID: value.categoryID.uuidString,
                 position: position, payload: .categoryOverride(value)))
         }

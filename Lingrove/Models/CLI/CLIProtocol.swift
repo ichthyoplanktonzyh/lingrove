@@ -31,6 +31,7 @@ nonisolated struct CLIRequest: Codable, Sendable {
     var serverInstanceID: UUID?
     var targetAppPath: String?
     var batch: CLIBatch?
+    var compactReceipt: Bool?
     var dryRun = false
 }
 
@@ -39,12 +40,15 @@ nonisolated struct CLIRequest: Codable, Sendable {
 nonisolated struct CLIReadSelection: Codable, Sendable {
     enum Kind: String, Codable, Sendable { case entries, senses }
     static let maximumIDs = 100
+    static let maximumSenseIDs = NotebookCaptureContract.maximumSenses
     var kind: Kind
     var ids: [UUID]
+    var includeClassification: Bool?
 
     func validate() throws {
-        guard (1...Self.maximumIDs).contains(ids.count), Set(ids).count == ids.count else {
-            throw CLIError.invalid("Batch reads require 1–100 distinct IDs of one kind.")
+        let limit = kind == .senses ? Self.maximumSenseIDs : Self.maximumIDs
+        guard (1...limit).contains(ids.count), Set(ids).count == ids.count else {
+            throw CLIError.invalid("Batch reads require 1–\(limit) distinct IDs of one kind.")
         }
     }
 }

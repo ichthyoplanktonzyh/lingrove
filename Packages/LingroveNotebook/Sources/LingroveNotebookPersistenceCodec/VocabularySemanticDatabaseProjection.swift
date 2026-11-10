@@ -9,9 +9,9 @@ nonisolated enum VocabularySemanticDatabaseProjection {
 
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
-    static func rows(_ index: VocabularySemanticIndex) -> [Row] {
+    static func rows(_ index: VocabularySemanticIndex, appendingTo previous: VocabularySemanticIndex? = nil) -> [Row] {
         var rows: [Row] = []
-        for (position, node) in index.nodes.enumerated() {
+        for (position, node) in index.nodes.enumerated().dropFirst(previous?.nodes.count ?? 0) {
             var header = node; header.labels = []; header.roles = []
             rows.append(.init(table: .meaningNodes, id: node.id.uuidString, parentID: nil, position: position,
                 payload: .meaningNode(header), extra: [node.kind.rawValue]))
@@ -24,7 +24,7 @@ nonisolated enum VocabularySemanticDatabaseProjection {
                     payload: .meaningRole(role), extra: [role.name]))
             }
         }
-        for (position, pattern) in index.patterns.enumerated() {
+        for (position, pattern) in index.patterns.enumerated().dropFirst(previous?.patterns.count ?? 0) {
             var header = pattern; header.slots = []
             rows.append(.init(table: .usagePatterns, id: pattern.id.uuidString, parentID: pattern.senseID.uuidString,
                 position: position, payload: .usagePattern(header), extra: [pattern.template]))
@@ -33,7 +33,7 @@ nonisolated enum VocabularySemanticDatabaseProjection {
                     payload: .patternSlot(slot), extra: [slot.name]))
             }
         }
-        for (position, mapping) in index.mappings.enumerated() {
+        for (position, mapping) in index.mappings.enumerated().dropFirst(previous?.mappings.count ?? 0) {
             var header = mapping; header.roleBindings = []; header.evidenceIDs = []
             rows.append(.init(table: .meaningMappings, id: mapping.id.uuidString, parentID: mapping.senseID.uuidString,
                 position: position, payload: .meaningMapping(header),
@@ -47,15 +47,15 @@ nonisolated enum VocabularySemanticDatabaseProjection {
                     parentID: mapping.id.uuidString, position: offset, payload: .evidence(evidence), extra: [evidence.uuidString]))
             }
         }
-        for (position, relation) in index.relations.enumerated() {
+        for (position, relation) in index.relations.enumerated().dropFirst(previous?.relations.count ?? 0) {
             rows.append(.init(table: .meaningRelations, id: relation.id.uuidString, parentID: relation.sourceID.uuidString,
                 position: position, payload: .meaningRelation(relation), extra: [relation.targetID.uuidString, relation.kind.rawValue]))
         }
-        for (position, cue) in index.cues.enumerated() {
+        for (position, cue) in index.cues.enumerated().dropFirst(previous?.cues.count ?? 0) {
             rows.append(.init(table: .retrievalCues, id: cue.id.uuidString, parentID: nil, position: position,
                 payload: .retrievalCue(cue), extra: [cue.language?.rawValue ?? "und", cue.text]))
         }
-        for (position, target) in index.cueTargets.enumerated() {
+        for (position, target) in index.cueTargets.enumerated().dropFirst(previous?.cueTargets.count ?? 0) {
             rows.append(.init(table: .cueTargets, id: target.id.uuidString, parentID: target.cueID.uuidString,
                 position: position, payload: .cueTarget(target), extra: [target.nodeID.uuidString]))
         }

@@ -75,16 +75,26 @@ public struct LingroveNotebookStore {
 
     func saveInTransaction(_ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
                                    restoringBackup: Bool, staged: Set<VocabularyImageReference>,
-                                   requireActiveWorkspace: Bool, operationId: String) throws -> LingroveNotebookSnapshot {
+                                   requireActiveWorkspace: Bool, operationId: String,
+                                   addingNewCaptureEntries: Bool = false) throws -> LingroveNotebookSnapshot {
             let media = LingroveNotebookMediaStore(core: core)
             try self.checkActiveWorkspace(baseline.workspaceId, required: requireActiveWorkspace)
             let current = try self.readSnapshot(workspaceId: baseline.workspaceId)
             guard current.notebookId == baseline.notebookId, current.revision == baseline.revision, current.generation == baseline.generation,
                   current.revision < UInt64(Int64.max) else { throw VocabularyError.editConflict }
             let next = try VocabularyDocumentValidation.prepare(document, previous: current.document, restoringBackup: restoringBackup)
-            let publicChange = try VocabularyWirePublicIntent.hasChanges(from: current.document, to: next, notebookID: current.notebookId)
             try media.registerImages(document: next, previous: current.document, staged: staged, workspaceId: current.workspaceId)
             try Task.checkCancellation()
+            if addingNewCaptureEntries, let cached = core.notebookSaveCache,
+               let rows = try VocabularyPersistenceCodec.appendedCaptureRows(from: current.document, to: next),
+               cached.projection.canAppend(rows) {
+                for entity in VocabularyPersistenceEntity.allCases {
+                    for row in rows where row.entity == entity { try upsert(row, workspaceId: current.workspaceId) }
+                }
+                return try finishSave(next, current: current, changed: rows, removed: [],
+                    publicChange: true, operationId: operationId)
+            }
+            let publicChange = try VocabularyWirePublicIntent.hasChanges(from: current.document, to: next, notebookID: current.notebookId)
             // A local choice can intentionally differ only in literal Unicode
             // bytes. Persist that value even though Swift String equality folds
             // canonical normalization, just as the remote apply path does.

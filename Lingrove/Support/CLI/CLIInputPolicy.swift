@@ -153,8 +153,10 @@ nonisolated enum CLIInputPolicy {
             imageBytes += try validateBlocks(content)
             images += content.filter { $0.image != nil }.count; blocks += content.count; examples += usages.count
         }
-        guard images <= 64, blocks <= 512, examples <= 1_000, imageBytes <= 16 * 1_024 * 1_024 else {
-            throw CLIError.invalid("Batch exceeds 64 images, 16 MiB image bytes, 512 blocks or 1000 examples.")
+        let maximumExamples = batch.operations.count == 1 && batch.operations.first?.capture != nil
+            ? NotebookCaptureContract.maximumExamples : 1_000
+        guard images <= 64, blocks <= 512, examples <= maximumExamples, imageBytes <= 16 * 1_024 * 1_024 else {
+            throw CLIError.invalid("Batch exceeds 64 images, 16 MiB image bytes, 512 blocks or \(maximumExamples) examples.")
         }
     }
 

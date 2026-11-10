@@ -29,8 +29,14 @@ public nonisolated struct NotebookSenseProjection {
     }
 
     public func sense(_ id: UUID) throws -> NotebookToolJSON {
-        guard let entry = document.catalog.first(where: { $0.senses.contains { $0.id == id } }),
-              let sense = entry.senses.first(where: { $0.id == id }) else {
+        guard let entry = document.catalog.first(where: { $0.senses.contains { $0.id == id } }) else {
+            throw NotebookToolError(code: .notFound, message: "Sense not found. Read its headword again.")
+        }
+        return try sense(id, in: entry)
+    }
+
+    public func sense(_ id: UUID, in entry: VocabularyEntry) throws -> NotebookToolJSON {
+        guard let sense = entry.senses.first(where: { $0.id == id }) else {
             throw NotebookToolError(code: .notFound, message: "Sense not found. Read its headword again.")
         }
         return try self.sense(sense, entry: entry)

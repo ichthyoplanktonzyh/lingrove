@@ -26,6 +26,8 @@ nonisolated struct CLIArguments {
         try configureRequest(from: &parsed)
         guard parsed.options.isEmpty,
               !parsed.flags.contains("--summary") || request.summary == true,
+              !parsed.flags.contains("--compact-receipt") || captureInput,
+              !parsed.flags.contains("--include-classification") || request.command == .readMany,
               request.command == .apply || (!parsed.flags.contains("--dry-run") && !parsed.flags.contains("--stdin")) else {
             throw CLIError.invalid("An option is not valid for this command.")
         }
@@ -89,14 +91,16 @@ nonisolated struct CLIArguments {
     private mutating func configureBatchRead(from parsed: inout ParsedArguments) throws {
         let entries = parsed.options.removeValue(forKey: "--entry-ids")
         let senses = parsed.options.removeValue(forKey: "--sense-ids")
-        guard (entries != nil) != (senses != nil), let text = entries ?? senses, text.utf8.count <= 4_096 else {
+        guard (entries != nil) != (senses != nil), let text = entries ?? senses,
+              text.utf8.count <= CLIReadSelection.maximumSenseIDs * 37 else {
             throw CLIError.invalid("Use vocab read with exactly one of --entry-ids or --sense-ids (comma-separated UUIDs).")
         }
         let ids = try text.split(separator: ",", omittingEmptySubsequences: false).map { value in
             guard let id = UUID(uuidString: String(value)) else { throw CLIError.invalid("Each batch read ID must be a UUID.") }
             return id
         }
-        let selection = CLIReadSelection(kind: entries != nil ? .entries : .senses, ids: ids)
+        var selection = CLIReadSelection(kind: entries != nil ? .entries : .senses, ids: ids)
+        if parsed.flags.contains("--include-classification") { selection.includeClassification = true }
         try selection.validate()
         request.command = .readMany; request.readSelection = selection
         try configureReadScope(from: &parsed)
@@ -153,6 +157,7 @@ nonisolated struct CLIArguments {
     private mutating func configureApplyRequest(from parsed: inout ParsedArguments) throws {
         request.command = .apply
         request.dryRun = parsed.flags.contains("--dry-run")
+        if captureInput && parsed.flags.contains("--compact-receipt") { request.compactReceipt = true }
         inputPath = parsed.options.removeValue(forKey: "--file")
         if parsed.flags.contains("--stdin") {
             guard inputPath == nil else { throw CLIError.invalid("Choose --file or --stdin.") }
@@ -169,7 +174,7 @@ nonisolated struct CLIArguments {
         var words: [String] = []
 
         init(_ arguments: [String]) throws {
-            let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin", "--summary"]
+            let boolean: Set<String> = ["--dry-run", "--no-launch", "--stdin", "--summary", "--compact-receipt", "--include-classification"]
             let valued: Set<String> = ["--app", "--timeout", "--query", "--language", "--limit", "--offset", "--file",
                                        "--related", "--status", "--scope", "--entry-ids", "--sense-ids"]
             var index = 0
@@ -206,11 +211,11 @@ nonisolated struct CLIArguments {
       vocab list [--query TEXT] [--language CODE] [--limit N] [--offset N]
       vocab get ENTRY_UUID [--scope JSON]        Current entry, plain explanation text and image references
       vocab sense SENSE_UUID [--scope JSON]      Complete current sense, examples and semantic links
-      vocab read (--entry-ids UUID,UUID | --sense-ids UUID,UUID) [--scope JSON]
-                                                Up to 100 full records in request order, from one snapshot
+      vocab read (--entry-ids UUID,UUID | --sense-ids UUID,UUID) [--scope JSON] [--include-classification]
+                                                Up to 100 entries or 1000 senses from one snapshot
       vocab image SENSE_UUID IMAGE_ID --scope JSON  PNG bytes as JSON/base64
       vocab apply (--file PATH | --stdin) [--dry-run]
-      vocab capture (--file PATH | --stdin) [--dry-run]  Task-shaped material and meaning organization
+      vocab capture (--file PATH | --stdin) [--dry-run] [--compact-receipt]
       data list RESOURCE [--query TEXT] [--related UUID] [--status STATUS] [--limit N] [--offset N] [--summary]
       data get RESOURCE UUID                     Full record and current revision
       schema [capture]                           Batch or capture-task JSON Schema
@@ -218,6 +223,8 @@ nonisolated struct CLIArguments {
 
     Capture generates IDs, locates unique example spans and collects senses atomically.
     Capture also creates meaning nodes and category memberships in the same write.
+    --compact-receipt omits change snapshots from the saved capture receipt; dry runs still show them.
+    Keep the same receipt option when retrying a capture with the same key.
     Use schema capture for capture tasks; schema is the complete resource-batch contract.
     Each request checks the selected app path, server instance and protocol capabilities.
     --version reports the local helper's contract, containing app version/build and path.

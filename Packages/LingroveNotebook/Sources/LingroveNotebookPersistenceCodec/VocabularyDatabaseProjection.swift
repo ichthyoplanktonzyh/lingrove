@@ -7,28 +7,36 @@ nonisolated enum VocabularyDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
     private struct Owner: Hashable { let table: Row.Table; let parent: String? }
 
-    static func rows(_ document: VocabularyDocument) throws -> [Row.Key: Row] {
-        try VocabularyLifecyclePolicy.validate(document)
+    static func rows(_ document: VocabularyDocument, appendingTo previous: VocabularyDocument? = nil) throws -> [Row.Key: Row] {
+        if previous == nil { try VocabularyLifecyclePolicy.validate(document) }
         var rows: [Row] = []
-        for (position, source) in document.sources.enumerated() {
+        for (position, source) in document.sources.enumerated().dropFirst(previous?.sources.count ?? 0) {
             rows.append(.init(table: .sources, id: source.id.uuidString, parentID: nil,
                 position: position, payload: .source(source)))
         }
-        for (position, occurrence) in document.occurrences.enumerated() {
+        for (position, occurrence) in document.occurrences.enumerated().dropFirst(previous?.occurrences.count ?? 0) {
             rows.append(.init(table: .occurrences, id: occurrence.id.uuidString, parentID: occurrence.sourceID.uuidString,
                 position: position, payload: .occurrence(occurrence)))
         }
-        for (position, claim) in document.interpretations.enumerated() { append(claim, position: position, to: &rows) }
-        for (position, entry) in document.catalog.enumerated() { append(entry, position: position, to: &rows) }
-        for (position, collection) in VocabularySenseStorageRecord.records(for: document).enumerated() { append(collection, position: position, to: &rows) }
-        for (position, template) in (document.reviewTemplates ?? []).enumerated() {
+        for (position, claim) in document.interpretations.enumerated().dropFirst(previous?.interpretations.count ?? 0) {
+            append(claim, position: position, to: &rows)
+        }
+        let newEntries = document.catalog.dropFirst(previous?.catalog.count ?? 0)
+        for (position, entry) in zip(newEntries.indices, newEntries) { append(entry, position: position, to: &rows) }
+        let previousSenses = previous?.catalog.reduce(0) { $0 + $1.senses.count } ?? 0
+        for (offset, collection) in VocabularySenseStorageRecord.records(for: newEntries).enumerated() {
+            append(collection, position: previousSenses + offset, to: &rows)
+        }
+        for (position, template) in (document.reviewTemplates ?? []).enumerated().dropFirst(previous?.reviewTemplates?.count ?? 0) {
             rows.append(.init(table: .templates, id: template.id.uuidString, parentID: nil,
                 position: position, payload: .template(template)))
         }
-        try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
-        rows.append(contentsOf: VocabularySemanticDatabaseProjection.rows(document.semantics))
-        try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
-        rows.append(contentsOf: VocabularyClassificationRows.rows(document.classification))
+        if previous == nil {
+            try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
+            try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
+        }
+        rows.append(contentsOf: VocabularySemanticDatabaseProjection.rows(document.semantics, appendingTo: previous?.semantics))
+        rows.append(contentsOf: VocabularyClassificationRows.rows(document.classification, appendingTo: previous?.classification))
         guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
         return Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
     }

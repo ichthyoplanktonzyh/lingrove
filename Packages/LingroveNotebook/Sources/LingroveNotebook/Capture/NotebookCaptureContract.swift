@@ -2,6 +2,8 @@ import Foundation
 
 /// Validates the same capture material for the Mac CLI and the mobile notebook tool.
 public nonisolated enum NotebookCaptureContract {
+    public static let maximumSenses = 1_000
+    public static let maximumExamples = 3_000
     public typealias Shape = NotebookToolShape.Shape
     private typealias Field = NotebookToolShape.Field
     private static let status = Field.enumeration(["confirmed", "proposed"])
@@ -34,27 +36,32 @@ public nonisolated enum NotebookCaptureContract {
         "associations": .array(.object(association), 64), "addMeaningVariants": meaningVariants])
     private static let entry = Shape(fields: ["expression": .text(32_000), "language": .text(100),
         "kind": .enumeration(["word", "expression", "pattern", "sentence"]), "dictionaryForm": .text(32_000),
-        "senses": .array(.object(sense), 100)], required: ["expression", "senses"])
+        "senses": .array(.object(sense), maximumSenses)], required: ["expression", "senses"])
     private static let relation = Shape(fields: ["from": .text(200), "to": .text(200),
         "kind": .enumeration(["narrower", "opposite", "related"]), "note": .text(8_192), "status": status],
         required: ["from", "to", "kind"])
     public static var shape: Shape {
-        .init(fields: ["defaults": .object(defaults), "meanings": .array(.object(meaning), 100),
-            "entries": .array(.object(entry), 100), "relations": .array(.object(relation), 200)], required: ["entries"])
+        .init(fields: ["defaults": .object(defaults), "meanings": .array(.object(meaning), maximumSenses),
+            "entries": .array(.object(entry), maximumSenses), "relations": .array(.object(relation), 200)], required: ["entries"])
     }
     public static func decodeMaterial(_ data: Data) throws -> NotebookCaptureTask {
         let material = try shape.normalized(JSONDecoder().decode(NotebookToolJSON.self, from: data))
         let task = try JSONDecoder().decode(NotebookCaptureTask.self, from: JSONEncoder().encode(material))
-        try validate(task)
+        try validateCounts(task)
         return task
     }
 
     public static func validate(_ capture: NotebookCaptureTask) throws {
         _ = try shape.normalized(NotebookToolJSON.value(capture))
+        try validateCounts(capture)
+    }
+
+    private static func validateCounts(_ capture: NotebookCaptureTask) throws {
         guard !capture.entries.isEmpty, capture.entries.allSatisfy({ !$0.senses.isEmpty }),
-              capture.entries.reduce(0, { $0 + $1.senses.count }) <= 100,
-              capture.entries.flatMap(\.senses).reduce(0, { $0 + ($1.examples?.count ?? 0) }) <= 1_000 else {
-            throw NotebookToolError.invalid("Capture requires entries and senses, at most 100 senses and 1000 examples.")
+              capture.entries.reduce(0, { $0 + $1.senses.count }) <= maximumSenses,
+              capture.entries.flatMap(\.senses).reduce(0, { $0 + ($1.examples?.count ?? 0) }) <= maximumExamples else {
+            throw NotebookToolError.invalid(
+                "Capture requires entries and senses, at most \(maximumSenses) senses and \(maximumExamples) examples.")
         }
     }
 }

@@ -15,8 +15,8 @@ nonisolated struct VocabularySenseStorageRecord: Codable, Equatable, Identifiabl
     var reviewCards: [VocabularyReview]?
     var savedAt: Date?
 
-    static func records(for document: VocabularyDocument) -> [Self] {
-        document.catalog.flatMap(\.senses).map { sense in
+    static func records(for entries: some Sequence<VocabularyEntry>) -> [Self] {
+        entries.flatMap(\.senses).map { sense in
             .init(senseID: sense.id,
                 isSavedWithoutContext: sense.isSavedWithoutContext, note: sense.note, tags: sense.tags,
                 content: sense.content, review: sense.review, reviewCards: sense.reviewCards,

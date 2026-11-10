@@ -8,6 +8,32 @@ import Testing
 /// adapter owns physical columns; this suite checks that typed rows carry the same document
 /// identities, order and nullable index values across a database-shaped reconstruction.
 struct VocabularyPersistenceCodecTests {
+    @Test func appendedCaptureRowsReconstructTheSameDocumentAsTheFullCodec() throws {
+        func capture(_ word: String, in document: VocabularyDocument) throws -> VocabularyDocument {
+            let task = try NotebookCaptureContract.decodeMaterial(Data("""
+                {
+                  "defaults": {"language": "en", "meaningLanguage": "zh-Hans"},
+                  "meanings": [{"ref": "node", "title": "测试概念", "cues": ["测试"]}],
+                  "entries": [{"expression": "\(word)", "senses": [{"meaning": "测试释义",
+                    "explanation": "详细用法", "examples": [{"text": "This is \(word).", "translation": "这是示例。"}],
+                    "associations": [{"meaning": "node"}]}]}]
+                }
+                """.utf8))
+            let plan = try NotebookCapturePlan(task, document: document, now: Date()) { _ in UUID() }
+            return try VocabularyDocumentValidation.prepare(plan.document, previous: document)
+        }
+        let baseline = try capture("first", in: .init())
+        let appended = try capture("second", in: baseline)
+        let previousRows = try VocabularyPersistenceCodec.encode(baseline)
+        let delta = try #require(try VocabularyPersistenceCodec.appendedCaptureRows(from: baseline, to: appended))
+        let rebuilt = VocabularyPersistenceRows(rows: previousRows.rows + delta, reviewTemplatesPresent: false)
+        let expected = try VocabularyPersistenceCodec.encode(appended)
+        #expect(try rebuilt.keyedRows() == expected.keyedRows())
+        #expect(try VocabularyPersistenceCodec.decode(rebuilt) == appended)
+        let existingEntry = try capture("first", in: baseline)
+        #expect(try VocabularyPersistenceCodec.appendedCaptureRows(from: baseline, to: existingEntry) == nil)
+    }
+
     @Test func frozenSchema5RowsRoundTripThroughPublicCodecValues() throws {
         let directory = try VocabularyStorageTestSupport.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

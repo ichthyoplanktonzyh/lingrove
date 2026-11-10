@@ -115,7 +115,9 @@ translations as variants. Another sense's ownership is a conflict; use an explic
 An example's optional `source` is a citation (for example an article title/URL), defaulting to
 `defaults.source`. It does not establish identity; only `sourceID` does.
 
-One task permits at most 100 entries, 100 senses total, 100 meaning declarations and 1000 examples.
+One task permits at most 1,000 entries, 1,000 senses total, 1,000 meaning declarations and 3,000 examples.
+For bulk capture, commit with `--compact-receipt` and verify the returned sense IDs with
+`vocab read --sense-ids ID,ID --include-classification`. Keep the receipt option when retrying.
 Unknown fields, unsupported language codes, dangling refs and invalid relationships reject the
 entire task. Capture accepts text material; use traditional append for rich text/images. Low-level
 resource batches remain available for independent evidence, candidate interpretations, explicit

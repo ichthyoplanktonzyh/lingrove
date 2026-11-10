@@ -426,9 +426,10 @@ actor VocabularyArchive {
     }
 
     func commitCLI(
-        _ document: VocabularyDocument, images: [String: Data], receipt: VocabularyCLIReceipt
+        _ document: VocabularyDocument, images: [String: Data], receipt: VocabularyCLIReceipt, addingNewCaptureEntries: Bool
     ) throws -> LingroveNotebookCLICommit {
-        let result = try persistence().saveNotebookCLI(document, basedOn: transactionBaseline(), images: images, receipt: receipt)
+        let result = try persistence().saveNotebookCLI(document, basedOn: transactionBaseline(), images: images,
+            receipt: receipt, addingNewCaptureEntries: addingNewCaptureEntries)
         saved = result.snapshot
         return result
     }
