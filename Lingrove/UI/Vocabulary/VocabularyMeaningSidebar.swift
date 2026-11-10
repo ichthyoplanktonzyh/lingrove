@@ -80,8 +80,8 @@ struct VocabularyMeaningSidebar: View {
 
     private func expressionPreview(for item: VocabularyMeaningBrowserProjection.Item) -> String {
         var seen = Set<String>()
-        let names = item.selections.compactMap { target -> String? in
-            guard let expression = entries.first(where: { $0.id == target.entryID })?.expression else { return nil }
+        let names = item.selections.prefix(4).compactMap { target -> String? in
+            guard let expression = store.readIndex.entriesByID[target.entryID]?.expression else { return nil }
             return seen.insert(expression).inserted ? expression : nil
         }
         if !names.isEmpty {
@@ -412,7 +412,7 @@ struct VocabularyMeaningSidebar: View {
         Section {
             DisclosureGroup(isExpanded: $isUnclassifiedExpanded) {
                 ForEach(unclassified, id: \.senseID) { target in
-                    if let entry = entries.first(where: { $0.id == target.entryID }),
+                    if let entry = store.readIndex.entriesByID[target.entryID],
                        let sense = entry.senses.first(where: { $0.id == target.senseID }) {
                         let isSenseSelected = destination?.nodeID == nil && destination?.senseID == sense.id
                         VStack(alignment: .leading, spacing: 2) {
@@ -472,7 +472,15 @@ struct VocabularyMeaningSidebar: View {
     private func autoExpandInitialPopulatedPathsIfNeeded() {
         guard !didAutoExpand, hasClassificationCatalog else { return }
         didAutoExpand = true
-        expandAllPopulatedPaths()
+        // Start with a navigable outline rather than thousands of expanded meanings. Explicit
+        // selection still reveals its path, and the existing Expand all command remains available.
+        let parented = Set(store.classification.parents.map(\.categoryID))
+        let populated = VocabularyClassificationProjection.descendantMeaningCounts(store.classification,
+            allowed: Set(items.map(\.id)))
+        for category in store.classification.categories where !parented.contains(category.id) &&
+            !category.isRetired && populated[category.id, default: 0] > 0 {
+            expanded.insert("/" + category.id.uuidString)
+        }
     }
 
     private func expandAllPopulatedPaths() {

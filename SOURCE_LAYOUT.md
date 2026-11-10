@@ -1398,3 +1398,25 @@ and note-field baselines. `Support/Review/Notes` plans reversible-name field tra
 merges fields without losing remote edits. `UI/Vocabulary/VocabularyNoteAnkiSheet` selects the
 shared type/deck and previews with the existing HTML renderer. Domain Note preparation remains
 in the shared engine; only explicit built-in enrollment creates scheduler membership.
+
+## Corpus browsing at scale
+
+`VocabularyReadIndex` is the immutable per-revision lookup surface used by corpus selection,
+row menus and tags. `VocabularyReadIndexWorker` builds it off MainActor; `VocabularyStore`
+publishes acknowledged revisions once and rejects stale results after the actor hop.
+`VocabularyBrowserCache` and `VocabularyMeaningReadCache` are window/detail-owned bounded
+memos, independent of durable content. `VocabularyBrowserRow` gives the native List one
+stable row per projected identity, including explicitly disclosed senses.
+
+`LingroveNotebookEngine+Participation` reads one corpus sense's review participation under
+its metadata fence. `BuiltInReviewIO` runs that query off MainActor; the detail no longer
+loads a complete notebook or review queue to display one status label.
+
+`VocabularyPerformanceBaselineTests` is an opt-in private native host. It copies an explicitly
+supplied authorized backup, presents the production corpus UI and records main-runloop gaps;
+raw corpus files and measurement traces remain local under ignored `build/` paths.
+
+`VocabularySemanticDatabaseProjection` indexes semantic child rows by (table, parent) during
+reconstruction. The codec still checks parent-local positions and exact round trips; this read
+optimization changes neither persisted rows nor schema. Large-label/evidence fixtures live in
+`VocabularyPersistenceCodecTests`.

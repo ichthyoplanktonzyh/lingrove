@@ -6,6 +6,7 @@ import NaturalLanguage
 /// Pure material construction and rank fusion, shared by the window and search tests. Meanings
 /// contribute only adopted assertions; browsing or searching never creates semantic relations.
 nonisolated enum VocabularySearchPolicy {
+    private static let hexadecimal = Array("0123456789abcdef".utf8)
     static func documents(entries: [VocabularyEntry], semantics: VocabularySemanticIndex) -> [VocabularySearchDocument] {
         let nodes = Dictionary(uniqueKeysWithValues: semantics.nodes.filter {
             $0.provenance.status == .confirmed
@@ -33,7 +34,9 @@ nonisolated enum VocabularySearchPolicy {
             let text = String(fields.joined(separator: "\n").prefix(2_000))
             return .init(selection: .init(entryID: entry.id, senseID: sense.id), expression: entry.expression,
                 dictionaryForm: entry.dictionaryForm, meaning: sense.displayTitle, language: entry.language,
-                fields: fields, text: text, fingerprint: fingerprint(text))
+                fields: fields, text: text, fingerprint: fingerprint(text), tags: sense.tags,
+                normalizedExpressions: [entry.expression, entry.dictionaryForm].map(normalized),
+                normalizedFields: fields.map(normalized))
         } }
     }
 
@@ -48,7 +51,7 @@ nonisolated enum VocabularySearchPolicy {
             }.filter { !$0.isEmpty }.joined(separator: "\n").prefix(2_000))
             guard !text.isEmpty else { return nil }
             return .init(node: item.node, senseIDs: item.selections.map(\.senseID), lookupTerms: terms,
-                text: text, fingerprint: fingerprint(text))
+                text: text, fingerprint: fingerprint(text), normalizedTerms: terms.map(normalized))
         }
     }
 
@@ -57,13 +60,13 @@ nonisolated enum VocabularySearchPolicy {
                         meaningSimilarities: [UUID: Float] = [:]) -> VocabularySearchResults {
         let term = normalized(query.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !term.isEmpty else { return .init() }
-        let exact = documents.filter { normalized($0.expression) == term || normalized($0.dictionaryForm) == term }
+        let exact = documents.filter { expressions($0).contains(term) }
         let byID = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0) })
         // Only nodes with visible senses participate in admission. A filtered-out node cannot
         // raise the similarity threshold or surface a result the learner has filtered away.
         let candidates = meanings.filter { $0.senseIDs.contains { byID[$0] != nil } }
         let literal = candidates.compactMap { meaning -> (meaning: VocabularyMeaningSearchDocument, rank: Int)? in
-            let terms = meaning.lookupTerms.map(normalized)
+            let terms = meaning.normalizedTerms.isEmpty ? meaning.lookupTerms.map(normalized) : meaning.normalizedTerms
             if terms.contains(term) { return (meaning, 2) }
             if terms.contains(where: { containsPhrase(term, in: $0) }) { return (meaning, 1) }
             return nil
@@ -88,13 +91,21 @@ nonisolated enum VocabularySearchPolicy {
             })
         }
         let expanded = Set(exact.map(\.id) + groups.flatMap { $0.documents.map(\.id) })
-        let other = hits(documents: documents, query: query, similarities: similarities)
+        let other = hits(documents: documents, query: query, similarities: similarities, limit: documents.count)
             .map(\.document).filter { !expanded.contains($0.id) }
         return .init(exact: exact, groups: groups, other: other)
     }
 
     static func fingerprint(_ text: String) -> String {
-        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(64)
+        for byte in SHA256.hash(data: Data(text.utf8)) {
+            bytes.append(hexadecimal[Int(byte >> 4)])
+            bytes.append(hexadecimal[Int(byte & 15)])
+        }
+        // The alphabet above guarantees valid ASCII; this conversion cannot be lossy.
+        // swiftlint:disable:next optional_data_string_conversion
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     static func queryText(_ query: String) -> String {
@@ -104,11 +115,20 @@ nonisolated enum VocabularySearchPolicy {
 
     static func keywordScore(_ document: VocabularySearchDocument, query: String) -> Double {
         let query = normalized(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        return keywordScore(document, normalizedQuery: query)
+    }
+
+    private static func expressions(_ document: VocabularySearchDocument) -> [String] {
+        document.normalizedExpressions.isEmpty
+            ? [document.expression, document.dictionaryForm].map(normalized) : document.normalizedExpressions
+    }
+
+    private static func keywordScore(_ document: VocabularySearchDocument, normalizedQuery query: String) -> Double {
         guard !query.isEmpty else { return 0 }
-        let expressions = [document.expression, document.dictionaryForm].map(normalized)
+        let expressions = expressions(document)
         if expressions.contains(query) { return 100 }
         if expressions.contains(where: { containsPhrase(query, in: $0) }) { return 80 }
-        let fields = document.fields.map(normalized)
+        let fields = document.normalizedFields.isEmpty ? document.fields.map(normalized) : document.normalizedFields
         if fields.contains(query) { return 60 }
         return fields.contains { containsPhrase(query, in: $0) } ? 40 : 0
     }
@@ -117,6 +137,9 @@ nonisolated enum VocabularySearchPolicy {
     /// different definitions lose relationships such as negation; substrings like "on" in
     /// "postpone" are not expression matches. NLTokenizer also supplies unspaced-script boundaries.
     private static func containsPhrase(_ query: String, in field: String) -> Bool {
+        // Most fields do not contain the query at all. Running NaturalLanguage's tokenizer
+        // on every one of those fields made a short search scan take seconds in large corpora.
+        guard field.range(of: query) != nil else { return false }
         let tokenizer = NLTokenizer(unit: .word)
         tokenizer.string = field
         var starts = Set<String.Index>(), ends = Set<String.Index>()
@@ -143,8 +166,10 @@ nonisolated enum VocabularySearchPolicy {
         let cutoff = VocabularySearchRelevancePolicy.cutoff(for: documents.compactMap { similarities[$0.id] })
         var lexical: [(document: VocabularySearchDocument, score: Double)] = []
         var semantic: [(document: VocabularySearchDocument, score: Float)] = []
+        let normalizedQuery = normalized(query.trimmingCharacters(in: .whitespacesAndNewlines))
         for document in documents {
-            let score = keywordScore(document, query: query)
+            if Task.isCancelled { return [] }
+            let score = keywordScore(document, normalizedQuery: normalizedQuery)
             let value = similarities[document.id] ?? -.infinity
             let admitted = VocabularySearchRelevancePolicy.isValid(value) && value >= cutoff
             if admitsLiteral(score, hasVectors: !similarities.isEmpty, semanticAdmitted: admitted) {
@@ -183,11 +208,11 @@ nonisolated enum VocabularySearchPolicy {
     private static func fusedScores(lexical: [(document: VocabularySearchDocument, score: Double)],
                                     semantic: [(document: VocabularySearchDocument, score: Float)]) -> [UUID: Double] {
         var scores: [UUID: Double] = [:]
-        for (rank, row) in lexical.prefix(100).enumerated() {
+        for (rank, row) in lexical.enumerated() {
             scores[row.document.id, default: 0] += 1 / Double(60 + rank + 1)
             if row.score == 100 { scores[row.document.id, default: 0] += 1 }
         }
-        for (rank, row) in semantic.prefix(100).enumerated() {
+        for (rank, row) in semantic.enumerated() {
             scores[row.document.id, default: 0] += 1 / Double(60 + rank + 1)
         }
         return scores

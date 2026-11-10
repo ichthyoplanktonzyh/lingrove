@@ -165,3 +165,99 @@ Local tests do not establish live Anki, production service deployment, physical-
 VoiceOver, all locales or final compositor-based visual acceptance. Review v3 requires compatible
 backend adoption. Verify the affected journey and record any remaining gap for each change.
 Historical checkpoint details and individual execution results are available in Git history.
+
+## Corpus performance checkpoint (2026-11-10)
+
+The user authorized a baseline using the real Dev corpus and a consistent backup. The fixed
+input contains 9,671 entries, 14,476 senses, 28,891 sources, 13,085 meaning nodes and 338 categories.
+The live measurement was contaminated by concurrent CLI writes; it is diagnostic evidence,
+not the stable before/after reference. A Release private host then loaded a copy of that exact
+backup without CLI, synchronization or model downloads. It uses the production corpus window
+at 1240 × 760, initially by entry/list/compact, with keyword search and the built-in review section.
+
+The unmodified baseline is source `9f319882ff95f871e409525473add54da7e7f47a`. A 20ms main-runloop
+timer measured gaps during computer-use actions; these are main-thread unavailability, not
+input-to-frame latency. Accessibility traversal itself is included in the action windows.
+The same computer-use method is required for a fair comparison. Single-pass observations:
+entry selection 4.14–4.25s maximum gap; disclosure 4.10–4.14s; list scroll 0.49–0.52s;
+language filter 4.17s; clearing search 6.48–6.73s; switching to meanings 4.40s; switching
+back to entries 10.63s. Ten seconds of idle observation had no gaps >=100ms. Ordinary search
+was visually pending after its first tool round trip and later showed eight results; those
+observations are not an exact search latency measurement. Graph, close/reopen and edit/save
+were not covered by this first baseline. The first archive load took 78.89s and window
+construction/layout took 7.04s in the opt-in host; neither includes all startup costs.
+
+The snapshot, source/binary hashes, detailed operations, raw ticks and test results are retained
+locally in `build/corpus-performance/`. No corpus text or database is committed. The canonical
+backup is under the user's explicitly authorized Dev Backups directory and is never opened
+by the test repository: each run creates and drains a disposable copy.
+
+The optimization keeps ordinary browser sorting in creation order so editing a note does not
+move its row. New-entry saves retain the current query, language, tag and organization and
+show an explicit “Show in vocabulary” action for clearing those constraints. Search results
+remain visible during replacement; complete admitted matches are paged for presentation,
+and filtered export uses the same deduplicated selection only after the current corpus
+revision/query finishes. Search relevance thresholds and embedding input content are unchanged.
+
+The narrow participation query keeps historical merged-sense enrollment grouping, deleted-card
+exclusion, disabled-template handling, scheduling validation and generation/revision fences.
+Its IO owner performs the read away from MainActor; corpus browsing creates no enrollment.
+The original full review queue and its writers retain their existing boundaries.
+
+### Verified optimization result
+
+The final fixed-input Release run completed its handoff successfully. Its initial store load
+was **4.816s** (baseline 78.892s), and window construction/layout was **1.327s** (baseline
+7.044s). These are instrumented operation durations. The startup improvement includes indexing
+semantic child rows by owner in `VocabularySemanticDatabaseProjection`, while retaining ordering,
+round-trip/orphan validation and the unchanged on-disk format.
+
+The following values are maximum main-runloop gaps within recorded computer-use action windows,
+not exact input-to-frame latency. Each is a small number of observations with the same fixed
+corpus and UI host; AX traversal contributes to the gaps. Selection and scrolling combine two
+operations in the final run, so compare their maxima rather than inferring a percentile.
+
+| Operation | Before max gap | Final max gap |
+| --- | ---: | ---: |
+| Entry selection | 4.250s | 0.527s |
+| Expand / collapse senses | 4.097 / 4.142s | 0.465 / 0.520s |
+| List scroll down/up | 0.494 / 0.516s | 0.525s combined |
+| English language filter | 4.173s | 0.537s |
+| Clear search | 6.484–6.731s | 0.852s |
+| Switch to meanings | 4.395s | 1.129s |
+| Return to entries | 10.627s | 1.070s |
+
+Scrolling did not show a meaningful measured improvement. Category selection/detail-scroll
+measurements used different populated categories and cannot establish a speedup. Exact/common/
+missing searches were verified against visible results; the common query now returns all 11
+admitted senses rather than truncating to eight. Original search completion times were only
+bounded observations, so no precise search-latency percentage is claimed.
+
+Functional checks in the final real-data copy confirmed row selection, disclosure with retained
+reading destination, list and category-detail scrolling, language-filter restoration, and search
+clear. A note was saved and reopened; a subsequent unsaved marker was cancelled and absent on
+reopen. No original corpus was edited by these tests. Menu-based reopen after closing the last
+private-host window could not be verified (CUA/AX timed out); this remains distinct from a product
+failure. The earlier `fixed-after` handoff exceeded its limit and failed as an automation run;
+its data was not substituted for the successful `final-check` run.
+
+Focused shared checks passed: 15 identity/document tests, 8 review integration tests and 12 codec/
+SQLite tests. Native search, classification, creation, merge and app-service suites passed.
+A flattened-list optional-tag regression was corrected; the mouse and selection-retention tests
+then passed together after unlocking the Mac. The final private-host measurement test passed.
+The existing AppKit geometry warnings remain in native logs; the checked visible flows rendered
+and remained usable. Semantic-model-backed search and graph panning were not performance-qualified
+in this keyword-only checkpoint.
+
+Final per-operation timing windows are preserved in `final-check/operations-ui.jsonl`, with
+raw timer samples in `main-loop-ticks.json` and the paired maxima in `comparison-root.json`.
+The final run's whole-observation maximum was 1.455s, versus 10.627s before. This statistic
+covers different observation lengths and extra validation actions, so the per-operation table
+is the preferred comparison. The final cold-load timing supersedes the interim 69.93s result.
+
+The optimized `Lingrove Dev` Release application was then installed in place at the existing
+checkout-specific Development path, preserving its designated signing requirement. The new
+executable hash and running process were verified. The user explicitly requested application-only
+updating and declined the proposed per-table comparison; the installer did not open or replace
+the live database. The earlier consistent corpus backup and the previous application bundle
+remain available locally. The isolated-host menu-reopen limitation remains unverified.

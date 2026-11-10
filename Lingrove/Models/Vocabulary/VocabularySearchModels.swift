@@ -12,6 +12,9 @@ nonisolated struct VocabularySearchDocument: Equatable, Sendable, Identifiable {
     let fields: [String]
     let text: String
     let fingerprint: String
+    var tags: [String] = []
+    var normalizedExpressions: [String] = []
+    var normalizedFields: [String] = []
     var id: UUID { selection.senseID }
 }
 
@@ -32,6 +35,7 @@ nonisolated struct VocabularyMeaningSearchDocument: Sendable, Identifiable {
     let lookupTerms: [String]
     let text: String
     let fingerprint: String
+    var normalizedTerms: [String] = []
     var id: UUID { node.id }
 }
 
@@ -51,6 +55,15 @@ nonisolated struct VocabularySearchResults: Sendable {
     var isEmpty: Bool { exact.isEmpty && groups.isEmpty && other.isEmpty }
     var count: Int {
         Set(exact.map(\.id) + groups.flatMap { $0.documents.map(\.id) } + other.map(\.id)).count
+    }
+
+    /// Export and display share the complete admitted result, independently of visible pages.
+    /// A sense linked from two meaning groups remains one exported source.
+    var selections: [VocabularySelection] {
+        var seen = Set<UUID>()
+        return (exact + groups.flatMap(\.documents) + other).compactMap {
+            seen.insert($0.id).inserted ? $0.selection : nil
+        }
     }
 }
 

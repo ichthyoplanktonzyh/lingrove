@@ -14,6 +14,7 @@ public nonisolated enum VocabularyMeaningBrowserProjection {
     public static func items(index: VocabularySemanticIndex, entries: [VocabularyEntry], query: String = "",
                       kind: VocabularyMeaningNode.Kind? = nil, includeEmpty: Bool = true,
                       preferredLanguages: [LearningLanguage] = []) -> [Item] {
+        let searching = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let senses = Dictionary(uniqueKeysWithValues: entries.flatMap { entry in
             entry.senses.map { ($0.id, VocabularySelection(entryID: entry.id, senseID: $0.id)) }
         })
@@ -22,10 +23,10 @@ public nonisolated enum VocabularyMeaningBrowserProjection {
         let cueNodes = Set(index.cueTargets.filter {
             $0.provenance.status == .confirmed && cueIDs.contains($0.cueID)
         }.map(\.nodeID))
-        let matchingSenses = Set(entries.flatMap { entry in entry.senses.compactMap { sense -> UUID? in
+        let matchingSenses = searching ? Set(entries.flatMap { entry in entry.senses.compactMap { sense -> UUID? in
             var value = entry; value.senses = [sense]
             return VocabularyNotebookQuery.matches(value, query: query) ? sense.id : nil
-        } })
+        } }) : Set<UUID>()
         let matchingPatterns = Set(index.patterns.filter {
             $0.provenance.status == .confirmed &&
                 matches($0.template + " " + $0.note + " " + $0.collocations.joined(separator: " "), query)
@@ -34,7 +35,7 @@ public nonisolated enum VocabularyMeaningBrowserProjection {
             guard kind == nil || node.kind == kind else { return nil }
             let links = mappings[node.id] ?? []
             guard includeEmpty || !links.isEmpty else { return nil }
-            guard query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            guard !searching ||
                 node.labels.contains(where: { matches($0.text, query) }) || matches(node.definition, query) ||
                 matches(node.scopeNote, query) || cueNodes.contains(node.id) || links.contains(where: {
                     $0.provenance.status == .confirmed && (matchingSenses.contains($0.senseID) ||

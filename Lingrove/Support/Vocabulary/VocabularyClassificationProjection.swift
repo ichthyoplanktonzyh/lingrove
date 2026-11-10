@@ -35,6 +35,7 @@ nonisolated enum VocabularyClassificationProjection {
         let children = Dictionary(grouping: edges, by: \.parentID)
         let parented = Set(edges.map(\.categoryID))
         let byID = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+        let meaningCounts = descendantMeaningCounts(index, allowed: nodeIDs)
         let terms = query.split(whereSeparator: \.isWhitespace).map(String.init)
         var matches = Set(categories.filter { category in
             let value = VocabularyClassificationPolicy.effective(category, in: index)
@@ -69,7 +70,7 @@ nonisolated enum VocabularyClassificationProjection {
                 title: itemTitle,
                 depth: depth,
                 hasChildren: !childIDs.isEmpty,
-                meaningCount: VocabularyClassificationPolicy.meaningIDs(in: id, index: index).intersection(nodeIDs).count,
+                meaningCount: meaningCounts[id, default: 0],
                 breadcrumb: nextTrail,
                 symbolName: icon,
                 isHidden: hidden.contains(id)
@@ -225,12 +226,30 @@ nonisolated enum VocabularyClassificationProjection {
                 .map(\.categoryID)
         )
         let roots = categories.filter { !parentedIDs.contains($0.id) }
-        let nodeIDs = Set(nodes.map(\.id))
-        let explored = roots.filter { root in
-            !VocabularyClassificationPolicy.meaningIDs(in: root.id, index: classification)
-                .isDisjoint(with: nodeIDs)
-        }.count
+        let counts = descendantMeaningCounts(classification, allowed: Set(nodes.map(\.id)))
+        let explored = roots.filter { counts[$0.id, default: 0] > 0 }.count
         return (explored, roots.count)
+    }
+
+    /// A meaning can reach the same ancestor through several parents. Walk each category's
+    /// ancestry once and union IDs, so counts remain exact without rescanning all memberships
+    /// and rebuilding the entire child graph for every displayed row.
+    static func descendantMeaningCounts(_ index: VocabularyClassificationIndex, allowed: Set<UUID>) -> [UUID: Int] {
+        let parents = Dictionary(grouping: index.parents, by: \.categoryID)
+        let direct = Dictionary(grouping: index.memberships.filter {
+            $0.provenance.status == .confirmed && allowed.contains($0.nodeID)
+        }, by: \.categoryID)
+        var gathered: [UUID: Set<UUID>] = [:]
+        for (category, memberships) in direct {
+            let meanings = Set(memberships.map(\.nodeID))
+            var seen: Set<UUID> = [category], queue = [category], cursor = 0
+            while cursor < queue.count {
+                let id = queue[cursor]; cursor += 1
+                gathered[id, default: []].formUnion(meanings)
+                for edge in parents[id, default: []] where seen.insert(edge.parentID).inserted { queue.append(edge.parentID) }
+            }
+        }
+        return gathered.mapValues(\.count)
     }
 
     private static func expressionPreview(

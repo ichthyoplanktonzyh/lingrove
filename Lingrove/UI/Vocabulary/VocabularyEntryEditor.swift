@@ -32,7 +32,7 @@ struct VocabularyEntryEditor: View {
 
     private var suggestedTags: [String] {
         let existing = Set(tagList)
-        return Array(Set(store.entries.flatMap { $0.senses.flatMap(\.tags) }))
+        return store.readIndex.allTags
             .filter { !existing.contains($0) }
             .sorted()
     }

@@ -6,6 +6,10 @@ import Foundation
 /// separate rows so changing a definition never rewrites its expressions or original excerpts.
 nonisolated enum VocabularySemanticDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
+    private struct Owner: Hashable {
+        let table: Row.Table
+        let parent: String?
+    }
 
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
@@ -66,9 +70,13 @@ nonisolated enum VocabularySemanticDatabaseProjection {
     // swiftlint:disable:next cyclomatic_complexity
     static func index(_ rows: [Row]) throws -> VocabularySemanticIndex {
         let tables = Dictionary(grouping: rows, by: \.table)
+        // Labels and evidence are parent-local sequences. Index them once: filtering the full
+        // label/evidence table for every node/mapping made a valid large notebook quadratic to
+        // reopen. Ordering and round-trip validation still reject gaps, duplicates and orphans.
+        let owners = Dictionary(grouping: rows, by: { Owner(table: $0.table, parent: $0.parentID) })
         func records<T>(_ table: Row.Table, parent: UUID? = nil, value: (Row.Payload) -> T?) throws -> [T] {
-            let records = (tables[table] ?? []).filter { parent == nil || $0.parentID == parent?.uuidString }
-                .sorted { $0.position < $1.position }
+            let candidates = parent.map { owners[Owner(table: table, parent: $0.uuidString)] ?? [] } ?? tables[table] ?? []
+            let records = candidates.sorted { $0.position < $1.position }
             guard records.map(\.position) == Array(records.indices) else { throw VocabularyError.invalidArchive }
             return try records.map { row in
                 guard let result = value(row.payload) else { throw VocabularyError.invalidArchive }; return result

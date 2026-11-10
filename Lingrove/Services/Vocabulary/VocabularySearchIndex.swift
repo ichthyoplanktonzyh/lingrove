@@ -13,6 +13,9 @@ actor VocabularySearchIndex {
     private var vectors: [String: [Float]] = [:]
     private var restored = false
     private let cacheURL: URL?
+    private var previousEntries: [UUID: VocabularyEntry] = [:]
+    private var previousSemantics: VocabularySemanticIndex?
+    private var preparedDocuments: [UUID: VocabularySearchDocument] = [:]
 
     private struct Cache: Codable {
         let model: String
@@ -23,8 +26,16 @@ actor VocabularySearchIndex {
 
     func prepare(entries: [VocabularyEntry], semantics: VocabularySemanticIndex)
         -> (documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument]) {
-        (VocabularySearchPolicy.documents(entries: entries, semantics: semantics),
-         VocabularySearchPolicy.meaningDocuments(entries: entries, semantics: semantics))
+        let unchangedSemantics = previousSemantics == semantics
+        let changed = unchangedSemantics ? entries.filter { previousEntries[$0.id] != $0 } : entries
+        let updated = VocabularySearchPolicy.documents(entries: changed, semantics: semantics)
+        let live = Set(entries.flatMap { $0.senses.map(\.id) })
+        preparedDocuments = preparedDocuments.filter { live.contains($0.key) }
+        for value in updated { preparedDocuments[value.id] = value }
+        previousEntries = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        previousSemantics = semantics
+        return (entries.flatMap { $0.senses.compactMap { preparedDocuments[$0.id] } },
+            VocabularySearchPolicy.meaningDocuments(entries: entries, semantics: semantics))
     }
 
     func reconcile(_ documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument] = [], modelURL: URL,
@@ -36,12 +47,15 @@ actor VocabularySearchIndex {
         let keys = Set(inputs.map { $0.0 })
         // Deletion and editing retire old vectors. The cache stores hashes, never saved text;
         // it is independent of the canonical archive and safe to remove or rebuild.
+        let previousCount = vectors.count
         vectors = vectors.filter { keys.contains($0.key) }
-        for (position, (key, text)) in inputs.enumerated() {
+        let missing = inputs.filter { vectors[$0.0] == nil }
+        guard !missing.isEmpty || previousCount != vectors.count else { return }
+        for (position, (key, text)) in missing.enumerated() {
             try Task.checkCancellation()
             if vectors[key] == nil { vectors[key] = try embed(text, modelURL: modelURL) }
-            if position % 10 == 0 || position + 1 == inputs.count {
-                await progress(position + 1, inputs.count)
+            if position % 10 == 0 || position + 1 == missing.count {
+                await progress(position + 1, missing.count)
             }
             // Yield even for cached rows so a large library cannot monopolize this actor and
             // delay cancellation, unloading, or keyword fallback while the window is interactive.
@@ -60,8 +74,13 @@ actor VocabularySearchIndex {
     }
 
     func search(_ query: String, documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument],
-                modelURL: URL?) throws -> VocabularySearchResults {
+                modelURL: URL?, language: LearningLanguage? = nil, tag: String = "") throws -> VocabularySearchResults {
         try Task.checkCancellation()
+        // Filter only after debounce, on the same actor as ranking. Keystrokes do no corpus
+        // scan on MainActor, including when a large language/tag scope is selected.
+        let documents = documents.filter { (language == nil || $0.language == language) && (tag.isEmpty || $0.tags.contains(tag)) }
+        let allowed = Set(documents.map(\.id))
+        let meanings = meanings.filter { $0.senseIDs.contains(where: allowed.contains) }
         let queryVector = try modelURL.map { try embed(VocabularySearchPolicy.queryText(query), modelURL: $0) }
         let similarities = try scores(for: documents.map { ($0.id, $0.fingerprint) }, queryVector: queryVector)
         let meaningSimilarities = try scores(for: meanings.map { ($0.id, $0.fingerprint) }, queryVector: queryVector)
@@ -88,6 +107,7 @@ actor VocabularySearchIndex {
         loadedURL = nil
         verifiedURL = nil
         if removingCache {
+            previousEntries = [:]; previousSemantics = nil; preparedDocuments = [:]
             vectors = [:]
             if let cacheURL { try? FileManager.default.removeItem(at: cacheURL) }
         }

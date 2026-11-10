@@ -256,10 +256,13 @@ final class BuiltInReviewSession: ObservableObject {
 
     /// The corpus may inspect participation while Review is hidden. This read returns a value
     /// to its caller and never opens a review route or starts background presentation work.
-    func inspectParticipation() async throws -> NotebookBuiltInReviewSnapshot {
-        let scope = try repository.snapshot()
-        let value = try await io.load(scope: scope, now: Date())
-        guard try repository.snapshot() == scope else { throw VocabularyError.editConflict }
+    func inspectParticipation(_ selection: VocabularySelection) async throws -> LingroveNotebookParticipation {
+        let version = try repository.version(), change = participationRevision
+        let value = try await io.participation(selection: selection, version: version)
+        try Task.checkCancellation()
+        // Review writes may advance participation without advancing the corpus revision.
+        // Check both fences after suspension; neither check decodes the corpus on MainActor.
+        guard try repository.version() == version, change == participationRevision else { throw VocabularyError.editConflict }
         return value
     }
 

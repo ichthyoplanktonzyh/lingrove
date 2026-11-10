@@ -9,6 +9,48 @@ import Testing
 struct BuiltInNotebookReviewIntegrationTests {
     private let now = Date(timeIntervalSince1970: 1_793_664_000)
 
+    @Test("Corpus participation reads match review state without writing or decoding unrelated corpus rows")
+    func boundedParticipationReadPreservesMergeAndRevisionFences() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        let (saved, selection) = try source(fixture)
+        let engine = fixture.db
+        let empty = try engine.loadNotebookParticipation(selection: selection, version: .init(saved))
+        #expect(empty.status == nil && empty.exerciseCount == 0)
+        var content = try enroll(engine, saved: saved, selection: selection)
+        let second = VocabularySelection(entryID: selection.entryID, senseID: saved.document.catalog[0].senses[1].id)
+        content = try enroll(engine, saved: saved, selection: second)
+        try engine.setBuiltInNotebookReviewStatus(.paused, action: .init(content: content, selection: selection), requestID: UUID())
+        let before = try rowCounts(engine)
+        let paused = try engine.loadNotebookParticipation(selection: selection, version: .init(saved))
+        #expect(paused.status == .paused && paused.exerciseCount == 1 && !paused.hasUnavailableMaterial)
+        #expect(try rowCounts(engine) == before)
+        var document = saved.document
+        var entries = document.entries
+        try VocabularySenseEditingPolicy.merge(source: second.senseID, into: selection.senseID, in: &entries[0], now: now)
+        document.entries = entries
+        let merged = try engine.saveLingroveNotebook(document, basedOn: saved)
+        let summary = try engine.loadNotebookParticipation(selection: selection, version: .init(merged))
+        let full = try engine.loadBuiltInNotebookReview(scope: merged, now: now).review.groups[selection.senseID]
+        #expect(summary.exerciseCount == 2 && summary.status == full?.status)
+        #expect(summary.hasUnavailableMaterial == full?.hasUnavailableMaterial)
+        #expect(throws: VocabularyError.editConflict) {
+            try engine.loadNotebookParticipation(selection: selection, version: .init(saved))
+        }
+        #expect(throws: VocabularyError.editConflict) {
+            try engine.loadNotebookParticipation(selection: second, version: .init(merged))
+        }
+        // A read of the selected sense does not visit the unrelated source-evidence table.
+        // The full notebook validator still owns corruption detection on a corpus reload.
+        try engine.core.execute(sql: "UPDATE notebook_sources SET payload_json='invalid' WHERE workspace_id=?",
+            values: [.text(merged.workspaceId)])
+        #expect(try engine.loadNotebookParticipation(selection: selection, version: .init(merged)) == summary)
+        let wrong = LingroveNotebookVersion(workspaceId: merged.workspaceId, notebookId: merged.notebookId,
+            revision: merged.revision, generation: "retired-generation")
+        #expect(throws: VocabularyError.editConflict) {
+            try engine.loadNotebookParticipation(selection: selection, version: wrong)
+        }
+    }
+
     @Test("Exact committed intents replay without reactivating a later participation choice")
     func exactReplayRetainsCurrentState() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }

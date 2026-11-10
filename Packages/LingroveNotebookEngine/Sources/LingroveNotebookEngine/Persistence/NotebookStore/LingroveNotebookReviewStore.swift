@@ -15,6 +15,21 @@ public struct LingroveNotebookReviewStore {
             values: [.text(workspaceId)], map: self.decode)
     }
 
+    /// Corpus badges need only one sense and its merged aliases. Bounded parameter batches
+    /// use the existing (workspace, notebook, sense) index without scanning other enrollments.
+    public func load(workspaceId: String, notebookId: UUID, senseIDs: Set<UUID>) throws -> [LingroveNotebookReviewEnrollment] {
+        let ids = senseIDs.sorted { $0.uuidString < $1.uuidString }
+        var result: [LingroveNotebookReviewEnrollment] = []
+        for start in stride(from: 0, to: ids.count, by: 256) {
+            try Task.checkCancellation()
+            let page = ids[start..<min(start + 256, ids.count)]
+            let parameters = Array(repeating: "?", count: page.count).joined(separator: ",")
+            result += try core.query(sql: "SELECT \(Self.columns) FROM notebook_review_enrollments WHERE workspace_id=? AND notebook_id=? AND sense_id IN (\(parameters))",
+                values: [.text(workspaceId), .text(notebookId.uuidString)] + page.map { .text($0.uuidString) }, map: decode)
+        }
+        return result
+    }
+
     public func find(workspaceId: String, id: UUID) throws -> LingroveNotebookReviewEnrollment? {
         try self.core.query(sql: "SELECT \(Self.columns) FROM notebook_review_enrollments WHERE workspace_id=? AND enrollment_id=?",
             values: [.text(workspaceId), .text(id.uuidString)], map: self.decode).first

@@ -46,12 +46,11 @@ struct VocabularyBuiltInReviewSection: View {
             .task(id: sense.id.uuidString + store.scopeIdentity.uuidString + session.participationRevision.uuidString) {
                 loaded = false; failed = false
                 do {
-                    let content = try await session.inspectParticipation()
+                    let content = try await session.inspectParticipation(selection)
                     try Task.checkCancellation()
-                    let group = content.review.groups[sense.id]
-                    status = group?.status
-                    exerciseCount = group?.cards.count ?? 0
-                    unavailable = group?.hasUnavailableMaterial == true
+                    status = content.status
+                    exerciseCount = content.exerciseCount
+                    unavailable = content.hasUnavailableMaterial
                     loaded = true
                 } catch is CancellationError { } catch { failed = true; loaded = true }
             }

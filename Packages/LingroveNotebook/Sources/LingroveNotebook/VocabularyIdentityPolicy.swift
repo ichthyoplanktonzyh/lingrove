@@ -5,6 +5,7 @@ import Foundation
 /// lookup key. Normalization, UTF-8 length framing and SHA-256 are persisted
 /// behavior; the storage adapter must never invent its own equivalent key.
 public nonisolated enum VocabularyIdentityPolicy {
+    private static let hexadecimal = Array("0123456789abcdef".utf8)
     public static func normalized(_ text: String) -> String {
         text.precomposedStringWithCanonicalMapping.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
@@ -29,6 +30,14 @@ public nonisolated enum VocabularyIdentityPolicy {
     private static func key(_ parts: [String]) -> String {
         // Length framing prevents strings containing delimiters from aliasing another capture.
         let value = parts.map { "\($0.utf8.count):\($0)" }.joined()
-        return SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+        // These exact lowercase ASCII bytes are persisted identity. Avoid Foundation's
+        // variadic formatter once per digest byte when validating a large saved corpus.
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(64)
+        for byte in SHA256.hash(data: Data(value.utf8)) {
+            bytes.append(hexadecimal[Int(byte >> 4)])
+            bytes.append(hexadecimal[Int(byte & 15)])
+        }
+        return String(decoding: bytes, as: UTF8.self)
     }
 }

@@ -8,6 +8,28 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularySearchTests {
+    @Test func incrementalSearchKeepsEditsTagsLinksAndDeletionCurrent() async throws {
+        var fixture = VocabularySearchPolicyTests.influenceFixture()
+        let index = VocabularySearchIndex(cacheURL: nil)
+        _ = await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
+        var entries = fixture.entries
+        let retainedID = entries[0].senses[0].id, removedID = entries.last!.senses[0].id
+        entries[0].senses[0].meaning = "A corrected definition"
+        entries[0].senses[0].tags = ["selected"]
+        entries.removeLast()
+        fixture.entries = entries
+        fixture.semantics.mappings.removeAll { $0.senseID == removedID }
+        let prepared = await index.prepare(entries: entries, semantics: fixture.semantics)
+        let tagged = try await index.search("corrected definition", documents: prepared.documents,
+            meanings: prepared.meanings, modelURL: nil, language: .english, tag: "selected")
+        #expect(tagged.selections.map(\.senseID) == [retainedID])
+        #expect(!prepared.documents.contains { $0.id == removedID })
+        #expect(prepared.meanings.allSatisfy { !$0.senseIDs.contains(removedID) })
+        let again = await index.prepare(entries: entries, semantics: fixture.semantics)
+        #expect(again.documents == prepared.documents)
+        await index.unload(removingCache: true)
+    }
+
     @Test func keywordFallbackTracksCollectionEditsAndLanguageScope() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

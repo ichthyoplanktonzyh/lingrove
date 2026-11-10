@@ -31,6 +31,10 @@ actor BuiltInReviewIO {
         try withEngine { try $0.loadBuiltInNotebookReview(scope: scope, now: now) }
     }
 
+    func participation(selection: VocabularySelection, version: LingroveNotebookVersion) throws -> LingroveNotebookParticipation {
+        try withEngine { try $0.loadNotebookParticipation(selection: selection, version: version) }
+    }
+
     func perform(_ command: Command) throws {
         try withEngine { engine in
             switch command {

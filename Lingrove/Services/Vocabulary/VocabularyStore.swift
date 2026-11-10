@@ -14,6 +14,10 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var classification = VocabularyClassificationIndex()
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
+    @Published private(set) var contentRevision = UUID()
+    private(set) var readIndex = VocabularyReadIndex()
+    private let indexWorker = VocabularyReadIndexWorker()
+    private var hasAppliedSnapshot = false
     @Published private(set) var pending: Set<String> = []
     @Published private(set) var isLoaded = false
     @Published private(set) var mediaRevision = UUID()
@@ -58,7 +62,8 @@ final class VocabularyStore: ObservableObject {
         archive = VocabularyArchive(url: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL,
             installsBundledClassification: true)
         unavailableError = nil; isAvailable = true
-        operationScope = try? repository.snapshot()
+        // The first actor-backed load supplies the full saved scope. Decoding it here would
+        // block app/window construction before SwiftUI can even present a loading state.
         repositorySubscription = repository.$changeSequence.dropFirst().sink { [weak self] _ in
             self?.repositoryDidChange()
         }
@@ -137,7 +142,7 @@ final class VocabularyStore: ObservableObject {
         }
         do {
             let (result, snapshot) = try await access { archive in try archive.executeCLI(request) }
-            apply(snapshot)
+            await apply(snapshot)
             return .init(requestID: request.id, ok: true, result: result)
         } catch let error as CLIError {
             return .failure(request.id, error)
@@ -163,7 +168,7 @@ final class VocabularyStore: ObservableObject {
             do {
                 let snapshot = try await access { archive in try archive.load() }
                 guard loadIdentity == identity else { return }
-                apply(snapshot)
+                await apply(snapshot)
             } catch { if loadIdentity == identity { report(error) } }
             if loadIdentity == identity {
                 loadWork = nil
@@ -192,7 +197,7 @@ final class VocabularyStore: ObservableObject {
     }
 
     func saveExplanation(_ record: LearningExplanationRecord, scope: VocabularyOperationScope? = nil) async {
-        do { apply(try await access(scope: scope) { archive in try archive.saveExplanation(record) }) } catch { report(error) }
+        do { await apply(try await access(scope: scope) { archive in try archive.saveExplanation(record) }) } catch { report(error) }
     }
 
     func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
@@ -249,7 +254,7 @@ final class VocabularyStore: ObservableObject {
         scope: VocabularyOperationScope? = nil,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveSnapshot
     ) async -> Bool {
-        do { apply(try await access(scope: scope, operation)); return true } catch { report(error); return false }
+        do { await apply(try await access(scope: scope, operation)); return true } catch { report(error); return false }
     }
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID, scope: VocabularyOperationScope? = nil,
@@ -259,7 +264,7 @@ final class VocabularyStore: ObservableObject {
                 try archive.mergeSensesWithUndo(entryID: entryID, source: source, target: target,
                     expectedRevision: expectedRevision)
             }
-            apply(snapshot)
+            await apply(snapshot)
             guard matches(undo.after), revision == undo.after.revision else { return true }
             senseMergeUndo = undo; canUndoSenseMerge = true
             return true
@@ -270,7 +275,7 @@ final class VocabularyStore: ObservableObject {
         guard let undo = senseMergeUndo else { return nil }
         do {
             let snapshot = try await access(scope: undo.after) { archive in try archive.undoSenseMerge(undo) }
-            apply(snapshot)
+            await apply(snapshot)
             return undo.selection
         } catch { report(error); return nil }
     }
@@ -295,7 +300,7 @@ final class VocabularyStore: ObservableObject {
         _ inputs: [VocabularyEntryInput], scope: VocabularyOperationScope? = nil
     ) async throws -> VocabularyEntryImportResult {
         let (snapshot, result) = try await access(scope: scope) { archive in try archive.addEntries(inputs) }
-        apply(snapshot)
+        await apply(snapshot)
         return result
     }
 
@@ -334,7 +339,7 @@ final class VocabularyStore: ObservableObject {
         entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
         importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
     ) async throws {
-        apply(try await access(scope: scope) { archive in
+        await apply(try await access(scope: scope) { archive in
             try archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected,
                 cardID: cardID, importedImages: importedImages)
         })
@@ -343,7 +348,7 @@ final class VocabularyStore: ObservableObject {
     func recordAnkiBinding(
         entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil, scope: VocabularyOperationScope? = nil
     ) async throws {
-        apply(try await access(scope: scope) { archive in
+        await apply(try await access(scope: scope) { archive in
             try archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID)
         })
     }
@@ -351,7 +356,7 @@ final class VocabularyStore: ObservableObject {
     func removeReview(
         entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview, scope: VocabularyOperationScope? = nil
     ) async throws {
-        apply(try await access(scope: scope) { archive in
+        await apply(try await access(scope: scope) { archive in
             try archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected)
         })
     }
@@ -359,11 +364,11 @@ final class VocabularyStore: ObservableObject {
     func saveTemplate(
         _ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
     ) async throws {
-        apply(try await access(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) })
+        await apply(try await access(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) })
     }
 
     func removeTemplate(_ id: UUID, scope: VocabularyOperationScope? = nil) async throws {
-        apply(try await access(scope: scope) { archive in try archive.removeTemplate(id) })
+        await apply(try await access(scope: scope) { archive in try archive.removeTemplate(id) })
     }
 
     func remove(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
@@ -438,36 +443,54 @@ final class VocabularyStore: ObservableObject {
                 if remaining == 0 { pendingCounts.removeValue(forKey: key); pending.remove(key) } else { pendingCounts[key] = remaining }
             }
         }
-        do { apply(try await operation()) } catch { report(error) }
+        do { await apply(try await operation()) } catch { report(error) }
     }
 
-    private func apply(_ snapshot: VocabularyArchiveSnapshot) {
-        guard !isShutDown else { return }
+    private func admits(_ snapshot: VocabularyArchiveSnapshot) -> Bool {
+        guard !isShutDown else { return false }
         if let scope = snapshot.scope {
             if let repository {
-                guard let current = try? repository.version(), current.hasSameOwner(as: scope) else { return }
+                guard let current = try? repository.version(), current.hasSameOwner(as: scope) else { return false }
                 if current.revision > scope.revision {
                     reloadRequested = true; isLoaded = false
                     if loadWork == nil { reloadRequested = false; loadIfNeeded() }
-                    return
+                    return false
                 }
+                guard current.revision == scope.revision else { return false }
             }
             if let old = operationScope, !old.hasSameOwner(as: scope) { resetScope(to: scope) }
         }
-        guard snapshot.revision >= revision else { return }
+        return snapshot.revision >= revision
+    }
+
+    private func apply(_ snapshot: VocabularyArchiveSnapshot) async {
+        guard admits(snapshot) else { return }
+        // A read-only CLI reply (or an echoed commit) is not a new UI revision. In particular,
+        // publishing the same arrays would restart search and re-evaluate every visible row.
+        if hasAppliedSnapshot, snapshot.revision == revision {
+            if !isLoaded { isLoaded = true }
+            if errorMessage != nil { errorMessage = nil }
+            return
+        }
+        let identity = scopeIdentity
+        let prepared = await indexWorker.prepare(snapshot)
+        guard scopeIdentity == identity, admits(snapshot) else { return }
+        // Another acknowledged operation may have finished while the projection was queued.
+        guard !hasAppliedSnapshot || snapshot.revision > revision else { return }
         if let scope = snapshot.scope { operationScope = scope }
         if let undo = senseMergeUndo, snapshot.revision != undo.after.revision {
             senseMergeUndo = nil; canUndoSenseMerge = false
         }
-        entries = snapshot.document.entries
+        readIndex = prepared
+        entries = prepared.entries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
-        entryKeys = Set(entries.filter { !$0.senses.isEmpty }.map(VocabularyPolicy.entryKey))
-        savedKeys = Set(entries.flatMap { entry in
-            entry.examples.map { VocabularyPolicy.entryKey(entry) + ":" + VocabularyPolicy.exampleKey($0) }
-        })
+        entryKeys = prepared.entryKeys
+        savedKeys = prepared.savedKeys
         reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
+        hasAppliedSnapshot = true
+        contentRevision = UUID()
         isLoaded = true
         errorMessage = nil
         LingroveLogger.learning.debug("Vocabulary updated", metadata: ["entry_count": .stringConvertible(entries.count)])
@@ -494,6 +517,7 @@ final class VocabularyStore: ObservableObject {
         loadIdentity = UUID(); loadWork?.cancel(); loadWork = nil; reloadRequested = false
         senseMergeUndo = nil; canUndoSenseMerge = false
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
+        hasAppliedSnapshot = false; readIndex = .init(); contentRevision = UUID()
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
         savedKeys = []; entryKeys = []; pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil

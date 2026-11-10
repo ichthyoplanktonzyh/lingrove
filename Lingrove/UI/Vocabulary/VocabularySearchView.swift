@@ -166,19 +166,24 @@ struct VocabularySearchResultsView<SenseMenu: View>: View {
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
     @State private var selectedRow: RowID?
     @State private var visibleCounts: [UUID: Int] = [:]
+    @State private var exactCount = 40
+    @State private var otherCount = 40
     private let pageSize = 20
 
     var body: some View {
         List(selection: rowSelection) {
-            ForEach(controller.results.exact) { row($0, nodeID: nil) }
+            ForEach(controller.results.exact.prefix(exactCount)) { row($0, nodeID: nil) }
+            if exactCount < controller.results.exact.count {
+                Button("Load More") { exactCount += 40 }
+            }
             ForEach(controller.results.groups) { group in
                 meaningSection(group)
             }
             if controller.results.groups.isEmpty {
-                ForEach(controller.results.other) { row($0, nodeID: nil) }
+                otherRows
             } else if !controller.results.other.isEmpty {
                 Section(String(localized: "Expressions", table: "Vocabulary")) {
-                    ForEach(controller.results.other) { row($0, nodeID: nil) }
+                    otherRows
                 }
             }
         }
@@ -195,6 +200,11 @@ struct VocabularySearchResultsView<SenseMenu: View>: View {
         .onChange(of: query) { _, _ in updateQuery() }
         .onChange(of: language) { _, _ in updateQuery() }
         .onChange(of: tag) { _, _ in updateQuery() }
+        .overlay(alignment: .topTrailing) {
+            if controller.isSearching && !controller.results.isEmpty {
+                ProgressView().controlSize(.small).padding(8).allowsHitTesting(false)
+            }
+        }
         .accessibilityIdentifier("vocabularySearchResults")
     }
 
@@ -249,7 +259,30 @@ struct VocabularySearchResultsView<SenseMenu: View>: View {
 
     private func updateQuery() {
         selectedRow = nil
-        visibleCounts = [:]
+        visibleCounts = [:]; exactCount = 40; otherCount = 40
         controller.search(query, language: language, tag: tag)
+    }
+
+    @ViewBuilder private var otherRows: some View {
+        ForEach(controller.results.other.prefix(otherCount)) { row($0, nodeID: nil) }
+        if otherCount < controller.results.other.count {
+            Button("Load More") { otherCount += 40 }
+        }
+    }
+}
+
+/// Search keeps its previous result while a replacement is running. Export waits for the
+/// current query to finish so it cannot silently export that previous collection instead.
+struct VocabularySearchExportAction: View {
+    @ObservedObject var controller: VocabularySearchController
+    let query: String
+    let revision: UUID
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(String(localized: "Export…", table: "Vocabulary"), systemImage: "square.and.arrow.up")
+        }
+        .disabled(!controller.hasCurrentResults(for: query))
     }
 }

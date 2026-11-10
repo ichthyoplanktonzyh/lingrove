@@ -8,6 +8,32 @@ import Testing
 /// adapter owns physical columns; this suite checks that typed rows carry the same document
 /// identities, order and nullable index values across a database-shaped reconstruction.
 struct VocabularyPersistenceCodecTests {
+    @Test func manyIndependentMeaningOwnersRetainLabelsEvidenceAndPositionChecks() throws {
+        let now = Date(timeIntervalSince1970: 1_793_664_000)
+        var entries: [VocabularyEntry] = [], nodes: [VocabularyMeaningNode] = [], mappings: [VocabularyMeaningMapping] = []
+        for index in 0..<1_000 {
+            let examples = (0..<2).map { offset in
+                VocabularyExample(id: UUID(), text: "Example \(index) number \(offset).", translation: "",
+                    ranges: [], completeness: .sentence, meaning: "", createdAt: now)
+            }
+            let sense = VocabularySense(id: UUID(), meaning: "Meaning \(index)", examples: examples,
+                createdAt: now, updatedAt: now)
+            let entry = VocabularyEntry(id: UUID(), expression: "expression \(index)", dictionaryForm: "", language: .english,
+                kind: .expression, senses: [sense], createdAt: now, updatedAt: now)
+            let node = VocabularyMeaningNode(id: UUID(), labels: [
+                .init(text: "Meaning \(index)", language: .english), .init(text: "含义 \(index)", language: .chinese)
+            ], createdAt: now, updatedAt: now)
+            entries.append(entry); nodes.append(node)
+            mappings.append(.init(nodeID: node.id, senseID: sense.id, evidenceIDs: examples.map(\.id)))
+        }
+        let document = VocabularyDocument(entries: entries, semantics: .init(nodes: nodes, mappings: mappings))
+        let rows = try VocabularyPersistenceCodec.encode(document)
+        #expect(try VocabularyPersistenceCodec.decode(rows) == document)
+        let removed = try #require(rows.rows.first { $0.entity == .meaningLabels && $0.position == 0 })
+        let broken = VocabularyPersistenceRows(rows: rows.rows.filter { $0.key != removed.key }, reviewTemplatesPresent: false)
+        #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(broken) }
+    }
+
     @Test func appendedCaptureRowsReconstructTheSameDocumentAsTheFullCodec() throws {
         func capture(_ word: String, in document: VocabularyDocument) throws -> VocabularyDocument {
             let task = try NotebookCaptureContract.decodeMaterial(Data("""

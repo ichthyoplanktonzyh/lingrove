@@ -183,4 +183,19 @@ struct VocabularySearchPolicyTests {
             #expect(!LocalModelTaskPolicy.supports(VocabularySearchCatalog.model.filename, task: task))
         }
     }
+
+    @Test func completeResultsAndExportAreNotTruncatedAtEightOrOneHundred() {
+        let now = Date()
+        let entries = (0..<137).map { value in
+            VocabularyEntry(id: UUID(), expression: "shared phrase \(value)", dictionaryForm: "", language: .english,
+                kind: .expression, senses: [.init(id: UUID(), meaning: "A related use", createdAt: now, updatedAt: now)],
+                createdAt: now, updatedAt: now)
+        }
+        let documents = VocabularySearchPolicy.documents(entries: entries, semantics: .init())
+        let result = VocabularySearchPolicy.results(documents: documents, meanings: [], query: "shared phrase")
+        #expect(result.count == 137 && result.other.count == 137)
+        #expect(Set(result.selections.map(\.senseID)) == Set(documents.map(\.id)))
+        #expect(VocabularySearchPolicy.hits(documents: documents, query: "shared phrase").count == 8)
+        #expect(VocabularySearchPolicy.fingerprint("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
 }

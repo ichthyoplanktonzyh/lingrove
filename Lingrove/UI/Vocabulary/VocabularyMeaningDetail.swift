@@ -49,7 +49,7 @@ struct VocabularyMeaningDetail: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            LazyVStack(alignment: .leading, spacing: 22) {
                 meaningHeader
                 expressionsSection
                 relatedMeanings
@@ -175,7 +175,7 @@ struct VocabularyMeaningDetail: View {
     }
 
     private var expressionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        LazyVStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 Text(String(localized: "My expressions", table: "Vocabulary"))
                     .font(textSize.font(15, weight: .semibold))
@@ -460,7 +460,7 @@ struct VocabularyUnclassifiedDetail: View {
 
     private var resolvedItems: [ResolvedItem] {
         unclassified.compactMap { target in
-            guard let entry = entries.first(where: { $0.id == target.entryID }),
+            guard let entry = store.readIndex.entriesByID[target.entryID],
                   let sense = entry.senses.first(where: { $0.id == target.senseID }) else { return nil }
             return ResolvedItem(selection: target, entry: entry, sense: sense)
         }
@@ -468,7 +468,7 @@ struct VocabularyUnclassifiedDetail: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(String(localized: "Other expressions", table: "Vocabulary"))
                         .font(textSize.font(28, weight: .bold))
@@ -496,7 +496,7 @@ struct VocabularyUnclassifiedDetail: View {
                         Label(String(localized: "No matching expressions", table: "Vocabulary"), systemImage: "checkmark.circle")
                     }
                 } else {
-                    VStack(alignment: .leading, spacing: 10) {
+                    LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(resolvedItems) { item in
                             unclassifiedCard(item)
                         }
@@ -615,6 +615,7 @@ struct VocabularyUnclassifiedDetail: View {
 /// and which meaning groups and expressions belong to this domain.
 struct VocabularyCategoryDetail: View {
     @ObservedObject var store: VocabularyStore
+    @StateObject private var cache = VocabularyMeaningReadCache()
     let category: VocabularyCategory
     let entries: [VocabularyEntry]
     var speech: LearningSpeechController?
@@ -663,39 +664,15 @@ struct VocabularyCategoryDetail: View {
         }
     }
 
-    private var directMeaningItems: [VocabularyMeaningBrowserProjection.Item] {
-        let directNodeIDs = Set(
-            store.classification.memberships
-                .filter { $0.categoryID == category.id && $0.provenance.status == .confirmed }
-                .map(\.nodeID)
-        )
-        return VocabularyMeaningBrowserProjection.items(
-            index: store.semantics,
-            entries: entries,
-            includeEmpty: true,
-            preferredLanguages: languages
-        ).filter { directNodeIDs.contains($0.id) }
+    private var categoryItems: [VocabularyMeaningBrowserProjection.Item] {
+        cache.category(category.id, store: store, entries: entries, languages: languages)
     }
 
-    private var descendantMeaningItems: [VocabularyMeaningBrowserProjection.Item] {
-        let allNodeIDs = VocabularyClassificationPolicy.meaningIDs(in: category.id, index: store.classification)
-        let directNodeIDs = Set(directMeaningItems.map(\.id))
-        let inheritedIDs = allNodeIDs.subtracting(directNodeIDs)
-        return VocabularyMeaningBrowserProjection.items(
-            index: store.semantics,
-            entries: entries,
-            includeEmpty: true,
-            preferredLanguages: languages
-        ).filter { inheritedIDs.contains($0.id) }
-    }
-
-    private var totalMeaningCount: Int {
-        directMeaningItems.count + descendantMeaningItems.count
-    }
+    private var totalMeaningCount: Int { categoryItems.count }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            LazyVStack(alignment: .leading, spacing: 22) {
                 categoryHeader
                 if !childCategories.isEmpty {
                     subcategoriesSection
@@ -876,8 +853,8 @@ struct VocabularyCategoryDetail: View {
     }
 
     private var meaningsSection: some View {
-        let allItems = directMeaningItems + descendantMeaningItems
-        return VStack(alignment: .leading, spacing: 12) {
+        let allItems = categoryItems
+        return LazyVStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Text(String(localized: "Meaning groups", table: "Vocabulary"))
                     .font(textSize.font(15, weight: .semibold))
@@ -977,9 +954,9 @@ struct VocabularyCategoryDetail: View {
 
             if !item.selections.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
+                    LazyHStack(spacing: 6) {
                         ForEach(item.selections, id: \.senseID) { selection in
-                            if let entry = entries.first(where: { $0.id == selection.entryID }),
+                            if let entry = store.readIndex.entriesByID[selection.entryID],
                                let sense = entry.senses.first(where: { $0.id == selection.senseID }) {
                                 Button {
                                     openSense(selection)
@@ -988,6 +965,7 @@ struct VocabularyCategoryDetail: View {
                                         Text(entry.expression)
                                             .font(textSize.font(13, weight: .semibold))
                                             .foregroundStyle(.primary)
+                                            .lineLimit(1)
                                         if !sense.displayTitle.isEmpty {
                                             Text("· " + sense.displayTitle)
                                                 .font(textSize.font(12))
@@ -1008,6 +986,7 @@ struct VocabularyCategoryDetail: View {
                         }
                     }
                 }
+                .frame(height: textSize.size(36))
             }
         }
         .padding(14)

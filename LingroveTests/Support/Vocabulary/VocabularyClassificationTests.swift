@@ -132,6 +132,22 @@ struct VocabularyClassificationTests {
         #expect(withoutMeanings.classification == nil)
     }
 
+    @Test func ancestorCountsDeduplicateMeaningsAcrossSeveralParents() throws {
+        let root = Self.category("Root"), left = Self.category("Left"), right = Self.category("Right")
+        let leaf = Self.category("Leaf"), node = UUID(), proposed = UUID()
+        let index = VocabularyClassificationIndex(categories: [root, left, right, leaf], parents: [
+            .init(id: UUID(), categoryID: left.id, parentID: root.id),
+            .init(id: UUID(), categoryID: right.id, parentID: root.id),
+            .init(id: UUID(), categoryID: leaf.id, parentID: left.id),
+            .init(id: UUID(), categoryID: leaf.id, parentID: right.id)
+        ], memberships: [.init(id: UUID(), nodeID: node, categoryID: leaf.id),
+            .init(id: UUID(), nodeID: node, categoryID: left.id),
+            .init(id: UUID(), nodeID: proposed, categoryID: root.id, provenance: .init(status: .proposed))])
+        let counts = VocabularyClassificationProjection.descendantMeaningCounts(index, allowed: [node, proposed])
+        #expect([root, left, right, leaf].allSatisfy { counts[$0.id] == 1 })
+        #expect(VocabularyClassificationProjection.descendantMeaningCounts(index, allowed: []).isEmpty)
+    }
+
     @Test func outlineRowsAndTaxonomyTreeRespectUnexploredToggle() throws {
         var document = VocabularySemanticTests.fixture()
         try VocabularyClassificationCatalog.bundled().install(in: &document.classification, nodes: document.semantics.nodes)
