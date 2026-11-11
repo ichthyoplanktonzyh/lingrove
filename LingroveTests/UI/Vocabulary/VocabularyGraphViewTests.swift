@@ -7,6 +7,51 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct VocabularyGraphViewTests {
+    @Test func preparedMeaningGraphKeepsProjectionAcrossCameraAndAppearanceChanges() async throws {
+        let suite = "GraphProjectionUI-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let fixture = VocabularySearchPolicyTests.influenceFixture()
+        let category = VocabularyCategory(id: UUID(), axis: .content, labels: [.init(text: "Influence")])
+        var classification = VocabularyClassificationIndex()
+        classification.categories = [category]
+        classification.memberships = [.init(id: UUID(), nodeID: fixture.semantics.nodes[0].id, categoryID: category.id)]
+        let model = VocabularyGraphPresentation(defaults: defaults)
+        let host = NSHostingView(rootView: VocabularyGraphView(entries: fixture.entries, contentRevision: UUID(),
+            language: nil, tag: "", query: "", selection: nil, presentation: model, select: { _ in },
+            meanings: fixture.semantics, classification: classification))
+        let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 1040, height: 700),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host
+        defer { window.close() }
+        window.orderFrontRegardless()
+        for _ in 0..<80 {
+            try await Task.sleep(for: .milliseconds(25)); host.layoutSubtreeIfNeeded()
+            if findCanvas(host)?.accessibilityChildren()?.count == 3 { break }
+        }
+        let canvas = try #require(findCanvas(host))
+        #expect(canvas.accessibilityChildren()?.count == 3)
+        model.revealMeaning(fixture.semantics.nodes[0].id)
+        for _ in 0..<80 {
+            try await Task.sleep(for: .milliseconds(25)); host.layoutSubtreeIfNeeded()
+            if canvas.accessibilityChildren()?.count == 8 { break }
+        }
+        #expect(canvas.accessibilityChildren()?.count == 8)
+        let builds = await model.projectionWorker.buildCount
+        model.settings.nodeSize = 22
+        model.send(.zoomIn)
+        try await Task.sleep(for: .milliseconds(100)); host.layoutSubtreeIfNeeded()
+        #expect(await model.projectionWorker.buildCount == builds)
+        #expect(canvas.accessibilityChildren()?.count == 8)
+        let output = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("build/vocabulary-graph/acceptance")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            try bitmap.representation(using: .png, properties: [:])?.write(to: output.appendingPathComponent("meaning-projection.png"))
+        }
+    }
+
     @Test func settingsPersistAndResetInAnIsolatedSuite() throws {
         let suite = "GraphTest-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))

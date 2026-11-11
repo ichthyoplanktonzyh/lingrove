@@ -70,6 +70,35 @@ practice state but revalidates scope when resumed. Number/Space/Enter/Undo handl
 the exact key window, visible review route, appropriate phase, no editable responder or sheet,
 and an idle writer. Tab retains its original purpose.
 
+Search's actor retains retrieval-only preparation state. Each saved revision compares bounded
+source fields and confirmed associations/cues; normalization and fingerprints are rebuilt only
+for affected sense/meaning records. A completed embedding-reconcile token allows display/tag/
+classification edits to reuse vectors. Keyword/hybrid ranking, thresholds and retrieval text
+budgets remain shared with the complete policy build.
+Consecutive single-entry receipts with unchanged semantics take a narrower preparation path:
+the store pairs original/new UI revisions, and the search actor reuses semantic material and
+meaning destinations while replacing only the changed entry's document slots. Missing or
+debounced gaps, insert/delete/merge and changed semantics use complete comparison. This keeps
+the fast path dependent on an admitted transaction receipt, not an inferred timestamp.
+
+The separate `sense-vectors-v2.sqlite` cache stores exact little-endian Float32 rows by text
+fingerprint, tagged with model identity/dimension. A change commits inserted/retired rows in
+one transaction. Cached inputs contain hashes and normalized vectors, never source text.
+The normal cap is 49,152 vectors and 256 MiB of database pages; SQLite's transient WAL may add
+another bounded transaction. Larger collections retain a deterministic subset and rebuild
+uncached vectors as needed. Invalid rows are discarded, an unreadable derived file can be
+recreated, and failed persistence remains pending for the next reconcile. Corpus storage is
+independent. The previous JSON cache is ignored; there is no canonical schema migration.
+
+Graph projection is a window-owned actor operation keyed by saved revision, filters, query,
+expansion and display language. Selection, hover, drawer width, camera and appearance reuse the
+same projection. Changed inputs are recomputed off MainActor; equal visible geometry retains
+canvas identity, accessibility nodes and camera. Real topology/query changes still perform a
+complete projection. Grouped classification reads and request-local count memoization remove
+repeated whole-directory scans while preserving unique membership across DAG paths. MainActor
+drawing reuses adjacency and rejects offscreen edge paths before invoking AppKit. There is no
+per-frame rebuild of the semantic graph, and hiding the destination cancels its projection task.
+
 The sidebar's native List may write its selection binding during a SwiftUI view update.
 NotebookWorkspaceNavigation queues the latest request in a later MainActor job before invoking
 VocabularyWindowController: pausing review and swapping hosted pages must not publish state or
@@ -354,3 +383,64 @@ version; no product admission rule was relaxed. All final runs passed.
 Installed Dev binaries and live data were unchanged. Domain clocks remain database-wide,
 so another retained workspace can conservatively invalidate the same domain. Search-index
 and graph-projection rebuild scope remain the next independent performance stage.
+
+## Search and graph checkpoint (2026-11-11)
+
+This completes the final primary code stage of the current large-library refactor. The existing
+app/repository/window ownership remains in place. Search preparation and graph computation are
+derived reads with explicit lifetime/cancellation; the new vector database is disposable storage.
+Dev installation and real-library experience acceptance remain separate integration operations.
+
+A Release harness compared `217d1fa4` with this change using fixed content/primary IDs and three
+samples per version: 10,000 entries, 20,000 senses, 40,000 contextual source examples, 14,000
+meaning nodes, 14,011 confirmed mappings, 350 categories and 14,000 category memberships.
+Fifty root categories own 300 children. The displayed taxonomy has 14,351 nodes in both versions.
+Medians measure local preparation/projection, not input-to-frame or model-inference latency:
+
+| Operation | Before | Current |
+| --- | ---: | ---: |
+| Prepare search after one sense definition edit | 100.5 ms | 1.3 ms |
+| Prepare search after a shared meaning definition edit | 289.5 ms | 104.3 ms |
+| Build the taxonomy graph projection | 545.9 ms | 128.4 ms |
+| Repeat the same graph request | 534.5 ms | 0.018 ms |
+
+The single-sense update rebuilds 1 sense and 0 meaning retrieval documents; the old entry cache
+rebuilt its 2 senses plus all 14,000 meaning documents. The shared-meaning update rebuilds its
+12 associated senses and 1 meaning, versus 20,000/14,000. Semantic changes and missing/gapped
+entry receipts still perform a linear comparison of small inputs. Actual topology/query changes
+still construct a complete graph on its worker; camera/selection/appearance reuse the snapshot.
+The final search harness retains the previous snapshot to account for copy-on-write publication
+and uses the exact preparation method from `217d1fa4`. It supersedes an initial full-build search
+baseline, which overstated ordinary-entry improvement. Corrected raw search samples and sources
+are preserved in `build/mac-w2-c/search-preparation-final*`; graph/cache measurements are unchanged.
+
+The cache test uses 34,000 synthetic 1,024-dimensional unit vectors, without a GGUF. Updating
+one fingerprint previously spent a median 10,381.6 ms encoding 280,874,033 JSON bytes and then
+skipped persistence at the 64 MiB limit. Current storage spends 20.4 ms inserting/retiring 2 rows,
+successfully restores all 34,000 vectors and occupies about 159.6 MB on disk. This comparison is
+an update attempt versus successful persistence, not two successful saves. It qualifies cache
+storage and capacity, not embedding quality or generation throughput. Raw samples and copied
+harness sources are under `build/mac-w2-c/search-graph-*`.
+
+Validation passed the shared taxonomy test and all 93 engine tests, including exact empty/NUL
+BLOB binding. The initial native run passed 44 tests with 3 optional tests skipped; its unchanged
+canvas code passed expansion, drag, camera and cooling checks, and the entry graph screenshot
+was inspected. A subsequent search/cache run passed 14 with 3 optional model tests skipped.
+The final combination passed 34 tests, including review, Progress, account/sync, account-scoped
+cache removal and retry after cache persistence failure. Strict lint passed. Actual GGUF
+multilingual/relevance suites remained opt-in and were not executed; retrieval text, ranking,
+model identity and admission thresholds were unchanged.
+
+The initially locked native combination failed 3 desktop-dependent animation tests (6 assertions):
+`quickNativeDragReachesWorkerBeforeCooling`, `searchNavigationStopsInitialFitWhileLayoutIsSettling`
+and `nativeCanvasCoolsAndStopsWhenRemoved`. Two native session probes confirmed
+`CGSSessionScreenIsLocked=Yes`; AppKit's occlusion gate correctly stopped frames. The taxonomy
+test verified projection/accessibility identity, but its screenshot was blank in that locked
+session. No product visibility gate was relaxed. After the user unlocked the desktop, a focused
+run passed all 25 executed tests (3 optional tests skipped): graph UI, search preparation/search
+and repository integration. All 6 graph UI tests passed, including the 3 previously limited
+animation tests. The visible taxonomy screenshot was then inspected: axes, category, meaning,
+five sense branches, labels and controls rendered normally. New tests also verified consecutive
+entry receipts and complete fallback after debounced gaps. No desktop validation item remains
+open in this checkpoint. Large-graph pan/draw FPS and actual GGUF inference throughput were not
+performance-qualified. No installed Dev bundle or live corpus was opened, copied or changed.

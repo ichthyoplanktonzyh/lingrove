@@ -9,7 +9,7 @@ nonisolated enum VocabularySearchCatalog {
         BundledRuntimeLocator.userRuntimeDirectoryURL().deletingLastPathComponent()
             .appendingPathComponent("SearchModels", isDirectory: true)
     }
-    static var cacheURL: URL { directoryURL.appendingPathComponent("sense-vectors.json") }
+    static var cacheURL: URL { directoryURL.appendingPathComponent("sense-vectors-v2.sqlite") }
     static let model = DownloadableRuntimeModel(
         filename: "Qwen3-Embedding-0.6B-Q8_0.gguf",
         displayName: "Qwen3 Embedding 0.6B · Q8_0",

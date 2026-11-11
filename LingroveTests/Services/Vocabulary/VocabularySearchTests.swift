@@ -1,4 +1,5 @@
 import LingroveNotebook
+import LingroveNotebookEngine
 import Foundation
 import Testing
 @testable import Lingrove
@@ -8,10 +9,42 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct VocabularySearchTests {
+    @Test func accountGenerationRevokesPendingSearchAndRemovesPrivateVectorCache() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-search-scope-" + UUID().uuidString)
+        let repository = try MacNotebookRepository(databaseURL: directory.appendingPathComponent("primary.sqlite"),
+            mediaDirectoryURL: directory.appendingPathComponent("media"))
+        defer { try? repository.shutdown(); try? FileManager.default.removeItem(at: directory) }
+        let store = VocabularyStore(repository: repository)
+        await store.save(.init(expression: "harbor", dictionaryForm: "harbor", language: .english, kind: .word, meaning: "A sheltered port"))
+        let cacheURL = directory.appendingPathComponent("vectors.sqlite")
+        let cache = VocabularySearchVectorCache(url: cacheURL, model: VocabularySearchCatalog.identity,
+            dimensions: VocabularySearchCatalog.dimensions)
+        _ = try cache.save([String(repeating: "a", count: 64): [1] + Array(repeating: 0, count: VocabularySearchCatalog.dimensions - 1)])
+        let suite = "lingrove-search-scope-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let models = directory.appendingPathComponent("models")
+        let downloads = ModelDownloadManager(runtimeDirectoryURL: models, assetCatalog: [VocabularySearchCatalog.model],
+            taskAssignments: .init(defaults: defaults))
+        let search = VocabularySearchController(store: store, directoryURL: models, cacheURL: cacheURL, downloads: downloads)
+        search.activate()
+        defer { search.suspend() }
+        search.search("harbor", language: nil, tag: "")
+        try await settle { !search.isSearching && search.results.count == 1 }
+        search.search("harbor", language: nil, tag: "")
+        try repository.engine.retireMacNotebookScope(expectedGeneration: repository.version().generation)
+        repository.publishChange()
+        #expect(search.results.isEmpty && search.completedQuery == nil)
+        await store.load()
+        try await settle { !FileManager.default.fileExists(atPath: cacheURL.path) }
+        #expect(search.results.isEmpty && search.completedQuery == nil)
+        await store.shutdown()
+    }
+
     @Test func incrementalSearchKeepsEditsTagsLinksAndDeletionCurrent() async throws {
         var fixture = VocabularySearchPolicyTests.influenceFixture()
         let index = VocabularySearchIndex(cacheURL: nil)
-        _ = await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
+        _ = try await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
         var entries = fixture.entries
         let retainedID = entries[0].senses[0].id, removedID = entries.last!.senses[0].id
         entries[0].senses[0].meaning = "A corrected definition"
@@ -19,13 +52,13 @@ struct VocabularySearchTests {
         entries.removeLast()
         fixture.entries = entries
         fixture.semantics.mappings.removeAll { $0.senseID == removedID }
-        let prepared = await index.prepare(entries: entries, semantics: fixture.semantics)
+        let prepared = try await index.prepare(entries: entries, semantics: fixture.semantics)
         let tagged = try await index.search("corrected definition", documents: prepared.documents,
             meanings: prepared.meanings, modelURL: nil, language: .english, tag: "selected")
         #expect(tagged.selections.map(\.senseID) == [retainedID])
         #expect(!prepared.documents.contains { $0.id == removedID })
         #expect(prepared.meanings.allSatisfy { !$0.senseIDs.contains(removedID) })
-        let again = await index.prepare(entries: entries, semantics: fixture.semantics)
+        let again = try await index.prepare(entries: entries, semantics: fixture.semantics)
         #expect(again.documents == prepared.documents)
         await index.unload(removingCache: true)
     }
@@ -60,7 +93,8 @@ struct VocabularySearchTests {
         fixture.semantics.nodes += adjacent.semantics.nodes
         fixture.semantics.mappings += adjacent.semantics.mappings
         let index = VocabularySearchIndex(cacheURL: nil)
-        let (documents, meanings) = await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
+        let prepared = try await index.prepare(entries: fixture.entries, semantics: fixture.semantics)
+        let documents = prepared.documents, meanings = prepared.meanings
         try await index.reconcile(documents, meanings: meanings, modelURL: modelURL) { _, _ in }
         let results = try await index.search("某个因素会左右结果", documents: documents, meanings: meanings, modelURL: modelURL)
         #expect(results.groups.first?.node.title == "对某事产生影响")
@@ -119,7 +153,7 @@ struct VocabularySearchTests {
         let modelURL = URL(fileURLWithPath: path)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let cacheURL = folder.appendingPathComponent("vectors.json")
+        let cacheURL = folder.appendingPathComponent("vectors.sqlite")
         let index = VocabularySearchIndex(cacheURL: cacheURL)
         let entries = Self.multilingualEntries()
         let documents = VocabularySearchPolicy.documents(entries: entries, semantics: .init())
@@ -168,11 +202,10 @@ struct VocabularySearchTests {
         try await restored.reconcile(documents + idiomDocuments, modelURL: folder.appendingPathComponent("missing.gguf")) { _, _ in }
         let changed = Array(documents.dropFirst())
         try await restored.reconcile(changed, modelURL: modelURL) { _, _ in }
-        let data = try Data(contentsOf: cacheURL)
-        #expect(!String(decoding: data, as: UTF8.self).contains("postpone"))
-        let snapshot = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let vectors = try #require(snapshot["vectors"] as? [String: Any])
-        #expect(vectors[documents[0].fingerprint] == nil)
+        let restoredVectors = try VocabularySearchVectorCache(url: cacheURL, model: VocabularySearchCatalog.identity,
+            dimensions: VocabularySearchCatalog.dimensions).load()
+        #expect(restoredVectors[documents[0].fingerprint] == nil)
+
     }
 
     private func settle(_ condition: () -> Bool) async throws {

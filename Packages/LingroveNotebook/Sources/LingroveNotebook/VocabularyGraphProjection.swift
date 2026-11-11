@@ -52,9 +52,6 @@ public nonisolated enum VocabularyGraphProjection {
             includeEmpty: includeEmpty,
             preferredLanguages: preferredLanguages
         )
-        let entriesByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
-        let mixedLanguages = VocabularyNotebookQuery.hasMultipleLanguages(entries)
-
         let activeClassification = classification ?? VocabularyClassificationIndex()
         let activeCategories = activeClassification.categories.filter { !$0.isRetired }
         if !activeCategories.isEmpty {
@@ -74,6 +71,8 @@ public nonisolated enum VocabularyGraphProjection {
 
         // Fallback hierarchical tree when no classification catalog is installed:
         // group meanings directly under their conceptual/functional axes (or root columns).
+        let entriesByID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        let mixedLanguages = VocabularyNotebookQuery.hasMultipleLanguages(entries)
         let visible = Set(items.map(\.id))
         var included = Set<VocabularyGraphNodeID>()
         for item in items {
@@ -175,15 +174,18 @@ public nonisolated enum VocabularyGraphProjection {
 
         let allMatchedMeaningIDs = Set(items.map(\.id))
         let matchingCategoryIDs = matchingCategories(categories, classification: classification, query: query)
+        let classificationRead = VocabularyClassificationReadIndex(classification)
+        var meaningCounts: [UUID: Int] = [:]
 
         func subtreeMeaningCount(_ categoryID: UUID) -> Int {
-            VocabularyClassificationPolicy.meaningIDs(in: categoryID, index: classification)
-                .intersection(allMatchedMeaningIDs)
-                .count
+            if let count = meaningCounts[categoryID] { return count }
+            let count = classificationRead.meaningIDs(in: categoryID).intersection(allMatchedMeaningIDs).count
+            meaningCounts[categoryID] = count
+            return count
         }
 
         func subtreeHasCategoryMatch(_ categoryID: UUID) -> Bool {
-            let descendants = VocabularyClassificationPolicy.descendants(of: categoryID, in: classification)
+            let descendants = classificationRead.descendants(of: categoryID)
             return !descendants.isDisjoint(with: matchingCategoryIDs)
         }
 
@@ -320,7 +322,7 @@ public nonisolated enum VocabularyGraphProjection {
 
             let axisNodeID = VocabularyGraphNodeID.axis(axis)
             let axisMeaningCount = Set(visibleRoots.flatMap {
-                VocabularyClassificationPolicy.meaningIDs(in: $0.id, index: classification).intersection(allMatchedMeaningIDs)
+                classificationRead.meaningIDs(in: $0.id).intersection(allMatchedMeaningIDs)
             }).count + uncategorizedForAxis.count
             let axisLabel = axisLabelText(for: axis)
 
@@ -360,13 +362,11 @@ public nonisolated enum VocabularyGraphProjection {
         categoriesByID: [UUID: VocabularyCategory]
     ) -> ([UUID: UUID], [UUID: [VocabularyCategory]]) {
         var primaryParent: [UUID: UUID] = [:]
+        var childCategories: [UUID: [VocabularyCategory]] = [:]
         for edge in edges where primaryParent[edge.categoryID] == nil {
             primaryParent[edge.categoryID] = edge.parentID
-        }
-        var childCategories: [UUID: [VocabularyCategory]] = [:]
-        for (childID, parentID) in primaryParent {
-            if let child = categoriesByID[childID] {
-                childCategories[parentID, default: []].append(child)
+            if let child = categoriesByID[edge.categoryID] {
+                childCategories[edge.parentID, default: []].append(child)
             }
         }
         return (primaryParent, childCategories)

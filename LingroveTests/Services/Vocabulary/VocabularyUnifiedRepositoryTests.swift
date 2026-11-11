@@ -13,6 +13,22 @@ import SwiftUI
 @Suite(.serialized)
 @MainActor
 struct VocabularyUnifiedRepositoryTests {
+    @Test func searchReceiptNamesOnlyConsecutiveEntryEditsWithUnchangedSemantics() async throws {
+        try await withFixture { f in
+            await f.store.load()
+            await f.store.save(.init(expression: "harbor", dictionaryForm: "harbor", language: .english, kind: .word, meaning: "port"))
+            let original = try #require(f.store.entries.first), revision = f.store.contentRevision
+            var edited = original; edited.senses[0].meaning = "A sheltered port"
+            #expect(await f.store.update(edited, basedOn: original))
+            let change = try #require(f.store.searchEntryChange)
+            #expect(change.baseRevision == revision && change.revision == f.store.contentRevision && change.entryID == original.id)
+            var semantics = f.store.semantics
+            semantics.nodes.append(.init(id: UUID(), labels: [.init(text: "A separate organization edit")]))
+            #expect(await f.store.updateSemantics(semantics, basedOn: f.store.semantics))
+            #expect(f.store.searchEntryChange == nil)
+        }
+    }
+
     @Test func organizationNotificationFollowsTheAppliedReceipt() async throws {
         try await withFixture { f in
             await f.store.load()

@@ -10,6 +10,9 @@ final class VocabularyGraphCanvasView: NSView {
     var interactionBegan: (() -> Void)?
     private let presentation: VocabularyGraphPresentation
     private var snapshot = VocabularyGraphSnapshot()
+    private var projectionIdentity: UUID?
+    private var nodeIDs: Set<VocabularyGraphNodeID> = []
+    private var neighbors: [VocabularyGraphNodeID: Set<VocabularyGraphNodeID>] = [:]
     private var selection: VocabularySelection?
     private var meaningSelection: UUID?
     private var categorySelection: UUID?
@@ -73,6 +76,7 @@ final class VocabularyGraphCanvasView: NSView {
 
     func update(
         snapshot: VocabularyGraphSnapshot,
+        projectionIdentity: UUID? = nil,
         selection: VocabularySelection?,
         select: @escaping (VocabularySelection?) -> Void,
         meaningSelection: UUID? = nil,
@@ -95,12 +99,17 @@ final class VocabularyGraphCanvasView: NSView {
         self.selection = selection
         let oldMatches = self.snapshot.matches
         let oldQuery = self.snapshot.searchQuery
-        let topologyChanged = self.snapshot != snapshot
+        // Worker projections carry identity so a selection/settings update never compares
+        // thousands of nodes, edges and tree coordinates on MainActor. Direct test/preview
+        // callers without an identity retain the existing value-comparison contract.
+        let topologyChanged = projectionIdentity.map { self.projectionIdentity != $0 } ?? (self.snapshot != snapshot)
+        self.projectionIdentity = projectionIdentity
         self.snapshot = snapshot
-        if let pinned, !snapshot.nodes.contains(where: { $0.id == pinned }) {
+        if topologyChanged { indexTopology(snapshot) }
+        if let pinned, !nodeIDs.contains(pinned) {
             self.pinned = nil; pinPosition = nil; releasedPin = nil; pointer = nil
         }
-        if let keyboardNode, !snapshot.nodes.contains(where: { $0.id == keyboardNode }) { self.keyboardNode = nil }
+        if let keyboardNode, !nodeIDs.contains(keyboardNode) { self.keyboardNode = nil }
         let settings = presentation.settings.normalized
         let forceChanged = appliedSettings.center != settings.center || appliedSettings.repulsion != settings.repulsion
             || appliedSettings.linkStrength != settings.linkStrength || appliedSettings.linkDistance != settings.linkDistance
@@ -123,6 +132,14 @@ final class VocabularyGraphCanvasView: NSView {
             centerSearchResult()
         }
         needsDisplay = true
+    }
+
+    private func indexTopology(_ snapshot: VocabularyGraphSnapshot) {
+        nodeIDs = Set(snapshot.nodes.map(\.id)); neighbors = [:]
+        for edge in snapshot.edges {
+            neighbors[edge.source, default: []].insert(edge.target)
+            neighbors[edge.target, default: []].insert(edge.source)
+        }
     }
 
     override func viewDidMoveToWindow() {
@@ -277,18 +294,16 @@ final class VocabularyGraphCanvasView: NSView {
     }
 
     private func updateRelatedNodes() {
-        // Compute adjacency once per frame; scanning all edges for every dot would turn a
-        // semantic graph's hover feedback into quadratic work on the main actor.
+        // Adjacency belongs to the saved projection, so hover/selection follows only this
+        // node's neighbors instead of scanning the complete graph on every draw.
         relatedNodes = []
         if snapshot.isMeaningGraph,
            let focus = hovered
                ?? meaningSelection.map(VocabularyGraphNodeID.meaning)
                ?? categorySelection.map(VocabularyGraphNodeID.category)
                ?? selection.map(VocabularyGraphNodeID.sense) {
+            relatedNodes = neighbors[focus, default: []]
             relatedNodes.insert(focus)
-            for edge in snapshot.edges where edge.source == focus || edge.target == focus {
-                relatedNodes.insert(edge.source); relatedNodes.insert(edge.target)
-            }
         }
     }
 
@@ -296,6 +311,7 @@ final class VocabularyGraphCanvasView: NSView {
         guard let start = positions[edge.source], let end = positions[edge.target] else { return }
         let screenStart = screen(start)
         let screenEnd = screen(end)
+        guard VocabularyGraphViewport.containsEdge(from: screenStart, to: screenEnd, viewport: bounds) else { return }
         let path = NSBezierPath()
         path.lineCapStyle = .round
         path.move(to: screenStart)

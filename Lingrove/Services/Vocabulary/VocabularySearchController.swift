@@ -23,6 +23,8 @@ final class VocabularySearchController: ObservableObject {
     private var meanings: [VocabularyMeaningSearchDocument] = []
     private var preparedRevision: UUID?
     private var completedRevision: UUID?
+    private var reconciledEmbeddingRevision: UUID?
+    private var reconciledModelURL: URL?
     private var epoch = UUID()
     private var queryEpoch = UUID()
     private var active = false
@@ -47,6 +49,7 @@ final class VocabularySearchController: ObservableObject {
             epoch = UUID(); queryEpoch = UUID(); indexing?.cancel(); searching?.cancel()
             documents = []; meanings = []; results = .init(); isSearching = false; completedQuery = nil
             preparedRevision = nil; completedRevision = nil; query = ""; language = nil; tag = ""
+            reconciledEmbeddingRevision = nil; reconciledModelURL = nil
             Task { [weak self, index = self.index] in
                 await index.unload(removingCache: true)
                 guard let self, store.scopeIdentity == identity else { return }
@@ -115,12 +118,22 @@ final class VocabularySearchController: ObservableObject {
         let capturedEpoch = epoch
         indexing?.cancel(); searching?.cancel()
         let entries = store.entries, semantics = store.semantics, modelURL = modelURL, revision = store.contentRevision
+        let entryChange = store.searchEntryChange
         indexing = Task { [weak self, index] in
-            let (documents, meanings) = await index.prepare(entries: entries, semantics: semantics)
+            guard let prepared = try? await index.prepare(entries: entries, semantics: semantics,
+                revision: revision, entryChange: entryChange) else { return }
             guard let self, self.epoch == capturedEpoch, !Task.isCancelled else { return }
+            let documents = prepared.documents, meanings = prepared.meanings
             self.documents = documents
             self.meanings = meanings
             self.preparedRevision = revision
+            // A classification/tag/display edit can change UI revision without changing any
+            // embedding input. Only a completed reconcile may establish this reusable token.
+            if let modelURL, self.status == .ready, self.reconciledModelURL == modelURL,
+               self.reconciledEmbeddingRevision == prepared.embeddingRevision {
+                self.runSearch()
+                return
+            }
             self.status = modelURL == nil ? .notInstalled : .indexing(completed: 0, total: documents.count + meanings.count)
             self.runSearch(usingModel: false)
             guard let modelURL else { return }
@@ -129,6 +142,8 @@ final class VocabularySearchController: ObservableObject {
                     await self?.progress(completed, total: total, epoch: capturedEpoch)
                 }
                 guard self.epoch == capturedEpoch, !Task.isCancelled else { return }
+                self.reconciledEmbeddingRevision = prepared.embeddingRevision
+                self.reconciledModelURL = modelURL
                 self.status = .ready
                 self.runSearch()
             } catch {

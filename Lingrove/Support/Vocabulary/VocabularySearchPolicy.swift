@@ -8,51 +8,40 @@ import NaturalLanguage
 nonisolated enum VocabularySearchPolicy {
     private static let hexadecimal = Array("0123456789abcdef".utf8)
     static func documents(entries: [VocabularyEntry], semantics: VocabularySemanticIndex) -> [VocabularySearchDocument] {
-        let nodes = Dictionary(uniqueKeysWithValues: semantics.nodes.filter {
-            $0.provenance.status == .confirmed
-        }.map { ($0.id, $0) })
-        let mappings = Dictionary(grouping: semantics.mappings.filter { $0.provenance.status == .confirmed }, by: \.senseID)
-        let cues = Dictionary(uniqueKeysWithValues: semantics.cues.map { ($0.id, $0.text) })
-        let targets = Dictionary(grouping: semantics.cueTargets.filter { $0.provenance.status == .confirmed }, by: \.nodeID)
+        let material = VocabularySearchMaterial(semantics)
         return entries.flatMap { entry in entry.senses.map { sense in
-            var fields = [entry.expression, entry.dictionaryForm, sense.meaning]
-                + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
-            // Context captures deliberately leave the core summary empty. Their accepted short
-            // interpretations are definitions too; include those meanings, never source sentences
-            // or sentence translations, so an unclassified contextual collection stays retrievable.
-            fields += sense.examples.prefix(8).map(\.meaning)
-            for mapping in (mappings[sense.id] ?? []).prefix(8) {
-                guard let node = nodes[mapping.nodeID] else { continue }
-                fields += node.labels.map(\.text) + [node.definition]
-                fields += (targets[node.id] ?? []).prefix(12).compactMap { cues[$0.cueID] }
-            }
-            var seen = Set<String>()
-            fields = fields.map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(384)) }
-                .filter { !$0.isEmpty && seen.insert($0).inserted }
-            // A bounded per-sense payload keeps each native operation short and prevents one
-            // verbose definition from dominating other meanings or exhausting the context.
-            let text = String(fields.joined(separator: "\n").prefix(2_000))
-            return .init(selection: .init(entryID: entry.id, senseID: sense.id), expression: entry.expression,
-                dictionaryForm: entry.dictionaryForm, meaning: sense.displayTitle, language: entry.language,
-                fields: fields, text: text, fingerprint: fingerprint(text), tags: sense.tags,
-                normalizedExpressions: [entry.expression, entry.dictionaryForm].map(normalized),
-                normalizedFields: fields.map(normalized))
+            document(entry: entry, sense: sense, fields: material.fields(entry: entry, sense: sense))
         } }
     }
 
+    /// Full builds and delta preparation share these bounded text/normalization rules.
+    static func document(entry: VocabularyEntry, sense: VocabularySense, fields: [String]) -> VocabularySearchDocument {
+        var seen = Set<String>()
+        let fields = fields.map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(384)) }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+        let text = String(fields.joined(separator: "\n").prefix(2_000))
+        return .init(selection: .init(entryID: entry.id, senseID: sense.id), expression: entry.expression,
+            dictionaryForm: entry.dictionaryForm, meaning: sense.displayTitle, language: entry.language,
+            fields: fields, text: text, fingerprint: fingerprint(text), tags: sense.tags,
+            normalizedExpressions: [entry.expression, entry.dictionaryForm].map(normalized),
+            normalizedFields: fields.map(normalized))
+    }
+
     static func meaningDocuments(entries: [VocabularyEntry], semantics: VocabularySemanticIndex) -> [VocabularyMeaningSearchDocument] {
-        let cues = Dictionary(uniqueKeysWithValues: semantics.cues.map { ($0.id, $0.text) })
-        let targets = Dictionary(grouping: semantics.cueTargets.filter { $0.provenance.status == .confirmed }, by: \.nodeID)
+        let material = VocabularySearchMaterial(semantics)
         return VocabularyMeaningBrowserProjection.items(index: semantics, entries: entries, includeEmpty: false).compactMap { item in
             guard item.node.provenance.status == .confirmed, !item.selections.isEmpty else { return nil }
-            let terms = item.node.labels.map(\.text) + (targets[item.id] ?? []).prefix(12).compactMap { cues[$0.cueID] }
-            let text = String((terms + [item.node.definition]).map {
-                String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(384))
-            }.filter { !$0.isEmpty }.joined(separator: "\n").prefix(2_000))
-            guard !text.isEmpty else { return nil }
-            return .init(node: item.node, senseIDs: item.selections.map(\.senseID), lookupTerms: terms,
-                text: text, fingerprint: fingerprint(text), normalizedTerms: terms.map(normalized))
+            return meaningDocument(node: item.node, senseIDs: item.selections.map(\.senseID), terms: material.terms(item.node))
         }
+    }
+
+    static func meaningDocument(node: VocabularyMeaningNode, senseIDs: [UUID], terms: [String]) -> VocabularyMeaningSearchDocument? {
+        let text = String((terms + [node.definition]).map {
+            String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(384))
+        }.filter { !$0.isEmpty }.joined(separator: "\n").prefix(2_000))
+        guard !text.isEmpty else { return nil }
+        return .init(node: node, senseIDs: senseIDs, lookupTerms: terms,
+            text: text, fingerprint: fingerprint(text), normalizedTerms: terms.map(normalized))
     }
 
     static func results(documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument],

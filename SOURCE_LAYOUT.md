@@ -651,8 +651,19 @@ downloaded explicitly into `SearchModels` through the existing download manager.
 `VocabularySearchController` serves the notebook and Engine & Model's Expression search page;
 the notebook activates indexing, and closing it cancels work and releases the native model.
 `VocabularySearchIndex` serializes the independent LAST-pooling native embedding context and
-persists a rebuildable, model-versioned cache of material hashes and normalized vectors outside
-the canonical archive. Edits/deletions invalidate vectors; query and archive epochs reject stale
+owns `Support/Vocabulary/VocabularySearchPreparation`, which compares retrieval-only inputs and
+reuses normalized sense/meaning documents across local edits. Confirmed node/cue changes fan out
+through their actual associations; metadata-only changes retain the embedding revision.
+`VocabularySearchEntryChange` pairs an admitted single-entry receipt with consecutive UI revision
+IDs. The store emits it only with unchanged semantics; matching preparation reuses semantic
+material/meaning destinations and replaces that entry's document slots. Missing/skipped receipts
+or membership changes fall back to complete comparison rather than assuming no intervening edit.
+`Services/Vocabulary/VocabularySearchVectorCache` persists model-versioned Float32 vectors as
+SQLite row deltas outside the canonical archive. It retains the 49,152-key deterministic subset
+within a 256 MiB database page cap; transient WAL pages can add another bounded transaction.
+Binary rows validate dimension, finiteness and unit norm. Failed transactions remain retryable,
+and account reset removes this derived cache. Edits/deletions invalidate only changed inputs;
+query and archive epochs reject stale
 results. `VocabularySearchView` owns the contextual search-suggestion action, progress and relevance-ordered
 sense navigation. Its observed count view follows admitted hits rather than legacy category counts.
 Language/tag filters scope results; query language is independent of study language.
@@ -1030,10 +1041,14 @@ settings/vocabulary routing and lifecycle cleanup now pass through the native co
 
 - `Models/Vocabulary/VocabularyGraphModels.swift`: immutable headword/sense/meaning graph, typed edges, appearance/force settings and camera math.
 - `Support/Vocabulary/VocabularyGraphProjection.swift`: lexical ownership or confirmed meaning mappings/relations; no inferred semantic links.
+- `Models/Vocabulary/VocabularyGraphProjectionKey.swift`: saved revision, language/tag/query scope, expansion and meaning display inputs.
+- `Services/Vocabulary/VocabularyGraphProjectionWorker.swift`: window-owned, cancellable background projection and immutable canvas identity reuse.
+- `Packages/LingroveNotebook/VocabularyClassificationReadIndex`: grouped DAG children/memberships shared by category aggregation; no transitive category × meaning matrix is retained.
 - `Services/Vocabulary/VocabularyGraphLayoutWorker.swift`: window-owned actor confining the Grape simulation and rejecting stale epochs.
 - `UI/Vocabulary/VocabularyGraphPresentation.swift`: window browsing/preferences lifetime, independent of SQLite content.
 - `UI/Vocabulary/VocabularyGraphView.swift`: native controls/settings and the canvas adapter.
-- `UI/Vocabulary/VocabularyGraphCanvasView.swift`: AppKit drawing, input, accessibility and a bounded animation task that ends when cool.
+- `UI/Vocabulary/VocabularyGraphCanvasView.swift`: AppKit drawing, input, accessibility and a bounded animation task that ends when cool; worker identities preserve accessibility/layout across UI-only updates.
+- `Support/Vocabulary/VocabularyGraphViewport.swift`: reject offscreen edges before allocating native paths while retaining crossing curves and decorations.
 - `Packages/LingroveGraphLayout`: unchanged MIT-licensed Grape 1.1.0 ForceSimulation sources and a small package-local buffer adapter.
 
 ## Expression Assistance

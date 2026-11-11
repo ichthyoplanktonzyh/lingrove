@@ -8,6 +8,9 @@ import SwiftUI
 /// top-right settings button and bottom-right camera HUD smoothly so they remain unobstructed.
 struct VocabularyGraphView: View {
     let entries: [VocabularyEntry]
+    let contentRevision: UUID
+    let language: LearningLanguage?
+    let tag: String
     let query: String
     let selection: VocabularySelection?
     @ObservedObject var presentation: VocabularyGraphPresentation
@@ -24,24 +27,19 @@ struct VocabularyGraphView: View {
     var selectMeaning: (UUID) -> Void = { _ in }
     var selectCategory: (UUID) -> Void = { _ in }
     @State private var showingSettings = false
+    @State private var projection: VocabularyGraphProjectionWorker.Projection?
     @Environment(\.vocabularyMeaningLanguages) private var meaningLanguages
 
     var body: some View {
-        let snapshot = meanings.map {
-            VocabularyGraphProjection.meanings(
-                index: $0,
-                entries: entries,
-                expanded: presentation.expanded,
-                query: query,
-                kind: meaningKind,
-                includeEmpty: includeEmptyMeanings,
-                preferredLanguages: meaningLanguages,
-                classification: classification,
-                showsUnexplored: showsUnexplored
-            )
-        } ?? VocabularyGraphProjection.make(entries: entries, expanded: presentation.expanded, query: query)
+        let key = VocabularyGraphProjectionKey(revision: contentRevision, language: language, tag: tag,
+            query: query.trimmingCharacters(in: .whitespacesAndNewlines), expanded: presentation.expanded,
+            isMeaningGraph: meanings != nil, kind: meaningKind, includeEmpty: includeEmptyMeanings,
+            languages: meaningLanguages, showsUnexplored: showsUnexplored)
+        let loading = projection?.key != key
+        let snapshot = projection?.snapshot ?? VocabularyGraphSnapshot()
         VocabularyGraphCanvas(
             snapshot: snapshot,
+            projectionIdentity: projection?.identity,
             selection: selection,
             presentation: presentation,
             select: select,
@@ -51,6 +49,15 @@ struct VocabularyGraphView: View {
             selectMeaning: selectMeaning,
             selectCategory: selectCategory
         )
+            .allowsHitTesting(!loading)
+            .accessibilityHidden(loading)
+            .task(id: key) {
+                // Projection is pure and its only failure is cancellation. A task is replaced
+                // whenever its key changes, or revoked when this destination disappears.
+                guard let value = try? await presentation.projectionWorker.project(key: key, entries: entries,
+                    semantics: meanings, classification: classification), !Task.isCancelled else { return }
+                projection = value
+            }
             .overlay(alignment: .topTrailing) {
                 Button { interactionBegan?(); showingSettings.toggle() } label: {
                     Image(systemName: "slider.horizontal.3")
@@ -151,7 +158,9 @@ struct VocabularyGraphView: View {
                 .padding(.trailing, 14 + trailingInset)
             }
             .overlay {
-                if snapshot.nodes.isEmpty {
+                if loading {
+                    ProgressView().controlSize(.small)
+                } else if snapshot.nodes.isEmpty {
                     if meanings != nil && query.isEmpty {
                         ContentUnavailableView {
                             Label(String(localized: "Browse by meaning", table: "Vocabulary"), systemImage: "circle.hexagongrid")
@@ -181,6 +190,7 @@ struct VocabularyGraphView: View {
 
 private struct VocabularyGraphCanvas: NSViewRepresentable {
     let snapshot: VocabularyGraphSnapshot
+    let projectionIdentity: UUID?
     let selection: VocabularySelection?
     let presentation: VocabularyGraphPresentation
     let select: (VocabularySelection?) -> Void
@@ -197,6 +207,7 @@ private struct VocabularyGraphCanvas: NSViewRepresentable {
         view.interactionBegan = interactionBegan
         view.update(
             snapshot: snapshot,
+            projectionIdentity: projectionIdentity,
             selection: selection,
             select: select,
             meaningSelection: meaningSelection,

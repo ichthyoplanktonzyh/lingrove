@@ -5,6 +5,7 @@ public enum SQLiteValue {
     case integer(Int64)
     case real(Double)
     case text(String)
+    case blob(Data)
     case null
 }
 
@@ -415,6 +416,14 @@ public final class DatabaseCore {
                 guard sqlite3_bind_null(statement, index) == SQLITE_OK else {
                     throw LocalStoreError.database("Failed to bind null parameter at index \(offset)")
                 }
+            case .blob(let data):
+                guard data.count <= Int(Int32.max) else { throw LocalStoreError.database("Blob parameter is too large") }
+                // SQLITE_TRANSIENT copies the borrowed bytes before Data releases its buffer.
+                // zeroblob preserves an empty BLOB instead of binding a NULL pointer as SQL NULL.
+                let result = data.isEmpty ? sqlite3_bind_zeroblob(statement, index, 0) : data.withUnsafeBytes {
+                    sqlite3_bind_blob(statement, index, $0.baseAddress, Int32($0.count), sqliteTransient)
+                }
+                guard result == SQLITE_OK else { throw LocalStoreError.database("Failed to bind blob parameter at index \(offset)") }
             }
         }
     }

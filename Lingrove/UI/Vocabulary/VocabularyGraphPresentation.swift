@@ -19,6 +19,7 @@ final class VocabularyGraphPresentation: ObservableObject {
         }
     }
     let worker = VocabularyGraphLayoutWorker()
+    let projectionWorker = VocabularyGraphProjectionWorker()
     var camera = VocabularyGraphCamera()
     var hasCamera = false
     var fitsInitialLayout = true

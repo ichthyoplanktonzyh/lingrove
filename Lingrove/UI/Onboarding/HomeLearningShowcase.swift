@@ -207,7 +207,8 @@ private struct HomeLearningNotebookScene: View {
                 }.buttonStyle(.borderless)
             }
             if model.bookMode == "graph" {
-                VocabularyGraphView(entries: store.entries, query: "", selection: model.bookSelection,
+                VocabularyGraphView(entries: store.entries, contentRevision: store.contentRevision, language: nil, tag: "",
+                    query: "", selection: model.bookSelection,
                     presentation: model.graph, select: model.selectSense, interactionBegan: model.interact)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

@@ -1,6 +1,15 @@
 import LingroveNotebook
 import Foundation
 
+/// The store creates this only after admitting a consecutive single-entry receipt whose
+/// semantics are unchanged. Search may reuse that exact prior prepared revision; debounced or
+/// cancelled gaps fall back to comparing the complete current snapshot.
+nonisolated struct VocabularySearchEntryChange: Sendable {
+    let baseRevision: UUID
+    let revision: UUID
+    let entryID: UUID
+}
+
 /// One collected sense is one search destination. The index contains concise meaning material;
 /// examples remain evidence for the detail view and never contribute their incidental topics.
 nonisolated struct VocabularySearchDocument: Equatable, Sendable, Identifiable {

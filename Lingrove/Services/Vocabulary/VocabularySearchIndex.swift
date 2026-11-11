@@ -12,30 +12,21 @@ actor VocabularySearchIndex {
     private var verifiedURL: URL?
     private var vectors: [String: [Float]] = [:]
     private var restored = false
-    private let cacheURL: URL?
-    private var previousEntries: [UUID: VocabularyEntry] = [:]
-    private var previousSemantics: VocabularySemanticIndex?
-    private var preparedDocuments: [UUID: VocabularySearchDocument] = [:]
+    private var cacheNeedsSave = false
+    private let cache: VocabularySearchVectorCache?
+    private var preparation = VocabularySearchPreparation()
 
-    private struct Cache: Codable {
-        let model: String
-        let vectors: [String: [Float]]
+    init(cacheURL: URL?) {
+        cache = cacheURL.map { VocabularySearchVectorCache(url: $0, model: VocabularySearchCatalog.identity,
+            dimensions: VocabularySearchCatalog.dimensions) }
     }
 
-    init(cacheURL: URL?) { self.cacheURL = cacheURL }
-
-    func prepare(entries: [VocabularyEntry], semantics: VocabularySemanticIndex)
-        -> (documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument]) {
-        let unchangedSemantics = previousSemantics == semantics
-        let changed = unchangedSemantics ? entries.filter { previousEntries[$0.id] != $0 } : entries
-        let updated = VocabularySearchPolicy.documents(entries: changed, semantics: semantics)
-        let live = Set(entries.flatMap { $0.senses.map(\.id) })
-        preparedDocuments = preparedDocuments.filter { live.contains($0.key) }
-        for value in updated { preparedDocuments[value.id] = value }
-        previousEntries = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
-        previousSemantics = semantics
-        return (entries.flatMap { $0.senses.compactMap { preparedDocuments[$0.id] } },
-            VocabularySearchPolicy.meaningDocuments(entries: entries, semantics: semantics))
+    func prepare(entries: [VocabularyEntry], semantics: VocabularySemanticIndex, revision: UUID? = nil,
+                 entryChange: VocabularySearchEntryChange? = nil) throws -> VocabularySearchPreparation.Snapshot {
+        try Task.checkCancellation()
+        let value = preparation.prepare(entries: entries, semantics: semantics, revision: revision, entryChange: entryChange)
+        try Task.checkCancellation()
+        return value
     }
 
     func reconcile(_ documents: [VocabularySearchDocument], meanings: [VocabularyMeaningSearchDocument] = [], modelURL: URL,
@@ -49,11 +40,15 @@ actor VocabularySearchIndex {
         // it is independent of the canonical archive and safe to remove or rebuild.
         let previousCount = vectors.count
         vectors = vectors.filter { keys.contains($0.key) }
+        if previousCount != vectors.count { cacheNeedsSave = true }
         let missing = inputs.filter { vectors[$0.0] == nil }
-        guard !missing.isEmpty || previousCount != vectors.count else { return }
+        guard !missing.isEmpty || previousCount != vectors.count else {
+            if cacheNeedsSave { persist() }
+            return
+        }
         for (position, (key, text)) in missing.enumerated() {
             try Task.checkCancellation()
-            if vectors[key] == nil { vectors[key] = try embed(text, modelURL: modelURL) }
+            if vectors[key] == nil { vectors[key] = try embed(text, modelURL: modelURL); cacheNeedsSave = true }
             if position % 10 == 0 || position + 1 == missing.count {
                 await progress(position + 1, missing.count)
             }
@@ -107,9 +102,10 @@ actor VocabularySearchIndex {
         loadedURL = nil
         verifiedURL = nil
         if removingCache {
-            previousEntries = [:]; previousSemantics = nil; preparedDocuments = [:]
+            preparation = .init()
             vectors = [:]
-            if let cacheURL { try? FileManager.default.removeItem(at: cacheURL) }
+            cacheNeedsSave = false
+            cache?.remove()
         }
     }
 
@@ -147,24 +143,15 @@ actor VocabularySearchIndex {
     private func restore() {
         guard !restored else { return }
         restored = true
-        guard let cacheURL,
-              let size = try? cacheURL.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= 64 * 1_024 * 1_024,
-              let data = try? Data(contentsOf: cacheURL), let cache = try? JSONDecoder().decode(Cache.self, from: data),
-              cache.model == VocabularySearchCatalog.identity else { return }
-        vectors = cache.vectors.filter { _, vector in
-            vector.count == VocabularySearchCatalog.dimensions && vector.allSatisfy(\.isFinite) &&
-                abs(vector.reduce(Float(0)) { $0 + $1 * $1 } - 1) < 0.01
+        do { vectors = try cache?.load() ?? [:] } catch {
+            vectors = [:]
+            LingroveLogger.models.error("Vocabulary search cache restore failed")
         }
     }
 
     private func persist() {
-        guard let cacheURL else { return }
-        do {
-            try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(Cache(model: VocabularySearchCatalog.identity, vectors: vectors))
-            if data.count <= 64 * 1_024 * 1_024 { try data.write(to: cacheURL, options: .atomic) }
-        } catch {
-            // A derived-cache write failure must not disable an otherwise usable in-memory index.
+        do { try cache?.save(vectors); cacheNeedsSave = false } catch {
+            // Derived-cache failure never invalidates usable in-memory vectors or corpus data.
             LingroveLogger.models.error("Vocabulary search cache write failed")
         }
     }

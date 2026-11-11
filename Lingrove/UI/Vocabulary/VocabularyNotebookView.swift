@@ -532,6 +532,9 @@ struct VocabularyNotebookView: View {
         return ZStack(alignment: .trailing) {
             VocabularyGraphView(
                 entries: visibleEntries,
+                contentRevision: store.contentRevision,
+                language: language,
+                tag: selectedTag,
                 query: query,
                 selection: graphSelection,
                 presentation: graph,

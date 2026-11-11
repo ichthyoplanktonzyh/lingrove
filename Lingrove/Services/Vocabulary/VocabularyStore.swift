@@ -15,6 +15,7 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var contentRevision = UUID()
+    private(set) var searchEntryChange: VocabularySearchEntryChange?
     private(set) var readIndex = VocabularyReadIndex()
     private let indexWorker = VocabularyReadIndexWorker()
     private var hasAppliedSnapshot = false
@@ -505,6 +506,11 @@ final class VocabularyStore: ObservableObject {
         if let undo = senseMergeUndo, snapshot.revision != undo.after.revision {
             senseMergeUndo = nil; canUndoSenseMerge = false
         }
+        let nextContentRevision = UUID()
+        if let change = snapshot.entryChange, hasAppliedSnapshot, change.baseRevision == revision,
+           semantics == snapshot.document.semantics {
+            searchEntryChange = .init(baseRevision: contentRevision, revision: nextContentRevision, entryID: change.entryID)
+        } else { searchEntryChange = nil }
         readIndex = prepared
         entries = prepared.entries
         semantics = snapshot.document.semantics
@@ -512,7 +518,7 @@ final class VocabularyStore: ObservableObject {
         reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
         hasAppliedSnapshot = true
-        contentRevision = UUID()
+        contentRevision = nextContentRevision
         isLoaded = true
         errorMessage = nil
         LingroveLogger.learning.debug("Vocabulary updated", metadata: ["entry_count": .stringConvertible(entries.count)])
@@ -539,7 +545,7 @@ final class VocabularyStore: ObservableObject {
         loadIdentity = UUID(); loadWork?.cancel(); loadWork = nil; reloadRequested = false
         senseMergeUndo = nil; canUndoSenseMerge = false
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
-        hasAppliedSnapshot = false; readIndex = .init(); contentRevision = UUID()
+        hasAppliedSnapshot = false; readIndex = .init(); searchEntryChange = nil; contentRevision = UUID()
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
         pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil
