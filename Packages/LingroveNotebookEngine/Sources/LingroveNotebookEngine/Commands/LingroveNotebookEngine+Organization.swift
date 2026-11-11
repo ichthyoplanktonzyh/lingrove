@@ -18,16 +18,15 @@ extension LingroveNotebookEngine {
                   current.revision < UInt64(Int64.max), let cached = core.notebookSaveCache else {
                 throw VocabularyError.editConflict
             }
-            let state = try cached.state.editingOrganization(edit)
+            let change = try cached.state.changingOrganization(edit)
+            let state = change.state
             let next = state.document
             guard next.semantics != current.document.semantics || next.classification != current.document.classification else {
                 return current
             }
-            let rows = try cached.projection.applyingOrganization(
-                semantics: next.semantics == current.document.semantics ? nil : next.semantics,
-                classification: next.classification == current.document.classification ? nil : next.classification)
-            let publicChange = try VocabularyWirePublicIntent.hasOrganizationChanges(from: current.document,
-                to: next, notebookID: current.notebookId)
+            let rows = try cached.projection.applyingOrganization(change)
+            let publicChange = try VocabularyWirePublicIntent.hasChangesInValidatedFragments(
+                from: change.scope.fragment(in: current.document), to: change.scope.fragment(in: next), notebookID: current.notebookId)
             try Task.checkCancellation()
             // Organization never changes the lexical material a saved card renders.
             let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: rows, knownEntryIDs: [])

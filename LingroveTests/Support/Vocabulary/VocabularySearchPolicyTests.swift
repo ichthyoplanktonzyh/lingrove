@@ -1,5 +1,6 @@
 import LingroveNotebook
 import Foundation
+import NaturalLanguage
 import Testing
 @testable import Lingrove
 
@@ -7,6 +8,44 @@ import Testing
 /// incidental example topics stay out, and only adopted semantic knowledge contributes.
 @MainActor
 struct VocabularySearchPolicyTests {
+    @Test func queryReusePreservesTokenizerAdmissionAcrossScriptsAndCanonicalForms() {
+        let fields = ["word99", "word990", "a word99 here", "don't postpone", "co-operate", "推迟安排",
+            "café", "cafe\u{301}", "ＦＯＯ", "emoji 👩🏽‍💻 work", "a\u{301}\u{323} phrase"]
+        let queries = ["word99", "word9", "on", "don't", "co", "推迟", "cafe", "foo", "👩🏽‍💻", "a"]
+        func phrase(_ query: String, _ field: String) -> Bool {
+            guard field.range(of: query) != nil else { return false }
+            let tokenizer = NLTokenizer(unit: .word); tokenizer.string = field
+            var starts = Set<String.Index>(), ends = Set<String.Index>()
+            tokenizer.enumerateTokens(in: field.startIndex..<field.endIndex) { range, _ in
+                starts.insert(range.lowerBound); ends.insert(range.upperBound); return true
+            }
+            var remaining = field.startIndex..<field.endIndex
+            while let range = field.range(of: query, range: remaining) {
+                if starts.contains(range.lowerBound), ends.contains(range.upperBound) { return true }
+                remaining = range.upperBound..<field.endIndex
+            }
+            return false
+        }
+        for field in fields {
+            let normalized = VocabularySearchPolicy.normalized(field)
+            let document = VocabularySearchDocument(selection: .init(entryID: UUID(), senseID: UUID()),
+                expression: "irrelevant", dictionaryForm: "", meaning: field, language: nil,
+                fields: [field, field], text: field, fingerprint: "")
+            for query in queries {
+                let term = VocabularySearchPolicy.normalized(query)
+                let expected: Double = normalized == term ? 60 : phrase(term, normalized) ? 40 : 0
+                #expect(VocabularySearchPolicy.keywordScore(document, query: query) == expected)
+                #expect(!VocabularySearchPolicy.results(documents: [document, documentWithFreshID(document)], meanings: [], query: query).isEmpty == (expected > 0))
+            }
+        }
+    }
+
+    private func documentWithFreshID(_ value: VocabularySearchDocument) -> VocabularySearchDocument {
+        .init(selection: .init(entryID: UUID(), senseID: UUID()), expression: value.expression,
+            dictionaryForm: value.dictionaryForm, meaning: value.meaning, language: value.language,
+            fields: value.fields, text: value.text, fingerprint: value.fingerprint)
+    }
+
     static func influenceFixture() -> VocabularyDocument {
         let now = Date()
         let entries = [

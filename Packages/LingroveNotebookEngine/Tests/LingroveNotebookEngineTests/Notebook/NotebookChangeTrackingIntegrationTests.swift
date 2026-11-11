@@ -1,5 +1,6 @@
 import Foundation
 import LingroveNotebook
+import LingroveNotebookSync
 import Testing
 @testable import LingroveNotebookEngine
 
@@ -7,6 +8,76 @@ import Testing
 /// owns a disposable database; a second connection exercises the same boundary used by CLI/sync.
 @MainActor
 struct NotebookChangeTrackingIntegrationTests {
+    @Test func cachedJoinedEntriesRequireTheExactVersionAndUnchangedDatabaseToken() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let saved = try source(f)
+        #expect(try f.db.cachedNotebookEntries(for: .init(saved)) == saved.document.entries)
+        let other = try LingroveNotebookEngine(databaseURL: f.url, mediaDirectoryURL: f.db.core.mediaDirectoryURL)
+        defer { try? other.close() }
+        try other.core.execute(sql: "UPDATE notebook_senses SET payload_json='invalid-json' WHERE workspace_id=?", values: [.text(f.workspace)])
+        #expect(try f.db.cachedNotebookEntries(for: .init(saved)) == nil)
+    }
+
+    @Test func fullSavePublicScopeAgreesWithTheCompletePublicProjection() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let saved = try source(f), cached = try #require(f.db.core.notebookSaveCache)
+        var cases: [VocabularyDocument] = []
+        var next = saved.document
+        next.catalog[0].senses[0].note = "e\u{301}"; cases.append(next)
+        next = saved.document; next.catalog[0].updatedAt = Date(timeIntervalSince1970: 1); cases.append(next)
+        next = saved.document; next.catalog[0].senses[0].tags = ["synthetic"]; cases.append(next)
+        next = saved.document; next.reviewTemplates = []; cases.append(next)
+        next = saved.document
+        next.reviewTemplates = [.init(id: UUID(), name: "Synthetic", layout: .init())]; cases.append(next)
+        next = saved.document
+        next.semantics.nodes = [.init(id: UUID(), labels: [.init(text: "New meaning")])]; cases.append(next)
+        next = saved.document
+        next.classification.categories = [.init(id: UUID(), axis: .content, labels: [.init(text: "New directory")])]; cases.append(next)
+        if let source = saved.document.sources.first {
+            next = saved.document
+            next.sources[0] = .init(id: source.id, text: source.text + " Corrected.", kind: source.kind,
+                appBundleIdentifier: source.appBundleIdentifier, encounteredAt: source.encounteredAt)
+            cases.append(next)
+        }
+        for candidate in cases {
+            let state = try VocabularyEntrySaveState(preparing: candidate, previous: cached.state)
+            let rows = try cached.projection.replacingDocument(state)
+            let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: rows)
+            #expect(try plan.hasPublicChanges(previous: cached) == VocabularyWirePublicIntent.hasChanges(
+                from: saved.document, to: state.document, notebookID: saved.notebookId))
+        }
+    }
+
+    @Test func tagRemovalRollsBackItsJournalAndRetainsEnrolledHistory() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        var document = LingroveNotebookReviewCompletionTests.document()
+        document.catalog[0].senses[0].tags = ["keep", "remove"]
+        let saved = try f.db.saveLingroveNotebook(document, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let entry = saved.document.catalog[0]
+        let selection = VocabularySelection(entryID: entry.id, senseID: entry.senses[0].id)
+        _ = try f.db.enrollReviewNotes(selections: [selection], version: .init(saved))
+        let content = try f.db.loadBuiltInNotebookReview(scope: saved, now: Date())
+        let card = try #require(content.review.groups[selection.senseID]?.cards.first)
+        _ = try f.db.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), card: card,
+            action: .init(content: content, selection: selection))
+        try f.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER fail_tag_journal BEFORE INSERT ON notebook_pending_rows
+            WHEN NEW.operation_id='tag-failure' BEGIN SELECT RAISE(ABORT, 'Synthetic tag failure'); END;
+            """, errorContext: "Install synthetic tag rollback")
+        #expect(throws: (any Error).self) { try f.db.removeNotebookTag("remove", basedOn: saved, operationId: "tag-failure") }
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
+        try f.db.core.executeScript(sql: "DROP TRIGGER fail_tag_journal;", errorContext: "Remove synthetic tag failure")
+        let result = try f.db.removeNotebookTag("remove", basedOn: saved)
+        #expect(result.document.catalog.first { $0.id == entry.id }?.senses.first { $0.id == selection.senseID }?.tags == ["keep"])
+        #expect(result.document.interpretations == saved.document.interpretations && result.document.sources == saved.document.sources)
+        let fence = try f.db.notebookProgressReadFence()
+        #expect(try f.db.loadNotebookProgress(scope: fence.scope, now: Date(), calendar: .current).totalReviews == 1)
+        #expect(try f.db.removeNotebookTag("remove", basedOn: result) == result)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == result)
+    }
+
     @Test func ratingAndAcknowledgementKeepTheTrustedCorpus() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let saved = try source(f)

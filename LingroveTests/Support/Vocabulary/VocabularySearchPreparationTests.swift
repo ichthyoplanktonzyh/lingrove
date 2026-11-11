@@ -7,6 +7,26 @@ import Testing
 /// set. These synthetic values need neither a database nor an embedding model.
 @MainActor
 struct VocabularySearchPreparationTests {
+    @Test func anAnnotationSaveKeepsBoundedExampleRetrievalMaterialStable() throws {
+        var entry = try #require(VocabularySearchPolicyTests.influenceFixture().entries.first)
+        let now = Date(timeIntervalSince1970: 100)
+        entry.senses[0].examples = (0..<12).map { index in
+            VocabularyExample(id: UUID(), text: "Example \(index).", translation: "", ranges: [],
+                completeness: .sentence, meaning: "Distinct adopted definition \(index)", createdAt: now.addingTimeInterval(Double(index)))
+        }
+        let state = try VocabularyEntrySaveState(validating: .init(entries: [entry]))
+        var preparation = VocabularySearchPreparation()
+        let revision = UUID()
+        let before = preparation.prepare(entries: state.entries, semantics: .init(), revision: revision)
+        var edited = state.entries[0]; edited.senses[0].note = "Only a personal annotation"
+        let saved = try state.replacing(edited)
+        let next = UUID()
+        let after = preparation.prepare(entries: saved.state.entries, semantics: .init(), revision: next,
+            entryChange: .init(baseRevision: revision, revision: next, entryID: entry.id))
+        #expect(after.embeddingRevision == before.embeddingRevision)
+        #expect(after.rebuiltSenses.isEmpty && after.documents == before.documents)
+    }
+
     @Test func consecutiveReceiptsReuseMeaningsAndGapsFallBackToTheCompleteSnapshot() throws {
         let fixture = VocabularySearchPolicyTests.influenceFixture()
         var entries = fixture.entries, preparation = VocabularySearchPreparation()

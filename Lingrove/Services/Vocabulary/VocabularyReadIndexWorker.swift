@@ -6,6 +6,6 @@ import LingroveNotebook
 /// crosses back; the store rechecks scope/revision before publishing it.
 actor VocabularyReadIndexWorker {
     func prepare(_ snapshot: VocabularyArchiveSnapshot) -> VocabularyReadIndex {
-        VocabularyReadIndex(entries: snapshot.document.entries)
+        VocabularyReadIndex(entries: snapshot.joinedEntries ?? snapshot.document.entries)
     }
 }

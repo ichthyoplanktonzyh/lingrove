@@ -81,6 +81,17 @@ public nonisolated struct VocabularyPersistenceRows: Equatable, Sendable {
 public nonisolated enum VocabularyPersistenceCodec {
     public static func encode(_ document: VocabularyDocument) throws -> VocabularyPersistenceRows {
         let records = try VocabularyDatabaseProjection.rows(document)
+        return try encoded(records, document: document)
+    }
+
+    /// Only the domain module can construct this checked state. This overload shares the
+    /// exact row encoder while consuming its existing validation proof, not a caller flag.
+    public static func encode(_ state: VocabularyEntrySaveState) throws -> VocabularyPersistenceRows {
+        try encoded(VocabularyDatabaseProjection.rows(state.document, validated: true), document: state.document)
+    }
+
+    private static func encoded(_ records: [VocabularyDatabaseRecord.Key: VocabularyDatabaseRecord],
+                                document: VocabularyDocument) throws -> VocabularyPersistenceRows {
         let rows = try records.values.map(VocabularyPersistenceRow.init(record:)).sorted {
             if $0.entity != $1.entity { return $0.entity.rawValue < $1.entity.rawValue }
             if $0.parentID != $1.parentID { return ($0.parentID ?? "") < ($1.parentID ?? "") }
@@ -92,6 +103,10 @@ public nonisolated enum VocabularyPersistenceCodec {
 
     public static func decode(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
         try VocabularyDatabaseProjection.document(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
+    }
+
+    public static func decodeSaveState(_ encoded: VocabularyPersistenceRows) throws -> VocabularyEntrySaveState {
+        try VocabularyDatabaseProjection.state(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
     }
 
     /// A validated capture that only added material can keep every old row and its position.

@@ -6,6 +6,15 @@ import LingroveNotebook
 /// rows. Private tool receipts and timestamp-only bookkeeping must not undo a
 /// user's cancellation. This local comparison is not a server canonical hash.
 public nonisolated enum VocabularyWirePublicIntent {
+    /// The writer has already validated both complete states. These domain-shaped fragments
+    /// contain the roots selected by its actual row delta; they deliberately omit unchanged
+    /// owners and may reference records outside the fragment. This is a pure comparison, not
+    /// an admission or remote payload, and never performs another whole-document validation.
+    public static func hasChangesInValidatedFragments(from previous: VocabularyDocument, to next: VocabularyDocument,
+                                                      notebookID: UUID) throws -> Bool {
+        var oldEncoder = VocabularyWireEncoder(), newEncoder = VocabularyWireEncoder()
+        return try digest(oldEncoder.encode(previous, notebookID: notebookID)) != digest(newEncoder.encode(next, notebookID: notebookID))
+    }
     public static func hasChanges(from previous: VocabularyDocument, to next: VocabularyDocument, notebookID: UUID) throws -> Bool {
         try digest(previous, notebookID: notebookID) != digest(next, notebookID: notebookID)
     }
@@ -18,21 +27,16 @@ public nonisolated enum VocabularyWirePublicIntent {
         // This domain-owned proof contains only public pattern/mapping retirement or actual
         // evidence retraction. Comparing two complete graph encodings adds no information.
         if !change.semanticChange.isEmpty { return true }
-        if Set(before.catalog.map(\.id)) != Set(after.catalog.map(\.id)) || Set(before.sources.map(\.id)) != Set(after.sources.map(\.id)) ||
-            Set(before.occurrences.map(\.id)) != Set(after.occurrences.map(\.id)) ||
-            Set(before.interpretations.map(\.id)) != Set(after.interpretations.map(\.id)) { return true }
-        let senses = change.affectedSenseIDs
-        let claims = Set((before.interpretations + after.interpretations).filter {
-            $0.senseID.map(senses.contains) == true
-        }.map(\.id))
-        func fragment(_ document: VocabularyDocument) -> VocabularyDocument {
+        if before.catalog.count != after.catalog.count || before.sources.count != after.sources.count ||
+            before.occurrences.count != after.occurrences.count || before.interpretations.count != after.interpretations.count { return true }
+        func fragment(_ document: VocabularyDocument, claims: [VocabularyInterpretation]) -> VocabularyDocument {
             .init(catalog: document.catalog.filter { $0.id == change.entryID }, sources: [], occurrences: [],
-                interpretations: document.interpretations.filter { claims.contains($0.id) },
+                interpretations: claims,
                 semantics: .init())
         }
         var oldEncoder = VocabularyWireEncoder(), newEncoder = VocabularyWireEncoder()
-        return try digest(oldEncoder.encode(fragment(before), notebookID: notebookID)) !=
-            digest(newEncoder.encode(fragment(after), notebookID: notebookID))
+        return try digest(oldEncoder.encode(fragment(before, claims: change.previousClaims), notebookID: notebookID)) !=
+            digest(newEncoder.encode(fragment(after, claims: change.claims), notebookID: notebookID))
     }
 
     /// Organization edits leave corpus and evidence intact. Encode only changed graph records

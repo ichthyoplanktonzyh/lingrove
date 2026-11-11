@@ -55,13 +55,13 @@ public struct LingroveNotebookStore {
         restoringBackup: Bool = false, images: [String: Data] = [:], requireActiveWorkspace: Bool = false,
         operationId: String = UUID().uuidString.lowercased()
     ) throws -> LingroveNotebookSnapshot {
-        if restoringBackup { try VocabularyDocumentValidation.validate(document) }
+        let restored = try restoringBackup ? VocabularyEntrySaveState(validating: document) : nil
         let media = LingroveNotebookMediaStore(core: self.core)
-        let staged = try media.stageSuppliedImages(document: document, supplied: images)
+        let staged: Set<VocabularyImageReference> = try images.isEmpty ? [] : media.stageSuppliedImages(document: document, supplied: images)
         try Task.checkCancellation()
         return try self.core.inTransaction {
             try saveInTransaction(document, basedOn: baseline, restoringBackup: restoringBackup, staged: staged,
-                requireActiveWorkspace: requireActiveWorkspace, operationId: operationId)
+                requireActiveWorkspace: requireActiveWorkspace, operationId: operationId, restored: restored)
         }
     }
 
@@ -76,16 +76,18 @@ public struct LingroveNotebookStore {
     func saveInTransaction(_ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
                                    restoringBackup: Bool, staged: Set<VocabularyImageReference>,
                                    requireActiveWorkspace: Bool, operationId: String,
-                                   addingNewCaptureEntries: Bool = false) throws -> LingroveNotebookSnapshot {
+                                   addingNewCaptureEntries: Bool = false,
+                                   restored: VocabularyEntrySaveState? = nil) throws -> LingroveNotebookSnapshot {
             let media = LingroveNotebookMediaStore(core: core)
             try self.checkActiveWorkspace(baseline.workspaceId, required: requireActiveWorkspace)
             let current = try self.readSnapshot(workspaceId: baseline.workspaceId)
             guard current.notebookId == baseline.notebookId, current.revision == baseline.revision, current.generation == baseline.generation,
                   current.revision < UInt64(Int64.max) else { throw VocabularyError.editConflict }
             guard let cached = core.notebookSaveCache else { throw VocabularyError.editConflict }
-            let state = try VocabularyEntrySaveState(preparing: document, previous: current.document, restoringBackup: restoringBackup)
+            let state = try restored ?? VocabularyEntrySaveState(preparing: document, previous: cached.state, restoringBackup: restoringBackup)
             let next = state.document
-            try media.registerImages(document: next, previous: current.document, staged: staged, workspaceId: current.workspaceId)
+            try media.registerImages(references: state.mediaReferences, existing: cached.state.mediaReferences,
+                staged: staged, workspaceId: current.workspaceId)
             try Task.checkCancellation()
             if addingNewCaptureEntries,
                let rows = try VocabularyPersistenceCodec.appendedCaptureRows(from: current.document, to: next),
@@ -94,12 +96,12 @@ public struct LingroveNotebookStore {
                 let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: delta)
                 return try commit(plan, current: current, publicChange: true, operationId: operationId, lineage: cached.lineage)
             }
-            let publicChange = try VocabularyWirePublicIntent.hasChanges(from: current.document, to: next, notebookID: current.notebookId)
             // A local choice can intentionally differ only in literal Unicode
             // bytes. Persist that value even though Swift String equality folds
             // canonical normalization, just as the remote apply path does.
-            let delta = try cached.projection.replacingDocument(next)
+            let delta = try cached.projection.replacingDocument(state)
             let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: delta)
+            let publicChange = try plan.hasPublicChanges(previous: cached)
             return try commit(plan, current: current, publicChange: publicChange, operationId: operationId, lineage: cached.lineage)
     }
 
@@ -107,6 +109,7 @@ public struct LingroveNotebookStore {
     /// Scheduling and append-only review history stay with the existing material adapter.
     func commit(_ plan: LingroveNotebookSavePlan, current: LingroveNotebookSnapshot,
                 publicChange: Bool, operationId: String, lineage: UUID) throws -> LingroveNotebookSnapshot {
+        try Task.checkCancellation()
         if current.revision > 0, plan.rows.changed.isEmpty && plan.rows.removed.isEmpty && plan.rows.repositioned.isEmpty,
            (plan.state.document.reviewTemplates != nil) == (current.document.reviewTemplates != nil) { return current }
             let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
@@ -215,8 +218,8 @@ public struct LingroveNotebookStore {
             return cached.snapshot
         }
         let rows = try readRows(workspaceId: workspaceId)
-        let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: header.2))
-        let state = try VocabularyEntrySaveState(validating: document)
+        let state = try VocabularyPersistenceCodec.decodeSaveState(.init(rows: rows, reviewTemplatesPresent: header.2))
+        let document = state.document
         let snapshot = LingroveNotebookSnapshot(workspaceId: workspaceId, notebookId: header.0,
             revision: header.1, document: document, generation: generation)
         core.notebookSaveCache = .init(snapshot: snapshot, state: state,

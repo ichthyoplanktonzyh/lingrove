@@ -19,18 +19,18 @@ public nonisolated enum VocabularyMeaningBrowserProjection {
             entry.senses.map { ($0.id, VocabularySelection(entryID: entry.id, senseID: $0.id)) }
         })
         let mappings = Dictionary(grouping: index.mappings.filter { senses[$0.senseID] != nil }, by: \.nodeID)
-        let cueIDs = Set(index.cues.filter { matches($0.text, query) }.map(\.id))
-        let cueNodes = Set(index.cueTargets.filter {
+        let cueIDs = searching ? Set(index.cues.filter { matches($0.text, query) }.map(\.id)) : []
+        let cueNodes = searching ? Set(index.cueTargets.filter {
             $0.provenance.status == .confirmed && cueIDs.contains($0.cueID)
-        }.map(\.nodeID))
+        }.map(\.nodeID)) : []
         let matchingSenses = searching ? Set(entries.flatMap { entry in entry.senses.compactMap { sense -> UUID? in
             var value = entry; value.senses = [sense]
             return VocabularyNotebookQuery.matches(value, query: query) ? sense.id : nil
         } }) : Set<UUID>()
-        let matchingPatterns = Set(index.patterns.filter {
+        let matchingPatterns = searching ? Set(index.patterns.filter {
             $0.provenance.status == .confirmed &&
                 matches($0.template + " " + $0.note + " " + $0.collocations.joined(separator: " "), query)
-        }.map(\.senseID))
+        }.map(\.senseID)) : []
         return index.nodes.compactMap { node -> Item? in
             guard kind == nil || node.kind == kind else { return nil }
             let links = mappings[node.id] ?? []

@@ -8,20 +8,18 @@ import LingroveNotebook
 /// This is in-memory derived state, never a second persistence format or a caller baseline.
 public nonisolated struct VocabularyEntryRowProjection: Sendable {
     private typealias Key = VocabularyPersistenceRow.Key
-    private var keyed: [Key: VocabularyPersistenceRow]
-    private var groups: [Key: Set<Key>]
-    private var semanticKeys: Set<Key>
-    private var semanticGroups: [Key: Set<Key>]
-    private var classificationKeys: Set<Key>
+    private var keyed: VocabularyProjectionMap<Key, VocabularyPersistenceRow>
+    private var groups: VocabularyProjectionMap<Key, Set<Key>>
+    private var organizationGroups: VocabularyProjectionMap<Key, Set<Key>>
 
     public init(_ rows: VocabularyPersistenceRows) throws {
-        keyed = try rows.keyedRows(); groups = [:]; semanticKeys = []; semanticGroups = [:]; classificationKeys = []
+        keyed = .init(try rows.keyedRows()); groups = .init(); organizationGroups = .init()
+        var lexicalGroups: [Key: Set<Key>] = [:], graphGroups: [Key: Set<Key>] = [:]
         for row in rows.rows {
-            if let root = try Self.root(row, rows: keyed) { groups[root, default: []].insert(row.key) }
-            if Self.isSemantic(row.entity) { semanticKeys.insert(row.key) }
-            if let root = Self.semanticRoot(row) { semanticGroups[root, default: []].insert(row.key) }
-            if Self.isClassification(row.entity) { classificationKeys.insert(row.key) }
+            if let root = try Self.root(row, rows: keyed) { lexicalGroups[root, default: []].insert(row.key) }
+            if let root = Self.organizationRoot(row) { graphGroups[root, default: []].insert(row.key) }
         }
+        groups = .init(lexicalGroups); organizationGroups = .init(graphGroups)
     }
 
     /// Exposed for lossless reconstruction checks; ordinary saves consume just changed/removed.
@@ -36,12 +34,19 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     /// A complete candidate is already validated by the domain module. Diff against this
     /// connection's retained rows, classifying pure moves separately from changed payloads.
     public func replacingDocument(_ document: VocabularyDocument) throws -> VocabularyEntryRowChange {
-        let encoded = try VocabularyPersistenceCodec.encode(document)
+        try replacingRows(VocabularyPersistenceCodec.encode(document))
+    }
+
+    public func replacingDocument(_ state: VocabularyEntrySaveState) throws -> VocabularyEntryRowChange {
+        try replacingRows(VocabularyPersistenceCodec.encode(state))
+    }
+
+    private func replacingRows(_ encoded: VocabularyPersistenceRows) throws -> VocabularyEntryRowChange {
         var delta = Delta()
         let after = try encoded.keyedRows()
         for row in encoded.rows {
             if let old = keyed[row.key], old.parentID == row.parentID, old.record.extra == row.record.extra,
-               old.record.payload == row.record.payload, try old.encodedPayload() == row.encodedPayload() {
+               old.record.payload == row.record.payload, try old.hasSameLiteralPayload(as: row) {
                 if old.position != row.position { delta.repositioned.append(row) }
             } else { delta.changed.append(row) }
         }
@@ -57,9 +62,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         for row in rows { next.keyed[row.key] = row }
         for row in rows {
             if let root = try Self.root(row, rows: next.keyed) { next.groups[root, default: []].insert(row.key) }
-            if Self.isSemantic(row.entity) { next.semanticKeys.insert(row.key) }
-            if let root = Self.semanticRoot(row) { next.semanticGroups[root, default: []].insert(row.key) }
-            if Self.isClassification(row.entity) { next.classificationKeys.insert(row.key) }
+            if let root = Self.organizationRoot(row) { next.organizationGroups[root, default: []].insert(row.key) }
         }
         return .init(projection: next, changed: rows, removed: [], repositioned: [])
     }
@@ -77,7 +80,12 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
                 guard let id = UUID(uuidString: row.id) else { throw VocabularyError.invalidArchive }
                 result.occurrenceIDs.insert(id)
             default:
+                if let root = Self.organizationRoot(row) { result.organizationRoots.insert(root); continue }
                 guard let root = try Self.root(row, rows: keyed), let owner = keyed[root] else { continue }
+                if root.entity == .usages {
+                    guard let id = UUID(uuidString: root.id) else { throw VocabularyError.invalidArchive }
+                    result.interpretationIDs.insert(id)
+                }
                 if root.entity == .entries {
                     guard let id = UUID(uuidString: root.id) else { throw VocabularyError.invalidArchive }
                     result.entryIDs.insert(id)
@@ -91,25 +99,53 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     }
 
 
-    /// These indexes contain only organization rows. Lexical/source payloads remain in the
-    /// existing projection, and equal organization rows reuse their saved bytes as well.
-    public func applyingOrganization(semantics: VocabularySemanticIndex?, classification: VocabularyClassificationIndex?)
-        throws -> VocabularyEntryRowChange {
+    /// The sealed domain scope selects complete ownership groups, including removed roots.
+    /// A changed node emits its own labels/roles without projecting every other graph row.
+    public func applyingOrganization(_ change: VocabularyOrganizationSaveChange) throws -> VocabularyEntryRowChange {
+        let scope = change.scope, document = change.state.document
+        let graph = VocabularySemanticDatabaseProjection.rows(scope.semantics(in: document.semantics))
+        let directory = VocabularyClassificationRows.rows(scope.classification(in: document.classification))
+        var roots = Set<Key>()
+        func add(_ ids: Set<UUID>, _ entity: VocabularyPersistenceEntity) {
+            roots.formUnion(ids.map { .init(entity: entity, id: $0.uuidString) })
+        }
+        add(scope.nodes, .meaningNodes); add(scope.patterns, .usagePatterns); add(scope.mappings, .meaningMappings)
+        add(scope.relations, .meaningRelations); add(scope.cues, .retrievalCues); add(scope.targets, .cueTargets)
+        add(scope.categories, .categories); add(scope.parents, .categoryParents)
+        add(scope.memberships, .categoryMemberships); add(scope.overrides, .categoryOverrides)
+        var records: [Key: [VocabularyDatabaseRecord]] = [:]
+        for record in graph + directory {
+            let row = try VocabularyPersistenceRow(record: record)
+            guard let root = Self.organizationRoot(row) else { throw VocabularyError.invalidArchive }
+            records[root, default: []].append(record)
+        }
         var next = self, delta = Delta()
-        if let semantics {
-            let graph = VocabularySemanticDatabaseProjection.rows(semantics)
-            try next.replace(keys: semanticKeys, records: graph, preservingLiteralPayloads: false, delta: &delta)
-            next.semanticKeys = Set(graph.map { .init(entity: $0.table, id: $0.id) })
-            next.semanticGroups = [:]
-            for row in graph {
-                let value = try VocabularyPersistenceRow(record: row)
-                if let root = Self.semanticRoot(value) { next.semanticGroups[root, default: []].insert(value.key) }
+        for root in roots {
+            let old = organizationGroups[root] ?? (keyed[root] == nil ? [] : [root])
+            let incoming = records[root] ?? []
+            try next.replace(keys: old, records: incoming, delta: &delta)
+            let updated = Set(incoming.map { Key(entity: $0.table, id: $0.id) })
+            if old != updated {
+                next.organizationGroups[root] = updated.isEmpty ? nil : updated
             }
         }
-        if let classification {
-            let directory = VocabularyClassificationRows.rows(classification)
-            try next.replace(keys: classificationKeys, records: directory, preservingLiteralPayloads: false, delta: &delta)
-            next.classificationKeys = Set(directory.map { .init(entity: $0.table, id: $0.id) })
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
+    }
+
+    /// Removing one tag cannot edit evidence, content or review history. Replace the affected
+    /// lexical ownership groups using their checked values; all other rows remain borrowed.
+    public func applying(_ change: VocabularyTagRemovalChange) throws -> VocabularyEntryRowChange {
+        var next = self, delta = Delta()
+        let entries = change.state.document.catalog.filter { change.entryIDs.contains($0.id) }
+        for entry in entries {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(entry, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .entries, id: entry.id.uuidString), records: records, delta: &delta)
+        }
+        for collection in VocabularySenseStorageRecord.records(for: entries) {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(collection, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: records, delta: &delta)
         }
         return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
@@ -140,23 +176,18 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
             try next.replace(keys: [], records: [.init(table: .occurrences, id: occurrence.id.uuidString,
                 parentID: occurrence.sourceID.uuidString, position: position, payload: .occurrence(occurrence))], delta: &delta)
         }
-        let claims = Set((previous.interpretations + document.interpretations).filter {
-            $0.senseID.map(senses.contains) == true
-        }.map(\.id))
-        let liveClaims = Set(document.interpretations.map(\.id))
-        for claim in previous.interpretations where claims.contains(claim.id) && !liveClaims.contains(claim.id) {
+        let liveClaims = Set(change.claims.map(\.id))
+        for claim in change.previousClaims where !liveClaims.contains(claim.id) {
             try next.replaceGroup(.init(entity: .usages, id: claim.id.uuidString), records: [], delta: &delta)
         }
-        for (position, claim) in document.interpretations.enumerated() {
+        for claim in change.claims {
             let key = Key(entity: .usages, id: claim.id.uuidString)
-            if claims.contains(claim.id) {
-                records = []; VocabularyDatabaseProjection.append(claim, position: position, to: &records)
-                try next.replaceGroup(key, records: records, delta: &delta)
-            } else { try next.reposition(key, position: position, delta: &delta) }
+            records = []; VocabularyDatabaseProjection.append(claim, position: 0, to: &records)
+            try next.replaceGroup(key, records: records, delta: &delta)
         }
-        let recordsBySense = VocabularySenseStorageRecord.records(for: document.catalog)
+        let recordsBySense = VocabularySenseStorageRecord.records(for: document.catalog.filter { $0.id == change.entryID })
         let liveCollections = Set(recordsBySense.map(\.id))
-        for collection in VocabularySenseStorageRecord.records(for: previous.catalog) where senses.contains(collection.senseID) && !liveCollections.contains(collection.id) {
+        for collection in VocabularySenseStorageRecord.records(for: previous.catalog.filter { $0.id == change.entryID }) where !liveCollections.contains(collection.id) {
             try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: [], delta: &delta)
         }
         for (position, collection) in recordsBySense.enumerated() {
@@ -196,25 +227,28 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     }
 
     private mutating func replaceSemanticGroup(_ root: Key, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
-        let old = semanticGroups[root] ?? []
+        let old = organizationGroups[root] ?? []
         try replace(keys: old, records: records, preservingLiteralPayloads: false, delta: &delta)
         let new = Set(records.map { Key(entity: $0.table, id: $0.id) })
-        semanticKeys.subtract(old); semanticKeys.formUnion(new)
-        semanticGroups[root] = new.isEmpty ? nil : new
+        if old != new {
+            organizationGroups[root] = new.isEmpty ? nil : new
+        }
     }
 
-    private static func semanticRoot(_ row: VocabularyPersistenceRow) -> Key? {
+    private static func organizationRoot(_ row: VocabularyPersistenceRow) -> Key? {
         switch row.entity {
-        case .usagePatterns, .meaningMappings: row.key
+        case .meaningLabels, .meaningRoles: row.parentID.map { .init(entity: .meaningNodes, id: $0) }
         case .patternSlots: row.parentID.map { .init(entity: .usagePatterns, id: $0) }
         case .mappingRoles, .mappingEvidence: row.parentID.map { .init(entity: .meaningMappings, id: $0) }
-        default: nil
+        default: isSemantic(row.entity) || isClassification(row.entity) ? row.key : nil
         }
     }
 
     private mutating func replaceGroup(_ root: Key, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
-        try replace(keys: groups[root] ?? [], records: records, delta: &delta)
-        groups[root] = records.isEmpty ? nil : Set(records.map { .init(entity: $0.table, id: $0.id) })
+        let old = groups[root] ?? []
+        try replace(keys: old, records: records, delta: &delta)
+        let new = Set(records.map { Key(entity: $0.table, id: $0.id) })
+        if old != new { groups[root] = new.isEmpty ? nil : new }
     }
 
     private mutating func replace(keys: Set<Key>, records: [VocabularyDatabaseRecord],
@@ -232,7 +266,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
             // preceding sibling left. For authored rows compare literal payload bytes as well.
             if let old, old.parentID == row.parentID, old.record.extra == row.record.extra,
                old.record.payload == row.record.payload,
-               try !preservingLiteralPayloads || old.encodedPayload() == row.encodedPayload() {
+               try !preservingLiteralPayloads || old.hasSameLiteralPayload(as: row) {
                 if old.position != row.position {
                     keyed[row.key] = row
                     delta.repositioned.append(row)
@@ -253,7 +287,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         keyed[key] = row; delta.repositioned.append(row)
     }
 
-    private static func root(_ row: VocabularyPersistenceRow, rows: [Key: VocabularyPersistenceRow]) throws -> Key? {
+    private static func root(_ row: VocabularyPersistenceRow, rows: VocabularyProjectionMap<Key, VocabularyPersistenceRow>) throws -> Key? {
         switch row.entity {
         case .entries, .usages, .collections: return row.key
         case .senses, .senseExplanations, .usageExplanations, .collectionInterpretations, .blocks, .reviews, .bindings:

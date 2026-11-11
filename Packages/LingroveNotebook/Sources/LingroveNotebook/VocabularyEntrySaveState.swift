@@ -12,6 +12,9 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
     private let identifiers: [UUID: Set<UUID>]
     private let validationIndex: VocabularyEntryValidationIndex
     private let semanticIndex: VocabularySemanticEntryIndex
+    private let projectionLookup: VocabularyNotebookProjection.EntryLookup
+    private let mediaIndex: VocabularyMediaReferenceIndex
+    public var mediaReferences: Set<VocabularyImageReference> { mediaIndex.references }
 
     public init(validating document: VocabularyDocument) throws {
         let entries = document.entries
@@ -19,6 +22,8 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         self.document = document; self.entries = entries
         validationIndex = .init(entries: entries, identifiers: identifiers, semantics: document.semantics)
         semanticIndex = .init(document.semantics)
+        projectionLookup = .init(document)
+        mediaIndex = .init(document)
     }
 
     /// Full import/restore still runs complete preparation. The resulting immutable proof is
@@ -28,21 +33,39 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         self.init(document: prepared.document, entries: prepared.entries, identifiers: prepared.identifiers)
     }
 
+    public init(preparing document: VocabularyDocument, previous: Self, restoringBackup: Bool = false) throws {
+        let prepared = try VocabularyDocumentValidation.prepared(document, previous: previous.document,
+            restoringBackup: restoringBackup, previousEntries: previous.entries)
+        self.init(document: prepared.document, entries: prepared.entries, identifiers: prepared.identifiers)
+    }
+
     private init(document: VocabularyDocument, entries: [VocabularyEntry], identifiers: [UUID: Set<UUID>],
-                 validationIndex: VocabularyEntryValidationIndex? = nil, semanticIndex: VocabularySemanticEntryIndex? = nil) {
+                 validationIndex: VocabularyEntryValidationIndex? = nil, semanticIndex: VocabularySemanticEntryIndex? = nil,
+                 projectionLookup: VocabularyNotebookProjection.EntryLookup? = nil, mediaIndex: VocabularyMediaReferenceIndex? = nil) {
         self.document = document; self.entries = entries; self.identifiers = identifiers
         self.validationIndex = validationIndex ?? .init(entries: entries, identifiers: identifiers, semantics: document.semantics)
         self.semanticIndex = semanticIndex ?? .init(document.semantics)
+        self.projectionLookup = projectionLookup ?? .init(document)
+        self.mediaIndex = mediaIndex ?? .init(document)
     }
 
     /// Organization commands cannot alter lexical evidence. Reuse its checked entries and ID
     /// ownership, then validate the changed graph/directory against that same saved corpus.
     public func editingOrganization(_ edit: VocabularyOrganizationEdit) throws -> VocabularyEntrySaveState {
+        try changingOrganization(edit).state
+    }
+
+    public func changingOrganization(_ edit: VocabularyOrganizationEdit) throws -> VocabularyOrganizationSaveChange {
         try Task.checkCancellation()
         let result = try edit.applying(semantics: document.semantics, classification: document.classification)
-        if result.semantics == document.semantics && result.classification == document.classification { return self }
+        var next = document
+        next.semantics = result.semantics; next.classification = result.classification
+        let scope = VocabularyOrganizationScope(edit, before: document, after: next)
+        if result.semantics == document.semantics && result.classification == document.classification {
+            return .init(previous: document, state: self, scope: scope)
+        }
         if result.semantics != document.semantics {
-            try VocabularySemanticPolicy.validate(result.semantics, entries: entries)
+            try VocabularySemanticPolicy.validateChange(result.semantics, previous: document.semantics, entries: entries, scope: scope)
         }
         // A directory references meaning IDs, not their text. A definition-only semantic
         // edit keeps its existing membership proof, while node changes recheck those links.
@@ -51,12 +74,13 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
             try VocabularyClassificationPolicy.validate(result.classification, nodes: result.semantics.nodes)
         }
         try Task.checkCancellation()
-        var next = document
-        next.semantics = result.semantics
-        next.classification = result.classification
-        return .init(document: next, entries: entries, identifiers: identifiers,
-            validationIndex: result.semantics == document.semantics ? validationIndex : validationIndex.updatingSemantics(result.semantics),
-            semanticIndex: result.semantics == document.semantics ? semanticIndex : nil)
+        let oldIDs = VocabularySemanticPolicy.identifiers(scope.semantics(in: document.semantics))
+        let newIDs = VocabularySemanticPolicy.identifiers(scope.semantics(in: result.semantics))
+        let state = Self(document: next, entries: entries, identifiers: identifiers,
+            validationIndex: validationIndex.updatingSemanticIDs(removing: oldIDs.subtracting(newIDs), adding: newIDs.subtracting(oldIDs)),
+            semanticIndex: scope.patterns.isEmpty && scope.mappings.isEmpty ? semanticIndex : nil,
+            projectionLookup: projectionLookup, mediaIndex: mediaIndex)
+        return .init(previous: document, state: state, scope: scope)
     }
 
     /// The command can change just this saved entry and its examples. It cannot
@@ -70,13 +94,16 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         // A reused interpretation ID must already belong to this entry, or be an unresolved
         // candidate. A detached editor cannot steal another entry's accepted interpretation.
         let incomingClaims = Set(input.examples.map(\.id))
-        guard !document.interpretations.contains(where: {
-            incomingClaims.contains($0.id) && $0.senseID.map { !oldSenses.contains($0) } == true
+        guard incomingClaims.allSatisfy({ id in
+            projectionLookup.claim(id, in: document)?.senseID.map(oldSenses.contains) ?? true
         }) else { throw VocabularyError.invalidArchive }
 
         var next = document
-        VocabularyNotebookProjection.replaceEntry(VocabularyDocumentValidation.pruningExplanations(input), in: &next)
-        guard let entry = VocabularyNotebookProjection.entry(input.id, in: next) else { throw VocabularyError.invalidArchive }
+        let pruned = VocabularyDocumentValidation.pruningExplanations(input)
+        _ = try VocabularyDocumentValidation.entryIdentifiers(pruned)
+        var projectionLookup = self.projectionLookup
+        VocabularyNotebookProjection.replaceEntry(pruned, in: &next, offsets: &projectionLookup)
+        guard let entry = VocabularyNotebookProjection.entry(input.id, in: next, lookup: projectionLookup) else { throw VocabularyError.invalidArchive }
         let ids = try VocabularyDocumentValidation.entryIdentifiers(entry)
         try validationIndex.validate(entry, ids: ids)
         var joined = entries, checkedIDs = identifiers
@@ -89,7 +116,11 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         let lookup = validationIndex.replacing(old, with: entry, oldIDs: identifiers[entry.id] ?? [], newIDs: ids,
             removedSemanticIDs: semanticChange.removedIdentifiers)
         return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs,
-            validationIndex: lookup, semanticIndex: semanticIndex), entryID: entry.id, semanticChange: semanticChange)
+            validationIndex: lookup, semanticIndex: semanticIndex, projectionLookup: projectionLookup,
+            mediaIndex: mediaIndex.replacing(entry.id, with: entry)),
+            entryID: entry.id, semanticChange: semanticChange,
+            previousClaims: self.projectionLookup.claimIDs(senses: oldSenses).union(incomingClaims).compactMap { self.projectionLookup.claim($0, in: document) },
+            claims: self.projectionLookup.claimIDs(senses: oldSenses).union(incomingClaims).compactMap { projectionLookup.claim($0, in: next) })
     }
 
     /// Removing an existing sense cannot introduce an ID. Reuse the proof for unrelated entries
@@ -107,19 +138,69 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         let lookup = validationIndex.replacing(entries.first { $0.id == entryID }, with: updated,
             oldIDs: identifiers[entryID] ?? [], newIDs: checkedIDs[entryID] ?? [],
             removedSemanticIDs: semanticChange.removedIdentifiers)
+        var projectionLookup = self.projectionLookup
+        let ids = projectionLookup.claimIDs(senses: Set(entries.first { $0.id == entryID }?.senses.map(\.id) ?? []))
+        projectionLookup.reindexClaims(next.interpretations)
         return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs,
-            validationIndex: lookup, semanticIndex: semanticIndex), entryID: entryID, semanticChange: semanticChange)
+            validationIndex: lookup, semanticIndex: semanticIndex, projectionLookup: projectionLookup,
+            mediaIndex: mediaIndex.replacing(entryID, with: updated)),
+            entryID: entryID, semanticChange: semanticChange,
+            previousClaims: ids.compactMap { self.projectionLookup.claim($0, in: document) },
+            claims: ids.compactMap { projectionLookup.claim($0, in: next) })
     }
 
     public func removingEntry(_ entryID: UUID) throws -> VocabularyEntrySaveChange {
         guard let entry = entries.first(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        if entry.senses.isEmpty {
+            var next = document, checkedIDs = identifiers
+            next.catalog.removeAll { $0.id == entryID }; checkedIDs.removeValue(forKey: entryID)
+            let lookup = validationIndex.replacing(entry, with: nil, oldIDs: identifiers[entryID] ?? [],
+                newIDs: [], removedSemanticIDs: [])
+            return .init(previous: document, state: .init(document: next, entries: entries.filter { $0.id != entryID },
+                identifiers: checkedIDs, validationIndex: lookup, semanticIndex: semanticIndex,
+                projectionLookup: projectionLookup, mediaIndex: mediaIndex.replacing(entryID, with: nil)),
+                entryID: entryID, semanticChange: .empty, previousClaims: [], claims: [])
+        }
         var next = self, semanticChange = VocabularySemanticEntryChange.empty
         for sense in entry.senses {
             let change = try next.removingSense(sense.id, from: entryID)
             next = change.state; semanticChange = semanticChange.combining(change.semanticChange)
         }
-        return .init(previous: document, state: next, entryID: entryID, semanticChange: semanticChange)
+        let ids = projectionLookup.claimIDs(senses: Set(entry.senses.map(\.id)))
+        return .init(previous: document, state: next, entryID: entryID, semanticChange: semanticChange,
+            previousClaims: ids.compactMap { projectionLookup.claim($0, in: document) },
+            claims: ids.compactMap { next.projectionLookup.claim($0, in: next.document) })
     }
+
+    /// This bounded command only removes tag values. Identity, evidence, graph and media
+    /// proofs remain valid, so a batch annotation edit need not revalidate every source.
+    public func removingTag(_ tag: String, now: Date = Date()) throws -> VocabularyTagRemovalChange {
+        guard !tag.isEmpty, tag.utf8.count <= 200, now.timeIntervalSinceReferenceDate.isFinite else {
+            throw VocabularyError.invalidContent
+        }
+        var next = document, joined = entries, changed = Set<UUID>()
+        for index in next.catalog.indices {
+            try Task.checkCancellation()
+            if VocabularySenseEditingPolicy.removeTag(tag, from: &next.catalog[index], now: now) {
+                changed.insert(next.catalog[index].id)
+            }
+        }
+        if !changed.isEmpty {
+            for index in joined.indices where changed.contains(joined[index].id) {
+                _ = VocabularySenseEditingPolicy.removeTag(tag, from: &joined[index], now: now)
+            }
+        }
+        let state = changed.isEmpty ? self : Self(document: next, entries: joined, identifiers: identifiers,
+            validationIndex: validationIndex, semanticIndex: semanticIndex, projectionLookup: projectionLookup, mediaIndex: mediaIndex)
+        return .init(state: state, entryIDs: changed)
+    }
+}
+
+/// Sealed proof for a deterministic annotation-only batch, consumed by the row adapter.
+public nonisolated struct VocabularyTagRemovalChange: Sendable {
+    public let state: VocabularyEntrySaveState
+    public let entryIDs: Set<UUID>
+    fileprivate init(state: VocabularyEntrySaveState, entryIDs: Set<UUID>) { self.state = state; self.entryIDs = entryIDs }
 }
 
 /// Only the validated state's narrow command can construct this change. Codec and public-intent
@@ -130,6 +211,8 @@ public nonisolated struct VocabularyEntrySaveChange: Sendable {
     public let state: VocabularyEntrySaveState
     public let entryID: UUID
     public let semanticChange: VocabularySemanticEntryChange
+    public let previousClaims: [VocabularyInterpretation]
+    public let claims: [VocabularyInterpretation]
     public var document: VocabularyDocument { state.document }
     public var affectedSenseIDs: Set<UUID> {
         Set((previous.catalog.first { $0.id == entryID }?.senses.map(\.id) ?? []) +
@@ -144,8 +227,10 @@ public nonisolated struct VocabularyEntrySaveChange: Sendable {
     }
 
     fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState, entryID: UUID,
-                     semanticChange: VocabularySemanticEntryChange) {
+                     semanticChange: VocabularySemanticEntryChange, previousClaims: [VocabularyInterpretation],
+                     claims: [VocabularyInterpretation]) {
         self.previous = previous; self.state = state; self.entryID = entryID
         self.semanticChange = semanticChange
+        self.previousClaims = previousClaims; self.claims = claims
     }
 }

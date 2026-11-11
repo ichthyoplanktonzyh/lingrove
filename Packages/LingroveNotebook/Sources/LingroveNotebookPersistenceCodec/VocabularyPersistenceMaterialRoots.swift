@@ -8,6 +8,8 @@ public nonisolated struct VocabularyPersistenceMaterialRoots: Sendable {
     public var senseIDs: Set<UUID> = []
     public var sourceIDs: Set<UUID> = []
     public var occurrenceIDs: Set<UUID> = []
+    public var interpretationIDs: Set<UUID> = []
+    public var organizationRoots: Set<VocabularyPersistenceRow.Key> = []
     public var allReviewMaterial = false
     public init() {}
 }

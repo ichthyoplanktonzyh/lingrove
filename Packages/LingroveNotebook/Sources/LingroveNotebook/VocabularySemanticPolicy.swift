@@ -58,6 +58,56 @@ public nonisolated enum VocabularySemanticPolicy {
         for target in index.cueTargets { try context.cueTarget(target) }
     }
 
+    /// The previous graph is already valid and the command cannot alter lexical evidence.
+    /// Recheck edited roots and their dependents against the complete destination lookups.
+    /// IDs from untouched roots remain reserved; removals therefore cannot hide dangling links
+    /// or let a new nested role steal an unrelated identity. Only hierarchy topology needs
+    /// a whole-edge traversal, and that traversal is skipped for text/provenance edits.
+    static func validateChange(_ index: VocabularySemanticIndex, previous: VocabularySemanticIndex,
+                               entries: [VocabularyEntry], scope: VocabularyOrganizationScope) throws {
+        guard index.nodes.count <= 100_000, index.mappings.count <= 500_000,
+              index.patterns.count <= 500_000, index.relations.count <= 500_000,
+              index.cues.count <= 500_000, index.cueTargets.count <= 500_000 else { throw VocabularyError.invalidContent }
+        var affected = scope.semantics(in: index)
+        affected.mappings = index.mappings.filter {
+            scope.mappings.contains($0.id) || scope.nodes.contains($0.nodeID) || $0.patternID.map(scope.patterns.contains) == true
+        }
+        affected.relations = index.relations.filter {
+            scope.relations.contains($0.id) || scope.nodes.contains($0.sourceID) || scope.nodes.contains($0.targetID)
+        }
+        affected.cueTargets = index.cueTargets.filter {
+            scope.targets.contains($0.id) || scope.nodes.contains($0.nodeID) || scope.cues.contains($0.cueID)
+        }
+        let mappings = scope.mappings.union(affected.mappings.map(\.id))
+        let relations = scope.relations.union(affected.relations.map(\.id))
+        let targets = scope.targets.union(affected.cueTargets.map(\.id))
+        let oldAffected = VocabularySemanticIndex(nodes: previous.nodes.filter { scope.nodes.contains($0.id) },
+            patterns: previous.patterns.filter { scope.patterns.contains($0.id) },
+            mappings: previous.mappings.filter { mappings.contains($0.id) },
+            relations: previous.relations.filter { relations.contains($0.id) },
+            cues: previous.cues.filter { scope.cues.contains($0.id) },
+            cueTargets: previous.cueTargets.filter { targets.contains($0.id) })
+        var context = try ValidationContext(entries: entries)
+        context.ids.formUnion(identifiers(previous).subtracting(identifiers(oldAffected)))
+        context.nodes = Dictionary(uniqueKeysWithValues: index.nodes.map { ($0.id, $0) })
+        context.patterns = Dictionary(uniqueKeysWithValues: index.patterns.map { ($0.id, $0) })
+        context.cues = Set(index.cues.map(\.id))
+        context.targets = Set(index.cueTargets.filter { !targets.contains($0.id) }.map { $0.cueID.uuidString + $0.nodeID.uuidString })
+        for value in affected.nodes { try context.node(value) }
+        for value in affected.patterns { try context.pattern(value) }
+        for value in affected.mappings { try context.mapping(value) }
+        for value in affected.relations { try context.relation(value) }
+        for value in affected.cues { try context.cue(value) }
+        for value in affected.cueTargets { try context.cueTarget(value) }
+        let oldHierarchy = Set(previous.relations.filter { scope.relations.contains($0.id) && $0.kind == .narrower }
+            .map { HierarchyEdge(source: $0.sourceID, target: $0.targetID) })
+        let newHierarchy = Set(index.relations.filter { scope.relations.contains($0.id) && $0.kind == .narrower }
+            .map { HierarchyEdge(source: $0.sourceID, target: $0.targetID) })
+        if !newHierarchy.isSubset(of: oldHierarchy) { try validateHierarchy(index.relations) }
+    }
+
+    private struct HierarchyEdge: Hashable { let source, target: UUID }
+
     /// One validation pass owns these temporary lookup tables. Building them in dependency
     /// order rejects duplicate IDs before dictionary construction and keeps validation linear
     /// in the number of records rather than repeatedly scanning the full notebook.

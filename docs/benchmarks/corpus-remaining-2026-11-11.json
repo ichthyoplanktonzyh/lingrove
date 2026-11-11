@@ -1,0 +1,2826 @@
+{
+  "before": {
+    "commit": "65da47da3097ba236f51e5076d0d584431daf5f1",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "6d175b0b5f92f5130d5e7f867cfde06bcff1c220c01491408065d21ccbf2e260",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "sourceManifestSHA256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "sourceManifestEntries": 0
+  },
+  "after": {
+    "commit": "65da47da3097ba236f51e5076d0d584431daf5f1",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "e4b4c6f56f39ab89a2becfec0aa09f4c80235ec701552f010a4e4e3998573894",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "remainingOnly": true,
+    "remainingTrials": 3,
+    "sourceManifestSHA256": "4a44fc65a6c7582ea4f6f913faed65b5d521f4ede4ed86cd2ca662ebea535f90",
+    "sourceManifestEntries": 1868
+  },
+  "beforeFixture": {
+    "10000": {
+      "categories": 688,
+      "categoryMemberships": 14000,
+      "databaseBytes": 274726912,
+      "examples": 40000,
+      "mappings": 14011,
+      "ratingRecords": 1000,
+      "enrolledSenses": 2000,
+      "entries": 10000,
+      "meanings": 14000,
+      "senses": 20000
+    }
+  },
+  "afterFixture": {
+    "10000": {
+      "enrolledSenses": 2000,
+      "ratingRecords": 1000,
+      "examples": 40000,
+      "senses": 20000,
+      "databaseBytes": 274718720,
+      "meanings": 14000,
+      "categories": 688,
+      "categoryMemberships": 14000,
+      "mappings": 14011,
+      "entries": 10000
+    }
+  },
+  "method": "43 production command/projection windows, 3 trials, separately generated equivalent seeds; no UI input or frames",
+  "baselineProvenance": "Archived 65da47da3097ba236f51e5076d0d584431daf5f1 product; the baseline script copied the current timing harness before product edits. The archive run recorded an empty source manifest; its build log, binary hash and archive procedure remain available. Harness hash equality cannot be checked from that empty manifest.",
+  "rows": [
+    {
+      "entries": 10000,
+      "operation": "corpus.load.first",
+      "layer": "model",
+      "beforeMedianMs": 4210.591875,
+      "afterMedianMs": 4030.341,
+      "beforeMaxMs": 4778.6107919999995,
+      "afterMaxMs": 4231.59625,
+      "reductionPercent": 4.2808916264296055
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.list.first",
+      "layer": "projection",
+      "beforeMedianMs": 4.055875,
+      "afterMedianMs": 4.397291,
+      "beforeMaxMs": 4.136375,
+      "afterMaxMs": 4.425333,
+      "reductionPercent": -8.417813665361962
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.list.cached",
+      "layer": "projection",
+      "beforeMedianMs": 0.002125,
+      "afterMedianMs": 0.002,
+      "beforeMaxMs": 0.018083,
+      "afterMaxMs": 0.007417,
+      "reductionPercent": 5.882352941176472
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.expand.one",
+      "layer": "projection",
+      "beforeMedianMs": 2.688708,
+      "afterMedianMs": 2.731625,
+      "beforeMaxMs": 2.975583,
+      "afterMaxMs": 2.904709,
+      "reductionPercent": -1.59619415719372
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.filter.language",
+      "layer": "projection",
+      "beforeMedianMs": 0.693916,
+      "afterMedianMs": 0.71225,
+      "beforeMaxMs": 0.703041,
+      "afterMaxMs": 0.761959,
+      "reductionPercent": -2.6421065373906982
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.filter.tag",
+      "layer": "projection",
+      "beforeMedianMs": 4.476166,
+      "afterMedianMs": 4.922084,
+      "beforeMaxMs": 4.506375,
+      "afterMaxMs": 4.922459,
+      "reductionPercent": -9.962052345690475
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.literal.query",
+      "layer": "projection",
+      "beforeMedianMs": 264.678709,
+      "afterMedianMs": 266.51675,
+      "beforeMaxMs": 273.828666,
+      "afterMaxMs": 280.370459,
+      "reductionPercent": -0.6944423323449023
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.meanings.first",
+      "layer": "projection",
+      "beforeMedianMs": 22.699958,
+      "afterMedianMs": 24.409417,
+      "beforeMaxMs": 25.138917,
+      "afterMaxMs": 26.639875,
+      "reductionPercent": -7.530670321064048
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.category.outline",
+      "layer": "projection",
+      "beforeMedianMs": 18.960375,
+      "afterMedianMs": 19.473667,
+      "beforeMaxMs": 20.312583,
+      "afterMaxMs": 22.184917,
+      "reductionPercent": -2.707182742957359
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.unclassified",
+      "layer": "projection",
+      "beforeMedianMs": 4.839208,
+      "afterMedianMs": 5.125917,
+      "beforeMaxMs": 5.142125,
+      "afterMaxMs": 5.384125,
+      "reductionPercent": -5.924709167285225
+    },
+    {
+      "entries": 10000,
+      "operation": "search.prepare.first",
+      "layer": "projection",
+      "beforeMedianMs": 268.0125,
+      "afterMedianMs": 259.838042,
+      "beforeMaxMs": 273.730333,
+      "afterMaxMs": 289.160167,
+      "reductionPercent": 3.050028636724045
+    },
+    {
+      "entries": 10000,
+      "operation": "search.keyword.query",
+      "layer": "projection",
+      "beforeMedianMs": 112.628083,
+      "afterMedianMs": 54.407917,
+      "beforeMaxMs": 117.914333,
+      "afterMaxMs": 61.087292,
+      "reductionPercent": 51.69240605826524
+    },
+    {
+      "entries": 10000,
+      "operation": "search.prepare.one.receipt",
+      "layer": "projection",
+      "beforeMedianMs": 0.017625,
+      "afterMedianMs": 0.015584,
+      "beforeMaxMs": 0.045875,
+      "afterMaxMs": 0.024791,
+      "reductionPercent": 11.580141843971614
+    },
+    {
+      "entries": 10000,
+      "operation": "graph.taxonomy.first",
+      "layer": "projection",
+      "beforeMedianMs": 128.854958,
+      "afterMedianMs": 116.285792,
+      "beforeMaxMs": 130.011166,
+      "afterMaxMs": 125.47025,
+      "reductionPercent": 9.754507079192098
+    },
+    {
+      "entries": 10000,
+      "operation": "graph.taxonomy.cached",
+      "layer": "projection",
+      "beforeMedianMs": 0.057834,
+      "afterMedianMs": 0.055208,
+      "beforeMaxMs": 0.064209,
+      "afterMaxMs": 0.055916,
+      "reductionPercent": 4.540581664764676
+    },
+    {
+      "entries": 10000,
+      "operation": "graph.entries.first",
+      "layer": "projection",
+      "beforeMedianMs": 21.363416,
+      "afterMedianMs": 20.978084,
+      "beforeMaxMs": 21.754333,
+      "afterMaxMs": 22.314709,
+      "reductionPercent": 1.80370030710445
+    },
+    {
+      "entries": 10000,
+      "operation": "editor.save.note",
+      "layer": "store",
+      "beforeMedianMs": 308.120166,
+      "afterMedianMs": 126.439791,
+      "beforeMaxMs": 310.755167,
+      "afterMaxMs": 135.958709,
+      "reductionPercent": 58.96412992325857
+    },
+    {
+      "entries": 10000,
+      "operation": "meaning.edit.shared",
+      "layer": "store",
+      "beforeMedianMs": 332.327166,
+      "afterMedianMs": 82.606375,
+      "beforeMaxMs": 337.690708,
+      "afterMaxMs": 87.283459,
+      "reductionPercent": 75.14305676713772
+    },
+    {
+      "entries": 10000,
+      "operation": "meaning.create",
+      "layer": "store",
+      "beforeMedianMs": 350.894,
+      "afterMedianMs": 98.043416,
+      "beforeMaxMs": 353.458375,
+      "afterMaxMs": 105.178041,
+      "reductionPercent": 72.05896481558534
+    },
+    {
+      "entries": 10000,
+      "operation": "meaning.associate",
+      "layer": "store",
+      "beforeMedianMs": 337.791334,
+      "afterMedianMs": 83.057291,
+      "beforeMaxMs": 355.695708,
+      "afterMaxMs": 85.386,
+      "reductionPercent": 75.41165724517965
+    },
+    {
+      "entries": 10000,
+      "operation": "meaning.categorize",
+      "layer": "store",
+      "beforeMedianMs": 206.331209,
+      "afterMedianMs": 71.947333,
+      "beforeMaxMs": 218.291,
+      "afterMaxMs": 73.59325,
+      "reductionPercent": 65.13017427237583
+    },
+    {
+      "entries": 10000,
+      "operation": "category.edit",
+      "layer": "store",
+      "beforeMedianMs": 190.19175,
+      "afterMedianMs": 60.134875,
+      "beforeMaxMs": 202.990833,
+      "afterMaxMs": 63.822083,
+      "reductionPercent": 68.3819750330916
+    },
+    {
+      "entries": 10000,
+      "operation": "meaning.remove",
+      "layer": "store",
+      "beforeMedianMs": 425.63525,
+      "afterMedianMs": 127.517375,
+      "beforeMaxMs": 437.686375,
+      "afterMaxMs": 135.058375,
+      "reductionPercent": 70.0406921184277
+    },
+    {
+      "entries": 10000,
+      "operation": "sense.merge.undo",
+      "layer": "store",
+      "beforeMedianMs": 15629.639417,
+      "afterMedianMs": 3649.645709,
+      "beforeMaxMs": 15708.490459,
+      "afterMaxMs": 3888.662292,
+      "reductionPercent": 76.64920084445221
+    },
+    {
+      "entries": 10000,
+      "operation": "entry.import.50",
+      "layer": "store",
+      "beforeMedianMs": 16788.124375,
+      "afterMedianMs": 3754.415125,
+      "beforeMaxMs": 16949.48125,
+      "afterMaxMs": 3900.421292,
+      "reductionPercent": 77.6364825448227
+    },
+    {
+      "entries": 10000,
+      "operation": "entry.import.50.again",
+      "layer": "store",
+      "beforeMedianMs": 16686.30225,
+      "afterMedianMs": 3799.452083,
+      "beforeMaxMs": 16910.925458,
+      "afterMaxMs": 3807.306334,
+      "reductionPercent": 77.23011350222905
+    },
+    {
+      "entries": 10000,
+      "operation": "tag.remove.global",
+      "layer": "store",
+      "beforeMedianMs": 16152.227875,
+      "afterMedianMs": 610.104166,
+      "beforeMaxMs": 16163.378084,
+      "afterMaxMs": 694.249292,
+      "reductionPercent": 96.22278628854473
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.status",
+      "layer": "store-command",
+      "beforeMedianMs": 1.215625,
+      "afterMedianMs": 1.055375,
+      "beforeMaxMs": 1.25625,
+      "afterMaxMs": 1.161417,
+      "reductionPercent": 13.182519280205652
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.list.page",
+      "layer": "store-command",
+      "beforeMedianMs": 73.902459,
+      "afterMedianMs": 74.739667,
+      "beforeMaxMs": 74.518833,
+      "afterMaxMs": 76.553875,
+      "reductionPercent": -1.1328554033635196
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.list.query",
+      "layer": "store-command",
+      "beforeMedianMs": 329.648083,
+      "afterMedianMs": 327.183375,
+      "beforeMaxMs": 335.858875,
+      "afterMaxMs": 329.4475,
+      "reductionPercent": 0.7476785478530923
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.entry.read",
+      "layer": "store-command",
+      "beforeMedianMs": 96.223459,
+      "afterMedianMs": 98.175,
+      "beforeMaxMs": 96.79975,
+      "afterMaxMs": 108.503208,
+      "reductionPercent": -2.0281343242919414
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.sense.read",
+      "layer": "store-command",
+      "beforeMedianMs": 95.190959,
+      "afterMedianMs": 102.590625,
+      "beforeMaxMs": 95.45875,
+      "afterMaxMs": 105.657709,
+      "reductionPercent": -7.7734966405790695
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.entries.read25",
+      "layer": "store-command",
+      "beforeMedianMs": 111.170167,
+      "afterMedianMs": 114.665334,
+      "beforeMaxMs": 113.533375,
+      "afterMaxMs": 120.769208,
+      "reductionPercent": -3.1439792655884036
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.capture50",
+      "layer": "store-command",
+      "beforeMedianMs": 1410.9605000000001,
+      "afterMedianMs": 1030.105667,
+      "beforeMaxMs": 1429.4413749999999,
+      "afterMaxMs": 1046.355542,
+      "reductionPercent": 26.992593555950005
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.capture50.idempotent",
+      "layer": "store-command",
+      "beforeMedianMs": 8.777583,
+      "afterMedianMs": 8.745375,
+      "beforeMaxMs": 8.882792,
+      "afterMaxMs": 8.957791,
+      "reductionPercent": 0.366934724513579
+    },
+    {
+      "entries": 10000,
+      "operation": "export.selected.prepare",
+      "layer": "store",
+      "beforeMedianMs": 72.746708,
+      "afterMedianMs": 72.0485,
+      "beforeMaxMs": 74.10975,
+      "afterMaxMs": 72.2125,
+      "reductionPercent": 0.9597795133217457
+    },
+    {
+      "entries": 10000,
+      "operation": "export.selected.write",
+      "layer": "store",
+      "beforeMedianMs": 1.470875,
+      "afterMedianMs": 1.546667,
+      "beforeMaxMs": 1.492,
+      "afterMaxMs": 1.629333,
+      "reductionPercent": -5.152851194017183
+    },
+    {
+      "entries": 10000,
+      "operation": "backup.full.write",
+      "layer": "store",
+      "beforeMedianMs": 1139.582458,
+      "afterMedianMs": 1107.876208,
+      "beforeMaxMs": 1142.709542,
+      "afterMaxMs": 1206.558167,
+      "reductionPercent": 2.7822690475286516
+    },
+    {
+      "entries": 10000,
+      "operation": "backup.full.restore",
+      "layer": "store",
+      "beforeMedianMs": 17192.996,
+      "afterMedianMs": 4904.003291,
+      "beforeMaxMs": 17217.974792,
+      "afterMaxMs": 4993.35975,
+      "reductionPercent": 71.47673802169209
+    },
+    {
+      "entries": 10000,
+      "operation": "favorite.stage.plan",
+      "layer": "policy",
+      "beforeMedianMs": 49.312833,
+      "afterMedianMs": 48.530917,
+      "beforeMaxMs": 49.576125,
+      "afterMaxMs": 48.846458,
+      "reductionPercent": 1.585623766535571
+    },
+    {
+      "entries": 10000,
+      "operation": "favorite.stage.transaction",
+      "layer": "engine",
+      "beforeMedianMs": 206.104084,
+      "afterMedianMs": 57.980458,
+      "beforeMaxMs": 230.359584,
+      "afterMaxMs": 58.618375,
+      "reductionPercent": 71.86836045422564
+    },
+    {
+      "entries": 10000,
+      "operation": "favorite.stage.readindex",
+      "layer": "projection",
+      "beforeMedianMs": 1.788291,
+      "afterMedianMs": 1.737042,
+      "beforeMaxMs": 2.047041,
+      "afterMaxMs": 1.761708,
+      "reductionPercent": 2.86580875260235
+    },
+    {
+      "entries": 10000,
+      "operation": "sense.remove.stage.transaction",
+      "layer": "engine",
+      "beforeMedianMs": 164.25875,
+      "afterMedianMs": 38.736916,
+      "beforeMaxMs": 166.188,
+      "afterMaxMs": 38.802833,
+      "reductionPercent": 76.41713698661411
+    }
+  ],
+  "beforeSamples": [
+    {
+      "trial": 1,
+      "operation": "corpus.load.first",
+      "entries": 10000,
+      "milliseconds": 4778.6107919999995,
+      "visibleEntriesBefore": 0,
+      "visibleEntriesAfter": 10000,
+      "layer": "model"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.list.first",
+      "entries": 10000,
+      "milliseconds": 4.136375,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.list.cached",
+      "entries": 10000,
+      "milliseconds": 0.018083,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.expand.one",
+      "entries": 10000,
+      "milliseconds": 2.975583,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.filter.language",
+      "entries": 10000,
+      "milliseconds": 0.703041,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.filter.tag",
+      "milliseconds": 4.506375,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "trial": 1,
+      "operation": "browse.literal.query",
+      "entries": 10000,
+      "milliseconds": 273.828666,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.meanings.first",
+      "entries": 10000,
+      "milliseconds": 25.138917,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.category.outline",
+      "entries": 10000,
+      "milliseconds": 20.312583,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "browse.unclassified",
+      "entries": 10000,
+      "milliseconds": 5.142125,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "search.prepare.first",
+      "entries": 10000,
+      "milliseconds": 273.730333,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "operation": "search.keyword.query",
+      "entries": 10000,
+      "milliseconds": 117.914333,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "entries": 10000,
+      "milliseconds": 0.045875,
+      "visibleEntriesBefore": 10000,
+      "operation": "search.prepare.one.receipt"
+    },
+    {
+      "milliseconds": 128.854958,
+      "operation": "graph.taxonomy.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "layer": "projection",
+      "trial": 1
+    },
+    {
+      "milliseconds": 0.057834,
+      "operation": "graph.taxonomy.cached",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "layer": "projection",
+      "trial": 1
+    },
+    {
+      "milliseconds": 21.363416,
+      "operation": "graph.entries.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "layer": "projection",
+      "trial": 1
+    },
+    {
+      "trial": 1,
+      "milliseconds": 310.755167,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "editor.save.note",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 337.690708,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "meaning.edit.shared",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 353.458375,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "meaning.create",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 332.145584,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "meaning.associate",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 205.378875,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "meaning.categorize",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 187.757208,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "category.edit",
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 424.595834,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "meaning.remove",
+      "layer": "store"
+    },
+    {
+      "operation": "sense.merge.undo",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 15708.490459,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "operation": "entry.import.50",
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 16788.124375,
+      "trial": 1
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 16686.30225,
+      "layer": "store",
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "operation": "entry.import.50.again"
+    },
+    {
+      "layer": "store",
+      "visibleEntriesAfter": 10050,
+      "trial": 1,
+      "entries": 10000,
+      "milliseconds": 16163.378084,
+      "operation": "tag.remove.global",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "trial": 1,
+      "entries": 10000,
+      "milliseconds": 1.25625,
+      "operation": "cli.status",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "trial": 1,
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "entries": 10000,
+      "milliseconds": 74.518833,
+      "operation": "cli.list.page"
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "entries": 10000,
+      "milliseconds": 335.858875,
+      "operation": "cli.list.query",
+      "trial": 1,
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "trial": 1,
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "entries": 10000,
+      "milliseconds": 96.223459,
+      "operation": "cli.entry.read"
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050,
+      "operation": "cli.sense.read",
+      "milliseconds": 95.190959,
+      "visibleEntriesAfter": 10050,
+      "trial": 1,
+      "entries": 10000
+    },
+    {
+      "visibleEntriesAfter": 10050,
+      "layer": "store-command",
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "operation": "cli.entries.read25",
+      "milliseconds": 111.170167,
+      "trial": 1
+    },
+    {
+      "trial": 1,
+      "milliseconds": 1396.5680830000001,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10100,
+      "visibleEntriesBefore": 10050,
+      "operation": "cli.capture50",
+      "entries": 10000
+    },
+    {
+      "trial": 1,
+      "milliseconds": 8.777583,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10100,
+      "visibleEntriesBefore": 10100,
+      "operation": "cli.capture50.idempotent",
+      "entries": 10000
+    },
+    {
+      "milliseconds": 74.10975,
+      "operation": "export.selected.prepare",
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "entries": 10000
+    },
+    {
+      "milliseconds": 1.492,
+      "operation": "export.selected.write",
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "entries": 10000
+    },
+    {
+      "milliseconds": 1142.709542,
+      "operation": "backup.full.write",
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "entries": 10000
+    },
+    {
+      "trial": 1,
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "operation": "backup.full.restore",
+      "entries": 10000,
+      "milliseconds": 17217.974792,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "layer": "policy",
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.plan",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 1,
+      "milliseconds": 49.312833
+    },
+    {
+      "layer": "engine",
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.transaction",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 1,
+      "milliseconds": 206.104084
+    },
+    {
+      "layer": "projection",
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.readindex",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 1,
+      "milliseconds": 1.788291
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesBefore": 10100,
+      "milliseconds": 164.25875,
+      "layer": "engine",
+      "trial": 1,
+      "operation": "sense.remove.stage.transaction",
+      "visibleEntriesAfter": 10100
+    },
+    {
+      "operation": "corpus.load.first",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 4210.591875,
+      "visibleEntriesAfter": 10000,
+      "layer": "model",
+      "visibleEntriesBefore": 0
+    },
+    {
+      "operation": "browse.list.first",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 4.055875,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.list.cached",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 0.002125,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.expand.one",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 2.643833,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.filter.language",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 0.693916,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "trial": 2,
+      "layer": "projection",
+      "milliseconds": 4.476166,
+      "operation": "browse.filter.tag",
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "browse.literal.query",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 263.482083,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.meanings.first",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 22.699958,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.category.outline",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 18.960375,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "browse.unclassified",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 4.654584,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "search.prepare.first",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 267.818542,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "search.keyword.query",
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 112.628083,
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "search.prepare.one.receipt",
+      "trial": 2,
+      "layer": "projection",
+      "entries": 10000,
+      "milliseconds": 0.017625,
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "milliseconds": 122.337583,
+      "trial": 2,
+      "operation": "graph.taxonomy.first",
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "milliseconds": 0.055708,
+      "trial": 2,
+      "operation": "graph.taxonomy.cached",
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "milliseconds": 20.90125,
+      "trial": 2,
+      "operation": "graph.entries.first",
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "editor.save.note",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 293.183334
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "meaning.edit.shared",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 331.046542
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "meaning.create",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 341.566958
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "meaning.associate",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 337.791334
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "meaning.categorize",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 206.331209
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "category.edit",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 202.990833
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "operation": "meaning.remove",
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 425.63525
+    },
+    {
+      "entries": 10000,
+      "operation": "sense.merge.undo",
+      "milliseconds": 15629.639417,
+      "trial": 2,
+      "layer": "store",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "layer": "store",
+      "operation": "entry.import.50",
+      "visibleEntriesBefore": 10000,
+      "trial": 2,
+      "milliseconds": 16949.48125,
+      "visibleEntriesAfter": 10050,
+      "entries": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "trial": 2,
+      "operation": "entry.import.50.again",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 16910.925458
+    },
+    {
+      "trial": 2,
+      "layer": "store",
+      "operation": "tag.remove.global",
+      "visibleEntriesAfter": 10050,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "milliseconds": 16152.227875
+    },
+    {
+      "trial": 2,
+      "layer": "store-command",
+      "operation": "cli.status",
+      "visibleEntriesAfter": 10050,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "milliseconds": 1.215625
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 73.902459,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.list.page",
+      "visibleEntriesBefore": 10050,
+      "trial": 2,
+      "layer": "store-command"
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "milliseconds": 329.648083,
+      "operation": "cli.list.query",
+      "visibleEntriesAfter": 10050,
+      "entries": 10000,
+      "trial": 2
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 96.79975,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.entry.read",
+      "visibleEntriesBefore": 10050,
+      "trial": 2,
+      "layer": "store-command"
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "layer": "store-command",
+      "operation": "cli.sense.read",
+      "trial": 2,
+      "milliseconds": 95.45875
+    },
+    {
+      "entries": 10000,
+      "trial": 2,
+      "milliseconds": 113.533375,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.entries.read25",
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "entries": 10000,
+      "layer": "store-command",
+      "trial": 2,
+      "milliseconds": 1410.9605000000001,
+      "operation": "cli.capture50",
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10100
+    },
+    {
+      "entries": 10000,
+      "layer": "store-command",
+      "trial": 2,
+      "milliseconds": 8.710167,
+      "operation": "cli.capture50.idempotent",
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "visibleEntriesBefore": 10100,
+      "layer": "store",
+      "milliseconds": 72.693167,
+      "trial": 2,
+      "operation": "export.selected.prepare"
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "visibleEntriesBefore": 10100,
+      "layer": "store",
+      "milliseconds": 1.470875,
+      "trial": 2,
+      "operation": "export.selected.write"
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "visibleEntriesBefore": 10100,
+      "layer": "store",
+      "milliseconds": 1139.582458,
+      "trial": 2,
+      "operation": "backup.full.write"
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 2,
+      "operation": "backup.full.restore",
+      "layer": "store",
+      "milliseconds": 17192.996,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "trial": 2,
+      "visibleEntriesBefore": 10100,
+      "layer": "policy",
+      "operation": "favorite.stage.plan",
+      "milliseconds": 49.576125,
+      "entries": 10000
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "trial": 2,
+      "visibleEntriesBefore": 10100,
+      "layer": "engine",
+      "operation": "favorite.stage.transaction",
+      "milliseconds": 230.359584,
+      "entries": 10000
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "trial": 2,
+      "visibleEntriesBefore": 10100,
+      "layer": "projection",
+      "operation": "favorite.stage.readindex",
+      "milliseconds": 2.047041,
+      "entries": 10000
+    },
+    {
+      "entries": 10000,
+      "operation": "sense.remove.stage.transaction",
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100,
+      "trial": 2,
+      "milliseconds": 166.188,
+      "layer": "engine"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4140.359791,
+      "trial": 3,
+      "visibleEntriesBefore": 0,
+      "entries": 10000,
+      "operation": "corpus.load.first",
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 3.955792,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.list.first",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.002083,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.list.cached",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 2.688708,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.expand.one",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.676458,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.filter.language",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.filter.tag",
+      "milliseconds": 4.356791
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 264.678709,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.literal.query",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 22.6345,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.meanings.first",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 18.643875,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.category.outline",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4.839208,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "browse.unclassified",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 268.0125,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "search.prepare.first",
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 107.902083,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "search.keyword.query",
+      "layer": "projection"
+    },
+    {
+      "layer": "projection",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.01575,
+      "trial": 3,
+      "operation": "search.prepare.one.receipt",
+      "entries": 10000
+    },
+    {
+      "operation": "graph.taxonomy.first",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 130.011166,
+      "trial": 3,
+      "layer": "projection",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "graph.taxonomy.cached",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.064209,
+      "trial": 3,
+      "layer": "projection",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "operation": "graph.entries.first",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 21.754333,
+      "trial": 3,
+      "layer": "projection",
+      "entries": 10000,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 308.120166,
+      "trial": 3,
+      "operation": "editor.save.note",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 332.327166,
+      "trial": 3,
+      "operation": "meaning.edit.shared",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 350.894,
+      "trial": 3,
+      "operation": "meaning.create",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 355.695708,
+      "trial": 3,
+      "operation": "meaning.associate",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 218.291,
+      "trial": 3,
+      "operation": "meaning.categorize",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 190.19175,
+      "trial": 3,
+      "operation": "category.edit",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 437.686375,
+      "trial": 3,
+      "operation": "meaning.remove",
+      "visibleEntriesBefore": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10000
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "sense.merge.undo",
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "milliseconds": 15589.037584
+    },
+    {
+      "trial": 3,
+      "visibleEntriesAfter": 10050,
+      "entries": 10000,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 16717.238541,
+      "operation": "entry.import.50",
+      "layer": "store"
+    },
+    {
+      "entries": 10000,
+      "operation": "entry.import.50.again",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 16679.780292,
+      "visibleEntriesBefore": 10050,
+      "trial": 3,
+      "layer": "store"
+    },
+    {
+      "layer": "store",
+      "visibleEntriesAfter": 10050,
+      "trial": 3,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "operation": "tag.remove.global",
+      "milliseconds": 16048.948167
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "trial": 3,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "operation": "cli.status",
+      "milliseconds": 0.986166
+    },
+    {
+      "layer": "store-command",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 72.601708,
+      "operation": "cli.list.page"
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 326.487416,
+      "layer": "store-command",
+      "operation": "cli.list.query"
+    },
+    {
+      "layer": "store-command",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 95.792917,
+      "operation": "cli.entry.read"
+    },
+    {
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.sense.read",
+      "milliseconds": 94.792125
+    },
+    {
+      "operation": "cli.entries.read25",
+      "entries": 10000,
+      "trial": 3,
+      "milliseconds": 105.61175,
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "trial": 3,
+      "milliseconds": 1429.4413749999999,
+      "layer": "store-command",
+      "operation": "cli.capture50",
+      "visibleEntriesAfter": 10100,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000
+    },
+    {
+      "trial": 3,
+      "milliseconds": 8.882792,
+      "layer": "store-command",
+      "operation": "cli.capture50.idempotent",
+      "visibleEntriesAfter": 10100,
+      "visibleEntriesBefore": 10100,
+      "entries": 10000
+    },
+    {
+      "operation": "export.selected.prepare",
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 72.746708,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "trial": 3
+    },
+    {
+      "operation": "export.selected.write",
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 1.434167,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "trial": 3
+    },
+    {
+      "operation": "backup.full.write",
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 1119.555458,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "trial": 3
+    },
+    {
+      "trial": 3,
+      "visibleEntriesBefore": 10100,
+      "milliseconds": 17158.489208,
+      "operation": "backup.full.restore",
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "layer": "store"
+    },
+    {
+      "operation": "favorite.stage.plan",
+      "layer": "policy",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 3,
+      "milliseconds": 49.311708,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "operation": "favorite.stage.transaction",
+      "layer": "engine",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 3,
+      "milliseconds": 198.69925,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "operation": "favorite.stage.readindex",
+      "layer": "projection",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "trial": 3,
+      "milliseconds": 1.779625,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "visibleEntriesAfter": 10100,
+      "visibleEntriesBefore": 10100,
+      "layer": "engine",
+      "milliseconds": 153.508334,
+      "trial": 3,
+      "operation": "sense.remove.stage.transaction",
+      "entries": 10000
+    }
+  ],
+  "afterSamples": [
+    {
+      "visibleEntriesBefore": 0,
+      "trial": 1,
+      "operation": "corpus.load.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4231.59625,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.list.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4.425333,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.list.cached",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.007417,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.expand.one",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 2.904709,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.filter.language",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.761959,
+      "layer": "projection"
+    },
+    {
+      "trial": 1,
+      "layer": "projection",
+      "visibleEntriesBefore": 10000,
+      "operation": "browse.filter.tag",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4.922459
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.literal.query",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 280.370459,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.meanings.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 26.639875,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.category.outline",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 22.184917,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "browse.unclassified",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 5.125917,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "search.prepare.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 289.160167,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "trial": 1,
+      "operation": "search.keyword.query",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 61.087292,
+      "layer": "projection"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "search.prepare.one.receipt",
+      "layer": "projection",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.024791
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "graph.taxonomy.first",
+      "layer": "projection",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 125.47025
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "graph.taxonomy.cached",
+      "layer": "projection",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.044375
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "graph.entries.first",
+      "layer": "projection",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 22.314709
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "editor.save.note",
+      "layer": "store",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 135.958709
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "meaning.edit.shared",
+      "layer": "store",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 87.283459
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "meaning.create",
+      "layer": "store",
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 105.178041
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "meaning.associate",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 85.386
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "meaning.categorize",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 73.59325
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "category.edit",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 63.822083
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "operation": "meaning.remove",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 135.058375
+    },
+    {
+      "visibleEntriesAfter": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "operation": "sense.merge.undo",
+      "milliseconds": 3888.662292,
+      "layer": "store"
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10050,
+      "operation": "entry.import.50",
+      "milliseconds": 3900.421292,
+      "trial": 1,
+      "layer": "store",
+      "entries": 10000
+    },
+    {
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 3709.220375,
+      "operation": "entry.import.50.again"
+    },
+    {
+      "operation": "tag.remove.global",
+      "visibleEntriesAfter": 10050,
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "layer": "store",
+      "milliseconds": 694.249292,
+      "entries": 10000
+    },
+    {
+      "operation": "cli.status",
+      "visibleEntriesAfter": 10050,
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "milliseconds": 1.161417,
+      "entries": 10000
+    },
+    {
+      "operation": "cli.list.page",
+      "milliseconds": 74.739667,
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "layer": "store-command"
+    },
+    {
+      "operation": "cli.list.query",
+      "entries": 10000,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 324.663667,
+      "visibleEntriesBefore": 10050,
+      "trial": 1
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.entry.read",
+      "trial": 1,
+      "milliseconds": 98.175,
+      "entries": 10000
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 102.590625,
+      "entries": 10000,
+      "trial": 1,
+      "operation": "cli.sense.read",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "milliseconds": 109.059083,
+      "layer": "store-command",
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.entries.read25",
+      "entries": 10000
+    },
+    {
+      "operation": "cli.capture50",
+      "trial": 1,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "layer": "store-command",
+      "milliseconds": 1030.105667
+    },
+    {
+      "operation": "cli.capture50.idempotent",
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "layer": "store-command",
+      "milliseconds": 8.957791
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "trial": 1,
+      "entries": 10000,
+      "milliseconds": 72.0485,
+      "layer": "store",
+      "visibleEntriesAfter": 10100,
+      "operation": "export.selected.prepare"
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "trial": 1,
+      "entries": 10000,
+      "milliseconds": 1.546667,
+      "layer": "store",
+      "visibleEntriesAfter": 10100,
+      "operation": "export.selected.write"
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "trial": 1,
+      "milliseconds": 1206.558167,
+      "layer": "store",
+      "visibleEntriesAfter": 10100,
+      "operation": "backup.full.write"
+    },
+    {
+      "operation": "backup.full.restore",
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "milliseconds": 4993.35975
+    },
+    {
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.plan",
+      "layer": "policy",
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 48.846458
+    },
+    {
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.transaction",
+      "layer": "engine",
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 58.618375
+    },
+    {
+      "trial": 1,
+      "visibleEntriesBefore": 10100,
+      "operation": "favorite.stage.readindex",
+      "layer": "projection",
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 1.737042
+    },
+    {
+      "operation": "sense.remove.stage.transaction",
+      "trial": 1,
+      "layer": "engine",
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 38.736916
+    },
+    {
+      "entries": 10000,
+      "layer": "model",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 0,
+      "milliseconds": 4030.341,
+      "operation": "corpus.load.first"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 4.397291,
+      "operation": "browse.list.first"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 0.001833,
+      "operation": "browse.list.cached"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 2.731625,
+      "operation": "browse.expand.one"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 0.71225,
+      "operation": "browse.filter.language"
+    },
+    {
+      "layer": "projection",
+      "trial": 2,
+      "operation": "browse.filter.tag",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4.922084,
+      "entries": 10000
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 263.355125,
+      "operation": "browse.literal.query"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 22.968584,
+      "operation": "browse.meanings.first"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 19.004416,
+      "operation": "browse.category.outline"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 4.862625,
+      "operation": "browse.unclassified"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 254.319084,
+      "operation": "search.prepare.first"
+    },
+    {
+      "entries": 10000,
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 10000,
+      "milliseconds": 54.407917,
+      "operation": "search.keyword.query"
+    },
+    {
+      "layer": "projection",
+      "entries": 10000,
+      "operation": "search.prepare.one.receipt",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.015333,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "projection",
+      "operation": "graph.taxonomy.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 116.285792,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "projection",
+      "operation": "graph.taxonomy.cached",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.055208,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "projection",
+      "operation": "graph.entries.first",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 20.978084,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "operation": "editor.save.note",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 125.262791,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "operation": "meaning.edit.shared",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 82.072875,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "operation": "meaning.create",
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 98.043416,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "operation": "meaning.associate",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 80.630042,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "operation": "meaning.categorize",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 71.947333,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "operation": "category.edit",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 60.134875,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "operation": "meaning.remove",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 127.517375,
+      "trial": 2,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "milliseconds": 3649.645709,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "trial": 2,
+      "operation": "sense.merge.undo"
+    },
+    {
+      "milliseconds": 3754.415125,
+      "layer": "store",
+      "visibleEntriesBefore": 10000,
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "entries": 10000,
+      "operation": "entry.import.50"
+    },
+    {
+      "layer": "store",
+      "trial": 2,
+      "milliseconds": 3799.452083,
+      "operation": "entry.import.50.again",
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 610.104166,
+      "layer": "store",
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "operation": "tag.remove.global",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "entries": 10000,
+      "milliseconds": 0.99125,
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "operation": "cli.status",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.list.page",
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "milliseconds": 74.391333,
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command"
+    },
+    {
+      "layer": "store-command",
+      "entries": 10000,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "milliseconds": 327.183375,
+      "operation": "cli.list.query"
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.entry.read",
+      "visibleEntriesAfter": 10050,
+      "trial": 2,
+      "milliseconds": 95.418791,
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command"
+    },
+    {
+      "layer": "store-command",
+      "milliseconds": 94.219125,
+      "operation": "cli.sense.read",
+      "trial": 2,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "entries": 10000,
+      "operation": "cli.entries.read25",
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 114.665334,
+      "trial": 2,
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 1012.131,
+      "visibleEntriesAfter": 10100,
+      "operation": "cli.capture50",
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command"
+    },
+    {
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 8.682791,
+      "visibleEntriesAfter": 10100,
+      "operation": "cli.capture50.idempotent",
+      "visibleEntriesBefore": 10100,
+      "layer": "store-command"
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "operation": "export.selected.prepare",
+      "trial": 2,
+      "milliseconds": 72.2125,
+      "visibleEntriesAfter": 10100,
+      "entries": 10000
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "operation": "export.selected.write",
+      "trial": 2,
+      "milliseconds": 1.629333,
+      "visibleEntriesAfter": 10100,
+      "entries": 10000
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "operation": "backup.full.write",
+      "trial": 2,
+      "milliseconds": 1107.876208,
+      "visibleEntriesAfter": 10100,
+      "entries": 10000
+    },
+    {
+      "trial": 2,
+      "entries": 10000,
+      "milliseconds": 4904.003291,
+      "visibleEntriesAfter": 10100,
+      "operation": "backup.full.restore",
+      "visibleEntriesBefore": 10100,
+      "layer": "store"
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "layer": "policy",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "milliseconds": 48.530917,
+      "operation": "favorite.stage.plan",
+      "trial": 2
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "layer": "engine",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "milliseconds": 57.980458,
+      "operation": "favorite.stage.transaction",
+      "trial": 2
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "layer": "projection",
+      "visibleEntriesAfter": 10100,
+      "entries": 10000,
+      "milliseconds": 1.761708,
+      "operation": "favorite.stage.readindex",
+      "trial": 2
+    },
+    {
+      "trial": 2,
+      "layer": "engine",
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "operation": "sense.remove.stage.transaction",
+      "milliseconds": 38.802833,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "corpus.load.first",
+      "layer": "model",
+      "milliseconds": 3882.134208,
+      "visibleEntriesBefore": 0,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.list.first",
+      "layer": "projection",
+      "milliseconds": 4.056584,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.list.cached",
+      "layer": "projection",
+      "milliseconds": 0.002,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.expand.one",
+      "layer": "projection",
+      "milliseconds": 2.695625,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.filter.language",
+      "layer": "projection",
+      "milliseconds": 0.70875,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "trial": 3,
+      "layer": "projection",
+      "entries": 10000,
+      "operation": "browse.filter.tag",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 4.775625,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.literal.query",
+      "layer": "projection",
+      "milliseconds": 266.51675,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.meanings.first",
+      "layer": "projection",
+      "milliseconds": 24.409417,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.category.outline",
+      "layer": "projection",
+      "milliseconds": 19.473667,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "browse.unclassified",
+      "layer": "projection",
+      "milliseconds": 5.384125,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "search.prepare.first",
+      "layer": "projection",
+      "milliseconds": 259.838042,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10000,
+      "operation": "search.keyword.query",
+      "layer": "projection",
+      "milliseconds": 54.29225,
+      "visibleEntriesBefore": 10000,
+      "trial": 3
+    },
+    {
+      "operation": "search.prepare.one.receipt",
+      "visibleEntriesAfter": 10000,
+      "layer": "projection",
+      "milliseconds": 0.015584,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "graph.taxonomy.first",
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 114.23375,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "graph.taxonomy.cached",
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 0.055916,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "graph.entries.first",
+      "layer": "projection",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 20.551666,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "editor.save.note",
+      "layer": "store",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 126.439791,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "meaning.edit.shared",
+      "layer": "store",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 82.606375,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "meaning.create",
+      "layer": "store",
+      "visibleEntriesAfter": 10000,
+      "milliseconds": 98.012084,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "meaning.associate",
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "milliseconds": 83.057291,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "meaning.categorize",
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "milliseconds": 70.643125,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "category.edit",
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "milliseconds": 60.032958,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "operation": "meaning.remove",
+      "visibleEntriesAfter": 10000,
+      "layer": "store",
+      "milliseconds": 127.216416,
+      "trial": 3,
+      "visibleEntriesBefore": 10000,
+      "entries": 10000
+    },
+    {
+      "milliseconds": 3631.144125,
+      "layer": "store",
+      "operation": "sense.merge.undo",
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesAfter": 10000,
+      "visibleEntriesBefore": 10000
+    },
+    {
+      "visibleEntriesBefore": 10000,
+      "entries": 10000,
+      "milliseconds": 3699.746708,
+      "visibleEntriesAfter": 10050,
+      "operation": "entry.import.50",
+      "trial": 3,
+      "layer": "store"
+    },
+    {
+      "layer": "store",
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "milliseconds": 3807.306334,
+      "operation": "entry.import.50.again"
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10050,
+      "milliseconds": 602.143125,
+      "entries": 10000,
+      "trial": 3,
+      "operation": "tag.remove.global",
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "layer": "store-command",
+      "visibleEntriesBefore": 10050,
+      "milliseconds": 1.055375,
+      "entries": 10000,
+      "trial": 3,
+      "operation": "cli.status",
+      "visibleEntriesAfter": 10050
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "operation": "cli.list.page",
+      "trial": 3,
+      "milliseconds": 76.553875,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "layer": "store-command"
+    },
+    {
+      "operation": "cli.list.query",
+      "visibleEntriesBefore": 10050,
+      "layer": "store-command",
+      "milliseconds": 329.4475,
+      "visibleEntriesAfter": 10050,
+      "entries": 10000,
+      "trial": 3
+    },
+    {
+      "visibleEntriesBefore": 10050,
+      "operation": "cli.entry.read",
+      "trial": 3,
+      "milliseconds": 108.503208,
+      "entries": 10000,
+      "visibleEntriesAfter": 10050,
+      "layer": "store-command"
+    },
+    {
+      "milliseconds": 105.657709,
+      "visibleEntriesBefore": 10050,
+      "visibleEntriesAfter": 10050,
+      "operation": "cli.sense.read",
+      "entries": 10000,
+      "trial": 3,
+      "layer": "store-command"
+    },
+    {
+      "milliseconds": 120.769208,
+      "trial": 3,
+      "operation": "cli.entries.read25",
+      "layer": "store-command",
+      "visibleEntriesAfter": 10050,
+      "visibleEntriesBefore": 10050,
+      "entries": 10000
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "operation": "cli.capture50",
+      "layer": "store-command",
+      "milliseconds": 1046.355542,
+      "trial": 3,
+      "visibleEntriesBefore": 10050
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "operation": "cli.capture50.idempotent",
+      "layer": "store-command",
+      "milliseconds": 8.745375,
+      "trial": 3,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100,
+      "trial": 3,
+      "operation": "export.selected.prepare",
+      "milliseconds": 71.818792,
+      "entries": 10000
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100,
+      "trial": 3,
+      "operation": "export.selected.write",
+      "milliseconds": 1.4625,
+      "entries": 10000
+    },
+    {
+      "layer": "store",
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100,
+      "trial": 3,
+      "operation": "backup.full.write",
+      "milliseconds": 1087.387,
+      "entries": 10000
+    },
+    {
+      "entries": 10000,
+      "visibleEntriesAfter": 10100,
+      "layer": "store",
+      "operation": "backup.full.restore",
+      "milliseconds": 4872.337791,
+      "trial": 3,
+      "visibleEntriesBefore": 10100
+    },
+    {
+      "layer": "policy",
+      "visibleEntriesAfter": 10100,
+      "operation": "favorite.stage.plan",
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "milliseconds": 48.074458,
+      "trial": 3
+    },
+    {
+      "layer": "engine",
+      "visibleEntriesAfter": 10100,
+      "operation": "favorite.stage.transaction",
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "milliseconds": 56.544083,
+      "trial": 3
+    },
+    {
+      "layer": "projection",
+      "visibleEntriesAfter": 10100,
+      "operation": "favorite.stage.readindex",
+      "visibleEntriesBefore": 10100,
+      "entries": 10000,
+      "milliseconds": 1.641417,
+      "trial": 3
+    },
+    {
+      "visibleEntriesBefore": 10100,
+      "visibleEntriesAfter": 10100,
+      "milliseconds": 38.392125,
+      "operation": "sense.remove.stage.transaction",
+      "layer": "engine",
+      "entries": 10000,
+      "trial": 3
+    }
+  ]
+}

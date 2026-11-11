@@ -29,6 +29,7 @@ struct VocabularyOperationBenchmarkTests {
         let trials = Int(environment["LINGROVE_OPERATION_BENCHMARK_TRIALS"] ?? "5") ?? 5
         let focused = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "focused"
         let tail = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "tail"
+        let remaining = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "remaining"
         try #require(!sizes.isEmpty && sizes.allSatisfy { $0 >= 100 && $0 <= 20_000 } && (1...10).contains(trials))
         for size in sizes {
             let seed = output.appendingPathComponent("seed-\(size)")
@@ -41,7 +42,8 @@ struct VocabularyOperationBenchmarkTests {
                     directory: output.appendingPathComponent("trial-\(size)-\(trial)"))
                 let recorder = VocabularyBenchmarkRecorder(entries: size, trial: trial, output: output)
                 do {
-                    if tail { try await runTail(fixture, recorder) } else {
+                    if remaining { try await runRemaining(fixture, recorder) }
+                    else if tail { try await runTail(fixture, recorder) } else {
                         try await run(fixture, recorder, focused: focused)
                     }
                     await fixture.close()
@@ -52,6 +54,31 @@ struct VocabularyOperationBenchmarkTests {
             }
             try FileManager.default.removeItem(at: seed)
         }
+    }
+
+    /// Remaining large-library paths share the same generated seed and public commands as
+    /// the original inventory, without spending another run on unchanged review navigation.
+    private func runRemaining(_ f: VocabularyBenchmarkFixture, _ r: VocabularyBenchmarkRecorder) async throws {
+        r.visibleEntries = { f.store.entries.count }
+        try await r.measure("corpus.load.first", layer: "model") { await f.store.load() }
+        try #require(f.store.isLoaded && f.store.errorMessage == nil && f.store.entries.count == r.entries)
+        try await browse(f, r)
+        let original = try f.entry(53)
+        var edited = original; edited.senses[0].note += " A remaining-path edit."
+        try #require(try await r.measure("editor.save.note") { await f.store.update(edited, basedOn: original) })
+        try await organization(f, r)
+        let merge = try f.entry(57)
+        try #require(await f.store.mergeSenses(entryID: merge.id, source: merge.senses[0].id, target: merge.senses[1].id))
+        try #require(try await r.measure("sense.merge.undo") { await f.store.undoLastSenseMerge() } != nil)
+        let batch = (0..<50).map { VocabularyEntryInput(expression: "remaining-batch-\($0)", meaning: "Synthetic batch meaning") }
+        let imported = try await r.measure("entry.import.50") { try await f.store.addEntries(batch) }
+        try #require(imported.addedEntries == 50)
+        let repeated = try await r.measure("entry.import.50.again") { try await f.store.addEntries(batch) }
+        try #require(repeated.addedEntries == 0 && repeated.addedSenses == 50)
+        try #require(try await r.measure("tag.remove.global") { await f.store.removeTag("group-3") })
+        try await automation(f, r)
+        try await exports(f, r)
+        try await storageStages(f, r)
     }
 
     /// A failed test envelope must not force another run of unchanged multi-minute writes.

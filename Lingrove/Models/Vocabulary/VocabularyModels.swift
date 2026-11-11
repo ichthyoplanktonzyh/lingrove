@@ -85,18 +85,21 @@ nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
     let scope: VocabularyOperationScope?
     let entryChange: EntryChange?
     let committedChange: LingroveNotebookCommittedChange?
+    let joinedEntries: [VocabularyEntry]?
 
     init(revision: UInt64, document: VocabularyDocument, scope: VocabularyOperationScope? = nil) {
         self.revision = revision; self.document = document; self.scope = scope
         entryChange = nil
         committedChange = nil
+        joinedEntries = nil
     }
 
     init(_ saved: LingroveNotebookSnapshot, entryChange: EntryChange? = nil,
-         committedChange: LingroveNotebookCommittedChange? = nil) {
+         committedChange: LingroveNotebookCommittedChange? = nil, joinedEntries: [VocabularyEntry]? = nil) {
         revision = saved.revision; document = saved.document; scope = saved
         self.entryChange = entryChange
         self.committedChange = committedChange
+        self.joinedEntries = joinedEntries
     }
 
     var portable: VocabularySnapshot { .init(revision: revision, document: document) }

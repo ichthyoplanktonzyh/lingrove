@@ -7,8 +7,9 @@ nonisolated enum VocabularyDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
     private struct Owner: Hashable { let table: Row.Table; let parent: String? }
 
-    static func rows(_ document: VocabularyDocument, appendingTo previous: VocabularyDocument? = nil) throws -> [Row.Key: Row] {
-        if previous == nil { try VocabularyLifecyclePolicy.validate(document) }
+    static func rows(_ document: VocabularyDocument, appendingTo previous: VocabularyDocument? = nil,
+                     validated: Bool = false) throws -> [Row.Key: Row] {
+        if previous == nil && !validated { try VocabularyLifecyclePolicy.validate(document) }
         var rows: [Row] = []
         for (position, source) in document.sources.enumerated().dropFirst(previous?.sources.count ?? 0) {
             rows.append(.init(table: .sources, id: source.id.uuidString, parentID: nil,
@@ -31,7 +32,7 @@ nonisolated enum VocabularyDatabaseProjection {
             rows.append(.init(table: .templates, id: template.id.uuidString, parentID: nil,
                 position: position, payload: .template(template)))
         }
-        if previous == nil {
+        if previous == nil && !validated {
             try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
             try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
         }
@@ -96,6 +97,29 @@ nonisolated enum VocabularyDatabaseProjection {
     }
 
     static func document(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyDocument {
+        let document = try reconstruct(rows, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        if !migratingDevCorpus { try checkRows(rows, document: document, validated: false) }
+        return document
+    }
+
+    /// One full validation establishes the joined-entry proof and the lossless row check.
+    /// The writer can retain it instead of immediately repeating both after a cold SQL read.
+    static func state(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyEntrySaveState {
+        let document = try reconstruct(rows, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        let state = try VocabularyEntrySaveState(validating: document)
+        if !migratingDevCorpus {
+            try checkRows(rows, document: document, validated: true)
+        }
+        return state
+    }
+
+    private static func checkRows(_ rows: [Row], document: VocabularyDocument, validated: Bool) throws {
+        guard try self.rows(document, validated: validated) == Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) }) else {
+            throw VocabularyError.invalidArchive
+        }
+    }
+
+    private static func reconstruct(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool) throws -> VocabularyDocument {
         guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
         let graph = Graph(rows: rows)
         let entries = try graph.children(.entries).map { row in
@@ -126,11 +150,6 @@ nonisolated enum VocabularyDatabaseProjection {
         let records = try graph.all(.collections).map { try graph.collection($0) }
         if migratingDevCorpus { return try migrateDevCorpus(result, records: records) }
         try VocabularySenseStorageRecord.materialize(records, in: &result)
-        // Round-tripping rejects orphan records, inconsistent indexes and nested children
-        // smuggled into scalar headers instead of discarding evidence on reopen.
-        guard try self.rows(result) == Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) }) else {
-            throw VocabularyError.invalidArchive
-        }
         return result
     }
 

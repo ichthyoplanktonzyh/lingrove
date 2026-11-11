@@ -162,14 +162,14 @@ public nonisolated enum VocabularyGraphProjection {
         }
         var directMeaningsByCategory: [UUID: [VocabularyMeaningBrowserProjection.Item]] = [:]
         var categorizedMeaningIDs = Set<UUID>()
-        for membership in confirmedMemberships {
-            if let item = itemsByID[membership.nodeID] {
+        // Items already have display order. Distribute that sequence to category buckets
+        // rather than repeating locale-aware sorting for every category containing a node.
+        let categoriesByMeaning = Dictionary(grouping: confirmedMemberships, by: \.nodeID)
+        for item in items {
+            for membership in categoriesByMeaning[item.id] ?? [] {
                 directMeaningsByCategory[membership.categoryID, default: []].append(item)
                 categorizedMeaningIDs.insert(item.id)
             }
-        }
-        for key in directMeaningsByCategory.keys {
-            directMeaningsByCategory[key]?.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         }
 
         let allMatchedMeaningIDs = Set(items.map(\.id))

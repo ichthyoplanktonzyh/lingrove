@@ -41,18 +41,24 @@ struct VocabularyEntryValidationIndex: Sendable {
     func replacing(_ old: VocabularyEntry?, with entry: VocabularyEntry?, oldIDs: Set<UUID>, newIDs: Set<UUID>,
                    removedSemanticIDs: Set<UUID>) -> Self {
         var result = self
-        if let old {
-            result.keys.removeValue(forKey: VocabularyIdentityPolicy.entryKey(old))
-            for id in oldIDs { result.owners.removeValue(forKey: id) }
-            for example in old.examples { result.acceptedOccurrences.removeValue(forKey: example.occurrenceID ?? example.id) }
+        let oldKey = old.map(VocabularyIdentityPolicy.entryKey), newKey = entry.map(VocabularyIdentityPolicy.entryKey)
+        if oldKey != newKey {
+            if let oldKey { result.keys.removeValue(forKey: oldKey) }
+            if let newKey, let entry { result.keys[newKey] = entry.id }
         }
-        if let entry { result.insert(entry, ids: newIDs) }
-        result.semanticIDs.subtract(removedSemanticIDs)
+        for id in oldIDs.subtracting(newIDs) { result.owners.removeValue(forKey: id) }
+        if let entry { for id in newIDs.subtracting(oldIDs) { result.owners[id] = entry.id } }
+        let before = Set(old?.examples.map { $0.occurrenceID ?? $0.id } ?? [])
+        let after = Set(entry?.examples.map { $0.occurrenceID ?? $0.id } ?? [])
+        for id in before.subtracting(after) { result.acceptedOccurrences.removeValue(forKey: id) }
+        if let entry { for id in after.subtracting(before) { result.acceptedOccurrences[id] = entry.id } }
+        if !removedSemanticIDs.isEmpty { result.semanticIDs.subtract(removedSemanticIDs) }
         return result
     }
 
-    func updatingSemantics(_ semantics: VocabularySemanticIndex) -> Self {
-        var result = self; result.semanticIDs = VocabularySemanticPolicy.identifiers(semantics); return result
+    func updatingSemanticIDs(removing: Set<UUID>, adding: Set<UUID>) -> Self {
+        guard !removing.isEmpty || !adding.isEmpty else { return self }
+        var result = self; result.semanticIDs.subtract(removing); result.semanticIDs.formUnion(adding); return result
     }
 
     private mutating func insert(_ entry: VocabularyEntry, ids: Set<UUID>) {

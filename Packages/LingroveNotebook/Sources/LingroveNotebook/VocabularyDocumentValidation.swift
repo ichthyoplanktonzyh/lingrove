@@ -19,32 +19,48 @@ public nonisolated enum VocabularyDocumentValidation {
 
     /// The writer reuses this proof instead of decoding/revalidating its just-saved rows.
     /// It stays module-internal so an arbitrary caller cannot label an unchecked value valid.
-    static func prepared(_ document: VocabularyDocument, previous: VocabularyDocument, restoringBackup: Bool)
+    static func prepared(_ document: VocabularyDocument, previous: VocabularyDocument, restoringBackup: Bool,
+                         previousEntries: [VocabularyEntry]? = nil)
         throws -> (document: VocabularyDocument, entries: [VocabularyEntry], identifiers: [UUID: Set<UUID>]) {
         guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
         var next = document
         try VocabularyLifecyclePolicy.validate(next)
-        if !restoringBackup {
-            VocabularySemanticPolicy.reconcile(&next.semantics, previous: previous, entries: next.entries)
-        }
         var entries = next.entries
+        if !restoringBackup {
+            VocabularySemanticPolicy.reconcile(&next.semantics, previous: previous,
+                previousEntries: previousEntries ?? previous.entries, entries: entries)
+        }
+        var claimExplanations: [UUID: [LearningExplanationRecord]] = [:]
         for index in entries.indices {
             let entry = entries[index]
             for sense in entry.senses.indices {
                 let value = entry.senses[sense]
                 let input = VocabularyExplanationIdentity.input(for: entry, sense: value, example: nil)
-                entries[index].senses[sense].explanations = value.explanations.filter { $0.input == input }
+                let kept = value.explanations.filter { $0.input == input }
+                if kept.count != value.explanations.count {
+                    entries[index].senses[sense].explanations = kept
+                    next.catalog[index].senses[sense].explanations = kept
+                }
                 for usage in value.examples.indices {
                     let input = VocabularyExplanationIdentity.input(for: entry, sense: value, example: value.examples[usage])
-                    entries[index].senses[sense].examples[usage].explanations = value.examples[usage].explanations.filter { $0.input == input }
+                    let example = value.examples[usage], kept = example.explanations.filter { $0.input == input }
+                    if kept.count != example.explanations.count {
+                        entries[index].senses[sense].examples[usage].explanations = kept
+                        claimExplanations[example.id] = kept
+                    }
                 }
             }
         }
-        next.entries = entries
+        if !claimExplanations.isEmpty {
+            for index in next.interpretations.indices {
+                if let kept = claimExplanations[next.interpretations[index].id] { next.interpretations[index].explanations = kept }
+            }
+        }
         next.schemaVersion = VocabularyDocument.requiredVersion(for: entries)
-        let joined = next.entries
-        let identifiers = try validate(next, entries: joined)
-        return (next, joined, identifiers)
+        // Only valid explanation subsets and graph reconciliation changed after lifecycle
+        // admission; immutable evidence and its joined values do not need reconstruction.
+        let identifiers = try validate(next, entries: entries, lifecycleChecked: true)
+        return (next, entries, identifiers)
     }
 
     /// Keep the historical identity scopes and insertion order. Expanding this namespace to
@@ -53,13 +69,13 @@ public nonisolated enum VocabularyDocumentValidation {
         _ = try validate(document, entries: document.entries)
     }
 
-    static func validate(_ document: VocabularyDocument, entries: [VocabularyEntry]) throws -> [UUID: Set<UUID>] {
+    static func validate(_ document: VocabularyDocument, entries: [VocabularyEntry], lifecycleChecked: Bool = false) throws -> [UUID: Set<UUID>] {
         guard document.schemaVersion == VocabularyDocument.currentVersion,
               document.schemaVersion >= VocabularyDocument.requiredVersion(for: entries),
               Set(entries.map(VocabularyIdentityPolicy.entryKey)).count == entries.count else {
             throw VocabularyError.invalidArchive
         }
-        try VocabularyLifecyclePolicy.validate(document)
+        if !lifecycleChecked { try VocabularyLifecyclePolicy.validate(document) }
         try VocabularyReviewValidation.validateTemplates(document.reviewTemplates ?? [])
         var allIDs = Set<UUID>(), identifiers: [UUID: Set<UUID>] = [:]
         for entry in entries {

@@ -36,14 +36,24 @@ public nonisolated enum VocabularyEntryInputPolicy {
         guard !inputs.isEmpty, inputs.count <= 100 else { throw VocabularyEntryInputError.invalidInput }
         var plan = Plan(document: document)
         var entries = document.entries
+        // A batch retains headword ownership as it grows. Normalize each saved key once,
+        // rather than rescanning/re-normalizing the entire corpus for every input row.
+        var offsets: [String: Int] = [:]
+        offsets.reserveCapacity(entries.count + inputs.count)
+        for (index, entry) in entries.enumerated() {
+            try Task.checkCancellation()
+            let key = VocabularyIdentityPolicy.entryKey(entry)
+            if offsets[key] == nil { offsets[key] = index }
+        }
         for input in inputs {
             try Task.checkCancellation()
             let value = try validated(input)
             let key = VocabularyIdentityPolicy.entryKey(expression: value.expression, language: value.language, kind: value.kind)
             let index: Int
-            if let found = entries.firstIndex(where: { VocabularyIdentityPolicy.entryKey($0) == key }) { index = found }
+            if let found = offsets[key] { index = found }
             else {
                 index = entries.count
+                offsets[key] = index
                 entries.append(.init(id: UUID(), expression: value.expression, dictionaryForm: value.dictionaryForm,
                     language: value.language, kind: value.kind, senses: [], createdAt: now, updatedAt: now))
                 plan.result.addedEntries += 1

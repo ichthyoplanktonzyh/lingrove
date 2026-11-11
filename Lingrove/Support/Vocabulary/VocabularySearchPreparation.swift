@@ -67,8 +67,9 @@ nonisolated struct VocabularySearchPreparation {
             return delta
         }
         let material = VocabularySearchMaterial(semantics)
-        let senses = prepareSenses(entries, material: material)
-        let meanings = prepareMeanings(semantics, material: material, liveSenses: senses.live)
+        var normalization = Normalization()
+        let senses = prepareSenses(entries, material: material, normalization: &normalization)
+        let meanings = prepareMeanings(semantics, material: material, liveSenses: senses.live, normalization: &normalization)
         if senses.embeddingChanged || meanings.embeddingChanged { embeddingRevision = UUID() }
         self.material = material; preparedRevision = revision
         entrySenses = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0.senses.map(\.id)) })
@@ -85,12 +86,14 @@ nonisolated struct VocabularySearchPreparation {
         guard let material, let entry = entries.first(where: { $0.id == id }),
               entrySenses[id] == entry.senses.map(\.id) else { return nil }
         var changed = Set<UUID>(), embeddingChanged = false
+        var normalization = Normalization()
         for sense in entry.senses {
             let fields = material.fields(entry: entry, sense: sense)
             let input = SenseInput(selection: .init(entryID: entry.id, senseID: sense.id), language: entry.language,
                 display: [entry.expression, entry.dictionaryForm, sense.displayTitle], tags: sense.tags, fields: fields)
             guard senseInputs[sense.id] != input, let offset = documentOffsets[sense.id] else { continue }
-            let document = VocabularySearchPolicy.document(entry: entry, sense: sense, fields: fields)
+            let document = VocabularySearchPolicy.document(entry: entry, sense: sense, fields: fields,
+                normalizing: { normalization.value($0) })
             embeddingChanged = embeddingChanged || documents[sense.id]?.fingerprint != document.fingerprint
             senseInputs[sense.id] = input; documents[sense.id] = document; orderedDocuments[offset] = document
             changed.insert(sense.id)
@@ -100,7 +103,8 @@ nonisolated struct VocabularySearchPreparation {
             rebuiltSenses: changed, rebuiltMeanings: [])
     }
 
-    private mutating func prepareSenses(_ entries: [VocabularyEntry], material: VocabularySearchMaterial)
+    private mutating func prepareSenses(_ entries: [VocabularyEntry], material: VocabularySearchMaterial,
+                                        normalization: inout Normalization)
         -> Batch<VocabularySearchDocument> {
         var liveSenses = Set<UUID>(), changedSenses = Set<UUID>()
         var orderedDocuments: [VocabularySearchDocument] = []
@@ -112,7 +116,8 @@ nonisolated struct VocabularySearchPreparation {
                     display: [entry.expression, entry.dictionaryForm, sense.displayTitle], tags: sense.tags, fields: fields)
                 liveSenses.insert(sense.id)
                 if senseInputs[sense.id] != input {
-                    let document = VocabularySearchPolicy.document(entry: entry, sense: sense, fields: fields)
+                    let document = VocabularySearchPolicy.document(entry: entry, sense: sense, fields: fields,
+                        normalizing: { normalization.value($0) })
                     embeddingChanged = embeddingChanged || documents[sense.id]?.fingerprint != document.fingerprint
                     senseInputs[sense.id] = input; documents[sense.id] = document; changedSenses.insert(sense.id)
                 }
@@ -127,7 +132,7 @@ nonisolated struct VocabularySearchPreparation {
     }
 
     private mutating func prepareMeanings(
-        _ semantics: VocabularySemanticIndex, material: VocabularySearchMaterial, liveSenses: Set<UUID>
+        _ semantics: VocabularySemanticIndex, material: VocabularySearchMaterial, liveSenses: Set<UUID>, normalization: inout Normalization
     ) -> Batch<VocabularyMeaningSearchDocument> {
         var liveMeanings = Set<UUID>(), candidates = Set<UUID>(), nextTitles: [Title] = []
         var changedMeanings = Set<UUID>(), embeddingChanged = false
@@ -139,7 +144,8 @@ nonisolated struct VocabularySearchPreparation {
             let terms = material.terms(node)
             let input = MeaningInput(fields: terms + [node.definition], senses: senses)
             if meaningInputs[node.id] != input {
-                let document = VocabularySearchPolicy.meaningDocument(node: node, senseIDs: senses, terms: terms)
+                let document = VocabularySearchPolicy.meaningDocument(node: node, senseIDs: senses, terms: terms,
+                    normalizing: { normalization.value($0) })
                 embeddingChanged = embeddingChanged || meanings[node.id]?.fingerprint != document?.fingerprint
                 meanings[node.id] = document; meaningInputs[node.id] = input; changedMeanings.insert(node.id)
             } else if let previous = meanings[node.id] {
@@ -165,6 +171,16 @@ nonisolated struct VocabularySearchPreparation {
 
     private static func literal(_ lhs: [String], _ rhs: [String]) -> Bool {
         lhs.elementsEqual(rhs, by: { $0.utf8.elementsEqual($1.utf8) })
+    }
+
+    /// Shared labels/headwords recur across senses and meaning destinations. This temporary
+    /// memo belongs to one preparation pass; the actor retains only completed documents.
+    private struct Normalization {
+        private var values: [String: String] = [:]
+        mutating func value(_ text: String) -> String {
+            if let value = values[text] { return value }
+            let value = VocabularySearchPolicy.normalized(text); values[text] = value; return value
+        }
     }
 }
 

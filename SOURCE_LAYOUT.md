@@ -265,8 +265,19 @@ the checked key, identifier and accepted-occurrence ownership proof; replacement
 incoming entry against that proof. `VocabularySemanticEntryIndex` retains reverse sense/pattern/
 evidence references and creates a domain-owned `VocabularySemanticEntryChange`. Restricted
 retirements/retractions preserve the unchanged graph proof; the codec encodes only changed
-mapping families. Full imports/restores and arbitrary graph edits still establish the complete
-proof through `VocabularyDocumentValidation`/`VocabularySemanticPolicy`.
+mapping families. `VocabularyOrganizationSaveChange` seals record expectations and changed
+ownership roots after applying them to that checked state. `VocabularySemanticPolicy.validateChange`
+rechecks edited semantic records and all affected mappings/relations/cue targets against complete
+destination lookups, reserving untouched IDs. A changed hierarchy traverses all narrower edges;
+directory edits retain complete classification validation. Imports/restores establish the full
+proof through `VocabularyDocumentValidation`.
+
+`VocabularyNotebookProjection.EntryLookup` retains canonical evidence offsets and claim ownership;
+ordinary annotation changes do not rebuild those maps or rewrite unchanged claims. The checked
+state also owns `VocabularyMediaReferenceIndex`, including template and preserved-plan images.
+Only reference discovery is cached: the engine still checks every asset's workspace ownership,
+metadata and aggregate bound. `VocabularyTagRemovalChange` is a restricted annotation-only batch;
+it carries affected entries without granting callers a generic unchecked partial-save API.
 
 `LingroveNotebookPersistenceCodec/VocabularyEntryRowProjection` converts checked changes to row
 deltas and `VocabularyPersistenceMaterialRoots` identifies their lexical/evidence owners. The
@@ -279,6 +290,20 @@ stable display/default selection. Membership rows ignore legacy positions and wr
 authored body/history/template rows retain strict sequence positions. Arrays remain containers.
 `VocabularyWireMembership` retains confirmed ranks and add/reset semantics without manufacturing
 edits for container permutations. See `docs/adr/0004-unordered-corpus-membership.md`.
+
+`VocabularyProjectionMap` keeps an immutable row/group base with a bounded value overlay. A
+transaction copies recent deltas while retained readers keep their original values; compaction
+is amortized and still linear. `VocabularyRowLiteralComparison` checks scalar text/numeric bytes
+after typed equality, with sorted JSON fallback for complex history/layout records. Full saves
+classify public intent from actual changed row roots through the existing public leaf encoder,
+so private receipts and bookkeeping timestamps remain excluded without encoding the whole book.
+`decodeSaveState` shares one complete validation with the connection, while general codec decode
+keeps its separate lossless-row contract. `cachedNotebookEntries` exposes only the exact current
+version/token's joined values to the archive/read worker; cache misses use ordinary reconstruction.
+`VocabularyEntryInputPolicy` builds a transient headword-key lookup once per manual batch and
+updates it as entries are appended. Repeated input still creates independent senses; identity
+continues to include language and kind. This removes repeated whole-corpus normalization without
+changing creation, cancellation or final validation semantics.
 
 `LingroveNotebookSaveCache` owns the checked state/projection per SQLite connection, guarded by
 scope/revision/generation and both external and local SQL change tokens. Successful full saves
@@ -685,6 +710,9 @@ the notebook activates indexing, and closing it cancels work and releases the na
 owns `Support/Vocabulary/VocabularySearchPreparation`, which compares retrieval-only inputs and
 reuses normalized sense/meaning documents across local edits. Confirmed node/cue changes fan out
 through their actual associations; metadata-only changes retain the embedding revision.
+Cold preparation memoizes repeated text normalization within that pass. Keyword retrieval shares
+phrase decisions within one query, retaining NaturalLanguage word boundaries and existing
+admission/rank fusion. Neither temporary memo survives into a new query or preparation pass.
 `VocabularySearchEntryChange` pairs an admitted single-entry receipt with consecutive UI revision
 IDs. The store emits it only with unchanged semantics; matching preparation reuses semantic
 material/meaning destinations and replaces that entry's document slots. Missing/skipped receipts
@@ -1486,7 +1514,7 @@ connection, while `BuiltInReviewSource` joins evidence for only the requested en
 
 `VocabularyOrganizationEdit` carries changed semantic/directory records with their expected
 values. `Commands/+Organization` applies them to the connection-owned checked state and
-uses the cached row projection for graph-only SQL/journal deltas. Unchanged lexical evidence
+uses its sealed root scope for validation, row projection and public-intent comparison. Unchanged lexical evidence
 and review material retain their saved rows. `NotebookOrganizationIntegrationTests` guards
 that boundary with actual SQLite triggers, conflicting edits and rollback/reopen checks.
 

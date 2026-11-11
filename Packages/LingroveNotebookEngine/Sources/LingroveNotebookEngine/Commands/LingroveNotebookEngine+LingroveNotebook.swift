@@ -31,6 +31,19 @@ extension LingroveNotebookEngine {
         }
     }
 
+    /// A read-only projection of the already checked connection state. Header, generation and
+    /// SQL-clock checks bind these joined values to the caller's exact snapshot; a missing or
+    /// externally invalidated cache returns nil rather than inventing a second read authority.
+    public func cachedNotebookEntries(for version: LingroveNotebookVersion) throws -> [VocabularyEntry]? {
+        try core.inReadTransaction {
+            guard let cached = core.notebookSaveCache,
+                  LingroveNotebookVersion(cached.snapshot) == version,
+                  try currentNotebookVersionInTransaction() == version,
+                  try core.notebookCacheToken() == cached.token else { return nil }
+            return cached.state.entries
+        }
+    }
+
     public func saveLingroveNotebook(
         _ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
         restoringBackup: Bool = false, images: [String: Data] = [:], requireActiveWorkspace: Bool = false,

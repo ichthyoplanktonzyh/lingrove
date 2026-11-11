@@ -40,6 +40,13 @@ public struct LingroveNotebookMediaStore {
     ) throws {
         let references = Set(VocabularyDocumentValidation.imageReferences(document))
         let existing = Set(VocabularyDocumentValidation.imageReferences(previous))
+        try registerImages(references: references, existing: existing, staged: staged, workspaceId: workspaceId)
+    }
+
+    /// The writer supplies the domain-owned reference index, not caller dirty hints. Asset
+    /// ownership/metadata and the aggregate bound are still checked for the complete set.
+    func registerImages(references: Set<VocabularyImageReference>, existing: Set<VocabularyImageReference>,
+                        staged: Set<VocabularyImageReference>, workspaceId: String) throws {
         // Narrow saves stage only their edited subtree before taking the writer. The complete
         // owned reference set still has the same aggregate bound as a full document save.
         guard references.reduce(0, { $0 + $1.byteCount }) <= VocabularyDocumentValidation.maximumMediaBytes else {

@@ -570,3 +570,88 @@ or replaced. Final native evidence is under
 `build/corpus-operation-benchmark/unordered-membership-native-final/`; focused engine evidence
 is under `build/corpus-data-layer-paired/unordered-membership-10000/`. No complete operation
 inventory or actual frame/input latency is claimed by this checkpoint.
+
+## Remaining corpus paths (2026-11-11)
+
+The next slice keeps the same SQLite/domain boundaries and removes repeated preparation at
+those boundaries. A connection's checked state now retains canonical evidence offsets and image
+references. Narrow entry saves reuse those indexes; the row projection uses an immutable base
+plus a bounded overlay, so a transaction does not copy every row dictionary for one note.
+Scalar equality still checks literal text/numeric representations, with full encoding retained
+for structured history/layout leaves. Retained projection versions survive overlay compaction.
+
+Organization commands seal changed root IDs after applying their record expectations. Semantic
+validation rechecks those roots and their dependent mappings, relations and cue targets, while
+untouched identities remain reserved. Hierarchy additions still traverse the complete hierarchy;
+directory edits retain full classification validation. Only changed ownership groups are encoded
+and compared for public intent. There is no caller-provided unchecked dirty-ID save interface.
+
+Global tag removal is an annotation-only domain command: canonical evidence, semantic links,
+media and review history retain their prior proof. Batch manual import builds its headword lookup
+once, including newly created owners, rather than repeatedly normalizing every saved expression.
+Generic imports, restores and merge undo keep complete validation, but share joined values and
+the resulting checked state with persistence. Actual row roots scope public-intent comparison;
+private receipts and timestamp-only bookkeeping still use the existing public encoder's rules.
+
+Cold SQL reads establish one reusable full validation result. The archive can pass its exact
+version/token's joined entries to the read worker instead of joining them again. First search
+preparation memoizes repeated normalization within that pass, and keyword ranking shares phrase
+decisions within one query while retaining NaturalLanguage word boundaries. A bounded example
+retrieval regression test ensures that an annotation save does not change embedding material
+merely because a membership lookup iterates differently. Meaning browsing skips search-only
+material for empty queries; taxonomy groups reuse the already sorted meaning sequence.
+
+The focused remaining-path harness calls production commands/models without opening windows or
+synthesizing input. It measures 43 windows, three trials each, at 10,000 entries / 20,000 senses /
+40,000 examples, with 14,000 meaning nodes, 688 categories, 14,000 memberships, 2,000 enrolled
+senses and 1,000 rating records. Baseline product `65da47da` and the candidate use separately
+generated equivalent synthetic seeds, the identical timing harness and operation order,
+Release/arm64 on MacBookPro18,2. These are command/projection durations, not frame/input latency,
+OS-cache-cold disk measurements, or an 83-window inventory rerun. Three samples do not establish
+a percentile or a latency guarantee.
+
+Median milliseconds from the passing three-trial runs:
+
+| Remaining operation | Before | After |
+|---|---:|---:|
+| Entry note save, store command | 308.120 | 126.440 |
+| Favorite capture, engine transaction | 206.104 | 57.980 |
+| Sense removal, engine transaction | 164.259 | 38.737 |
+| Shared meaning edit | 332.327 | 82.606 |
+| Category edit | 190.192 | 60.135 |
+| Global tag removal | 16152.228 | 610.104 |
+| Manual batch import, 50 new entries | 16788.124 | 3754.415 |
+| Manual batch re-import, 50 new senses | 16686.302 | 3799.452 |
+| Sense merge undo | 15629.639 | 3649.646 |
+| Full backup restore | 17192.996 | 4904.003 |
+| Keyword search | 112.628 | 54.408 |
+| First library load | 4210.592 | 4030.341 |
+| First search preparation | 268.012 | 259.838 |
+| First taxonomy graph preparation | 128.855 | 116.286 |
+
+The [complete 43-window comparison and raw samples](benchmarks/corpus-remaining-2026-11-11.json)
+retain medians and maxima, fixture counts and binary/source identities. The baseline archive
+runner copied the same timing harness before product changes, but its source-manifest collector
+returned an empty list because the archive had no own Git index. Baseline build logs, binary
+hash and the archive procedure remain under `build/corpus-remaining/before/` and
+`build/run_remaining_baseline.py`; there is no retrospective baseline source-hash proof. The
+runner now handles index-free archives explicitly. Candidate source hashes are recorded under
+`build/corpus-operation-benchmark/remaining-final/` and checked against the final product files.
+
+The mutation improvements are large in this sample. Cold load and first search preparation
+are effectively unchanged at this scale; the small graph difference is not a frame-rate claim.
+First load still reads/decodes the complete corpus, checks lossless reconstruction and business
+invariants, and builds its indexes. Batch/restore paths still perform complete preparation and
+row projection. Removing those remaining costs requires a different read/preparation strategy;
+this checkpoint does not claim they are solved or that all operations are independent of size.
+Unchanged browse/CLI windows vary in both directions, so there is no universal speedup claim.
+
+Validation passed 124 distinct shared checks (the full shared checkpoint plus the final targeted
+batch-rule check), 104 engine Swift Testing checks and 40 engine XCTest checks. Three opt-in
+real-server interop bridges stayed disabled. Final private native Release execution passed
+56 checks; the visible-desktop journey remained intentionally skipped. It includes search
+boundary/equivalence tests, bounded-example annotation stability, repository/lifecycle checks,
+graph checks and batch import/cancellation. The timing envelope passed with all 129 samples.
+Strict SwiftLint and diff checks passed. Final cleanup removed and verified absence of
+DerivedData, copied package source, private hosts and synthetic trial databases; the installed
+Dev application and real corpus were not accessed or replaced.

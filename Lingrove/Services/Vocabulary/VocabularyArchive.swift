@@ -81,7 +81,7 @@ actor VocabularyArchive {
             let current = try engine.loadLingroveNotebook(workspaceId: workspace, requireActiveWorkspace: true)
             if let expectedScope, !expectedScope.hasSameOwner(as: current) { throw VocabularyError.editConflict }
             saved = current
-            return .init(current)
+            return .init(current, joinedEntries: try engine.cachedNotebookEntries(for: .init(current)))
         }
     }
 
@@ -366,21 +366,22 @@ actor VocabularyArchive {
     /// A receipt is optional and version-fenced by the engine. Unknown/external reads still
     /// carry the complete document, so UI correctness never depends on cache availability.
     func committedSnapshot(_ saved: LingroveNotebookSnapshot) throws -> VocabularyArchiveSnapshot {
-        .init(saved, committedChange: try persistence().committedNotebookChange(for: .init(saved)))
+        .init(saved, committedChange: try persistence().committedNotebookChange(for: .init(saved)),
+            joinedEntries: try persistence().cachedNotebookEntries(for: .init(saved)))
     }
 
     /// The selected notebook owns the tag's entire lifetime. One transaction updates all
     /// occurrences; source evidence, explanation/media and semantic links remain untouched.
     func removeTag(_ tag: String) throws -> VocabularyArchiveSnapshot {
         guard !tag.isEmpty, tag.utf8.count <= 200 else { throw VocabularyError.invalidContent }
-        let snapshot = try load()
-        var next = snapshot.document, changed = false
-        let now = Date()
-        for index in next.catalog.indices {
-            let removed = VocabularySenseEditingPolicy.removeTag(tag, from: &next.catalog[index], now: now)
-            changed = removed || changed
+        return try storageAccess(write: true) {
+            _ = try load()
+            let baseline = try transactionBaseline()
+            if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
+            let result = try persistence().removeNotebookTag(tag, basedOn: baseline)
+            saved = result
+            return try committedSnapshot(result)
         }
-        return changed ? try commit(next) : snapshot
     }
 
     /// Review drafts use compare-and-swap rather than whole-entry replacement. A sheet cannot

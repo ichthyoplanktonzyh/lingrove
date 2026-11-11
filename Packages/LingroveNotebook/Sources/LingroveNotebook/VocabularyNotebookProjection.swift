@@ -69,7 +69,7 @@ public nonisolated enum VocabularyNotebookProjection {
             }
         }
         document.catalog = entries.map(header)
-        var offsets = Offsets(document)
+        var offsets = EntryLookup(document)
         for sense in entries.flatMap(\.senses) {
             for example in sense.examples { retain(example, senseID: sense.id, in: &document, offsets: &offsets) }
         }
@@ -79,24 +79,50 @@ public nonisolated enum VocabularyNotebookProjection {
     /// are never projected back through an editor, so their literal bytes and ownership survive.
     /// Sources and occurrences are immutable evidence: retain can only reuse them or append new
     /// identities. The validated entry-save boundary checks all resulting relationships.
-    static func replaceEntry(_ entry: VocabularyEntry, in document: inout VocabularyDocument) {
+    static func replaceEntry(_ entry: VocabularyEntry, in document: inout VocabularyDocument, offsets: inout EntryLookup) {
         let previous = document.catalog.first { $0.id == entry.id }
         let oldSenses = Set(previous?.senses.map(\.id) ?? [])
-        let senses = Set(entry.senses.map(\.id)), claims = Set(entry.examples.map(\.id))
-        document.interpretations.removeAll {
-            $0.status == .accepted && $0.senseID.map(oldSenses.contains) == true && !claims.contains($0.id)
+        let senses = Set(entry.senses.map(\.id)), incoming = Set(entry.examples.map(\.id))
+        let oldClaims = offsets.claimIDs(senses: oldSenses)
+        let removed = Set(oldClaims.filter { id in
+            offsets.claim(id, in: document)?.status == .accepted && !incoming.contains(id)
+        })
+        if !removed.isEmpty {
+            document.interpretations.removeAll { removed.contains($0.id) }
+            offsets.reindexClaims(document.interpretations)
         }
-        for index in document.interpretations.indices {
-            if let id = document.interpretations[index].senseID, oldSenses.contains(id), !senses.contains(id) {
-                document.interpretations[index].senseID = nil
-                document.interpretations[index].status = .candidate
+        for id in offsets.claimIDs(senses: oldSenses.subtracting(senses)) {
+            guard let index = offsets.claims[id] else { continue }
+            document.interpretations[index].senseID = nil
+            document.interpretations[index].status = .candidate
+        }
+        // Rebuild ownership only for retired-sense candidates; ordinary edits share all maps.
+        if !oldSenses.isSubset(of: senses) { offsets.reindexClaims(document.interpretations) }
+        upsert(header(entry), in: &document.catalog, id: \.id)
+        for sense in entry.senses {
+            for example in sense.examples {
+                retain(example, senseID: sense.id, in: &document, offsets: &offsets, skipUnchanged: true)
             }
         }
-        upsert(header(entry), in: &document.catalog, id: \.id)
-        var offsets = Offsets(document)
-        for sense in entry.senses {
-            for example in sense.examples { retain(example, senseID: sense.id, in: &document, offsets: &offsets) }
+    }
+
+    static func entry(_ id: UUID, in document: VocabularyDocument, lookup: EntryLookup) -> VocabularyEntry? {
+        guard var entry = document.catalog.first(where: { $0.id == id }) else { return nil }
+        for index in entry.senses.indices {
+            // Reproduce the canonical join's construction sequence for this small subtree.
+            // This is no durable ordinal: it keeps annotation-only saves from changing the
+            // bounded example material used by search merely because a Set iterated differently.
+            let ids = (lookup.claimsBySense[entry.senses[index].id] ?? []).sorted {
+                (lookup.claims[$0] ?? Int.max) < (lookup.claims[$1] ?? Int.max)
+            }
+            entry.senses[index].examples = ids.compactMap { id in
+                guard let claim = lookup.claim(id, in: document), claim.status == .accepted,
+                      let occurrence = lookup.occurrences[claim.occurrenceID].map({ document.occurrences[$0] }),
+                      let source = lookup.sources[occurrence.sourceID].map({ document.sources[$0] }) else { return nil }
+                return example(claim, occurrence: occurrence, source: source)
+            }
         }
+        return entry
     }
 
     private static func header(_ entry: VocabularyEntry) -> VocabularyEntry {
@@ -107,13 +133,25 @@ public nonisolated enum VocabularyNotebookProjection {
 
     /// One reconciliation indexes each table once. A word-list import can contain thousands
     /// of examples; repeated full-array identity scans would make a pure adapter quadratic.
-    private struct Offsets {
+    struct EntryLookup: Sendable {
         var sources: [UUID: Int]
         var occurrences: [UUID: Int]
         var claims: [UUID: Int]
+        var claimsBySense: [UUID: Set<UUID>] = [:]
         init(_ document: VocabularyDocument) {
             sources = Self.index(document.sources.map(\.id)); occurrences = Self.index(document.occurrences.map(\.id))
             claims = Self.index(document.interpretations.map(\.id))
+            for value in document.interpretations { if let id = value.senseID { claimsBySense[id, default: []].insert(value.id) } }
+        }
+        func claim(_ id: UUID, in document: VocabularyDocument) -> VocabularyInterpretation? {
+            claims[id].map { document.interpretations[$0] }
+        }
+        func claimIDs(senses: Set<UUID>) -> Set<UUID> {
+            senses.reduce(into: Set<UUID>()) { $0.formUnion(claimsBySense[$1] ?? []) }
+        }
+        mutating func reindexClaims(_ values: [VocabularyInterpretation]) {
+            claims = Self.index(values.map(\.id)); claimsBySense = [:]
+            for value in values { if let id = value.senseID { claimsBySense[id, default: []].insert(value.id) } }
         }
         private static func index(_ ids: [UUID]) -> [UUID: Int] {
             Dictionary(ids.enumerated().map { ($0.element, $0.offset) }, uniquingKeysWith: { first, _ in first })
@@ -121,7 +159,7 @@ public nonisolated enum VocabularyNotebookProjection {
     }
 
     private static func retain(_ input: VocabularyExample, senseID: UUID, in document: inout VocabularyDocument,
-                               offsets: inout Offsets) {
+                               offsets: inout EntryLookup, skipUnchanged: Bool = false) {
         var example = input
         if let offset = offsets.sources[example.sourceID] {
             let source = document.sources[offset]
@@ -140,14 +178,27 @@ public nonisolated enum VocabularyNotebookProjection {
             document.sources.append(.init(id: example.sourceID, text: example.text, kind: example.sourceKind,
                 appBundleIdentifier: example.appBundleIdentifier, encounteredAt: example.createdAt))
         }
-        upsert(.init(id: occurrenceID, sourceID: example.sourceID, ranges: example.ranges), in: &document.occurrences,
-            offsets: &offsets.occurrences, id: \.id)
+        let occurrence = VocabularySourceOccurrence(id: occurrenceID, sourceID: example.sourceID, ranges: example.ranges)
+        if offsets.occurrences[occurrenceID].map({ document.occurrences[$0] != occurrence }) ?? true {
+            upsert(occurrence, in: &document.occurrences, offsets: &offsets.occurrences, id: \.id)
+        }
         let provenance = offsets.claims[example.id].map { document.interpretations[$0].provenance } ?? .init()
         let claim = VocabularyInterpretation(id: example.id, occurrenceID: occurrenceID, senseID: senseID, status: .accepted,
             meaning: example.meaning, meaningLanguage: example.meaningLanguage, meaningOrigin: example.meaningOrigin,
             translation: example.translation, translationLanguage: example.translationLanguage,
             translationVariants: example.translationVariants, completeness: example.completeness, provenance: provenance,
             explanations: example.explanations, createdAt: example.createdAt)
+        let before = offsets.claim(example.id, in: document)
+        if before?.senseID != senseID {
+            if let old = before?.senseID { offsets.claimsBySense[old]?.remove(claim.id) }
+            offsets.claimsBySense[senseID, default: []].insert(claim.id)
+        }
+        if skipUnchanged, let before, before == claim {
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+            // Only the edited entry's small claims are encoded here. This retains literal
+            // Unicode/explanation bytes while avoiding a full claim-array copy for a note edit.
+            if let old = try? encoder.encode(before), let new = try? encoder.encode(claim), old == new { return }
+        }
         upsert(claim, in: &document.interpretations, offsets: &offsets.claims, id: \.id)
     }
 

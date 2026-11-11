@@ -1,6 +1,7 @@
 import Foundation
 import LingroveNotebook
 import LingroveNotebookPersistenceCodec
+import LingroveNotebookSync
 
 /// Only the serialized writer creates this plan from its checked cache and a validated next
 /// state. One value keeps SQL changes, material impact, UI receipts and post-commit cache in
@@ -58,6 +59,44 @@ struct LingroveNotebookSavePlan {
         return .init(base: .init(previous), version: .init(saved),
             updatedEntries: state.entries.filter { entryIDs.contains($0.id) },
             removedEntryIDs: entryIDs.subtracting(live), requiresEntryReload: requiresEntryReload)
+    }
+
+    /// Actual persisted roots choose the public comparison scope. Private Anki/audio fields
+    /// and bookkeeping timestamps still pass through the established public leaf encoder;
+    /// no unmodified corpus/graph is serialized just to classify a batch save.
+    func hasPublicChanges(previous: LingroveNotebookSaveCache) throws -> Bool {
+        let keys = Set((rows.changed + rows.removed + rows.repositioned).map(\.key))
+        let old = try previous.projection.materialRoots(for: keys), new = try rows.projection.materialRoots(for: keys)
+        let organization = old.organizationRoots.union(new.organizationRoots)
+        var families: [VocabularyPersistenceEntity: Set<UUID>] = [:]
+        for key in organization {
+            guard let id = UUID(uuidString: key.id) else { throw VocabularyError.invalidArchive }
+            families[key.entity, default: []].insert(id)
+        }
+        let sources = old.sourceIDs.union(new.sourceIDs), occurrences = old.occurrenceIDs.union(new.occurrenceIDs)
+        let claims = old.interpretationIDs.union(new.interpretationIDs)
+        let templates = old.allReviewMaterial || new.allReviewMaterial ||
+            (previous.state.document.reviewTemplates != nil) != (state.document.reviewTemplates != nil)
+        func fragment(_ document: VocabularyDocument) -> VocabularyDocument {
+            func selected<T: Identifiable>(_ records: [T], _ family: VocabularyPersistenceEntity) -> [T] where T.ID == UUID {
+                guard let ids = families[family], !ids.isEmpty else { return [] }
+                return records.filter { ids.contains($0.id) }
+            }
+            let graph = document.semantics, directory = document.classification
+            return .init(catalog: entryIDs.isEmpty ? [] : document.catalog.filter { entryIDs.contains($0.id) },
+                sources: sources.isEmpty ? [] : document.sources.filter { sources.contains($0.id) },
+                occurrences: occurrences.isEmpty ? [] : document.occurrences.filter { occurrences.contains($0.id) },
+                interpretations: claims.isEmpty ? [] : document.interpretations.filter { claims.contains($0.id) },
+                reviewTemplates: templates ? document.reviewTemplates : nil,
+                semantics: .init(nodes: selected(graph.nodes, .meaningNodes), patterns: selected(graph.patterns, .usagePatterns),
+                    mappings: selected(graph.mappings, .meaningMappings), relations: selected(graph.relations, .meaningRelations),
+                    cues: selected(graph.cues, .retrievalCues), cueTargets: selected(graph.cueTargets, .cueTargets)),
+                classification: .init(frameworks: selected(directory.frameworks, .classificationFrameworks),
+                    categories: selected(directory.categories, .categories), parents: selected(directory.parents, .categoryParents),
+                    memberships: selected(directory.memberships, .categoryMemberships), overrides: selected(directory.overrides, .categoryOverrides)))
+        }
+        return try VocabularyWirePublicIntent.hasChangesInValidatedFragments(from: fragment(previous.state.document),
+            to: fragment(state.document), notebookID: previous.snapshot.notebookId)
     }
 
     private static func reviewIDs(entries: [VocabularyEntry], ids: Set<UUID>) -> Set<UUID> {

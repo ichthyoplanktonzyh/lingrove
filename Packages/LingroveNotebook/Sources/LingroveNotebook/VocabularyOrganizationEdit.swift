@@ -4,8 +4,8 @@ import Foundation
 /// this short-lived value to the writer, which applies it to its own latest validated document.
 /// Unedited records are absent from the command and can change independently while a sheet is open.
 public nonisolated struct VocabularyOrganizationEdit: Sendable {
-    private let semantic: Semantic?
-    private let classification: Classification?
+    let semantic: Semantic?
+    let classification: Classification?
 
     public init(semantics: VocabularySemanticIndex, basedOn baseline: VocabularySemanticIndex) throws {
         semantic = try Semantic(edited: semantics, baseline: baseline)
@@ -93,6 +93,8 @@ public nonisolated struct VocabularyOrganizationEdit: Sendable {
 nonisolated struct VocabularyRecordEdit<Value: Identifiable & Equatable & Sendable>: Sendable where Value.ID == UUID {
     private let updates: [(before: Value?, after: Value)]
     private let removals: [Value]
+
+    var changedIDs: Set<UUID> { Set(updates.map { $0.after.id } + removals.map(\.id)) }
 
     init(_ edited: [Value], _ baseline: [Value]) throws {
         guard Set(edited.map(\.id)).count == edited.count,

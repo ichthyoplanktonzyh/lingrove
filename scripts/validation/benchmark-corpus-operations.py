@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--tail-only", action="store_true", help="Rerun the corrected CLI retry and remaining destinations")
     parser.add_argument("--native-checks", action="store_true", help="Run affected native repository/lifecycle checks before timing")
     parser.add_argument("--checks-only", action="store_true", help="Run affected native checks without the operation inventory")
+    parser.add_argument("--remaining-only", action="store_true", help="Measure the remaining load/save/organization paths")
     parser.add_argument("--keep-build-on-failure", action="store_true")
     parser.add_argument("--packages-from", type=Path, help="Reuse this benchmark's package cache after a failed build")
     args = parser.parse_args()
@@ -90,6 +91,12 @@ def main():
                 cwd=ROOT, text=True).splitlines()
             files += subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "Lingrove", "Packages", "LingroveTests"],
                 cwd=ROOT, text=True).splitlines()
+            # A git-archive checkout has no own index. Invoking git there may find the parent
+            # checkout and silently return zero matching paths; hash the archived inputs itself.
+            if not files:
+                files = [str(path.relative_to(ROOT)) for name in ("Lingrove", "Packages", "LingroveTests")
+                         for path in (ROOT / name).rglob("*") if path.is_file()]
+                files.append("project.yml")
             (base / "source-hashes.json").write_text(json.dumps({name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                 for name in sorted(set(files)) if (ROOT / name).is_file()}, indent=2) + "\n")
             (base / "identity.json").write_text(json.dumps({
@@ -99,7 +106,8 @@ def main():
                 "installedAppAccessed": False, "input": "generated synthetic notebooks only",
                 "hardware": subprocess.check_output(["sysctl", "-n", "hw.model"], text=True).strip(),
                 "sizes": args.sizes, "trials": args.trials, "scanTrials": 1,
-                "focusedTrials": args.trials, "tailOnly": args.tail_only}, indent=2) + "\n")
+                "focusedTrials": args.trials, "tailOnly": args.tail_only,
+                "remainingOnly": args.remaining_only, "remainingTrials": args.trials if args.remaining_only else 0}, indent=2) + "\n")
 
             def execute(label, sizes, trials, mode="scan", selectors=None):
                 output = base / label
@@ -146,9 +154,15 @@ def main():
                     "LingroveTests/VocabularyUnifiedRepositoryTests",
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
-                    "LingroveTests/NotebookProgressModelIntegrationTests"])
+                    "LingroveTests/NotebookProgressModelIntegrationTests",
+                    "LingroveTests/VocabularySearchPolicyTests",
+                    "LingroveTests/VocabularySearchPreparationTests",
+                    "LingroveTests/VocabularyGraphTests",
+                    "LingroveTests/VocabularyEntryImportTests"])
             if args.checks_only:
                 completed = True
+            elif args.remaining_only:
+                execute("remaining", args.sizes, args.trials, mode="remaining")
             elif args.tail_only:
                 execute("tail", args.sizes, 1, mode="tail")
             else:
@@ -160,7 +174,7 @@ def main():
             completed = True
         finally:
             # Only this run's synthetic fixtures and exact repository-scoped build caches retire.
-            for output in (base / "smoke", base / "smoke-focused", base / "focused", base / "measurements", base / "tail"):
+            for output in (base / "smoke", base / "smoke-focused", base / "focused", base / "measurements", base / "tail", base / "remaining"):
                 if output.exists():
                     for path in output.iterdir():
                         if path.is_dir() and (path.name.startswith("seed-") or path.name.startswith("trial-")):
