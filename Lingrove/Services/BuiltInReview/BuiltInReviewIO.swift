@@ -8,6 +8,7 @@ import LingroveNotebookEngine
 /// scopes and results cross the actor; the repository's non-Sendable engine never does.
 actor BuiltInReviewIO {
     enum Command: Sendable {
+        case enrollFromCorpus(VocabularySelection, LingroveNotebookVersion)
         case enrollNotes([VocabularySelection], ReviewNoteType, LingroveNotebookSnapshot)
         case noteType(ReviewNoteType, ReviewNoteType?, LingroveNotebookSnapshot, Bool)
         case note(ReviewNoteEditorDraft)
@@ -27,8 +28,14 @@ actor BuiltInReviewIO {
         self.mediaDirectoryURL = mediaDirectoryURL
     }
 
-    func load(scope: LingroveNotebookSnapshot, now: Date) throws -> NotebookBuiltInReviewSnapshot {
-        try withEngine { try $0.loadBuiltInNotebookReview(scope: scope, now: now) }
+    func load(version: LingroveNotebookVersion, savedScope: LingroveNotebookSnapshot?, now: Date) throws
+        -> (NotebookBuiltInReviewSnapshot, BuiltInReviewContentState) {
+        try Task.checkCancellation()
+        let engine = try LingroveNotebookEngine(readOnlyDatabaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
+        defer { try? engine.close() }
+        let snapshot = try engine.loadBuiltInNotebookReview(version: version, now: now, savedScope: savedScope)
+        try Task.checkCancellation()
+        return (snapshot, BuiltInReviewContentState(snapshot))
     }
 
     func participation(selection: VocabularySelection, version: LingroveNotebookVersion) throws -> LingroveNotebookParticipation {
@@ -38,6 +45,8 @@ actor BuiltInReviewIO {
     func perform(_ command: Command) throws {
         try withEngine { engine in
             switch command {
+            case let .enrollFromCorpus(selection, version):
+                _ = try engine.enrollReviewNotes(selections: [selection], version: version)
             case let .enrollNotes(selections, type, scope):
                 _ = try engine.enrollReviewNotes(selections: selections, type: type, scope: scope)
             case let .noteType(type, expected, scope, makeDefault):

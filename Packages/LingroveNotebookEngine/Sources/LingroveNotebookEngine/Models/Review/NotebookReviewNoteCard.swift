@@ -24,9 +24,23 @@ public struct NotebookReviewNoteCard: Codable, Equatable, Sendable {
             notebook: scope.notebookId, revision: scope.revision, generation: scope.generation))
     }
     public func render(in snapshot: LingroveNotebookSnapshot) throws -> ReviewRenderedCard {
-        guard let template = noteType.templates.first(where: { $0.id == templateID && $0.enabled }),
-              let entry = snapshot.document.entries.first(where: { $0.senses.contains { $0.id == note.senseID || $0.mergedFrom.contains(note.senseID) } }),
-              let sense = entry.senses.first(where: { $0.id == note.senseID || $0.mergedFrom.contains(note.senseID) }) else {
+        let (entry, sense) = try Self.source(for: note, in: snapshot)
+        return try render(entry: entry, sense: sense)
+    }
+
+    static func source(for note: ReviewNote, in snapshot: LingroveNotebookSnapshot) throws -> (VocabularyEntry, VocabularySense) {
+        let source = LingroveNotebookCardSource(workspaceId: snapshot.workspaceId, notebookId: snapshot.notebookId,
+            entryId: note.entryID, senseId: note.senseID, exampleId: note.exampleID)
+        guard let selection = LingroveNotebookCardMaterial.resolvedSelection(source: source, snapshot: snapshot),
+              let entry = VocabularyNotebookProjection.entry(selection.entryID, in: snapshot.document),
+              let sense = entry.senses.first(where: { $0.id == selection.senseID }) else {
+            throw ReviewTemplateError.sourceUnavailable
+        }
+        return (entry, sense)
+    }
+
+    func render(entry: VocabularyEntry, sense: VocabularySense) throws -> ReviewRenderedCard {
+        guard let template = noteType.templates.first(where: { $0.id == templateID && $0.enabled }) else {
             throw ReviewTemplateError.sourceUnavailable
         }
         var resolved = note; resolved.entryID = entry.id

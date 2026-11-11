@@ -5,6 +5,47 @@ import LingroveNotebook
 
 @MainActor
 struct ReviewNoteIntegrationTests {
+    @Test func enrollmentAndDestinationReadsAvoidReloadingTheCorpus() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        var document = LingroveNotebookReviewCompletionTests.document()
+        document.catalog[0].senses[0].note = "Remember the harbor"
+        document.catalog[0].senses[0].tags = ["nautical"]
+        document.catalog[0].senses[0].content = [.init(content: .text(.init(text: "A safe place for ships")))]
+        let scope = try fixture.db.saveLingroveNotebook(document,
+            basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))
+        let entry = try #require(scope.document.entries.first)
+        let firstSense = try #require(entry.senses.first)
+        let secondSense = try #require(entry.senses.last)
+        let selection = VocabularySelection(entryID: entry.id, senseID: firstSense.id)
+        let second = VocabularySelection(entryID: entry.id, senseID: secondSense.id)
+        let version = LingroveNotebookVersion(scope)
+        let now = Date()
+        try fixture.reopen()
+        let first = try #require(fixture.db.enrollReviewNotes(selections: [selection], version: version).first)
+        #expect(first.exampleID == firstSense.examples.first?.id)
+        #expect(fixture.db.core.notebookSaveCache == nil)
+
+        let review = try fixture.db.loadBuiltInNotebookReview(version: version, now: now, savedScope: scope)
+        let card = try #require(review.queue.first)
+        #expect(card.backText.contains("We found a quiet harbor."))
+        #expect(card.backText.contains("Remember the harbor"))
+        #expect(card.backText.contains("A safe place for ships"))
+        #expect(card.tags == ["nautical"])
+        #expect(fixture.db.core.notebookSaveCache == nil)
+        // Even a no-op write to the first card would fail, proving the next admission
+        // never refreshes unrelated cards as part of its transaction.
+        try fixture.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER protect_first_review_material BEFORE UPDATE ON notebook_review_material_state
+            WHEN OLD.card_id = '\(card.cardId)'
+            BEGIN SELECT RAISE(ABORT, 'Unrelated review material was refreshed'); END;
+            """, errorContext: "Protect the first card's material in this fixture")
+        _ = try fixture.db.enrollReviewNotes(selections: [second], version: version)
+        let fence = try fixture.db.notebookProgressReadFence()
+        let progress = try fixture.db.loadNotebookProgress(scope: fence.scope, now: now, calendar: .current)
+        #expect(progress.enrolledSenses == 2 && progress.activeSenses == 2 && progress.exercises == 2)
+        #expect(fixture.db.core.notebookSaveCache == nil)
+    }
+
     @Test func noteCreatesIndependentCardsAndReplaysWithoutDuplication() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
         let (scope, selection) = try source(fixture)

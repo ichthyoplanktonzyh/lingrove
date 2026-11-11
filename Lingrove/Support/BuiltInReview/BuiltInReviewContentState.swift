@@ -4,8 +4,8 @@ import LingroveNotebookEngine
 
 /// One browser index per loaded snapshot. It resolves labels (including merged senses) once
 /// so sorting, searching and rendering rows don't scan the corpus for every comparison.
-nonisolated struct BuiltInReviewContentState {
-    struct Source {
+nonisolated struct BuiltInReviewContentState: Sendable {
+    struct Source: Sendable {
         let expression: String
         let meaning: String
     }

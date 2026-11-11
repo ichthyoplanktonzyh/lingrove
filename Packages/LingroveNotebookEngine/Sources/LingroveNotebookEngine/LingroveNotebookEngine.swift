@@ -36,7 +36,7 @@ public final class LingroveNotebookEngine {
                     try core.executeScript(sql: "PRAGMA user_version = \(LocalDatabaseSchema.currentVersion)", errorContext: "Record notebook engine schema")
                 }
             } else {
-                try LingroveNotebookSchema.ensureEvidenceForeignKeyIndexes(in: core)
+                try LingroveNotebookSchema.ensureReadIndexes(in: core)
             }
             return try LocalDatabaseBootstrapper(core: core).ensureDefaultState()
         }

@@ -42,15 +42,19 @@ extension LingroveNotebookEngine {
     private func previewReviewNoteInTransaction(selection: VocabularySelection, type: ReviewNoteType,
                                                 scope: LingroveNotebookSnapshot) throws -> ReviewNote {
         try requireCurrentScopeInTransaction(scope, requireRevision: true)
-        guard let entry = scope.document.entries.first(where: { $0.id == selection.entryID }),
-              let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
-        let existing = try ReviewNoteStore(core: core).notes(scope: scope)
-        if let note = existing.first(where: { $0.noteTypeID == type.id && ($0.senseID == sense.id || sense.mergedFrom.contains($0.senseID)) }) { return note }
+        let (entry, sense) = try ReviewNoteStore(core: core).source(for: selection, workspace: scope.workspaceId)
+        return try reviewNote(entry: entry, sense: sense, type: type, version: .init(scope))
+    }
+
+    private func reviewNote(entry: VocabularyEntry, sense: VocabularySense, type: ReviewNoteType,
+                            version: LingroveNotebookVersion) throws -> ReviewNote {
+        let existing = try ReviewNoteStore(core: core).notes(version: version, senseIDs: Set([sense.id] + sense.mergedFrom))
+        if let note = existing.first(where: { $0.noteTypeID == type.id }) { return note }
         return ReviewNote(id: LingroveNotebookCardMaterial.stableID("note|" + type.id.uuidString,
-            workspace: scope.workspaceId, sense: sense.id), noteTypeID: type.id, entryID: entry.id, senseID: sense.id,
-            exampleID: sense.examples.filter { $0.completeness == .sentence }.sorted {
+            workspace: version.workspaceId, sense: sense.id), noteTypeID: type.id, entryID: entry.id, senseID: sense.id,
+            exampleID: sense.examples.lazy.filter { $0.completeness == .sentence }.min {
                 $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
-            }.first?.id)
+            }?.id)
     }
 
     public func saveReviewNoteType(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
@@ -80,29 +84,52 @@ extension LingroveNotebookEngine {
     @discardableResult
     public func enrollReviewNotes(selections: [VocabularySelection], type expected: ReviewNoteType,
                                   scope: LingroveNotebookSnapshot) throws -> [ReviewNote] {
+        try enrollReviewNotes(selections: selections, type: expected, version: .init(scope))
+    }
+
+    /// The corpus button uses the current default inside the same transaction as admission.
+    /// Loading a queue first would duplicate work and pin a template that may no longer be current.
+    @discardableResult
+    public func enrollReviewNotes(selections: [VocabularySelection], version: LingroveNotebookVersion) throws -> [ReviewNote] {
+        try enrollReviewNotes(selections: selections, type: nil, version: version)
+    }
+
+    private func enrollReviewNotes(selections: [VocabularySelection], type expected: ReviewNoteType?,
+                                   version: LingroveNotebookVersion) throws -> [ReviewNote] {
         try core.inTransaction {
             try Task.checkCancellation()
-            try requireCurrentScopeInTransaction(scope, requireRevision: true)
+            guard try currentNotebookVersionInTransaction() == version else { throw VocabularyError.editConflict }
             guard !selections.isEmpty, Set(selections.map(\.senseID)).count == selections.count else { throw VocabularyError.invalidContent }
             let store = ReviewNoteStore(core: core)
-            guard try store.types(workspace: scope.workspaceId).contains(expected) else { throw VocabularyError.editConflict }
-            try store.put(expected, workspace: scope.workspaceId)
+            let type: ReviewNoteType
+            if let expected {
+                guard try store.types(workspace: version.workspaceId).contains(expected) else { throw VocabularyError.editConflict }
+                type = expected
+            } else {
+                type = try store.defaultType(workspace: version.workspaceId)
+            }
+            try store.put(type, workspace: version.workspaceId)
             var result: [ReviewNote] = []
             for selection in selections {
-                guard let entry = scope.document.entries.first(where: { $0.id == selection.entryID }),
-                      let sense = entry.senses.first(where: { $0.id == selection.senseID }) else { throw VocabularyError.editConflict }
-                let note = try previewReviewNoteInTransaction(selection: selection, type: expected, scope: scope)
-                try store.put(note, scope: scope)
-                try store.reconcile(note, type: expected, scope: scope)
-                guard try store.memberships(workspace: scope.workspaceId).contains(where: { $0.noteID == note.id }) else { throw VocabularyError.invalidContent }
-                let source = LingroveNotebookCardSource(workspaceId: scope.workspaceId, notebookId: scope.notebookId,
-                    entryId: entry.id, senseId: sense.id, exampleId: note.exampleID)
-                for enrollment in try lingroveNotebookReviewStore.matching(source: source, snapshot: scope) {
+                try Task.checkCancellation()
+                let (entry, sense) = try store.source(for: selection, workspace: version.workspaceId)
+                let note = try reviewNote(entry: entry, sense: sense, type: type, version: version)
+                try store.put(note, version: version)
+                try store.reconcile(note, type: type, version: version, entry: entry, sense: sense)
+                let members = try store.memberships(workspace: version.workspaceId, noteID: note.id)
+                guard !members.isEmpty else { throw VocabularyError.invalidContent }
+                let aliases = Set([sense.id] + sense.mergedFrom)
+                for enrollment in try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
+                    notebookId: version.notebookId, senseIDs: aliases) {
                     _ = try lingroveNotebookReviewStore.update(enrollment, status: .active)
+                }
+                for member in members {
+                    let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
+                    try store.refreshCard(member.cardID, model: model, version: version, source: (entry, sense))
                 }
                 result.append(note)
             }
-            try store.refreshInTransaction(scope)
+            try Task.checkCancellation()
             return result
         }
     }

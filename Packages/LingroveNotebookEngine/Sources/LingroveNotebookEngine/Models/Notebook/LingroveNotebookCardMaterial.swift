@@ -54,7 +54,9 @@ extension LingroveNotebookCardMaterial {
         source: LingroveNotebookCardSource, snapshot: LingroveNotebookSnapshot
     ) -> VocabularySelection? {
         guard source.workspaceId == snapshot.workspaceId, source.notebookId == snapshot.notebookId else { return nil }
-        for entry in snapshot.document.entries {
+        // Only live and historical IDs matter here. Joining examples would rebuild the
+        // entire corpus before every lookup.
+        for entry in snapshot.document.catalog {
             if let sense = entry.senses.first(where: { $0.id == source.senseId || $0.mergedFrom.contains(source.senseId) }) {
                 return .init(entryID: entry.id, senseID: sense.id)
             }

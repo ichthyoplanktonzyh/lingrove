@@ -24,9 +24,7 @@ extension LingroveNotebookEngine {
     }
 
     func requireCurrentScopeInTransaction(_ scope: LingroveNotebookSnapshot, requireRevision: Bool) throws {
-        try lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: scope.workspaceId, notebookId: scope.notebookId)
-        let current = try lingroveNotebookStore.readSnapshot(workspaceId: scope.workspaceId)
-        guard current.generation == scope.generation, current.notebookId == scope.notebookId,
+        guard let current = try currentNotebookVersionInTransaction(), current.hasSameOwner(as: scope),
               !requireRevision || current.revision == scope.revision else { throw VocabularyError.editConflict }
     }
 }

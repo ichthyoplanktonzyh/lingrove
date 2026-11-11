@@ -161,46 +161,53 @@ extension LingroveNotebookEngine {
             try self.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: scope.workspaceId, notebookId: scope.notebookId)
             let current = try self.lingroveNotebookStore.readSnapshot(workspaceId: scope.workspaceId)
             guard current.revision == scope.revision, current.notebookId == scope.notebookId, current.generation == scope.generation else { throw VocabularyError.editConflict }
-            let enrollments = try self.lingroveNotebookReviewStore.load(workspaceId: scope.workspaceId)
-            var currentSelections: [UUID: VocabularySelection] = [:]
-            for entry in current.document.entries {
-                for sense in entry.senses {
-                    let selection = VocabularySelection(entryID: entry.id, senseID: sense.id)
-                    for id in [sense.id] + sense.mergedFrom { currentSelections[id] = selection }
-                }
-            }
-            var grouped: [UUID: [LingroveNotebookReviewEnrollment]] = [:]
-            var groupedCards: [UUID: [Card]] = [:]
-            for enrollment in enrollments where enrollment.notebookId == current.notebookId {
-                let selection = currentSelections[enrollment.senseId] ?? VocabularySelection(entryID: enrollment.entryId, senseID: enrollment.senseId)
-                currentSelections[enrollment.senseId] = selection
-                grouped[selection.senseID, default: []].append(enrollment)
-                for exercise in try self.lingroveNotebookReviewStore.exercises(enrollment) {
-                    if let card = try self.cardStore.loadOptionalCardIncludingDeleted(workspaceId: scope.workspaceId, cardId: exercise.cardId),
-                       card.deletedAt == nil {
-                        groupedCards[selection.senseID, default: []].append(card)
-                    }
-                }
-            }
-            let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
-            var groups: [UUID: LingroveNotebookReviewGroup] = [:]
-            for (senseId, values) in grouped {
-                guard let selection = currentSelections[senseId] else { throw VocabularyError.invalidArchive }
-                let cards = groupedCards[senseId] ?? []
-                let unavailable = try cards.contains { card in
-                    if let model = noteCards[card.cardId],
-                       model.noteType.templates.first(where: { $0.id == model.templateID })?.enabled == false { return false }
-                    return try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status NOT IN ('ready','retained')", values: [.text(scope.workspaceId), .text(card.cardId)]) > 0
-                }
-                let undoable = try cards.filter { card in
-                    try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_last_rating rating JOIN notebook_review_schedule_heads head USING(workspace_id,card_id) WHERE rating.workspace_id=? AND rating.card_id=? AND rating.operation_id=head.operation_id AND ? IS NOT NULL", values: [.text(scope.workspaceId), .text(card.cardId), card.fsrsLastReviewedAt.map(SQLiteValue.text) ?? .null]) > 0
-                }.map(\.cardId)
-                groups[senseId] = .init(selection: selection, enrollments: values, cards: cards, hasUnavailableMaterial: unavailable, undoableCardIDs: Set(undoable))
-            }
-            return .init(workspaceId: current.workspaceId, notebookId: current.notebookId, notebookRevision: current.revision,
-                groups: groups, links: try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId), hasPendingSync:
-                    try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current),
-                    noteCards: noteCards)
+            return try loadLingroveNotebookReviewSnapshotInTransaction(current: current)
         }
+    }
+
+    /// The full notebook screen also reads queue and history in the same SQLite snapshot.
+    func loadLingroveNotebookReviewSnapshotInTransaction(current: LingroveNotebookSnapshot) throws -> LingroveNotebookReviewSnapshot {
+        let enrollments = try self.lingroveNotebookReviewStore.load(workspaceId: current.workspaceId)
+        var currentSelections: [UUID: VocabularySelection] = [:]
+        for entry in current.document.catalog {
+            try Task.checkCancellation()
+            for sense in entry.senses {
+                let selection = VocabularySelection(entryID: entry.id, senseID: sense.id)
+                for id in [sense.id] + sense.mergedFrom { currentSelections[id] = selection }
+            }
+        }
+        var grouped: [UUID: [LingroveNotebookReviewEnrollment]] = [:]
+        var groupedCards: [UUID: [Card]] = [:]
+        for enrollment in enrollments where enrollment.notebookId == current.notebookId {
+            try Task.checkCancellation()
+            let selection = currentSelections[enrollment.senseId] ?? VocabularySelection(entryID: enrollment.entryId, senseID: enrollment.senseId)
+            currentSelections[enrollment.senseId] = selection
+            grouped[selection.senseID, default: []].append(enrollment)
+            for exercise in try self.lingroveNotebookReviewStore.exercises(enrollment) {
+                if let card = try self.cardStore.loadOptionalCardIncludingDeleted(workspaceId: current.workspaceId, cardId: exercise.cardId),
+                   card.deletedAt == nil {
+                    groupedCards[selection.senseID, default: []].append(card)
+                }
+            }
+        }
+        let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
+        var groups: [UUID: LingroveNotebookReviewGroup] = [:]
+        for (senseId, values) in grouped {
+            guard let selection = currentSelections[senseId] else { throw VocabularyError.invalidArchive }
+            let cards = groupedCards[senseId] ?? []
+            let unavailable = try cards.contains { card in
+                if let model = noteCards[card.cardId],
+                   model.noteType.templates.first(where: { $0.id == model.templateID })?.enabled == false { return false }
+                return try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status NOT IN ('ready','retained')", values: [.text(current.workspaceId), .text(card.cardId)]) > 0
+            }
+            let undoable = try cards.filter { card in
+                try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_last_rating rating JOIN notebook_review_schedule_heads head USING(workspace_id,card_id) WHERE rating.workspace_id=? AND rating.card_id=? AND rating.operation_id=head.operation_id AND ? IS NOT NULL", values: [.text(current.workspaceId), .text(card.cardId), card.fsrsLastReviewedAt.map(SQLiteValue.text) ?? .null]) > 0
+            }.map(\.cardId)
+            groups[senseId] = .init(selection: selection, enrollments: values, cards: cards, hasUnavailableMaterial: unavailable, undoableCardIDs: Set(undoable))
+        }
+        return .init(workspaceId: current.workspaceId, notebookId: current.notebookId, notebookRevision: current.revision,
+            groups: groups, links: try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId), hasPendingSync:
+                try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current),
+                noteCards: noteCards)
     }
 }

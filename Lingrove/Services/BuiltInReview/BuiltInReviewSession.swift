@@ -13,7 +13,7 @@ final class BuiltInReviewSession: ObservableObject {
     @Published private(set) var participationRevision = UUID()
     @Published private(set) var content: NotebookBuiltInReviewSnapshot? {
         didSet {
-            browserIndex = content.map(BuiltInReviewContentState.init)
+            if content == nil { browserIndex = nil }
             updateContentSelections()
         }
     }
@@ -153,8 +153,8 @@ final class BuiltInReviewSession: ObservableObject {
         readIdentity = operation
         let savedLifetime = lifetime
         let previous = content
-        let scope: LingroveNotebookSnapshot
-        do { scope = try repository.snapshot() } catch {
+        let version: LingroveNotebookVersion
+        do { version = try repository.version() } catch {
             readTask = nil
             isRefreshing = false
             content = nil
@@ -162,20 +162,24 @@ final class BuiltInReviewSession: ObservableObject {
             message = BuiltInReviewCopy.text("error.load")
             return
         }
-        if let previous, previous.scope != scope {
+        if let previous, LingroveNotebookVersion(previous.scope) != version {
             clearUnsavedSession(cancelWrite: true)
-            if !sameLifetime(previous.scope, scope) {
+            if !version.hasSameOwner(as: previous.scope) {
                 content = nil; route = .overview; browsing = .init(); addedCount = 0
             }
             message = BuiltInReviewCopy.text("message.changed")
         }
+        // The corpus store has already decoded this saved revision during browsing. A stale
+        // or absent snapshot falls back to a disk read on the review actor.
+        let savedScope = [materialStore?.operationScope, previous?.scope].compactMap { $0 }
+            .first { LingroveNotebookVersion($0) == version }
         isRefreshing = true
         readTask = Task { [weak self, io] in
             do {
-                let value = try await io.load(scope: scope, now: Date())
+                let (value, index) = try await io.load(version: version, savedScope: savedScope, now: Date())
                 guard let self, self.isVisible, self.isActive, self.lifetime == savedLifetime, self.readIdentity == operation,
                       !Task.isCancelled else { return }
-                guard try self.repository.snapshot() == value.scope else {
+                guard try self.repository.version() == version else {
                     self.isRefreshing = false
                     self.clearUnsavedSession(cancelWrite: true)
                     self.content = nil
@@ -188,6 +192,7 @@ final class BuiltInReviewSession: ObservableObject {
                     self.clearUnsavedSession(cancelWrite: true)
                     self.message = BuiltInReviewCopy.text("message.changed")
                 }
+                self.browserIndex = index
                 self.content = value
                 self.isRefreshing = false
                 self.preparePendingBatch()
@@ -288,14 +293,13 @@ final class BuiltInReviewSession: ObservableObject {
     /// accepted writer even while Review is hidden, so normal Quit still drains its transaction.
     func enrollFromCorpus(_ selection: VocabularySelection) async -> String? {
         guard !isShuttingDown, writeTask == nil else { return BuiltInReviewCopy.text("error.write") }
-        let scope: LingroveNotebookSnapshot
-        do { scope = try repository.snapshot() } catch { return BuiltInReviewCopy.text("error.load") }
+        let version: LingroveNotebookVersion
+        do { version = try repository.version() } catch { return BuiltInReviewCopy.text("error.load") }
         isMutating = true
         var failure: String?
         let task = Task { [io, repository] in
             do {
-                let value = try await io.load(scope: scope, now: Date())
-                try await io.perform(.enrollNotes([selection], value.defaultNoteType, scope))
+                try await io.perform(.enrollFromCorpus(selection, version))
                 repository.publishChange()
             } catch { failure = BuiltInReviewCopy.text("error.write") }
         }
@@ -527,14 +531,14 @@ final class BuiltInReviewSession: ObservableObject {
         guard isVisible, lifetime == savedLifetime, writePresentationIdentity == operation else { return }
         // An operational failure retains the exact draft/batch intent for retry. A changed
         // owner revokes it, because a retry must never borrow a new account or generation.
-        if error is CancellationError || (try? repository.snapshot()) != scope { clearUnsavedSession() }
+        if error is CancellationError || (try? repository.version()) != LingroveNotebookVersion(scope) { clearUnsavedSession() }
         message = BuiltInReviewCopy.text(error is CancellationError ? "message.changed" : "error.write")
         reload()
     }
 
     private func canAct(in scope: LingroveNotebookSnapshot) -> Bool {
         guard isVisible, isActive, !isBusy, !isShuttingDown else { return false }
-        guard (try? repository.snapshot()) == scope else {
+        guard (try? repository.version()) == LingroveNotebookVersion(scope) else {
             clearUnsavedSession(cancelWrite: true)
             message = BuiltInReviewCopy.text("message.changed")
             reload()

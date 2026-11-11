@@ -25,18 +25,8 @@ extension LingroveNotebookEngine {
                 return try NotebookProgressAggregation.make(scope: scope, events: [], dueExercises: [],
                     undoneReviews: 0, enrolledSenses: 0, activeSenses: 0, exercises: 0, now: now, userCalendar: calendar)
             }
-            let snapshot = try lingroveNotebookStore.readSnapshot(workspaceId: scope.workspaceID)
-            guard snapshot.notebookId == notebookID, snapshot.revision == scope.revision,
-                  snapshot.generation == scope.generation else { throw VocabularyError.editConflict }
-            let enrollmentValues = try lingroveNotebookReviewStore.load(workspaceId: scope.workspaceID)
-                .filter { $0.notebookId == notebookID }
-            var grouped: [UUID: [LingroveNotebookReviewEnrollment]] = [:]
-            for enrollment in enrollmentValues {
-                let senseID = LingroveNotebookCardMaterial.resolvedSelection(source: enrollment.source,
-                    snapshot: snapshot)?.senseID ?? enrollment.senseId
-                grouped[senseID, default: []].append(enrollment)
-            }
             let values: [SQLiteValue] = [.text(scope.workspaceID), .text(notebookID.uuidString)]
+            let participation = try notebookProgressParticipation(workspace: scope.workspaceID, notebookID: notebookID)
             // EXISTS follows the durable exercise mapping rather than current Cards or source
             // rows. Withdrawn, merged, missing and deleted material therefore retain history.
             let ownedEvent = """
@@ -74,10 +64,56 @@ extension LingroveNotebookEngine {
                 """, values: values)
             let due = try notebookProgressDueExercises(values: values)
             return try NotebookProgressAggregation.make(scope: scope, events: events, dueExercises: due,
-                undoneReviews: undone, enrolledSenses: grouped.count,
-                activeSenses: grouped.values.filter { $0.contains { $0.status == .active } }.count,
+                undoneReviews: undone, enrolledSenses: participation.enrolled,
+                activeSenses: participation.active,
                 exercises: liveExercises, now: now, userCalendar: calendar)
         }
+    }
+
+    private func notebookProgressParticipation(workspace: String, notebookID: UUID) throws -> (enrolled: Int, active: Int) {
+        let enrollments = try core.query(sql: """
+            SELECT enrollment.sense_id,enrollment.status,sense.id IS NULL
+            FROM notebook_review_enrollments enrollment
+            LEFT JOIN notebook_senses sense ON sense.workspace_id=enrollment.workspace_id AND sense.id=enrollment.sense_id
+            WHERE enrollment.workspace_id=? AND enrollment.notebook_id=?
+            """, values: [.text(workspace), .text(notebookID.uuidString)]) { row in
+            try Task.checkCancellation()
+            guard let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
+                  let status = LingroveNotebookReviewStatus(rawValue: DatabaseCore.columnText(statement: row, index: 1)) else {
+                throw VocabularyError.invalidArchive
+            }
+            return (sense: sense, status: status, needsAlias: DatabaseCore.columnInt64(statement: row, index: 2) != 0)
+        }
+        let liveIDs = try enrollments.contains(where: \.needsAlias) ? notebookProgressSenseAliases(workspace: workspace) : [:]
+        var enrolled: Set<UUID> = [], active: Set<UUID> = []
+        for (sense, status, _) in enrollments {
+            let id = liveIDs[sense] ?? sense
+            enrolled.insert(id)
+            if status == .active { active.insert(id) }
+        }
+        return (enrolled.count, active.count)
+    }
+
+    private func notebookProgressSenseAliases(workspace: String) throws -> [UUID: UUID] {
+        // Merge keeps old enrollment IDs and their history. Read the alias map once from
+        // sense headers, without loading examples, semantics, or the full notebook.
+        let aliases = try core.query(sql: """
+            SELECT alias.value,sense.id FROM notebook_senses sense
+            JOIN json_each(sense.payload_json,'$.mergedFrom') alias
+            WHERE sense.workspace_id=?
+            """, values: [.text(workspace)]) { row in
+            try Task.checkCancellation()
+            guard let old = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
+                  let live = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else {
+                throw VocabularyError.invalidArchive
+            }
+            return (old, live)
+        }
+        var liveIDs: [UUID: UUID] = [:]
+        for (old, live) in aliases {
+            guard liveIDs.updateValue(live, forKey: old) == nil else { throw VocabularyError.invalidArchive }
+        }
+        return liveIDs
     }
 
     /// Reuse the queue's participation/material predicate, then narrow it to this notebook's

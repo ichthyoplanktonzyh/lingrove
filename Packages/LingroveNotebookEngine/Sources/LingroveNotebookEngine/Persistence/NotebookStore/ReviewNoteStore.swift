@@ -47,9 +47,31 @@ public struct ReviewNoteStore {
             try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
         }
     }
+
+    /// Historical and handed-off notes can have IDs other than the local generated ID.
+    /// Find them by saved source and preserve the same note order as the full collection.
+    func notes(version: LingroveNotebookVersion, senseIDs: Set<UUID>) throws -> [ReviewNote] {
+        let ids = try core.encoder.encode(senseIDs.map(\.uuidString))
+        return try core.query(sql: """
+            SELECT payload_json FROM notebook_notes WHERE workspace_id=? AND notebook_id=?
+            AND json_extract(payload_json,'$.senseID') IN (SELECT value FROM json_each(?))
+            ORDER BY note_id
+            """, values: [.text(version.workspaceId), .text(version.notebookId.uuidString), .text(String(decoding: ids, as: UTF8.self))]) {
+            try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
+        }
+    }
     public func memberships(workspace: String) throws -> [Membership] {
-        try core.query(sql: "SELECT note_id,template_id,card_id FROM notebook_note_cards WHERE workspace_id=? ORDER BY card_id",
-                       values: [.text(workspace)]) {
+        try memberships(workspace: workspace, noteID: nil)
+    }
+
+    func memberships(workspace: String, noteID: UUID?) throws -> [Membership] {
+        let restriction = noteID == nil ? "" : " AND note_id=?"
+        var values: [SQLiteValue] = [.text(workspace)]
+        if let noteID { values.append(.text(noteID.uuidString)) }
+        return try core.query(sql: """
+            SELECT note_id,template_id,card_id FROM notebook_note_cards
+            WHERE workspace_id=?\(restriction) ORDER BY card_id
+            """, values: values) {
             guard let note = UUID(uuidString: DatabaseCore.columnText(statement: $0, index: 0)),
                   let template = UUID(uuidString: DatabaseCore.columnText(statement: $0, index: 1)) else { throw VocabularyError.invalidArchive }
             return .init(noteID: note, templateID: template, cardID: DatabaseCore.columnText(statement: $0, index: 2))
@@ -78,8 +100,11 @@ public struct ReviewNoteStore {
         try core.execute(sql: "UPDATE notebook_note_types SET is_default=(type_id=?) WHERE workspace_id=?", values: [.text(id.uuidString), .text(workspace)])
     }
     public func put(_ note: ReviewNote, scope: LingroveNotebookSnapshot) throws {
+        try put(note, version: .init(scope))
+    }
+    func put(_ note: ReviewNote, version: LingroveNotebookVersion) throws {
         try core.execute(sql: "INSERT INTO notebook_notes(workspace_id,note_id,notebook_id,payload_json) VALUES(?,?,?,?) ON CONFLICT(workspace_id,note_id) DO UPDATE SET payload_json=excluded.payload_json",
-            values: [.text(scope.workspaceId), .text(note.id.uuidString), .text(scope.notebookId.uuidString), .text(try json(note))])
+            values: [.text(version.workspaceId), .text(note.id.uuidString), .text(version.notebookId.uuidString), .text(try json(note))])
     }
     public func attach(_ member: Membership, workspace: String) throws {
         try core.execute(sql: "INSERT INTO notebook_note_cards(workspace_id,note_id,template_id,card_id) VALUES(?,?,?,?)",

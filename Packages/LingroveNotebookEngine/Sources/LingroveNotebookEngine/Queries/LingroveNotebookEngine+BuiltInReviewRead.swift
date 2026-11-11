@@ -6,26 +6,28 @@ import LingroveNotebook
 /// every arbitrary workspace Card appear to be personally selected language material.
 extension LingroveNotebookEngine {
     public func loadBuiltInNotebookReview(scope: LingroveNotebookSnapshot, now: Date) throws -> NotebookBuiltInReviewSnapshot {
-        let review = try loadLingroveNotebookReviewSnapshot(scope: scope)
-        return try core.inReadTransaction {
-            try requireCurrentScopeInTransaction(scope, requireRevision: true)
-            // The public review read owns its transaction. Validate its immutable inputs in
-            // this second read transaction, rather than nesting BEGIN or copying its grouping
-            // algorithm. A concurrent change fails closed and the host simply reads again.
-            let enrollments = review.groups.values.flatMap(\.enrollments).sorted { $0.id.uuidString < $1.id.uuidString }
-            let currentEnrollments = try lingroveNotebookReviewStore.load(workspaceId: scope.workspaceId)
-                .filter { $0.notebookId == scope.notebookId }.sorted { $0.id.uuidString < $1.id.uuidString }
-            guard currentEnrollments == enrollments,
-                  try lingroveNotebookCardLinkStore.load(workspaceId: scope.workspaceId) == review.links else {
-                throw VocabularyError.editConflict
+        try loadBuiltInNotebookReview(version: .init(scope), now: now)
+    }
+
+    /// A host can reuse the corpus snapshot it already read from this database. The version
+    /// binds its immutable content to this read transaction. Queue and history always come
+    /// from storage because ratings and participation can change at the same corpus revision.
+    public func loadBuiltInNotebookReview(version: LingroveNotebookVersion, now: Date,
+                                          savedScope: LingroveNotebookSnapshot? = nil) throws -> NotebookBuiltInReviewSnapshot {
+        try core.inReadTransaction {
+            try Task.checkCancellation()
+            guard try currentNotebookVersionInTransaction() == version else { throw VocabularyError.editConflict }
+            let scope: LingroveNotebookSnapshot
+            if let savedScope, LingroveNotebookVersion(savedScope) == version {
+                scope = savedScope
+            } else {
+                scope = try lingroveNotebookStore.readSnapshot(workspaceId: version.workspaceId)
             }
+            let review = try loadLingroveNotebookReviewSnapshotInTransaction(current: scope)
             var cards: [String: Card] = [:]
             for card in review.groups.values.flatMap(\.cards) {
-                let stored = try cardStore.loadOptionalCardIncludingDeleted(workspaceId: scope.workspaceId, cardId: card.cardId)
-                guard try requireValidBuiltInReviewCard(stored) == card else {
-                    throw VocabularyError.editConflict
-                }
-                cards[card.cardId] = card
+                try Task.checkCancellation()
+                cards[card.cardId] = try requireValidBuiltInReviewCard(card)
             }
             let excluded = try cardStore.loadNotebookExcludedReviewCardIds(workspaceId: scope.workspaceId)
             let activeIDs = Set(review.groups.values.filter { $0.status == .active }.flatMap(\.cards).map(\.cardId))
@@ -48,7 +50,7 @@ extension LingroveNotebookEngine {
                     newExercises: cards.values.filter { eligibleIDs.contains($0.cardId) && $0.dueAt == nil }.count,
                     reviewedExercises: cards.values.filter { $0.reps > 0 }.count,
                     ratingRecords: counts.ratings, undoneRatings: counts.undos),
-                undoByCardID: undo, recentHistory: history, noteCards: try ReviewNoteStore(core: core).cardModels(scope: scope),
+                undoByCardID: undo, recentHistory: history, noteCards: review.noteCards,
                 noteTypes: try ReviewNoteStore(core: core).types(workspace: scope.workspaceId),
                 defaultNoteType: try ReviewNoteStore(core: core).defaultType(workspace: scope.workspaceId))
         }

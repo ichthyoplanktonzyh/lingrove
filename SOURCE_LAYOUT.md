@@ -1414,6 +1414,12 @@ stable row per projected identity, including explicitly disclosed senses.
 its metadata fence. `BuiltInReviewIO` runs that query off MainActor; the detail no longer
 loads a complete notebook or review queue to display one status label.
 
+`ReviewNoteStore+Source` reads the selected sense's template fields and accepted examples
+inside the enrollment transaction. `BuiltInReviewIO` can reuse the corpus store's saved
+snapshot when its version matches and reads current queue and history in one transaction.
+Progress reads participation, schedule and history directly. It consults sense aliases
+only when a saved enrollment no longer names a live sense.
+
 `VocabularyPerformanceBaselineTests` is an opt-in private native host. It copies an explicitly
 supplied authorized backup, presents the production corpus UI and records main-runloop gaps;
 raw corpus files and measurement traces remain local under ignored `build/` paths.
