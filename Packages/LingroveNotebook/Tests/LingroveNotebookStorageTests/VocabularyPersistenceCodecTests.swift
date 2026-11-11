@@ -30,8 +30,8 @@ struct VocabularyPersistenceCodecTests {
         let rows = try VocabularyPersistenceCodec.encode(document)
         #expect(try VocabularyPersistenceCodec.decode(rows) == document)
         let removed = try #require(rows.rows.first { $0.entity == .meaningLabels && $0.position == 0 })
-        let broken = VocabularyPersistenceRows(rows: rows.rows.filter { $0.key != removed.key }, reviewTemplatesPresent: false)
-        #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(broken) }
+        let broken = VocabularyPersistenceRows(rows: rows.rows.filter { $0.entity != .meaningLabels || $0.parentID != removed.parentID }, reviewTemplatesPresent: false)
+        #expect(throws: (any Error).self) { try VocabularyPersistenceCodec.decode(broken) }
     }
 
     @Test func appendedCaptureRowsReconstructTheSameDocumentAsTheFullCodec() throws {
@@ -282,7 +282,7 @@ struct VocabularyPersistenceCodecTests {
         )
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(withoutSources) }
 
-        let secondSource = try #require(encoded.rows.first { $0.entity == .sources && $0.position == 1 })
+        let secondSource = try #require(encoded.rows.first { $0.entity == .sources })
         let gappedSource = try VocabularyPersistenceRow(
             entity: secondSource.entity,
             id: secondSource.id,
@@ -295,7 +295,7 @@ struct VocabularyPersistenceCodecTests {
             rows: encoded.rows.map { $0.key == gappedSource.key ? gappedSource : $0 },
             reviewTemplatesPresent: encoded.reviewTemplatesPresent
         )
-        #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(gappedRows) }
+        #expect(try VocabularyPersistenceCodec.decode(gappedRows) == database.read().document)
 
         let entry = try #require(encoded.rows.first { $0.entity == .entries })
         var contradictoryIndexes = entry.indexValues

@@ -27,7 +27,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(saved.document.classification == source.classification)
         #expect(saved.document.entries[1] == source.entries[1])
         #expect(saved.document.entries[0].senses[0].meaning.utf8.elementsEqual("cafe\u{0301}".utf8))
-        #expect(saved.document.entries[0].senses[0].note.utf8.elementsEqual("literal\0note".utf8))
+        #expect(saved.document.entries[0].senses[0].note.utf8.elementsEqual("literal\0note".utf8) == true)
         try assertRows(f.engine, document: saved.document)
         let operation = try f.engine.core.scalarText(sql: "SELECT operation_id FROM notebook_pending_transactions WHERE revision=?",
             values: [.integer(Int64(saved.revision))])
@@ -39,7 +39,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(try #require(f.engine.core.notebookSaveCache).lineage == lineage)
         try f.reopen()
         let reopened = try f.load()
-        #expect(reopened.document.entries[0].senses[0].note.utf8.elementsEqual("literal\0note".utf8))
+        #expect(reopened.document.entries.first { $0.id == entry.id }?.senses.first { $0.id == entry.senses[0].id }?.note.utf8.elementsEqual("literal\0note".utf8) == true)
         try assertRows(f.engine, document: reopened.document)
     }
 
@@ -125,7 +125,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(try f.pending() == pending)
     }
 
-    @Test("Removing the first sense compacts positions without replacing survivors or losing review history")
+    @Test("Removing a sense preserves survivors without rank writes or review-history loss")
     func narrowRemovalPreservesSurvivors() throws {
         let f = try Fixture(); defer { f.cleanUp() }
         var document = Self.document()
@@ -157,8 +157,8 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         try f.engine.core.executeScript(sql: """
             CREATE TRIGGER keep_surviving_usage BEFORE DELETE ON notebook_usages WHEN OLD.id='\(survivor)'
             BEGIN SELECT RAISE(ABORT, 'position-only move must use update'); END;
-            CREATE TRIGGER fail_position_journal BEFORE INSERT ON notebook_pending_rows WHEN NEW.entity_id='\(survivor)'
-            BEGIN SELECT RAISE(ABORT, 'position journal must share the write transaction'); END;
+            CREATE TRIGGER fail_delete_journal BEFORE INSERT ON notebook_pending_rows WHEN NEW.entity_id='\(firstExample.id.uuidString)'
+            BEGIN SELECT RAISE(ABORT, 'deletion journal must share the write transaction'); END;
             """, errorContext: "Install synthetic position check")
         let before = try f.load()
         let pending = try f.pending()
@@ -167,7 +167,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         }
         #expect(try f.load() == before)
         #expect(try f.pending() == pending)
-        try f.engine.core.executeScript(sql: "DROP TRIGGER fail_position_journal", errorContext: "Allow synthetic journal retry")
+        try f.engine.core.executeScript(sql: "DROP TRIGGER fail_delete_journal", errorContext: "Allow synthetic journal retry")
         let saved = try f.engine.removeNotebookSense(selection.senseID, from: selection.entryID, basedOn: before)
         #expect(saved.document.entries == [entries[1]])
         #expect(saved.document.sources == before.document.sources)
@@ -181,7 +181,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(try f.engine.core.scalarInt(sql: """
             SELECT count(*) FROM notebook_pending_rows r JOIN notebook_pending_transactions t USING(operation_id)
             WHERE t.revision=? AND r.entity='usages' AND r.entity_id=? AND r.action='upsert' AND r.entity_position=0
-            """, values: [.integer(Int64(saved.revision)), .text(survivor)]) == 1)
+            """, values: [.integer(Int64(saved.revision)), .text(survivor)]) == 0)
         try assertRows(f.engine, document: saved.document)
         try f.reopen()
         #expect(try f.load() == saved)
@@ -218,7 +218,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         entry.senses[0].meaning = "a fresh entry edit"
         let current = try #require(committed)
         let result = try f.engine.saveNotebookEntry(entry, basedOn: current)
-        #expect(result.document.entries[1].senses[0].note == "committed while the reader is pinned")
+        #expect(result.document.entries.first { $0.id == saved.document.entries[1].id }?.senses[0].note == "committed while the reader is pinned")
         try assertRows(f.engine, document: result.document)
     }
 

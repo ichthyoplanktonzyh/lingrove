@@ -46,7 +46,7 @@ struct VocabularyMeaningMappingEditor: View {
                         Text(entry.map { VocabularyMeaningLabelPolicy.expressionTitle($0, includeLanguage: true) +
                             " · " + (sense?.displayTitle ?? "") } ?? String(localized: "Choose an expression", table: "Vocabulary"))
                     }
-                    if let sense, let example = sense.examples.first {
+                    if let sense, let example = sense.defaultExample {
                         Text(example.text)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -63,7 +63,7 @@ struct VocabularyMeaningMappingEditor: View {
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
-                        if let example = sense.examples.first {
+                        if let example = sense.defaultExample {
                             Text(example.text)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)

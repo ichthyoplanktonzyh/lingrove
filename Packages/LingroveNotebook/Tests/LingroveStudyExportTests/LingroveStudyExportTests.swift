@@ -16,7 +16,7 @@ struct LingroveStudyExportTests {
         #expect(document.version == 2 && document.entries[0].language == nil)
         entries[0].senses[0].examples[0].completeness = .unknown
         document = VocabularyExportPolicy.document(entries, configuration: options)
-        #expect(document.version == 3 && document.entries[0].senses[0].examples?[0].completeness == .unknown)
+        #expect(document.version == 3 && document.entries[0].senses.first { $0.id == entries[0].senses[0].id }?.examples?.first?.completeness == .unknown)
         let chosen = entries[0].senses[0]
         let kept = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Financial institution", language: .english)])
         let excluded = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "River", language: .english)])
@@ -110,12 +110,15 @@ struct LingroveStudyExportTests {
         #expect(rows.count == 4)
         let header = rows[0]
         func value(_ row: Int, _ field: String) throws -> String { rows[row][try #require(header.firstIndex(of: field))] }
-        #expect(try value(1, "example") == entries[0].senses[0].examples[0].text)
-        #expect(try value(1, "notes") == entries[0].senses[0].note)
-        #expect(try value(1, "meaning") == "银行")
-        #expect(try value(1, "contextual_meaning") == "金融机构")
-        #expect(try value(2, "meaning") == "河岸")
-        #expect(try value(2, "usage_id").isEmpty)
+        let senseColumn = try #require(header.firstIndex(of: "sense_id"))
+        let bankRow = try #require(rows.firstIndex { $0[senseColumn] == entries[0].senses[0].id.uuidString })
+        let riverRow = try #require(rows.firstIndex { $0[senseColumn] == entries[0].senses[1].id.uuidString })
+        #expect(try value(bankRow, "example") == entries[0].senses[0].examples[0].text)
+        #expect(try value(bankRow, "notes") == entries[0].senses[0].note)
+        #expect(try value(bankRow, "meaning") == "银行")
+        #expect(try value(bankRow, "contextual_meaning") == "金融机构")
+        #expect(try value(riverRow, "meaning") == "河岸")
+        #expect(try value(riverRow, "usage_id").isEmpty)
         #expect(try value(3, "expression") == "=1+1")
         #expect(rows.allSatisfy { $0.count == header.count })
         options.spreadsheetCompatibility = true
@@ -150,8 +153,8 @@ struct LingroveStudyExportTests {
         usage.translationVariants = [translation, .init(text: "The bank greeted us.", language: .english), translation]
         entries[0].senses[0].examples[0] = usage
         let document = VocabularyExportPolicy.document(entries, configuration: .init())
-        #expect(document.entries[0].senses[0].otherMeanings == [other])
-        #expect(document.entries[0].senses[0].examples?[0].otherTranslations.count == 1)
+        #expect(document.entries[0].senses.first { $0.id == entries[0].senses[0].id }?.otherMeanings == [other])
+        #expect(document.entries[0].senses.first { $0.id == entries[0].senses[0].id }?.examples?[0].otherTranslations.count == 1)
         let text = String(decoding: try VocabularyExportPolicy.package(entries, configuration: .init()).data, as: UTF8.self)
         #expect(text.contains("[zh-Hans] 银行"))
         #expect(text.contains("[zh-Hans] 银行打了招呼。"))
@@ -180,9 +183,9 @@ struct LingroveStudyExportTests {
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
         let doc = try decoder.decode(VocabularyExportDocument.self, from: package.data)
         #expect(doc.version == 1)
-        #expect(doc.entries[0].senses.map(\.id) == entries[0].senses.map(\.id))
-        #expect(doc.entries[0].senses[0].examples?.first?.meaning == "金融机构")
-        #expect(doc.entries[0].senses[0].content?.first?.text?.bold == true)
+        #expect(Set(doc.entries[0].senses.map(\.id)) == Set(entries[0].senses.map(\.id)))
+        #expect(doc.entries[0].senses.first { $0.id == entries[0].senses[0].id }?.examples?.first?.meaning == "金融机构")
+        #expect(doc.entries[0].senses.first { $0.id == entries[0].senses[0].id }?.content?.first?.text?.bold == true)
         #expect(!String(decoding: package.data, as: UTF8.self).contains("private.host.identifier"))
         options.meanings = false; options.examples = false; options.notes = false; options.content = false
         let object = try JSONSerialization.jsonObject(with: VocabularyExportPolicy.package(entries, configuration: options).data)

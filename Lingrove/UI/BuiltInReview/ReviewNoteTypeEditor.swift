@@ -18,7 +18,10 @@ struct ReviewNoteTypeEditor: View {
     init(session: BuiltInReviewSession, draft: ReviewNoteTypeEditorDraft) {
         self.session = session; self.draft = draft; original = draft.type
         _selectedTemplate = State(initialValue: draft.type.templates[0].id)
-        _sampleID = State(initialValue: draft.scope.document.entries.first?.senses.first?.id)
+        let sample = draft.scope.document.catalog.lazy.flatMap(\.senses).min {
+            $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
+        }
+        _sampleID = State(initialValue: sample?.id)
     }
     private var changed: Bool { draft.type != original || draft.makeDefault }
     private var validation: String? {
@@ -28,16 +31,17 @@ struct ReviewNoteTypeEditor: View {
         } catch { return ReviewNoteEditorCopy.message(error) }
     }
     private var source: (VocabularyEntry, VocabularySense)? {
-        for entry in draft.scope.document.entries {
-            if let sense = entry.senses.first(where: { $0.id == sampleID }) { return (entry, sense) }
-        }
-        return nil
+        let document = draft.scope.document
+        guard let owner = document.catalog.first(where: { $0.senses.contains { $0.id == sampleID } }),
+              let entry = VocabularyNotebookProjection.entry(owner.id, in: document),
+              let sense = entry.senses.first(where: { $0.id == sampleID }) else { return nil }
+        return (entry, sense)
     }
     private var preview: ReviewRenderedCard? {
         guard let template = draft.type.templates.first(where: { $0.id == selectedTemplate }),
               let (entry, sense) = source else { return nil }
         let note = ReviewNote(noteTypeID: draft.type.id, entryID: entry.id, senseID: sense.id,
-            exampleID: sense.examples.sorted { $0.createdAt < $1.createdAt }.first?.id)
+            exampleID: sense.defaultExample?.id)
         guard let fields = try? ReviewNoteProjection.fields(note: note, type: draft.type, entry: entry, sense: sense) else { return nil }
         return try? ReviewTemplateRenderer.render(type: draft.type, template: template, fields: fields)
     }

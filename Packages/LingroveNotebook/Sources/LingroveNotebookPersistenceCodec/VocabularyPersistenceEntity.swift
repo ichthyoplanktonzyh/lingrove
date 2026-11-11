@@ -15,6 +15,16 @@ public nonisolated enum VocabularyPersistenceEntity: String, Codable, CaseIterab
     case classificationFrameworks = "classification_frameworks", categories
     case categoryParents = "category_parents", categoryMemberships = "category_memberships", categoryOverrides = "category_overrides"
 
+    /// Authored body/history/template sequences retain positions. Corpus entities and graph
+    /// memberships are sets: their legacy position column is ignored and new rows store zero.
+    /// This also reads existing rows without rewriting their payloads or IDs on database open.
+    public var hasBusinessOrder: Bool {
+        switch self {
+        case .senseExplanations, .usageExplanations, .blocks, .reviews, .bindings, .templates: true
+        default: false
+        }
+    }
+
     public var parent: Self? {
         switch self {
         case .entries, .templates, .meaningNodes, .retrievalCues, .sources, .usages, .collections: nil

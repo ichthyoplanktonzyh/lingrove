@@ -34,7 +34,8 @@ public nonisolated enum VocabularyWireUploadPlanner {
     }
     private static func make(local: VocabularyDocument, base: VocabularyWireServerShadow, initializeEmpty: Bool,
                              transport: VocabularyWireUploadBatch.Transport) throws -> VocabularyWireUploadBatch? {
-        let target = try VocabularyWireProjectionCodec.project(local, notebookID: base.scope.notebookID).entities
+        let projected = try VocabularyWireProjectionCodec.project(local, notebookID: base.scope.notebookID).entities
+        let target = VocabularyWireMembership.retainingConfirmedFields(projected, from: base.records.filter { !$0.deleted }.map(\.entity))
         if !base.initialized && !initializeEmpty && target.count == 1 && local == VocabularyDocument() { return nil }
         let changes = try differences(target: target, base: base)
         guard !changes.isEmpty else { return nil }
@@ -170,13 +171,16 @@ public nonisolated struct VocabularyWireUploadAcknowledgement: Sendable {
             for (field, value) in set where (row.fieldVersions[field] ?? .zero) <= receipt.committedSequence {
                 let actual = row.entity.fields[field]
                 if field == "updatedAt", case let .number(desired) = value, case let .number(current)? = actual, current >= desired { continue }
-                guard actual.map({ $0.hasSameWireValue(as: value) }) == true else { throw VocabularyWireUploadError.incompleteReceiptCoverage }
+                guard VocabularyWireMembership.same(actual, value, kind: member.change.entityType, field: field) else {
+                    throw VocabularyWireUploadError.incompleteReceiptCoverage
+                }
             }
             for (field, value) in add where (row.fieldResets[field] ?? .zero) <= receipt.committedSequence {
                 guard case let .array(desired) = value, case let .array(current)? = row.entity.fields[field],
                       (row.fieldResets[field] ?? .zero) <= member.change.baseVersion,
                       case let .array(previous)? = prior[member.change.key]?.entity.fields[field], current.count >= previous.count,
-                      zip(previous, current).allSatisfy({ $0.hasSameWireValue(as: $1) }),
+                      (VocabularyWireMembership.unorderedArray(member.change.entityType, field) ?
+                        VocabularyWireMembership.contains(current, previous) : zip(previous, current).allSatisfy({ $0.hasSameWireValue(as: $1) })),
                       desired.allSatisfy({ item in current.contains { $0.hasSameWireValue(as: item) } }) else { throw VocabularyWireUploadError.incompleteReceiptCoverage }
                 // The server deduplicates against the current array. A peer may
                 // already have added a later requested item, so request order

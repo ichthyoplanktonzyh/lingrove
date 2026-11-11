@@ -11,12 +11,14 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
     public let entries: [VocabularyEntry]
     private let identifiers: [UUID: Set<UUID>]
     private let validationIndex: VocabularyEntryValidationIndex
+    private let semanticIndex: VocabularySemanticEntryIndex
 
     public init(validating document: VocabularyDocument) throws {
         let entries = document.entries
         identifiers = try VocabularyDocumentValidation.validate(document, entries: entries)
         self.document = document; self.entries = entries
         validationIndex = .init(entries: entries, identifiers: identifiers, semantics: document.semantics)
+        semanticIndex = .init(document.semantics)
     }
 
     /// Full import/restore still runs complete preparation. The resulting immutable proof is
@@ -27,9 +29,10 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
     }
 
     private init(document: VocabularyDocument, entries: [VocabularyEntry], identifiers: [UUID: Set<UUID>],
-                 validationIndex: VocabularyEntryValidationIndex? = nil) {
+                 validationIndex: VocabularyEntryValidationIndex? = nil, semanticIndex: VocabularySemanticEntryIndex? = nil) {
         self.document = document; self.entries = entries; self.identifiers = identifiers
         self.validationIndex = validationIndex ?? .init(entries: entries, identifiers: identifiers, semantics: document.semantics)
+        self.semanticIndex = semanticIndex ?? .init(document.semantics)
     }
 
     /// Organization commands cannot alter lexical evidence. Reuse its checked entries and ID
@@ -52,7 +55,8 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         next.semantics = result.semantics
         next.classification = result.classification
         return .init(document: next, entries: entries, identifiers: identifiers,
-            validationIndex: result.semantics == document.semantics ? validationIndex : validationIndex.updatingSemantics(result.semantics))
+            validationIndex: result.semantics == document.semantics ? validationIndex : validationIndex.updatingSemantics(result.semantics),
+            semanticIndex: result.semantics == document.semantics ? semanticIndex : nil)
     }
 
     /// The command can change just this saved entry and its examples. It cannot
@@ -78,17 +82,14 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         var joined = entries, checkedIDs = identifiers
         if let index = joined.firstIndex(where: { $0.id == entry.id }) { joined[index] = entry } else { joined.append(entry) }
         checkedIDs[entry.id] = ids
-        VocabularySemanticPolicy.reconcileEntry(&next.semantics, previous: old, current: entry)
-        if next.semantics != document.semantics {
-            try VocabularySemanticPolicy.validate(next.semantics, entries: joined)
-        }
+        let (semanticIndex, semanticChange) = self.semanticIndex.reconciling(&next.semantics, previous: old, current: entry)
         try Task.checkCancellation()
         // Reconcile changes only patterns/mappings. Nodes, category memberships and the directory
         // were copied from this validated state, so their previous relationship proof still holds.
         let lookup = validationIndex.replacing(old, with: entry, oldIDs: identifiers[entry.id] ?? [], newIDs: ids,
-            semantics: next.semantics == document.semantics ? nil : next.semantics)
+            removedSemanticIDs: semanticChange.removedIdentifiers)
         return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs,
-            validationIndex: lookup), entryID: entry.id)
+            validationIndex: lookup, semanticIndex: semanticIndex), entryID: entry.id, semanticChange: semanticChange)
     }
 
     /// Removing an existing sense cannot introduce an ID. Reuse the proof for unrelated entries
@@ -97,23 +98,27 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         try Task.checkCancellation()
         var next = document
         let joined = try VocabularySenseEditingPolicy.remove(entryID: entryID, senseID: senseID,
-            from: &next, previousEntries: entries)
+            from: &next, previousEntries: entries, reconcilingSemantics: false)
         var checkedIDs = identifiers
         checkedIDs[entryID] = try joined.first { $0.id == entryID }.map(VocabularyDocumentValidation.entryIdentifiers)
-        if next.semantics != document.semantics { try VocabularySemanticPolicy.validate(next.semantics, entries: joined) }
         let updated = joined.first { $0.id == entryID }
+        let (semanticIndex, semanticChange) = self.semanticIndex.reconciling(&next.semantics,
+            previous: entries.first { $0.id == entryID }, current: updated)
         let lookup = validationIndex.replacing(entries.first { $0.id == entryID }, with: updated,
             oldIDs: identifiers[entryID] ?? [], newIDs: checkedIDs[entryID] ?? [],
-            semantics: next.semantics == document.semantics ? nil : next.semantics)
+            removedSemanticIDs: semanticChange.removedIdentifiers)
         return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs,
-            validationIndex: lookup), entryID: entryID)
+            validationIndex: lookup, semanticIndex: semanticIndex), entryID: entryID, semanticChange: semanticChange)
     }
 
     public func removingEntry(_ entryID: UUID) throws -> VocabularyEntrySaveChange {
         guard let entry = entries.first(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        var next = self
-        for sense in entry.senses { next = try next.removingSense(sense.id, from: entryID).state }
-        return .init(previous: document, state: next, entryID: entryID)
+        var next = self, semanticChange = VocabularySemanticEntryChange.empty
+        for sense in entry.senses {
+            let change = try next.removingSense(sense.id, from: entryID)
+            next = change.state; semanticChange = semanticChange.combining(change.semanticChange)
+        }
+        return .init(previous: document, state: next, entryID: entryID, semanticChange: semanticChange)
     }
 }
 
@@ -124,6 +129,7 @@ public nonisolated struct VocabularyEntrySaveChange: Sendable {
     public let previous: VocabularyDocument
     public let state: VocabularyEntrySaveState
     public let entryID: UUID
+    public let semanticChange: VocabularySemanticEntryChange
     public var document: VocabularyDocument { state.document }
     public var affectedSenseIDs: Set<UUID> {
         Set((previous.catalog.first { $0.id == entryID }?.senses.map(\.id) ?? []) +
@@ -137,7 +143,9 @@ public nonisolated struct VocabularyEntrySaveChange: Sendable {
         return Set((before + after).flatMap { [$0.id] + $0.mergedFrom })
     }
 
-    fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState, entryID: UUID) {
+    fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState, entryID: UUID,
+                     semanticChange: VocabularySemanticEntryChange) {
         self.previous = previous; self.state = state; self.entryID = entryID
+        self.semanticChange = semanticChange
     }
 }

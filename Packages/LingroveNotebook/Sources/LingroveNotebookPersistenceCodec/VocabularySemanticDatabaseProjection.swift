@@ -38,18 +38,7 @@ nonisolated enum VocabularySemanticDatabaseProjection {
             }
         }
         for (position, mapping) in index.mappings.enumerated().dropFirst(previous?.mappings.count ?? 0) {
-            var header = mapping; header.roleBindings = []; header.evidenceIDs = []
-            rows.append(.init(table: .meaningMappings, id: mapping.id.uuidString, parentID: mapping.senseID.uuidString,
-                position: position, payload: .meaningMapping(header),
-                extra: [mapping.nodeID.uuidString, mapping.patternID?.uuidString, mapping.relation.rawValue]))
-            for (offset, binding) in mapping.roleBindings.enumerated() {
-                rows.append(.init(table: .mappingRoles, id: binding.id.uuidString, parentID: mapping.id.uuidString,
-                    position: offset, payload: .roleBinding(binding), extra: [binding.roleID.uuidString, binding.slotID.uuidString]))
-            }
-            for (offset, evidence) in mapping.evidenceIDs.enumerated() {
-                rows.append(.init(table: .mappingEvidence, id: mapping.id.uuidString + ":" + evidence.uuidString,
-                    parentID: mapping.id.uuidString, position: offset, payload: .evidence(evidence), extra: [evidence.uuidString]))
-            }
+            append(mapping, position: position, to: &rows)
         }
         for (position, relation) in index.relations.enumerated().dropFirst(previous?.relations.count ?? 0) {
             rows.append(.init(table: .meaningRelations, id: relation.id.uuidString, parentID: relation.sourceID.uuidString,
@@ -66,6 +55,23 @@ nonisolated enum VocabularySemanticDatabaseProjection {
         return rows
     }
 
+    /// Both full projection and a checked entry delta use the same leaf encoding. The delta
+    /// calls this only for mappings whose evidence/status changed, preserving every other row.
+    static func append(_ mapping: VocabularyMeaningMapping, position: Int, to rows: inout [Row]) {
+        var header = mapping; header.roleBindings = []; header.evidenceIDs = []
+        rows.append(.init(table: .meaningMappings, id: mapping.id.uuidString, parentID: mapping.senseID.uuidString,
+            position: position, payload: .meaningMapping(header),
+            extra: [mapping.nodeID.uuidString, mapping.patternID?.uuidString, mapping.relation.rawValue]))
+        for (offset, binding) in mapping.roleBindings.enumerated() {
+            rows.append(.init(table: .mappingRoles, id: binding.id.uuidString, parentID: mapping.id.uuidString,
+                position: offset, payload: .roleBinding(binding), extra: [binding.roleID.uuidString, binding.slotID.uuidString]))
+        }
+        for (offset, evidence) in mapping.evidenceIDs.enumerated() {
+            rows.append(.init(table: .mappingEvidence, id: mapping.id.uuidString + ":" + evidence.uuidString,
+                parentID: mapping.id.uuidString, position: offset, payload: .evidence(evidence), extra: [evidence.uuidString]))
+        }
+    }
+
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
     static func index(_ rows: [Row]) throws -> VocabularySemanticIndex {
@@ -76,8 +82,7 @@ nonisolated enum VocabularySemanticDatabaseProjection {
         let owners = Dictionary(grouping: rows, by: { Owner(table: $0.table, parent: $0.parentID) })
         func records<T>(_ table: Row.Table, parent: UUID? = nil, value: (Row.Payload) -> T?) throws -> [T] {
             let candidates = parent.map { owners[Owner(table: table, parent: $0.uuidString)] ?? [] } ?? tables[table] ?? []
-            let records = candidates.sorted { $0.position < $1.position }
-            guard records.map(\.position) == Array(records.indices) else { throw VocabularyError.invalidArchive }
+            let records = candidates.sorted { $0.id < $1.id }
             return try records.map { row in
                 guard let result = value(row.payload) else { throw VocabularyError.invalidArchive }; return result
             }

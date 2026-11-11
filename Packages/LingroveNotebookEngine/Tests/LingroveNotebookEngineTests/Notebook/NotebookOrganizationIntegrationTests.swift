@@ -86,7 +86,7 @@ struct NotebookOrganizationIntegrationTests {
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspace) == count)
         try f.db.core.executeScript(sql: "DROP TRIGGER fail_organization_journal;", errorContext: "Remove journal failure")
         let retried = try f.db.saveNotebookOrganization(edit, basedOn: baseline, operationId: "organization-failure")
-        #expect(retried.document.semantics.nodes[0].definition == "Retryable edit")
+        #expect(retried.document.semantics.nodes.first { $0.id == edited.nodes[0].id }?.definition == "Retryable edit")
     }
 
     @Test func removingMeaningsCompactsRowsAndPrunesMembershipsWithoutTouchingEvidence() throws {

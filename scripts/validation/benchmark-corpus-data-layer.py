@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--before", default="b66a2537")
     parser.add_argument("--entries", type=int, default=10000)
     parser.add_argument("--trials", type=int, default=3)
+    parser.add_argument("--focus", action="store_true", help="Measure entry save and three deletion cases without a full-save window")
     args = parser.parse_args()
     assert args.entries >= 5000 and args.trials > 0
     base = ROOT / "build/corpus-data-layer-paired" / args.label
@@ -90,7 +91,8 @@ def main():
                     shutil.copyfile(seed / "primary.sqlite", folder / "primary.sqlite")
                     assert digest(folder / "primary.sqlite") == seed_hash
                     label = folder.name
-                    run(label, [binaries[name], "measure", str(folder), str(args.entries)])
+                    run(label, [binaries[name], "measure", str(folder), str(args.entries)],
+                        dict(os.environ, LINGROVE_PAIRED_FOCUS="1" if args.focus else "0"))
                     sample = json.loads((base / (label + ".log")).read_text().splitlines()[-1])
                     result["samples"].append(dict(sample, variant=name, trial=trial))
                     shutil.rmtree(folder)

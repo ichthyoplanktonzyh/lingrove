@@ -23,6 +23,10 @@ does not itself establish semantic equivalence or difference. Users and agents c
 consolidate duplicate senses; users primarily browse and read the corpus.
 _Avoid_: treating a generated definition string as the sense itself.
 
+The senses of an expression have no intrinsic ordinal or priority. Reordering their display
+does not change corpus content, membership or learning history. A default selection is a
+presentation rule; any explicit preferred sense would be a separate user choice.
+
 **Sense merge / 义项合并**:
 An explicit choice that two saved senses of one expression represent the same meaning. The target
 retains its definition, explanation, notes and semantic links; the source contributes its examples.
@@ -98,6 +102,10 @@ A sentence or fragment supporting one sense, with its original wording, highligh
 translation and source. It is content within the sense, not a separate collection unit.
 _Avoid_: exposing “usage / 用例” as an independent user-managed concept; treating another translation
 of the same example as a different meaning.
+
+Independent examples of a sense form an unordered membership. A review that uses a particular
+example references that example's identity. The original sentence/dialogue and authored
+explanation retain their internal structure and sequence.
 
 **Contextual lookup / 语境查读**:
 During acquisition, the interpretation of the chosen expression given the available sentence or fragment. It may

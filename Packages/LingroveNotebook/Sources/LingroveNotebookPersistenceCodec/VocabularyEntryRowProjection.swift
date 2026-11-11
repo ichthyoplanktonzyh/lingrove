@@ -11,13 +11,15 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     private var keyed: [Key: VocabularyPersistenceRow]
     private var groups: [Key: Set<Key>]
     private var semanticKeys: Set<Key>
+    private var semanticGroups: [Key: Set<Key>]
     private var classificationKeys: Set<Key>
 
     public init(_ rows: VocabularyPersistenceRows) throws {
-        keyed = try rows.keyedRows(); groups = [:]; semanticKeys = []; classificationKeys = []
+        keyed = try rows.keyedRows(); groups = [:]; semanticKeys = []; semanticGroups = [:]; classificationKeys = []
         for row in rows.rows {
             if let root = try Self.root(row, rows: keyed) { groups[root, default: []].insert(row.key) }
             if Self.isSemantic(row.entity) { semanticKeys.insert(row.key) }
+            if let root = Self.semanticRoot(row) { semanticGroups[root, default: []].insert(row.key) }
             if Self.isClassification(row.entity) { classificationKeys.insert(row.key) }
         }
     }
@@ -56,6 +58,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         for row in rows {
             if let root = try Self.root(row, rows: next.keyed) { next.groups[root, default: []].insert(row.key) }
             if Self.isSemantic(row.entity) { next.semanticKeys.insert(row.key) }
+            if let root = Self.semanticRoot(row) { next.semanticGroups[root, default: []].insert(row.key) }
             if Self.isClassification(row.entity) { next.classificationKeys.insert(row.key) }
         }
         return .init(projection: next, changed: rows, removed: [], repositioned: [])
@@ -97,6 +100,11 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
             let graph = VocabularySemanticDatabaseProjection.rows(semantics)
             try next.replace(keys: semanticKeys, records: graph, preservingLiteralPayloads: false, delta: &delta)
             next.semanticKeys = Set(graph.map { .init(entity: $0.table, id: $0.id) })
+            next.semanticGroups = [:]
+            for row in graph {
+                let value = try VocabularyPersistenceRow(record: row)
+                if let root = Self.semanticRoot(value) { next.semanticGroups[root, default: []].insert(value.key) }
+            }
         }
         if let classification {
             let directory = VocabularyClassificationRows.rows(classification)
@@ -158,12 +166,25 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
                 try next.replaceGroup(key, records: records, delta: &delta)
             } else { try next.reposition(key, position: position, delta: &delta) }
         }
-        // The narrow command can only reconcile identity/evidence/status in patterns/mappings;
-        // it cannot introduce a canonically equal Unicode edit into this unchanged graph.
-        if previous.semantics != document.semantics {
-            records = VocabularySemanticDatabaseProjection.rows(document.semantics)
-            try next.replace(keys: semanticKeys, records: records, preservingLiteralPayloads: false, delta: &delta)
-            next.semanticKeys = Set(records.map { .init(entity: $0.table, id: $0.id) })
+        let semantic = change.semanticChange
+        if !semantic.isEmpty {
+            for id in semantic.removedPatternIDs {
+                try next.replaceSemanticGroup(.init(entity: .usagePatterns, id: id.uuidString), records: [], delta: &delta)
+            }
+            for id in semantic.removedMappingIDs {
+                try next.replaceSemanticGroup(.init(entity: .meaningMappings, id: id.uuidString), records: [], delta: &delta)
+            }
+            let updates = Dictionary(uniqueKeysWithValues: semantic.updatedMappings.map { ($0.id, $0) })
+            for (position, value) in document.semantics.patterns.enumerated() {
+                try next.reposition(.init(entity: .usagePatterns, id: value.id.uuidString), position: position, delta: &delta)
+            }
+            for (position, value) in document.semantics.mappings.enumerated() {
+                let key = Key(entity: .meaningMappings, id: value.id.uuidString)
+                if let updated = updates[value.id] {
+                    records = []; VocabularySemanticDatabaseProjection.append(updated, position: position, to: &records)
+                    try next.replaceSemanticGroup(key, records: records, delta: &delta)
+                } else { try next.reposition(key, position: position, delta: &delta) }
+            }
         }
         return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
@@ -172,6 +193,23 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         var changed: [VocabularyPersistenceRow] = []
         var removed: [VocabularyPersistenceRow] = []
         var repositioned: [VocabularyPersistenceRow] = []
+    }
+
+    private mutating func replaceSemanticGroup(_ root: Key, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
+        let old = semanticGroups[root] ?? []
+        try replace(keys: old, records: records, preservingLiteralPayloads: false, delta: &delta)
+        let new = Set(records.map { Key(entity: $0.table, id: $0.id) })
+        semanticKeys.subtract(old); semanticKeys.formUnion(new)
+        semanticGroups[root] = new.isEmpty ? nil : new
+    }
+
+    private static func semanticRoot(_ row: VocabularyPersistenceRow) -> Key? {
+        switch row.entity {
+        case .usagePatterns, .meaningMappings: row.key
+        case .patternSlots: row.parentID.map { .init(entity: .usagePatterns, id: $0) }
+        case .mappingRoles, .mappingEvidence: row.parentID.map { .init(entity: .meaningMappings, id: $0) }
+        default: nil
+        }
     }
 
     private mutating func replaceGroup(_ root: Key, records: [VocabularyDatabaseRecord], delta: inout Delta) throws {
@@ -206,6 +244,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     }
 
     private mutating func reposition(_ key: Key, position: Int, delta: inout Delta) throws {
+        guard key.entity.hasBusinessOrder else { return }
         guard let old = keyed[key] else { throw VocabularyError.invalidArchive }
         guard old.position != position else { return }
         let record = old.record

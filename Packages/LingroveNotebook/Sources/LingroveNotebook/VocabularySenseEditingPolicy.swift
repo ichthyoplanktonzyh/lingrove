@@ -28,7 +28,7 @@ public nonisolated enum VocabularySenseEditingPolicy {
     /// The connection may already have the joined entries. Work on the canonical header and
     /// claims directly so deleting one sense never recreates the surviving source evidence.
     static func remove(entryID: UUID, senseID: UUID, from document: inout VocabularyDocument,
-                       previousEntries: [VocabularyEntry]) throws -> [VocabularyEntry] {
+                       previousEntries: [VocabularyEntry], reconcilingSemantics: Bool = true) throws -> [VocabularyEntry] {
         var entries = previousEntries
         guard let index = entries.firstIndex(where: { $0.id == entryID }),
               let sense = entries[index].senses.firstIndex(where: { $0.id == senseID }) else {
@@ -46,7 +46,9 @@ public nonisolated enum VocabularySenseEditingPolicy {
             document.interpretations[index].senseID = nil
             document.interpretations[index].status = .candidate
         }
-        VocabularySemanticPolicy.reconcileEntry(&document.semantics, previous: original, current: entries.first { $0.id == entryID })
+        if reconcilingSemantics {
+            VocabularySemanticPolicy.reconcileEntry(&document.semantics, previous: original, current: entries.first { $0.id == entryID })
+        }
         return entries
     }
 

@@ -25,7 +25,7 @@ final class VocabularyNotebookSession: ObservableObject {
 
     func select(_ entry: VocabularyEntry?, senseID: UUID? = nil) {
         let selectedSense = entry.flatMap { entry in
-            senseID.flatMap { VocabularySensePolicy.index($0, in: entry).map { entry.senses[$0] } } ?? entry.senses.first
+            senseID.flatMap { VocabularySensePolicy.index($0, in: entry).map { entry.senses[$0] } } ?? entry.defaultSense
         }
         if entryID != entry?.id || self.senseID != selectedSense?.id {
             for session in explanations.values { session.cancel() }

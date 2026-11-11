@@ -125,7 +125,7 @@ struct VocabularyReviewSheet: View {
                         session.plan.fieldOverrides = [:]
                     })) {
                     Text(String(localized: "No context", table: "Vocabulary")).tag(nil as UUID?)
-                    ForEach(current.sense.examples) { Text($0.text).lineLimit(1).tag(Optional($0.id)) }
+                    ForEach(current.sense.presentationExamples) { Text($0.text).lineLimit(1).tag(Optional($0.id)) }
                 }
                 if let preserved = current.sense.review?.preservedPlans, !preserved.isEmpty {
                     Menu(String(localized: "Preserved review plans", table: "Vocabulary")) {

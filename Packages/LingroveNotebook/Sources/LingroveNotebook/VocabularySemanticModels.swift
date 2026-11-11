@@ -42,7 +42,13 @@ public nonisolated struct VocabularyMeaningNode: Codable, Equatable, Identifiabl
     public var provenance = VocabularySemanticProvenance()
     public var createdAt = Date()
     public var updatedAt = Date()
-    public var title: String { labels.first(where: \.preferred)?.text ?? labels.first?.text ?? "" }
+    /// Language-aware readers choose their own label. A language-neutral fallback must be
+    /// stable under membership permutations, including several languages marked preferred.
+    public var defaultLabel: VocabularyMeaningLabel? {
+        labels.filter(\.preferred).min { $0.id.uuidString < $1.id.uuidString }
+            ?? labels.min { $0.id.uuidString < $1.id.uuidString }
+    }
+    public var title: String { defaultLabel?.text ?? "" }
 
     public init(
         id: UUID,

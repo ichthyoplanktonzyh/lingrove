@@ -5,7 +5,7 @@ import Foundation
 /// starts no model, reads no dictionary, and escapes all text before it can become Anki HTML.
 nonisolated enum ReviewCardPolicy {
     static func initialPlan(_ sense: VocabularySense) -> ReviewPlan {
-        sense.review?.plan ?? ReviewPlan(exampleID: sense.examples.first?.id, includeSenseContent: true)
+        sense.review?.plan ?? ReviewPlan(exampleID: sense.defaultExample?.id, includeSenseContent: true)
     }
 
     static func content(entry: VocabularyEntry, sense: VocabularySense, plan: ReviewPlan) throws -> ReviewCardContent {

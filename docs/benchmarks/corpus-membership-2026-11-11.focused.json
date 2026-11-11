@@ -1,0 +1,157 @@
+{
+  "seedSHA256": "b3b79b825c55160ae156895d05739f067ff88a3c4090ed8503acf91d93a3984c",
+  "beforeCommit": "4c73ddd3",
+  "fixtureSHA256": "44c748bdbbe86039db91c953b9d2f9f2105c1a085174ec3e09f0e5532f16487d",
+  "configuration": "Release",
+  "architecture": "arm64",
+  "entries": 10000,
+  "enrolledSenses": 2000,
+  "ratings": 1000,
+  "samples": [
+    {
+      "remove_enrolled_ms": 1592.269209,
+      "entry_save_ms": 205.953208,
+      "remove_tail_ms": 183.486,
+      "remove_front_ms": 1521.616542,
+      "variant": "before",
+      "trial": 1
+    },
+    {
+      "remove_front_ms": 167.630583,
+      "remove_enrolled_ms": 175.515417,
+      "remove_tail_ms": 173.533458,
+      "entry_save_ms": 212.370083,
+      "variant": "after",
+      "trial": 1
+    },
+    {
+      "remove_front_ms": 1460.386791,
+      "remove_tail_ms": 188.337542,
+      "entry_save_ms": 205.233541,
+      "remove_enrolled_ms": 1525.294625,
+      "variant": "before",
+      "trial": 2
+    },
+    {
+      "remove_front_ms": 169.006542,
+      "remove_tail_ms": 173.973667,
+      "remove_enrolled_ms": 175.114125,
+      "entry_save_ms": 208.927959,
+      "variant": "after",
+      "trial": 2
+    },
+    {
+      "remove_enrolled_ms": 1502.513709,
+      "entry_save_ms": 211.482625,
+      "remove_front_ms": 1491.5869579999999,
+      "remove_tail_ms": 185.981792,
+      "variant": "before",
+      "trial": 3
+    },
+    {
+      "entry_save_ms": 207.684875,
+      "remove_enrolled_ms": 176.717916,
+      "remove_front_ms": 170.441166,
+      "remove_tail_ms": 174.344791,
+      "variant": "after",
+      "trial": 3
+    }
+  ],
+  "measurementScope": "Focused Release engine comparison: entry save, front/tail/enrolled sense removal; three trials per revision; identical closed SQLite copies",
+  "statistics": {
+    "remove_enrolled_ms": {
+      "before": {
+        "medianMs": 1525.294625,
+        "rawMs": [
+          1592.269209,
+          1525.294625,
+          1502.513709
+        ]
+      },
+      "after": {
+        "medianMs": 175.515417,
+        "rawMs": [
+          175.515417,
+          175.114125,
+          176.717916
+        ]
+      },
+      "reductionPercent": 88.4930154395581
+    },
+    "entry_save_ms": {
+      "before": {
+        "medianMs": 205.953208,
+        "rawMs": [
+          205.953208,
+          205.233541,
+          211.482625
+        ]
+      },
+      "after": {
+        "medianMs": 208.927959,
+        "rawMs": [
+          212.370083,
+          208.927959,
+          207.684875
+        ]
+      },
+      "reductionPercent": -1.4443819685489023
+    },
+    "remove_tail_ms": {
+      "before": {
+        "medianMs": 185.981792,
+        "rawMs": [
+          183.486,
+          188.337542,
+          185.981792
+        ]
+      },
+      "after": {
+        "medianMs": 173.973667,
+        "rawMs": [
+          173.533458,
+          173.973667,
+          174.344791
+        ]
+      },
+      "reductionPercent": 6.456613236633402
+    },
+    "remove_front_ms": {
+      "before": {
+        "medianMs": 1491.5869579999999,
+        "rawMs": [
+          1521.616542,
+          1460.386791,
+          1491.5869579999999
+        ]
+      },
+      "after": {
+        "medianMs": 169.006542,
+        "rawMs": [
+          167.630583,
+          169.006542,
+          170.441166
+        ]
+      },
+      "reductionPercent": 88.66934702710105
+    }
+  },
+  "sourceManifestSHA256": "4db3d99cc41a0aec0a1c47968c996372a7e67da74d4e8e5ec05c02791528de3f",
+  "validation": {
+    "sharedPackagePassed": 117,
+    "engineSwiftTestingPassed": 101,
+    "engineXCTestPassed": 40,
+    "nativeStatus": "Passed",
+    "scope": "Synthetic, private hosts; installed Dev/data not accessed",
+    "testEvidence": [
+      "build/mac-w2-c/corpus-membership-shared-final.log",
+      "build/mac-w2-c/corpus-membership-engine-verified.log"
+    ],
+    "nativePassed": 27,
+    "nativeSkipped": 1,
+    "nativeSkipReason": "Optional visible UI journey disabled; tests call production code without input synthesis",
+    "derivedDataAndSyntheticHostsRemoved": true,
+    "sharedPackageSkipped": 3,
+    "sharedSkipReason": "Opt-in real server wire/window/upload interop bridges not run"
+  }
+}

@@ -49,7 +49,7 @@ struct ReviewMaterialEditor: View {
                 if let selected = plan.exampleID, !sense.examples.contains(where: { $0.id == selected }) {
                     Text(BuiltInReviewCopy.text("material.unavailable")).tag(Optional(selected))
                 }
-                ForEach(sense.examples) { Text($0.text).lineLimit(1).tag(Optional($0.id)) }
+                ForEach(sense.presentationExamples) { Text($0.text).lineLimit(1).tag(Optional($0.id)) }
             }.accessibilityIdentifier("builtinReview.prepare.context")
             if hostedSide == nil {
                 Picker(String(localized: "Card side", table: "Vocabulary"), selection: side) {

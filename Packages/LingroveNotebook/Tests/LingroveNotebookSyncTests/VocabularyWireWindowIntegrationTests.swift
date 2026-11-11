@@ -637,7 +637,7 @@ extension VocabularyWireWindowIntegrationTests {
             window: Self.rebaseDelta(original: original, remote: remote, additiveTags: true), now: Self.now)
         #expect(result.shadow.sequence.rawValue == "2")
         #expect(result.materialization.document == expected)
-        #expect(try result.shadow.materialize().document.savedSenses[index].note == original.savedSenses[index].note)
+        #expect(try result.shadow.materialize().document.savedSenses.first { $0.id == original.savedSenses[index].id }?.note == original.savedSenses[index].note)
         #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(result.materialization.unattachedPrivateState.explanations.isEmpty)
     }
@@ -677,7 +677,7 @@ extension VocabularyWireWindowIntegrationTests {
         remote.savedSenses[index].review = nil
         let result = try VocabularyWireRebase.prepare(local: original, base: base,
             window: Self.rebaseDelta(original: original, remote: remote), now: Self.now)
-        #expect(result.materialization.document.savedSenses[index].review == nil)
+        #expect(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[index].id }?.review == nil)
         #expect(result.materialization.unattachedPrivateState.reviews.contains {
             $0.senseID == VocabularyWireTestFixture.targetSenseID && $0.role == .legacy && !$0.bindings.isEmpty && !$0.audio.isEmpty
         })
@@ -837,8 +837,8 @@ extension VocabularyWireWindowIntegrationTests {
         let window = try Self.rebaseDelta(original: original, remote: server, additiveTags: true)
         var later = sent; later.savedSenses[0].note = "later value"; later.savedSenses[0].tags.append("later")
         let result = try VocabularyWireRebase.prepare(local: later, base: base, window: window, acknowledging: acknowledgement, now: Self.now)
-        #expect(result.materialization.document.savedSenses[0].note == "later value")
-        #expect(result.materialization.document.savedSenses[0].tags == original.savedSenses[0].tags + ["c", "b", "later"])
+        #expect(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[0].id }?.note == "later value")
+        #expect(Set(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[0].id }?.tags ?? []) == Set(original.savedSenses[0].tags + ["c", "b", "later"]))
         #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(throws: VocabularyWireRebaseError.self) {
             try VocabularyWireRebase.prepare(local: later, base: base, window: window, now: Self.now)
@@ -933,7 +933,7 @@ extension VocabularyWireWindowIntegrationTests {
     }
 }
 
-private extension VocabularyWireWindowIntegrationTests {
+extension VocabularyWireWindowIntegrationTests {
     static func uploadReceipt(_ batch: VocabularyWireUploadBatch) throws -> VocabularyWireGroupReceipt {
         let json: [String: Any] = ["protocolVersion":1,"notebookId":batch.request.notebookID.uuidString.lowercased(),
             "groupId":batch.request.groupID.uuidString.lowercased(),"committedSequence":"2",

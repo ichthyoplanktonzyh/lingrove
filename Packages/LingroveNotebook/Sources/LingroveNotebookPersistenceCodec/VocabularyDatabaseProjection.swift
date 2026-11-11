@@ -194,6 +194,7 @@ nonisolated enum VocabularyDatabaseProjection {
             try ordered(groups[.init(table: table, parent: parent)] ?? [])
         }
         private func ordered(_ rows: [Row]) throws -> [Row] {
+            if rows.first?.table.hasBusinessOrder == false { return rows.sorted { $0.id < $1.id } }
             let values = rows.sorted { $0.position < $1.position }
             guard values.map(\.position) == Array(values.indices) else { throw VocabularyError.invalidArchive }; return values
         }

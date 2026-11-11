@@ -8,8 +8,8 @@ public nonisolated enum VocabularySemanticEditingPolicy {
                        now: Date = Date(), labelID: UUID? = nil) -> VocabularyMeaningNode {
         var result = original
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let selected = labelID.flatMap { id in result.labels.firstIndex { $0.id == id } }
-        if let index = selected ?? (labelID == nil ? result.labels.firstIndex(where: \.preferred) ?? result.labels.indices.first : nil) {
+        let selectedID = labelID ?? original.defaultLabel?.id
+        if let index = selectedID.flatMap({ id in result.labels.firstIndex { $0.id == id } }) {
             result.labels[index].text = title
         }
         result.definition = definition.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -35,8 +35,8 @@ public nonisolated enum VocabularySemanticEditingPolicy {
     /// from an explicitly cited example; it is never silently promoted to supporting evidence.
     public static func example(for mapping: VocabularyMeaningMapping, sense: VocabularySense) -> VocabularyExample? {
         if !mapping.evidenceIDs.isEmpty {
-            return sense.examples.first { mapping.evidenceIDs.contains($0.id) }
+            return sense.presentationExamples.first { mapping.evidenceIDs.contains($0.id) }
         }
-        return mapping.patternID == nil ? sense.examples.first : nil
+        return mapping.patternID == nil ? sense.defaultExample : nil
     }
 }

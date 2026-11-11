@@ -29,13 +29,13 @@ nonisolated public enum VocabularyExportPolicy {
             ? 3 : entries.contains { $0.language == nil } ? 2 : 1
         var document = VocabularyExportDocument(version: version, entries: entries.map { entry in
             .init(id: entry.id, expression: entry.expression, dictionaryForm: entry.dictionaryForm, language: entry.language,
-                kind: entry.kind, senses: entry.senses.map { sense in
+                kind: entry.kind, senses: entry.presentationSenses.map { sense in
                     .init(id: sense.id, createdAt: sense.createdAt, meaning: options.meanings ? sense.meaning : nil,
                         meaningLanguage: options.meanings ? sense.meaningLanguage : nil,
                         otherMeanings: options.meanings ? otherValues(primary: sense.meaning, language: sense.meaningLanguage,
                             candidates: sense.standaloneMeanings + sense.alternateMeanings) : nil,
                         note: options.notes ? sense.note : nil, tags: options.notes ? sense.tags : nil,
-                        examples: options.examples ? sense.examples.map { usage in
+                        examples: options.examples ? sense.presentationExamples.map { usage in
                             .init(id: usage.id, createdAt: usage.createdAt, text: usage.text, completeness: usage.completeness,
                                 ranges: usage.ranges, translation: usage.translation, translationLanguage: usage.translationLanguage,
                                 otherTranslations: otherValues(primary: usage.translation, language: usage.translationLanguage,

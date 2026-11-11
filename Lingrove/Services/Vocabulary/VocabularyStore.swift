@@ -440,7 +440,7 @@ final class VocabularyStore: ObservableObject {
         let destination = explanationDestination(capture)
         let selection = destination.map { VocabularySelection(entryID: $0.entryID, senseID: $0.senseID) }
             ?? entries.first { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }.flatMap { entry in
-                entry.senses.first.map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
+                entry.defaultSense.map { VocabularySelection(entryID: entry.id, senseID: $0.id) }
             }
         LingroveLogger.learning.debug("Vocabulary open requested", metadata: [
             "sense_found": .stringConvertible(selection != nil), "handler_available": .stringConvertible(openSelection != nil)

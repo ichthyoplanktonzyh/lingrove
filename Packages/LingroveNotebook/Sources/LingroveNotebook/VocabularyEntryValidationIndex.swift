@@ -39,7 +39,7 @@ struct VocabularyEntryValidationIndex: Sendable {
     }
 
     func replacing(_ old: VocabularyEntry?, with entry: VocabularyEntry?, oldIDs: Set<UUID>, newIDs: Set<UUID>,
-                   semantics: VocabularySemanticIndex?) -> Self {
+                   removedSemanticIDs: Set<UUID>) -> Self {
         var result = self
         if let old {
             result.keys.removeValue(forKey: VocabularyIdentityPolicy.entryKey(old))
@@ -47,7 +47,7 @@ struct VocabularyEntryValidationIndex: Sendable {
             for example in old.examples { result.acceptedOccurrences.removeValue(forKey: example.occurrenceID ?? example.id) }
         }
         if let entry { result.insert(entry, ids: newIDs) }
-        if let semantics { result.semanticIDs = VocabularySemanticPolicy.identifiers(semantics) }
+        result.semanticIDs.subtract(removedSemanticIDs)
         return result
     }
 

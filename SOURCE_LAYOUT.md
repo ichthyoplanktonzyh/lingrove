@@ -262,9 +262,11 @@ byte-sensitive while normalizing unordered collection encodings.
 In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
 creates restricted single-entry changes. Its private `VocabularyEntryValidationIndex` retains
 the checked key, identifier and accepted-occurrence ownership proof; replacements validate the
-incoming entry against that proof. `VocabularySemanticPolicy.reconcileEntry` invalidates only
-removed or changed evidence owned by that entry. Full imports/restores still establish the
-complete proof through `VocabularyDocumentValidation`.
+incoming entry against that proof. `VocabularySemanticEntryIndex` retains reverse sense/pattern/
+evidence references and creates a domain-owned `VocabularySemanticEntryChange`. Restricted
+retirements/retractions preserve the unchanged graph proof; the codec encodes only changed
+mapping families. Full imports/restores and arbitrary graph edits still establish the complete
+proof through `VocabularyDocumentValidation`/`VocabularySemanticPolicy`.
 
 `LingroveNotebookPersistenceCodec/VocabularyEntryRowProjection` converts checked changes to row
 deltas and `VocabularyPersistenceMaterialRoots` identifies their lexical/evidence owners. The
@@ -272,14 +274,19 @@ engine's `Persistence/NotebookStore/LingroveNotebookSavePlan` combines that delt
 affected entries, review sources and ordering impact. Full saves, restricted entry commands and
 organization commands use one atomic CAS/journal/media/review-refresh commit tail. Generic
 structural/import/restore operations retain full validation; remote row application retains its
-existing boundary. Dense row ordering and sync payload formats remain unchanged.
+existing boundary. `VocabularyMembershipPolicy` defines identity-based corpus equality and
+stable display/default selection. Membership rows ignore legacy positions and write zero;
+authored body/history/template rows retain strict sequence positions. Arrays remain containers.
+`VocabularyWireMembership` retains confirmed ranks and add/reset semantics without manufacturing
+edits for container permutations. See `docs/adr/0004-unordered-corpus-membership.md`.
 
 `LingroveNotebookSaveCache` owns the checked state/projection per SQLite connection, guarded by
 scope/revision/generation and both external and local SQL change tokens. Successful full saves
 retain it; rollback revokes it. `Models/Notebook/LingroveNotebookCommittedChange` is an optional,
 read-only receipt between two exact versions. The archive carries it to `VocabularyStore`,
 which patches its read index only across an acknowledged consecutive change; missing/gapped
-receipts and arbitrary reordering use the complete-read worker. This cache/receipt is disposable
+receipts use the complete-read worker. Membership permutations create no content commit. This
+cache/receipt is disposable
 derived state, never caller-supplied write authority or an account boundary.
 `Models/Vocabulary/VocabularyReadIndex` retires all old owners before indexing a batch receipt;
 headword-key exchanges and moved historical aliases therefore cannot erase a newly installed
@@ -755,7 +762,8 @@ autocomplete and the notebook, keeping the two core features independent.
 `LingroveNotebookPersistenceCodec` owns the typed document/row projection shared by host stores.
 Its immutable `VocabularyPersistenceRow` keeps a typed payload and exact nullable indexes;
 `VocabularyPersistenceEntity` fixes family names, parent families and index order. Decode checks
-identity, relationships, ordering and payload/index agreement. It opens no files or databases and
+identity, relationships, authored sequence ordering and payload/index agreement. Membership
+families have no ordinal requirement. It opens no files or databases and
 does not define the cloud wire protocol, which must exclude local tool-adapter metadata.
 
 `LingroveNotebookStorage` owns the existing Mac SQLite schema/connection/flock,
@@ -1509,6 +1517,6 @@ trial copy and measures the shared public APIs in Release. This separates byte-i
 transaction/cache comparisons from the app inventory's equivalent generated scenarios.
 
 `VocabularySemanticDatabaseProjection` indexes semantic child rows by (table, parent) during
-reconstruction. The codec still checks parent-local positions and exact round trips; this read
-optimization changes neither persisted rows nor schema. Large-label/evidence fixtures live in
+reconstruction. The codec checks membership identities/references, authored positions and normalized round trips.
+Unordered labels/evidence no longer require contiguous positions. Large-label/evidence fixtures live in
 `VocabularyPersistenceCodecTests`.

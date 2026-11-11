@@ -320,7 +320,7 @@ struct LingroveNotebookApplyIntegrationTests {
         let plan = try f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date())
         let applied = try f.db.commitLingroveNotebookApply(plan, now: Date())
         #expect(applied.document.catalog[0].senses[0].note == "later note")
-        #expect(applied.document.catalog[0].senses[0].tags == original.catalog[0].senses[0].tags + ["c", "b", "later tag"])
+        #expect(Set(applied.document.catalog[0].senses[0].tags) == Set(original.catalog[0].senses[0].tags + ["c", "b", "later tag"]))
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions WHERE operation_id='upload-sent'", values: []) == 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions WHERE operation_id='upload-later'", values: []) == 1)
         #expect(try f.reviewProgressRows() == protected)
@@ -724,8 +724,8 @@ struct LingroveNotebookApplyIntegrationTests {
         let sense = VocabularySense(id: UUID(), meaning: "to retain", meaningLanguage: .english, meaningOrigin: .user,
             note: "initial note", tags: ["initial"], isSavedWithoutContext: true, createdAt: now, updatedAt: now)
         return .init(entries: [
-            .init(id: UUID(), expression: "keep", dictionaryForm: "keep", language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now),
-            .init(id: UUID(), expression: "independent", dictionaryForm: "independent", language: nil, kind: .word, senses: [], createdAt: now, updatedAt: now)
+            .init(id: UUID(uuidString: "10000000-0000-4000-8000-000000000001")!, expression: "keep", dictionaryForm: "keep", language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now),
+            .init(id: UUID(uuidString: "90000000-0000-4000-8000-000000000001")!, expression: "independent", dictionaryForm: "independent", language: nil, kind: .word, senses: [], createdAt: now, updatedAt: now)
         ])
     }
 }

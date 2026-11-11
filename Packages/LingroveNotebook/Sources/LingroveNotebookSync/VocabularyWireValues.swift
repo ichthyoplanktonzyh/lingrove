@@ -44,6 +44,15 @@ public nonisolated enum VocabularyWireEntityKind: String, Codable, CaseIterable,
     case reviewDraft, reviewTemplate, meaningNode, meaningLabel, meaningRole, usagePattern
     case patternSlot, meaningMapping, roleBinding, mappingEvidence, meaningRelation
     case retrievalCue, cueTarget, classificationFramework, category, categoryParent, categoryMembership, categoryOverride
+
+    /// Rank is retained in the transport envelope for existing server rows. Only authored
+    /// bodies, history and templates interpret it as business content; corpus members do not.
+    public var hasBusinessOrder: Bool {
+        switch self {
+        case .senseExplanation, .interpretationExplanation, .contentBlock, .reviewDraft, .reviewTemplate: true
+        default: false
+        }
+    }
 }
 
 /// One independently versionable domain entity. The surrounding sync layer owns

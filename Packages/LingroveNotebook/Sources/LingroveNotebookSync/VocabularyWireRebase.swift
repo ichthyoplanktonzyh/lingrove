@@ -70,7 +70,7 @@ public nonisolated enum VocabularyWireRebase {
         let empty = try VocabularyWireProjectionCodec.project(VocabularyDocument(), notebookID: base.scope.notebookID).entities
         let before = keyed(acknowledgement?.batch.targetEntities ?? (base.initialized ? base.records.filter { !$0.deleted }.map(\.entity) : empty))
         let incoming = keyed(remote.initialized ? remote.records.filter { !$0.deleted }.map(\.entity) : empty)
-        let local = keyed(projection.entities)
+        let local = keyed(VocabularyWireMembership.retainingConfirmedFields(projection.entities, from: Array(before.values)))
         let oldRecords = Dictionary(uniqueKeysWithValues: base.records.map { ($0.key, $0) })
         let newRecords = Dictionary(uniqueKeysWithValues: remote.records.map { ($0.key, $0) })
         let acknowledgedFields = Dictionary(uniqueKeysWithValues: (acknowledgement?.batch.request.members ?? []).map { ($0.change.key, $0.change.writtenFields) })
@@ -131,17 +131,23 @@ public nonisolated enum VocabularyWireRebase {
             var fields: [String: VocabularyWireJSON] = [:]
             for field in Set(b.fields.keys).union(l.fields.keys).union(r.fields.keys).sorted() {
                 let bv = b.fields[field], lv = l.fields[field], rv = r.fields[field]
+                if field == "rank", !identity.entityType.hasBusinessOrder {
+                    fields[field] = rv ?? bv ?? lv
+                    continue
+                }
                 let acknowledgedField = acknowledgedFields[key]?.contains(field) == true
                 let boundary = acknowledgedField ? acknowledgement?.receipt.committedSequence : oldRecords[key]?.version
                 let touched = boundary.map { (newRecords[key]?.fieldVersions[field] ?? .zero) > $0 } ?? !same(rv, bv)
-                if same(lv, bv) { fields[field] = rv }
-                else if same(lv, rv) || (!touched && same(rv, bv)) { fields[field] = lv }
+                if VocabularyWireMembership.same(lv, bv, kind: identity.entityType, field: field) { fields[field] = rv }
+                else if VocabularyWireMembership.same(lv, rv, kind: identity.entityType, field: field) ||
+                    (!touched && VocabularyWireMembership.same(rv, bv, kind: identity.entityType, field: field)) { fields[field] = lv }
                 else if field == "updatedAt", case let .number(left)? = lv, case let .number(right)? = rv {
                     fields[field] = .number(max(left, right))
                 } else if VocabularyWireMutationPolicy.isAdditive(identity.entityType, field),
                           let boundary, let reset = newRecords[key]?.fieldResets[field], reset <= boundary,
                           let joined = appendOnly(base: bv, local: lv, remote: rv,
-                            acknowledgedAdd: acknowledgedAdditions[key]?.contains(field) == true, originalBase: oldRecords[key]?.entity.fields[field]) {
+                            acknowledgedAdd: acknowledgedAdditions[key]?.contains(field) == true, originalBase: oldRecords[key]?.entity.fields[field],
+                            unordered: VocabularyWireMembership.unorderedArray(identity.entityType, field)) {
                     fields[field] = joined
                 } else if let choice = try conflict(.fieldChanged, field: field) { fields[field] = choice == .local ? lv : rv }
             }
@@ -179,8 +185,11 @@ public nonisolated enum VocabularyWireRebase {
     private static func same(_ lhs: VocabularyWireEntity?, _ rhs: VocabularyWireEntity?) -> Bool {
         switch (lhs, rhs) {
         case (nil, nil): true
-        case let (l?, r?): l.entityType == r.entityType && l.entityID == r.entityID
-            && VocabularyWireJSON.object(l.fields).hasSameWireValue(as: .object(r.fields))
+        case let (l?, r?): l.entityType == r.entityType && l.entityID == r.entityID && Set(l.fields.keys) == Set(r.fields.keys)
+            && l.fields.allSatisfy { field, value in
+                (field == "rank" && !l.entityType.hasBusinessOrder) ||
+                    VocabularyWireMembership.same(value, r.fields[field], kind: l.entityType, field: field)
+            }
         default: false
         }
     }
@@ -195,7 +204,15 @@ public nonisolated enum VocabularyWireRebase {
     /// removal and reordering stay explicit conflicts; no general array union
     /// can bring back an item another device deliberately removed.
     private static func appendOnly(base: VocabularyWireJSON?, local: VocabularyWireJSON?, remote: VocabularyWireJSON?,
-                                   acknowledgedAdd: Bool, originalBase: VocabularyWireJSON?) -> VocabularyWireJSON? {
+                                   acknowledgedAdd: Bool, originalBase: VocabularyWireJSON?, unordered: Bool) -> VocabularyWireJSON? {
+        if unordered {
+            guard case let .array(b)? = base, case let .array(l)? = local, case let .array(r)? = remote,
+                  VocabularyWireMembership.contains(l, b), VocabularyWireMembership.contains(r, b) else { return nil }
+            var result = r
+            for value in l where !b.contains(where: { $0.hasSameWireValue(as: value) }) &&
+                !result.contains(where: { $0.hasSameWireValue(as: value) }) { result.append(value) }
+            return .array(result)
+        }
         guard case let .array(b)? = base, case let .array(l)? = local, case let .array(r)? = remote,
               l.count >= b.count, r.count >= b.count,
               zip(b, l).allSatisfy({ $0.hasSameWireValue(as: $1) }) else { return nil }

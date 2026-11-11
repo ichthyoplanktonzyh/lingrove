@@ -60,12 +60,12 @@ struct VocabularyNotebookView: View {
         self.builtInReview = builtInReview
         self.search = search
         let entry = store.entries.first { $0.id == selectedID }
-        _selection = State(initialValue: selectedSenseID ?? entry?.senses.first?.id)
+        _selection = State(initialValue: selectedSenseID ?? entry?.defaultSense?.id)
         _expandedEntries = State(initialValue: Set(entry.map { [$0.id] } ?? []))
         _requestedSenseID = State(initialValue: selectedSenseID)
         if let selectedID {
             _meaningDestination = State(initialValue: .sense(nodeID: nil,
-                senseID: selectedSenseID ?? entry?.senses.first?.id ?? selectedID))
+                senseID: selectedSenseID ?? entry?.defaultSense?.id ?? selectedID))
         }
         // A loaded archive already supplies the initial selection. Only a cold load needs
         // to retain the request; otherwise saving an annotation can replay it over browsing.
@@ -379,7 +379,7 @@ struct VocabularyNotebookView: View {
                 selectedTag = ""
             }
             if let requestedID, let entry = entries.first(where: { $0.id == requestedID }) {
-                selection = requestedSenseID ?? entry.senses.first?.id
+                selection = requestedSenseID ?? entry.defaultSense?.id
                 expandedEntries.insert(entry.id)
                 self.requestedID = nil; requestedSenseID = nil
             } else if let selection, let entry = entries.first(where: { VocabularySensePolicy.index(selection, in: $0) != nil }),
@@ -637,7 +637,7 @@ struct VocabularyNotebookView: View {
             } else {
                 expandedEntries.insert(entry.id)
                 if !isEntrySelected(entry) {
-                    selection = entry.senses.first?.id
+                    selection = entry.defaultSense?.id
                 }
             }
         }
@@ -651,7 +651,7 @@ struct VocabularyNotebookView: View {
         }
         if let entry = store.readIndex.entriesByID[target.entryID], entry.senses.count > 1 {
             Menu(String(localized: "Merge into…", table: "Vocabulary")) {
-                ForEach(entry.senses.filter { $0.id != target.senseID }) { sense in
+                ForEach(entry.presentationSenses.filter { $0.id != target.senseID }) { sense in
                     Button(sense.displayTitle) {
                         mergeSense(target, into: sense.id)
                     }
@@ -1563,7 +1563,7 @@ struct VocabularyEntryDetail: View {
     private var senseSwitcherBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(Array(entry.senses.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(entry.presentationSenses.enumerated()), id: \.element.id) { index, item in
                     let isSelected = item.id == sense.id
                     Button {
                         selectSense?(item.id)
@@ -1677,7 +1677,7 @@ struct VocabularyEntryDetail: View {
 
     private var examplesSection: some View {
         LazyVStack(alignment: .leading, spacing: 12) {
-            ForEach(sense.examples) { example in
+            ForEach(sense.presentationExamples) { example in
                 VocabularyExampleCard(
                     entry: entry,
                     sense: sense,
@@ -1932,7 +1932,7 @@ private struct VocabularySingleEntryRow: View {
         guard !trimmed.isEmpty,
               !entry.expression.localizedStandardContains(trimmed),
               !sense.displayTitle.localizedStandardContains(trimmed) else { return nil }
-        return sense.examples.first {
+        return sense.presentationExamples.first {
             $0.text.localizedStandardContains(trimmed) || $0.translation.localizedStandardContains(trimmed)
         }?.text
     }
@@ -2042,7 +2042,7 @@ private struct VocabularySidebarSenseRow: View {
     private var matchedExampleSnippet: String? {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !sense.displayTitle.localizedStandardContains(trimmed) else { return nil }
-        return sense.examples.first {
+        return sense.presentationExamples.first {
             $0.text.localizedStandardContains(trimmed) || $0.translation.localizedStandardContains(trimmed)
         }?.text
     }
@@ -2097,7 +2097,7 @@ struct VocabularySenseSummary: View {
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
-            if let example = sense.examples.first {
+            if let example = sense.defaultExample {
                 Text(example.text)
                     .font(textSize.font(12.5))
                     .foregroundStyle(.secondary)

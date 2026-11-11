@@ -62,7 +62,7 @@ final class VocabularyBrowserCache: ObservableObject {
             }
             let header = VocabularyBrowserRow(entry: entry, sense: nil, senseNumber: 0)
             guard expanded.contains(entry.id) else { return [header] }
-            return [header] + entry.senses.enumerated().map {
+            return [header] + entry.presentationSenses.enumerated().map {
                 .init(entry: entry, sense: $0.element, senseNumber: $0.offset + 1)
             }
         }

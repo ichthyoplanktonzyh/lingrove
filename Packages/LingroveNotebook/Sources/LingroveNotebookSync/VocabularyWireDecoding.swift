@@ -36,7 +36,10 @@ nonisolated struct VocabularyWireDecoder {
         }
     }
     private func ordered(_ rows: [Row]) -> [E] {
-        rows.sorted { $0.rank == $1.rank ? $0.entity.entityID < $1.entity.entityID : $0.rank < $1.rank }.map(\.entity)
+        if rows.first?.entity.entityType.hasBusinessOrder == false {
+            return rows.sorted { $0.entity.entityID < $1.entity.entityID }.map(\.entity)
+        }
+        return rows.sorted { $0.rank == $1.rank ? $0.entity.entityID < $1.entity.entityID : $0.rank < $1.rank }.map(\.entity)
     }
     private func rows(_ kind: Kind) -> [E] { ordered(types[kind] ?? []) }
     private func children(_ kind: Kind, _ field: String, _ id: UUID) -> [E] {

@@ -107,6 +107,8 @@ public struct LingroveNotebookStore {
     /// Scheduling and append-only review history stay with the existing material adapter.
     func commit(_ plan: LingroveNotebookSavePlan, current: LingroveNotebookSnapshot,
                 publicChange: Bool, operationId: String, lineage: UUID) throws -> LingroveNotebookSnapshot {
+        if current.revision > 0, plan.rows.changed.isEmpty && plan.rows.removed.isEmpty && plan.rows.repositioned.isEmpty,
+           (plan.state.document.reviewTemplates != nil) == (current.document.reviewTemplates != nil) { return current }
             let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
             try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId)
             let revision = current.revision + 1

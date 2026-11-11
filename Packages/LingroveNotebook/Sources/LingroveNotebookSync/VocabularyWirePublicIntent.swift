@@ -15,9 +15,12 @@ public nonisolated enum VocabularyWirePublicIntent {
     /// preserving cancellation/frozen-ACK semantics without hashing the whole notebook twice.
     public static func hasChanges(_ change: VocabularyEntrySaveChange, notebookID: UUID) throws -> Bool {
         let before = change.previous, after = change.document
-        if before.catalog.map(\.id) != after.catalog.map(\.id) || before.sources.map(\.id) != after.sources.map(\.id) ||
-            before.occurrences.map(\.id) != after.occurrences.map(\.id) ||
-            before.interpretations.map(\.id) != after.interpretations.map(\.id) { return true }
+        // This domain-owned proof contains only public pattern/mapping retirement or actual
+        // evidence retraction. Comparing two complete graph encodings adds no information.
+        if !change.semanticChange.isEmpty { return true }
+        if Set(before.catalog.map(\.id)) != Set(after.catalog.map(\.id)) || Set(before.sources.map(\.id)) != Set(after.sources.map(\.id)) ||
+            Set(before.occurrences.map(\.id)) != Set(after.occurrences.map(\.id)) ||
+            Set(before.interpretations.map(\.id)) != Set(after.interpretations.map(\.id)) { return true }
         let senses = change.affectedSenseIDs
         let claims = Set((before.interpretations + after.interpretations).filter {
             $0.senseID.map(senses.contains) == true
@@ -25,7 +28,7 @@ public nonisolated enum VocabularyWirePublicIntent {
         func fragment(_ document: VocabularyDocument) -> VocabularyDocument {
             .init(catalog: document.catalog.filter { $0.id == change.entryID }, sources: [], occurrences: [],
                 interpretations: document.interpretations.filter { claims.contains($0.id) },
-                semantics: before.semantics == after.semantics ? .init() : document.semantics)
+                semantics: .init())
         }
         var oldEncoder = VocabularyWireEncoder(), newEncoder = VocabularyWireEncoder()
         return try digest(oldEncoder.encode(fragment(before), notebookID: notebookID)) !=

@@ -105,4 +105,31 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
     let payload: Payload
     var extra: [String?] = []
     var key: Key { .init(table: table, id: id) }
+
+    init(table: Table, id: String, parentID: String?, position: Int, payload: Payload, extra: [String?] = []) {
+        self.table = table; self.id = id; self.parentID = parentID
+        self.position = table.hasBusinessOrder ? position : 0
+        self.payload = payload.membershipNormalized; self.extra = extra
+    }
+}
+
+private extension VocabularyDatabaseRecord.Payload {
+    /// Only unordered leaf collections are canonicalized. Literal text bytes, content blocks,
+    /// source ranges and nil/presence values pass through unchanged for exact round trips.
+    var membershipNormalized: Self {
+        switch self {
+        case var .collection(value):
+            value.tags.sort(); return .collection(value)
+        case var .sense(value):
+            value.tags.sort(); value.mergedFrom.sort { $0.uuidString < $1.uuidString }
+            value.standaloneMeanings.sort(by: VocabularyMembershipPolicy.meaningOrder)
+            value.alternateMeanings.sort(by: VocabularyMembershipPolicy.meaningOrder)
+            return .sense(value)
+        case var .usage(value):
+            value.translationVariants.sort(by: VocabularyMembershipPolicy.meaningOrder); return .usage(value)
+        case var .usagePattern(value):
+            value.collocations.sort(); return .usagePattern(value)
+        default: return self
+        }
+    }
 }

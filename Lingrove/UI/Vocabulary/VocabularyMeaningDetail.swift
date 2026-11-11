@@ -219,7 +219,7 @@ struct VocabularyMeaningDetail: View {
                 )
             } else {
                 ForEach(visibleEntries) { entry in
-                    ForEach(entry.senses) { sense in
+                    ForEach(entry.presentationSenses) { sense in
                         expressionCard(entry, sense: sense)
                     }
                 }

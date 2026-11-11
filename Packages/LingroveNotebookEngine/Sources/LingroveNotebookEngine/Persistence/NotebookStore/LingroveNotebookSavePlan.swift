@@ -22,12 +22,9 @@ struct LingroveNotebookSavePlan {
             requiresEntryReload = false
             return
         }
-        // Child-local order changes alter displayed material. Global compaction of claims and
-        // collections does not: below we compare each sense's relative claim order instead.
-        let localMoves = rows.repositioned.filter {
-            ![.entries, .usages, .collections, .sources, .occurrences].contains($0.entity)
-        }
-        let keys = Set((rows.changed + rows.removed + localMoves).map(\.key))
+        // Repositioned rows now contain only authored/history/template sequences. Membership
+        // rows never compact, so their unchanged survivors need neither receipts nor materials.
+        let keys = Set((rows.changed + rows.removed + rows.repositioned).map(\.key))
         let before = try previous.projection.materialRoots(for: keys)
         let after = try rows.projection.materialRoots(for: keys)
         var ids = before.entryIDs.union(after.entryIDs)
@@ -47,19 +44,13 @@ struct LingroveNotebookSavePlan {
                 }
             }
         }
-        if rows.repositioned.contains(where: { $0.entity == .usages }) {
-            let old = Self.claimOrder(previous.state.document), new = Self.claimOrder(state.document)
-            for id in Set(old.keys).union(new.keys) where old[id] != new[id] { senses.insert(id) }
-        }
         for entry in previous.state.entries + state.entries where entry.senses.contains(where: {
             senses.contains($0.id) || !$0.mergedFrom.allSatisfy { !senses.contains($0) }
         }) { ids.insert(entry.id) }
         entryIDs = ids
         reviewSenseIDs = before.allReviewMaterial || after.allReviewMaterial ? nil :
             Self.reviewIDs(entries: previous.state.entries, ids: ids).union(Self.reviewIDs(entries: state.entries, ids: ids))
-        let oldIDs = previous.state.entries.map(\.id), newIDs = state.entries.map(\.id)
-        let oldSet = Set(oldIDs), newSet = Set(newIDs)
-        requiresEntryReload = oldIDs.filter(newSet.contains) + newIDs.filter { !oldSet.contains($0) } != newIDs
+        requiresEntryReload = false
     }
 
     func receipt(from previous: LingroveNotebookSnapshot, to saved: LingroveNotebookSnapshot) -> LingroveNotebookCommittedChange {
@@ -73,11 +64,4 @@ struct LingroveNotebookSavePlan {
         Set(entries.lazy.filter { ids.contains($0.id) }.flatMap { $0.senses.flatMap { [$0.id] + $0.mergedFrom } })
     }
 
-    private static func claimOrder(_ document: VocabularyDocument) -> [UUID: [UUID]] {
-        var result: [UUID: [UUID]] = [:]
-        for claim in document.interpretations where claim.status == .accepted {
-            if let id = claim.senseID { result[id, default: []].append(claim.id) }
-        }
-        return result
-    }
 }

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import LingroveNotebook
+import LingroveNotebookPersistenceCodec
 @testable import LingroveNotebookEngine
 
 /// Private SQLite fixtures cross the same mutation seam as native editors. These checks
@@ -8,6 +9,91 @@ import LingroveNotebook
 /// timing; a faster save is not acceptable if it loses a review or admits stale state.
 @MainActor
 struct NotebookMutationPlanIntegrationTests {
+    @Test func removingOneMemberDoesNotRewriteSurvivorsAndPermutationIsANoop() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        var saved = try saveSources(f)
+        let target = saved.document.entries[0], sense = target.senses[0]
+        let removedClaims = sense.examples.map { "'" + $0.id.uuidString + "'" }.joined(separator: ",")
+        try f.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER protect_other_claim_delete BEFORE DELETE ON notebook_usages
+            WHEN OLD.id NOT IN (\(removedClaims)) BEGIN SELECT RAISE(ABORT,'Surviving interpretation rewritten'); END;
+            CREATE TEMP TRIGGER protect_other_claim_update BEFORE UPDATE ON notebook_usages
+            BEGIN SELECT RAISE(ABORT,'Interpretation rank updated'); END;
+            CREATE TEMP TRIGGER protect_other_sense_delete BEFORE DELETE ON notebook_senses
+            WHEN OLD.id<>'\(sense.id.uuidString)' BEGIN SELECT RAISE(ABORT,'Surviving sense rewritten'); END;
+            """, errorContext: "Protect unordered members")
+        var permuted = saved.document
+        permuted.catalog.reverse(); permuted.sources.reverse(); permuted.interpretations.reverse()
+        let noop = try f.db.saveLingroveNotebook(permuted, basedOn: saved)
+        #expect(noop.revision == saved.revision)
+        saved = try f.db.removeNotebookSense(sense.id, from: target.id, basedOn: saved)
+        let pending = try f.db.core.scalarInt(sql: """
+            SELECT COUNT(*) FROM notebook_pending_rows r JOIN notebook_pending_transactions t USING(operation_id)
+            WHERE t.revision=?
+            """, values: [.integer(Int64(saved.revision))])
+        #expect(pending < 10)
+        #expect(saved.document.entries.count == 1)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
+    }
+
+    @Test func existingPositionValuesAreIgnoredForMembershipButBodyOrderStillPersists() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let original = try saveSources(f)
+        // Simulate an existing database without migrating or dropping its authored payloads.
+        try f.db.core.execute(sql: "UPDATE notebook_entries SET position=731", values: [])
+        try f.db.core.execute(sql: "UPDATE notebook_senses SET position=951", values: [])
+        try f.db.core.execute(sql: "UPDATE notebook_usages SET position=1234", values: [])
+        var saved = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
+        #expect(saved == original)
+        var entry = try #require(saved.document.entries.first { $0.id == original.document.entries[0].id })
+        entry.senses[0].content = ["Before", "After"].map { .init(content: .text(.init(text: $0))) }
+        saved = try f.db.saveNotebookEntry(entry, basedOn: saved)
+        entry.senses[0].content?.reverse()
+        saved = try f.db.saveNotebookEntry(entry, basedOn: saved)
+        try f.reopen()
+        let reopened = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
+        #expect(reopened.document.entries.first { $0.id == entry.id }?.senses[0].content == entry.senses[0].content)
+        #expect(reopened == saved)
+    }
+
+    @Test func evidenceDeltaKeepsUnrelatedGraphRowsAndMatchesTheFullCodec() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let original = try saveSources(f)
+        var document = original.document
+        let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Synthetic graph node", language: .english)])
+        document.semantics.nodes = [node]
+        document.semantics.patterns = document.entries.map {
+            .init(senseID: $0.senses[0].id, template: "A synthetic pattern")
+        }
+        document.semantics.mappings = zip(document.entries, document.semantics.patterns).map { entry, pattern in
+            .init(nodeID: node.id, senseID: entry.senses[0].id, patternID: pattern.id,
+                evidenceIDs: entry.senses[0].examples.map(\.id), provenance: .init(status: .confirmed))
+        }
+        var saved = try f.db.saveLingroveNotebook(document, basedOn: original)
+        try f.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER protect_graph_nodes BEFORE DELETE ON notebook_meaning_nodes
+            BEGIN SELECT RAISE(ABORT,'Unrelated meaning node rewritten'); END;
+            """, errorContext: "Protect unrelated synthetic graph")
+        for step in 0..<2 {
+            let cache = try #require(f.db.core.notebookSaveCache)
+            var entry = cache.state.entries[0]
+            entry.senses[0].examples[0].meaning = "New reading \(step)"
+            let change = try cache.state.replacing(entry)
+            #expect(change.semanticChange.updatedMappings.count == (step == 0 ? 1 : 0))
+            let delta = try cache.projection.applying(change)
+            let expected = try VocabularyPersistenceCodec.encode(change.document).keyedRows()
+            #expect(try delta.projection.rows(reviewTemplatesPresent: false).keyedRows() == expected)
+            #expect(!delta.changed.contains { [.meaningNodes, .meaningLabels, .usagePatterns].contains($0.entity) })
+            saved = try f.db.saveNotebookEntry(entry, basedOn: saved)
+        }
+        let target = saved.document.entries[0]
+        saved = try f.db.removeNotebookSense(target.senses[0].id, from: target.id, basedOn: saved)
+        #expect(saved.document.semantics.mappings.count == 1)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
+    }
+
     @Test func deletingNoteSourceRetainsMemoryAndCanRestoreMaterial() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let original = try saveSources(f)

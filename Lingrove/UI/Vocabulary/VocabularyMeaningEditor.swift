@@ -76,7 +76,7 @@ struct VocabularyMeaningEditor: View {
             if draft.isNew {
                 Section(String(localized: "My expressions", table: "Vocabulary")) {
                     ForEach(store.entries) { entry in
-                        ForEach(entry.senses.filter { draft.senseIDs.contains($0.id) }) { sense in
+                        ForEach(entry.presentationSenses.filter { draft.senseIDs.contains($0.id) }) { sense in
                             HStack {
                                 Text(entry.expression).fontWeight(.medium)
                                 Text(sense.displayTitle).foregroundStyle(.secondary).lineLimit(1)
@@ -139,7 +139,7 @@ struct VocabularyMeaningExpressionPicker: View {
             TextField(String(localized: "Search vocabulary", table: "Vocabulary"), text: $query)
             ForEach(entries.filter { VocabularyPolicy.matches($0, query: query) }) { entry in
                 Section(entry.expression) {
-                    ForEach(entry.senses) { sense in
+                    ForEach(entry.presentationSenses) { sense in
                         Toggle(sense.displayTitle, isOn: Binding(get: { selected.contains(sense.id) }, set: { value in
                             if value {
                                 if allowsMultiple { selected.insert(sense.id) } else { selected = [sense.id] }

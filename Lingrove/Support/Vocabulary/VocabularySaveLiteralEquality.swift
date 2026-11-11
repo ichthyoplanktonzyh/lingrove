@@ -4,6 +4,9 @@ import Foundation
 /// String equality intentionally folds canonical normalization. This helper examines only the
 /// small edited subtree; it never fingerprints the corpus or authorizes a database write.
 nonisolated enum VocabularySaveLiteralEquality {
+    private static let membershipFields: Set<String> = [
+        "senses", "examples", "tags", "mergedFrom", "standaloneMeanings", "alternateMeanings", "translationVariants"
+    ]
     static func equal<Value: Encodable>(_ lhs: Value, _ rhs: Value) throws -> Bool {
         try bytes(lhs) == bytes(rhs)
     }
@@ -15,7 +18,7 @@ nonisolated enum VocabularySaveLiteralEquality {
     }
 
     /// Codable uses unordered arrays for Set and enum-keyed Dictionary fields. Sort only those
-    /// existing model fields; the order of senses/examples/layouts/ordinary arrays remains data.
+    /// existing model fields and corpus memberships. Authored body/layout arrays remain ordered.
     /// JSONSerialization preserves literal strings while giving dictionaries a stable key order.
     private static func ordered(_ value: Any, field: String? = nil) -> Any {
         if let object = value as? [String: Any] {
@@ -29,6 +32,13 @@ nonisolated enum VocabularySaveLiteralEquality {
             let pairs = stride(from: 0, to: array.count, by: 2).map { [ordered(array[$0]), ordered(array[$0 + 1])] }
             return pairs.sorted { String(describing: $0[0]) < String(describing: $1[0]) }.flatMap { $0 }
         }
-        return array.map { ordered($0) }
+        let values = array.map { ordered($0) }
+        if let field, membershipFields.contains(field) {
+            let keyed = values.map { item in
+                (item, (try? JSONSerialization.data(withJSONObject: item, options: [.sortedKeys, .fragmentsAllowed])) ?? Data())
+            }
+            return keyed.sorted { $0.1.lexicographicallyPrecedes($1.1) }.map(\.0)
+        }
+        return values
     }
 }

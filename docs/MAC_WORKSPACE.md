@@ -512,8 +512,61 @@ write protection, rollback and indexed validation authority. The previous checkp
 
 The archive forwards an optional receipt between exact notebook versions. `VocabularyStore`
 patches affected entries or retains its index for organization-only changes. A missing receipt,
-a revision gap or arbitrary entry reorder still uses the complete read worker. Neither cache
+a revision gap still uses the complete read worker. Neither cache
 nor receipt is accepted as write authority. `SOURCE_LAYOUT.md` records type ownership and flow.
 Batch index patches retire old owners together before installing replacements, protecting
 headword-key exchanges and historical aliases moved between owners. A focused native test
 checks that atomic projection behavior independently of persistence timings.
+
+## Unordered corpus membership (2026-11-11)
+
+The user clarified that senses and independent examples have no business ordinal. Corpus
+membership and semantic/directory relationships are now compared by identity; authored
+paragraphs/images, original text/ranges, explanation history and template structures keep
+their sequence. The accepted trade-off is in [ADR 0004](adr/0004-unordered-corpus-membership.md).
+
+The row codec ignores old membership positions without rewriting existing payloads on open,
+and new membership rows store zero. Deletions therefore do not compact or journal survivors.
+Wire envelopes retain rank for compatibility, preserve confirmed values on upload and ignore
+rank-only differences for membership; add/reset fences still protect intentional removals.
+Display/default selection uses stable creation-time/identity rules, while saved review plans
+and Notes retain explicit example IDs. Literal editor merging ignores permutations while
+retaining authored Unicode bytes and body order.
+
+Entry reconciliation uses a connection-owned reverse semantic index and a restricted change
+proof. Only dependent patterns/mappings and evidence retractions are projected; full imports,
+restores and arbitrary graph changes retain complete validation. Arrays still incur linear
+copy/compaction costs; neither the new model nor this checkpoint promises constant total latency.
+
+The targeted comparison uses the same closed 10,000-entry seed (20,000 senses, 40,000 examples,
+14,000 meaning nodes, 2,000 enrolled senses and 1,000 rating records) for three alternating trials
+of checkpoint `4c73ddd3` and this change, in Release. Median engine milliseconds are:
+
+| Operation | Before | After |
+|---|---:|---:|
+| Entry note save | 205.953 | 208.928 |
+| Front sense removal | 1491.587 | 169.007 |
+| Tail sense removal | 185.982 | 173.974 |
+| Enrolled sense removal | 1525.295 | 175.515 |
+
+This is a focused comparison, not a repeat of the 83-window inventory or measured UI/frame
+latency. Connection initialization and first notebook load are outside the windows. The
+[raw samples and seed hash](benchmarks/corpus-membership-2026-11-11.focused.json) preserve all
+trials; every input copy passed SHA-256 equality and every trial retained all 1,000 ratings.
+The ordinary save is effectively unchanged in this small sample. Position and association
+are not independently controlled by the two removal cases; their component shares were not
+profiled separately. Core checks actually passed 117 shared tests (three opt-in real-server interop bridges were
+skipped), plus 101 engine Swift Testing and
+40 engine XCTest checks. Trigger-protected tests reject survivor rewrites, and permutation-only
+saves retain the current revision.
+
+Final isolated native Release validation actually executed 27 passing checks,
+zero failures and 1 intentionally disabled visible-UI journey. This includes
+identity-based browser behavior, literal editor permutations/Unicode/body order, repository
+save/reopen and account-generation fencing. Strict SwiftLint and diff checks passed. The
+private hosts, synthetic trial databases, copied package source and repository DerivedData
+were removed and their absence verified. The installed Dev application/data were not accessed
+or replaced. Final native evidence is under
+`build/corpus-operation-benchmark/unordered-membership-native-final/`; focused engine evidence
+is under `build/corpus-data-layer-paired/unordered-membership-10000/`. No complete operation
+inventory or actual frame/input latency is claimed by this checkpoint.

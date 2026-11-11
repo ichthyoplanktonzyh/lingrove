@@ -33,8 +33,7 @@ nonisolated enum VocabularyClassificationRows {
 
     static func index(_ rows: [VocabularyDatabaseRecord]) throws -> VocabularyClassificationIndex {
         func records<T>(_ table: Row.Table, value: (Row.Payload) -> T?) throws -> [T] {
-            let records = rows.filter { $0.table == table }.sorted { $0.position < $1.position }
-            guard records.map(\.position) == Array(records.indices) else { throw VocabularyError.invalidArchive }
+            let records = rows.filter { $0.table == table }.sorted { $0.id < $1.id }
             return try records.map { row in
                 guard let value = value(row.payload) else { throw VocabularyError.invalidArchive }; return value
             }

@@ -61,12 +61,12 @@ final class AnkiReviewSession: ObservableObject {
         var initial = baseline?.plan ?? ReviewCardPolicy.initialPlan(sense)
         if let cardID, baseline == nil {
             initial = ReviewPlan(id: cardID, name: String(localized: "New card", table: "Vocabulary"),
-                layout: ReviewLayoutPolicy.preset(0), exampleID: sense.examples.first?.id)
+                layout: ReviewLayoutPolicy.preset(0), exampleID: sense.defaultExample?.id)
         }
         if baseline == nil && cardID == nil {
             initial.recognition = initialDefaultRecognition
             initial.gap = initialDefaultGap &&
-                sense.examples.first.map { ReviewCardPolicy.gap(in: $0.text, ranges: $0.ranges, kind: entry.kind) != nil } == true
+                sense.defaultExample.map { ReviewCardPolicy.gap(in: $0.text, ranges: $0.ranges, kind: entry.kind) != nil } == true
             if !initial.recognition && !initial.gap { initial.recognition = true }
         }
         plan = initial; bindingID = baseline?.activeBindingID

@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--skip-smoke", action="store_true")
     parser.add_argument("--tail-only", action="store_true", help="Rerun the corrected CLI retry and remaining destinations")
     parser.add_argument("--native-checks", action="store_true", help="Run affected native repository/lifecycle checks before timing")
+    parser.add_argument("--checks-only", action="store_true", help="Run affected native checks without the operation inventory")
     parser.add_argument("--keep-build-on-failure", action="store_true")
     parser.add_argument("--packages-from", type=Path, help="Reuse this benchmark's package cache after a failed build")
     args = parser.parse_args()
@@ -140,13 +141,15 @@ def main():
                 if code or summary.get("failedTests") or (summary.get("skippedTests") and not optional_ui_skip) or not summary.get("passedTests"):
                     raise RuntimeError(label + " did not execute passing measurements")
 
-            if args.native_checks:
+            if args.native_checks or args.checks_only:
                 execute("native-checks", "100", 1, selectors=[
                     "LingroveTests/VocabularyUnifiedRepositoryTests",
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
                     "LingroveTests/NotebookProgressModelIntegrationTests"])
-            if args.tail_only:
+            if args.checks_only:
+                completed = True
+            elif args.tail_only:
                 execute("tail", args.sizes, 1, mode="tail")
             else:
                 if not args.skip_smoke:

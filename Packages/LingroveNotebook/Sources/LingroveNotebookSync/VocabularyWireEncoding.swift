@@ -11,7 +11,7 @@ nonisolated enum VocabularyWireCoding {
     static func ranges(_ values: [VocabularyTextRange]) -> J {
         .array(values.map { .object(["location": .number(Double($0.location)), "length": .number(Double($0.length))]) })
     }
-    static func meanings(_ values: [VocabularyMeaning]) -> J { .array(values.map { .object(["text": .string($0.text), "language": language($0.language)]) }) }
+    static func meanings(_ values: [VocabularyMeaning]) -> J { .array(values.sorted(by: VocabularyMembershipPolicy.meaningOrder).map { .object(["text": .string($0.text), "language": language($0.language)]) }) }
     static func provenance(_ value: VocabularySemanticProvenance) -> J {
         .object(["origin": .string(value.origin.rawValue), "status": .string(value.status.rawValue),
                  "source": .string(value.source), "confidence": .optional(value.confidence, J.number)])
@@ -84,7 +84,7 @@ nonisolated struct VocabularyWireEncoder {
 
     mutating func append(_ kind: VocabularyWireEntityKind, _ id: String, rank: Int? = nil, _ fields: [String: J]) {
         var value = fields
-        if let rank { value["rank"] = .rank(rank) }
+        if let rank { value["rank"] = .rank(kind.hasBusinessOrder ? rank : 0) }
         entities.append(.init(entityType: kind, entityID: id, fields: value))
     }
     static func id(_ value: UUID) -> String { value.uuidString.lowercased() }
@@ -98,10 +98,10 @@ nonisolated struct VocabularyWireEncoder {
                 append(.sense, Self.id(sense.id), rank: rank, ["entryId": .uuid(entry.id), "meaning": .string(sense.meaning),
                     "meaningLanguage": C.language(sense.meaningLanguage), "meaningOrigin": .string(sense.meaningOrigin.rawValue),
                     "standaloneMeanings": C.meanings(sense.standaloneMeanings), "alternateMeanings": C.meanings(sense.alternateMeanings),
-                    "mergedFrom": .array(sense.mergedFrom.map(J.uuid)), "createdWithoutContext": .optional(sense.createdWithoutContext, J.bool),
+                    "mergedFrom": .array(sense.mergedFrom.sorted { $0.uuidString < $1.uuidString }.map(J.uuid)), "createdWithoutContext": .optional(sense.createdWithoutContext, J.bool),
                     "createdAt": .date(sense.createdAt), "updatedAt": .date(sense.updatedAt),
                     "isSavedWithoutContext": .bool(sense.isSavedWithoutContext), "note": .string(sense.note),
-                    "tags": .array(sense.tags.map(J.string)), "savedAt": .optional(sense.savedAt, J.date),
+                    "tags": .array(sense.tags.sorted().map(J.string)), "savedAt": .optional(sense.savedAt, J.date),
                     "contentPresent": .bool(sense.content != nil), "reviewCardsPresent": .bool(sense.reviewCards != nil)])
                 explanations(sense.explanations, kind: .senseExplanation, owner: sense.id, field: "senseId")
             }
@@ -165,7 +165,7 @@ nonisolated struct VocabularyWireEncoder {
         for (rank, pattern) in index.patterns.enumerated() {
             append(.usagePattern, Self.id(pattern.id), rank: rank, ["senseId": .uuid(pattern.senseID), "template": .string(pattern.template),
                 "formality": .string(pattern.formality.rawValue), "medium": .string(pattern.medium.rawValue), "region": .string(pattern.region),
-                "note": .string(pattern.note), "collocations": .array(pattern.collocations.map(J.string)), "provenance": C.provenance(pattern.provenance)])
+                "note": .string(pattern.note), "collocations": .array(pattern.collocations.sorted().map(J.string)), "provenance": C.provenance(pattern.provenance)])
             for (rank, slot) in pattern.slots.enumerated() {
                 append(.patternSlot, Self.id(slot.id), rank: rank, ["patternId": .uuid(pattern.id), "name": .string(slot.name), "constraint": .string(slot.constraint)])
             }

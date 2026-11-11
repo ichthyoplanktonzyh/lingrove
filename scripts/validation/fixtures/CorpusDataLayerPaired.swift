@@ -73,20 +73,29 @@ func main() throws {
         return result
     }
     var entry = scope.document.entries[53]
+    let editedSenseID = entry.senses[0].id
     entry.senses[0].note = "A paired narrow edit"
     scope = try measure("entry_save_ms") { try db.saveNotebookEntry(entry, basedOn: scope) }
-    var full = scope.document
-    full.catalog[54].senses.append(.init(id: identifier(9_000_000), meaning: "New synthetic sense", createdAt: Date(), updatedAt: Date()))
-    scope = try measure("full_save_ms") { try db.saveLingroveNotebook(full, basedOn: scope) }
-    scope = try measure("read_after_full_save_ms") { try db.loadLingroveNotebook(workspaceId: workspace) }
+    let focused = ProcessInfo.processInfo.environment["LINGROVE_PAIRED_FOCUS"] == "1"
+    if !focused {
+        var full = scope.document
+        full.catalog[54].senses.append(.init(id: identifier(9_000_000), meaning: "New synthetic sense", createdAt: Date(), updatedAt: Date()))
+        scope = try measure("full_save_ms") { try db.saveLingroveNotebook(full, basedOn: scope) }
+        scope = try measure("read_after_full_save_ms") { try db.loadLingroveNotebook(workspaceId: workspace) }
+    }
     scope = try measure("remove_front_ms") {
         try db.removeNotebookSense(identifier(2_000_000 + 58 * 2), from: identifier(1_000_000 + 58), basedOn: scope)
     }
     scope = try measure("remove_tail_ms") {
         try db.removeNotebookSense(identifier(2_000_000 + (count - 2) * 2), from: identifier(1_000_000 + count - 2), basedOn: scope)
     }
-    precondition(scope.document.entries.first { $0.id == entry.id }?.senses.first?.note == "A paired narrow edit")
-    precondition(scope.document.entries.first { $0.id == identifier(1_000_054) }?.senses.count == 3)
+    if focused {
+        scope = try measure("remove_enrolled_ms") {
+            try db.removeNotebookSense(identifier(2_000_000 + 60 * 2), from: identifier(1_000_000 + 60), basedOn: scope)
+        }
+    }
+    precondition(scope.document.entries.first { $0.id == entry.id }?.senses.first { $0.id == editedSenseID }?.note == "A paired narrow edit")
+    if !focused { precondition(scope.document.entries.first { $0.id == identifier(1_000_054) }?.senses.count == 3) }
     let events = try db.loadReviewEventCount()
     precondition(events == 1000)
     print(String(decoding: try JSONEncoder().encode(samples), as: UTF8.self))

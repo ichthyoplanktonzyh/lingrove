@@ -8,6 +8,28 @@ import Testing
 /// repaint, aliases must still navigate, and UI state must not invalidate stored projections.
 @MainActor
 struct VocabularyBrowsingScaleTests {
+    @Test func literalDraftComparisonIgnoresMembersButPreservesAuthoredBytesAndBodyOrder() throws {
+        let now = Date()
+        let examples = ["First", "Second"].map {
+            VocabularyExample(id: UUID(), text: $0, translation: "", ranges: [], completeness: .sentence,
+                meaning: "", createdAt: now)
+        }
+        let blocks = ["Before", "After"].map { VocabularyContentBlock(content: .text(.init(text: $0))) }
+        let first = VocabularySense(id: UUID(), meaning: "one", note: "caf\u{00e9}", examples: examples,
+            content: blocks, createdAt: now, updatedAt: now)
+        let second = VocabularySense(id: UUID(), meaning: "two", createdAt: now, updatedAt: now)
+        let entry = VocabularyEntry(id: UUID(), expression: "word", dictionaryForm: "word", language: .english,
+            kind: .word, senses: [first, second], createdAt: now, updatedAt: now)
+        var reversed = entry
+        reversed.senses[0].examples.reverse(); reversed.senses.reverse()
+        #expect(try VocabularySaveLiteralEquality.equal(entry, reversed))
+        reversed = entry; reversed.senses[0].note = "cafe\u{0301}"
+        #expect(entry == reversed)
+        #expect(try !VocabularySaveLiteralEquality.equal(entry, reversed))
+        reversed = entry; reversed.senses[0].content?.reverse()
+        #expect(try !VocabularySaveLiteralEquality.equal(entry, reversed))
+    }
+
     @Test func batchIndexChangeRetiresAllOldOwnersBeforeInstallingSwappedKeys() throws {
         let now = Date(), alias = UUID()
         let entries = ["harbor", "forest"].map { word in

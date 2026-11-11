@@ -14,10 +14,10 @@ struct VocabularyWireProjectionCodecTests {
         let projection = try VocabularyWireProjectionCodec.project(document, notebookID: VocabularyWireTestFixture.notebookID)
         let restored = try VocabularyWireProjectionCodec.materializeComplete(projection.entities,
             notebookID: VocabularyWireTestFixture.notebookID, preserving: projection.privateState)
-        #expect(restored.document.catalog[0].senses[0].content == document.catalog[0].senses[0].content)
+        #expect(restored.document.catalog.first { $0.id == document.catalog[0].id }?.senses.first { $0.id == document.catalog[0].senses[0].id }?.content == document.catalog[0].senses[0].content)
     }
 
-    @Test("A strict-valid graph round-trips all wire entity families and ordering")
+    @Test("A strict-valid graph round-trips memberships and authored ordering")
     func completeGraphRoundTripsInRankOrder() throws {
         let document = try VocabularyWireTestFixture.document()
         try VocabularyDocumentValidation.validate(document)
@@ -40,17 +40,17 @@ struct VocabularyWireProjectionCodecTests {
         )
 
         #expect(materialized.document == document)
-        #expect(materialized.document.catalog.map(\.id) == document.catalog.map(\.id))
-        #expect(materialized.document.sources.map(\.id) == document.sources.map(\.id))
-        #expect(materialized.document.occurrences.map(\.id) == document.occurrences.map(\.id))
-        #expect(materialized.document.interpretations.map(\.id) == document.interpretations.map(\.id))
-        #expect(materialized.document.savedSenses.map(\.id) == document.savedSenses.map(\.id))
-        #expect(materialized.document.semantics.nodes.map(\.id) == document.semantics.nodes.map(\.id))
-        #expect(materialized.document.classification.categories.map(\.id) == document.classification.categories.map(\.id))
-        #expect(materialized.document.catalog[0].createdAt.timeIntervalSinceReferenceDate == 811_111_111.125)
-        #expect(materialized.document.sources[1].encounteredAt.timeIntervalSinceReferenceDate == 811_111_119.1234567)
-        #expect(materialized.document.catalog[0].language == nil)
-        #expect(materialized.document.catalog[0].senses[0].meaningLanguage == nil)
+        #expect(Set(materialized.document.catalog.map(\.id)) == Set(document.catalog.map(\.id)))
+        #expect(Set(materialized.document.sources.map(\.id)) == Set(document.sources.map(\.id)))
+        #expect(Set(materialized.document.occurrences.map(\.id)) == Set(document.occurrences.map(\.id)))
+        #expect(Set(materialized.document.interpretations.map(\.id)) == Set(document.interpretations.map(\.id)))
+        #expect(Set(materialized.document.savedSenses.map(\.id)) == Set(document.savedSenses.map(\.id)))
+        #expect(Set(materialized.document.semantics.nodes.map(\.id)) == Set(document.semantics.nodes.map(\.id)))
+        #expect(Set(materialized.document.classification.categories.map(\.id)) == Set(document.classification.categories.map(\.id)))
+        #expect(materialized.document.catalog.first { $0.id == document.catalog[0].id }?.createdAt.timeIntervalSinceReferenceDate == 811_111_111.125)
+        #expect(materialized.document.sources.first { $0.id == document.sources[1].id }?.encounteredAt.timeIntervalSinceReferenceDate == 811_111_119.1234567)
+        #expect(materialized.document.catalog.first { $0.id == document.catalog[0].id }?.language == nil)
+        #expect(materialized.document.catalog.first { $0.id == document.catalog[0].id }?.senses.first { $0.id == document.catalog[0].senses[0].id }?.meaningLanguage == nil)
         #expect(materialized.unattachedPrivateState.reviews.isEmpty)
         #expect(materialized.unattachedPrivateState.explanations.isEmpty)
     }

@@ -24,7 +24,7 @@ struct VocabularyEntryEditor: View {
         _notebookScope = State(initialValue: store.operationScope)
         self.store = store
         _baseline = State(initialValue: entry)
-        let resolvedSenseID = senseID ?? entry.senses.first?.id ?? UUID()
+        let resolvedSenseID = senseID ?? entry.defaultSense?.id ?? UUID()
         self.senseID = resolvedSenseID
         _draft = State(initialValue: entry)
         _tagList = State(initialValue: entry.senses.first { $0.id == resolvedSenseID }?.tags ?? [])
