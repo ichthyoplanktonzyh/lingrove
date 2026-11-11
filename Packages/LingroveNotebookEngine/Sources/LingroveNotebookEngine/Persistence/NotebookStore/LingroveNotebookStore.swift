@@ -100,8 +100,18 @@ public struct LingroveNotebookStore {
             // canonical normalization, just as the remote apply path does.
             let changes = try self.replaceRows(document: next, previous: current.document, workspaceId: current.workspaceId,
                 preservingLiteralPayloads: true)
+            // The actual row delta decides whether rendered material can have changed.
+            // Organization-only CLI/import work must not refresh every saved review card.
+            let changesMaterial = (changes.changed + changes.removed).contains {
+                switch $0.entity {
+                case .meaningNodes, .meaningLabels, .meaningRoles, .usagePatterns, .patternSlots, .meaningMappings,
+                     .mappingRoles, .mappingEvidence, .meaningRelations, .retrievalCues, .cueTargets,
+                     .classificationFrameworks, .categories, .categoryParents, .categoryMemberships, .categoryOverrides: false
+                default: true
+                }
+            }
             return try finishSave(next, current: current, changed: changes.changed, removed: changes.removed,
-                publicChange: publicChange, operationId: operationId)
+                publicChange: publicChange, operationId: operationId, reviewSenseIDs: changesMaterial ? nil : [])
     }
 
     /// Both full and narrow saves finish through the same CAS/header/journal/review transaction.

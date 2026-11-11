@@ -2,20 +2,23 @@ import Foundation
 import LingroveNotebook
 
 /// The connection retains this lossless row projection beside its validated document. A narrow
-/// entry command replaces only entry/interpretation/collection groups and appended evidence;
-/// unchanged category, template and corpus payloads are reused without encoding or diffing them.
+/// entry command replaces only entry/interpretation/collection groups and appended evidence.
+/// Organization commands replace graph/directory rows while reusing lexical payloads.
+/// Unchanged rows keep their stored bytes without another JSON encoding pass.
 /// This is in-memory derived state, never a second persistence format or a caller baseline.
 public nonisolated struct VocabularyEntryRowProjection: Sendable {
     private typealias Key = VocabularyPersistenceRow.Key
     private var keyed: [Key: VocabularyPersistenceRow]
     private var groups: [Key: Set<Key>]
     private var semanticKeys: Set<Key>
+    private var classificationKeys: Set<Key>
 
     public init(_ rows: VocabularyPersistenceRows) throws {
-        keyed = try rows.keyedRows(); groups = [:]; semanticKeys = []
+        keyed = try rows.keyedRows(); groups = [:]; semanticKeys = []; classificationKeys = []
         for row in rows.rows {
             if let root = try Self.root(row, rows: keyed) { groups[root, default: []].insert(row.key) }
             if Self.isSemantic(row.entity) { semanticKeys.insert(row.key) }
+            if Self.isClassification(row.entity) { classificationKeys.insert(row.key) }
         }
     }
 
@@ -26,6 +29,24 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
 
     public func canAppend(_ rows: [VocabularyPersistenceRow]) -> Bool {
         rows.allSatisfy { keyed[$0.key] == nil }
+    }
+
+    /// These indexes contain only organization rows. Lexical/source payloads remain in the
+    /// existing projection, and equal organization rows reuse their saved bytes as well.
+    public func applyingOrganization(semantics: VocabularySemanticIndex?, classification: VocabularyClassificationIndex?)
+        throws -> VocabularyEntryRowChange {
+        var next = self, delta = Delta()
+        if let semantics {
+            let graph = VocabularySemanticDatabaseProjection.rows(semantics)
+            try next.replace(keys: semanticKeys, records: graph, preservingLiteralPayloads: false, delta: &delta)
+            next.semanticKeys = Set(graph.map { .init(entity: $0.table, id: $0.id) })
+        }
+        if let classification {
+            let directory = VocabularyClassificationRows.rows(classification)
+            try next.replace(keys: classificationKeys, records: directory, preservingLiteralPayloads: false, delta: &delta)
+            next.classificationKeys = Set(directory.map { .init(entity: $0.table, id: $0.id) })
+        }
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 
     public func applying(_ change: VocabularyEntrySaveChange) throws -> VocabularyEntryRowChange {
@@ -151,6 +172,13 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         switch entity {
         case .meaningNodes, .meaningLabels, .meaningRoles, .usagePatterns, .patternSlots, .meaningMappings,
              .mappingRoles, .mappingEvidence, .meaningRelations, .retrievalCues, .cueTargets: true
+        default: false
+        }
+    }
+
+    private static func isClassification(_ entity: VocabularyPersistenceEntity) -> Bool {
+        switch entity {
+        case .classificationFrameworks, .categories, .categoryParents, .categoryMemberships, .categoryOverrides: true
         default: false
         }
     }

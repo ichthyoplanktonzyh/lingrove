@@ -32,6 +32,44 @@ public nonisolated enum VocabularyWirePublicIntent {
             digest(newEncoder.encode(fragment(after), notebookID: notebookID))
     }
 
+    /// Organization edits leave corpus and evidence intact. Encode only changed graph records
+    /// through the existing public leaf encoder, preserving private/timestamp exclusions.
+    public static func hasOrganizationChanges(from previous: VocabularyDocument, to next: VocabularyDocument,
+                                               notebookID: UUID) throws -> Bool {
+        let nodes = try changed(previous.semantics.nodes, next.semantics.nodes)
+        let patterns = try changed(previous.semantics.patterns, next.semantics.patterns)
+        let mappings = try changed(previous.semantics.mappings, next.semantics.mappings)
+        let relations = try changed(previous.semantics.relations, next.semantics.relations)
+        let cues = try changed(previous.semantics.cues, next.semantics.cues)
+        let targets = try changed(previous.semantics.cueTargets, next.semantics.cueTargets)
+        let frameworks = try changed(previous.classification.frameworks, next.classification.frameworks)
+        let categories = try changed(previous.classification.categories, next.classification.categories)
+        let parents = try changed(previous.classification.parents, next.classification.parents)
+        let memberships = try changed(previous.classification.memberships, next.classification.memberships)
+        let overrides = try changed(previous.classification.overrides, next.classification.overrides)
+        let old = VocabularyDocument(catalog: [], sources: [], occurrences: [], interpretations: [],
+            semantics: .init(nodes: nodes.0, patterns: patterns.0, mappings: mappings.0, relations: relations.0,
+                cues: cues.0, cueTargets: targets.0),
+            classification: .init(frameworks: frameworks.0, categories: categories.0, parents: parents.0,
+                memberships: memberships.0, overrides: overrides.0))
+        let new = VocabularyDocument(catalog: [], sources: [], occurrences: [], interpretations: [],
+            semantics: .init(nodes: nodes.1, patterns: patterns.1, mappings: mappings.1, relations: relations.1,
+                cues: cues.1, cueTargets: targets.1),
+            classification: .init(frameworks: frameworks.1, categories: categories.1, parents: parents.1,
+                memberships: memberships.1, overrides: overrides.1))
+        var oldEncoder = VocabularyWireEncoder(), newEncoder = VocabularyWireEncoder()
+        return try digest(oldEncoder.encode(old, notebookID: notebookID)) != digest(newEncoder.encode(new, notebookID: notebookID))
+    }
+
+    private static func changed<T: Identifiable & Equatable>(_ before: [T], _ after: [T]) throws -> ([T], [T]) where T.ID == UUID {
+        guard Set(before.map(\.id)).count == before.count,
+              Set(after.map(\.id)).count == after.count else { throw VocabularyError.invalidContent }
+        guard before != after else { return ([], []) }
+        let old = Dictionary(uniqueKeysWithValues: before.map { ($0.id, $0) })
+        let new = Dictionary(uniqueKeysWithValues: after.map { ($0.id, $0) })
+        return (before.filter { new[$0.id] != $0 }, after.filter { old[$0.id] != $0 })
+    }
+
     private static func digest(_ document: VocabularyDocument, notebookID: UUID) throws -> Data {
         let entities = try VocabularyWireProjectionCodec.project(document, notebookID: notebookID).entities
         return try digest(entities)

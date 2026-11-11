@@ -1,7 +1,8 @@
 import Foundation
 
-/// A reusable, fully checked notebook value for narrow lexical edits. A SQL connection owns one
-/// of these alongside its durable snapshot; no caller-supplied baseline grants it authority.
+/// A reusable, fully checked notebook value owned by one SQL connection beside its durable
+/// snapshot. Entry writers replace lexical subtrees, while organization writers borrow the
+/// unchanged entries to validate their graph. No caller-supplied baseline grants it authority.
 /// Full import/restore still uses full document preparation. This value keeps the joined entries
 /// and their validated ID sets so editing one entry does not revalidate unrelated explanations,
 /// review drafts, or the unchanged classification directory.
@@ -18,6 +19,28 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
 
     private init(document: VocabularyDocument, entries: [VocabularyEntry], identifiers: [UUID: Set<UUID>]) {
         self.document = document; self.entries = entries; self.identifiers = identifiers
+    }
+
+    /// Organization commands cannot alter lexical evidence. Reuse its checked entries and ID
+    /// ownership, then validate the changed graph/directory against that same saved corpus.
+    public func editingOrganization(_ edit: VocabularyOrganizationEdit) throws -> VocabularyEntrySaveState {
+        try Task.checkCancellation()
+        let result = try edit.applying(semantics: document.semantics, classification: document.classification)
+        if result.semantics == document.semantics && result.classification == document.classification { return self }
+        if result.semantics != document.semantics {
+            try VocabularySemanticPolicy.validate(result.semantics, entries: entries)
+        }
+        // A directory references meaning IDs, not their text. A definition-only semantic
+        // edit keeps its existing membership proof, while node changes recheck those links.
+        if result.classification != document.classification ||
+            result.semantics.nodes.map(\.id) != document.semantics.nodes.map(\.id) {
+            try VocabularyClassificationPolicy.validate(result.classification, nodes: result.semantics.nodes)
+        }
+        try Task.checkCancellation()
+        var next = document
+        next.semantics = result.semantics
+        next.classification = result.classification
+        return .init(document: next, entries: entries, identifiers: identifiers)
     }
 
     /// The command can change just this saved entry and its examples. It cannot

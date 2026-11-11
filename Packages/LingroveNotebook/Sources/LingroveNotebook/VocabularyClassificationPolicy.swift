@@ -172,35 +172,7 @@ public nonisolated enum VocabularyClassificationPolicy {
     /// Entity-level compare-and-swap preserves independent CLI changes while a sheet is open.
     public static func merge(_ edited: VocabularyClassificationIndex, baseline: VocabularyClassificationIndex,
                       current: VocabularyClassificationIndex) throws -> VocabularyClassificationIndex {
-        let builtIns = Set(baseline.categories.filter { $0.frameworkID != nil }.map(\.id))
-        guard edited.frameworks == baseline.frameworks,
-              edited.categories.filter({ $0.frameworkID != nil }) == baseline.categories.filter({ $0.frameworkID != nil }),
-              edited.parents.filter({ builtIns.contains($0.categoryID) }) ==
-                baseline.parents.filter({ builtIns.contains($0.categoryID) }) else {
-            throw VocabularyError.invalidContent
-        }
-        var result = current
-        result.categories = try mergeRows(edited.categories, baseline: baseline.categories, current: current.categories)
-        result.parents = try mergeRows(edited.parents, baseline: baseline.parents, current: current.parents)
-        result.memberships = try mergeRows(edited.memberships, baseline: baseline.memberships,
-            current: current.memberships)
-        result.overrides = try mergeRows(edited.overrides, baseline: baseline.overrides, current: current.overrides)
-        return result
-    }
-
-    private static func mergeRows<T: Identifiable & Equatable>(_ edited: [T], baseline: [T], current: [T]) throws -> [T]
-        where T.ID == UUID {
-        var result = current
-        for before in baseline where !edited.contains(where: { $0.id == before.id }) {
-            guard current.first(where: { $0.id == before.id }) == before else { throw VocabularyError.editConflict }
-            result.removeAll { $0.id == before.id }
-        }
-        for after in edited where baseline.first(where: { $0.id == after.id }) != after {
-            let before = baseline.first { $0.id == after.id }, live = current.first { $0.id == after.id }
-            guard live == before || live == after else { throw VocabularyError.editConflict }
-            if let position = result.firstIndex(where: { $0.id == after.id }) { result[position] = after } else { result.append(after) }
-        }
-        return result
+        try VocabularyOrganizationEdit.Classification(edited: edited, baseline: baseline).applying(to: current)
     }
 
     private static func identified<T: Identifiable>(_ values: [T]) throws -> [UUID: T] where T.ID == UUID {

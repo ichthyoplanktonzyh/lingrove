@@ -131,34 +131,7 @@ public nonisolated enum VocabularySemanticPolicy {
     /// after a sheet opened. A concurrent change to the same record produces an explicit conflict.
     public static func merge(_ edited: VocabularySemanticIndex, baseline: VocabularySemanticIndex,
                       current: VocabularySemanticIndex) throws -> VocabularySemanticIndex {
-        .init(nodes: try mergeRows(edited.nodes, baseline.nodes, current.nodes),
-              patterns: try mergeRows(edited.patterns, baseline.patterns, current.patterns),
-              mappings: try mergeRows(edited.mappings, baseline.mappings, current.mappings),
-              relations: try mergeRows(edited.relations, baseline.relations, current.relations),
-              cues: try mergeRows(edited.cues, baseline.cues, current.cues),
-              cueTargets: try mergeRows(edited.cueTargets, baseline.cueTargets, current.cueTargets))
-    }
-
-    private static func mergeRows<T: Identifiable & Equatable>(_ edited: [T], _ baseline: [T], _ current: [T]) throws -> [T]
-        where T.ID == UUID {
-        guard Set(edited.map(\.id)).count == edited.count else { throw VocabularyError.invalidContent }
-        var result = current
-        for value in edited {
-            let before = baseline.first { $0.id == value.id }
-            guard before != value else { continue }
-            if let position = result.firstIndex(where: { $0.id == value.id }) {
-                guard result[position] == before || result[position] == value else { throw VocabularyError.editConflict }
-                result[position] = value
-            } else {
-                guard before == nil else { throw VocabularyError.editConflict }
-                result.append(value)
-            }
-        }
-        for before in baseline where !edited.contains(where: { $0.id == before.id }) {
-            if let value = result.first(where: { $0.id == before.id }), value != before { throw VocabularyError.editConflict }
-            result.removeAll { $0.id == before.id }
-        }
-        return result
+        try VocabularyOrganizationEdit.Semantic(edited: edited, baseline: baseline).applying(to: current)
     }
 
     /// Lexical deletion/merge already owns the transaction. Reconcile only previously valid
@@ -167,6 +140,30 @@ public nonisolated enum VocabularySemanticPolicy {
     public static func reconcile(_ index: inout VocabularySemanticIndex, previous: VocabularyDocument,
                           entries: [VocabularyEntry]) {
         reconcile(&index, previous: previous, previousEntries: previous.entries, entries: entries)
+    }
+
+    /// A sense update keeps lexical owners and immutable evidence rows intact. Correcting text,
+    /// source kind or ranges creates another occurrence, so accepted claim identity plus its
+    /// occurrence/meaning detects invalidated citations without rebuilding every example.
+    static func reconcileEvidence(senseID: UUID, in index: inout VocabularySemanticIndex,
+                                         previous: [VocabularyInterpretation], current: [VocabularyInterpretation]) {
+        let before = previous.filter { $0.senseID == senseID && $0.status == .accepted }
+        let after = Dictionary(uniqueKeysWithValues: current.filter {
+            $0.senseID == senseID && $0.status == .accepted
+        }.map { ($0.id, $0) })
+        let invalid = Set(before.compactMap { claim -> UUID? in
+            guard let next = after[claim.id] else { return claim.id }
+            return claim.occurrenceID != next.occurrenceID || claim.meaning != next.meaning ||
+                claim.meaningLanguage != next.meaningLanguage ? claim.id : nil
+        })
+        guard !invalid.isEmpty else { return }
+        for position in index.mappings.indices where index.mappings[position].senseID == senseID {
+            let count = index.mappings[position].evidenceIDs.count
+            index.mappings[position].evidenceIDs.removeAll { invalid.contains($0) }
+            if index.mappings[position].evidenceIDs.count != count {
+                index.mappings[position].provenance.status = .proposed
+            }
+        }
     }
 
     /// The validated save state already owns this joined baseline. Reusing it avoids rebuilding

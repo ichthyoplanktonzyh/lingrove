@@ -40,7 +40,7 @@ nonisolated struct VocabularyCLIPlan {
             try apply(change, context: context, revision: snapshot.revision, prepared: prepared)
         }
         addsOnlyNewCaptureEntries = batch.operations.count == 1 && addsOnlyNewCaptureEntries
-        document.schemaVersion = VocabularyDocument.requiredVersion(for: document.entries)
+        document.schemaVersion = VocabularyDocument.currentVersion
     }
 
     /// A batch operation owns this immutable value only while planning. It carries the original
@@ -84,7 +84,7 @@ nonisolated struct VocabularyCLIPlan {
             return
         }
         if let merge = change.merge {
-            guard document.entries.contains(where: { $0.id == merge.entryID }) else {
+            guard document.catalog.contains(where: { $0.id == merge.entryID }) else {
                 throw CLIError(code: .notFound, message: "Entry no longer exists. Read it again before merging.")
             }
             try VocabularySenseEditingPolicy.merge(entryID: merge.entryID, source: merge.sourceSenseID,
@@ -121,15 +121,14 @@ nonisolated struct VocabularyCLIPlan {
                 "exampleIDs": .array([]), "blockIDs": .array([])]))
             return
         }
-        let entryCount = document.entries.count
+        let entryCount = document.catalog.count
         let target: (entry: Int, sense: Int)
         if let add = change.add {
             target = try addSense(add, context: context)
         } else {
             target = try existingTarget(for: change)
         }
-        let before = document
-        var entry = document.entries[target.entry]
+        var entry = document.catalog[target.entry]
         var sense = entry.senses[target.sense]
         let examples = change.add?.examples ?? change.append?.examples ?? []
         let blocks = change.add?.content ?? change.append?.content ?? []
@@ -138,15 +137,16 @@ nonisolated struct VocabularyCLIPlan {
         let blockIDs = try appendBlocks(blocks, to: &sense, prepared: prepared, context: context)
         try VocabularyContentPolicy.validate(sense.content ?? [])
         sense.updatedAt = context.now; entry.senses[target.sense] = sense; entry.updatedAt = context.now
-        document.entries[target.entry] = entry
+        document.catalog[target.entry] = entry
         let exampleIDs = try examples.enumerated().map { position, input in
             try NotebookExampleWriting.append(input, entry: entry, senseID: sense.id, in: &document,
                 id: context.id("example." + String(position)), occurrenceID: context.id("occurrence." + String(position)), now: context.now)
         }
-        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, entries: document.entries)
+        // Add/append retain all existing sense and evidence identities. Their new claims do
+        // not invalidate semantic links, so no complete graph reconciliation is required here.
         outcomes.append(.object([
-            "operation": .integer(Int64(context.index)), "entryID": .string(document.entries[target.entry].id.uuidString),
-            "senseID": .string(sense.id.uuidString), "createdEntry": .bool(document.entries.count > entryCount),
+            "operation": .integer(Int64(context.index)), "entryID": .string(document.catalog[target.entry].id.uuidString),
+            "senseID": .string(sense.id.uuidString), "createdEntry": .bool(document.catalog.count > entryCount),
             "exampleIDs": .array(exampleIDs.map { .string($0.uuidString) }),
             "blockIDs": .array(blockIDs.map { .string($0.uuidString) })
         ]))
@@ -161,15 +161,15 @@ nonisolated struct VocabularyCLIPlan {
         let dictionary = try Self.text(add.dictionaryForm ?? expression, limit: 32_000, nonempty: true)
         let key = VocabularyPolicy.entryKey(.init(expression: expression, dictionaryForm: dictionary, language: language, kind: kind))
         let entryIndex: Int
-        if let existing = document.entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == key }) {
+        if let existing = document.catalog.firstIndex(where: { VocabularyPolicy.entryKey($0) == key }) {
             entryIndex = existing
         } else {
-            entryIndex = document.entries.count
-            document.entries.append(.init(id: context.id("entry"), expression: expression, dictionaryForm: dictionary,
+            entryIndex = document.catalog.count
+            document.catalog.append(.init(id: context.id("entry"), expression: expression, dictionaryForm: dictionary,
                 language: language, kind: kind, senses: [], createdAt: context.now, updatedAt: context.now))
         }
-        let senseIndex = document.entries[entryIndex].senses.count
-        document.entries[entryIndex].senses.append(.init(id: context.id("sense"),
+        let senseIndex = document.catalog[entryIndex].senses.count
+        document.catalog[entryIndex].senses.append(.init(id: context.id("sense"),
             meaning: try Self.text(add.meaning, limit: 32_000, nonempty: true),
             meaningLanguage: try Self.language(add.meaningLanguage), meaningOrigin: .user,
             note: try Self.text(add.note ?? "", limit: 262_144), tags: try Self.tags(add.tags ?? []),
@@ -180,8 +180,8 @@ nonisolated struct VocabularyCLIPlan {
     private func existingTarget(for change: CLIChange) throws -> (entry: Int, sense: Int) {
         guard let entryID = change.append?.entryID ?? change.update?.entryID,
               let senseID = change.append?.senseID ?? change.update?.senseID,
-              let entry = document.entries.firstIndex(where: { $0.id == entryID }),
-              let sense = document.entries[entry].senses.firstIndex(where: { $0.id == senseID }) else {
+              let entry = document.catalog.firstIndex(where: { $0.id == entryID }),
+              let sense = document.catalog[entry].senses.firstIndex(where: { $0.id == senseID }) else {
             throw CLIError(code: .notFound, message: "Entry or sense no longer exists. Read it again before writing.")
         }
         return (entry, sense)

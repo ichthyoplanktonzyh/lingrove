@@ -26,7 +26,10 @@ public nonisolated enum NotebookSenseWriting {
         }
         try NotebookExampleWriting.remove(update.removeExamples ?? [], senseID: sense.id, from: &candidate)
         try updateLinks(update, senseID: sense.id, document: &candidate, id: id)
-        VocabularySemanticPolicy.reconcile(&candidate.semantics, previous: before, entries: candidate.entries)
+        if !(update.exampleEdits ?? []).isEmpty || !(update.removeExamples ?? []).isEmpty {
+            VocabularySemanticPolicy.reconcileEvidence(senseID: sense.id, in: &candidate.semantics,
+                previous: before.interpretations, current: candidate.interpretations)
+        }
         document = candidate
     }
 

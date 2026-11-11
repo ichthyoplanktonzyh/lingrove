@@ -8,6 +8,7 @@ public struct LingroveNotebookReviewMaterialStore {
     public let core: DatabaseCore
 
     public func refreshInTransaction(_ snapshot: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil) throws {
+        guard senseIDs?.isEmpty != true else { return }
         let links = LingroveNotebookCardLinkStore(core: core)
         let cards = CardStore(core: core)
         let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()

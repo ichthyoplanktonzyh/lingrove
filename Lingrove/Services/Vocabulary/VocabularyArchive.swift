@@ -144,6 +144,19 @@ actor VocabularyArchive {
         }
     }
 
+    /// The archive retains its acknowledged baseline only after the engine's organization
+    /// transaction succeeds. Sheet extensions never replace its private scope/cache directly.
+    func commitOrganization(_ edit: VocabularyOrganizationEdit) throws -> VocabularyArchiveSnapshot {
+        try storageAccess(write: true) {
+            _ = try load()
+            let baseline = try transactionBaseline()
+            if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
+            let result = try persistence().saveNotebookOrganization(edit, basedOn: baseline)
+            saved = result
+            return .init(result)
+        }
+    }
+
     func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
                 importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         let document = try load().document

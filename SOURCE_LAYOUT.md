@@ -1428,6 +1428,16 @@ Rating, undo and participation changes validate the displayed card IDs and the c
 sense's aliases directly. `BuiltInReviewIO` reads images and audio in one read-only
 connection, while `BuiltInReviewSource` joins evidence for only the requested entry.
 
+`VocabularyOrganizationEdit` carries changed semantic/directory records with their expected
+values. `Commands/+Organization` applies them to the connection-owned checked state and
+uses the cached row projection for graph-only SQL/journal deltas. Unchanged lexical evidence
+and review material retain their saved rows. `NotebookOrganizationIntegrationTests` guards
+that boundary with actual SQLite triggers, conflicting edits and rollback/reopen checks.
+
+CLI add/append plans edit canonical catalog headers and append evidence through the existing
+writer. `NotebookSenseWriting` invalidates citations only for changed accepted evidence of
+its retained sense. The complete batch still receives final relationship validation.
+
 `VocabularyPerformanceBaselineTests` is an opt-in private native host. It copies an explicitly
 supplied authorized backup, presents the production corpus UI and records main-runloop gaps;
 raw corpus files and measurement traces remain local under ignored `build/` paths.

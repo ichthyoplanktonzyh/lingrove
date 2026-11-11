@@ -122,6 +122,13 @@ CAS/journal/media/source-refresh transaction. Connection caches are derived valu
 by scope/revision/generation, SQLite data_version and local changes; they are not write authority.
 Structural/import/restore/remote operations retain their complete validation paths.
 
+Semantic and classification editors submit record-level `VocabularyOrganizationEdit` values.
+Their transaction reuses checked lexical state, merges against current records and validates
+the changed graph/directory. SQL and pending journals contain the actual organization delta,
+and those edits do not refresh card faces. No-op retries keep the saved revision.
+CLI add/append planning operates on canonical headers, and sense updates reconcile only
+their affected evidence citations. Full batch validation and atomic receipts remain required.
+
 Account authentication does not adopt or upload local content. Workspace selection, ownership,
 explicit local acceptance and sync opt-in remain separate operations. Corpus/media/review lanes
 have independent status and retry behavior. Network waits do not hold SQLite transactions;
@@ -267,3 +274,26 @@ executable hash and running process were verified. The user explicitly requested
 updating and declined the proposed per-table comparison; the installer did not open or replace
 the live database. The earlier consistent corpus backup and the previous application bundle
 remain available locally. The isolated-host menu-reopen limitation remains unverified.
+
+## Organization write checkpoint (2026-11-11)
+
+The organization writer was compared with source `59e63bf8` using independent copies of
+one synthetic database. It contains 10,000 entries, 20,000 senses, 40,000 sources, 14,000
+meaning nodes, 350 categories, 14,000 category memberships and 12 enrolled review senses.
+Both versions used Release builds, the same input and operation order, and three samples.
+
+| Local operation | Before median | Current median |
+| --- | ---: | ---: |
+| Edit and save one meaning definition | 24,954.3 ms | 439.5 ms |
+| Edit and save one category definition | 29,613.4 ms | 144.8 ms |
+| Plan 50 ordinary sense updates and validate the batch | 11,366.7 ms | 634.5 ms |
+
+The first two measurements include local storage work. The batch measurement covers planning
+and final relationship validation. CLI transport, final batch SQL and UI rendering require
+separate measurements. Logs remain under `build/mac-w2-c/organization-release-benchmark.log`.
+
+Validation passed 80 native tests, 38 shared rule/codec/wire tests and 47 storage integration
+tests. Organization-specific tests protect unrelated lexical/review rows with SQLite triggers,
+verify independent and conflicting edits, reject invalid combined relationships, roll back
+late journal failures, preserve public-intent rules and reopen the saved document.
+The installed Dev application and its live corpus were outside this synthetic checkpoint.
