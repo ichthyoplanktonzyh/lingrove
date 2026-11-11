@@ -1,6 +1,7 @@
 import Foundation
 import LingroveNotebook
 import LingroveNotebookEngine
+import LingroveNotebookPersistenceCodec
 import LingroveStudyExport
 import Testing
 @testable import Lingrove
@@ -52,8 +53,65 @@ struct VocabularyOperationBenchmarkTests {
                     throw error
                 }
             }
+            if remaining {
+                let folder = output.appendingPathComponent("profile-\(size)")
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let fixture = try VocabularyBenchmarkFixture(seed: seed.appendingPathComponent("primary.sqlite"),
+                    directory: folder.appendingPathComponent("fixture"))
+                do {
+                    try await profilePersistence(fixture, .init(entries: size, trial: 1, output: folder))
+                    await fixture.close()
+                } catch {
+                    await fixture.close()
+                    throw error
+                }
+            }
             try FileManager.default.removeItem(at: seed)
         }
+    }
+
+    /// Component windows run on a separate fresh copy after the three operation trials. Their
+    /// boundaries deliberately overlap; they locate CPU work and must not be summed into load.
+    /// The profile keeps only synthetic in-memory rows and publishes durations/counts.
+    private func profilePersistence(_ f: VocabularyBenchmarkFixture, _ r: VocabularyBenchmarkRecorder) async throws {
+        let snapshot = try await r.measure("cold.engine.load", layer: "engine") { try f.repository.snapshot() }
+        let state = try await r.measure("cold.domain.validate.index", layer: "policy") {
+            try VocabularyEntrySaveState(validating: snapshot.document)
+        }
+        let joined = try await r.measure("cold.domain.join", layer: "policy") { snapshot.document.entries }
+        #expect(joined == state.entries && joined.count == r.entries)
+        let prepared = try await r.measure("full.domain.prepare", layer: "policy") {
+            try VocabularyEntrySaveState(preparing: snapshot.document, previous: state)
+        }
+        #expect(prepared.document == snapshot.document)
+        let rows = try await r.measure("full.codec.encode.sort", layer: "codec") {
+            try VocabularyPersistenceCodec.encode(state)
+        }
+        struct Input {
+            let row: VocabularyPersistenceRow
+            let data: Data
+            let indexes: [VocabularyPersistenceIndex: String?]
+        }
+        let inputs = try rows.rows.map { Input(row: $0, data: try $0.encodedPayload(), indexes: $0.indexValues) }
+        let decoded = try await r.measure("cold.row.payload.decode", layer: "codec") {
+            try inputs.map { input in
+                try VocabularyPersistenceRow(entity: input.row.entity, id: input.row.id,
+                    parentID: input.row.parentID, position: input.row.position, payload: input.data, indexValues: input.indexes)
+            }
+        }
+        let encoded = VocabularyPersistenceRows(rows: decoded, reviewTemplatesPresent: rows.reviewTemplatesPresent)
+        let restored = try await r.measure("cold.rows.reconstruct.validate", layer: "codec") {
+            try VocabularyPersistenceCodec.decodeSaveState(encoded)
+        }
+        #expect(restored.document == snapshot.document)
+        let projection = try await r.measure("cold.row.cache", layer: "codec") { try VocabularyEntryRowProjection(encoded) }
+        let delta = try await r.measure("full.row.diff", layer: "codec") { try projection.replacingDocument(state) }
+        #expect(delta.changed.isEmpty && delta.removed.isEmpty && delta.repositioned.isEmpty)
+        let data = try JSONEncoder().encode(snapshot.document)
+        let json = try await r.measure("cold.document.json.decode", layer: "codec") {
+            try JSONDecoder().decode(VocabularyDocument.self, from: data)
+        }
+        #expect(json == snapshot.document)
     }
 
     /// Remaining large-library paths share the same generated seed and public commands as

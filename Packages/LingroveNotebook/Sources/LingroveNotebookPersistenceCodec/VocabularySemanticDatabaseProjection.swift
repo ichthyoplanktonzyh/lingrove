@@ -6,10 +6,6 @@ import Foundation
 /// separate rows so changing a definition never rewrites its expressions or original excerpts.
 nonisolated enum VocabularySemanticDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
-    private struct Owner: Hashable {
-        let table: Row.Table
-        let parent: String?
-    }
 
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
@@ -74,15 +70,13 @@ nonisolated enum VocabularySemanticDatabaseProjection {
 
     // Keep the typed table dispatch exhaustive; each case describes an independent row format.
     // swiftlint:disable:next cyclomatic_complexity
-    static func index(_ rows: [Row]) throws -> VocabularySemanticIndex {
-        let tables = Dictionary(grouping: rows, by: \.table)
-        // Labels and evidence are parent-local sequences. Index them once: filtering the full
-        // label/evidence table for every node/mapping made a valid large notebook quadratic to
-        // reopen. Ordering and round-trip validation still reject gaps, duplicates and orphans.
-        let owners = Dictionary(grouping: rows, by: { Owner(table: $0.table, parent: $0.parentID) })
+    static func index(_ rows: VocabularyDatabaseRowIndex) throws -> VocabularySemanticIndex {
+        // The complete decoder lends the same address index to all three domains. Labels,
+        // slots and citations still resolve by their real parent, never a transport offset.
         func records<T>(_ table: Row.Table, parent: UUID? = nil, value: (Row.Payload) -> T?) throws -> [T] {
-            let candidates = parent.map { owners[Owner(table: table, parent: $0.uuidString)] ?? [] } ?? tables[table] ?? []
-            let records = candidates.sorted { $0.id < $1.id }
+            let records: [Row]
+            if let parent { records = try rows.children(table, parent: parent.uuidString) }
+            else { records = try rows.all(table) }
             return try records.map { row in
                 guard let result = value(row.payload) else { throw VocabularyError.invalidArchive }; return result
             }

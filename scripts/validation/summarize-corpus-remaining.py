@@ -42,7 +42,10 @@ def main():
     manifests = [json.loads((root / "source-hashes.json").read_text()) for root in (args.before, args.after)]
     if harness in manifests[0]:
         assert manifests[0][harness] == manifests[1][harness], "Timing harness changed"
-    assert old.keys() == new.keys() and len(old) == 43
+    sizes = {key[0] for key in old}
+    assert old.keys() == new.keys() and len(old) == 43 * len(sizes)
+    operations = [{operation for size, operation in old if size == count} for count in sorted(sizes)]
+    assert all(len(names) == 43 and names == operations[0] for names in operations)
     for key in ("configuration", "architecture", "hardware", "sizes", "trials"):
         assert before[key] == after[key], key
     for size in old_fixture:
@@ -64,14 +67,23 @@ def main():
         provenance = (f"Archived {before['commit']} product; the baseline script copied the current timing harness before product edits. "
                       "The archive run recorded an empty source manifest; its build log, binary hash and archive procedure remain available. "
                       "Harness hash equality cannot be checked from that empty manifest.")
+    profiles = {}
+    for name, root in (("before", args.before), ("after", args.after)):
+        profiles[name] = [json.loads(line) for path in sorted((root / "remaining").glob("profile-*/samples.jsonl"))
+                          for line in path.read_text().splitlines()]
+    if profiles["before"] or profiles["after"]:
+        signature = lambda values: {(value["entries"], value["operation"]) for value in values}
+        assert signature(profiles["before"]) == signature(profiles["after"])
+        assert len(profiles["before"]) == len(profiles["after"]) == 10 * len(sizes)
     result = dict(before=before, after=after, beforeFixture=old_fixture, afterFixture=new_fixture,
-                  method="43 production command/projection windows, 3 trials, separately generated equivalent seeds; no UI input or frames",
+                  method=f"43 production command/projection windows per size, {before['trials']} trials, separately generated equivalent seeds; no UI input or frames",
+                  profileMethod="Overlapping isolated component windows on a fresh separate copy after the operation trials; one observation per size, not additive load phases. cold.row.payload.decode exercises the portable single-row API without SQL IO.",
                   baselineProvenance=provenance,
-                  rows=rows, beforeSamples=old_samples, afterSamples=new_samples)
+                  rows=rows, beforeSamples=old_samples, afterSamples=new_samples, profiles=profiles)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     for row in rows:
-        print(f"{row['operation']:<36} {row['beforeMedianMs']:10.3f} -> {row['afterMedianMs']:10.3f} ms ({row['reductionPercent']:+.1f}%)")
+        print(f"{row['entries']:>5} {row['operation']:<36} {row['beforeMedianMs']:10.3f} -> {row['afterMedianMs']:10.3f} ms ({row['reductionPercent']:+.1f}%)")
 
 
 if __name__ == "__main__":

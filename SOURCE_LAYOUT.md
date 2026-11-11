@@ -305,6 +305,18 @@ updates it as entries are appended. Repeated input still creates independent sen
 continues to include language and kind. This removes repeated whole-corpus normalization without
 changing creation, cancellation or final validation semantics.
 
+`VocabularyDatabaseRowIndex` belongs to one decode call. The lexical, semantic and directory
+readers share its family/parent/key offsets into the same immutable row array. Lossless checking
+visits expected rows and marks each actual offset once, rejecting duplicates, hidden children,
+orphans, index contradictions and authored-position gaps without building another payload table.
+The engine's snapshot transaction still owns SQL, raw UTF-8 checks and complete admission.
+Per-row system Codable decoding supplies the same typed leaves to this temporary index.
+
+Full checked-state row diffs consume unsorted keyed rows and reuse the one newly built dictionary
+when creating their next cache. Public codec encoding keeps deterministic list order; authored
+body/history/template positions remain explicit. This removes unused global sorting from SQL
+diff preparation without changing journals, public wire ordering or unordered corpus membership.
+
 `LingroveNotebookSaveCache` owns the checked state/projection per SQLite connection, guarded by
 scope/revision/generation and both external and local SQL change tokens. Successful full saves
 retain it; rollback revokes it. `Models/Notebook/LingroveNotebookCommittedChange` is an optional,

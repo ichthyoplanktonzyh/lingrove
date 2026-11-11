@@ -5,41 +5,53 @@ import LingroveNotebook
 /// reconstructs one saved corpus. Accepted interpretations are the persisted example links.
 nonisolated enum VocabularyDatabaseProjection {
     typealias Row = VocabularyDatabaseRecord
-    private struct Owner: Hashable { let table: Row.Table; let parent: String? }
-
     static func rows(_ document: VocabularyDocument, appendingTo previous: VocabularyDocument? = nil,
                      validated: Bool = false) throws -> [Row.Key: Row] {
+        var result: [Row.Key: Row] = [:]
+        try visitRows(document, appendingTo: previous, validated: validated) { row in
+            guard result.updateValue(row, forKey: row.key) == nil else { throw VocabularyError.invalidArchive }
+        }
+        return result
+    }
+
+    /// Full diff callers need independently keyed values, not a globally sorted row list.
+    /// This visitor is also the single row-shape authority used for lossless cold reads.
+    static func visitRows(_ document: VocabularyDocument, appendingTo previous: VocabularyDocument? = nil,
+                          validated: Bool = false, _ visit: (Row) throws -> Void) throws {
         if previous == nil && !validated { try VocabularyLifecyclePolicy.validate(document) }
-        var rows: [Row] = []
         for (position, source) in document.sources.enumerated().dropFirst(previous?.sources.count ?? 0) {
-            rows.append(.init(table: .sources, id: source.id.uuidString, parentID: nil,
+            try visit(.init(table: .sources, id: source.id.uuidString, parentID: nil,
                 position: position, payload: .source(source)))
         }
         for (position, occurrence) in document.occurrences.enumerated().dropFirst(previous?.occurrences.count ?? 0) {
-            rows.append(.init(table: .occurrences, id: occurrence.id.uuidString, parentID: occurrence.sourceID.uuidString,
+            try visit(.init(table: .occurrences, id: occurrence.id.uuidString, parentID: occurrence.sourceID.uuidString,
                 position: position, payload: .occurrence(occurrence)))
         }
+        var children: [Row] = []
         for (position, claim) in document.interpretations.enumerated().dropFirst(previous?.interpretations.count ?? 0) {
-            append(claim, position: position, to: &rows)
+            children.removeAll(keepingCapacity: true); append(claim, position: position, to: &children)
+            for row in children { try visit(row) }
         }
         let newEntries = document.catalog.dropFirst(previous?.catalog.count ?? 0)
-        for (position, entry) in zip(newEntries.indices, newEntries) { append(entry, position: position, to: &rows) }
+        for (position, entry) in zip(newEntries.indices, newEntries) {
+            children.removeAll(keepingCapacity: true); append(entry, position: position, to: &children)
+            for row in children { try visit(row) }
+        }
         let previousSenses = previous?.catalog.reduce(0) { $0 + $1.senses.count } ?? 0
         for (offset, collection) in VocabularySenseStorageRecord.records(for: newEntries).enumerated() {
-            append(collection, position: previousSenses + offset, to: &rows)
+            children.removeAll(keepingCapacity: true); append(collection, position: previousSenses + offset, to: &children)
+            for row in children { try visit(row) }
         }
         for (position, template) in (document.reviewTemplates ?? []).enumerated().dropFirst(previous?.reviewTemplates?.count ?? 0) {
-            rows.append(.init(table: .templates, id: template.id.uuidString, parentID: nil,
+            try visit(.init(table: .templates, id: template.id.uuidString, parentID: nil,
                 position: position, payload: .template(template)))
         }
         if previous == nil && !validated {
             try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
             try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
         }
-        rows.append(contentsOf: VocabularySemanticDatabaseProjection.rows(document.semantics, appendingTo: previous?.semantics))
-        rows.append(contentsOf: VocabularyClassificationRows.rows(document.classification, appendingTo: previous?.classification))
-        guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
-        return Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
+        for row in VocabularySemanticDatabaseProjection.rows(document.semantics, appendingTo: previous?.semantics) { try visit(row) }
+        for row in VocabularyClassificationRows.rows(document.classification, appendingTo: previous?.classification) { try visit(row) }
     }
 
     static func append(_ claim: VocabularyInterpretation, position: Int, to rows: inout [Row]) {
@@ -97,31 +109,39 @@ nonisolated enum VocabularyDatabaseProjection {
     }
 
     static func document(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyDocument {
-        let document = try reconstruct(rows, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
-        if !migratingDevCorpus { try checkRows(rows, document: document, validated: false) }
+        let index = try VocabularyDatabaseRowIndex(rows)
+        let document = try reconstruct(index, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        if !migratingDevCorpus { try checkRows(index, document: document, validated: false) }
         return document
     }
 
     /// One full validation establishes the joined-entry proof and the lossless row check.
     /// The writer can retain it instead of immediately repeating both after a cold SQL read.
     static func state(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyEntrySaveState {
-        let document = try reconstruct(rows, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        let index = try VocabularyDatabaseRowIndex(rows)
+        let document = try reconstruct(index, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
         let state = try VocabularyEntrySaveState(validating: document)
         if !migratingDevCorpus {
-            try checkRows(rows, document: document, validated: true)
+            try checkRows(index, document: document, validated: true)
         }
         return state
     }
 
-    private static func checkRows(_ rows: [Row], document: VocabularyDocument, validated: Bool) throws {
-        guard try self.rows(document, validated: validated) == Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) }) else {
-            throw VocabularyError.invalidArchive
+    private static func checkRows(_ index: VocabularyDatabaseRowIndex, document: VocabularyDocument, validated: Bool) throws {
+        var matched = [Bool](repeating: false, count: index.rows.count), count = 0
+        // Each expected row must consume exactly one original row. A flag per offset rejects
+        // duplicates and untouched orphans without constructing a second full payload table.
+        try visitRows(document, validated: validated) { expected in
+            guard let offset = index.offset(for: expected.key), !matched[offset], index.rows[offset] == expected else {
+                throw VocabularyError.invalidArchive
+            }
+            matched[offset] = true; count += 1
         }
+        guard count == index.rows.count else { throw VocabularyError.invalidArchive }
     }
 
-    private static func reconstruct(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool) throws -> VocabularyDocument {
-        guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
-        let graph = Graph(rows: rows)
+    private static func reconstruct(_ index: VocabularyDatabaseRowIndex, hasTemplates: Bool, migratingDevCorpus: Bool) throws -> VocabularyDocument {
+        let graph = Graph(index: index)
         let entries = try graph.children(.entries).map { row in
             guard case var .entry(entry) = row.payload else { throw VocabularyError.invalidArchive }
             entry.senses = try graph.children(.senses, parent: row.id).map { row in
@@ -145,8 +165,8 @@ nonisolated enum VocabularyDatabaseProjection {
         }
         var result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
             interpretations: interpretations,
-            reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(rows),
-            classification: try VocabularyClassificationRows.index(rows))
+            reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(index),
+            classification: try VocabularyClassificationRows.index(index))
         let records = try graph.all(.collections).map { try graph.collection($0) }
         if migratingDevCorpus { return try migrateDevCorpus(result, records: records) }
         try VocabularySenseStorageRecord.materialize(records, in: &result)
@@ -202,20 +222,10 @@ nonisolated enum VocabularyDatabaseProjection {
     }
 
     private struct Graph {
-        let rows: [Row]
-        let groups: [Owner: [Row]]
-        init(rows: [Row]) {
-            self.rows = rows
-            groups = Dictionary(grouping: rows, by: { .init(table: $0.table, parent: $0.parentID) })
-        }
-        func all(_ table: Row.Table) throws -> [Row] { try ordered(rows.filter { $0.table == table }) }
+        let index: VocabularyDatabaseRowIndex
+        func all(_ table: Row.Table) throws -> [Row] { try index.all(table) }
         func children(_ table: Row.Table, parent: String? = nil) throws -> [Row] {
-            try ordered(groups[.init(table: table, parent: parent)] ?? [])
-        }
-        private func ordered(_ rows: [Row]) throws -> [Row] {
-            if rows.first?.table.hasBusinessOrder == false { return rows.sorted { $0.id < $1.id } }
-            let values = rows.sorted { $0.position < $1.position }
-            guard values.map(\.position) == Array(values.indices) else { throw VocabularyError.invalidArchive }; return values
+            try index.children(table, parent: parent)
         }
         func explanations(_ table: Row.Table, parent: String) throws -> [LearningExplanationRecord] {
             try children(table, parent: parent).map { row in

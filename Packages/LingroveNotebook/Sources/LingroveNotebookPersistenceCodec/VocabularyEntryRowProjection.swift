@@ -13,7 +13,11 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     private var organizationGroups: VocabularyProjectionMap<Key, Set<Key>>
 
     public init(_ rows: VocabularyPersistenceRows) throws {
-        keyed = .init(try rows.keyedRows()); groups = .init(); organizationGroups = .init()
+        try self.init(rows, keyed: rows.keyedRows())
+    }
+
+    private init(_ rows: VocabularyPersistenceRows, keyed values: [Key: VocabularyPersistenceRow]) throws {
+        keyed = .init(values); groups = .init(); organizationGroups = .init()
         var lexicalGroups: [Key: Set<Key>] = [:], graphGroups: [Key: Set<Key>] = [:]
         for row in rows.rows {
             if let root = try Self.root(row, rows: keyed) { lexicalGroups[root, default: []].insert(row.key) }
@@ -38,7 +42,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     }
 
     public func replacingDocument(_ state: VocabularyEntrySaveState) throws -> VocabularyEntryRowChange {
-        try replacingRows(VocabularyPersistenceCodec.encode(state))
+        try replacingRows(VocabularyPersistenceCodec.unorderedRows(state))
     }
 
     private func replacingRows(_ encoded: VocabularyPersistenceRows) throws -> VocabularyEntryRowChange {
@@ -51,7 +55,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
             } else { delta.changed.append(row) }
         }
         delta.removed = keyed.values.filter { after[$0.key] == nil }
-        let next = try VocabularyEntryRowProjection(encoded)
+        let next = try VocabularyEntryRowProjection(encoded, keyed: after)
         return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 

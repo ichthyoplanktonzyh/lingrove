@@ -68,8 +68,12 @@ public nonisolated struct VocabularyPersistenceRows: Equatable, Sendable {
     }
 
     public func keyedRows() throws -> [VocabularyPersistenceRow.Key: VocabularyPersistenceRow] {
-        guard Set(rows.map(\.key)).count == rows.count else { throw VocabularyError.invalidArchive }
-        return Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
+        var result: [VocabularyPersistenceRow.Key: VocabularyPersistenceRow] = [:]
+        result.reserveCapacity(rows.count)
+        for row in rows {
+            guard result.updateValue(row, forKey: row.key) == nil else { throw VocabularyError.invalidArchive }
+        }
+        return result
     }
 }
 
@@ -88,6 +92,15 @@ public nonisolated enum VocabularyPersistenceCodec {
     /// exact row encoder while consuming its existing validation proof, not a caller flag.
     public static func encode(_ state: VocabularyEntrySaveState) throws -> VocabularyPersistenceRows {
         try encoded(VocabularyDatabaseProjection.rows(state.document, validated: true), document: state.document)
+    }
+
+    /// Only the connection's internal diff consumes this form. Independent row keys and each
+    /// authored child's position carry all persistence meaning; a global list sort is unused
+    /// by SQL's family-aware writer. Public encode keeps its deterministic interchange order.
+    static func unorderedRows(_ state: VocabularyEntrySaveState) throws -> VocabularyPersistenceRows {
+        let records = try VocabularyDatabaseProjection.rows(state.document, validated: true)
+        return .init(rows: try records.values.map(VocabularyPersistenceRow.init(record:)),
+            reviewTemplatesPresent: state.document.reviewTemplates != nil)
     }
 
     private static func encoded(_ records: [VocabularyDatabaseRecord.Key: VocabularyDatabaseRecord],

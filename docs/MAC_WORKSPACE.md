@@ -655,3 +655,58 @@ graph checks and batch import/cancellation. The timing envelope passed with all 
 Strict SwiftLint and diff checks passed. Final cleanup removed and verified absence of
 DerivedData, copied package source, private hosts and synthetic trial databases; the installed
 Dev application and real corpus were not accessed or replaced.
+
+## Read and batch preparation at 10k and 20k (2026-11-11)
+
+This slice measures current product `73d9180e` before another local codec change. It adds a
+fresh 20,000-entry comparison alongside 10,000 entries; the older 20,000-entry inventory above
+does not describe current optimized code. Each size uses the same 43 operation windows and
+three trials per version, through private Release/arm64 hosts without windows or input synthesis.
+Separate equivalent seeds contain 20,000/40,000 senses, 40,000/80,000 examples,
+14,000/28,000 meaning nodes, 2,000/4,000 enrolled senses and 1,000 rating records.
+
+Ten diagnostic windows run after the operation trials on another fresh seed copy. They overlap
+and have one observation per size; they are not summed or described as a decomposition of one
+load. The baseline 10k/20k engine loads are 3.775s/7.828s. Separately, full codec encoding and
+global sorting takes 1.873s/4.139s, full row diff takes 2.828s/6.032s, and portable single-row
+JSON decoding takes 1.343s/2.722s. These observations identify preparation and parser setup as
+measurable work, rather than attributing every delay to SQLite IO or UI rendering.
+
+The codec now shares one temporary row-address index across lexical, semantic and directory
+reconstruction. Expected row shapes consume original offsets exactly once, retaining all old
+lossless and full-domain checks while avoiding another full payload dictionary. Internal full
+save diffs reuse keyed rows without globally sorting a list that SQL does not consume in that
+order. Public encoding and authored child positions retain their existing deterministic order.
+Domain validation, raw UTF-8 checks, workspace fences and transaction ownership stay with the
+existing boundaries. No new storage format, application-data migration or service is introduced.
+
+Median operation milliseconds, before `73d9180e` versus the shared-index/unsorted-diff slice:
+
+| Operation | 10k before | 10k after | 20k before | 20k after |
+|---|---:|---:|---:|---:|
+| First library load | 4037.982 | 3968.028 | 8143.089 | 8224.940 |
+| Manual import, 50 new entries | 3711.208 | 2281.353 | 8078.658 | 4707.991 |
+| Re-import, 50 new senses | 3720.300 | 2277.537 | 8373.366 | 4710.296 |
+| Sense merge undo | 3667.655 | 2141.588 | 7967.192 | 4531.683 |
+| Full backup restore | 4896.339 | 3403.920 | 10653.622 | 6960.415 |
+
+The [full comparison and component windows](benchmarks/corpus-read-2026-11-11.json) preserve
+258 operation samples per version and twenty component observations per version. Single-entry
+timings and initial library load are essentially unchanged in this slice; the improvements
+are concentrated in full-save preparation. A bounded JSON-array decoding experiment added frame
+scanning/buffering cost and was removed. Its intermediate run and private-process sample are
+diagnostic evidence under `build/corpus-operation-benchmark/corpus-read-batch-final/` and
+`build/corpus-next/private-load-sample.txt`; they are excluded from the final comparison.
+
+The baseline archive and final native run have nonempty product source manifests and matching
+timing-harness hashes, recorded under `build/corpus-next/before/` and
+`build/corpus-operation-benchmark/corpus-read-final/`. Separately generated seeds have identical
+counts and operation order; their bytes are not paired. Component windows are isolated CPU
+work, not additive attribution of the SQL-load window or proof of a percentile.
+
+Final validation passed 126 shared checks, 104 engine Swift Testing checks and 40 engine
+XCTest checks; three real-server interop bridges stayed disabled. Private native Release
+validation passed 56 checks with the visible-desktop journey intentionally skipped. The timed
+envelope passed at both sizes with all 258 operation samples. Strict SwiftLint and diff checks
+passed. Owned DerivedData, copied packages, private hosts, archive source and synthetic databases
+were removed. The installed Dev bundle and real corpus were not accessed or replaced.
