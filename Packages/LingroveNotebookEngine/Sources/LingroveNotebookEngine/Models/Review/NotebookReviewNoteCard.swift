@@ -13,6 +13,10 @@ public struct NotebookReviewNoteCard: Codable, Equatable, Sendable {
     /// This token names the exact question content/definition and source revision. It is carried
     /// through mobile's asynchronous submission queue, where a Card text-only fence is weaker.
     public func questionVersion(in scope: LingroveNotebookSnapshot) throws -> String {
+        try questionVersion(in: LingroveNotebookVersion(scope))
+    }
+
+    func questionVersion(in scope: LingroveNotebookVersion) throws -> String {
         struct Value: Encodable {
             let model: NotebookReviewNoteCard
             let workspace: String

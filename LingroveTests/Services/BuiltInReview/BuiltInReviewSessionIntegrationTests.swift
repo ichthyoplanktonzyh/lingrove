@@ -205,7 +205,7 @@ struct BuiltInReviewSessionIntegrationTests {
         card = try #require(group.cards.first)
         let context = try #require(session.context(card: card, group: group, content: content))
         let io = BuiltInReviewIO(databaseURL: fixture.repository.databaseURL, mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
-        let images = try await io.savedImages(context: context)
+        let (images, _) = try await io.savedMedia(context: context)
         #expect(images.count == 1 && images.first?.data == bytes && images.first?.id == assetID)
         session.start()
         await session.waitForIdle()

@@ -2,6 +2,40 @@ import Foundation
 import LingroveNotebook
 
 extension ReviewNoteStore {
+    /// A saved question validates only its displayed cards. Left joins preserve malformed
+    /// membership rows so missing notes/types fail explicitly instead of disappearing.
+    func cardModels(version: LingroveNotebookVersion, cardIDs: Set<String>) throws -> [String: NotebookReviewNoteCard] {
+        guard !cardIDs.isEmpty else { return [:] }
+        let ids = String(decoding: try core.encoder.encode(cardIDs.sorted()), as: UTF8.self)
+        let rows = try core.query(sql: """
+            SELECT member.card_id,member.template_id,note.notebook_id,note.payload_json,type.payload_json
+            FROM notebook_note_cards member
+            LEFT JOIN notebook_notes note ON note.workspace_id=member.workspace_id AND note.note_id=member.note_id
+            LEFT JOIN notebook_note_types type ON type.workspace_id=note.workspace_id
+                AND type.type_id=json_extract(note.payload_json,'$.noteTypeID')
+            WHERE member.workspace_id=? AND member.card_id IN (SELECT value FROM json_each(?))
+            """, values: [.text(version.workspaceId), .text(ids)]) { row in
+            guard let template = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)),
+                  DatabaseCore.columnOptionalText(statement: row, index: 2) == version.notebookId.uuidString,
+                  let json = DatabaseCore.columnOptionalText(statement: row, index: 3) else {
+                throw VocabularyError.invalidArchive
+            }
+            let note = try core.decoder.decode(ReviewNote.self, from: Data(json.utf8))
+            let type: ReviewNoteType
+            if let json = DatabaseCore.columnOptionalText(statement: row, index: 4) {
+                type = try core.decoder.decode(ReviewNoteType.self, from: Data(json.utf8))
+            } else {
+                guard note.noteTypeID == ReviewNoteDefaults.type.id else { throw VocabularyError.invalidArchive }
+                type = ReviewNoteDefaults.type
+            }
+            guard type.id == note.noteTypeID else { throw VocabularyError.invalidArchive }
+            try ReviewTemplateRenderer.validate(type)
+            return (DatabaseCore.columnText(statement: row, index: 0),
+                NotebookReviewNoteCard(note: note, noteType: type, templateID: template))
+        }
+        return Dictionary(uniqueKeysWithValues: rows)
+    }
+
     public func cardModels(scope: LingroveNotebookSnapshot) throws -> [String: NotebookReviewNoteCard] {
         let notes = Dictionary(uniqueKeysWithValues: try notes(scope: scope).map { ($0.id, $0) })
         let types = Dictionary(uniqueKeysWithValues: try types(workspace: scope.workspaceId).map { ($0.id, $0) })

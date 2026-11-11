@@ -87,10 +87,16 @@ extension LingroveNotebookEngine {
     public func applyMacNotebookSchedulerSettings(
         _ settings: WorkspaceSchedulerSettings, scope: LingroveNotebookSnapshot
     ) throws {
+        try applyMacNotebookSchedulerSettings(settings, version: .init(scope))
+    }
+
+    public func applyMacNotebookSchedulerSettings(
+        _ settings: WorkspaceSchedulerSettings, version: LingroveNotebookVersion
+    ) throws {
         try core.inTransaction {
-            try requireMacNotebookScope(scope, compareRevision: false)
-            _ = try syncApplier.applySyncBootstrapEntry(workspaceId: scope.workspaceId,
-                entry: .init(entityType: .workspaceSchedulerSettings, entityId: scope.workspaceId,
+            try requireMacNotebookScope(version, compareRevision: false)
+            _ = try syncApplier.applySyncBootstrapEntry(workspaceId: version.workspaceId,
+                entry: .init(entityType: .workspaceSchedulerSettings, entityId: version.workspaceId,
                     action: .upsert, payload: .workspaceSchedulerSettings(settings)))
         }
     }
@@ -99,14 +105,22 @@ extension LingroveNotebookEngine {
     /// report may contain only pre-connect placeholders, so load those IDs from its saved row under
     /// the same active generation instead of trusting a UI/network guess.
     public func loadMacNotebookFirstConnection(scope: LingroveNotebookSnapshot) throws -> LingroveNotebookFirstConnection? {
+        try loadMacNotebookFirstConnection(version: .init(scope), pendingOnly: false)
+    }
+
+    /// Ordinary synchronization needs only unresolved decisions. Completed rows retain their
+    /// recovery document, but polling must not decode that historical document repeatedly.
+    public func loadMacNotebookFirstConnection(version scope: LingroveNotebookVersion,
+                                              pendingOnly: Bool = true) throws -> LingroveNotebookFirstConnection? {
         try core.inReadTransaction {
             try requireMacNotebookScope(scope, compareRevision: false)
             let current = try workspaceSettingsStore.loadCloudSettings()
             guard let owner = current.linkedUserId, let workspace = UUID(uuidString: scope.workspaceId) else { return nil }
             let bindings = try core.query(sql: """
-                SELECT owner_user_id,remote_notebook_id,replica_id FROM notebook_first_connections WHERE workspace_id=?
+                SELECT owner_user_id,remote_notebook_id,replica_id FROM notebook_first_connections
+                WHERE workspace_id=? AND (?=0 OR completed=0)
                 """,
-                values: [.text(scope.workspaceId)]) { row -> LingroveNotebookWindowBinding in
+                values: [.text(scope.workspaceId), .integer(pendingOnly ? 1 : 0)]) { row -> LingroveNotebookWindowBinding in
                 guard DatabaseCore.columnText(statement: row, index: 0).utf8.elementsEqual(owner.utf8),
                       let book = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)),
                       let replica = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 2)) else {
@@ -121,13 +135,12 @@ extension LingroveNotebookEngine {
     }
 
     private func requireMacNotebookScope(_ expected: LingroveNotebookSnapshot, compareRevision: Bool = true) throws {
-        let settings = try workspaceSettingsStore.loadCloudSettings()
-        guard settings.activeWorkspaceId == expected.workspaceId,
-              try LingroveNotebookLocalScopeStore(core: core).generationInTransaction() == expected.generation else {
-            throw VocabularyError.editConflict
-        }
-        let current = try lingroveNotebookStore.readSnapshot(workspaceId: expected.workspaceId)
-        guard current.notebookId == expected.notebookId, !compareRevision || current.revision == expected.revision else {
+        try requireMacNotebookScope(.init(expected), compareRevision: compareRevision)
+    }
+
+    private func requireMacNotebookScope(_ expected: LingroveNotebookVersion, compareRevision: Bool) throws {
+        guard let current = try currentNotebookVersionInTransaction(), current.hasSameOwner(as: expected),
+              !compareRevision || current.revision == expected.revision else {
             throw VocabularyError.editConflict
         }
     }

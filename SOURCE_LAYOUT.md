@@ -768,6 +768,9 @@ public runners through this adapter, retaining app-owned CloudSessionRuntime and
 `Services/Notebook/MacNotebookRepository`, `VocabularyStore`, `MacNotebookSyncController` and
 `BuiltInReviewController`. The physical `Notebook/primary.sqlite` and `Notebook/Media` root are
 shared by native capture/CLI, sync and review; actor IO uses short connections to those same files.
+`Services/Notebook/MacNotebookIO` is the sync controller's serial worker for corpus reads,
+ownership decisions, workspace connection and scheduler writes. Its results retain the
+admitted generation, and process shutdown drains the worker before closing the repository.
 The old Mac-only SQLite implementation is retired, and historical storage descriptions above do
 not describe the current app path. An opening failure yields a nonwriting unavailable store,
 preserves original bytes and leaves autocomplete/translation available.
@@ -1419,6 +1422,11 @@ inside the enrollment transaction. `BuiltInReviewIO` can reuse the corpus store'
 snapshot when its version matches and reads current queue and history in one transaction.
 Progress reads participation, schedule and history directly. It consults sense aliases
 only when a saved enrollment no longer names a live sense.
+
+`Queries/+ScopedRead` keeps card/media reads inside one version-checked transaction.
+Rating, undo and participation changes validate the displayed card IDs and the current
+sense's aliases directly. `BuiltInReviewIO` reads images and audio in one read-only
+connection, while `BuiltInReviewSource` joins evidence for only the requested entry.
 
 `VocabularyPerformanceBaselineTests` is an opt-in private native host. It copies an explicitly
 supplied authorized backup, presents the production corpus UI and records main-runloop gaps;

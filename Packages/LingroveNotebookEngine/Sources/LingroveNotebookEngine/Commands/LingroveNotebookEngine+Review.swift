@@ -15,24 +15,27 @@ extension LingroveNotebookEngine {
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: false) }
             if try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_note_cards WHERE workspace_id=? AND card_id=?",
                 values: [.text(workspaceId), .text(reviewSubmission.cardId)]) > 0 {
-                let savedNotebook = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
-                guard let noteModel = try ReviewNoteStore(core: core).cardModels(scope: savedNotebook)[reviewSubmission.cardId] else { throw VocabularyError.editConflict }
+                guard let version = try currentNotebookVersionInTransaction(), version.workspaceId == workspaceId,
+                      let noteModel = try ReviewNoteStore(core: core).cardModels(version: version,
+                        cardIDs: [reviewSubmission.cardId])[reviewSubmission.cardId] else { throw VocabularyError.editConflict }
                 // Native Mac actions supply a complete frozen action. Asynchronous generic
                 // queues must carry the version of the note face they actually displayed.
                 guard validateCurrentState != nil || reviewSubmission.noteVersion != nil else { throw VocabularyError.editConflict }
-                if let version = reviewSubmission.noteVersion {
-                    guard try noteModel.questionVersion(in: savedNotebook) == version else { throw VocabularyError.editConflict }
+                if let questionVersion = reviewSubmission.noteVersion {
+                    guard try noteModel.questionVersion(in: version) == questionVersion else { throw VocabularyError.editConflict }
                 }
             } else if reviewSubmission.noteVersion != nil { throw VocabularyError.editConflict }
             let card = try self.cardStore.loadCard(workspaceId: workspaceId, cardId: reviewSubmission.cardId)
             if let expectedCardOperationID, card.lastOperationId != expectedCardOperationID { throw VocabularyError.editConflict }
             // A rating queued by an old screen cannot write after a pause/withdrawal committed.
             // Admission is separate from FSRS; the scheduler and append-only history stay native.
-            guard try !self.cardStore.loadNotebookExcludedReviewCardIds(workspaceId: workspaceId).contains(card.cardId) else {
+            guard try !self.cardStore.isNotebookReviewCardExcluded(workspaceId: workspaceId, cardId: card.cardId) else {
                 throw LocalStoreError.validation("This sense is not active in review")
             }
             if try lingroveNotebookCardLinkStore.isHeld(workspaceId: workspaceId, cardId: card.cardId) {
-                let current = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
+                guard let current = try currentNotebookVersionInTransaction(), current.workspaceId == workspaceId else {
+                    throw VocabularyError.editConflict
+                }
                 try lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: workspaceId, notebookId: current.notebookId)
             }
             let schedulerSettings = try self.workspaceSettingsStore.loadWorkspaceSchedulerSettings(workspaceId: workspaceId)

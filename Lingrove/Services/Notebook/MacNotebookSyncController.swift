@@ -40,6 +40,8 @@ final class MacNotebookSyncController: ObservableObject {
     private var syncTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var ownershipTask: Task<Void, Never>?
+    private let io: MacNotebookIO
     private var metadataTicket = UUID()
     private var scopeTicket = UUID()
     private var observedAccount: MacAccountObservation?
@@ -52,6 +54,7 @@ final class MacNotebookSyncController: ObservableObject {
          consentStore: MacNotebookSyncConsentStore? = nil,
          transport: NotebookHTTPTransport? = nil, mediaTransport: NotebookMediaTransport? = nil) {
         self.repository = repository; self.account = account
+        io = MacNotebookIO(databaseURL: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL)
         // Default arguments are evaluated outside the initializer's actor in Swift 5 mode.
         // Construct actor-isolated dependencies here, after entering the app's main actor.
         self.workspaceClient = workspaceClient ?? AccountWorkspaceClient()
@@ -88,6 +91,15 @@ final class MacNotebookSyncController: ObservableObject {
         workspaces = []; selectedWorkspace = nil; ownershipProposal = nil; firstConnection = nil
         enabled = false; canAccessWorkspaces = false
     }
+
+    func shutdownAfterDraining() async {
+        shutdown()
+        await io.shutdown()
+    }
+
+    /// Private hosts await the admitted transaction and its refreshed presentation together.
+    /// A spinner or a queued Task alone cannot establish that an ownership decision persisted.
+    func waitForOwnershipChange() async { await ownershipTask?.value }
 
     /// Only metadata is fetched after login; no workspace or corpus is selected by `/me` itself.
     func refreshWorkspaces() {
@@ -150,7 +162,8 @@ final class MacNotebookSyncController: ObservableObject {
             do {
                 let authorization = try await account.authorization()
                 try check(authorization, ticket: ticket)
-                let source = try repository.snapshot()
+                let source = try await io.snapshot(version: repository.version())
+                try check(authorization, ticket: ticket)
                 guard let workspaceID = UUID(uuidString: id) else {
                     throw AccountWorkspaceError.invalidResponse
                 }
@@ -164,8 +177,9 @@ final class MacNotebookSyncController: ObservableObject {
                         installationID: installationID, authorization: authorization)
                 }
                 try check(finalAuthorization, ticket: ticket)
-                _ = try repository.engine.connectMacNotebookWorkspace(workspace: workspace.engineWorkspace,
-                    session: finalAuthorization.linkedSession(workspaceID: id), scheduler: settings.engineSettings, basedOn: source)
+                try await io.connect(workspace: workspace.engineWorkspace,
+                    session: finalAuthorization.linkedSession(workspaceID: id), scheduler: settings.engineSettings, source: source)
+                try check(finalAuthorization, ticket: ticket)
                 selectedWorkspace = workspace
                 let previous = consentStore.consent(configuration: finalAuthorization.configuration, identity: finalAuthorization.identity)
                 enabled = restoring ? (previous?.enabled ?? false) : false
@@ -173,9 +187,8 @@ final class MacNotebookSyncController: ObservableObject {
                     owner: Data(finalAuthorization.identity.userID.utf8), workspaceID: id, enabled: enabled))
                 schedulerStatus = .synchronized
                 workspaceStatus = .ready
-                try reloadOwnership()
-                firstConnection = try repository.engine.loadMacNotebookFirstConnection(scope: repository.snapshot())
-                if firstConnection?.completed == true { firstConnection = nil }
+                try await reloadOwnership()
+                try check(finalAuthorization, ticket: ticket)
                 corpusStatus = ownershipProposal?.status == "pending" ? .needsOwnership : .ready
                 mediaStatus = .ready; reviewStatus = .ready
                 publishRepository()
@@ -192,32 +205,73 @@ final class MacNotebookSyncController: ObservableObject {
     /// would silently transfer an old conflict choice onto a newer revision/account generation.
     func resolveLocalCorpus(accept: Bool, choices: [Int: VocabularyWireConflictSelection.Choice] = [:],
                             expected: LingroveNotebookOwnershipProposal? = nil) {
-        guard let proposal = expected ?? ownershipProposal, proposal.status != "merged" else { return }
-        do {
-            _ = try LingroveNotebookAccountStore(core: repository.engine.core).resolve(proposal, merge: accept, choices: choices)
-            try reloadOwnership()
-            corpusStatus = .ready
-            publishRepository()
-            if enabled { synchronize() }
-        } catch { corpusStatus = .conflict; try? reloadOwnership() }
+        guard started, !isChoosingWorkspace, ownershipTask == nil,
+              let proposal = expected ?? ownershipProposal, proposal.status != "merged" else { return }
+        debounceTask?.cancel(); debounceTask = nil
+        let ticket = scopeTicket
+        corpusStatus = .working
+        ownershipTask = Task { [weak self] in
+            guard let self else { return }
+            var committed = false
+            defer {
+                if ticket == scopeTicket {
+                    ownershipTask = nil
+                    if committed, enabled { synchronize() }
+                }
+            }
+            do {
+                try await io.resolve(proposal, merge: accept, choices: choices)
+                guard ticket == scopeTicket, !Task.isCancelled else { return }
+                // A durable adoption is observable even if a concurrent corpus edit makes
+                // the following presentation refresh retry against a newer revision.
+                publishRepository()
+                try await reloadOwnership()
+                guard ticket == scopeTicket, !Task.isCancelled else { return }
+                corpusStatus = .ready
+                committed = true
+            } catch {
+                guard ticket == scopeTicket, !Task.isCancelled else { return }
+                corpusStatus = .conflict
+                try? await reloadOwnership()
+            }
+        }
     }
 
     func resolveFirstConnection(combine: Bool, expected: LingroveNotebookFirstConnection? = nil) {
-        guard let connection = expected ?? firstConnection, !connection.completed else { return }
-        do {
-            try LingroveNotebookAccountStore(core: repository.engine.core).resolveFirst(connection, merge: combine)
-            firstConnection = nil
-            corpusStatus = .pending
-            coordinator.requestRetry()
-            publishRepository()
-            synchronize()
-        } catch { corpusStatus = .conflict }
+        guard started, !isChoosingWorkspace, ownershipTask == nil,
+              let connection = expected ?? firstConnection, !connection.completed else { return }
+        debounceTask?.cancel(); debounceTask = nil
+        let ticket = scopeTicket
+        corpusStatus = .working
+        ownershipTask = Task { [weak self] in
+            guard let self else { return }
+            var committed = false
+            defer {
+                if ticket == scopeTicket {
+                    ownershipTask = nil
+                    if committed { synchronize() }
+                }
+            }
+            do {
+                try await io.resolveFirst(connection, merge: combine)
+                guard ticket == scopeTicket, !Task.isCancelled else { return }
+                firstConnection = nil
+                corpusStatus = .pending
+                coordinator.requestRetry()
+                publishRepository()
+                committed = true
+            } catch {
+                guard ticket == scopeTicket, !Task.isCancelled else { return }
+                corpusStatus = .conflict
+            }
+        }
     }
 
     /// Consent is separate from login, workspace choice and local adoption. Turning it off revokes
     /// both network tasks and their durable generation, retaining every saved account row on disk.
     func setSynchronizationEnabled(_ value: Bool) {
-        guard !isChoosingWorkspace, let workspace = selectedWorkspace, let configuration = account.configuration,
+        guard !isChoosingWorkspace, !value || ownershipTask == nil,
+              let workspace = selectedWorkspace, let configuration = account.configuration,
               let identity = account.observation.retainedIdentity else { return }
         if value, ownershipProposal?.status == "pending" { return }
         enabled = value
@@ -325,18 +379,29 @@ final class MacNotebookSyncController: ObservableObject {
 
     private func repositoryChanged() {
         guard !publishingRepository, selectedWorkspace != nil else { return }
-        do { try reloadOwnership() } catch { corpusStatus = .failed }
-        guard enabled else { return }
         debounceTask?.cancel()
         debounceTask = Task { [weak self] in
             do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
-            self?.synchronize()
+            guard let self, started else { return }
+            do {
+                try await reloadOwnership()
+                if enabled, !Task.isCancelled { synchronize() }
+            } catch {
+                if !Task.isCancelled { corpusStatus = .failed }
+            }
         }
     }
 
-    private func reloadOwnership() throws {
+    private func reloadOwnership() async throws {
         guard let workspace = selectedWorkspace else { ownershipProposal = nil; return }
-        ownershipProposal = try LingroveNotebookAccountStore(core: repository.engine.core).proposal(workspaceID: workspace.id)
+        let version = try repository.version(), ticket = scopeTicket
+        guard version.workspaceId == workspace.id else { throw VocabularyError.editConflict }
+        let (proposal, first) = try await io.ownership(version: version)
+        try Task.checkCancellation()
+        guard started, ticket == scopeTicket, selectedWorkspace?.id == workspace.id,
+              try repository.version() == version else { throw VocabularyError.editConflict }
+        ownershipProposal = proposal
+        firstConnection = first
     }
 
     private func cancelMetadata() {
@@ -351,13 +416,12 @@ final class MacNotebookSyncController: ObservableObject {
         selectionTask?.cancel(); selectionTask = nil; isChoosingWorkspace = false
         syncTask?.cancel(); syncTask = nil; pollTask?.cancel(); pollTask = nil
         debounceTask?.cancel(); debounceTask = nil
+        ownershipTask?.cancel(); ownershipTask = nil
         coordinator.cancel()
         if advanceGeneration {
             do {
-                try repository.engine.retireMacNotebookScope(expectedGeneration: repository.snapshot().generation)
-                try reloadOwnership()
-                firstConnection = try repository.engine.loadMacNotebookFirstConnection(scope: repository.snapshot())
-                if firstConnection?.completed == true { firstConnection = nil }
+                try repository.engine.retireMacNotebookScope(expectedGeneration: repository.version().generation)
+                repositoryChanged()
                 publishRepository()
             } catch { workspaceStatus = .failed }
         }
@@ -400,7 +464,7 @@ extension AccountWorkspaceSchedulerSettings {
 
 private extension MacNotebookSyncController {
     func synchronize() {
-        guard started, enabled, !isChoosingWorkspace, syncTask == nil, let workspace = selectedWorkspace,
+        guard started, enabled, !isChoosingWorkspace, ownershipTask == nil, syncTask == nil, let workspace = selectedWorkspace,
               ownershipProposal?.status != "pending", firstConnection == nil,
               case .signedIn = account.observation.state else { return }
         pollTask?.cancel(); pollTask = nil
@@ -416,7 +480,7 @@ private extension MacNotebookSyncController {
             }
             do {
                 guard let workspaceID = UUID(uuidString: workspace.id) else { throw AccountWorkspaceError.invalidResponse }
-                let initial = try repository.snapshot()
+                let initial = try repository.version()
                 let installation = try repository.engine.workspaceSettingsStore.loadCloudSettings().installationId
                 guard let installationID = UUID(uuidString: installation) else { throw AccountWorkspaceError.invalidResponse }
                 let (settings, authorization) = try await authorized { authorization in
@@ -424,7 +488,8 @@ private extension MacNotebookSyncController {
                         installationID: installationID, authorization: authorization)
                 }
                 try check(authorization, ticket: ticket)
-                try repository.engine.applyMacNotebookSchedulerSettings(settings.engineSettings, scope: initial)
+                try await io.applyScheduler(settings.engineSettings, version: initial)
+                try check(authorization, ticket: ticket)
                 schedulerStatus = .synchronized
                 // Storage/network each re-check this same durable lifetime after every await.
                 // A token refresh may replace credentials, but never changes the business owner.
@@ -436,12 +501,18 @@ private extension MacNotebookSyncController {
                 }
                 try check(finalAuthorization, ticket: ticket)
                 try repository.cloudStorage.validate(report.binding)
+                let version = try repository.version()
+                let first = try await io.firstConnection(version: version)
+                try check(finalAuthorization, ticket: ticket)
+                guard try repository.version() == version else { throw VocabularyError.editConflict }
+                let media = try await io.mediaStatus(report: report)
+                try check(finalAuthorization, ticket: ticket)
+                // Publish one complete result after the last suspension. A view must not
+                // observe a synchronized corpus with media still left in the prior flight.
                 corpusStatus = status(report.status)
                 reviewStatus = report.reviewStatus.map(status) ?? (report.status == .synchronized ? .pending : status(report.status))
-                let scope = try repository.snapshot()
-                firstConnection = try repository.engine.loadMacNotebookFirstConnection(scope: scope)
-                if firstConnection?.completed == true { firstConnection = nil }
-                mediaStatus = try currentMediaStatus(report: report)
+                firstConnection = first
+                mediaStatus = media ?? status(report.status)
                 publishRepository()
             } catch {
                 guard ticket == scopeTicket, !Task.isCancelled else { return }
@@ -462,15 +533,6 @@ private extension MacNotebookSyncController {
             do { try await Task.sleep(for: .seconds(30)) } catch { return }
             self?.synchronize()
         }
-    }
-
-    func currentMediaStatus(report: NotebookSyncReport) throws -> MacNotebookSyncStatus {
-        let jobs = try LingroveNotebookMediaQueueStore(core: repository.engine.core).jobs(
-            binding: .init(scope: report.binding.scope, generation: report.binding.generation))
-        if jobs.contains(where: { $0.state == .cancelled }) { return .cancelled }
-        if jobs.contains(where: { $0.state == .failed || $0.state == .missing }) { return .pending }
-        if jobs.contains(where: { $0.state != .ready }) { return .pending }
-        return report.status == .synchronized ? .synchronized : status(report.status)
     }
 
     /// A network 401 borrows the SDK's single-flight refresh once. There is no Keychain bypass or

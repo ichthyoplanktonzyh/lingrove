@@ -8,6 +8,26 @@ import Testing
 /// Every fixture owns a disposable connection and synthetic account identity.
 @MainActor
 struct EngineScopedCommandIntegrationTests {
+    @Test("Periodic sync skips completed recovery documents while unresolved recovery still fails closed")
+    func completedFirstConnectionDoesNotDecodeRecoveryCorpus() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let version = try #require(try f.db.currentNotebookVersion())
+        _ = try f.binding()
+        try f.db.core.execute(sql: """
+            INSERT INTO notebook_first_connections(workspace_id,recovery_id,owner_user_id,remote_notebook_id,replica_id,
+                local_notebook_id,local_revision,original_json,original_sha256,remote_entries,completed)
+            VALUES(?,?,?,?,?,?,?,'invalid-recovery-document',?,0,1)
+            """, values: [.text(f.workspace), .text(UUID().uuidString), .text(f.owner),
+                .text(f.book.uuidString), .text(f.replica.uuidString), .text(version.notebookId.uuidString),
+                .integer(Int64(version.revision)), .text(String(repeating: "0", count: 64))])
+        try f.reopen()
+        #expect(try f.db.loadMacNotebookFirstConnection(version: version) == nil)
+        #expect(f.db.core.notebookSaveCache == nil)
+        try f.db.core.execute(sql: "UPDATE notebook_first_connections SET completed=0 WHERE workspace_id=?",
+            values: [.text(f.workspace)])
+        #expect(throws: (any Error).self) { try f.db.loadMacNotebookFirstConnection(version: version) }
+    }
+
     @Test("Metadata reads preserve generation fences without decoding or accepting invalid corpus content")
     func notebookVersionSeparatesAdmissionFromContentValidation() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }

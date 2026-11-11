@@ -128,6 +128,7 @@
 		0C228AA929AC851C240D883D /* RandomMacroEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0695E6470B3AABC56EF0943 /* RandomMacroEvaluator.swift */; };
 		0C2ED295050887D3AD9A25BD /* SuggestionCoordinator+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B084F8C5B1B6D124D472125 /* SuggestionCoordinator+Lifecycle.swift */; };
 		0C4C87E2E9B981383FF3ECA8 /* SuggestionPauseModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56CE6D07FEAB43B43A18654 /* SuggestionPauseModelsTests.swift */; };
+		0C58BFB0F66FD76BCEFF18E5 /* MacNotebookIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88854DF24F042F1D9FE35FC8 /* MacNotebookIO.swift */; };
 		0C706EC8AADEC8EDB94170F3 /* VocabularyExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F08F0054DAF31C1636F119 /* VocabularyExportSheet.swift */; };
 		0C81E45F17B6E948993CFC5B /* WelcomePersonalizeStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2478C073FD10CF288D15D346 /* WelcomePersonalizeStepView.swift */; };
 		0C92811C28A7E43972C64A02 /* ExpressionAssistSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632254D093354F76BB7D809B /* ExpressionAssistSettings.swift */; };
@@ -1676,6 +1677,7 @@
 		B83EAEFC59BE5FA6618C4D62 /* SpeechAudioChunk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853D35938BB456D119C02E91 /* SpeechAudioChunk.swift */; };
 		B841D54ACC6D53BC5F0BE64A /* LearningExplanationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C243BDAA1B8BF2F694188583 /* LearningExplanationService.swift */; };
 		B893E5E00C99565D69438806 /* RandomMacroEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0695E6470B3AABC56EF0943 /* RandomMacroEvaluator.swift */; };
+		B924196C00C844E683148756 /* MacNotebookIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88854DF24F042F1D9FE35FC8 /* MacNotebookIO.swift */; };
 		B924A06E6BC71E3E5ECE5E9A /* WelcomeHeroDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7281395DFE8576EFA6EC21D /* WelcomeHeroDemo.swift */; };
 		B925AFBFA5F551E811AB740E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F3EB3E03DAC744ACF59A398D /* Assets.xcassets */; };
 		B9286345B03B234C3538A247 /* GhostWrapBandPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52E63BB057CFABB0C93B90E /* GhostWrapBandPolicy.swift */; };
@@ -3012,6 +3014,7 @@
 		87F3311B48F77BBF2A64D0FE /* AnkiReviewSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiReviewSession.swift; sourceTree = "<group>"; };
 		87FF37684AADCA30C296FD37 /* CaretLinePositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretLinePositionTests.swift; sourceTree = "<group>"; };
 		8875C0D41F75557E0857EF35 /* LlamaSuggestionEngineStreamingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaSuggestionEngineStreamingTests.swift; sourceTree = "<group>"; };
+		88854DF24F042F1D9FE35FC8 /* MacNotebookIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNotebookIO.swift; sourceTree = "<group>"; };
 		888ACDB483AE76040E032B99 /* ReviewNotePracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewNotePracticeView.swift; sourceTree = "<group>"; };
 		88BD0FB959BDC56A99A59FEC /* SuggestionAnchorCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionAnchorCacheTests.swift; sourceTree = "<group>"; };
 		88C7579A064E8058B562A387 /* ArithmeticEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArithmeticEvaluator.swift; sourceTree = "<group>"; };
@@ -6177,6 +6180,7 @@
 		B535364671156B27F7068DF1 /* Notebook */ = {
 			isa = PBXGroup;
 			children = (
+				88854DF24F042F1D9FE35FC8 /* MacNotebookIO.swift */,
 				1EBE35798E3FD4B6777B0B7A /* MacNotebookRepository.swift */,
 				7591CD430817066B6A32AA6D /* MacNotebookSyncController.swift */,
 			);
@@ -8644,6 +8648,7 @@
 				AD2B26F0615EB3FD385DDF4F /* LowPowerModeMonitor.swift in Sources */,
 				49A1AA04E1EA6287C2DF0B92 /* MDictLibraryService.swift in Sources */,
 				110ECE1D471D03AB3BEA0BE5 /* MacNotebookAppServices.swift in Sources */,
+				B924196C00C844E683148756 /* MacNotebookIO.swift in Sources */,
 				2F72878CBC7852A5058F02B8 /* MacNotebookRepository.swift in Sources */,
 				F1E5AD2778992AB9FC2867F3 /* MacNotebookSyncConsentStore.swift in Sources */,
 				9C7CEA70289954599E45E058 /* MacNotebookSyncController.swift in Sources */,
@@ -9455,6 +9460,7 @@
 				62B631A574A0E52D440AC835 /* LowPowerModeMonitor.swift in Sources */,
 				7852E3B096AC8711E2E294AF /* MDictLibraryService.swift in Sources */,
 				90777F208C78ADEDEB544E9C /* MacNotebookAppServices.swift in Sources */,
+				0C58BFB0F66FD76BCEFF18E5 /* MacNotebookIO.swift in Sources */,
 				537002C594B0C9C2E725A73C /* MacNotebookRepository.swift in Sources */,
 				F32B5B8D666DEDC74486DD37 /* MacNotebookSyncConsentStore.swift in Sources */,
 				E06910DEE44B80D7048A4A18 /* MacNotebookSyncController.swift in Sources */,

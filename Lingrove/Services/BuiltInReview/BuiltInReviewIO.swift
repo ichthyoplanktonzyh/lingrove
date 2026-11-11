@@ -39,7 +39,7 @@ actor BuiltInReviewIO {
     }
 
     func participation(selection: VocabularySelection, version: LingroveNotebookVersion) throws -> LingroveNotebookParticipation {
-        try withEngine { try $0.loadNotebookParticipation(selection: selection, version: version) }
+        try withEngine(readOnly: true) { try $0.loadNotebookParticipation(selection: selection, version: version) }
     }
 
     func perform(_ command: Command) throws {
@@ -99,80 +99,64 @@ actor BuiltInReviewIO {
     /// Rendering can read only a bounded local PNG referenced by this exact saved Card. An
     /// unfamiliar HTTPS image, a source_url or an arbitrary path is never fetched by opening a
     /// face. Metadata ownership, byte count and digest are rechecked before bytes leave IO.
-    func savedImages(context: BuiltInReviewCardContext) throws -> [BuiltInReviewSavedImage] {
-        try withEngine { engine in
-            try engine.core.inReadTransaction {
-                try engine.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: context.snapshot.workspaceId,
-                    notebookId: context.snapshot.notebookId)
-                guard try engine.lingroveNotebookStore.readSnapshot(workspaceId: context.snapshot.workspaceId) == context.snapshot,
-                      try engine.cardStore.loadOptionalCardIncludingDeleted(workspaceId: context.snapshot.workspaceId,
-                          cardId: context.card.cardId) == context.card, invalidFsrsStateReason(card: context.card) == nil
-                else { throw VocabularyError.editConflict }
-                let ids = managedMediaAssetIdsReferencedInMarkdown(text: context.card.frontText + "\n" + context.card.backText)
-                var result: [BuiltInReviewSavedImage] = []
-                // A recipe can combine the corpus's image allowance with card-only content.
-                // Bound the combined read as well as each blob, without hiding valid later parts.
-                var remainingBytes = Int64(VocabularyContentPolicy.maximumSenseImageBytes * 2)
-                for id in ids.sorted().prefix(128) {
-                    try Task.checkCancellation()
-                    guard let asset = try engine.mediaAssetStore.loadOptionalMediaAssetIncludingDeleted(
-                        workspaceId: context.snapshot.workspaceId, mediaAssetId: id), asset.deletedAt == nil,
-                        asset.mimeType == "image/png", asset.sizeBytes > 0, asset.sizeBytes <= 16_777_216,
-                        asset.sizeBytes <= remainingBytes else { continue }
-                    if let saved = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
-                        workspaceID: context.snapshot.workspaceId) {
-                        result.append(.init(id: id, data: saved.data))
-                        remainingBytes -= Int64(saved.data.count)
-                        continue
-                    }
-                    let digest = try normalizedMediaSha256(sha256: asset.sha256)
-                    let url = mediaDirectoryURL.appendingPathComponent(try mediaBlobCacheRelativePath(sha256: digest))
-                    guard let handle = try? FileHandle(forReadingFrom: url) else { continue }
-                    defer { try? handle.close() }
-                    // Bound the actual read as well as the metadata. A corrupted local file
-                    // must not make opening a question allocate its unbounded on-disk size.
-                    guard let bytes = try? handle.read(upToCount: Int(asset.sizeBytes) + 1),
-                          Int64(bytes.count) == asset.sizeBytes,
-                          SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == digest else { continue }
-                    result.append(.init(id: id, data: bytes))
-                    remainingBytes -= Int64(bytes.count)
-                }
-                return result
+    func savedMedia(context: BuiltInReviewCardContext) throws -> ([BuiltInReviewSavedImage], [BuiltInReviewSavedAudio]) {
+        try withEngine(readOnly: true) { engine in
+            try engine.withBuiltInReviewCardRead(version: .init(context.snapshot), card: context.card, link: context.link) {
+                (try readImages(context: context, engine: engine), try readAudio(context: context, engine: engine))
             }
         }
     }
 
-    func savedAudio(context: BuiltInReviewCardContext) throws -> [BuiltInReviewSavedAudio] {
-        try withEngine { engine in
-            try engine.core.inReadTransaction {
-                try engine.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: context.snapshot.workspaceId,
-                    notebookId: context.snapshot.notebookId)
-                guard try engine.lingroveNotebookStore.readSnapshot(workspaceId: context.snapshot.workspaceId) == context.snapshot,
-                      try engine.cardStore.loadOptionalCardIncludingDeleted(workspaceId: context.snapshot.workspaceId,
-                          cardId: context.card.cardId) == context.card else { throw VocabularyError.editConflict }
-                let recordings = (context.link.materialPlan?.audio ?? [:]).sorted { $0.key.rawValue < $1.key.rawValue }
-                return try recordings.compactMap { kind, audio in
-                    let id = LingroveNotebookCardMaterial.mediaAssetID(reference: audio.reference,
-                        workspaceID: context.snapshot.workspaceId)
-                    guard let media = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
-                        workspaceID: context.snapshot.workspaceId) else { return nil }
-                    return .init(id: id, kind: kind, data: media.data,
-                        fileExtension: audio.reference.mimeType == "audio/mpeg" ? "mp3" : "wav")
-                }
+    private func readImages(context: BuiltInReviewCardContext, engine: LingroveNotebookEngine) throws -> [BuiltInReviewSavedImage] {
+        let ids = managedMediaAssetIdsReferencedInMarkdown(text: context.card.frontText + "\n" + context.card.backText)
+        var result: [BuiltInReviewSavedImage] = []
+        // A recipe can combine the corpus's image allowance with card-only content.
+        // Bound the combined read as well as each blob, without hiding valid later parts.
+        var remainingBytes = Int64(VocabularyContentPolicy.maximumSenseImageBytes * 2)
+        for id in ids.sorted().prefix(128) {
+            try Task.checkCancellation()
+            guard let asset = try engine.mediaAssetStore.loadOptionalMediaAssetIncludingDeleted(
+                workspaceId: context.snapshot.workspaceId, mediaAssetId: id), asset.deletedAt == nil,
+                asset.mimeType == "image/png", asset.sizeBytes > 0, asset.sizeBytes <= 16_777_216,
+                asset.sizeBytes <= remainingBytes else { continue }
+            if let saved = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
+                workspaceID: context.snapshot.workspaceId) {
+                result.append(.init(id: id, data: saved.data))
+                remainingBytes -= Int64(saved.data.count)
+                continue
             }
+            let digest = try normalizedMediaSha256(sha256: asset.sha256)
+            let url = mediaDirectoryURL.appendingPathComponent(try mediaBlobCacheRelativePath(sha256: digest))
+            guard let handle = try? FileHandle(forReadingFrom: url) else { continue }
+            defer { try? handle.close() }
+            // Bound the actual read as well as the metadata. A corrupted local file
+            // must not make opening a question allocate its unbounded on-disk size.
+            guard let bytes = try? handle.read(upToCount: Int(asset.sizeBytes) + 1),
+                  Int64(bytes.count) == asset.sizeBytes,
+                  SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == digest else { continue }
+            result.append(.init(id: id, data: bytes))
+            remainingBytes -= Int64(bytes.count)
+        }
+        return result
+    }
+
+    private func readAudio(context: BuiltInReviewCardContext, engine: LingroveNotebookEngine) throws -> [BuiltInReviewSavedAudio] {
+        let recordings = (context.link.materialPlan?.audio ?? [:]).sorted { $0.key.rawValue < $1.key.rawValue }
+        return try recordings.compactMap { kind, audio in
+            let id = LingroveNotebookCardMaterial.mediaAssetID(reference: audio.reference,
+                workspaceID: context.snapshot.workspaceId)
+            guard let media = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
+                workspaceID: context.snapshot.workspaceId) else { return nil }
+            return .init(id: id, kind: kind, data: media.data,
+                fileExtension: audio.reference.mimeType == "audio/mpeg" ? "mp3" : "wav")
         }
     }
 
     /// A sheet may reopen card-only resources without importing them into the corpus. The same
     /// saved scope fences this read; bytes remain in the sheet until an explicit writer uses them.
     func materialMedia(draft: BuiltInReviewDraft) throws -> [ReviewMaterialPreparedMedia] {
-        try withEngine { engine in
-            try engine.core.inReadTransaction {
-                try engine.lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: draft.snapshot.workspaceId,
-                    notebookId: draft.snapshot.notebookId)
-                guard try engine.lingroveNotebookStore.readSnapshot(workspaceId: draft.snapshot.workspaceId) == draft.snapshot else {
-                    throw VocabularyError.editConflict
-                }
+        try withEngine(readOnly: true) { engine in
+            try engine.withNotebookRead(version: .init(draft.snapshot)) {
                 let images = VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
                     .map(ReviewMaterialMediaReference.init(image:))
                 let references = Set(images + draft.materialPlan.audio.values.map(\.reference))
@@ -185,9 +169,11 @@ actor BuiltInReviewIO {
         }
     }
 
-    private func withEngine<T>(_ operation: (LingroveNotebookEngine) throws -> T) throws -> T {
+    private func withEngine<T>(readOnly: Bool = false, _ operation: (LingroveNotebookEngine) throws -> T) throws -> T {
         try Task.checkCancellation()
-        let engine = try LingroveNotebookEngine(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
+        let engine = try readOnly
+            ? LingroveNotebookEngine(readOnlyDatabaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
+            : LingroveNotebookEngine(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
         defer { try? engine.close() }
         return try operation(engine)
     }

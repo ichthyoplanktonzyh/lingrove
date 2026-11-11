@@ -21,11 +21,9 @@ extension LingroveNotebookEngine {
             guard try LingroveNotebookLocalScopeStore(core: core).generationInTransaction() == version.generation,
                   try core.scalarInt(sql: "SELECT revision FROM notebook_state WHERE workspace_id=?",
                     values: [.text(version.workspaceId)]) == Int(version.revision) else { throw VocabularyError.editConflict }
-            let senses = try core.query(sql: "SELECT payload_json FROM notebook_senses WHERE workspace_id=? AND parent_id=? AND id=?",
-                values: [.text(version.workspaceId), .text(selection.entryID.uuidString), .text(selection.senseID.uuidString)]) {
-                try JSONDecoder().decode(VocabularySense.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
-            }
-            guard let sense = senses.first, sense.id == selection.senseID else { throw VocabularyError.editConflict }
+            guard let saved = try notebookSense(id: selection.senseID, workspace: version.workspaceId),
+                  saved.selection == selection else { throw VocabularyError.editConflict }
+            let sense = saved.sense
             let aliases = Set([sense.id] + sense.mergedFrom)
             let enrollments = try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
                 notebookId: version.notebookId, senseIDs: aliases)
@@ -49,6 +47,38 @@ extension LingroveNotebookEngine {
                 enrollments.contains(where: { $0.status == .paused }) ? .paused : .withdrawn
             return .init(status: status, exerciseCount: count, hasUnavailableMaterial: unavailable)
         }
+    }
+
+    /// Identity resolution reads a lexical header, never its examples or the complete corpus.
+    /// Callers already hold the transaction that fences their account and notebook version.
+    func notebookSense(id: UUID, workspace: String) throws -> (selection: VocabularySelection, sense: VocabularySense)? {
+        try core.query(sql: "SELECT parent_id,payload_json FROM notebook_senses WHERE workspace_id=? AND id=?",
+            values: [.text(workspace), .text(id.uuidString)]) { row in
+            guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else {
+                throw VocabularyError.invalidArchive
+            }
+            let sense = try core.decoder.decode(VocabularySense.self,
+                from: Data(DatabaseCore.columnText(statement: row, index: 1).utf8))
+            guard sense.id == id else { throw VocabularyError.invalidArchive }
+            return (VocabularySelection(entryID: entry, senseID: id), sense)
+        }.first
+    }
+
+    func resolvedNotebookSelection(senseID: UUID, workspace: String) throws -> VocabularySelection? {
+        if let saved = try notebookSense(id: senseID, workspace: workspace) { return saved.selection }
+        let matches = try core.query(sql: """
+            SELECT sense.parent_id,sense.id FROM notebook_senses sense
+            JOIN json_each(sense.payload_json,'$.mergedFrom') alias
+            WHERE sense.workspace_id=? AND alias.value=?
+            """, values: [.text(workspace), .text(senseID.uuidString)]) { row in
+            guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
+                  let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else {
+                throw VocabularyError.invalidArchive
+            }
+            return VocabularySelection(entryID: entry, senseID: sense)
+        }
+        guard matches.count <= 1 else { throw VocabularyError.invalidArchive }
+        return matches.first
     }
 }
 

@@ -6,11 +6,14 @@ import LingroveNotebookEngine
 enum BuiltInReviewSource {
     static func value(_ selection: VocabularySelection, in scope: LingroveNotebookSnapshot)
         -> (entry: VocabularyEntry, sense: VocabularySense)? {
-        for entry in scope.document.entries {
-            if let sense = entry.senses.first(where: { $0.id == selection.senseID || $0.mergedFrom.contains(selection.senseID) }) {
-                return (entry, sense)
-            }
+        // Resolve IDs from headers before joining evidence for this one entry. Accessing
+        // document.entries here would rebuild all examples on every card redraw.
+        guard let header = scope.document.catalog.first(where: {
+            $0.senses.contains { $0.id == selection.senseID || $0.mergedFrom.contains(selection.senseID) }
+        }), let entry = VocabularyNotebookProjection.entry(header.id, in: scope.document),
+              let sense = entry.senses.first(where: { $0.id == selection.senseID || $0.mergedFrom.contains(selection.senseID) }) else {
+            return nil
         }
-        return nil
+        return (entry, sense)
     }
 }

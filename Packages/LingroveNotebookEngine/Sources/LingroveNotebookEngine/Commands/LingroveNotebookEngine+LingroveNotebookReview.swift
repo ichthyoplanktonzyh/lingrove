@@ -114,9 +114,10 @@ extension LingroveNotebookEngine {
             if let replay = try self.lingroveNotebookReviewStore.replay(workspaceId: first.workspaceId,
                 requestId: requestId, fingerprint: fingerprint) { return replay }
             if let action { try requireBuiltInReviewActionInTransaction(action) }
-            let snapshot = try self.lingroveNotebookStore.readSnapshot(workspaceId: first.workspaceId)
-            if LingroveNotebookCardMaterial.resolvedSelection(source: first.source, snapshot: snapshot) != nil {
-                let group = try self.lingroveNotebookReviewStore.matching(source: first.source, snapshot: snapshot)
+            if let selection = try resolvedNotebookSelection(senseID: first.senseId, workspace: first.workspaceId),
+               let saved = try notebookSense(id: selection.senseID, workspace: first.workspaceId) {
+                let group = try self.lingroveNotebookReviewStore.load(workspaceId: first.workspaceId,
+                    notebookId: first.notebookId, senseIDs: Set([saved.sense.id] + saved.sense.mergedFrom))
                 guard Set(group.map(\.id)) == Set(expected.map(\.id)) else { throw VocabularyError.editConflict }
             } else {
                 // A retired source may still be paused or withdrawn. Never infer a different

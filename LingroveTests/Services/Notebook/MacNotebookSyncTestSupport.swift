@@ -3,6 +3,7 @@ import Foundation
 import LingroveCloud
 import LingroveNotebook
 import LingroveNotebookEngine
+import LingroveNotebookSync
 import Testing
 @testable import Lingrove
 
@@ -96,6 +97,10 @@ final class MacNotebookLoopback {
             .deletingLastPathComponent().deletingLastPathComponent()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         process.arguments = [root.appendingPathComponent("scripts/tests/fixtures/mac_notebook_sync_server.py").path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["LINGROVE_SYNC_FIXTURE_DOCUMENT_VERSION"] = String(VocabularyDocument.currentVersion)
+        environment["LINGROVE_SYNC_FIXTURE_ENTITY_KINDS"] = VocabularyWireEntityKind.allCases.map(\.rawValue).joined(separator: " ")
+        process.environment = environment
         let output = Pipe()
         process.standardOutput = output; process.standardError = FileHandle.standardError
         try process.run()

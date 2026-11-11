@@ -47,6 +47,15 @@ extension CardStore {
             """, values: [.text(workspaceId)]) { DatabaseCore.columnText(statement: $0, index: 0) })
     }
 
+    /// Rating admission uses the queue's exact predicate for this card, avoiding an
+    /// inventory-wide scan while the writer transaction is holding SQLite's lock.
+    func isNotebookReviewCardExcluded(workspaceId: String, cardId: String) throws -> Bool {
+        try core.scalarInt(sql: """
+            SELECT EXISTS(SELECT 1 FROM cards WHERE workspace_id=? AND card_id=?
+                AND NOT (\(cardStoreNotebookReviewEligibilitySQL)))
+            """, values: [.text(workspaceId), .text(cardId)]) != 0
+    }
+
     public func loadReviewSchedule(
         workspaceIds: [String],
         timeZone: String,

@@ -11,9 +11,8 @@ extension LingroveNotebookEngine {
         try Task.checkCancellation()
         try core.inTransaction {
             try Task.checkCancellation()
-            let snapshot = try lingroveNotebookStore.readSnapshot(workspaceId: workspaceId)
-            try lingroveNotebookCardLinkStore.requireActiveScope(workspaceId: workspaceId, notebookId: snapshot.notebookId)
-            guard snapshot.generation == generation else { throw CancellationError() }
+            guard let version = try currentNotebookVersionInTransaction(), version.workspaceId == workspaceId,
+                  version.generation == generation else { throw CancellationError() }
             if let scope { try requireCurrentScopeInTransaction(scope, requireRevision: true) }
             if let action { try requireBuiltInReviewActionInTransaction(action) }
             let rows = try core.query(sql: "SELECT event_id,operation_id,previous_card_json FROM notebook_review_last_rating WHERE workspace_id=? AND card_id=?", values: [.text(workspaceId), .text(cardId)]) {

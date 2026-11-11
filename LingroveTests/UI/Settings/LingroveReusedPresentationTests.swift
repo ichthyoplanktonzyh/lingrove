@@ -65,6 +65,7 @@ struct LingroveReusedPresentationTests {
         try await form.settle(); try form.capture("extracted-sync-ownership")
         #expect(fixture.sync.ownershipProposal?.status == "pending" && !fixture.sync.enabled)
         fixture.sync.resolveLocalCorpus(accept: false, expected: fixture.sync.ownershipProposal)
+        await fixture.sync.waitForOwnershipChange()
         try await form.settle(); try form.capture("extracted-sync-ready")
         #expect(!fixture.sync.enabled)
     }

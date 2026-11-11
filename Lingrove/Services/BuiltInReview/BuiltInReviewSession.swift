@@ -398,7 +398,7 @@ final class BuiltInReviewSession: ObservableObject {
 
     func speak(_ context: BuiltInReviewCardContext, answer: Bool) {
         let selection = LingroveNotebookCardMaterial.resolvedSelection(source: context.link.source, snapshot: context.snapshot)
-        let entry = context.snapshot.document.entries.first { $0.id == selection?.entryID }
+        let entry = context.snapshot.document.catalog.first { $0.id == selection?.entryID }
         let sense = entry?.senses.first { $0.id == selection?.senseID }
         let text = answer ? context.card.backText : context.card.frontText
         let plain = BuiltInReviewText.plain(text)
@@ -594,8 +594,7 @@ final class BuiltInReviewSession: ObservableObject {
         images = []
         savedAudio = []
         imageTask = Task { [weak self, io] in
-            let images = (try? await io.savedImages(context: context)) ?? []
-            let audio = (try? await io.savedAudio(context: context)) ?? []
+            let (images, audio) = (try? await io.savedMedia(context: context)) ?? ([], [])
             guard let self, self.isVisible, self.isActive, !Task.isCancelled,
                   self.practice?.phase.context?.card == context.card,
                   self.practice?.phase.context?.snapshot == context.snapshot else { return }

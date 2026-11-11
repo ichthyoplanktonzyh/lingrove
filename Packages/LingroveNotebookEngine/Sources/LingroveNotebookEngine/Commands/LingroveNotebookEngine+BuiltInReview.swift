@@ -8,7 +8,7 @@ extension LingroveNotebookEngine {
     public func enrollBuiltInNotebookSense(_ draft: LingroveNotebookCardDraft, input: CardEditorInput,
                                           media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction) throws -> [LingroveNotebookReviewEnrollment] {
         guard action.cards.isEmpty, draft.source.senseId == action.selection.senseID,
-              action.scope.document.entries.contains(where: { entry in
+              action.scope.document.catalog.contains(where: { entry in
                   entry.id == action.selection.entryID && entry.senses.contains { $0.id == action.selection.senseID }
               }) else { throw VocabularyError.editConflict }
         return try enrollLingroveNotebookSenses([draft], scope: action.scope,
@@ -69,30 +69,40 @@ extension LingroveNotebookEngine {
     /// the resulting write, including ABA generation and same-generation review changes.
     func requireBuiltInReviewActionInTransaction(_ action: NotebookBuiltInReviewAction) throws {
         try requireCurrentScopeInTransaction(action.scope, requireRevision: true)
-        let current = try lingroveNotebookStore.readSnapshot(workspaceId: action.scope.workspaceId)
-        let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
+        let version = LingroveNotebookVersion(action.scope)
         let displayedIDs = Set(action.cards.map(\.cardId))
-        guard noteCards.filter({ displayedIDs.contains($0.key) }) == action.noteCards else { throw VocabularyError.editConflict }
-        let enrollmentIDs = Set(action.enrollments.map(\.id))
-        let matching = try lingroveNotebookReviewStore.load(workspaceId: current.workspaceId).filter { enrollment in
-            guard enrollment.notebookId == current.notebookId else { return false }
-            if let resolved = LingroveNotebookCardMaterial.resolvedSelection(source: enrollment.source, snapshot: current) {
-                return resolved == action.selection
+        let noteCards = try ReviewNoteStore(core: core).cardModels(version: version, cardIDs: displayedIDs)
+        guard noteCards == action.noteCards else { throw VocabularyError.editConflict }
+        let matching: [LingroveNotebookReviewEnrollment]
+        if let saved = try notebookSense(id: action.selection.senseID, workspace: version.workspaceId),
+           saved.selection == action.selection {
+            matching = try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
+                notebookId: version.notebookId, senseIDs: Set([saved.sense.id] + saved.sense.mergedFrom))
+        } else {
+            // An explicitly retained question can outlive its source. Only its pinned
+            // enrollments qualify, and an ID that now resolves elsewhere cannot be adopted.
+            matching = try action.enrollments.compactMap { expected in
+                guard let stored = try lingroveNotebookReviewStore.find(workspaceId: version.workspaceId, id: expected.id),
+                      stored.notebookId == version.notebookId,
+                      try resolvedNotebookSelection(senseID: stored.senseId, workspace: version.workspaceId) == nil else {
+                    return nil
+                }
+                return stored
             }
-            return enrollmentIDs.contains(enrollment.id)
         }
         guard Set(matching) == Set(action.enrollments),
-              try workspaceSettingsStore.loadWorkspaceSchedulerSettings(workspaceId: current.workspaceId) == action.schedulerSettings
+              try workspaceSettingsStore.loadWorkspaceSchedulerSettings(workspaceId: version.workspaceId) == action.schedulerSettings
         else { throw VocabularyError.editConflict }
         for card in action.cards {
-            let stored = try cardStore.loadOptionalCardIncludingDeleted(workspaceId: current.workspaceId, cardId: card.cardId)
+            let stored = try cardStore.loadOptionalCardIncludingDeleted(workspaceId: version.workspaceId, cardId: card.cardId)
             guard try requireValidBuiltInReviewCard(stored) == card else {
                 throw VocabularyError.editConflict
             }
         }
         let cardIDs = Set(action.cards.map(\.cardId))
-        let currentLinks = try lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId)
-            .filter { cardIDs.contains($0.cardId) }
+        let currentLinks = try cardIDs.flatMap {
+            try lingroveNotebookCardLinkStore.load(workspaceId: version.workspaceId, cardId: $0)
+        }
         guard Set(currentLinks) == Set(action.links) else { throw VocabularyError.editConflict }
         for link in action.links { try requireCurrentNotebookCardLink(link) }
     }

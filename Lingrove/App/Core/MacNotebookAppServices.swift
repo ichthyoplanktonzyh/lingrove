@@ -64,6 +64,7 @@ final class MacNotebookAppServices {
             await builtInReview?.shutdownAfterDraining()
             await corpus
             stop()
+            await synchronization?.shutdownAfterDraining()
             do { try repository?.shutdown() } catch {
                 LingroveLogger.learning.error("Notebook connection could not close after draining writes")
             }

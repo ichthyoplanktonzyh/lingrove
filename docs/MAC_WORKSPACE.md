@@ -128,6 +128,12 @@ have independent status and retry behavior. Network waits do not hold SQLite tra
 late account callbacks and commands retain their original generation. Unsaved translations,
 autocomplete context and screen content do not enter corpus sync.
 
+`MacNotebookIO` runs workspace connection, ownership calculation/decisions and periodic
+scheduler work on its serial executor. Ownership actions publish their committed state
+asynchronously. The controller rechecks account/task/version identities after each await.
+Periodic sync probes unresolved first-connection metadata before decoding any retained
+recovery document. App termination drains admitted notebook IO before closing storage.
+
 The account overview offers **Sign in or create an account** even when this app build has no
 service configured. Email and eight-digit code are the supported authentication path; no password
 or social-provider controls are implied. Back, Close, resend, expiry and errors borrow the shared

@@ -13,7 +13,11 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-KINDS = 'notebookSettings entry sense source occurrence interpretation collection selectedInterpretation senseExplanation interpretationExplanation contentBlock reviewDraft reviewTemplate meaningNode meaningLabel meaningRole usagePattern patternSlot meaningMapping roleBinding mappingEvidence meaningRelation retrievalCue cueTarget classificationFramework category categoryParent categoryMembership categoryOverride'.split()
+# The private native host supplies the same contract constants used by its client.
+# Standalone runs use the current format as well, so migration cannot leave this peer
+# silently negotiating a retired document or entity family.
+DOCUMENT_VERSION = int(os.environ.get('LINGROVE_SYNC_FIXTURE_DOCUMENT_VERSION', '9'))
+KINDS = os.environ.get('LINGROVE_SYNC_FIXTURE_ENTITY_KINDS', 'notebookSettings entry sense source occurrence interpretation senseExplanation interpretationExplanation contentBlock reviewDraft reviewTemplate meaningNode meaningLabel meaningRole usagePattern patternSlot meaningMapping roleBinding mappingEvidence meaningRelation retrievalCue cueTarget classificationFramework category categoryParent categoryMembership categoryOverride').split()
 WORKSPACES = {'a': '10000000-0000-0000-0000-000000000001', 'b': '20000000-0000-0000-0000-000000000001'}
 OTHER_WORKSPACE = '10000000-0000-0000-0000-000000000010'
 BOOKS = {'a': '10000000-0000-0000-0000-000000000002', 'b': '20000000-0000-0000-0000-000000000002'}
@@ -105,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
             STATE['mode'] = body['mode']
             if body['mode'] == 'initialized-empty':
                 STATE['a']['sequence'] = 1
-                fields = {'documentVersion': 8, 'reviewTemplatesPresent': False}
+                fields = {'documentVersion': DOCUMENT_VERSION, 'reviewTemplatesPresent': False}
                 STATE['a']['records']['notebookSettings:' + BOOKS['a']] = {
                     'entityType': 'notebookSettings', 'entityId': BOOKS['a'], 'fields': fields,
                     'version': '1', 'deleted': False, 'fieldVersions': {k: '1' for k in fields},
@@ -169,7 +173,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'code': 'UNAUTHORIZED'}, 401); return
         if endpoint == 'capabilities':
             if STATE['mode'] == 'delay-caps': time.sleep(0.6)
-            self.reply({'lane': 'lingrove.corpus', 'protocolVersion': 1, 'documentVersion': 8,
+            self.reply({'lane': 'lingrove.corpus', 'protocolVersion': 1, 'documentVersion': DOCUMENT_VERSION,
                 'terminalGroups': True, 'readWindows': True, 'readOnlyCatalog': True, 'maximumGroupBytes': 2097152,
                 'maximumGroupMembers': 10000, 'pageBytes': 262144, 'windowLifetimeMilliseconds': 600000,
                 'entityTypes': KINDS}); return

@@ -331,6 +331,9 @@ struct LingroveNotebookApplyIntegrationTests {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
         var sent = original; sent.catalog[0].senses[0].note = "sent"; sent.catalog[0].senses[0].meaning = "new meaning"
+        // Meaning and note share one sense entity in v9. Change the entry as well so
+        // partial/reordered receipts still exercise a genuinely multi-entity group.
+        sent.catalog[0].expression += " updated"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "upload-two-members")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding))
         #expect(pending.batch.request.members.count == 2)
@@ -576,6 +579,7 @@ struct LingroveNotebookApplyIntegrationTests {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
         var sent = original; sent.catalog[0].senses[0].note = "pending"; sent.catalog[0].senses[0].meaning = "pending meaning"
+        sent.catalog[0].expression += " updated"
         _ = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "terminal-identity")
         let pending = try #require(try f.db.nextLingroveNotebookUpload(binding: f.binding)), before = try f.allRows()
         let partial = try Self.uploadRejection(pending, members: [pending.batch.request.members[0].memberID])

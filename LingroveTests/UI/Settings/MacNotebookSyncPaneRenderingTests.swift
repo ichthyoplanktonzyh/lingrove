@@ -26,6 +26,7 @@ struct MacNotebookSyncPaneRenderingTests {
         #expect(try await f.server.stats().paths.count == before)
         #expect(!f.sync.enabled && f.sync.ownershipProposal?.status == "pending")
         f.sync.resolveLocalCorpus(accept: true)
+        await f.sync.waitForOwnershipChange()
         try await f.server.mode("review-unavailable")
         f.sync.setSynchronizationEnabled(true)
         try await syncEventually { f.sync.corpusStatus == .synchronized && f.sync.reviewStatus == .unavailable }

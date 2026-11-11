@@ -5,6 +5,32 @@ import LingroveNotebook
 
 @MainActor
 struct ReviewNoteIntegrationTests {
+    @Test func coldRatingUndoAndCardReadsKeepTheCorpusUnloaded() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        let (scope, selection) = try source(fixture)
+        _ = try fixture.db.enrollReviewNotes(selections: [selection], version: .init(scope))
+        try fixture.reopen()
+        let version = LingroveNotebookVersion(scope), now = Date()
+        let review = try fixture.db.loadBuiltInNotebookReview(version: version, now: now, savedScope: scope)
+        let card = try #require(review.queue.first)
+        let link = try #require(review.review.links.first { $0.cardId == card.cardId })
+        let marker = try fixture.db.withBuiltInReviewCardRead(version: version, card: card, link: link) { "read" }
+        #expect(marker == "read" && fixture.db.core.notebookSaveCache == nil)
+        _ = try fixture.db.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+            reviewedAtClient: formatIsoTimestamp(date: now), reviewedTimeZone: "UTC"),
+            card: card, action: .init(content: review, selection: selection))
+        #expect(fixture.db.core.notebookSaveCache == nil)
+        #expect(throws: (any Error).self) {
+            try fixture.db.withBuiltInReviewCardRead(version: version, card: card, link: link) { "stale" }
+        }
+        let rated = try fixture.db.loadBuiltInNotebookReview(version: version, now: now, savedScope: scope)
+        let undo = try #require(rated.undoByCardID[card.cardId])
+        try fixture.db.undoBuiltInNotebookRating(undo, action: .init(content: rated, selection: selection))
+        #expect(fixture.db.core.notebookSaveCache == nil)
+        let restored = try #require(fixture.db.loadBuiltInNotebookReview(version: version, now: now, savedScope: scope).queue.first)
+        #expect(restored.reps == card.reps && restored.frontText == card.frontText && restored.backText == card.backText)
+    }
+
     @Test func enrollmentAndDestinationReadsAvoidReloadingTheCorpus() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
         var document = LingroveNotebookReviewCompletionTests.document()

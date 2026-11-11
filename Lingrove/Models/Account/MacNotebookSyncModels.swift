@@ -12,7 +12,7 @@ nonisolated struct MacAccountObservation: Equatable {
 
 /// Independent lanes prevent a successful corpus pass from claiming the review endpoint worked.
 /// The app-owned sync controller publishes these small values; Settings never reads SQL or tokens.
-nonisolated enum MacNotebookSyncStatus: Equatable {
+nonisolated enum MacNotebookSyncStatus: Equatable, Sendable {
     case local, needsWorkspace, needsOwnership, ready, working, synchronized, pending
     case offline, unavailable, forbidden, failed, conflict, rejected, cancelled
 }
