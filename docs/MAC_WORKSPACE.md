@@ -444,3 +444,47 @@ five sense branches, labels and controls rendered normally. New tests also verif
 entry receipts and complete fallback after debounced gaps. No desktop validation item remains
 open in this checkpoint. Large-graph pan/draw FPS and actual GGUF inference throughput were not
 performance-qualified. No installed Dev bundle or live corpus was opened, copied or changed.
+
+## Synthetic operation inventory (2026-11-11)
+
+The subsequent performance audit calls real production commands and projections through an
+isolated Release/arm64 test host, without windows or input synthesis. Product source remains
+`093608d4`; this checkpoint adds test fixtures, measurement/report tools and documentation only.
+The installed Dev corpus and bundle were not accessed or replaced.
+
+The [complete report](benchmarks/corpus-operations-2026-11-11.md) covers 83 timing windows at
+100, 10,000 and 20,000 initial entries. Thirty-five frequent windows have five independent
+samples per size; the remaining windows have single observations. The larger seeds have
+20,000/40,000 senses, 40,000/80,000 examples, 14,000/28,000 meaning nodes, 2,000/4,000 enrolled
+senses and 1,000 rating records. Raw samples, CSV and JSON statistics accompany the report.
+
+At 10,000/20,000 entries, median capture is about 0.47–0.52s / 0.95–1.07s. Early-position,
+associated sense removal is about 2.44s / 4.63s, versus 0.38s / 0.79s for the tail-position,
+unassociated case. Both position and association differ; this is not a controlled estimate
+of association cost. The transaction dominates capture/removal, while the UI read-index delta
+is measured in milliseconds. Some complete-document save paths take single observations of
+40–50s / 124–148s with the dense review fixtures. Repeated whole-source resolution during
+all-Note material refresh and large position/journal updates are identified follow-up areas;
+their exact component shares were not separately profiled. Initial corpus load and post-full-save
+cache recovery remain visible costs. Actual input-to-frame latency, inference and networking
+were outside the timed windows.
+
+Both small preflights and all 525 frequent-window samples actually executed and passed their
+measurement checks. The original full scan completed the first two sizes, then failed its
+20,000-entry CLI retry assertion because it reused a 30-second envelope after a 97-second save.
+The test now refreshes only request ID/expiry while retaining the durable idempotency key.
+The corrected 20,000-entry CLI/Review/Progress/export/backup/stage tail actually executed and
+passed on a fresh generated seed. Product source hashes match between runs. This is a composed
+checkpoint, not an uninterrupted passing full scan; the original failure is retained. The
+782 raw timing records include one explicitly excluded expired-envelope rejection, and the
+independent tail's different preconditions/counts are marked in the report and data files.
+
+An unresolved product issue is separate from timing success: deleting a Note-based enrolled
+sense rejects with `ReviewTemplateError.sourceUnavailable` in all 18 formal attempts. The
+test verified that the rejected target and notebook revision remain unchanged. It must not be
+reported as successful deletion performance or feature acceptance. Source reconciliation before
+missing-source handling is documented for the next correctness fix. No product fix was applied
+in this measurement-only checkpoint.
+
+The private hosts, generated databases, copied dependency cache and repository-scoped
+`build/DerivedData` were removed; their absence was checked after the final passing tail.

@@ -1466,6 +1466,19 @@ its retained sense. The complete batch still receives final relationship validat
 supplied authorized backup, presents the production corpus UI and records main-runloop gaps;
 raw corpus files and measurement traces remain local under ignored `build/` paths.
 
+`VocabularyOperationBenchmarkTests` is a separate opt-in, Release-only inventory of local
+commands and derived projections. It calls production code without windows or input synthesis.
+`VocabularyBenchmarkFixture` generates closed SQLite seeds and owns each trial's private
+repository/store/review/Progress lifetime; it never discovers an installed application path.
+`VocabularyBenchmarkRecorder` separates monotonic operation timings from report IO and records
+rejected commands independently of successful completion. The runners under
+`scripts/validation/{benchmark,summarize}-corpus-operations.py` own the isolated host, native lock,
+sample completeness checks and disposable build/database cleanup. Reports distinguish stored
+state publication, derived preparation, rejected requests and unmeasured frame/network/model work.
+The measured inventory, raw timing artifacts and scoped-recovery limits are maintained in
+`docs/benchmarks/corpus-operations-2026-11-11.md`. A CLI retry uses a fresh transport request
+while retaining the batch idempotency key; an expired envelope is not an idempotent-success sample.
+
 `VocabularySemanticDatabaseProjection` indexes semantic child rows by (table, parent) during
 reconstruction. The codec still checks parent-local positions and exact round trips; this read
 optimization changes neither persisted rows nor schema. Large-label/evidence fixtures live in
