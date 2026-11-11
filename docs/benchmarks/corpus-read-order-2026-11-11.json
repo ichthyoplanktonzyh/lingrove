@@ -1,0 +1,53 @@
+{
+  "seedSHA256": "e324c88c52e46060cea345eed3496ad964a6f79ed108b9644c08d7b94d2d1ca7",
+  "beforeCommit": "ea3505cc",
+  "fixtureSHA256": "2d8a1adc60c97157081b5371eeab6d4a40592601829235ef6e4e8c7c6f84dbfe",
+  "configuration": "Release",
+  "architecture": "arm64",
+  "entries": 20000,
+  "enrolledSenses": 4000,
+  "ratings": 1000,
+  "samples": [
+    {
+      "cold_load_ms": 8278.468,
+      "variant": "before",
+      "trial": 1
+    },
+    {
+      "cold_load_ms": 7612.829333,
+      "variant": "after",
+      "trial": 1
+    },
+    {
+      "cold_load_ms": 8749.446875,
+      "variant": "before",
+      "trial": 2
+    },
+    {
+      "cold_load_ms": 8114.441208,
+      "variant": "after",
+      "trial": 2
+    },
+    {
+      "cold_load_ms": 7209.776208,
+      "variant": "before",
+      "trial": 3
+    },
+    {
+      "cold_load_ms": 7263.016167,
+      "variant": "after",
+      "trial": 3
+    }
+  ],
+  "method": "Three alternating fresh-process Release engine first-load trials per revision on byte-identical synthetic SQLite copies; excludes engine initialization and UI index preparation.",
+  "beforeMedianMs": 8278.468,
+  "afterMedianMs": 7612.829333,
+  "pairedChangesMs": [
+    -665.6386670000011,
+    -635.0056669999994,
+    53.239958999999544
+  ],
+  "afterPackageSourceManifestSHA256": "acaeccf126ac41efa2357acb3a7f4fbcd0eb6c2778a37526422dcc98a30f7234",
+  "validation": "Every copy matched the closed seed SHA-256. Every load checked entry/interpretation/meaning counts and retained all 1000 rating events.",
+  "nativeInventoryScope": "The 43-window native 10k/20k comparison is the preceding ea3505cc preparation slice. This SQL-only follow-up has its separate exact-seed engine window and 24 targeted engine checks; the native inventory was not rerun after this clause."
+}

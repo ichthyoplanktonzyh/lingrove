@@ -34,8 +34,10 @@ def main():
     parser.add_argument("--entries", type=int, default=10000)
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--focus", action="store_true", help="Measure entry save and three deletion cases without a full-save window")
+    parser.add_argument("--cold-only", action="store_true", help="Measure a fresh engine's first load without mutations")
     args = parser.parse_args()
     assert args.entries >= 5000 and args.trials > 0
+    assert not (args.focus and args.cold_only)
     base = ROOT / "build/corpus-data-layer-paired" / args.label
     base.mkdir(parents=True, exist_ok=False)
     tool = base / "tool"
@@ -92,7 +94,8 @@ def main():
                     assert digest(folder / "primary.sqlite") == seed_hash
                     label = folder.name
                     run(label, [binaries[name], "measure", str(folder), str(args.entries)],
-                        dict(os.environ, LINGROVE_PAIRED_FOCUS="1" if args.focus else "0"))
+                        dict(os.environ, LINGROVE_PAIRED_FOCUS="1" if args.focus else "0",
+                             LINGROVE_PAIRED_COLD_ONLY="1" if args.cold_only else "0"))
                     sample = json.loads((base / (label + ".log")).read_text().splitlines()[-1])
                     result["samples"].append(dict(sample, variant=name, trial=trial))
                     shutil.rmtree(folder)

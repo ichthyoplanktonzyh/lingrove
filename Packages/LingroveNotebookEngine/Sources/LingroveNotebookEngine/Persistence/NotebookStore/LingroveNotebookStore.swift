@@ -289,7 +289,10 @@ public struct LingroveNotebookStore {
         var rows: [VocabularyPersistenceRow] = []
         for entity in VocabularyPersistenceEntity.allCases {
             let columns = ["id", "parent_id", "position", "payload_json"] + entity.indexKeys.map(\.rawValue)
-            rows += try self.core.query(sql: "SELECT \(columns.joined(separator: ",")) FROM \(LingroveNotebookSchema.table(entity)) WHERE workspace_id=?",
+            // The composite primary key already provides this order within a workspace.
+            // Canonical reconstruction consumes IDs in this sequence; make index selection
+            // explicit rather than depending on whichever owner index SQLite chooses.
+            rows += try self.core.query(sql: "SELECT \(columns.joined(separator: ",")) FROM \(LingroveNotebookSchema.table(entity)) WHERE workspace_id=? ORDER BY id",
                 values: [.text(workspaceId)]) { statement in
                 let position = sqlite3_column_int64(statement, 2)
                 guard sqlite3_column_type(statement, 2) == SQLITE_INTEGER,

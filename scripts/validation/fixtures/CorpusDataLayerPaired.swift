@@ -63,7 +63,6 @@ func main() throws {
         print("Seed \(count) entries, two senses and four examples per entry")
         return
     }
-    var scope = try db.loadLingroveNotebook(workspaceId: workspace)
     var samples: [String: Double] = [:]
     func measure<T>(_ name: String, _ body: () throws -> T) rethrows -> T {
         let start = ContinuousClock.now
@@ -71,6 +70,15 @@ func main() throws {
         let elapsed = start.duration(to: .now).components
         samples[name] = Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15
         return result
+    }
+    var scope = try measure("cold_load_ms") { try db.loadLingroveNotebook(workspaceId: workspace) }
+    if ProcessInfo.processInfo.environment["LINGROVE_PAIRED_COLD_ONLY"] == "1" {
+        precondition(scope.document.catalog.count == count && scope.document.interpretations.count == count * 4)
+        precondition(scope.document.semantics.nodes.count == count * 14 / 10)
+        let events = try db.loadReviewEventCount()
+        precondition(events == 1000)
+        print(String(decoding: try JSONEncoder().encode(samples), as: UTF8.self))
+        return
     }
     var entry = scope.document.entries[53]
     let editedSenseID = entry.senses[0].id

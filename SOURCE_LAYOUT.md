@@ -316,6 +316,10 @@ Full checked-state row diffs consume unsorted keyed rows and reuse the one newly
 when creating their next cache. Public codec encoding keeps deterministic list order; authored
 body/history/template positions remain explicit. This removes unused global sorting from SQL
 diff preparation without changing journals, public wire ordering or unordered corpus membership.
+The native SQL snapshot reader requests ID order within each workspace, which the existing
+composite primary key can serve. The codec retains canonical membership reconstruction and
+separately checks authored child positions. `benchmark-corpus-data-layer.py --cold-only` verifies
+this narrow reader change on alternating fresh-process loads of byte-identical synthetic copies.
 
 `LingroveNotebookSaveCache` owns the checked state/projection per SQLite connection, guarded by
 scope/revision/generation and both external and local SQL change tokens. Successful full saves

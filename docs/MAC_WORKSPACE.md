@@ -710,3 +710,19 @@ validation passed 56 checks with the visible-desktop journey intentionally skipp
 envelope passed at both sizes with all 258 operation samples. Strict SwiftLint and diff checks
 passed. Owned DerivedData, copied packages, private hosts, archive source and synthetic databases
 were removed. The installed Dev bundle and real corpus were not accessed or replaced.
+
+The SQL-only follow-up to `ea3505cc` requests `ORDER BY id` for each workspace-scoped family
+read. The existing composite primary key can supply the sequence that reconstruction already
+uses. In a separate [exact-seed 20k engine comparison](benchmarks/corpus-read-order-2026-11-11.json),
+three alternating fresh-process loads per version give a median of 8278.468ms before and
+7612.829ms after, about 8% lower. Paired changes are -665.639ms, -635.006ms and +53.240ms:
+two trials improved and one was essentially flat, so the benefit is modest and variable.
+The closed seed hash is `e324c88c52e46060cea345eed3496ad964a6f79ed108b9644c08d7b94d2d1ca7`;
+every trial retained 20,000 entries, 80,000 interpretations, 28,000 meaning nodes and all
+1,000 ratings. The timer excludes engine initialization and UI read-index preparation.
+
+The 43-window native inventory above belongs to the preceding preparation slice; it was not
+rerun after this single SQL ordering clause. The follow-up passed 24 targeted entry-save,
+organization and change-tracking checks, including reopen, cross-connection commits, raw
+corruption, rollback and generation fencing. Its package source manifest was checked against
+the final tree. First load remains a full-corpus operation and a significant remaining cost.
