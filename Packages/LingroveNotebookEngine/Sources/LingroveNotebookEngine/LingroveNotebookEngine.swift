@@ -43,7 +43,8 @@ public final class LingroveNotebookEngine {
         try self.init(core: core, ownsConnection: true)
     }
 
-    /// Borrowing never opens a second handle and never migrates the host's database.
+    /// Borrowing never opens a second handle or changes the host's row format. Writable hosts
+    /// receive the same additive dependency metadata as an owned connection.
     public convenience init(borrowing core: DatabaseCore) throws {
         try self.init(core: core, ownsConnection: false)
     }
@@ -81,7 +82,10 @@ public final class LingroveNotebookEngine {
         self.outboxStore = OutboxStore(core: core)
         self.syncApplier = SyncApplier(core: core)
         self.workspaceSettingsStore = WorkspaceSettingsStore(core: core)
-        if performsMaintenance { try self.lingroveNotebookWindowStore.purgeExpired(now: Date()) }
+        if performsMaintenance {
+            try NotebookChangeTracking.ensureInstalled(in: core)
+            try self.lingroveNotebookWindowStore.purgeExpired(now: Date())
+        }
     }
 
     /// Closing a borrowed facade never retires its host's connection. The host still owns all

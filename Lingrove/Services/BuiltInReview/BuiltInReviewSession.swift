@@ -74,7 +74,8 @@ final class BuiltInReviewSession: ObservableObject {
         self.repository = repository
         self.speech = speech
         io = BuiltInReviewIO(databaseURL: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL)
-        repository.$changeSequence.dropFirst().sink { [weak self] _ in
+        repository.$change.dropFirst().sink { [weak self] change in
+            guard !change.domains.isDisjoint(with: [.corpus, .review]) else { return }
             self?.repositoryDidChange()
         }.store(in: &subscriptions)
         speech?.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
@@ -306,7 +307,8 @@ final class BuiltInReviewSession: ObservableObject {
         writeTask = task
         await task.value
         writeTask = nil; isMutating = false
-        participationRevision = UUID()
+        // The committed repository event already invalidated participation once. A second
+        // identity here would cancel the source detail's freshly started status read.
         return failure
     }
 
@@ -552,8 +554,8 @@ final class BuiltInReviewSession: ObservableObject {
         // this identity even while the review destination is suspended.
         participationRevision = UUID()
         guard isVisible, isActive, !isPublishing else { return }
-        // A notification can describe only an upload ACK. Disable actions while re-reading,
-        // then discard a draft/question only if its actual scope or review rows changed.
+        // Only source/review dependencies arrive here. Disable actions while re-reading, then
+        // discard a draft/question only if its actual scope or review rows changed.
         reload()
     }
 

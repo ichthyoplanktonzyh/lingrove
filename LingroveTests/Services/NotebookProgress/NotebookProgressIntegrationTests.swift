@@ -11,6 +11,38 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct NotebookProgressModelIntegrationTests {
+    @Test("Organization changes and transport ACKs neither cancel nor restart a Progress read")
+    func unrelatedChangesKeepTheRead() async throws {
+        let fixture = try NotebookProgressMacFixture(); defer { fixture.cleanUp() }
+        fixture.repository.publishChange()
+        let gate = NotebookProgressReadGate(io: fixture.io())
+        let model = fixture.model(reader: gate)
+        defer { model.setActive(false) }
+        model.setActive(true)
+        try await gate.waitUntilCaptured()
+        let before = try fixture.repository.snapshot()
+        var semantics = before.document.semantics
+        semantics.nodes.append(.init(id: UUID(), labels: [.init(text: "Progress fixture")]))
+        _ = try fixture.repository.engine.saveNotebookOrganization(.init(semantics: semantics, basedOn: before.document.semantics),
+            basedOn: before)
+        fixture.repository.publishChange()
+        await gate.release()
+        await model.waitForIdle()
+        #expect(try loaded(model).snapshot.totalReviews == 0)
+        #expect(await gate.readCount == 1)
+        try fixture.repository.engine.core.execute(sql: "DELETE FROM notebook_pending_transactions", values: [])
+        fixture.repository.publishChange()
+        model.checkForStorageChanges()
+        #expect(!isLoading(model))
+        #expect(await gate.readCount == 1)
+        try fixture.enroll()
+        fixture.repository.publishChange()
+        #expect(isLoading(model))
+        await model.waitForIdle()
+        #expect(try loaded(model).snapshot.enrolledSenses == 1)
+        #expect(await gate.readCount == 2)
+    }
+
     @Test("Empty, rating, undo, hidden changes and re-entry all load from the same saved notebook")
     func actualWritesRefreshAndReenter() async throws {
         let fixture = try NotebookProgressMacFixture(); defer { fixture.cleanUp() }
@@ -194,10 +226,12 @@ private actor NotebookProgressReadGate: NotebookProgressReading {
     private var waiters: [CheckedContinuation<Void, any Error>] = []
     private var delivery: CheckedContinuation<Void, Never>?
     private var readError: (any Error)?
+    private(set) var readCount = 0
 
     init(io: NotebookProgressIO) { self.io = io }
 
     func load(scope: NotebookProgressScope, now: Date, calendar: Calendar) async throws -> NotebookProgressContent {
+        readCount += 1
         let content: NotebookProgressContent
         do { content = try await io.load(scope: scope, now: now, calendar: calendar) } catch {
             readError = error

@@ -47,7 +47,10 @@ final class NotebookProgressModel: ObservableObject {
         isActive = active
         lifetime = UUID()
         if active {
-            repository.$changeSequence.dropFirst().sink { [weak self] _ in self?.reload() }
+            repository.$change.dropFirst().sink { [weak self] change in
+                guard let self, change.domains.contains(.progress) else { return }
+                if lastFence == nil { reload() } else { checkForStorageChanges() }
+            }
                 .store(in: &subscriptions)
             for name in [Notification.Name.NSCalendarDayChanged, .NSSystemTimeZoneDidChange,
                          NSApplication.didBecomeActiveNotification] {
@@ -99,7 +102,7 @@ final class NotebookProgressModel: ObservableObject {
                 let content = try await reader.load(scope: fence.scope, now: referenceNow, calendar: referenceCalendar)
                 guard let self, self.isActive, self.lifetime == savedLifetime,
                       self.readIdentity == operation, !Task.isCancelled else { return }
-                guard content.snapshot.scope == fence.scope,
+                guard content.snapshot.scope.hasSameOwner(as: fence.scope),
                       try self.repository.engine.notebookProgressReadFence() == fence else {
                     self.reload()
                     return

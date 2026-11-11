@@ -62,7 +62,8 @@ final class VocabularyStore: ObservableObject {
         unavailableError = nil; isAvailable = true
         // The first actor-backed load supplies the full saved scope. Decoding it here would
         // block app/window construction before SwiftUI can even present a loading state.
-        repositorySubscription = repository.$changeSequence.dropFirst().sink { [weak self] _ in
+        repositorySubscription = repository.$change.dropFirst().sink { [weak self] change in
+            guard change.domains.contains(.corpus) else { return }
             self?.repositoryDidChange()
         }
     }
@@ -134,7 +135,7 @@ final class VocabularyStore: ObservableObject {
 
     /// The same store receives its own repository notification. Publish after admitting the
     /// local receipt so the subscribers see the commit without scheduling a redundant readback.
-    private func applyEntryMutation(
+    private func applyMutation(
         scope: VocabularyOperationScope?,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveSnapshot
     ) async throws {
@@ -204,11 +205,11 @@ final class VocabularyStore: ObservableObject {
 
     func save(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         let enriched = enrichCapture?(capture) ?? capture
-        await change(capture) { try await self.applyEntryMutation(scope: scope) { archive in try archive.save(enriched) } }
+        await change(capture) { try await self.applyMutation(scope: scope) { archive in try archive.save(enriched) } }
     }
 
     func saveExplanation(_ record: LearningExplanationRecord, scope: VocabularyOperationScope? = nil) async {
-        do { await apply(try await access(scope: scope) { archive in try archive.saveExplanation(record) }) } catch { report(error) }
+        do { try await applyMutation(scope: scope) { archive in try archive.saveExplanation(record) } } catch { report(error) }
     }
 
     func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
@@ -265,7 +266,7 @@ final class VocabularyStore: ObservableObject {
         scope: VocabularyOperationScope? = nil,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveSnapshot
     ) async -> Bool {
-        do { await apply(try await access(scope: scope, operation)); return true } catch { report(error); return false }
+        do { try await applyMutation(scope: scope, operation); return true } catch { report(error); return false }
     }
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID, scope: VocabularyOperationScope? = nil,
@@ -317,7 +318,7 @@ final class VocabularyStore: ObservableObject {
 
     func removeSense(entryID: UUID, senseID: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
         do {
-            try await applyEntryMutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
+            try await applyMutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
             return true
         } catch { report(error); return false }
     }
@@ -353,41 +354,41 @@ final class VocabularyStore: ObservableObject {
         entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
         importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
     ) async throws {
-        await apply(try await access(scope: scope) { archive in
+        try await applyMutation(scope: scope) { archive in
             try archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected,
                 cardID: cardID, importedImages: importedImages)
-        })
+        }
     }
 
     func recordAnkiBinding(
         entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil, scope: VocabularyOperationScope? = nil
     ) async throws {
-        await apply(try await access(scope: scope) { archive in
+        try await applyMutation(scope: scope) { archive in
             try archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID)
-        })
+        }
     }
 
     func removeReview(
         entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview, scope: VocabularyOperationScope? = nil
     ) async throws {
-        await apply(try await access(scope: scope) { archive in
+        try await applyMutation(scope: scope) { archive in
             try archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected)
-        })
+        }
     }
 
     func saveTemplate(
         _ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
     ) async throws {
-        await apply(try await access(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) })
+        try await applyMutation(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) }
     }
 
     func removeTemplate(_ id: UUID, scope: VocabularyOperationScope? = nil) async throws {
-        await apply(try await access(scope: scope) { archive in try archive.removeTemplate(id) })
+        try await applyMutation(scope: scope) { archive in try archive.removeTemplate(id) }
     }
 
     func remove(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         LingroveLogger.learning.debug("Vocabulary remove requested")
-        await change(capture) { await apply(try await access(scope: scope) { archive in try archive.remove(capture) }) }
+        await change(capture) { try await applyMutation(scope: scope) { archive in try archive.remove(capture) } }
     }
 
     func update(

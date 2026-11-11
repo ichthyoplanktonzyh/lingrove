@@ -40,6 +40,7 @@ final class MacNotebookSyncController: ObservableObject {
     private var syncTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var pendingChangeDomains: NotebookChangeDomains = []
     private var ownershipTask: Task<Void, Never>?
     private let io: MacNotebookIO
     private var metadataTicket = UUID()
@@ -74,7 +75,9 @@ final class MacNotebookSyncController: ObservableObject {
         started = true
         account.observationChanges.removeDuplicates().sink { [weak self] value in self?.accountChanged(value) }
             .store(in: &subscriptions)
-        repository.$changeSequence.dropFirst().sink { [weak self] _ in self?.repositoryChanged() }
+        repository.$change.dropFirst().sink { [weak self] change in
+            self?.repositoryChanged(domains: change.domains)
+        }
             .store(in: &subscriptions)
         accountChanged(account.observation)
     }
@@ -100,6 +103,9 @@ final class MacNotebookSyncController: ObservableObject {
     /// Private hosts await the admitted transaction and its refreshed presentation together.
     /// A spinner or a queued Task alone cannot establish that an ownership decision persisted.
     func waitForOwnershipChange() async { await ownershipTask?.value }
+
+    /// Private hosts can await the coalesced repository work without guessing a timer delay.
+    func waitForRepositoryChanges() async { await debounceTask?.value }
 
     /// Only metadata is fetched after login; no workspace or corpus is selected by `/me` itself.
     func refreshWorkspaces() {
@@ -377,15 +383,29 @@ final class MacNotebookSyncController: ObservableObject {
         selectedWorkspace = nil; ownershipProposal = nil; firstConnection = nil; enabled = false
     }
 
-    private func repositoryChanged() {
-        guard !publishingRepository, selectedWorkspace != nil else { return }
+    private func repositoryChanged(domains: NotebookChangeDomains = .all) {
+        guard !publishingRepository, selectedWorkspace != nil, !domains.isEmpty else { return }
+        // Ratings and journal ACKs can schedule upload work, but ownership proposals depend
+        // only on account decisions and the two corpus snapshots shown in a pending decision.
+        let needsOwnership = domains.contains(.ownership) ||
+            (domains.contains(.corpus) && (ownershipProposal != nil || firstConnection != nil))
+        let needsSync = !domains.isDisjoint(with: [.corpus, .review, .synchronization])
+        guard needsOwnership || needsSync else { return }
+        pendingChangeDomains.formUnion(domains)
         debounceTask?.cancel()
         debounceTask = Task { [weak self] in
             do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
             guard let self, started else { return }
+            // Coalesce dependencies as well as timing: a later rating must not erase a
+            // pending ownership invalidation while replacing the debounce task.
+            let pending = pendingChangeDomains
+            pendingChangeDomains = []
+            let refreshOwnership = pending.contains(.ownership) ||
+                (pending.contains(.corpus) && (ownershipProposal != nil || firstConnection != nil))
             do {
-                try await reloadOwnership()
-                if enabled, !Task.isCancelled { synchronize() }
+                if refreshOwnership { try await reloadOwnership() }
+                if !pending.isDisjoint(with: [.corpus, .review, .synchronization]),
+                   enabled, !Task.isCancelled { synchronize() }
             } catch {
                 if !Task.isCancelled { corpusStatus = .failed }
             }
@@ -416,6 +436,7 @@ final class MacNotebookSyncController: ObservableObject {
         selectionTask?.cancel(); selectionTask = nil; isChoosingWorkspace = false
         syncTask?.cancel(); syncTask = nil; pollTask?.cancel(); pollTask = nil
         debounceTask?.cancel(); debounceTask = nil
+        pendingChangeDomains = []
         ownershipTask?.cancel(); ownershipTask = nil
         coordinator.cancel()
         if advanceGeneration {

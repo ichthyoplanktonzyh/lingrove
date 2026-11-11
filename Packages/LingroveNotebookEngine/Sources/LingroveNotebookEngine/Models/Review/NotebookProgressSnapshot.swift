@@ -15,20 +15,27 @@ public nonisolated struct NotebookProgressScope: Equatable, Sendable {
         self.revision = revision
         self.generation = generation
     }
+
+    /// Organization-only edits can advance the document while leaving every statistic intact.
+    /// Progress fences retain account ABA protection without treating that revision as a dependency.
+    public func hasSameOwner(as other: Self) -> Bool {
+        workspaceID == other.workspaceID && notebookID == other.notebookID && generation == other.generation
+    }
 }
 
-/// A content-free publication fence, compared only on the connection that captured it.
-/// Notebook revisions do not advance on every rating/undo; SQLite's external and local change
-/// counters also invalidate a read when another writer commits without changing the document.
+/// A content-free publication fence. Its durable dependency counter follows rating/undo and
+/// participation across connections, while organization edits and transport ACKs leave it valid.
 public nonisolated struct NotebookProgressReadFence: Equatable, Sendable {
     public let scope: NotebookProgressScope
-    public let externalVersion: Int
-    public let connectionChanges: Int64
+    public let token: NotebookChangeToken
 
-    public init(scope: NotebookProgressScope, externalVersion: Int, connectionChanges: Int64) {
+    public init(scope: NotebookProgressScope, token: NotebookChangeToken) {
         self.scope = scope
-        self.externalVersion = externalVersion
-        self.connectionChanges = connectionChanges
+        self.token = token
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.scope.hasSameOwner(as: rhs.scope) && lhs.token == rhs.token
     }
 }
 

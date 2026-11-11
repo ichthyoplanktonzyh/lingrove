@@ -8,11 +8,10 @@ import SQLite3
 extension LingroveNotebookEngine {
     public func notebookProgressReadFence() throws -> NotebookProgressReadFence {
         try core.inReadTransaction {
-            let before = try core.notebookCacheToken()
+            let before = try core.notebookChangeStamp().progress
             let scope = try notebookProgressScopeInTransaction()
-            guard try core.notebookCacheToken() == before else { throw VocabularyError.editConflict }
-            return .init(scope: scope, externalVersion: before.externalVersion,
-                connectionChanges: before.connectionChanges)
+            guard try core.notebookChangeStamp().progress == before else { throw VocabularyError.editConflict }
+            return .init(scope: scope, token: before)
         }
     }
 
@@ -20,9 +19,10 @@ extension LingroveNotebookEngine {
                                      calendar: Calendar) throws -> NotebookProgressSnapshot {
         try core.inReadTransaction {
             try Task.checkCancellation()
-            guard try notebookProgressScopeInTransaction() == scope else { throw VocabularyError.editConflict }
+            let currentScope = try notebookProgressScopeInTransaction()
+            guard currentScope.hasSameOwner(as: scope) else { throw VocabularyError.editConflict }
             guard let notebookID = scope.notebookID else {
-                return try NotebookProgressAggregation.make(scope: scope, events: [], dueExercises: [],
+                return try NotebookProgressAggregation.make(scope: currentScope, events: [], dueExercises: [],
                     undoneReviews: 0, enrolledSenses: 0, activeSenses: 0, exercises: 0, now: now, userCalendar: calendar)
             }
             let values: [SQLiteValue] = [.text(scope.workspaceID), .text(notebookID.uuidString)]
@@ -63,7 +63,7 @@ extension LingroveNotebookEngine {
                             AND enrollment.notebook_id=?)
                 """, values: values)
             let due = try notebookProgressDueExercises(values: values)
-            return try NotebookProgressAggregation.make(scope: scope, events: events, dueExercises: due,
+            return try NotebookProgressAggregation.make(scope: currentScope, events: events, dueExercises: due,
                 undoneReviews: undone, enrolledSenses: participation.enrolled,
                 activeSenses: participation.active,
                 exercises: liveExercises, now: now, userCalendar: calendar)

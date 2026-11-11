@@ -45,6 +45,9 @@ extension ReviewNoteStore {
         for type in remote.types {
             try ReviewTemplateRenderer.validate(type)
             if let local = currentTypes.first(where: { $0.id == type.id }) {
+                // An echoed ACK is already the saved definition. Besides avoiding SQL, this
+                // keeps JSON key-order differences from masquerading as a presentation edit.
+                if try sameSyncBytes(local, type) { continue }
                 if local.revision == type.revision && local != type { throw VocabularyError.editConflict }
                 if local.revision > type.revision { continue }
                 if let original = sent?.types.first(where: { $0.id == local.id }), local != original && local != type {
@@ -58,6 +61,7 @@ extension ReviewNoteStore {
                   Set(note.customFields.keys).isSubset(of: Set(type.fields.map { $0.id.uuidString.lowercased() })),
                   note.customFields.values.allSatisfy({ $0.utf8.count <= 131_072 }) else { throw LingroveNotebookNetworkError.invalidReply }
             if let local = currentNotes.first(where: { $0.id == note.id }) {
+                if try sameSyncBytes(local, note) { continue }
                 guard local.noteTypeID == note.noteTypeID, local.entryID == note.entryID, local.senseID == note.senseID else { throw VocabularyError.editConflict }
                 if local.revision == note.revision && local != note { throw VocabularyError.editConflict }
                 if local.revision > note.revision { continue }
@@ -89,5 +93,14 @@ extension ReviewNoteStore {
     func defaultRevision(workspace: String) throws -> UInt64 {
         UInt64(try core.scalarInt(sql: "SELECT COALESCE((SELECT default_revision FROM notebook_note_sync_state WHERE workspace_id=?),1)",
             values: [.text(workspace)]))
+    }
+
+    /// Swift String equality folds canonical Unicode forms. Skip only literal equal records,
+    /// with sorted JSON keys so dictionary iteration order cannot turn an echo into a write.
+    private func sameSyncBytes<Value: Encodable & Equatable>(_ lhs: Value, _ rhs: Value) throws -> Bool {
+        guard lhs == rhs else { return false }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(lhs) == encoder.encode(rhs)
     }
 }

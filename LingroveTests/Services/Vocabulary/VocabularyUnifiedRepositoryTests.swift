@@ -13,6 +13,21 @@ import SwiftUI
 @Suite(.serialized)
 @MainActor
 struct VocabularyUnifiedRepositoryTests {
+    @Test func organizationNotificationFollowsTheAppliedReceipt() async throws {
+        try await withFixture { f in
+            await f.store.load()
+            var semantics = f.store.semantics
+            semantics.nodes.append(.init(id: UUID(), labels: [.init(text: "Organization receipt")]))
+            var publications = [Bool]()
+            let observer = f.repository.$change.dropFirst().sink { _ in
+                publications.append(f.store.semantics == semantics && f.store.isLoaded)
+            }
+            defer { observer.cancel() }
+            #expect(await f.store.updateSemantics(semantics, basedOn: f.store.semantics))
+            #expect(publications == [true])
+        }
+    }
+
     @Test func localCaptureAndRemovalPublishAdmittedStateOnce() async throws {
         try await withFixture { f in
             await f.store.load()
@@ -20,7 +35,7 @@ struct VocabularyUnifiedRepositoryTests {
                 example: .init(id: UUID(), text: "The harbor is quiet.", translation: "", ranges: [], completeness: .sentence,
                     meaning: "", createdAt: Date()))
             var publications = [Bool]()
-            let observer = f.repository.$changeSequence.dropFirst().sink { _ in
+            let observer = f.repository.$change.dropFirst().sink { _ in
                 publications.append(f.store.contains(capture))
             }
             defer { observer.cancel() }

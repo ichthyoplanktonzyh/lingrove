@@ -15,15 +15,22 @@ final class MacNotebookRepository: ObservableObject {
     let engine: LingroveNotebookEngine
     let cloudStorage: NotebookEngineStorage
 
-    /// A notification counter, never a database revision or account identity. Views reload their
-    /// saved snapshots after a committed edit, sync or scope change and compare durable generation.
-    @Published private(set) var changeSequence: UInt64 = 0
+    /// One atomic Combine value avoids pairing a new sequence with stale invalidation flags.
+    /// The repository owns it for its lifetime; subscribers still validate their durable owner.
+    struct Change {
+        let sequence: UInt64
+        let domains: NotebookChangeDomains
+    }
+    @Published private(set) var change = Change(sequence: 0, domains: [])
+    var changeSequence: UInt64 { change.sequence }
+    private var lastChange: (version: LingroveNotebookVersion?, stamp: NotebookChangeStamp)?
 
     init(databaseURL: URL, mediaDirectoryURL: URL) throws {
         self.databaseURL = databaseURL
         self.mediaDirectoryURL = mediaDirectoryURL
         engine = try LingroveNotebookEngine(databaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
         cloudStorage = NotebookEngineStorage(engine: engine)
+        lastChange = try engine.notebookChanges()
     }
 
     func snapshot() throws -> LingroveNotebookSnapshot {
@@ -39,9 +46,26 @@ final class MacNotebookRepository: ObservableObject {
         return try LingroveNotebookVersion(snapshot())
     }
 
-    /// Hosts call this only after a durable commit. It carries no content and does not authorize
-    /// another write; the receiving screen must capture the new workspace/revision/generation.
-    func publishChange() { changeSequence &+= 1 }
+    /// Hosts call after commits, including background connections. Derive flags from SQLite
+    /// instead of trusting a caller's guess: a review command may also edit its source material.
+    /// Probe failure broadcasts all domains so a stale screen cannot silently remain actionable.
+    func publishChange() {
+        var domains: NotebookChangeDomains = .all
+        if let current = try? engine.notebookChanges() {
+            if let previous = lastChange {
+                let sameOwner: Bool
+                switch (current.version, previous.version) {
+                case let (.some(current), .some(previous)): sameOwner = current.hasSameOwner(as: previous)
+                default: sameOwner = false
+                }
+                if sameOwner { domains = current.stamp.changes(since: previous.stamp) }
+            }
+            lastChange = current
+        } else {
+            lastChange = nil
+        }
+        change = Change(sequence: change.sequence &+ 1, domains: domains)
+    }
 
     /// App termination owns connection retirement. Closing Settings or a vocabulary/review window
     /// must leave the engine, pending operations and account lifecycle available to the app.

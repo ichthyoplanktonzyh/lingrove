@@ -31,6 +31,15 @@ public nonisolated struct LingroveNotebookVersion: Equatable, Sendable {
 }
 
 extension LingroveNotebookEngine {
+    /// Hosts compare owner and dependency clocks from one SQL snapshot. Reading them through
+    /// separate transactions could misclassify an account switch as a review-only change.
+    public func notebookChanges() throws -> (version: LingroveNotebookVersion?, stamp: NotebookChangeStamp) {
+        try core.inReadTransaction {
+            let stamp = try core.notebookChangeStamp()
+            return (try currentNotebookVersionInTransaction(), stamp)
+        }
+    }
+
     /// One deferred read transaction observes active workspace, notebook revision and generation
     /// together without acquiring SQLite's writer lock. nil means the active workspace has not
     /// opened a notebook yet; malformed/missing account state is still an explicit failure.

@@ -107,10 +107,11 @@ physical file. This path validates the existing schema and skips bootstrap, WAL-
 and expiry maintenance. Ordinary initializers preserve their normal behavior. Native readonly
 does not promise an immutable filesystem: SQLite WAL sidecars can have separate requirements.
 
-The actor performs aggregation off MainActor. The model checks scope/revision/generation and
-the repository connection's external/local change token before publishing. While visible, a
+The actor performs aggregation off MainActor. The model checks workspace/notebook/generation and
+the durable Progress dependency token before publishing. Organization-only document revisions
+do not invalidate statistics; rating, undo, participation and schedule changes do. While visible, a
 two-second metadata probe detects unannounced external writes; unchanged tokens do not trigger
-decoding or aggregation. Notifications, activation and date/timezone changes also refresh.
+decoding or aggregation. Relevant notifications, activation and date/timezone changes also refresh.
 Hidden pages cancel subscriptions/reads and clear content. Empty history and load failure have
 distinct UI; failure is never presented as a successful zero count.
 
@@ -119,8 +120,24 @@ distinct UI; failure is never presented as a successful zero count.
 Capture, editing, CLI, sync and review use one durable corpus. Ordinary entry saves prepare
 the target subtree, reuse writer-owned validated projections and commit through the common
 CAS/journal/media/source-refresh transaction. Connection caches are derived values guarded
-by scope/revision/generation, SQLite data_version and local changes; they are not write authority.
+by scope/revision/generation and a durable corpus dependency clock; they are not write authority.
 Structural/import/restore/remote operations retain their complete validation paths.
+
+`NotebookChangeTracking` installs additive SQLite metadata and triggers on writable connections.
+Each transaction advances only its affected domains: corpus, review, Progress, ownership and
+synchronization. The counters follow raw SQL and foreign-key cascades across connections and
+roll back with the business rows. No-op UPDATEs, undo's pending-only ACK and media-cache access
+timestamps do not invalidate presentation. Schema changes and a random clock epoch prevent
+stale cache reuse after metadata replacement. A read-only/incomplete installation uses the
+conservative SQLite external/local counters until a writable host repairs tracking.
+
+`MacNotebookRepository` publishes sequence and domain flags together after probing committed
+metadata. Owner changes or probe failures invalidate every destination. Corpus observes corpus;
+Review observes corpus/review; Progress compares its own fence. Sync coalesces domain flags and
+rebuilds ownership proposals only when account decisions or relevant corpus snapshots change.
+Ordinary editor receipts are applied before publishing, and corpus enrollment invalidates its
+participation reader once. Counters are currently database-wide within each domain, so changes
+in retained workspaces may conservatively refresh the active workspace too.
 
 Semantic and classification editors submit record-level `VocabularyOrganizationEdit` values.
 Their transaction reuses checked lexical state, merges against current records and validates
@@ -297,3 +314,43 @@ tests. Organization-specific tests protect unrelated lexical/review rows with SQ
 verify independent and conflicting edits, reject invalid combined relationships, roll back
 late journal failures, preserve public-intent rules and reopen the saved document.
 The installed Dev application and its live corpus were outside this synthetic checkpoint.
+
+## Domain invalidation checkpoint (2026-11-11)
+
+Compared with `070f0e46`, writable engine connections now retain checked corpus state across
+ratings and transport-only commits. SQLite dependency clocks replace whole-database change
+counters on the ordinary tracked path. Progress uses its own counter and owner fence; the
+repository publishes domain flags with each sequence. Ordinary editor receipts publish after
+application, and corpus enrollment triggers one participation invalidation. Equal Note/type
+sync echoes skip writes using literal, sorted JSON comparison. Media ACKs and material
+confirmations are transport metadata rather than review presentation changes.
+
+One synthetic seed was copied independently for each version and sample: 10,000 entries,
+20,000 senses, 40,000 sources, 14,000 meaning nodes/mappings, 350 categories, 14,000 category
+memberships and 12 enrolled senses. Both versions ran in Release with identical operation
+order, a warm corpus read before the first rating and three samples. Medians:
+
+| Local storage operation | Before | Current |
+| --- | ---: | ---: |
+| Read corpus after a rating | 4,455.1 ms | 0.33 ms |
+| Save one entry after a rating | 5,007.3 ms | 452.6 ms |
+| Read corpus after another connection retires upload journals | 4,424.3 ms | 0.56 ms |
+
+The first and third operations now reuse the trusted in-memory corpus instead of decoding
+it again. The second includes its actual entry transaction and card refresh. Rating execution,
+initial load, one-time trigger installation and UI rendering are outside these timed windows.
+Logs and raw samples remain in `build/mac-w2-c/change-domains-release-benchmark.log`.
+
+All 92 engine tests passed. Native coverage passed 30 tests across repository receipts,
+Review, Progress and account/sync, followed by a final 15-test Progress/account regression
+after the last changes. Strict lint passed. Checks cover external commits, raw corruption,
+rollback, pinned readers, account ABA, additive installation/read-only fallback, incomplete
+trigger coverage, pure review/media ACKs and exact UI read/invalidation counts. The initial
+full-suite failure compared the new synchronization counter as if it were a business row;
+that assertion now permits the expected journal-retirement clock while still checking the
+clock's rollback. The benchmark fixture was corrected to send the required Note question
+version; no product admission rule was relaxed. All final runs passed.
+
+Installed Dev binaries and live data were unchanged. Domain clocks remain database-wide,
+so another retained workspace can conservatively invalidate the same domain. Search-index
+and graph-projection rebuild scope remain the next independent performance stage.

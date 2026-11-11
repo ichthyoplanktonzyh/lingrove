@@ -268,6 +268,7 @@ public enum LocalDatabaseSchema {
     DROP TABLE IF EXISTS first_review_onboarding;
     DROP TABLE IF EXISTS app_local_settings;
     DROP TABLE IF EXISTS workspaces;
+    DROP TABLE IF EXISTS notebook_change_clock;
     PRAGMA user_version = 0;
     """
 }

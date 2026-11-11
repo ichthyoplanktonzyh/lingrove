@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import LingroveCloud
 import LingroveNotebook
@@ -12,6 +13,28 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(3)))
 @MainActor
 struct MacNotebookSyncControllerTests {
+    @Test func reviewCommitsDoNotRebuildOwnershipProposals() async throws {
+        let f = try MacNotebookSyncFixture(); defer { f.cleanup() }
+        _ = try f.saveLocal()
+        f.start(); try await f.signIn(); try await f.connect()
+        let saved = try f.saveLocal()
+        await f.sync.waitForRepositoryChanges()
+        #expect(f.sync.ownershipProposal?.status == "pending")
+        var proposals = 0
+        let observer = f.sync.$ownershipProposal.dropFirst().sink { _ in proposals += 1 }
+        defer { observer.cancel() }
+        let entry = try #require(saved.document.catalog.first)
+        _ = try f.repository.engine.enrollReviewNotes(selections: [
+            .init(entryID: entry.id, senseID: try #require(entry.senses.first?.id))
+        ], version: .init(saved))
+        f.repository.publishChange()
+        #expect(!f.repository.change.domains.contains(.corpus))
+        #expect(f.repository.change.domains.contains(.review))
+        await f.sync.waitForRepositoryChanges()
+        #expect(proposals == 0)
+        #expect(f.sync.ownershipProposal?.status == "pending")
+    }
+
     @Test func lateMetadataCannotReplaceOfflineStatus() async throws {
         let f = try MacNotebookSyncFixture(); defer { f.cleanup() }
         f.start(); try await f.signIn()

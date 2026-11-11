@@ -127,6 +127,9 @@ struct ReviewMaterialIntegrationTests {
         #expect(throws: (any Error).self) { try sync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: source.replica,
             acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], media: Self.oversizedMedia(), acknowledgedMedia: [audio.prepared.reference.digest], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding) }
         #expect(try sync.request(binding).media == stage.media)
+        let beforeMediaACK = try source.db.notebookChanges().stamp
+        try LingroveNotebookReviewMediaStore(core: source.db.core).acknowledge([audio.prepared.reference.digest], workspaceID: source.workspace)
+        #expect(try source.db.notebookChanges().stamp == beforeMediaACK)
         try sync.apply(.init(protocolVersion: 3, notebookId: source.book, replicaId: source.replica,
             acknowledged: [], confirmed: [], afterSequence: 0, hasMore: false, changes: [], acknowledgedMedia: [audio.prepared.reference.digest], noteState: stage.noteState, acknowledgedNoteState: stage.noteStateDigest), request: stage, binding: binding)
         let publication = try sync.request(binding)

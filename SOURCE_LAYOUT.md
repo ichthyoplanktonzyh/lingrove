@@ -787,12 +787,21 @@ terminateLater. Ordinary window closure does not stop these app-lifetime service
 
 `Queries/+NotebookVersion` supplies a content-free workspace/book/revision/generation fence in
 one deferred read transaction. `MacNotebookRepository.version()` serves UI admission and change
-checks without decoding the corpus on MainActor. The archive actor reuses its acknowledged full
-snapshot only while all four version fields match; external commits and account ABA invalidate
-that cache. The existing transactional writer still checks its full baseline and CAS. A local
+checks without decoding the corpus on MainActor. The archive actor asks its connection-owned
+cache to verify the corpus clock and all four version fields; relevant external writes and account
+ABA invalidate it. The existing transactional writer still checks its full baseline and CAS. A local
 commit's already-applied result also suppresses its queued duplicate UI reload.
 
-The fresh engine schema is 38; `LingroveNotebookCLIStore` commits a bounded idempotency receipt
+The engine's `Models/Notebook/NotebookChangeStamp` defines content-free dependency tokens and
+domain flags. `Persistence/NotebookStore/NotebookChangeTracking` owns the table/trigger mapping
+and the additive installation, including conservative fallback when coverage is incomplete.
+`DatabaseCore` owns only the per-connection derived cache and schema-coverage memo. Corpus
+snapshots use the corpus token; Progress uses its own token plus workspace/notebook/generation.
+`Queries/+NotebookVersion.notebookChanges()` captures owner and all domain clocks in one read
+transaction. `MacNotebookRepository.Change` publishes them as one Combine event, so corpus,
+Review, Progress and sync do not schedule unrelated work for every database commit.
+
+The fresh engine schema is 41; `LingroveNotebookCLIStore` commits a bounded idempotency receipt
 with its notebook write. Existing-object CLI writes carry the original workspace/notebook/generation.
 `Commands/+MacAccountLifecycle` handles native metadata/ownership and real remote FSRS settings;
 `+BuiltInReview` and `Queries/+BuiltInReviewRead` fence native commands/reads with exact saved

@@ -5,6 +5,29 @@ import LingroveNotebook
 
 @MainActor
 struct ReviewNoteSyncTests {
+    @Test func acknowledgementOnlyReplyKeepsPresentationClocks() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let scope = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
+            basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let entry = scope.document.catalog[0]
+        _ = try f.db.enrollReviewNotes(selections: [.init(entryID: entry.id, senseID: entry.senses[0].id)], version: .init(scope))
+        try f.db.core.inTransaction { try LingroveNotebookReviewMaterialStore(core: f.db.core).refreshInTransaction(scope) }
+        let binding = try f.binding(), sync = LingroveNotebookReviewSyncStore(core: f.db.core)
+        let request = try sync.request(binding)
+        let acknowledged = request.enrollments.map(\.operationId) + request.links.map(\.operationId) + request.operations.compactMap { item -> String? in
+            guard case let .object(fields) = item.operation, case let .string(id)? = fields["operationId"] else { return nil }
+            return id
+        }
+        let before = try f.db.notebookChanges().stamp
+        try sync.apply(.init(protocolVersion: 3, notebookId: request.notebookId, replicaId: request.replicaId,
+            acknowledged: acknowledged, confirmed: request.confirmations.map(\.cardId), afterSequence: request.afterSequence,
+            hasMore: false, changes: [], noteState: request.noteState, acknowledgedNoteState: request.noteStateDigest),
+            request: request, binding: binding)
+        let after = try f.db.notebookChanges().stamp
+        #expect(after.corpus == before.corpus && after.review == before.review && after.progress == before.progress)
+        #expect(after.synchronization != before.synchronization)
+    }
+
     @Test func acknowledgementKeepsEditsMadeDuringFlightAndRejectsOldProtocol() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let scope = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),

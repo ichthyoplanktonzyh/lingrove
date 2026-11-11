@@ -27,6 +27,9 @@ public final class DatabaseCore {
     // Stores created from this Core share one derived snapshot, not separate authority. Every
     // access is inside withConnectionAccess or a transaction holding the same recursive lock.
     var notebookSaveCache: LingroveNotebookSaveCache?
+    /// Recheck trigger coverage after DDL, rather than assuming an incomplete additive upgrade
+    /// can safely supply narrow tokens. Access shares the connection's recursive lock.
+    var notebookChangeTrackingSchema: (version: Int, installed: Bool)?
     /// SQLite's own mutex dies with the connection, so it cannot protect a caller arriving after
     /// close. This longer-lived lock serializes native access with close. It is recursive because
     /// transactions call the same query/execute methods while already holding connection ownership.
@@ -209,8 +212,7 @@ public final class DatabaseCore {
 
     func notebookCacheToken() throws -> LingroveNotebookCacheToken {
         try withConnectionAccess {
-            .init(externalVersion: try scalarInt(sql: "PRAGMA data_version", values: []),
-                connectionChanges: sqlite3_total_changes64(connection))
+            try notebookChangeStamp().corpus
         }
     }
 
@@ -255,6 +257,7 @@ public final class DatabaseCore {
             // transaction failed. No rolled-back state can survive as a cache hit, even if its
             // document revision happened to match the durable header.
             notebookSaveCache = nil
+            notebookChangeTrackingSchema = nil
             throw error
         }
     }

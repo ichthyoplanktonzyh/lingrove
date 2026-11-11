@@ -68,7 +68,7 @@ actor VocabularyArchive {
             if let version, let expectedScope, !expectedScope.hasSameOwner(as: version) {
                 throw VocabularyError.editConflict
             }
-            // The connection's cache verifies data_version/total_changes as well as the header.
+            // The connection's cache verifies the durable corpus clock as well as the header.
             // A version-only actor cache would hide an external repair/corruption that did not
             // advance the notebook revision and let an editor prepare from stale content.
             let workspace: String

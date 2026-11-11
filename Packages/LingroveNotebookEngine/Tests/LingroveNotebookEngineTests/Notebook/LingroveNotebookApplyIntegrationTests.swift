@@ -89,7 +89,12 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_rows", values: []) == 0)
         let after = try f.allRows()
-        #expect(after.filter { !$0.key.hasPrefix("notebook_pending_") } == before.filter { !$0.key.hasPrefix("notebook_pending_") })
+        // Retiring a journal advances its derived synchronization clock; all business rows
+        // outside that journal must still be byte-identical. Rollback above compares the clock too.
+        let businessRows: (Dictionary<String, [Data]>.Element) -> Bool = {
+            !$0.key.hasPrefix("notebook_pending_") && $0.key != "notebook_change_clock"
+        }
+        #expect(after.filter(businessRows) == before.filter(businessRows))
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_upload_receipts", values: []) == 0)
         #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_held_card_operations", values: []) > 0)
         try f.reopen()

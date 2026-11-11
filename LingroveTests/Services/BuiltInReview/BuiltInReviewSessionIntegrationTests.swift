@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import CryptoKit
 import Foundation
 import LingroveNotebook
@@ -12,6 +13,41 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct BuiltInReviewSessionIntegrationTests {
+    @Test("Corpus enrollment invalidates participation once after its durable commit")
+    func enrollmentHasOneParticipationInvalidation() async throws {
+        let fixture = try BuiltInReviewMacFixture(); defer { fixture.cleanUp() }
+        fixture.repository.publishChange()
+        var invalidations = 0
+        let observer = fixture.session.$participationRevision.dropFirst().sink { _ in invalidations += 1 }
+        defer { observer.cancel() }
+        #expect(await fixture.session.enrollFromCorpus(fixture.selection) == nil)
+        #expect(invalidations == 1)
+        #expect(try await fixture.session.inspectParticipation(fixture.selection).status == .active)
+    }
+
+    @Test("Transport-only commits keep an active preparation usable without starting another read")
+    func acknowledgementsDoNotRefreshReview() async throws {
+        let fixture = try BuiltInReviewMacFixture(); defer { fixture.cleanUp() }
+        fixture.repository.publishChange()
+        let session = fixture.session
+        session.open(selection: fixture.selection)
+        await session.waitForIdle()
+        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
+        let draftID = try #require(session.draft?.id)
+        let participation = session.participationRevision
+        let other = try LingroveNotebookEngine(databaseURL: fixture.repository.databaseURL,
+            mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
+        defer { try? other.close() }
+        try other.core.execute(sql: "DELETE FROM notebook_pending_transactions", values: [])
+        fixture.repository.publishChange()
+        #expect(fixture.repository.change.domains == .synchronization)
+        #expect(!session.isRefreshing && !session.isBusy)
+        #expect(session.draft?.id == draftID && session.participationRevision == participation)
+        fixture.repository.publishChange()
+        #expect(fixture.repository.change.domains.isEmpty)
+        #expect(!session.isRefreshing && session.draft?.id == draftID)
+    }
+
     @Test("Prepare/cancel, explicit enrollment, window keyboard rating, reopen and persisted undo")
     func nativeReviewJourney() async throws {
         let fixture = try BuiltInReviewMacFixture(); defer { fixture.cleanUp() }

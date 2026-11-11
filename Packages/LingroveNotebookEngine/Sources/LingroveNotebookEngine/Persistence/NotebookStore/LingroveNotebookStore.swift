@@ -199,10 +199,9 @@ public struct LingroveNotebookStore {
     }
 
     private func readSnapshotWithConnection(workspaceId: String) throws -> LingroveNotebookSnapshot {
-        // A deferred reader can overlap another connection's commit. Capture the token before
-        // the first header read and require it to stay stable before reusing content. If it did
-        // change, the full read is stamped with the earlier token: a later call conservatively
-        // reloads rather than attaching a future commit's token to this transaction's snapshot.
+        // The dependency clock and rows share a pinned SQL snapshot. Capture before the header
+        // so another connection's review writes cannot evict trusted corpus state. The stability
+        // check also protects read-only databases that still use the broad fallback counter.
         let token = try core.notebookCacheToken()
         let headers = try self.core.query(sql: "SELECT notebook_id,revision,has_templates FROM notebook_state WHERE workspace_id=?",
             values: [.text(workspaceId)]) { statement -> (UUID, UInt64, Bool) in
