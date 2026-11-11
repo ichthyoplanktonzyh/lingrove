@@ -19,6 +19,8 @@ public struct ReviewNoteStore {
           workspace_id TEXT NOT NULL REFERENCES notebook_state(workspace_id) ON DELETE CASCADE,
           note_id TEXT NOT NULL, notebook_id TEXT NOT NULL, payload_json TEXT NOT NULL,
           PRIMARY KEY(workspace_id,note_id));
+        CREATE INDEX IF NOT EXISTS notebook_notes_by_source
+          ON notebook_notes(workspace_id,notebook_id,json_extract(payload_json,'$.senseID'));
         CREATE TABLE IF NOT EXISTS notebook_note_cards(
           workspace_id TEXT NOT NULL, note_id TEXT NOT NULL, template_id TEXT NOT NULL, card_id TEXT NOT NULL,
           PRIMARY KEY(workspace_id,note_id,template_id), UNIQUE(workspace_id,card_id),
@@ -76,6 +78,32 @@ public struct ReviewNoteStore {
                   let template = UUID(uuidString: DatabaseCore.columnText(statement: $0, index: 1)) else { throw VocabularyError.invalidArchive }
             return .init(noteID: note, templateID: template, cardID: DatabaseCore.columnText(statement: $0, index: 2))
         }
+    }
+
+    /// Narrow corpus writes select Notes by source first, then borrow only their membership
+    /// rows. JSON array binding keeps large batches under SQLite's parameter limit.
+    func memberships(workspace: String, noteIDs: Set<UUID>) throws -> [Membership] {
+        guard !noteIDs.isEmpty else { return [] }
+        let ids = String(decoding: try core.encoder.encode(noteIDs.map(\.uuidString).sorted()), as: UTF8.self)
+        return try core.query(sql: """
+            SELECT note_id,template_id,card_id FROM notebook_note_cards
+            WHERE workspace_id=? AND note_id IN (SELECT value FROM json_each(?)) ORDER BY card_id
+            """, values: [.text(workspace), .text(ids)]) { row in
+            guard let note = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
+                  let template = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else {
+                throw VocabularyError.invalidArchive
+            }
+            return .init(noteID: note, templateID: template, cardID: DatabaseCore.columnText(statement: row, index: 2))
+        }
+    }
+
+    func ownedCardIDs(workspace: String, cardIDs: Set<String>) throws -> Set<String> {
+        guard !cardIDs.isEmpty else { return [] }
+        let ids = String(decoding: try core.encoder.encode(cardIDs.sorted()), as: UTF8.self)
+        return Set(try core.query(sql: """
+            SELECT card_id FROM notebook_note_cards
+            WHERE workspace_id=? AND card_id IN (SELECT value FROM json_each(?))
+            """, values: [.text(workspace), .text(ids)]) { DatabaseCore.columnText(statement: $0, index: 0) })
     }
     public struct Membership: Codable, Hashable, Sendable {
         public let noteID: UUID

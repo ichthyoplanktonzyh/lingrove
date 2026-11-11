@@ -8,6 +8,31 @@ import Testing
 /// repaint, aliases must still navigate, and UI state must not invalidate stored projections.
 @MainActor
 struct VocabularyBrowsingScaleTests {
+    @Test func batchIndexChangeRetiresAllOldOwnersBeforeInstallingSwappedKeys() throws {
+        let now = Date(), alias = UUID()
+        let entries = ["harbor", "forest"].map { word in
+            VocabularyEntry(id: UUID(), expression: word, dictionaryForm: word, language: .english, kind: .word,
+                senses: [.init(id: UUID(), meaning: word, tags: [word], createdAt: now, updatedAt: now)],
+                createdAt: now, updatedAt: now)
+        }
+        var old = entries
+        old[0].senses[0].mergedFrom = [alias]
+        var changed = old
+        changed[0].expression = "forest"; changed[0].dictionaryForm = "forest"
+        changed[1].expression = "harbor"; changed[1].dictionaryForm = "harbor"
+        changed[0].senses[0].mergedFrom = []; changed[1].senses[0].mergedFrom = [alias]
+        var index = VocabularyReadIndex(entries: old)
+        index.apply(updatedEntries: changed, removing: [])
+        #expect(index.entries == changed)
+        for entry in changed { #expect(index.entry(forKey: VocabularyPolicy.entryKey(entry))?.id == entry.id) }
+        #expect(index.entry(forSense: alias)?.id == changed[1].id)
+        #expect(index.allTags == ["forest", "harbor"])
+        index.apply(updatedEntries: [old[0]], removing: [old[1].id])
+        #expect(index.entries == [old[0]])
+        #expect(index.entry(forSense: alias)?.id == old[0].id)
+        #expect(index.allTags == ["harbor"])
+    }
+
     @Test func readOnlyCommandsDoNotRepublishAnAcknowledgedRevision() async throws {
         let archive = VocabularyArchive(url: nil)
         let store = VocabularyStore(archive: archive)

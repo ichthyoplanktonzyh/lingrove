@@ -133,14 +133,14 @@ actor VocabularyArchive {
         return try commitEntry(entry)
     }
 
-    private func commitEntry(_ entry: VocabularyEntry,
-                             images: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
+    func commitEntry(_ entry: VocabularyEntry,
+                     images: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
         try storageAccess(write: true) {
             let baseline = try transactionBaseline()
             if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
             let result = try persistence().saveNotebookEntry(entry, basedOn: baseline, images: images)
             saved = result
-            return entryChange(result, from: baseline, entryID: entry.id)
+            return try entryChange(result, from: baseline, entryID: entry.id)
         }
     }
 
@@ -153,7 +153,7 @@ actor VocabularyArchive {
             if let expectedScope, !expectedScope.hasSameOwner(as: baseline) { throw VocabularyError.editConflict }
             let result = try persistence().saveNotebookOrganization(edit, basedOn: baseline)
             saved = result
-            return .init(result)
+            return try committedSnapshot(result)
         }
     }
 
@@ -277,29 +277,31 @@ actor VocabularyArchive {
     }
 
     func remove(id: UUID) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        next.entries.removeAll { $0.id == id }
-        return try commit(next)
+        let baseline = try load()
+        guard let scope = baseline.scope else { throw VocabularyError.invalidArchive }
+        let result = try persistence().removeNotebookEntry(id, basedOn: scope)
+        saved = result
+        return try entryChange(result, from: scope, entryID: id)
     }
 
     func remove(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        var entries = next.entries
-        guard let entry = entries.firstIndex(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
-              let destination = VocabularySensePolicy.destination(capture, in: entries[entry]),
-              let sense = entries[entry].senses.firstIndex(where: { $0.id == destination.senseID }),
+        let document = try load().document
+        guard let header = document.catalog.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }),
+              var entry = VocabularyNotebookProjection.entry(header.id, in: document),
+              let destination = VocabularySensePolicy.destination(capture, in: entry),
+              let sense = entry.senses.firstIndex(where: { $0.id == destination.senseID }),
               let usage = destination.exampleID else {
             return .init(try transactionBaseline())
         }
-        entries[entry].senses[sense].examples.removeAll { $0.id == usage }
-        next.entries = entries
-        return try commit(next)
+        entry.senses[sense].examples.removeAll { $0.id == usage }
+        return try commitEntry(entry)
     }
 
     func mergeSenses(entryID: UUID, source: UUID, target: UUID) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        try VocabularySenseEditingPolicy.merge(entryID: entryID, source: source, into: target, in: &next, now: Date())
-        return try commit(next)
+        let document = try load().document
+        guard var entry = VocabularyNotebookProjection.entry(entryID, in: document) else { throw VocabularyError.invalidContent }
+        try VocabularySenseEditingPolicy.merge(source: source, into: target, in: &entry, now: Date())
+        return try commitEntry(entry)
     }
 
     /// Capture undo state inside the same archive operation as the merge. No view owns a
@@ -308,12 +310,14 @@ actor VocabularyArchive {
         throws -> (VocabularyArchiveSnapshot, VocabularySenseMergeUndo) {
         let before = try load()
         if let expectedRevision, expectedRevision != before.revision { throw VocabularyError.editConflict }
-        var next = before.document
-        try VocabularySenseEditingPolicy.merge(entryID: entryID, source: source, into: target, in: &next, now: Date())
-        let removedImages = Set(Self.imageReferences(before.document)).subtracting(Self.imageReferences(next))
+        guard let original = VocabularyNotebookProjection.entry(entryID, in: before.document) else { throw VocabularyError.invalidContent }
+        var entry = original
+        try VocabularySenseEditingPolicy.merge(source: source, into: target, in: &entry, now: Date())
+        let removedImages = Set(Self.imageReferences(.init(entries: [original])))
+            .subtracting(Self.imageReferences(.init(entries: [entry])))
         guard let originalScope = before.scope else { throw VocabularyError.invalidArchive }
         let images = try imagesForUndo(removedImages, scope: originalScope)
-        let saved = try commit(next)
+        let saved = try commitEntry(entry)
         guard let scope = saved.scope else { throw VocabularyError.invalidArchive }
         return (saved, .init(before: before.document, after: scope, images: images,
             selection: .init(entryID: entryID, senseID: source)))
@@ -327,19 +331,19 @@ actor VocabularyArchive {
     }
 
     func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
-        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &next.entries[index], now: Date())
-        return try commit(next)
+        let document = try load().document
+        guard var entry = VocabularyNotebookProjection.entry(entryID, in: document) else { throw VocabularyError.invalidContent }
+        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &entry, now: Date())
+        return try commitEntry(entry)
     }
 
     func createSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        guard let index = next.entries.firstIndex(where: { $0.id == entryID }) else { throw VocabularyError.invalidContent }
+        let document = try load().document
+        guard var entry = VocabularyNotebookProjection.entry(entryID, in: document) else { throw VocabularyError.invalidContent }
         let now = Date()
-        next.entries[index].senses.append(VocabularySense(id: senseID, meaning: "", createdAt: now, updatedAt: now))
-        next.entries[index].updatedAt = now
-        return try commit(next)
+        entry.senses.append(VocabularySense(id: senseID, meaning: "", createdAt: now, updatedAt: now))
+        entry.updatedAt = now
+        return try commitEntry(entry)
     }
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
@@ -347,13 +351,22 @@ actor VocabularyArchive {
         guard let scope = baseline.scope else { throw VocabularyError.invalidArchive }
         let result = try persistence().removeNotebookSense(senseID, from: entryID, basedOn: scope)
         saved = result
-        return entryChange(result, from: scope, entryID: entryID)
+        return try entryChange(result, from: scope, entryID: entryID)
     }
 
     private func entryChange(_ result: LingroveNotebookSnapshot, from baseline: LingroveNotebookSnapshot,
-                             entryID: UUID) -> VocabularyArchiveSnapshot {
-        .init(result, entryChange: .init(baseRevision: baseline.revision, entryID: entryID,
-            entry: VocabularyNotebookProjection.entry(entryID, in: result.document)))
+                             entryID: UUID) throws -> VocabularyArchiveSnapshot {
+        let receipt = try persistence().committedNotebookChange(for: .init(result))
+        let entry = receipt?.updatedEntries.first { $0.id == entryID }
+            ?? VocabularyNotebookProjection.entry(entryID, in: result.document)
+        return .init(result, entryChange: .init(baseRevision: baseline.revision, entryID: entryID, entry: entry),
+            committedChange: receipt)
+    }
+
+    /// A receipt is optional and version-fenced by the engine. Unknown/external reads still
+    /// carry the complete document, so UI correctness never depends on cache availability.
+    func committedSnapshot(_ saved: LingroveNotebookSnapshot) throws -> VocabularyArchiveSnapshot {
+        .init(saved, committedChange: try persistence().committedNotebookChange(for: .init(saved)))
     }
 
     /// The selected notebook owns the tag's entire lifetime. One transaction updates all
@@ -442,7 +455,7 @@ actor VocabularyArchive {
                     images: images, requireActiveWorkspace: true)
             }
             saved = result
-            return .init(result)
+            return try committedSnapshot(result)
         }
     }
 

@@ -29,13 +29,10 @@ extension LingroveNotebookEngine {
             let publicChange = try VocabularyWirePublicIntent.hasOrganizationChanges(from: current.document,
                 to: next, notebookID: current.notebookId)
             try Task.checkCancellation()
-            try store.writeRows(changed: rows.changed, removed: rows.removed, workspaceId: current.workspaceId)
             // Organization never changes the lexical material a saved card renders.
-            let saved = try store.finishSave(next, current: current, changed: rows.changed, removed: rows.removed,
-                repositioned: rows.repositioned, publicChange: publicChange, operationId: operationId, reviewSenseIDs: [])
-            core.notebookSaveCache = .init(snapshot: saved, state: state, projection: rows.projection,
-                token: try core.notebookCacheToken(), lineage: cached.lineage)
-            return saved
+            let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: rows, knownEntryIDs: [])
+            return try store.commit(plan, current: current, publicChange: publicChange,
+                operationId: operationId, lineage: cached.lineage)
         }
     }
 }

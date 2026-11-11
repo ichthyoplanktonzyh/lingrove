@@ -82,44 +82,33 @@ public struct LingroveNotebookStore {
             let current = try self.readSnapshot(workspaceId: baseline.workspaceId)
             guard current.notebookId == baseline.notebookId, current.revision == baseline.revision, current.generation == baseline.generation,
                   current.revision < UInt64(Int64.max) else { throw VocabularyError.editConflict }
-            let next = try VocabularyDocumentValidation.prepare(document, previous: current.document, restoringBackup: restoringBackup)
+            guard let cached = core.notebookSaveCache else { throw VocabularyError.editConflict }
+            let state = try VocabularyEntrySaveState(preparing: document, previous: current.document, restoringBackup: restoringBackup)
+            let next = state.document
             try media.registerImages(document: next, previous: current.document, staged: staged, workspaceId: current.workspaceId)
             try Task.checkCancellation()
-            if addingNewCaptureEntries, let cached = core.notebookSaveCache,
+            if addingNewCaptureEntries,
                let rows = try VocabularyPersistenceCodec.appendedCaptureRows(from: current.document, to: next),
                cached.projection.canAppend(rows) {
-                for entity in VocabularyPersistenceEntity.allCases {
-                    for row in rows where row.entity == entity { try upsert(row, workspaceId: current.workspaceId) }
-                }
-                return try finishSave(next, current: current, changed: rows, removed: [],
-                    publicChange: true, operationId: operationId)
+                let delta = try cached.projection.appending(rows)
+                let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: delta)
+                return try commit(plan, current: current, publicChange: true, operationId: operationId, lineage: cached.lineage)
             }
             let publicChange = try VocabularyWirePublicIntent.hasChanges(from: current.document, to: next, notebookID: current.notebookId)
             // A local choice can intentionally differ only in literal Unicode
             // bytes. Persist that value even though Swift String equality folds
             // canonical normalization, just as the remote apply path does.
-            let changes = try self.replaceRows(document: next, previous: current.document, workspaceId: current.workspaceId,
-                preservingLiteralPayloads: true)
-            // The actual row delta decides whether rendered material can have changed.
-            // Organization-only CLI/import work must not refresh every saved review card.
-            let changesMaterial = (changes.changed + changes.removed).contains {
-                switch $0.entity {
-                case .meaningNodes, .meaningLabels, .meaningRoles, .usagePatterns, .patternSlots, .meaningMappings,
-                     .mappingRoles, .mappingEvidence, .meaningRelations, .retrievalCues, .cueTargets,
-                     .classificationFrameworks, .categories, .categoryParents, .categoryMemberships, .categoryOverrides: false
-                default: true
-                }
-            }
-            return try finishSave(next, current: current, changed: changes.changed, removed: changes.removed,
-                publicChange: publicChange, operationId: operationId, reviewSenseIDs: changesMaterial ? nil : [])
+            let delta = try cached.projection.replacingDocument(next)
+            let plan = try LingroveNotebookSavePlan(previous: cached, state: state, rows: delta)
+            return try commit(plan, current: current, publicChange: publicChange, operationId: operationId, lineage: cached.lineage)
     }
 
     /// Both full and narrow saves finish through the same CAS/header/journal/review transaction.
     /// Scheduling and append-only review history stay with the existing material adapter.
-    func finishSave(_ next: VocabularyDocument, current: LingroveNotebookSnapshot,
-                    changed: [VocabularyPersistenceRow], removed: [VocabularyPersistenceRow],
-                    repositioned: [VocabularyPersistenceRow] = [], publicChange: Bool,
-                    operationId: String, reviewSenseIDs: Set<UUID>? = nil) throws -> LingroveNotebookSnapshot {
+    func commit(_ plan: LingroveNotebookSavePlan, current: LingroveNotebookSnapshot,
+                publicChange: Bool, operationId: String, lineage: UUID) throws -> LingroveNotebookSnapshot {
+            let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
+            try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId)
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
             let count = try self.core.execute(sql: """
@@ -130,10 +119,13 @@ public struct LingroveNotebookStore {
             guard count == 1 else { throw VocabularyError.editConflict }
             try self.recordPending(current: current, revision: revision, changed: changed, removed: removed,
                 reviewTemplatesPresent: next.reviewTemplates != nil, publicChange: publicChange, operationId: operationId, now: now)
-        try recordRepositioned(repositioned, workspaceId: current.workspaceId, operationId: operationId,
+        try recordRepositioned(plan.rows.repositioned, workspaceId: current.workspaceId, operationId: operationId,
             journalOffset: changed.count + removed.count)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
-        try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved, senseIDs: reviewSenseIDs)
+        try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved,
+            senseIDs: plan.reviewSenseIDs, entries: plan.state.entries)
+        core.notebookSaveCache = .init(snapshot: saved, state: plan.state, projection: plan.rows.projection,
+            token: try core.notebookCacheToken(), lineage: lineage, committedChange: plan.receipt(from: current, to: saved))
             return saved
     }
 
@@ -383,8 +375,8 @@ public struct LingroveNotebookStore {
                 }
                 let updated = try core.execute(sql: """
                     \(positions)
-                    UPDATE \(table) SET position=(SELECT next_position FROM moved WHERE moved.id=\(table).id)
-                    WHERE workspace_id=? AND id IN (SELECT id FROM moved)
+                    UPDATE \(table) AS stored SET position=moved.next_position FROM moved
+                    WHERE stored.workspace_id=? AND stored.id=moved.id
                     """, values: values + [.text(workspaceId)])
                 guard updated == batch.count else { throw VocabularyError.editConflict }
                 let recorded = try core.execute(sql: """

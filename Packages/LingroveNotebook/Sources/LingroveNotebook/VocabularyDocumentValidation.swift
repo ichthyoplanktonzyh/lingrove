@@ -14,6 +14,13 @@ public nonisolated enum VocabularyDocumentValidation {
     public static func prepare(
         _ document: VocabularyDocument, previous: VocabularyDocument, restoringBackup: Bool = false
     ) throws -> VocabularyDocument {
+        try prepared(document, previous: previous, restoringBackup: restoringBackup).document
+    }
+
+    /// The writer reuses this proof instead of decoding/revalidating its just-saved rows.
+    /// It stays module-internal so an arbitrary caller cannot label an unchecked value valid.
+    static func prepared(_ document: VocabularyDocument, previous: VocabularyDocument, restoringBackup: Bool)
+        throws -> (document: VocabularyDocument, entries: [VocabularyEntry], identifiers: [UUID: Set<UUID>]) {
         guard document.schemaVersion == VocabularyDocument.currentVersion else { throw VocabularyError.unsupportedVersion }
         var next = document
         try VocabularyLifecyclePolicy.validate(next)
@@ -35,8 +42,9 @@ public nonisolated enum VocabularyDocumentValidation {
         }
         next.entries = entries
         next.schemaVersion = VocabularyDocument.requiredVersion(for: entries)
-        try validate(next)
-        return next
+        let joined = next.entries
+        let identifiers = try validate(next, entries: joined)
+        return (next, joined, identifiers)
     }
 
     /// Keep the historical identity scopes and insertion order. Expanding this namespace to

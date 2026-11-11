@@ -7,15 +7,19 @@ import LingroveNotebook
 public struct LingroveNotebookReviewMaterialStore {
     public let core: DatabaseCore
 
-    public func refreshInTransaction(_ snapshot: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil) throws {
+    public func refreshInTransaction(_ snapshot: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil,
+                                     entries: [VocabularyEntry]? = nil) throws {
         guard senseIDs?.isEmpty != true else { return }
         let links = LingroveNotebookCardLinkStore(core: core)
         let cards = CardStore(core: core)
         let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
-        let noteCards = Set(try ReviewNoteStore(core: core).memberships(workspace: snapshot.workspaceId).map(\.cardID))
+        let selectedLinks = try senseIDs.map { try links.load(workspaceId: snapshot.workspaceId, senseIDs: $0) }
+            ?? links.load(workspaceId: snapshot.workspaceId)
+        let noteCards = try ReviewNoteStore(core: core).ownedCardIDs(workspace: snapshot.workspaceId,
+            cardIDs: Set(selectedLinks.map(\.cardId)))
         // Narrow entry transactions already know which live and historical senses changed.
         // Other links keep their previous material revision and need no new render or journal.
-        for link in try links.load(workspaceId: snapshot.workspaceId) where senseIDs?.contains(link.source.senseId) ?? true {
+        for link in selectedLinks {
             if noteCards.contains(link.cardId) { continue }
             guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: snapshot.workspaceId, cardId: link.cardId), card.deletedAt == nil else { continue }
             let material = LingroveNotebookCardMaterial.resolve(source: link.source, snapshot: snapshot, materialPlan: link.materialPlan)
@@ -42,7 +46,7 @@ public struct LingroveNotebookReviewMaterialStore {
             }
             _ = try links.update(link, generatedContent: generated, sourceRevision: snapshot.revision, cardOperationId: operationID)
         }
-        try ReviewNoteStore(core: core).refreshInTransaction(snapshot, senseIDs: senseIDs)
+        try ReviewNoteStore(core: core).refreshInTransaction(snapshot, senseIDs: senseIDs, entries: entries)
     }
 
     public init(core: DatabaseCore) {

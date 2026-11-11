@@ -49,16 +49,37 @@ extension ReviewNoteStore {
 
     /// Updates render caches only. Note/template definitions remain authoritative and the
     /// existing CardStore keeps FSRS/reps/events when replacing its readable face projection.
-    func refreshInTransaction(_ scope: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil) throws {
+    func refreshInTransaction(_ scope: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil,
+                              entries: [VocabularyEntry]? = nil) throws {
+        guard senseIDs?.isEmpty != true else { return }
         let definitions = try types(workspace: scope.workspaceId)
-        let admitted = Set(try memberships(workspace: scope.workspaceId).map(\.noteID))
-        for note in try notes(scope: scope) where admitted.contains(note.id) && (senseIDs?.contains(note.senseID) ?? true) {
+        let selected = try senseIDs.map { try notes(version: .init(scope), senseIDs: $0) } ?? notes(scope: scope)
+        let members = try senseIDs == nil ? memberships(workspace: scope.workspaceId) :
+            memberships(workspace: scope.workspaceId, noteIDs: Set(selected.map(\.id)))
+        guard !members.isEmpty else { return }
+        let admitted = Set(members.map(\.noteID))
+        let sources = NotebookReviewSourceIndex(entries: entries ?? scope.document.entries)
+        for note in selected where admitted.contains(note.id) {
             guard let type = definitions.first(where: { $0.id == note.noteTypeID }) else { throw VocabularyError.invalidArchive }
-            try reconcile(note, type: type, scope: scope)
+            // A deleted source is a material-admission state, not an invalid deletion. Do not
+            // generate new Cards without a source; existing members below keep memory/history
+            // and are marked unavailable by the same material writer as an absent example.
+            if let (entry, sense) = sources.source(for: note) {
+                try reconcile(note, type: type, version: .init(scope), entry: entry, sense: sense)
+            }
         }
-        for (cardID, model) in try cardModels(scope: scope) where senseIDs?.contains(model.note.senseID) ?? true {
-            let source = try? NotebookReviewNoteCard.source(for: model.note, in: scope)
-            try refreshCard(cardID, model: model, version: .init(scope), source: source)
+        // Reconciliation can create members for newly enabled templates. Read the selected
+        // membership again, while retaining the already decoded Notes/type definitions/index.
+        let liveMembers = try senseIDs == nil ? memberships(workspace: scope.workspaceId) :
+            memberships(workspace: scope.workspaceId, noteIDs: admitted)
+        let notesByID = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
+        let typesByID = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
+        for member in liveMembers {
+            guard let note = notesByID[member.noteID], let type = typesByID[note.noteTypeID] else {
+                throw VocabularyError.invalidArchive
+            }
+            let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
+            try refreshCard(member.cardID, model: model, version: .init(scope), source: sources.source(for: note))
         }
     }
 

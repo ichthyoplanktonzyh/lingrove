@@ -19,6 +19,18 @@ extension LingroveNotebookEngine {
         try self.lingroveNotebookStore.load(workspaceId: workspaceId, requireActiveWorkspace: requireActiveWorkspace)
     }
 
+    /// Explicit version/token checks make receipt lookup independent of call ordering. A new
+    /// connection, external mutation or missing/gapped receipt returns nil; callers then reload.
+    public func committedNotebookChange(for version: LingroveNotebookVersion) throws -> LingroveNotebookCommittedChange? {
+        try core.inReadTransaction {
+            guard let cached = core.notebookSaveCache,
+                  LingroveNotebookVersion(cached.snapshot) == version,
+                  try currentNotebookVersionInTransaction() == version,
+                  try core.notebookCacheToken() == cached.token else { return nil }
+            return cached.committedChange
+        }
+    }
+
     public func saveLingroveNotebook(
         _ document: VocabularyDocument, basedOn baseline: LingroveNotebookSnapshot,
         restoringBackup: Bool = false, images: [String: Data] = [:], requireActiveWorkspace: Bool = false,

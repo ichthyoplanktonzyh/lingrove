@@ -28,6 +28,11 @@ extension LingroveNotebookEngine {
         }
     }
 
+    public func removeNotebookEntry(_ entryID: UUID, basedOn baseline: LingroveNotebookSnapshot,
+                                    operationId: String = UUID().uuidString.lowercased()) throws -> LingroveNotebookSnapshot {
+        try saveEntryChange(basedOn: baseline, staged: [], operationId: operationId) { try $0.removingEntry(entryID) }
+    }
+
     private func saveEntryChange(basedOn baseline: LingroveNotebookSnapshot, staged: Set<VocabularyImageReference>,
                                  operationId: String, prepare: (VocabularyEntrySaveState) throws -> VocabularyEntrySaveChange)
         throws -> LingroveNotebookSnapshot {
@@ -45,13 +50,9 @@ extension LingroveNotebookEngine {
             try LingroveNotebookMediaStore(core: core).registerImages(document: change.document,
                 previous: current.document, staged: staged, workspaceId: current.workspaceId)
             try Task.checkCancellation()
-            try store.writeRows(changed: rows.changed, removed: rows.removed, workspaceId: current.workspaceId)
-            let saved = try store.finishSave(change.document, current: current, changed: rows.changed,
-                removed: rows.removed, repositioned: rows.repositioned, publicChange: publicChange, operationId: operationId,
-                reviewSenseIDs: change.affectedReviewSenseIDs)
-            core.notebookSaveCache = .init(snapshot: saved, state: change.state, projection: rows.projection,
-                token: try core.notebookCacheToken(), lineage: cached.lineage)
-            return saved
+            let plan = try LingroveNotebookSavePlan(previous: cached, state: change.state, rows: rows, knownEntryIDs: [change.entryID])
+            return try store.commit(plan, current: current, publicChange: publicChange,
+                operationId: operationId, lineage: cached.lineage)
         }
     }
 }

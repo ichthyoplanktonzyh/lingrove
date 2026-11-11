@@ -140,7 +140,7 @@ extension VocabularyArchive {
             addingNewCaptureEntries: plan.addsOnlyNewCaptureEntries)
         var acknowledgement = committed.replayed ? try decodeCLIReceipt(committed.receipt, compact: compactReceipt) : result
         acknowledgement["replayed"] = .bool(committed.replayed)
-        let saved = VocabularyArchiveSnapshot(committed.snapshot)
+        let saved = try committedSnapshot(committed.snapshot)
         return (try addingScope(to: .object(acknowledgement), snapshot: saved), saved)
     }
 

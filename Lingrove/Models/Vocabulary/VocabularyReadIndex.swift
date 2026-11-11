@@ -34,6 +34,30 @@ nonisolated struct VocabularyReadIndex: Sendable {
         allTags = tagCounts.keys.sorted()
     }
 
+    /// A full-save receipt can exchange keys or move aliases between several owners. Retire
+    /// every old owner before indexing any new value, so a later unindex cannot erase a key
+    /// already installed for another entry. One catalog pass preserves survivor/append order.
+    mutating func apply(updatedEntries: [VocabularyEntry], removing removedIDs: Set<UUID>) {
+        if updatedEntries.count + removedIDs.count == 1 {
+            let entry = updatedEntries.first
+            if let id = entry?.id ?? removedIDs.first {
+                apply(.init(baseRevision: 0, entryID: id, entry: entry))
+            }
+            return
+        }
+        guard !updatedEntries.isEmpty || !removedIDs.isEmpty else { return }
+        var replacements = Dictionary(uniqueKeysWithValues: updatedEntries.map { ($0.id, $0) })
+        let changedIDs = Set(replacements.keys).union(removedIDs)
+        for entry in entries where changedIDs.contains(entry.id) { unindex(entry) }
+        entries = entries.compactMap { entry in
+            guard !removedIDs.contains(entry.id) else { return nil }
+            return replacements.removeValue(forKey: entry.id) ?? entry
+        }
+        entries.append(contentsOf: updatedEntries.filter { replacements[$0.id] != nil })
+        for entry in updatedEntries { index(entry) }
+        allTags = tagCounts.keys.sorted()
+    }
+
     func entry(forKey key: String) -> VocabularyEntry? {
         entryIDsByKey[key].flatMap { entriesByID[$0] }
     }

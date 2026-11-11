@@ -29,12 +29,12 @@ public nonisolated enum VocabularySenseEditingPolicy {
     /// claims directly so deleting one sense never recreates the surviving source evidence.
     static func remove(entryID: UUID, senseID: UUID, from document: inout VocabularyDocument,
                        previousEntries: [VocabularyEntry]) throws -> [VocabularyEntry] {
-        let before = document
         var entries = previousEntries
         guard let index = entries.firstIndex(where: { $0.id == entryID }),
               let sense = entries[index].senses.firstIndex(where: { $0.id == senseID }) else {
             throw NotebookToolError(code: .notFound, message: "Sense does not belong to this entry.")
         }
+        let original = entries[index]
         entries[index].senses.remove(at: sense)
         document.catalog[index].senses.remove(at: sense)
         if entries[index].senses.isEmpty {
@@ -46,7 +46,7 @@ public nonisolated enum VocabularySenseEditingPolicy {
             document.interpretations[index].senseID = nil
             document.interpretations[index].status = .candidate
         }
-        VocabularySemanticPolicy.reconcile(&document.semantics, previous: before, previousEntries: previousEntries, entries: entries)
+        VocabularySemanticPolicy.reconcileEntry(&document.semantics, previous: original, current: entries.first { $0.id == entryID })
         return entries
     }
 

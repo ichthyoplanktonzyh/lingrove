@@ -260,13 +260,37 @@ returns a committed immutable snapshot to the UI-facing store. It does not creat
 byte-sensitive while normalizing unordered collection encodings.
 
 In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
-creates restricted single-entry changes. `LingroveNotebookPersistenceCodec/VocabularyEntryRowProjection`
-converts those changes to row deltas. The engine's `Persistence/NotebookStore/LingroveNotebookSaveCache`
-owns these derived values per SQLite connection, guarded by scope/revision/generation and both
-external and local SQL change tokens. `Commands/LingroveNotebookEngine+EntrySave.swift` accepts only
-the restricted entry intent and uses the existing atomic CAS/journal/media/review-refresh tail.
-Generic structural, import, restore and remote operations retain full validation. The cache is
-disposable derived state, never a caller-supplied authority or an account boundary.
+creates restricted single-entry changes. Its private `VocabularyEntryValidationIndex` retains
+the checked key, identifier and accepted-occurrence ownership proof; replacements validate the
+incoming entry against that proof. `VocabularySemanticPolicy.reconcileEntry` invalidates only
+removed or changed evidence owned by that entry. Full imports/restores still establish the
+complete proof through `VocabularyDocumentValidation`.
+
+`LingroveNotebookPersistenceCodec/VocabularyEntryRowProjection` converts checked changes to row
+deltas and `VocabularyPersistenceMaterialRoots` identifies their lexical/evidence owners. The
+engine's `Persistence/NotebookStore/LingroveNotebookSavePlan` combines that delta with exact
+affected entries, review sources and ordering impact. Full saves, restricted entry commands and
+organization commands use one atomic CAS/journal/media/review-refresh commit tail. Generic
+structural/import/restore operations retain full validation; remote row application retains its
+existing boundary. Dense row ordering and sync payload formats remain unchanged.
+
+`LingroveNotebookSaveCache` owns the checked state/projection per SQLite connection, guarded by
+scope/revision/generation and both external and local SQL change tokens. Successful full saves
+retain it; rollback revokes it. `Models/Notebook/LingroveNotebookCommittedChange` is an optional,
+read-only receipt between two exact versions. The archive carries it to `VocabularyStore`,
+which patches its read index only across an acknowledged consecutive change; missing/gapped
+receipts and arbitrary reordering use the complete-read worker. This cache/receipt is disposable
+derived state, never caller-supplied write authority or an account boundary.
+`Models/Vocabulary/VocabularyReadIndex` retires all old owners before indexing a batch receipt;
+headword-key exchanges and moved historical aliases therefore cannot erase a newly installed
+owner. Single-entry receipts retain the narrow path, and survivor/new-entry order follows the
+checked catalog rather than dictionary iteration.
+
+`Models/Review/NotebookReviewSourceIndex` joins the checked entries once per material refresh.
+`ReviewNoteStore` selects affected Notes/memberships before rendering; it does not repeatedly
+resolve every source against the full corpus. A removed source leaves existing Card scheduling
+and review history intact while material becomes unavailable; restoring the source can render
+the retained material again.
 
 `UI/NibomoPresentation` contains the MIT-licensed extracted Nibomo layout, card surfaces, answer
 controls and queue rows. Parent views supply immutable content, local image bytes and closures;
@@ -1478,6 +1502,11 @@ state publication, derived preparation, rejected requests and unmeasured frame/n
 The measured inventory, raw timing artifacts and scoped-recovery limits are maintained in
 `docs/benchmarks/corpus-operations-2026-11-11.md`. A CLI retry uses a fresh transport request
 while retaining the batch idempotency key; an expired envelope is not an idempotent-success sample.
+`scripts/validation/benchmark-corpus-data-layer.py` compiles the same
+`fixtures/CorpusDataLayerPaired.swift` against an explicit old revision and the current engine.
+It creates one closed synthetic SQLite seed with the old engine, verifies SHA-256 on every
+trial copy and measures the shared public APIs in Release. This separates byte-identical
+transaction/cache comparisons from the app inventory's equivalent generated scenarios.
 
 `VocabularySemanticDatabaseProjection` indexes semantic child rows by (table, parent) during
 reconstruction. The codec still checks parent-local positions and exact round trips; this read

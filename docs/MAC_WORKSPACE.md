@@ -488,3 +488,32 @@ in this measurement-only checkpoint.
 
 The private hosts, generated databases, copied dependency cache and repository-scoped
 `build/DerivedData` were removed; their absence was checked after the final passing tail.
+
+## Local data-layer mutation boundary (2026-11-11)
+
+The follow-up changes the local mutation boundary rather than replacing SQLite, the domain
+model or the app-owned repository. A checked save plan now carries the actual row delta,
+affected entry/review-source IDs and a version-fenced presentation receipt through the same
+atomic transaction. Full saves retain their checked state/projection after commit; rollback
+revokes it, and external SQL/account/generation changes still invalidate it.
+
+Single-entry validation reuses reverse ownership indexes. Capture, ordinary editor changes,
+sense creation/move/merge, entry deletion and one-row manual import use the restricted entry
+path. Complete batches, restore and merge undo retain full preparation. Full-save row diffs
+separate changed payloads from dense position compaction; the position update uses SQLite's
+joined update while preserving the existing journal and wire ordering format.
+
+Review refresh selects affected Notes/memberships and reuses one joined source index. Removing
+an enrolled Note source marks retained material unavailable without deleting Card scheduling
+or append-only review history; restoring the source makes it renderable again. Focused
+SQLite integration tests cover deletion/restore/reopen, retained history, unrelated-material
+write protection, rollback and indexed validation authority. The previous checkpoint's
+`sourceUnavailable` deletion rejection is fixed by this material-admission behavior.
+
+The archive forwards an optional receipt between exact notebook versions. `VocabularyStore`
+patches affected entries or retains its index for organization-only changes. A missing receipt,
+a revision gap or arbitrary entry reorder still uses the complete read worker. Neither cache
+nor receipt is accepted as write authority. `SOURCE_LAYOUT.md` records type ownership and flow.
+Batch index patches retire old owners together before installing replacements, protecting
+headword-key exchanges and historical aliases moved between owners. A focused native test
+checks that atomic projection behavior independently of persistence timings.

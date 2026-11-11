@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--trials", type=int, default=5)
     parser.add_argument("--skip-smoke", action="store_true")
     parser.add_argument("--tail-only", action="store_true", help="Rerun the corrected CLI retry and remaining destinations")
+    parser.add_argument("--native-checks", action="store_true", help="Run affected native repository/lifecycle checks before timing")
     parser.add_argument("--keep-build-on-failure", action="store_true")
     parser.add_argument("--packages-from", type=Path, help="Reuse this benchmark's package cache after a failed build")
     args = parser.parse_args()
@@ -86,7 +87,7 @@ def main():
             plan = plistlib.loads(source_plan.read_bytes())
             files = subprocess.check_output(["git", "ls-files", "--", "Lingrove", "Packages", "LingroveTests", "project.yml"],
                 cwd=ROOT, text=True).splitlines()
-            files += subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "LingroveTests"],
+            files += subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "Lingrove", "Packages", "LingroveTests"],
                 cwd=ROOT, text=True).splitlines()
             (base / "source-hashes.json").write_text(json.dumps({name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                 for name in sorted(set(files)) if (ROOT / name).is_file()}, indent=2) + "\n")
@@ -99,7 +100,7 @@ def main():
                 "sizes": args.sizes, "trials": args.trials, "scanTrials": 1,
                 "focusedTrials": args.trials, "tailOnly": args.tail_only}, indent=2) + "\n")
 
-            def execute(label, sizes, trials, mode="scan"):
+            def execute(label, sizes, trials, mode="scan", selectors=None):
                 output = base / label
                 output.mkdir()
 
@@ -127,13 +128,24 @@ def main():
                 result = base / (label + ".xcresult")
                 code = run(label, ["xcodebuild", "test-without-building", "-xctestrun", str(runfile),
                     "-destination", "platform=macOS", "-derivedDataPath", "build/DerivedData",
-                    "-parallel-testing-enabled", "NO", "-only-testing:LingroveTests/VocabularyOperationBenchmarkTests",
+                    "-parallel-testing-enabled", "NO",
+                    *["-only-testing:" + name for name in (selectors or ["LingroveTests/VocabularyOperationBenchmarkTests"])],
+                    *(["-skip-testing:LingroveTests/VocabularyUnifiedRepositoryTests/nativeCreateCancelSaveEditAndReopenJourney"]
+                        if selectors else []),
                     "-resultBundlePath", str(result)], check=False)
                 run(label + "-summary", ["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", str(result)])
                 summary = json.loads((base / (label + "-summary.log")).read_text())
-                if code or summary.get("failedTests") or summary.get("skippedTests") or not summary.get("passedTests"):
+                optional_ui_skip = selectors and summary.get("skippedTests") == 1 and \
+                    "nativeCreateCancelSaveEditAndReopenJourney() skipped" in (base / (label + ".log")).read_text()
+                if code or summary.get("failedTests") or (summary.get("skippedTests") and not optional_ui_skip) or not summary.get("passedTests"):
                     raise RuntimeError(label + " did not execute passing measurements")
 
+            if args.native_checks:
+                execute("native-checks", "100", 1, selectors=[
+                    "LingroveTests/VocabularyUnifiedRepositoryTests",
+                    "LingroveTests/VocabularyLifecycleTests",
+                    "LingroveTests/VocabularyBrowsingScaleTests",
+                    "LingroveTests/NotebookProgressModelIntegrationTests"])
             if args.tail_only:
                 execute("tail", args.sizes, 1, mode="tail")
             else:

@@ -491,9 +491,7 @@ final class VocabularyStore: ObservableObject {
             return
         }
         let prepared: VocabularyReadIndex
-        if let change = snapshot.entryChange, hasAppliedSnapshot, change.baseRevision == revision {
-            var updated = readIndex
-            updated.apply(change)
+        if let updated = indexFromAcknowledgedChange(snapshot) {
             prepared = updated
         } else {
             let identity = scopeIdentity
@@ -522,6 +520,25 @@ final class VocabularyStore: ObservableObject {
         isLoaded = true
         errorMessage = nil
         LingroveLogger.learning.debug("Vocabulary updated", metadata: ["entry_count": .stringConvertible(entries.count)])
+    }
+
+    /// A receipt can patch this index only when it joins its exact current version to the
+    /// acknowledged result. Missing receipts, reorderings and revision gaps use the worker.
+    private func indexFromAcknowledgedChange(_ snapshot: VocabularyArchiveSnapshot) -> VocabularyReadIndex? {
+        if let updated = indexFromCommittedChange(snapshot) { return updated }
+        guard hasAppliedSnapshot, let change = snapshot.entryChange, change.baseRevision == revision else { return nil }
+        var updated = readIndex
+        updated.apply(change)
+        return updated
+    }
+
+    private func indexFromCommittedChange(_ snapshot: VocabularyArchiveSnapshot) -> VocabularyReadIndex? {
+        guard hasAppliedSnapshot, let receipt = snapshot.committedChange, !receipt.requiresEntryReload,
+              receipt.base == operationScope.map(LingroveNotebookVersion.init),
+              receipt.version == snapshot.scope.map(LingroveNotebookVersion.init) else { return nil }
+        var updated = readIndex
+        updated.apply(updatedEntries: receipt.updatedEntries, removing: receipt.removedEntryIDs)
+        return updated
     }
 
     /// App termination (and isolated test fixtures) drains workers before the repository closes

@@ -239,6 +239,7 @@ struct VocabularyOperationBenchmarkTests {
             await store.removeSense(entryID: reviewed.id, senseID: reviewed.senses[0].id)
         }
         try r.outcome("sense.remove.enrolled", succeeded: removedReviewed, message: store.errorMessage)
+        try #require(removedReviewed, "Enrolled Note source deletion must succeed after the data-layer correction")
         if !removedReviewed {
             // Measurement continues only after verifying the rejection published no mutation.
             // The report retains its error and labels this duration as a rejected request.

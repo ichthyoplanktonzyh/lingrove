@@ -3,6 +3,47 @@ import Foundation
 /// Pure integrity and edit rules for the meaning graph. The archive invokes these before a
 /// transaction; UI drafts can be discarded without touching durable identities or examples.
 public nonisolated enum VocabularySemanticPolicy {
+    /// The validated lexical state retains the semantic half of the global ID namespace.
+    /// References such as evidence IDs are deliberately excluded: they name lexical objects.
+    static func identifiers(_ index: VocabularySemanticIndex) -> Set<UUID> {
+        var ids = Set<UUID>()
+        for node in index.nodes {
+            ids.insert(node.id); ids.formUnion(node.labels.map(\.id)); ids.formUnion(node.roles.map(\.id))
+        }
+        for pattern in index.patterns { ids.insert(pattern.id); ids.formUnion(pattern.slots.map(\.id)) }
+        for mapping in index.mappings { ids.insert(mapping.id); ids.formUnion(mapping.roleBindings.map(\.id)) }
+        ids.formUnion(index.relations.map(\.id)); ids.formUnion(index.cues.map(\.id)); ids.formUnion(index.cueTargets.map(\.id))
+        return ids
+    }
+
+    /// A checked entry command cannot change any unrelated lexical owner. Preserve those graph
+    /// records and reconcile citations using only the old/new examples of the named entry.
+    static func reconcileEntry(_ index: inout VocabularySemanticIndex, previous: VocabularyEntry?, current: VocabularyEntry?) {
+        let old = previous?.senses ?? [], new = current?.senses ?? []
+        let beforeIDs = Set(old.map(\.id)), live = Set(new.map(\.id))
+        let newExamples = Dictionary(uniqueKeysWithValues: new.flatMap { sense in sense.examples.map { ($0.id, (sense.id, $0)) } })
+        var invalid = Set<UUID>()
+        for sense in old {
+            for example in sense.examples {
+                guard let (owner, value) = newExamples[example.id], owner == sense.id else { invalid.insert(example.id); continue }
+                if value.sourceID != example.sourceID || value.occurrenceID != example.occurrenceID ||
+                    value.text != example.text || value.ranges != example.ranges ||
+                    value.meaning != example.meaning || value.meaningLanguage != example.meaningLanguage {
+                    invalid.insert(example.id)
+                }
+            }
+        }
+        let retired = beforeIDs.subtracting(live)
+        guard !retired.isEmpty || !invalid.isEmpty else { return }
+        let retiredPatterns = Set(index.patterns.filter { retired.contains($0.senseID) }.map(\.id))
+        if !retiredPatterns.isEmpty { index.patterns.removeAll { retiredPatterns.contains($0.id) } }
+        index.mappings.removeAll { retired.contains($0.senseID) || $0.patternID.map(retiredPatterns.contains) == true }
+        for offset in index.mappings.indices where beforeIDs.contains(index.mappings[offset].senseID) {
+            let count = index.mappings[offset].evidenceIDs.count
+            index.mappings[offset].evidenceIDs.removeAll { invalid.contains($0) }
+            if count != index.mappings[offset].evidenceIDs.count { index.mappings[offset].provenance.status = .proposed }
+        }
+    }
     public static func validate(_ index: VocabularySemanticIndex, entries: [VocabularyEntry]) throws {
         guard index.nodes.count <= 100_000, index.mappings.count <= 500_000,
               index.patterns.count <= 500_000, index.relations.count <= 500_000,

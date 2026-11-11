@@ -11,6 +11,10 @@ extension VocabularyArchive {
             let plan = try VocabularyEntryInputPolicy.plan(inputs, into: snapshot.document, now: Date())
             try Task.checkCancellation()
             guard plan.result.hasChanges else { return (snapshot, plan.result) }
+            if inputs.count == 1, let selection = plan.result.selection,
+               let entry = VocabularyNotebookProjection.entry(selection.entryID, in: plan.document) {
+                return (try commitEntry(entry), plan.result)
+            }
             return (try commit(plan.document), plan.result)
         }
     }

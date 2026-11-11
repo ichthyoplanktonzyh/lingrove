@@ -31,6 +31,63 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         rows.allSatisfy { keyed[$0.key] == nil }
     }
 
+    /// A complete candidate is already validated by the domain module. Diff against this
+    /// connection's retained rows, classifying pure moves separately from changed payloads.
+    public func replacingDocument(_ document: VocabularyDocument) throws -> VocabularyEntryRowChange {
+        let encoded = try VocabularyPersistenceCodec.encode(document)
+        var delta = Delta()
+        let after = try encoded.keyedRows()
+        for row in encoded.rows {
+            if let old = keyed[row.key], old.parentID == row.parentID, old.record.extra == row.record.extra,
+               old.record.payload == row.record.payload, try old.encodedPayload() == row.encodedPayload() {
+                if old.position != row.position { delta.repositioned.append(row) }
+            } else { delta.changed.append(row) }
+        }
+        delta.removed = keyed.values.filter { after[$0.key] == nil }
+        let next = try VocabularyEntryRowProjection(encoded)
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
+    }
+
+    /// Proven append-only capture retains every old group and payload, adding just new roots.
+    public func appending(_ rows: [VocabularyPersistenceRow]) throws -> VocabularyEntryRowChange {
+        guard canAppend(rows) else { throw VocabularyError.invalidArchive }
+        var next = self
+        for row in rows { next.keyed[row.key] = row }
+        for row in rows {
+            if let root = try Self.root(row, rows: next.keyed) { next.groups[root, default: []].insert(row.key) }
+            if Self.isSemantic(row.entity) { next.semanticKeys.insert(row.key) }
+            if Self.isClassification(row.entity) { next.classificationKeys.insert(row.key) }
+        }
+        return .init(projection: next, changed: rows, removed: [], repositioned: [])
+    }
+
+    public func materialRoots(for keys: Set<VocabularyPersistenceRow.Key>) throws -> VocabularyPersistenceMaterialRoots {
+        var result = VocabularyPersistenceMaterialRoots()
+        for key in keys {
+            guard let row = keyed[key] else { continue }
+            switch row.entity {
+            case .templates: result.allReviewMaterial = true
+            case .sources:
+                guard let id = UUID(uuidString: row.id) else { throw VocabularyError.invalidArchive }
+                result.sourceIDs.insert(id)
+            case .occurrences:
+                guard let id = UUID(uuidString: row.id) else { throw VocabularyError.invalidArchive }
+                result.occurrenceIDs.insert(id)
+            default:
+                guard let root = try Self.root(row, rows: keyed), let owner = keyed[root] else { continue }
+                if root.entity == .entries {
+                    guard let id = UUID(uuidString: root.id) else { throw VocabularyError.invalidArchive }
+                    result.entryIDs.insert(id)
+                } else if let raw = owner.indexValue(.senseID) {
+                    guard let id = UUID(uuidString: raw) else { throw VocabularyError.invalidArchive }
+                    result.senseIDs.insert(id)
+                }
+            }
+        }
+        return result
+    }
+
+
     /// These indexes contain only organization rows. Lexical/source payloads remain in the
     /// existing projection, and equal organization rows reuse their saved bytes as well.
     public func applyingOrganization(semantics: VocabularySemanticIndex?, classification: VocabularyClassificationIndex?)

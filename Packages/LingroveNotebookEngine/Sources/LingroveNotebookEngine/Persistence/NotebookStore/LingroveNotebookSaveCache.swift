@@ -15,6 +15,13 @@ struct LingroveNotebookSaveCache {
     /// A full SQL decode creates a new lineage; incremental commits retain it. Integration checks
     /// can establish reuse/invalidation without measuring latency or adding production telemetry.
     let lineage: UUID
+    let committedChange: LingroveNotebookCommittedChange?
+
+    init(snapshot: LingroveNotebookSnapshot, state: VocabularyEntrySaveState, projection: VocabularyEntryRowProjection,
+         token: LingroveNotebookCacheToken, lineage: UUID, committedChange: LingroveNotebookCommittedChange? = nil) {
+        self.snapshot = snapshot; self.state = state; self.projection = projection
+        self.token = token; self.lineage = lineage; self.committedChange = committedChange
+    }
 }
 
 typealias LingroveNotebookCacheToken = NotebookChangeToken
