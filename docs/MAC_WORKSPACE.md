@@ -860,3 +860,61 @@ explicitly prepared its dependency. All measured product/test source hashes matc
 tree. New/changed Swift lines have no lint violations, and diff checks passed. Owned DerivedData,
 copied packages, private hosts and synthetic databases were removed and cleanup verified. The
 installed Dev application and real corpus were not accessed or replaced.
+
+## Cold retirement of reviewed sources (2026-11-13)
+
+[ADR 0007](adr/0007-local-reviewed-source-retirement.md) extends certified cold sense deletion
+to shared Notes and legacy exercises. The engine derives retired canonical/merged IDs from the
+checked local entry and invokes the existing review material store inside the same canonical
+write transaction. It marks affected materials `sourceMissing`, or preserves the legacy
+explicit-retention rule, without rendering surviving sources. Shared Note fields, definitions,
+memberships, Card faces/tags, schedules, events, links/enrollments and their journals stay intact.
+The existing partial receipt refreshes pages/detail/selection; full interfaces remain unloaded.
+
+Affected definitions are still validated. A malformed Note type or failed material/journal
+write aborts the entire transaction, including corpus/header/proof changes. Another workspace
+and surviving sibling material are excluded. Generation changes and stale question submissions
+retain their existing rejection rules. Missing proof, changed media sets, foreign semantic
+citations and reviewed captures/edits keep complete preparation; this checkpoint specializes
+source retirement only.
+
+The storage regression also caught workspace-wide walks in two otherwise scoped queries.
+Removing SQL's identity ordering lets the existing source/Note-owner indexes constrain rows;
+only the selected small result is sorted to preserve deterministic return order. No persisted
+ordering or new index is introduced. Growing unrelated Notes/Cards from 20 to 400 yields about
+6,648 SQLite VM instructions at both sizes (the final targeted run measured 6,647/6,648).
+The initial ordered prototype measured 7,121/16,621 instructions and failed that regression.
+
+The [raw samples, comparison and source evidence](benchmarks/corpus-reviewed-retirement-2026-11-13.json)
+record twelve windows at 10k/20k, three trials each, using the unchanged fixture generator.
+The enrolled deletion timer still invokes the same production store command and target IDs;
+its label changes from `sense.remove.cold.enrolled-fallback` to `sense.remove.cold.enrolled`.
+Indexed pre-timer reads capture that target's saved Card for the unchanged-Card assertion;
+they do not load a corpus or warm the archive. Release medians in milliseconds:
+
+| Cold deletion | 10k before | 10k after | 20k before | 20k after |
+| --- | ---: | ---: | ---: | ---: |
+| Ordinary sense | 31.856 | 17.664 | 46.775 | 17.232 |
+| Enrolled sense | 4246.983 | 21.727 | 8800.997 | 25.618 |
+
+The ordinary path also benefits from dropping its broad review-consumer fallback probe and
+using the constrained retirement lookups. The fixture counts, review-history workload and
+operation boundaries match the preceding checkpoint; independently generated database bytes
+are not paired. The three trials establish this observed improvement, not a percentile or a
+constant-time guarantee for many linked Cards/media. The preceding 43-operation inventory was
+not rerun.
+
+Complete-store preparation and missing-proof favorite remain full operations. This run observed
+9195.211ms and 9879.318ms at 20k, versus 8454.999ms and 8926.785ms previously. They were not
+optimized in this slice; these observations alone do not identify the cause of the longer
+durations. Tag filtering remains a global JSON scan (220.235ms at 20k). Image-heavy and dense
+alias workloads retain focused correctness coverage rather than large-library timing coverage.
+
+Validation passed 125 engine Swift Testing checks and 40 engine XCTest checks. A final targeted
+six-test recheck followed test-only naming/formatting fixes. The signed private Release host
+passed 77 native checks; one opt-in visible-desktop journey stayed skipped. All 72 timed windows
+and their postconditions passed, including partial receipts, unchanged target Cards and all
+1,000 ratings on the enrolled deletion copies. Measured product/test source hashes match the
+final tree. New/changed Swift lines have no lint violations, and diff checks passed. Owned
+DerivedData, copied packages, private hosts and synthetic databases were removed and cleanup
+verified. The installed Dev application and real corpus were not accessed or replaced.

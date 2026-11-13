@@ -26,6 +26,7 @@ private struct NotebookLocalEntryPlan {
     let removed: [VocabularyPersistenceRow]
     let changesSemantics: Bool
     let publicChange: Bool
+    let retiredSenseIDs: Set<UUID>
 }
 
 extension LingroveNotebookEngine {
@@ -64,12 +65,13 @@ extension LingroveNotebookEngine {
             let isPublic = try VocabularyWirePublicIntent.hasChanges(change, notebookID: version.notebookId)
             return try commitLocalEntry(.init(checkpoint: checkpoint, entryID: entry.id, previous: old, entry: next,
                 changed: delta.changed, removed: delta.removed, changesSemantics: false,
-                publicChange: isPublic), operationId: operationId)
+                publicChange: isPublic, retiredSenseIDs: []), operationId: operationId)
         }
     }
 
-    /// A pure retirement introduces no identities. Incoming cross-sense citations, material
-    /// consumers or a changed media set require the full path, preserving their existing rules.
+    /// A pure retirement introduces no identities. Its canonical/historical source IDs can
+    /// become unavailable without rendering another entry or changing Card memory/history.
+    /// Incoming cross-sense citations and a changed media set still require the full path.
     public func tryRemoveNotebookSense(
         _ senseID: UUID, from entryID: UUID, basedOn version: LingroveNotebookVersion,
         operationId: String = UUID().uuidString.lowercased()
@@ -82,16 +84,17 @@ extension LingroveNotebookEngine {
                 .init(rows: rows, reviewTemplatesPresent: false)))
             guard let old = local.entries.first else { throw VocabularyError.invalidContent }
             let admission = NotebookEntryAdmission(engine: self, version: version)
-            if try admission.hasReviewConsumers([old]) || admission.hasForeignCitations(senseID: senseID, entry: old) { return nil }
+            if try admission.hasForeignCitations(senseID: senseID, entry: old) { return nil }
             let change = try local.removingSense(senseID, from: entryID)
             guard change.state.mediaReferences == local.mediaReferences else { return nil }
             let projection = try VocabularyEntryRowProjection(.init(rows: rows, reviewTemplatesPresent: false))
             let delta = try projection.applying(change)
             guard delta.repositioned.isEmpty else { return nil }
             let semantic = try admission.retiredSemanticRows(senseID: senseID)
+            let retired = Set(old.senses.filter { $0.id == senseID }.flatMap { [$0.id] + $0.mergedFrom })
             return try commitLocalEntry(.init(checkpoint: checkpoint, entryID: entryID, previous: old,
                 entry: change.state.entries.first, changed: delta.changed, removed: delta.removed + semantic,
-                changesSemantics: !semantic.isEmpty, publicChange: true), operationId: operationId)
+                changesSemantics: !semantic.isEmpty, publicChange: true, retiredSenseIDs: retired), operationId: operationId)
         }
     }
 
@@ -131,6 +134,7 @@ extension LingroveNotebookEngine {
             reviewTemplatesPresent: hasTemplates, publicChange: plan.publicChange, operationId: operationId, now: now)
         let version = LingroveNotebookVersion(workspaceId: before.workspaceId, notebookId: before.notebookId,
             revision: revision, generation: before.generation)
+        try LingroveNotebookReviewMaterialStore(core: core).retireSourcesInTransaction(version: version, senseIDs: plan.retiredSenseIDs)
         try NotebookEntryCheckpoint.record(in: core, version: version, media: plan.checkpoint.media)
         return try .init(base: before, version: version, corpus: core.notebookCacheToken(),
             entryID: plan.entryID, entry: plan.entry, previousSenseIDs: oldSenseIDs, changesSemantics: plan.changesSemantics)

@@ -1,0 +1,1151 @@
+{
+  "reportDate": "2026-11-13",
+  "scope": "Certified cold deletion of reviewed senses, with retained Card/Note memory and history",
+  "methodology": [
+    "Release arm64 production store/archive/engine commands in a signed private native host. Synthetic state only; no real clicks or installed Dev application/data access.",
+    "Each size uses one closed generated seed copied independently for each trial/cold case. The fixture generator is byte-identical to the preceding checkpoint; independently generated database bytes differ across checkpoints.",
+    "Eligible seeds contain a durable certificate recorded by untimed validated creation. Cold means empty application/archive/engine caches; the OS disk cache is not purged.",
+    "Setup, repository construction/index installation, fixture copying, assertions and frame painting are outside timers. Result admission and scheduling browse invalidation are inside store timings; later page painting is not.",
+    "Reviewed deletion keeps the same target IDs and production removeSense closure as the prior enrolled-fallback window. Its label now names the eligible path. Pre-timer indexed target-link/Card reads capture the retention baseline without loading a corpus or warming the archive.",
+    "Reviewed deletion now requires a partial receipt, an unchanged saved Card, sourceMissing admission and all 1000 retained historical ratings. No complete-store warm-up precedes it.",
+    "Missing-proof favorite deletes only the derived certificate before its timer and still requires full preparation. Full-store readiness runs on another fresh copy.",
+    "Three trials for each of twelve operations at 10k/20k: 72 unique samples. Medians/minima/maxima describe these observations, not percentiles or hardware-independent guarantees.",
+    "The full 43-operation inventory was not rerun. Browser visible counters belong to the primary fixture; auxiliary cold fixture state/history is checked separately.",
+    "The generated workload has two senses/four examples per entry, semantic/classification data, review enrollments and 1000 ratings. Image-heavy and dense alias workloads have focused correctness tests, not large-library latency measurements."
+  ],
+  "identity": {
+    "commit": "a97681020561174a5189f3a74eea42068b574a13",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "50f476c2e2f799fbd9100dbc27be8304dc191cfaf669409f63495f5a7f8c4821",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000,20000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "remainingOnly": false,
+    "remainingTrials": 0,
+    "pagedOnly": true,
+    "pagedTrials": 3,
+    "sourceManifestSHA256": "090f6e48aec8e969b861cdb0921ea36549e3df2104d6c6251d6c6f353a2e26b2",
+    "sourceManifestEntries": 1880,
+    "commitIsWorktreeBase": true
+  },
+  "fixtures": {
+    "10000": {
+      "databaseBytes": 278708224,
+      "categoryMemberships": 14000,
+      "ratingRecords": 1000,
+      "entries": 10000,
+      "examples": 40000,
+      "meanings": 14000,
+      "mappings": 14011,
+      "senses": 20000,
+      "enrolledSenses": 2000,
+      "categories": 688
+    },
+    "20000": {
+      "entries": 20000,
+      "categoryMemberships": 28000,
+      "databaseBytes": 548007936,
+      "meanings": 28000,
+      "ratingRecords": 1000,
+      "enrolledSenses": 4000,
+      "senses": 40000,
+      "categories": 1038,
+      "examples": 80000,
+      "mappings": 28011
+    }
+  },
+  "milliseconds": {
+    "10000": {
+      "browse.first.page": {
+        "median": 92.525,
+        "minimum": 88.509,
+        "maximum": 115.228
+      },
+      "browse.next.page": {
+        "median": 19.933,
+        "minimum": 19.668,
+        "maximum": 21.528
+      },
+      "browse.entry.detail": {
+        "median": 7.306,
+        "minimum": 6.977,
+        "maximum": 7.379
+      },
+      "browse.saved.lookup": {
+        "median": 1.018,
+        "minimum": 0.961,
+        "maximum": 1.101
+      },
+      "browse.filter.page": {
+        "median": 99.115,
+        "minimum": 97.176,
+        "maximum": 103.558
+      },
+      "favorite.cold.first": {
+        "median": 28.819,
+        "minimum": 25.071,
+        "maximum": 30.697
+      },
+      "sense.remove.cold.first": {
+        "median": 17.664,
+        "minimum": 16.466,
+        "maximum": 23.644
+      },
+      "favorite.cold.context": {
+        "median": 34.978,
+        "minimum": 31.179,
+        "maximum": 37.279
+      },
+      "favorite.cold.existing-sense": {
+        "median": 41.271,
+        "minimum": 38.044,
+        "maximum": 42.883
+      },
+      "sense.remove.cold.enrolled": {
+        "median": 21.727,
+        "minimum": 18.393,
+        "maximum": 23.227
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 4606.309,
+        "minimum": 4575.798,
+        "maximum": 5333.241
+      },
+      "corpus.full.ready": {
+        "median": 4457.035,
+        "minimum": 4425.031,
+        "maximum": 4473.471
+      }
+    },
+    "20000": {
+      "browse.first.page": {
+        "median": 163.931,
+        "minimum": 163.481,
+        "maximum": 275.375
+      },
+      "browse.next.page": {
+        "median": 23.905,
+        "minimum": 23.071,
+        "maximum": 23.99
+      },
+      "browse.entry.detail": {
+        "median": 7.97,
+        "minimum": 7.845,
+        "maximum": 7.988
+      },
+      "browse.saved.lookup": {
+        "median": 1.462,
+        "minimum": 1.3,
+        "maximum": 1.479
+      },
+      "browse.filter.page": {
+        "median": 220.235,
+        "minimum": 214.168,
+        "maximum": 222.997
+      },
+      "favorite.cold.first": {
+        "median": 46.465,
+        "minimum": 41.098,
+        "maximum": 47.165
+      },
+      "sense.remove.cold.first": {
+        "median": 17.232,
+        "minimum": 16.395,
+        "maximum": 17.281
+      },
+      "favorite.cold.context": {
+        "median": 52.938,
+        "minimum": 52.529,
+        "maximum": 53.935
+      },
+      "favorite.cold.existing-sense": {
+        "median": 62.028,
+        "minimum": 60.991,
+        "maximum": 62.447
+      },
+      "sense.remove.cold.enrolled": {
+        "median": 25.618,
+        "minimum": 23.946,
+        "maximum": 26.094
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 9879.318,
+        "minimum": 9461.126,
+        "maximum": 10021.516
+      },
+      "corpus.full.ready": {
+        "median": 9195.211,
+        "minimum": 9170.515,
+        "maximum": 9211.943
+      }
+    }
+  },
+  "comparison": {
+    "baselineReport": "docs/benchmarks/corpus-cold-entry-2026-11-13.json",
+    "baselineReportSHA256": "2d5b4c964f32cb82aeeaa777b9da58bc4825b017f73b976dbc5cd7c46c7e0d31",
+    "baselineIdentity": {
+      "commit": "29fadd48ffa6bda3f516a69ea889ca7a3f05f823",
+      "configuration": "Release",
+      "architecture": "arm64",
+      "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+      "hostBinarySHA256": "c991699dd231ca44d9b381629fe77b919b4001dedc1de2ef9a3999e9e0f5d6f6",
+      "installedAppAccessed": false,
+      "input": "generated synthetic notebooks only",
+      "hardware": "MacBookPro18,2",
+      "sizes": "10000,20000",
+      "trials": 3,
+      "scanTrials": 1,
+      "focusedTrials": 3,
+      "tailOnly": false,
+      "remainingOnly": false,
+      "remainingTrials": 0,
+      "pagedOnly": true,
+      "pagedTrials": 3,
+      "sourceManifestSHA256": "42b6b7cc4d4724ec3e1ccffe901299b6e20f7f444321c1296ad51cf3e258da8c",
+      "sourceManifestEntries": 1879,
+      "commitIsWorktreeBase": true
+    },
+    "operationAliases": {
+      "sense.remove.cold.enrolled": "sense.remove.cold.enrolled-fallback"
+    },
+    "matchedOperations": {
+      "10000": {
+        "browse.first.page": {
+          "beforeOperation": "browse.first.page",
+          "beforeMedian": 98.934,
+          "afterMedian": 92.525
+        },
+        "browse.next.page": {
+          "beforeOperation": "browse.next.page",
+          "beforeMedian": 18.505,
+          "afterMedian": 19.933
+        },
+        "browse.entry.detail": {
+          "beforeOperation": "browse.entry.detail",
+          "beforeMedian": 7.599,
+          "afterMedian": 7.306
+        },
+        "browse.saved.lookup": {
+          "beforeOperation": "browse.saved.lookup",
+          "beforeMedian": 1.319,
+          "afterMedian": 1.018
+        },
+        "browse.filter.page": {
+          "beforeOperation": "browse.filter.page",
+          "beforeMedian": 97.65,
+          "afterMedian": 99.115
+        },
+        "favorite.cold.first": {
+          "beforeOperation": "favorite.cold.first",
+          "beforeMedian": 31.501,
+          "afterMedian": 28.819
+        },
+        "sense.remove.cold.first": {
+          "beforeOperation": "sense.remove.cold.first",
+          "beforeMedian": 31.856,
+          "afterMedian": 17.664
+        },
+        "favorite.cold.context": {
+          "beforeOperation": "favorite.cold.context",
+          "beforeMedian": 38.347,
+          "afterMedian": 34.978
+        },
+        "favorite.cold.existing-sense": {
+          "beforeOperation": "favorite.cold.existing-sense",
+          "beforeMedian": 45.266,
+          "afterMedian": 41.271
+        },
+        "sense.remove.cold.enrolled": {
+          "beforeOperation": "sense.remove.cold.enrolled-fallback",
+          "beforeMedian": 4246.983,
+          "afterMedian": 21.727
+        },
+        "favorite.cold.missing-proof-fallback": {
+          "beforeOperation": "favorite.cold.missing-proof-fallback",
+          "beforeMedian": 4283.14,
+          "afterMedian": 4606.309
+        },
+        "corpus.full.ready": {
+          "beforeOperation": "corpus.full.ready",
+          "beforeMedian": 4047.573,
+          "afterMedian": 4457.035
+        }
+      },
+      "20000": {
+        "browse.first.page": {
+          "beforeOperation": "browse.first.page",
+          "beforeMedian": 151.96,
+          "afterMedian": 163.931
+        },
+        "browse.next.page": {
+          "beforeOperation": "browse.next.page",
+          "beforeMedian": 22.734,
+          "afterMedian": 23.905
+        },
+        "browse.entry.detail": {
+          "beforeOperation": "browse.entry.detail",
+          "beforeMedian": 7.542,
+          "afterMedian": 7.97
+        },
+        "browse.saved.lookup": {
+          "beforeOperation": "browse.saved.lookup",
+          "beforeMedian": 1.044,
+          "afterMedian": 1.462
+        },
+        "browse.filter.page": {
+          "beforeOperation": "browse.filter.page",
+          "beforeMedian": 212.626,
+          "afterMedian": 220.235
+        },
+        "favorite.cold.first": {
+          "beforeOperation": "favorite.cold.first",
+          "beforeMedian": 48.643,
+          "afterMedian": 46.465
+        },
+        "sense.remove.cold.first": {
+          "beforeOperation": "sense.remove.cold.first",
+          "beforeMedian": 46.775,
+          "afterMedian": 17.232
+        },
+        "favorite.cold.context": {
+          "beforeOperation": "favorite.cold.context",
+          "beforeMedian": 56.95,
+          "afterMedian": 52.938
+        },
+        "favorite.cold.existing-sense": {
+          "beforeOperation": "favorite.cold.existing-sense",
+          "beforeMedian": 62.811,
+          "afterMedian": 62.028
+        },
+        "sense.remove.cold.enrolled": {
+          "beforeOperation": "sense.remove.cold.enrolled-fallback",
+          "beforeMedian": 8800.997,
+          "afterMedian": 25.618
+        },
+        "favorite.cold.missing-proof-fallback": {
+          "beforeOperation": "favorite.cold.missing-proof-fallback",
+          "beforeMedian": 8926.785,
+          "afterMedian": 9879.318
+        },
+        "corpus.full.ready": {
+          "beforeOperation": "corpus.full.ready",
+          "beforeMedian": 8454.999,
+          "afterMedian": 9195.211
+        }
+      }
+    }
+  },
+  "rawSamples": [
+    {
+      "operation": "browse.first.page",
+      "layer": "model",
+      "trial": 1,
+      "visibleEntriesBefore": 0,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 115.227833
+    },
+    {
+      "operation": "browse.next.page",
+      "layer": "model",
+      "trial": 1,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 19.667875
+    },
+    {
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 7.306458
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 1.017916
+    },
+    {
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 99.11525
+    },
+    {
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "trial": 1,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 25.071125
+    },
+    {
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 16.465542
+    },
+    {
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 31.17925
+    },
+    {
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 38.044125
+    },
+    {
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 18.392917
+    },
+    {
+      "operation": "favorite.cold.missing-proof-fallback",
+      "layer": "store",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 4606.3087080000005
+    },
+    {
+      "operation": "corpus.full.ready",
+      "layer": "model",
+      "trial": 1,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 4457.0350419999995
+    },
+    {
+      "operation": "browse.first.page",
+      "layer": "model",
+      "trial": 2,
+      "visibleEntriesBefore": 0,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 88.508708
+    },
+    {
+      "operation": "browse.next.page",
+      "layer": "model",
+      "trial": 2,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 19.933083
+    },
+    {
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 6.977459
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 1.10075
+    },
+    {
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 97.175584
+    },
+    {
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 28.818667
+    },
+    {
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 17.664084
+    },
+    {
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 34.978459
+    },
+    {
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 41.270625
+    },
+    {
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 21.726541
+    },
+    {
+      "operation": "favorite.cold.missing-proof-fallback",
+      "layer": "store",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 5333.240667
+    },
+    {
+      "operation": "corpus.full.ready",
+      "layer": "model",
+      "trial": 2,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 4473.471
+    },
+    {
+      "operation": "browse.first.page",
+      "layer": "model",
+      "trial": 3,
+      "visibleEntriesBefore": 0,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 92.525375
+    },
+    {
+      "operation": "browse.next.page",
+      "layer": "model",
+      "trial": 3,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 21.52775
+    },
+    {
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 7.378625
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 200,
+      "milliseconds": 0.960958
+    },
+    {
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 103.558292
+    },
+    {
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 30.696959
+    },
+    {
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 23.64425
+    },
+    {
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 37.278667
+    },
+    {
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 42.882542
+    },
+    {
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 23.227042
+    },
+    {
+      "operation": "favorite.cold.missing-proof-fallback",
+      "layer": "store",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 4575.79775
+    },
+    {
+      "operation": "corpus.full.ready",
+      "layer": "model",
+      "trial": 3,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "milliseconds": 4425.0313750000005
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 275.375083,
+      "operation": "browse.first.page",
+      "visibleEntriesBefore": 0,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 23.070625,
+      "operation": "browse.next.page",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 7.844834,
+      "operation": "browse.entry.detail",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 1.462042,
+      "operation": "browse.saved.lookup",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 214.168,
+      "operation": "browse.filter.page",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 41.098459,
+      "operation": "favorite.cold.first",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "entries": 20000,
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 16.394834,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 52.938125,
+      "operation": "favorite.cold.context",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 62.446584,
+      "operation": "favorite.cold.existing-sense",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 25.618041,
+      "operation": "sense.remove.cold.enrolled",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 1,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "milliseconds": 9879.318208,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 1,
+      "visibleEntriesAfter": 100,
+      "layer": "model",
+      "milliseconds": 9170.5155,
+      "operation": "corpus.full.ready",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 163.48125,
+      "operation": "browse.first.page",
+      "visibleEntriesBefore": 0,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 23.990375,
+      "operation": "browse.next.page",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 7.969916,
+      "operation": "browse.entry.detail",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 1.300292,
+      "operation": "browse.saved.lookup",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 220.234667,
+      "operation": "browse.filter.page",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 47.165333,
+      "operation": "favorite.cold.first",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "entries": 20000,
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 17.281209,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 53.934667,
+      "operation": "favorite.cold.context",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 60.991459,
+      "operation": "favorite.cold.existing-sense",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 23.946166,
+      "operation": "sense.remove.cold.enrolled",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 2,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "milliseconds": 9461.126125,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 2,
+      "visibleEntriesAfter": 100,
+      "layer": "model",
+      "milliseconds": 9211.942541,
+      "operation": "corpus.full.ready",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 163.930916,
+      "operation": "browse.first.page",
+      "visibleEntriesBefore": 0,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 23.905083,
+      "operation": "browse.next.page",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 7.988083,
+      "operation": "browse.entry.detail",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 1.479042,
+      "operation": "browse.saved.lookup",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 222.997333,
+      "operation": "browse.filter.page",
+      "visibleEntriesBefore": 200,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 46.464625,
+      "operation": "favorite.cold.first",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 3,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "milliseconds": 17.232459,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 52.528667,
+      "operation": "favorite.cold.context",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 62.028,
+      "operation": "favorite.cold.existing-sense",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 26.093875,
+      "operation": "sense.remove.cold.enrolled",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 3,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "milliseconds": 10021.516291,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    },
+    {
+      "trial": 3,
+      "visibleEntriesAfter": 100,
+      "layer": "model",
+      "milliseconds": 9195.2115,
+      "operation": "corpus.full.ready",
+      "visibleEntriesBefore": 100,
+      "entries": 20000
+    }
+  ],
+  "outcomes": [
+    {
+      "entries": 10000,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 1,
+      "operation": "browse.first.page.rows",
+      "succeeded": true
+    },
+    {
+      "entries": 10000,
+      "message": "17 payload rows for one entry",
+      "trial": 1,
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true
+    },
+    {
+      "operation": "browse.first.page.rows",
+      "entries": 10000,
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 2
+    },
+    {
+      "operation": "browse.entry.detail.rows",
+      "entries": 10000,
+      "succeeded": true,
+      "message": "17 payload rows for one entry",
+      "trial": 2
+    },
+    {
+      "entries": 10000,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 3,
+      "operation": "browse.first.page.rows",
+      "succeeded": true
+    },
+    {
+      "entries": 10000,
+      "message": "17 payload rows for one entry",
+      "trial": 3,
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true
+    },
+    {
+      "entries": 20000,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 1,
+      "operation": "browse.first.page.rows",
+      "succeeded": true
+    },
+    {
+      "entries": 20000,
+      "message": "17 payload rows for one entry",
+      "trial": 1,
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true
+    },
+    {
+      "operation": "browse.first.page.rows",
+      "entries": 20000,
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 2
+    },
+    {
+      "operation": "browse.entry.detail.rows",
+      "entries": 20000,
+      "succeeded": true,
+      "message": "17 payload rows for one entry",
+      "trial": 2
+    },
+    {
+      "entries": 20000,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 3,
+      "operation": "browse.first.page.rows",
+      "succeeded": true
+    },
+    {
+      "entries": 20000,
+      "message": "17 payload rows for one entry",
+      "trial": 3,
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true
+    }
+  ],
+  "validation": {
+    "engine": {
+      "swiftTestingPassed": 125,
+      "xctestPassed": 40,
+      "failed": 0,
+      "evidence": "build/mac-w2-c/corpus-retirement-core.log"
+    },
+    "finalTestStyleRecheck": {
+      "passed": 6,
+      "evidence": "build/mac-w2-c/corpus-retirement-final-target.log",
+      "includedInEngineSuiteCount": true
+    },
+    "sqlWork": {
+      "unrelatedReviewSources": [
+        20,
+        400
+      ],
+      "sqliteVMInstructions": [
+        6647,
+        6648
+      ],
+      "maximumAllowedRatio": 2,
+      "evidence": "build/mac-w2-c/corpus-retirement-final-target.log",
+      "initialOrderedPrototype": [
+        7121,
+        16621
+      ]
+    },
+    "native": {
+      "passed": 77,
+      "failed": 0,
+      "skipped": 1,
+      "skip": "nativeCreateCancelSaveEditAndReopenJourney requires opt-in visible desktop validation"
+    },
+    "performance": {
+      "samples": 72,
+      "uniqueSampleKeys": 72,
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0
+    },
+    "sourceManifestMatchesFinalTree": true,
+    "fixtureGeneratorMatchesPreviousCheckpoint": true,
+    "staticChecks": {
+      "changedSwiftLineViolations": 0,
+      "swiftFilesChecked": 9,
+      "evidence": "build/mac-w2-c/corpus-retirement-final-diff-lint.json",
+      "scope": "Changed/new lines; pre-existing diagnostics elsewhere in touched files are not claimed clean."
+    },
+    "initialQueryRegression": "The first retirement implementation passed correctness checks but failed the SQL-work bound: ORDER BY made scoped Note/member reads walk unrelated records. Selective reads followed by sorting only returned records passed the bound.",
+    "cleanup": {
+      "derivedDataAbsent": true,
+      "syntheticFixturesRemoved": true,
+      "packageCopiesRemoved": true,
+      "hostRemoved": true,
+      "installedAppAccessed": false
+    }
+  },
+  "remainingCosts": [
+    "Missing/stale proof, changed media references, foreign semantic citations and reviewed captures/arbitrary source edits retain full preparation. Warm complete writers retain their existing path.",
+    "This run observed full-store readiness at 9195.211ms and missing-proof favorite at 9879.318ms for 20k, versus 8454.999/8926.785ms previously. These paths were not optimized here; the three observations do not establish the cause of the longer durations.",
+    "Global tag filtering still scans JSON tags; this run observed 220.235ms at 20k. Complete graph/search/export and structural batches retain their global semantics.",
+    "Global media-ownership/pin checks still scale with the complete media set. Many affected templates/Cards add real local work; the small SQL-work fixture is not proof of constant time for every source shape."
+  ],
+  "harnessSHA256": {
+    "LingroveTests/Services/Vocabulary/VocabularyOperationBenchmarkTests.swift": "075ca31183db385a122de922c77e2b211ff46085d9a22a65b8d8ce52702b1827",
+    "LingroveTests/Services/Vocabulary/VocabularyBenchmarkFixture.swift": "da6f6ea402ef2ef2d76d900330a180d5d587283a944a2ed6273a660288cc9fb7",
+    "scripts/validation/benchmark-corpus-operations.py": "32ea28fed86834df161a612d45a2dc1187a58bbba66abe7b8fcc116ee57e655a"
+  },
+  "evidenceDirectory": "build/corpus-operation-benchmark/corpus-reviewed-retirement-final"
+}

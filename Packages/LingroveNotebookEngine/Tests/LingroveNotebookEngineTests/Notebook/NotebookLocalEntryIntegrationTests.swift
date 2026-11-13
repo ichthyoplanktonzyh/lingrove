@@ -152,7 +152,7 @@ struct NotebookLocalEntryIntegrationTests {
         #expect(throws: VocabularyError.editConflict) { try fixture.db.trySaveNotebookEntry(entry("wrong owner"), basedOn: .init(saved)) }
     }
 
-    @Test func enrolledSourcesAndImageReferenceChangesKeepFullPreparation() throws {
+    @Test func reviewedCapturesAndImageReferenceChangesKeepFullPreparation() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
         let saved = try seed(fixture)
         let original = try #require(saved.document.entries.first)
@@ -160,7 +160,7 @@ struct NotebookLocalEntryIntegrationTests {
             version: .init(saved))
         try fixture.reopen()
         #expect(try NotebookEntryCheckpoint.load(in: fixture.db.core, version: .init(saved)) != nil)
-        #expect(try fixture.db.tryRemoveNotebookSense(original.senses[0].id, from: original.id, basedOn: .init(saved)) == nil)
+        #expect(try fixture.db.trySaveNotebookEntry(original, basedOn: .init(saved)) == nil)
         #expect(try fixture.db.trySaveNotebookEntry(entry("unrelated to review"), basedOn: .init(saved)) != nil)
         let image = try LingroveNotebookMediaQueueIntegrationTests.image()
         let next = try fixture.db.saveLingroveNotebook(LingroveNotebookMediaQueueIntegrationTests.document(image.reference),

@@ -130,8 +130,8 @@ struct VocabularyOperationBenchmarkTests {
         await full.close()
     }
 
-    /// Unsupported dependency shapes stay explicit in the inventory. Media/review safety
-    /// fallbacks must not disappear inside the fast-path median or a preceding warm-up.
+    /// Fresh capture/retirement cases share the closed seed without a full-load warm-up.
+    /// Missing-proof fallback stays explicit rather than disappearing into eligible medians.
     private func coldEntryCases(_ fixture: VocabularyBenchmarkFixture, _ recorder: VocabularyBenchmarkRecorder,
                                 seed: URL) async throws {
         for existing in [false, true] {
@@ -148,13 +148,24 @@ struct VocabularyOperationBenchmarkTests {
                 await cold.close()
             } catch { await cold.close(); throw error }
         }
-        let reviewed = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("review-fallback"))
+        let reviewed = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("review-retirement"))
         do {
-            let removed = try await recorder.measure("sense.remove.cold.enrolled-fallback") {
+            let version = try #require(reviewed.store.operationScope)
+            let cardID = try #require(try reviewed.repository.engine.core.scalarOptionalText(sql: """
+                SELECT card_id FROM notebook_card_links WHERE workspace_id=? AND notebook_id=? AND sense_id=? AND deleted_at IS NULL LIMIT 1
+                """, values: [.text(version.workspaceId), .text(version.notebookId.uuidString),
+                    .text(VocabularyBenchmarkFixture.id(2_000_080).uuidString)]))
+            let card = try reviewed.repository.engine.loadActiveCard(workspaceId: version.workspaceId, cardId: cardID)
+            let removed = try await recorder.measure("sense.remove.cold.enrolled") {
                 await reviewed.store.removeSense(entryID: VocabularyBenchmarkFixture.id(1_000_040),
                     senseID: VocabularyBenchmarkFixture.id(2_000_080))
             }
-            try #require(removed && reviewed.store.isLoaded && reviewed.store.entries.count == recorder.entries)
+            try #require(removed && !reviewed.store.isLoaded && reviewed.store.entries.isEmpty)
+            #expect(reviewed.store.lastEntryCommit?.entry?.senses.count == 1)
+            #expect(try reviewed.repository.engine.loadActiveCard(workspaceId: version.workspaceId, cardId: cardID) == card)
+            #expect(try reviewed.repository.engine.core.scalarOptionalText(sql: """
+                SELECT status FROM notebook_review_material_state WHERE workspace_id=? AND card_id=?
+                """, values: [.text(version.workspaceId), .text(cardID)]) == "sourceMissing")
             #expect(try reviewed.repository.engine.loadReviewEventCount() == 1_000)
             await reviewed.close()
         } catch { await reviewed.close(); throw error }

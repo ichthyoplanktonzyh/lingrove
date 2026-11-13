@@ -96,10 +96,8 @@ extension ReviewNoteStore {
             return try rendered.map { try cardInput($0, sense: sense, workspace: workspace) }
         }
         let ready = input.map { !$0.frontText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
-        try core.execute(sql: """
-            INSERT INTO notebook_review_material_state(workspace_id,card_id,status) VALUES(?,?,?)
-            ON CONFLICT(workspace_id,card_id) DO UPDATE SET status=excluded.status
-            """, values: [.text(workspace), .text(cardID), .text(ready ? "ready" : "sourceMissing")])
+        try LingroveNotebookReviewMaterialStore(core: core).setStatus(ready ? "ready" : "sourceMissing",
+            cardID: cardID, workspace: workspace)
         guard ready, let input, let link = try links.load(workspaceId: workspace, cardId: cardID).first else { return }
         let changed = card.frontText != input.frontText || card.backText != input.backText || card.tags != input.tags
         var operation: String?

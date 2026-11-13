@@ -290,6 +290,14 @@ immediate explanation adoption; pages refresh while complete interfaces remain u
 Warm complete writers retain their established incremental receipts. See
 `docs/adr/0006-certified-local-entry-writes.md` for proof lifetime and full-fallback boundaries.
 
+`LingroveNotebookReviewMaterialStore.retireSourcesInTransaction` specializes the material tail
+for a certified deleted sense and its merged IDs. It selects only that notebook's affected
+links/Notes/members, shares the existing admission-state writer and keeps Card memory, authored
+Note fields and history. `ReviewNoteStore` selects by source/Note ownership before arranging
+its small result by identity; SQL ordering must not turn scoped lookups into workspace walks.
+This method borrows the canonical writer transaction and never creates a partial snapshot or
+renders surviving sources. See `docs/adr/0007-local-reviewed-source-retirement.md`.
+
 In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
 creates restricted single-entry changes. Its private `VocabularyEntryValidationIndex` retains
 the checked key, identifier and accepted-occurrence ownership proof; replacements validate the

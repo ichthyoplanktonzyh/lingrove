@@ -53,14 +53,17 @@ public struct ReviewNoteStore {
     /// Historical and handed-off notes can have IDs other than the local generated ID.
     /// Find them by saved source and preserve the same note order as the full collection.
     func notes(version: LingroveNotebookVersion, senseIDs: Set<UUID>) throws -> [ReviewNote] {
+        guard !senseIDs.isEmpty else { return [] }
         let ids = try core.encoder.encode(senseIDs.map(\.uuidString))
-        return try core.query(sql: """
+        let selected = try core.query(sql: """
             SELECT payload_json FROM notebook_notes WHERE workspace_id=? AND notebook_id=?
             AND json_extract(payload_json,'$.senseID') IN (SELECT value FROM json_each(?))
-            ORDER BY note_id
             """, values: [.text(version.workspaceId), .text(version.notebookId.uuidString), .text(String(decoding: ids, as: UTF8.self))]) {
             try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
         }
+        // SQL ordering can prefer the workspace-wide primary key over the selective source
+        // index. Keep the established deterministic return order on this small result only.
+        return selected.sorted { $0.id.uuidString < $1.id.uuidString }
     }
     public func memberships(workspace: String) throws -> [Membership] {
         try memberships(workspace: workspace, noteID: nil)
@@ -85,9 +88,9 @@ public struct ReviewNoteStore {
     func memberships(workspace: String, noteIDs: Set<UUID>) throws -> [Membership] {
         guard !noteIDs.isEmpty else { return [] }
         let ids = String(decoding: try core.encoder.encode(noteIDs.map(\.uuidString).sorted()), as: UTF8.self)
-        return try core.query(sql: """
+        let selected: [Membership] = try core.query(sql: """
             SELECT note_id,template_id,card_id FROM notebook_note_cards
-            WHERE workspace_id=? AND note_id IN (SELECT value FROM json_each(?)) ORDER BY card_id
+            WHERE workspace_id=? AND note_id IN (SELECT value FROM json_each(?))
             """, values: [.text(workspace), .text(ids)]) { row in
             guard let note = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                   let template = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else {
@@ -95,6 +98,8 @@ public struct ReviewNoteStore {
             }
             return .init(noteID: note, templateID: template, cardID: DatabaseCore.columnText(statement: row, index: 2))
         }
+        // Match the full interface's card order after the note-owner index constrains rows.
+        return selected.sorted { $0.cardID < $1.cardID }
     }
 
     func ownedCardIDs(workspace: String, cardIDs: Set<String>) throws -> Set<String> {

@@ -26,14 +26,16 @@ public struct LingroveNotebookCardLinkStore {
 
     /// Material refresh already has the affected live/historical sense IDs. Select matching
     /// links in SQL instead of decoding every enrollment in a large workspace.
-    func load(workspaceId: String, senseIDs: Set<UUID>) throws -> [LingroveNotebookCardLink] {
+    func load(workspaceId: String, notebookId: UUID? = nil, senseIDs: Set<UUID>) throws -> [LingroveNotebookCardLink] {
         guard !senseIDs.isEmpty else { return [] }
         let ids = String(decoding: try core.encoder.encode(senseIDs.map(\.uuidString).sorted()), as: UTF8.self)
+        let book = notebookId == nil ? "" : " AND notebook_id=?"
+        let values: [SQLiteValue] = [.text(workspaceId)] + (notebookId.map { [.text($0.uuidString)] } ?? []) + [.text(ids)]
         return try core.query(sql: """
             SELECT \(Self.columns) FROM notebook_card_links
-            WHERE workspace_id=? AND sense_id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL
+            WHERE workspace_id=?\(book) AND sense_id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL
             ORDER BY created_at,link_id
-            """, values: [.text(workspaceId), .text(ids)], map: decode)
+            """, values: values, map: decode)
     }
 
     public func validate(_ draft: LingroveNotebookCardDraft) throws -> LingroveNotebookSnapshot {

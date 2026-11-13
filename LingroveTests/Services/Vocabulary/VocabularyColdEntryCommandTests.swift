@@ -59,6 +59,44 @@ struct VocabularyColdEntryCommandTests {
         await second.shutdown(); try repository.shutdown()
     }
 
+    @Test func coldReviewedRetirementRefreshesPagesAndKeepsTheSavedCardAndHistory() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-reviewed-retirement-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let database = folder.appendingPathComponent("primary.sqlite"), media = folder.appendingPathComponent("Media")
+        let seed = VocabularyArchive(url: database, mediaDirectoryURL: media)
+        _ = try await seed.save(capture("reviewed", contextual: true))
+        _ = try await seed.save(capture("unrelated")); await seed.shutdown()
+        let repository = try MacNotebookRepository(databaseURL: database, mediaDirectoryURL: media)
+        let saved = try repository.snapshot(), entry = try #require(saved.document.entries.first { $0.expression == "reviewed" })
+        let sense = try #require(entry.senses.first)
+        _ = try repository.engine.enrollReviewNotes(selections: [.init(entryID: entry.id, senseID: sense.id)], version: .init(saved))
+        let review = try repository.engine.loadBuiltInNotebookReview(scope: saved, now: Date())
+        let question = try #require(review.queue.first), model = try #require(review.noteCards[question.cardId])
+        _ = try repository.engine.submitReview(workspaceId: saved.workspaceId, reviewSubmission: .init(cardId: question.cardId,
+            rating: .good, reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC", noteVersion: model.questionVersion(in: saved)))
+        let card = try repository.engine.loadActiveCard(workspaceId: saved.workspaceId, cardId: question.cardId)
+        let store = VocabularyStore(repository: repository), browse = try #require(store.browsing)
+        do {
+            store.browse(.init()); await browse.waitForPage()
+            browse.select(senseID: sense.id); await browse.waitForDetail()
+            #expect(await store.removeSense(entryID: entry.id, senseID: sense.id, scope: store.operationScope))
+            #expect(!store.isLoaded && store.entries.isEmpty && store.completeSnapshot == nil)
+            #expect(store.lastEntryCommit?.entry == nil && store.errorMessage == nil)
+            await browse.waitForPage()
+            #expect(browse.total == 1 && browse.detail == nil)
+            #expect(await store.savedStatus(capture("reviewed", contextual: true)) == false)
+            #expect(try repository.engine.loadActiveCard(workspaceId: saved.workspaceId, cardId: question.cardId) == card)
+            #expect(try repository.engine.loadReviewEventCount() == 1)
+            #expect(try repository.engine.core.scalarOptionalText(sql: """
+                SELECT status FROM notebook_review_material_state WHERE workspace_id=? AND card_id=?
+                """, values: [.text(saved.workspaceId), .text(card.cardId)]) == "sourceMissing")
+            await store.load()
+            #expect(store.isLoaded && store.entries.map(\.expression) == ["unrelated"])
+            #expect(try repository.engine.loadReviewEventCount() == 1)
+            await store.shutdown(); try repository.shutdown()
+        } catch { await store.shutdown(); try? repository.shutdown(); throw error }
+    }
+
     private func capture(_ name: String, contextual: Bool = false) -> VocabularyCapture {
         .init(expression: name, dictionaryForm: name, language: .english, kind: .word, meaning: "A saved meaning",
             example: contextual ? .init(id: UUID(), text: "A synthetic example for \(name).", translation: "译文", ranges: [],

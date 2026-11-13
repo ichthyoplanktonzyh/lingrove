@@ -2,6 +2,9 @@
 
 Status: accepted, 2026-11-13.
 
+The subsequent [ADR 0007](0007-local-reviewed-source-retirement.md) extends certified sense
+retirement to review consumers. The conservative reviewed-capture fallback remains.
+
 ADR 0005 made pages and details available before complete reconstruction. A first favorite or
 sense retirement still paid full decode, relationship validation and UI read-index preparation.
 That proof cannot simply be skipped: entry keys and IDs are global, evidence can be shared,
