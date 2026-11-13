@@ -150,6 +150,13 @@ public struct LingroveNotebookSyncStore {
                     finished = try uploads.isFinishedInTransaction(pending, localNotebookID: current.notebookId, binding: binding)
                 } else { finished = true }
                 if finished {
+                    try Task.checkCancellation()
+                    // readSnapshot has completely checked the current rows, including local
+                    // edits newer than this replay. Reuse that exact proof for later cold
+                    // commands; a replay must never certify the older prepared document.
+                    guard let checked = core.notebookSaveCache else { throw LingroveNotebookSyncStoreError.stalePreparation }
+                    try NotebookEntryCheckpoint.record(in: core, version: .init(current), media: checked.state.mediaReferences)
+                    try Task.checkCancellation()
                     try plan.manifest.validate(expecting: binding.scope, now: leaseTime())
                     return current
                 }
@@ -169,7 +176,10 @@ public struct LingroveNotebookSyncStore {
             try Task.checkCancellation()
             let document = plan.result.materialization.document
             try VocabularyDocumentValidation.validate(document)
-            try LingroveNotebookMediaStore(core: core).registerImages(document: document, previous: current.document,
+            let references = Set(VocabularyDocumentValidation.imageReferences(document))
+            let existingReferences = Set(VocabularyDocumentValidation.imageReferences(current.document))
+            try LingroveNotebookMediaStore(core: core).registerImages(references: references,
+                existing: existingReferences,
                 staged: plan.stagedImages, workspaceId: current.workspaceId)
             // Swift equality ignores Unicode normalization, while encoding a
             // private enum-key dictionary can change its order on every read.
@@ -202,6 +212,12 @@ public struct LingroveNotebookSyncStore {
             try LingroveNotebookConflictStore(core: core).clearInTransaction(binding: binding)
             try core.execute(sql: "UPDATE notebook_first_connections SET completed=1 WHERE workspace_id=? AND authorized_generation=? AND decision<>'pending'",
                 values: [.text(current.workspaceId), .text(binding.generation)])
+            // This transaction has validated the complete candidate and written its exact
+            // row projection. Publish its reusable certificate with the rows/shadow; the
+            // cancellation/lease/owner checks below still roll all of them back on failure.
+            try NotebookEntryCheckpoint.record(in: core, version: .init(workspaceId: current.workspaceId,
+                notebookId: current.notebookId, revision: next, generation: current.generation),
+                media: documentChanged ? references : existingReferences)
             try Task.checkCancellation()
             // Waiting for SQLite or completing a large write consumes the same
             // fixed lease. A transaction that crossed expiry must roll back all

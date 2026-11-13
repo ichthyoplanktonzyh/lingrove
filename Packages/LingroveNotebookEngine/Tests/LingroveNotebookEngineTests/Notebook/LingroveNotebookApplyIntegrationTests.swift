@@ -10,6 +10,64 @@ import Testing
 /// database; failures compare durable rows as bytes, not just object counts.
 @MainActor
 struct LingroveNotebookApplyIntegrationTests {
+    @Test func validatedPullPublishesAReusableCertificateForAFreshEntryWriter() throws {
+        let fixture = try ApplyFixture(); defer { fixture.cleanUp() }
+        let first = try fixture.apply(Self.document())
+        var changed = first.document; changed.catalog[0].senses[0].note = "Remote update"
+        let window = try fixture.window(changed, previous: first.document)
+        let saved = try fixture.db.commitLingroveNotebookApply(
+            fixture.db.prepareLingroveNotebookApply(window, binding: fixture.binding, now: Date()), now: Date())
+        #expect(try NotebookEntryCheckpoint.load(in: fixture.db.core, version: .init(saved)) != nil)
+        try fixture.reopen()
+        let original = Self.document().entries[0]
+        let entry = VocabularyEntry(id: UUID(), expression: "local-after-pull", dictionaryForm: "local-after-pull",
+            language: original.language, kind: original.kind, senses: original.senses,
+            createdAt: original.createdAt, updatedAt: original.updatedAt)
+        let receipt = try #require(try fixture.db.trySaveNotebookEntry(entry, basedOn: .init(saved)))
+        #expect(receipt.entry?.id == entry.id && fixture.db.core.notebookSaveCache == nil)
+        let complete = try fixture.db.loadLingroveNotebook(workspaceId: fixture.workspaceID)
+        #expect(complete.document.entries.count == saved.document.entries.count + 1)
+        #expect(complete.document.entries.first { $0.expression == "keep" }?.senses[0].note == "Remote update")
+    }
+
+    @Test func metadataOnlyAndReplayedPullsCertifyTheCurrentLocalRows() throws {
+        let fixture = try ApplyFixture(); defer { fixture.cleanUp() }
+        let first = try fixture.apply(Self.document()), window = try fixture.emptyDelta(sequence: "1")
+        let plan = try fixture.db.prepareLingroveNotebookApply(window, binding: fixture.binding, now: Date())
+        try fixture.db.core.execute(sql: "DELETE FROM notebook_entry_checkpoint", values: [])
+        let unchanged = try fixture.db.commitLingroveNotebookApply(plan, now: Date())
+        #expect(unchanged == first)
+        #expect(try NotebookEntryCheckpoint.load(in: fixture.db.core, version: .init(first)) != nil)
+        try fixture.reopen()
+        let original = Self.document().entries[0]
+        let entry = VocabularyEntry(id: UUID(), expression: "newer-than-replay", dictionaryForm: "newer-than-replay",
+            language: original.language, kind: original.kind, senses: original.senses,
+            createdAt: original.createdAt, updatedAt: original.updatedAt)
+        let local = try #require(try fixture.db.trySaveNotebookEntry(entry, basedOn: .init(first)))
+        try fixture.db.core.execute(sql: "DELETE FROM notebook_entry_checkpoint", values: [])
+        let replayed = try fixture.db.commitLingroveNotebookApply(plan, now: Date())
+        #expect(LingroveNotebookVersion(replayed) == local.version)
+        #expect(replayed.document.entries.contains { $0.id == entry.id })
+        #expect(try NotebookEntryCheckpoint.load(in: fixture.db.core, version: .init(replayed)) != nil)
+    }
+
+    @Test func certificateFailureRollsBackTheEntireValidatedPull() throws {
+        let fixture = try ApplyFixture(); defer { fixture.cleanUp() }
+        let first = try fixture.apply(Self.document())
+        var changed = first.document; changed.catalog[0].senses[0].note = "Must roll back"
+        let window = try fixture.window(changed, previous: first.document)
+        let plan = try fixture.db.prepareLingroveNotebookApply(window, binding: fixture.binding, now: Date())
+        try fixture.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER reject_sync_certificate BEFORE INSERT ON notebook_entry_checkpoint
+            BEGIN SELECT RAISE(ABORT,'Synthetic certificate failure'); END;
+            """, errorContext: "Inject certificate failure")
+        let before = try fixture.allRows()
+        #expect(throws: (any Error).self) { try fixture.db.commitLingroveNotebookApply(plan, now: Date()) }
+        #expect(try fixture.allRows() == before)
+        #expect(try fixture.db.currentNotebookVersion() == .init(first))
+        #expect(try NotebookEntryCheckpoint.load(in: fixture.db.core, version: .init(first)) != nil)
+    }
+
     @Test("Empty first pulls persist remote metadata without committing a local corpus or invalidating a draft")
     func emptyPullsKeepRevisionZeroAndTheOriginalEditorBaseline() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }

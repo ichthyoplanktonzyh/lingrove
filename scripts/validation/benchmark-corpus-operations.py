@@ -157,6 +157,7 @@ def main():
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
                     "LingroveTests/VocabularyColdEntryCommandTests",
+                    "LingroveTests/MacNotebookSyncControllerTests",
                     "LingroveTests/VocabularyExplanationTests",
                     "LingroveTests/VocabularyTagDeletionTests",
                     "LingroveTests/NoteAnkiSenderTests",

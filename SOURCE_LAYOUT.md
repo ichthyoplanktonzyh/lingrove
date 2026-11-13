@@ -298,6 +298,13 @@ its small result by identity; SQL ordering must not turn scoped lookups into wor
 This method borrows the canonical writer transaction and never creates a partial snapshot or
 renders surviving sources. See `docs/adr/0007-local-reviewed-source-retirement.md`.
 
+`LingroveNotebookPersistenceCodec/VocabularyPersistenceRowDecoder` is scoped to one synchronous
+full SQL read. It reuses a JSON decoder and consumes ordered nullable index columns before the
+same lossless reconstruction/domain checks. `LingroveNotebookSyncStore.commit` seals a new
+certificate only after complete validated apply; exact replays certify current local rows.
+Certificate writes share cancellation/lease/binding rollback with the apply transaction.
+See `docs/adr/0008-reuse-complete-validation-certificates.md`.
+
 In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
 creates restricted single-entry changes. Its private `VocabularyEntryValidationIndex` retains
 the checked key, identifier and accepted-occurrence ownership proof; replacements validate the
@@ -1585,6 +1592,9 @@ raw corpus files and measurement traces remain local under ignored `build/` path
 commands and derived projections. It calls production code without windows or input synthesis.
 `VocabularyBenchmarkFixture` generates closed SQLite seeds and owns each trial's private
 repository/store/review/Progress lifetime; it never discovers an installed application path.
+`VocabularyBenchmarkSyncSeed` creates a closed synthetic post-apply seed through the ordinary
+verified-window prepare/commit. Fresh copies retain/remove only its derived certificate for
+the controlled favorite comparison; sync validation and fixture setup are outside its timer.
 `VocabularyBenchmarkRecorder` separates monotonic operation timings from report IO and records
 rejected commands independently of successful completion. The runners under
 `scripts/validation/{benchmark,summarize}-corpus-operations.py` own the isolated host, native lock,

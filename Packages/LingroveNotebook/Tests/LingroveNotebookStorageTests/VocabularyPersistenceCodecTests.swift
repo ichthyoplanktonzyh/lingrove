@@ -169,6 +169,14 @@ struct VocabularyPersistenceCodecTests {
         let encoded = try VocabularyPersistenceCodec.encode(document)
         #expect(Set(encoded.rows.map { $0.entity.rawValue }) == currentFamilies)
         #expect(try VocabularyPersistenceCodec.decode(encoded) == document)
+        let decoder = VocabularyPersistenceRowDecoder()
+        let bulk = try encoded.rows.map { row in
+            try decoder.decode(row.key, parentID: row.parentID, position: row.position,
+                payload: row.encodedPayload(), orderedIndexes: row.entity.indexKeys.map { row.indexValue($0) })
+        }
+        #expect(bulk == encoded.rows)
+        #expect(try VocabularyPersistenceCodec.decode(.init(rows: bulk,
+            reviewTemplatesPresent: encoded.reviewTemplatesPresent)) == document)
     }
 
     @Test func allPersistenceFamiliesHaveStableNamesAndIndexColumnOrder() {
@@ -245,6 +253,17 @@ struct VocabularyPersistenceCodecTests {
         #expect(categoryRow.indexValues.keys.contains(.catalogKey))
         #expect(categoryRow.indexValue(.catalogKey) == nil)
         #expect(try VocabularyPersistenceCodec.decode(encoded) == document)
+
+        let decoder = VocabularyPersistenceRowDecoder()
+        let slots = categoryRow.entity.indexKeys.map { categoryRow.indexValue($0) }
+        #expect(try decoder.decode(categoryRow.key, parentID: categoryRow.parentID, position: categoryRow.position,
+            payload: categoryRow.encodedPayload(), orderedIndexes: slots) == categoryRow)
+        for invalid in [Array(slots.dropLast()), slots + [nil]] {
+            #expect(throws: VocabularyError.invalidArchive) {
+                try decoder.decode(categoryRow.key, parentID: categoryRow.parentID, position: categoryRow.position,
+                    payload: categoryRow.encodedPayload(), orderedIndexes: invalid)
+            }
+        }
 
         var missingFrameworkColumn = categoryRow.indexValues
         missingFrameworkColumn.removeValue(forKey: .frameworkID)
@@ -359,5 +378,27 @@ struct VocabularyPersistenceCodecTests {
         )
 
         #expect(first == reordered)
+    }
+
+    @Test func aBatchDecoderRejectsBadRowsAndCanContinueWithoutLosingLiteralText() throws {
+        let entry = VocabularyEntry(id: UUID(), expression: "cafe\u{0301}\0tail", dictionaryForm: "cafe\u{0301}",
+            language: nil, kind: .word, senses: [], createdAt: Date(), updatedAt: Date())
+        let row = try #require(try VocabularyPersistenceCodec.encode(.init(entries: [entry])).rows.first)
+        let indexes = row.entity.indexKeys.map { row.indexValue($0) }, decoder = VocabularyPersistenceRowDecoder()
+        #expect(throws: VocabularyError.invalidArchive) {
+            try decoder.decode(row.key, parentID: nil, position: -1, payload: row.encodedPayload(), orderedIndexes: indexes)
+        }
+        #expect(throws: VocabularyError.invalidArchive) {
+            try decoder.decode(row.key, parentID: nil, position: 0, payload: Data("{".utf8), orderedIndexes: indexes)
+        }
+        let restored = try decoder.decode(row.key, parentID: nil, position: 0, payload: row.encodedPayload(), orderedIndexes: indexes)
+        #expect(try restored.encodedPayload() == row.encodedPayload())
+        #expect(Data(try VocabularyPersistenceCodec.decode(.init(rows: [restored], reviewTemplatesPresent: false))
+            .catalog[0].expression.utf8) == Data(entry.expression.utf8))
+        var wrong = indexes; wrong[2] = "Different indexed expression"
+        let inconsistent = try decoder.decode(row.key, parentID: nil, position: 0, payload: row.encodedPayload(), orderedIndexes: wrong)
+        #expect(throws: VocabularyError.invalidArchive) {
+            try VocabularyPersistenceCodec.decodeSaveState(.init(rows: [inconsistent], reviewTemplatesPresent: false))
+        }
     }
 }

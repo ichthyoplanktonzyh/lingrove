@@ -918,3 +918,64 @@ and their postconditions passed, including partial receipts, unchanged target Ca
 final tree. New/changed Swift lines have no lint violations, and diff checks passed. Owned
 DerivedData, copied packages, private hosts and synthetic databases were removed and cleanup
 verified. The installed Dev application and real corpus were not accessed or replaced.
+
+## Reusable complete validation and full-read allocations (2026-11-13)
+
+[ADR 0008](adr/0008-reuse-complete-validation-certificates.md) makes validated synchronized
+applies publish their certificate with the canonical rows, shadow and receipts. Metadata-only
+commits can restore missing derived proof without advancing the corpus revision. Exact replays
+certify the currently checked local rows, including newer local edits. Cancellation, lease and
+binding checks still roll the certificate back with a failed apply. Read-only query/export
+interfaces retain their transaction semantics and unknown canonical changes still revoke proof.
+
+The full SQL reader now owns one `VocabularyPersistenceRowDecoder`, reusing its Foundation
+decoder and ordered nullable index slots instead of constructing a dictionary/key sets for
+every leaf. SQLite types, raw UTF-8, slot counts, lossless row/index reconstruction and full
+domain validation retain their checks. No UI readiness interface or canonical format changes.
+
+The [paired engine and native raw results](benchmarks/corpus-preparation-2026-11-13.json) contain
+two experiments. Three alternating fresh-process Release engine loads per version use the
+same closed 20k seed (SHA256 `83ee4684023eef23d164987ddb31633f0b0c271a2991134fccd053c63084a14e`).
+The median changes from 7329.457ms to 6951.004ms, about 5%. Each pair improves by
+422.489ms, 378.454ms and 233.612ms. The baseline packages are archived from `2f5fc372`;
+engine initialization and UI index preparation are outside this window.
+
+The native test prepares one closed post-apply seed per trial using a verified, empty,
+uninitialized remote window. Corpus/evidence/node counts and historical ratings survive the
+ordinary prepare/commit path. A certificate is removed just before that fully checked writer;
+the writer must recreate it. Two fresh copies then retain/remove only that derived proof and
+time the same favorite command. All sync preparation/copy setup is outside these timers.
+Release medians in milliseconds:
+
+| Native data-ready operation | 10,000 entries | 20,000 entries |
+| --- | ---: | ---: |
+| Favorite after validated apply, certificate retained | 29.203 | 42.949 |
+| Same post-apply seed, certificate removed | 4427.338 | 8762.343 |
+| Ordinary favorite without proof | 4330.572 | 8939.572 |
+| Complete store and read index | 4204.736 | 8257.936 |
+
+The paired control measures a repeated preparation avoided after completed validation, not a
+free initial sync. It is a current-binary control rather than an old-binary post-sync timing.
+The native inventory now covers fourteen windows, three trials at each size: all 84 passed.
+Its common twelve windows retain the fixture generator/counts but add setup/process/cache
+history before full-store readiness; the byte-identical engine experiment is the attribution
+check for the decoder change. Engine/native milestone timings are separate observations,
+not additive components or percentile estimates. The OS disk cache is not purged and the
+preceding 43-operation inventory was not rerun.
+
+Validation passed 127 shared checks, with three opt-in native/server bridges skipped; 128
+engine Swift Testing checks and 40 engine XCTest checks; and 87 private native Release checks,
+with one opt-in visible-desktop journey skipped. Native coverage includes the private loopback
+Mac sync controller and a fresh post-apply archive. Tests cover all current row families, NULL
+slots, malformed-row recovery, literal Unicode/NUL text, changed/metadata-only/replayed applies,
+newer local edits and certificate-write rollback. Measured native/package source manifests
+match the final tree; new/changed Swift lines have no lint violations and diff checks passed.
+Owned DerivedData, copied packages, baseline source/tool copies, private hosts and synthetic
+databases were removed and cleanup verified. The installed Dev application and real corpus
+were not accessed or replaced.
+
+An unproven corpus still requires complete strict preparation. Schema/policy/account/generation
+changes and unknown raw mutations retain conservative invalidation. Reviewed source edits,
+media-reference changes and foreign semantic citations still have complete fallbacks. Tag
+filtering remains a global JSON scan (210.708ms at 20k in this run), and image/dense-alias shape
+candidates still need focused scale measurement.

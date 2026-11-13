@@ -1843,6 +1843,7 @@
 		C9EB171ED4964243F41A159E /* AXReadingSelectedBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ABB927322CBCEA3C48DA13C /* AXReadingSelectedBlock.swift */; };
 		C9FE9C552D0815DE80717EE0 /* MailHeaderFieldDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10DA8AD82BD0092E34CF8C02 /* MailHeaderFieldDetector.swift */; };
 		CA2756F562823526D089EB60 /* ru.txt in Resources */ = {isa = PBXBuildFile; fileRef = 438EA83D4B88CC7533E1FAFC /* ru.txt */; };
+		CA50A602F17C8F39E09C587F /* VocabularyBenchmarkSyncSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB424C14CFE8398DCAF10FF /* VocabularyBenchmarkSyncSeed.swift */; };
 		CB3014B7787B85C09FBB5519 /* BuiltInReviewSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24C5B4F42BEF189CFDC6E3D5 /* BuiltInReviewSession.swift */; };
 		CB33C18E3F94AD3B7AB2FDC2 /* SystemMetricsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F4DBD300B97A12FE2AED5D /* SystemMetricsStoreTests.swift */; };
 		CB4A95F23B37E3FC819D9987 /* LearningOutputGrammar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2714B23318C9B0515101A18F /* LearningOutputGrammar.swift */; };
@@ -3703,6 +3704,7 @@
 		FDF0340A7E1432A66360CF54 /* LlamaRuntimeCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaRuntimeCore.swift; sourceTree = "<group>"; };
 		FE499D641C27237111650062 /* AccountProtocolIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountProtocolIntegrationTests.swift; sourceTree = "<group>"; };
 		FE4D8DBBFBE5693C0234FD30 /* OnboardingTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTemplate.swift; sourceTree = "<group>"; };
+		FEB424C14CFE8398DCAF10FF /* VocabularyBenchmarkSyncSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyBenchmarkSyncSeed.swift; sourceTree = "<group>"; };
 		FECAD5CE847D2844059DF7DE /* SuggestionStreamingStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionStreamingStateTests.swift; sourceTree = "<group>"; };
 		FEE37B6E0D001AF18326F37D /* BuiltInReviewSessionIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInReviewSessionIntegrationTests.swift; sourceTree = "<group>"; };
 		FEE92CB621D7BAC2794E06D1 /* CLIServiceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIServiceIdentity.swift; sourceTree = "<group>"; };
@@ -4650,6 +4652,7 @@
 				36E583D2DA2F8E7E79E2C911 /* VocabularyArchiveTests.swift */,
 				8F4BE1F73D069EEA1EF80A8B /* VocabularyBenchmarkFixture.swift */,
 				6B9A609585C3967145EC37A3 /* VocabularyBenchmarkRecorder.swift */,
+				FEB424C14CFE8398DCAF10FF /* VocabularyBenchmarkSyncSeed.swift */,
 				DD4157DFF9B110213BE52B8E /* VocabularyBrowsingScaleTests.swift */,
 				9426AED80A8983528C05C22A /* VocabularyClassificationPersistenceTests.swift */,
 				C6A379BE944ECC1EDB5228C0 /* VocabularyColdEntryCommandTests.swift */,
@@ -8243,6 +8246,7 @@
 				1E592988420F96C54A6D0761 /* VocabularyArchiveTests.swift in Sources */,
 				56440D0DB5613C5EEB0214FF /* VocabularyBenchmarkFixture.swift in Sources */,
 				9B0CD459B73428661C842E91 /* VocabularyBenchmarkRecorder.swift in Sources */,
+				CA50A602F17C8F39E09C587F /* VocabularyBenchmarkSyncSeed.swift in Sources */,
 				0579BD9BD4DEBEC066F24A80 /* VocabularyBrowsingScaleTests.swift in Sources */,
 				0DFB409FCBE0A9B160DC447E /* VocabularyCLICaptureTests.swift in Sources */,
 				A6A27C8CB866D156D6D914E3 /* VocabularyCLITests.swift in Sources */,

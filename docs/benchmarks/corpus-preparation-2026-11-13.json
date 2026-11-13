@@ -1,0 +1,1310 @@
+{
+  "reportDate": "2026-11-13",
+  "scope": "Complete validation reuse after synchronized apply and scoped full-read decoding allocations",
+  "methodology": [
+    "Release arm64 synthetic tests in a signed private native host. No real clicks, installed application/data access or real account/endpoint participates.",
+    "The first engine experiment alternates three fresh-process old/new runs on byte-identical 20k SQLite copies. Before packages are archived from 2f5fc372; after packages match the final package source manifest. Engine initialization and UI preparation are outside that timer.",
+    "The native inventory uses the unchanged generated fixture workload at 10k/20k with three trials per operation: fourteen windows, 84 unique samples. Cold means empty application/archive/engine caches; the OS disk cache is not purged.",
+    "Native seed creation, repository/index setup, assertions and frame painting are outside timers. Store time includes result admission and scheduling browse invalidation, not later page painting.",
+    "The new post-apply seed uses a real verified empty/uninitialized remote window followed by normal apply prepare/commit. It preserves local corpus counts, semantic nodes and history. The fixture removes derived certificate metadata immediately before this completely checked writer, which must issue the replacement.",
+    "After closing that engine, both control cases copy the same committed database. One retains its certificate; the other deletes only that derived row before the timer. Both time the same capture into fresh archives and check saved state/history. This is a current-binary controlled comparison, not a timing of the old binary after sync.",
+    "All sync preparation/validation and copy/control setup occur outside the post-apply favorite timers. These measure avoiding a repeated preparation after work has already been checked; they do not make initial sync validation free.",
+    "The common twelve native windows are compared with the preceding independently generated workload. The extra two setup/windows change process/cache history before full-store readiness; use the byte-identical engine experiment to attribute the decoder improvement.",
+    "Medians/minima/maxima describe three observations, not percentiles. Engine and native store milestones are different and their absolute timings should not be added or substituted.",
+    "The full 43-operation inventory was not rerun. Image-heavy/dense-alias workloads retain focused correctness coverage rather than large-library timings."
+  ],
+  "pairedEngineRead": {
+    "seedSHA256": "83ee4684023eef23d164987ddb31633f0b0c271a2991134fccd053c63084a14e",
+    "beforeCommit": "2f5fc372",
+    "fixtureSHA256": "2d8a1adc60c97157081b5371eeab6d4a40592601829235ef6e4e8c7c6f84dbfe",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "entries": 20000,
+    "enrolledSenses": 4000,
+    "ratings": 1000,
+    "samples": [
+      {
+        "cold_load_ms": 7508.614875,
+        "variant": "before",
+        "trial": 1
+      },
+      {
+        "cold_load_ms": 7086.126125,
+        "variant": "after",
+        "trial": 1
+      },
+      {
+        "cold_load_ms": 7329.457417,
+        "variant": "before",
+        "trial": 2
+      },
+      {
+        "cold_load_ms": 6951.003834,
+        "variant": "after",
+        "trial": 2
+      },
+      {
+        "cold_load_ms": 7119.906292,
+        "variant": "before",
+        "trial": 3
+      },
+      {
+        "cold_load_ms": 6886.294,
+        "variant": "after",
+        "trial": 3
+      }
+    ],
+    "beforeMedianMs": 7329.457,
+    "afterMedianMs": 6951.004,
+    "pairedChangesMs": [
+      -422.489,
+      -378.454,
+      -233.612
+    ],
+    "afterPackageSourceManifestSHA256": "0d27cee96aee035d8f60fd2a18ba0b82f74d273cc59f4bd8f72ac7e8f4507926",
+    "afterPackageSourceManifestEntries": 460,
+    "sourceManifestMatchesFinalTree": true,
+    "cleanup": {
+      "ownedBuildsRemoved": true,
+      "syntheticSeedRemoved": true,
+      "baselineSourceRemoved": true,
+      "installedAppAccessed": false
+    }
+  },
+  "identity": {
+    "commit": "2f5fc372be73665cf56d4a316d9253361858bd44",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "fda9f3cbe920fefb17f281c196b6b664821013a5e01e7873c1ee690a6e1014ed",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000,20000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "remainingOnly": false,
+    "remainingTrials": 0,
+    "pagedOnly": true,
+    "pagedTrials": 3,
+    "sourceManifestSHA256": "c1e2d3f794694fa8e582365ad2dac014dd509b593d8573d0fd135baf9f058ace",
+    "sourceManifestEntries": 1882,
+    "commitIsWorktreeBase": true
+  },
+  "fixtures": {
+    "10000": {
+      "entries": 10000,
+      "categoryMemberships": 14000,
+      "databaseBytes": 278863872,
+      "senses": 20000,
+      "examples": 40000,
+      "categories": 688,
+      "enrolledSenses": 2000,
+      "ratingRecords": 1000,
+      "mappings": 14011,
+      "meanings": 14000
+    },
+    "20000": {
+      "entries": 20000,
+      "categoryMemberships": 28000,
+      "databaseBytes": 547864576,
+      "examples": 80000,
+      "senses": 40000,
+      "categories": 1038,
+      "enrolledSenses": 4000,
+      "ratingRecords": 1000,
+      "mappings": 28011,
+      "meanings": 28000
+    }
+  },
+  "milliseconds": {
+    "10000": {
+      "browse.first.page": {
+        "median": 90.167,
+        "minimum": 87.992,
+        "maximum": 110.059
+      },
+      "browse.next.page": {
+        "median": 18.115,
+        "minimum": 17.412,
+        "maximum": 18.468
+      },
+      "browse.entry.detail": {
+        "median": 7.636,
+        "minimum": 7.593,
+        "maximum": 7.664
+      },
+      "browse.saved.lookup": {
+        "median": 1.173,
+        "minimum": 1.029,
+        "maximum": 1.2
+      },
+      "browse.filter.page": {
+        "median": 97.654,
+        "minimum": 94.009,
+        "maximum": 99.131
+      },
+      "favorite.cold.first": {
+        "median": 30.169,
+        "minimum": 27.217,
+        "maximum": 30.86
+      },
+      "sense.remove.cold.first": {
+        "median": 16.089,
+        "minimum": 15.761,
+        "maximum": 16.26
+      },
+      "favorite.cold.context": {
+        "median": 33.874,
+        "minimum": 32.423,
+        "maximum": 34.536
+      },
+      "favorite.cold.existing-sense": {
+        "median": 40.828,
+        "minimum": 39.904,
+        "maximum": 41.913
+      },
+      "sense.remove.cold.enrolled": {
+        "median": 20.599,
+        "minimum": 20.319,
+        "maximum": 21.576
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 4330.572,
+        "minimum": 4303.524,
+        "maximum": 4343.97
+      },
+      "favorite.cold.after-validated-sync": {
+        "median": 29.203,
+        "minimum": 27.504,
+        "maximum": 29.594
+      },
+      "favorite.cold.after-sync-proof-removed": {
+        "median": 4427.338,
+        "minimum": 4397.76,
+        "maximum": 4527.837
+      },
+      "corpus.full.ready": {
+        "median": 4204.736,
+        "minimum": 4191.911,
+        "maximum": 4212.219
+      }
+    },
+    "20000": {
+      "browse.first.page": {
+        "median": 159.293,
+        "minimum": 152.478,
+        "maximum": 201.233
+      },
+      "browse.next.page": {
+        "median": 22.576,
+        "minimum": 22.172,
+        "maximum": 22.994
+      },
+      "browse.entry.detail": {
+        "median": 7.485,
+        "minimum": 7.314,
+        "maximum": 20.21
+      },
+      "browse.saved.lookup": {
+        "median": 1.102,
+        "minimum": 1.056,
+        "maximum": 1.23
+      },
+      "browse.filter.page": {
+        "median": 210.708,
+        "minimum": 208.101,
+        "maximum": 235.115
+      },
+      "favorite.cold.first": {
+        "median": 44.728,
+        "minimum": 40.572,
+        "maximum": 49.627
+      },
+      "sense.remove.cold.first": {
+        "median": 17.138,
+        "minimum": 16.749,
+        "maximum": 17.528
+      },
+      "favorite.cold.context": {
+        "median": 50.584,
+        "minimum": 50.446,
+        "maximum": 51.862
+      },
+      "favorite.cold.existing-sense": {
+        "median": 59.038,
+        "minimum": 58.988,
+        "maximum": 60.329
+      },
+      "sense.remove.cold.enrolled": {
+        "median": 23.001,
+        "minimum": 22.461,
+        "maximum": 24.242
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 8939.572,
+        "minimum": 8472.762,
+        "maximum": 9006.749
+      },
+      "favorite.cold.after-validated-sync": {
+        "median": 42.949,
+        "minimum": 42.707,
+        "maximum": 43.462
+      },
+      "favorite.cold.after-sync-proof-removed": {
+        "median": 8762.343,
+        "minimum": 8577.605,
+        "maximum": 9137.317
+      },
+      "corpus.full.ready": {
+        "median": 8257.936,
+        "minimum": 8217.516,
+        "maximum": 8653.026
+      }
+    }
+  },
+  "comparison": {
+    "baselineReport": "docs/benchmarks/corpus-reviewed-retirement-2026-11-13.json",
+    "baselineReportSHA256": "a0b25d4934ca96d9b0d1adbc6afde72899b2907686f895c142cbdbe6436577f0",
+    "baselineIdentity": {
+      "commit": "a97681020561174a5189f3a74eea42068b574a13",
+      "configuration": "Release",
+      "architecture": "arm64",
+      "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+      "hostBinarySHA256": "50f476c2e2f799fbd9100dbc27be8304dc191cfaf669409f63495f5a7f8c4821",
+      "installedAppAccessed": false,
+      "input": "generated synthetic notebooks only",
+      "hardware": "MacBookPro18,2",
+      "sizes": "10000,20000",
+      "trials": 3,
+      "scanTrials": 1,
+      "focusedTrials": 3,
+      "tailOnly": false,
+      "remainingOnly": false,
+      "remainingTrials": 0,
+      "pagedOnly": true,
+      "pagedTrials": 3,
+      "sourceManifestSHA256": "090f6e48aec8e969b861cdb0921ea36549e3df2104d6c6251d6c6f353a2e26b2",
+      "sourceManifestEntries": 1880,
+      "commitIsWorktreeBase": true
+    },
+    "matchedNativeOperations": {
+      "10000": {
+        "browse.first.page": {
+          "beforeMedian": 92.525,
+          "afterMedian": 90.167
+        },
+        "browse.next.page": {
+          "beforeMedian": 19.933,
+          "afterMedian": 18.115
+        },
+        "browse.entry.detail": {
+          "beforeMedian": 7.306,
+          "afterMedian": 7.636
+        },
+        "browse.saved.lookup": {
+          "beforeMedian": 1.018,
+          "afterMedian": 1.173
+        },
+        "browse.filter.page": {
+          "beforeMedian": 99.115,
+          "afterMedian": 97.654
+        },
+        "favorite.cold.first": {
+          "beforeMedian": 28.819,
+          "afterMedian": 30.169
+        },
+        "sense.remove.cold.first": {
+          "beforeMedian": 17.664,
+          "afterMedian": 16.089
+        },
+        "favorite.cold.context": {
+          "beforeMedian": 34.978,
+          "afterMedian": 33.874
+        },
+        "favorite.cold.existing-sense": {
+          "beforeMedian": 41.271,
+          "afterMedian": 40.828
+        },
+        "sense.remove.cold.enrolled": {
+          "beforeMedian": 21.727,
+          "afterMedian": 20.599
+        },
+        "favorite.cold.missing-proof-fallback": {
+          "beforeMedian": 4606.309,
+          "afterMedian": 4330.572
+        },
+        "corpus.full.ready": {
+          "beforeMedian": 4457.035,
+          "afterMedian": 4204.736
+        }
+      },
+      "20000": {
+        "browse.first.page": {
+          "beforeMedian": 163.931,
+          "afterMedian": 159.293
+        },
+        "browse.next.page": {
+          "beforeMedian": 23.905,
+          "afterMedian": 22.576
+        },
+        "browse.entry.detail": {
+          "beforeMedian": 7.97,
+          "afterMedian": 7.485
+        },
+        "browse.saved.lookup": {
+          "beforeMedian": 1.462,
+          "afterMedian": 1.102
+        },
+        "browse.filter.page": {
+          "beforeMedian": 220.235,
+          "afterMedian": 210.708
+        },
+        "favorite.cold.first": {
+          "beforeMedian": 46.465,
+          "afterMedian": 44.728
+        },
+        "sense.remove.cold.first": {
+          "beforeMedian": 17.232,
+          "afterMedian": 17.138
+        },
+        "favorite.cold.context": {
+          "beforeMedian": 52.938,
+          "afterMedian": 50.584
+        },
+        "favorite.cold.existing-sense": {
+          "beforeMedian": 62.028,
+          "afterMedian": 59.038
+        },
+        "sense.remove.cold.enrolled": {
+          "beforeMedian": 25.618,
+          "afterMedian": 23.001
+        },
+        "favorite.cold.missing-proof-fallback": {
+          "beforeMedian": 9879.318,
+          "afterMedian": 8939.572
+        },
+        "corpus.full.ready": {
+          "beforeMedian": 9195.211,
+          "afterMedian": 8257.936
+        }
+      }
+    }
+  },
+  "validatedWriterControl": {
+    "10000": {
+      "retainedCertificateMedianMs": 29.203,
+      "removedCertificateMedianMs": 4427.338,
+      "sameClosedPostApplySeed": true
+    },
+    "20000": {
+      "retainedCertificateMedianMs": 42.949,
+      "removedCertificateMedianMs": 8762.343,
+      "sameClosedPostApplySeed": true
+    }
+  },
+  "rawSamples": [
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 0,
+      "trial": 1,
+      "operation": "browse.first.page",
+      "layer": "model",
+      "milliseconds": 110.058709
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "browse.next.page",
+      "layer": "model",
+      "milliseconds": 17.41225
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 1,
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "milliseconds": 7.593208
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 1,
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "milliseconds": 1.028792
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 1,
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "milliseconds": 94.009166
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.first",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 27.216625
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "sense.remove.cold.first",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 15.760917
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "milliseconds": 34.536292
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.existing-sense",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 41.913291
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "milliseconds": 20.319125
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 4343.969709
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "favorite.cold.after-validated-sync",
+      "layer": "store",
+      "milliseconds": 27.504375
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 1,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 4427.337833
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 4191.911084
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 0,
+      "operation": "browse.first.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 90.16675
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "browse.next.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 18.115291
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.entry.detail",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 7.66425
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.saved.lookup",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 1.199667
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.filter.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 97.65375
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 2,
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "milliseconds": 30.16875
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "sense.remove.cold.first",
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 16.260125
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "milliseconds": 33.873708
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 2,
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "milliseconds": 40.82825
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "sense.remove.cold.enrolled",
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 21.576
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 4303.524166
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "favorite.cold.after-validated-sync",
+      "layer": "store",
+      "milliseconds": 29.203375
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 2,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 4527.836583
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 4212.219333
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 0,
+      "trial": 3,
+      "operation": "browse.first.page",
+      "layer": "model",
+      "milliseconds": 87.992125
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "browse.next.page",
+      "layer": "model",
+      "milliseconds": 18.467708
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 3,
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "milliseconds": 7.63625
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 3,
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "milliseconds": 1.173166
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 200,
+      "trial": 3,
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "milliseconds": 99.130833
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 3,
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "milliseconds": 30.859959
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "sense.remove.cold.first",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 16.089417
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "milliseconds": 32.423334
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "operation": "favorite.cold.existing-sense",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 39.903667
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 3,
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "milliseconds": 20.598917
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 4330.571791
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "favorite.cold.after-validated-sync",
+      "layer": "store",
+      "milliseconds": 29.593875
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "trial": 3,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 4397.759917
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 4204.7365
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 0,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "browse.first.page",
+      "layer": "model",
+      "milliseconds": 201.232875
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "browse.next.page",
+      "layer": "model",
+      "milliseconds": 22.5765
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "milliseconds": 7.485458
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "milliseconds": 1.101875
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "milliseconds": 208.101375
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "milliseconds": 40.572042
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "milliseconds": 17.138333
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.context",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 50.5835
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 1,
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "milliseconds": 58.988125
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "sense.remove.cold.enrolled",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 22.461458
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 1,
+      "layer": "store",
+      "milliseconds": 9006.748583
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "favorite.cold.after-validated-sync",
+      "layer": "store",
+      "milliseconds": 43.461958
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 1,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 9137.317292
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 1,
+      "layer": "model",
+      "milliseconds": 8653.025833
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 0,
+      "operation": "browse.first.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 152.478208
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "browse.next.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 22.171708
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 20000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.entry.detail",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 20.210333
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 20000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.saved.lookup",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 1.230375
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.filter.page",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 235.115041
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "milliseconds": 44.727708
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "milliseconds": 16.749417
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 2,
+      "operation": "favorite.cold.context",
+      "layer": "store",
+      "milliseconds": 50.446125
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "favorite.cold.existing-sense",
+      "layer": "store",
+      "milliseconds": 60.32925
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 2,
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "milliseconds": 23.001459
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 8939.572083
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.after-validated-sync",
+      "trial": 2,
+      "layer": "store",
+      "milliseconds": 42.707042
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 2,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 8762.3425
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 2,
+      "layer": "model",
+      "milliseconds": 8217.515625
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 0,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "browse.first.page",
+      "layer": "model",
+      "milliseconds": 159.292833
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "browse.next.page",
+      "layer": "model",
+      "milliseconds": 22.993667
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "browse.entry.detail",
+      "layer": "model",
+      "milliseconds": 7.313917
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "browse.saved.lookup",
+      "layer": "model",
+      "milliseconds": 1.0555
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 200,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "browse.filter.page",
+      "layer": "model",
+      "milliseconds": 210.70775
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "favorite.cold.first",
+      "layer": "store",
+      "milliseconds": 49.62725
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "sense.remove.cold.first",
+      "layer": "store",
+      "milliseconds": 17.528458
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.context",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 51.861917
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.existing-sense",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 59.038
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "trial": 3,
+      "operation": "sense.remove.cold.enrolled",
+      "layer": "store",
+      "milliseconds": 24.242084
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.missing-proof-fallback",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 8472.761666
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "operation": "favorite.cold.after-validated-sync",
+      "trial": 3,
+      "layer": "store",
+      "milliseconds": 42.9485
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "trial": 3,
+      "operation": "favorite.cold.after-sync-proof-removed",
+      "layer": "store",
+      "milliseconds": 8577.605458
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "visibleEntriesBefore": 100,
+      "operation": "corpus.full.ready",
+      "trial": 3,
+      "layer": "model",
+      "milliseconds": 8257.93575
+    }
+  ],
+  "outcomes": [
+    {
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "operation": "browse.first.page.rows",
+      "trial": 1,
+      "entries": 10000
+    },
+    {
+      "succeeded": true,
+      "message": "17 payload rows for one entry",
+      "operation": "browse.entry.detail.rows",
+      "trial": 1,
+      "entries": 10000
+    },
+    {
+      "entries": 10000,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "succeeded": true,
+      "operation": "browse.first.page.rows",
+      "trial": 2
+    },
+    {
+      "entries": 10000,
+      "message": "17 payload rows for one entry",
+      "succeeded": true,
+      "operation": "browse.entry.detail.rows",
+      "trial": 2
+    },
+    {
+      "operation": "browse.first.page.rows",
+      "entries": 10000,
+      "trial": 3,
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes"
+    },
+    {
+      "operation": "browse.entry.detail.rows",
+      "entries": 10000,
+      "trial": 3,
+      "succeeded": true,
+      "message": "17 payload rows for one entry"
+    },
+    {
+      "operation": "browse.first.page.rows",
+      "entries": 20000,
+      "trial": 1,
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes"
+    },
+    {
+      "operation": "browse.entry.detail.rows",
+      "entries": 20000,
+      "trial": 1,
+      "succeeded": true,
+      "message": "17 payload rows for one entry"
+    },
+    {
+      "operation": "browse.first.page.rows",
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 2,
+      "entries": 20000
+    },
+    {
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true,
+      "message": "17 payload rows for one entry",
+      "trial": 2,
+      "entries": 20000
+    },
+    {
+      "message": "300 summary rows; zero evidence payload decodes",
+      "entries": 20000,
+      "succeeded": true,
+      "operation": "browse.first.page.rows",
+      "trial": 3
+    },
+    {
+      "message": "17 payload rows for one entry",
+      "entries": 20000,
+      "succeeded": true,
+      "operation": "browse.entry.detail.rows",
+      "trial": 3
+    }
+  ],
+  "validation": {
+    "shared": {
+      "passed": 127,
+      "skipped": 3,
+      "skip": "Opt-in native/server interop bridges stayed disabled",
+      "evidence": "build/mac-w2-c/corpus-preparation-shared.log"
+    },
+    "engine": {
+      "swiftTestingPassed": 128,
+      "xctestPassed": 40,
+      "failed": 0,
+      "evidence": "build/mac-w2-c/corpus-preparation-core.log"
+    },
+    "native": {
+      "passed": 87,
+      "failed": 0,
+      "skipped": 1,
+      "skip": "nativeCreateCancelSaveEditAndReopenJourney requires opt-in visible desktop validation",
+      "additionalCoverage": "MacNotebookSyncControllerTests uses a private loopback fixture"
+    },
+    "performance": {
+      "samples": 84,
+      "uniqueSampleKeys": 84,
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0
+    },
+    "sourceManifestMatchesFinalTree": true,
+    "pairedPackageSourceManifestMatchesFinalTree": true,
+    "fixtureGeneratorMatchesPreviousCheckpoint": true,
+    "staticChecks": {
+      "changedSwiftLineViolations": 0,
+      "swiftFilesChecked": 9,
+      "evidence": "build/mac-w2-c/corpus-preparation-diff-lint.json",
+      "scope": "Changed/new lines; pre-existing diagnostics elsewhere in touched files are not claimed clean."
+    },
+    "cleanup": {
+      "derivedDataAbsent": true,
+      "syntheticFixturesRemoved": true,
+      "packageCopiesRemoved": true,
+      "hostRemoved": true,
+      "installedAppAccessed": false
+    }
+  },
+  "remainingCosts": [
+    "An existing corpus without a valid certificate still requires complete strict preparation. Unknown raw canonical changes, schema/policy changes and account/generation changes retain their conservative invalidation rules.",
+    "The modest approximately 5% engine read improvement reduces allocation work; payload decoding, lossless reconstruction and complete validation still scale with the corpus.",
+    "Certificate renewal in this slice covers completely validated synchronized applies, metadata-only commits and exact replays. Read-only snapshot/export/query interfaces do not gain implicit certificate writes.",
+    "Reviewed captures/arbitrary source edits, media-reference changes, foreign semantic citations and unsupported dependency shapes retain full preparation.",
+    "Tag filtering remains a corpus-wide JSON scan (210.708ms at 20k this run). Media ownership/pin checks scale with the complete media set; complex shape candidates still need targeted measurement."
+  ],
+  "harnessSHA256": {
+    "LingroveTests/Services/Vocabulary/VocabularyOperationBenchmarkTests.swift": "550746ebca1f555dcd0ac012d0937fe8b99a56757472d691b51c220e1cab1faa",
+    "LingroveTests/Services/Vocabulary/VocabularyBenchmarkFixture.swift": "da6f6ea402ef2ef2d76d900330a180d5d587283a944a2ed6273a660288cc9fb7",
+    "LingroveTests/Services/Vocabulary/VocabularyBenchmarkSyncSeed.swift": "4b146866bb7e1def47458e31584ff9f4b842d3c9b7d83b86fbfb03c3b7aea2cd",
+    "scripts/validation/benchmark-corpus-operations.py": "0754209b6628e309891ebdfbd8d81c3714f6d7dbaa3bf5ea85cb92334635c345"
+  },
+  "evidenceDirectory": "build/corpus-operation-benchmark/corpus-preparation-final"
+}

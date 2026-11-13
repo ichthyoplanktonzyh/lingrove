@@ -97,6 +97,27 @@ struct VocabularyColdEntryCommandTests {
         } catch { await store.shutdown(); try? repository.shutdown(); throw error }
     }
 
+    @Test func aValidatedPullLeavesAFreshArchiveAbleToSaveOnlyItsEntry() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-certified-sync-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let seed = folder.appendingPathComponent("seed")
+        _ = try VocabularyBenchmarkFixture.seed(entries: 100, at: seed)
+        let prepared = try VocabularyBenchmarkSyncSeed.prepare(from: seed.appendingPathComponent("primary.sqlite"),
+            at: folder.appendingPathComponent("synced"))
+        let fixture = try VocabularyBenchmarkFixture(seed: prepared, directory: folder.appendingPathComponent("cold"))
+        do {
+            let input = capture("after-pull")
+            await fixture.store.save(input)
+            #expect(!fixture.store.isLoaded && fixture.store.entries.isEmpty && fixture.store.lastEntryCommit != nil)
+            #expect(await fixture.store.savedStatus(input) == true)
+            let version = try #require(fixture.store.operationScope)
+            #expect(try fixture.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_entries WHERE workspace_id=?",
+                values: [.text(version.workspaceId)]) == 101)
+            #expect(try fixture.repository.engine.loadReviewEventCount() == 10)
+            await fixture.close()
+        } catch { await fixture.close(); throw error }
+    }
+
     private func capture(_ name: String, contextual: Bool = false) -> VocabularyCapture {
         .init(expression: name, dictionaryForm: name, language: .english, kind: .word, meaning: "A saved meaning",
             example: contextual ? .init(id: UUID(), text: "A synthetic example for \(name).", translation: "译文", ranges: [],

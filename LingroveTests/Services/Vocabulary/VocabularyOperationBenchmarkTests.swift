@@ -178,6 +178,36 @@ struct VocabularyOperationBenchmarkTests {
             #expect(try unprepared.repository.engine.loadReviewEventCount() == 1_000)
             await unprepared.close()
         } catch { await unprepared.close(); throw error }
+        try await certifiedWriterCases(fixture, recorder, seed: seed)
+    }
+
+    /// One closed post-sync seed feeds both cold cases. Only the derived certificate is
+    /// removed in the control; account/content/history and all earlier setup are identical.
+    private func certifiedWriterCases(
+        _ fixture: VocabularyBenchmarkFixture, _ recorder: VocabularyBenchmarkRecorder, seed: URL
+    ) async throws {
+        let folder = fixture.directory.appendingPathComponent("validated-writer-seed")
+        let prepared = try VocabularyBenchmarkSyncSeed.prepare(from: seed, at: folder)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        for retainProof in [true, false] {
+            let label = retainProof ? "proof" : "control"
+            let cold = try VocabularyBenchmarkFixture(seed: prepared,
+                directory: fixture.directory.appendingPathComponent("post-sync-" + label))
+            do {
+                if !retainProof {
+                    try cold.repository.engine.core.execute(sql: "DELETE FROM notebook_entry_checkpoint", values: [])
+                }
+                let capture = VocabularyBenchmarkFixture.capture("after-validated-sync")
+                let operation = retainProof ? "favorite.cold.after-validated-sync" : "favorite.cold.after-sync-proof-removed"
+                try await recorder.measure(operation) { await cold.store.save(capture) }
+                #expect(await cold.store.savedStatus(capture) == true)
+                if retainProof {
+                    try #require(!cold.store.isLoaded && cold.store.lastEntryCommit != nil && cold.store.entries.isEmpty)
+                } else { try #require(cold.store.isLoaded && cold.store.contains(capture)) }
+                #expect(try cold.repository.engine.loadReviewEventCount() == 1_000)
+                await cold.close()
+            } catch { await cold.close(); throw error }
+        }
     }
 
     /// Component windows run on a separate fresh copy after the three operation trials. Their

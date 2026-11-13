@@ -60,8 +60,7 @@ nonisolated struct VocabularyDatabaseRecord: Equatable, Sendable {
 
         // Keep the typed table dispatch exhaustive; each case describes an independent row format.
         // swiftlint:disable:next cyclomatic_complexity
-        static func decode(_ bytes: Data, table: Table) throws -> Self {
-            let decoder = JSONDecoder()
+        static func decode(_ bytes: Data, table: Table, decoder: JSONDecoder = JSONDecoder()) throws -> Self {
             switch table {
             case .classificationFrameworks:
                 return .classificationFramework(try decoder.decode(VocabularyClassificationFramework.self, from: bytes))
