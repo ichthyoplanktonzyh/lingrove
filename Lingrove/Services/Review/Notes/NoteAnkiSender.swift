@@ -39,10 +39,10 @@ final class NoteAnkiSender {
                 material, scope: scope,
                 options: .init(deck: deck, choices: choices, expectedRemote: expectedRemote, moveExisting: moveExisting))
             controller.finish(
-                material.sense.id, cardID: material.note.id, wrote: result.conflicts.isEmpty, scope: material.scope)
+                material.sense.id, cardID: material.note.id, wrote: result.conflicts.isEmpty, scope: .init(material.scope))
             return result
         } catch {
-            controller.finish(material.sense.id, cardID: material.note.id, error: error, scope: material.scope)
+            controller.finish(material.sense.id, cardID: material.note.id, error: error, scope: .init(material.scope))
             throw error
         }
     }

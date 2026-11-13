@@ -19,7 +19,7 @@ struct VocabularyTagDeletionTests {
             let before = try await archive.load()
             let scope = try #require(store.operationScope)
             let wrong = VocabularyOperationScope(workspaceId: scope.workspaceId, notebookId: scope.notebookId,
-                revision: scope.revision, document: scope.document, generation: "different-generation")
+                revision: scope.revision, generation: "different-generation")
             #expect(!(await store.removeTag("CLI Test", scope: wrong)))
             #expect(try await archive.load().document == before.document)
             #expect(await store.removeTag("CLI Test", scope: scope))

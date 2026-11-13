@@ -6,6 +6,22 @@ import Testing
 /// Isolated archives exercise opt-in adoption and contextual annotations without user data.
 @MainActor
 struct VocabularyExplanationTests {
+    @Test func pageOnlyDetailCanAdoptAnExplanationWithoutPretendingTheStoreIsComplete() async throws {
+        let archive = VocabularyArchive(url: nil)
+        let capture = capture(), result = record(capture)
+        let saved = try await archive.save(capture)
+        let entry = try #require(saved.document.entries.first)
+        let store = VocabularyStore(archive: archive), browse = try #require(store.browsing)
+        store.browse(.init()); await browse.waitForPage()
+        browse.select(entryID: entry.id); await browse.waitForDetail()
+        #expect(!store.isLoaded && store.entries.isEmpty && store.completeSnapshot == nil)
+        let destination = try #require(store.explanationDestination(capture))
+        #expect(destination.senseID == entry.senses[0].id && destination.scope == browse.fence?.version)
+        #expect(await store.adoptExplanation(result, at: destination))
+        #expect(store.isLoaded && store.entries[0].senses[0].meaning == result.result.meaning)
+        await store.shutdown()
+    }
+
     private func capture(_ text: String = "Let me know.") -> VocabularyCapture {
         .init(expression: "know", dictionaryForm: "know", language: .english, kind: .word,
             example: VocabularyPolicy.example(text: text, ranges: [(text as NSString).range(of: "know")], language: .english))

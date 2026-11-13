@@ -253,6 +253,24 @@ preferences. They do not establish real Cognito/mailbox/provider acceptance.
 
 ## Corpus save and reused review presentation
 
+`LingroveNotebookEngine/Queries/LingroveNotebookEngine+Browsing.swift` owns read-only keyset
+pages, exact entry-key/sense lookup, and single-entry detail/evidence reads. Summary DTOs are
+separate from `VocabularyDocument`; the detail codec checks its selected subtree without
+creating a whole-corpus save proof. Cursors bind the query to workspace/notebook/generation,
+revision and the trigger-maintained corpus clock. SQLite expression indexes supply creation
+order independently of unordered persisted memberships. Filter totals always cover SQL's
+entire query, not the rows already displayed.
+
+`Services/Vocabulary/VocabularyBrowseModel.swift` contains the store-owned UI read projection
+and its private read-only actor/connection. This connection has a separate queue from the
+archive's full validation/write connection. The view retains only its selection/filter state;
+`VocabularyStore.entries` and `VocabularyReadIndex` continue to mean a complete acknowledged
+corpus. Graph/search, batch selection and export explicitly prepare that complete interface.
+`VocabularyOperationScope` is a content-free `LingroveNotebookVersion`; editor drafts carry
+their own baseline rather than retaining an entire document just to capture account identity.
+Favorite status distinguishes a pending lookup from a confirmed absent result, including
+targets outside loaded pages. Shutdown drains and closes the read worker with the archive.
+
 `Services/Vocabulary/VocabularyArchive.swift` owns one serialized engine connection until shutdown
 drains accepted saves. `VocabularyPolicy.entryForSave` prepares a single joined entry; the archive
 returns a committed immutable snapshot to the UI-facing store. It does not create a second corpus.

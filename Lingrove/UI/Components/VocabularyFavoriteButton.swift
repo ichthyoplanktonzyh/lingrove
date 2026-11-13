@@ -26,24 +26,26 @@ struct VocabularyFavoriteButton: View {
     @State private var showsActions = false
     @State private var failure: String?
     @State private var hovering = false
+    @State private var saved: Bool?
     @Environment(\.learningFavoriteMenu) private var hostedMenu
     private var menu: Binding<Bool> { hostedMenu ?? $showsActions }
 
     var body: some View {
         Button {
             interact()
-            if store.contains(capture) { menu.wrappedValue = true } else {
+            if saved == true { menu.wrappedValue = true } else {
                 Task { [scope = store.operationScope] in
                     await store.save(capture, scope: scope)
                     failure = store.errorMessage
+                    saved = await store.savedStatus(capture)
                 }
             }
         } label: {
             Group {
-                if store.isPending(capture) {
+                if store.isPending(capture) || saved == nil {
                     ProgressView().controlSize(.mini)
                 } else {
-                    VocabularyFavoriteIcon(isSaved: store.contains(capture), isHovered: hovering)
+                    VocabularyFavoriteIcon(isSaved: saved == true, isHovered: hovering)
                 }
             }
             .frame(width: 20, height: 20).contentShape(Rectangle())
@@ -51,14 +53,20 @@ struct VocabularyFavoriteButton: View {
         .buttonStyle(LearningIconActionButtonStyle(hovering: hovering, isEnabled: !store.isPending(capture)))
         .onHover { hovering = $0 }
         .learningAction(.favorite)
-        .disabled(store.isPending(capture))
-        .help(failure ?? (store.contains(capture)
+        .disabled(store.isPending(capture) || saved == nil)
+        .help(failure ?? (saved == true
             ? String(localized: "Saved · Show actions", table: "Vocabulary")
             : String(localized: "Save to vocabulary", table: "Vocabulary")))
         .accessibilityLabel(String(localized: "Save to vocabulary", table: "Vocabulary"))
-        .accessibilityValue(store.contains(capture)
+        .accessibilityValue(saved == nil ? String(localized: "Loading") : saved == true
             ? String(localized: "Saved", table: "Vocabulary") : String(localized: "Not saved", table: "Vocabulary"))
-        .task { store.loadIfNeeded() }
+        .task(id: statusIdentity) {
+            // Unknown is visibly pending, never "not saved" merely because its page is absent.
+            saved = nil
+            let result = await store.savedStatus(capture)
+            guard !Task.isCancelled else { return }
+            saved = result
+        }
         .onChange(of: store.scopeIdentity) { _, _ in menu.wrappedValue = false; failure = nil }
         .popover(isPresented: menu) {
             VStack(alignment: .leading, spacing: 12) {
@@ -72,5 +80,10 @@ struct VocabularyFavoriteButton: View {
             get: { failure != nil }, set: { if !$0 { failure = nil } })) {
                 Button(String(localized: "OK"), role: .cancel) { failure = nil }
             } message: { Text(failure ?? "") }
+    }
+
+    private var statusIdentity: String {
+        store.scopeIdentity.uuidString + store.contentRevision.uuidString + store.savedStatusRevision.uuidString
+            + VocabularyPolicy.captureKey(capture) + (capture.senseID?.uuidString ?? "")
     }
 }

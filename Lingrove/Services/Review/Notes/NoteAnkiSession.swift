@@ -9,7 +9,8 @@ import LingroveNotebookEngine
 final class NoteAnkiSession: ObservableObject {
     let controller: AnkiReviewController
     let selection: VocabularySelection
-    let scope: VocabularyOperationScope?
+    private(set) var scope: LingroveNotebookSnapshot?
+    private let owner: VocabularyOperationScope?
     @Published var typeID: UUID?
     @Published var deck: String
     @Published var types: [ReviewNoteType] = []
@@ -28,10 +29,16 @@ final class NoteAnkiSession: ObservableObject {
     init(controller: AnkiReviewController, selection: VocabularySelection) {
         self.controller = controller
         self.selection = selection
-        scope = controller.store.operationScope
+        scope = controller.store.completeSnapshot
+        owner = controller.store.operationScope
         deck = controller.settings.deck
     }
     func load() async {
+        if scope == nil {
+            await controller.store.load()
+            guard !Task.isCancelled, controller.store.matches(owner) else { return }
+            scope = controller.store.completeSnapshot
+        }
         guard let scope, let io = controller.noteIO else { return }
         busy = true
         message = nil

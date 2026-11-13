@@ -172,7 +172,7 @@ final class BuiltInReviewSession: ObservableObject {
         }
         // The corpus store has already decoded this saved revision during browsing. A stale
         // or absent snapshot falls back to a disk read on the review actor.
-        let savedScope = [materialStore?.operationScope, previous?.scope].compactMap { $0 }
+        let savedScope = [materialStore?.completeSnapshot, previous?.scope].compactMap { $0 }
             .first { LingroveNotebookVersion($0) == version }
         isRefreshing = true
         readTask = Task { [weak self, io] in

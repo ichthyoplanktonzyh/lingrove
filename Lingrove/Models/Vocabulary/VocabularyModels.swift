@@ -82,12 +82,12 @@ nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
 
     let revision: UInt64
     let document: VocabularyDocument
-    let scope: VocabularyOperationScope?
+    let scope: LingroveNotebookSnapshot?
     let entryChange: EntryChange?
     let committedChange: LingroveNotebookCommittedChange?
     let joinedEntries: [VocabularyEntry]?
 
-    init(revision: UInt64, document: VocabularyDocument, scope: VocabularyOperationScope? = nil) {
+    init(revision: UInt64, document: VocabularyDocument, scope: LingroveNotebookSnapshot? = nil) {
         self.revision = revision; self.document = document; self.scope = scope
         entryChange = nil
         committedChange = nil
@@ -105,11 +105,14 @@ nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
     var portable: VocabularySnapshot { .init(revision: revision, document: document) }
 }
 
-/// Sheets and asynchronous commands retain this saved value rather than asking the store for
-/// a new account at Save time. Revision is a merge baseline; generation prevents ABA reuse.
-typealias VocabularyOperationScope = LingroveNotebookSnapshot
+/// Sheets retain only account/revision identity. Opening an editor or retaining a command
+/// scope must not require a complete document; its explicit draft is the merge baseline.
+typealias VocabularyOperationScope = LingroveNotebookVersion
 
 extension LingroveNotebookSnapshot {
+    nonisolated func hasSameOwner(as other: LingroveNotebookVersion) -> Bool {
+        other.hasSameOwner(as: self)
+    }
     nonisolated func hasSameOwner(as other: LingroveNotebookSnapshot) -> Bool {
         workspaceId == other.workspaceId && notebookId == other.notebookId && generation == other.generation
     }
@@ -129,7 +132,7 @@ nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
 /// requires the same account and exact post-merge revision before restoring the before-image.
 nonisolated struct VocabularySenseMergeUndo: Sendable {
     let before: VocabularyDocument
-    let after: VocabularyOperationScope
+    let after: LingroveNotebookSnapshot
     let images: [String: Data]
     let selection: VocabularySelection
 }

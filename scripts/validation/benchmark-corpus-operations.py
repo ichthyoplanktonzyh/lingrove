@@ -31,6 +31,7 @@ def main():
     parser.add_argument("--native-checks", action="store_true", help="Run affected native repository/lifecycle checks before timing")
     parser.add_argument("--checks-only", action="store_true", help="Run affected native checks without the operation inventory")
     parser.add_argument("--remaining-only", action="store_true", help="Measure the remaining load/save/organization paths")
+    parser.add_argument("--paged-only", action="store_true", help="Measure page/detail readiness and fresh first-write fallbacks")
     parser.add_argument("--keep-build-on-failure", action="store_true")
     parser.add_argument("--packages-from", type=Path, help="Reuse this benchmark's package cache after a failed build")
     args = parser.parse_args()
@@ -107,7 +108,8 @@ def main():
                 "hardware": subprocess.check_output(["sysctl", "-n", "hw.model"], text=True).strip(),
                 "sizes": args.sizes, "trials": args.trials, "scanTrials": 1,
                 "focusedTrials": args.trials, "tailOnly": args.tail_only,
-                "remainingOnly": args.remaining_only, "remainingTrials": args.trials if args.remaining_only else 0}, indent=2) + "\n")
+                "remainingOnly": args.remaining_only, "remainingTrials": args.trials if args.remaining_only else 0,
+                "pagedOnly": args.paged_only, "pagedTrials": args.trials if args.paged_only else 0}, indent=2) + "\n")
 
             def execute(label, sizes, trials, mode="scan", selectors=None):
                 output = base / label
@@ -154,6 +156,9 @@ def main():
                     "LingroveTests/VocabularyUnifiedRepositoryTests",
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
+                    "LingroveTests/VocabularyExplanationTests",
+                    "LingroveTests/VocabularyTagDeletionTests",
+                    "LingroveTests/NoteAnkiSenderTests",
                     "LingroveTests/NotebookProgressModelIntegrationTests",
                     "LingroveTests/VocabularySearchPolicyTests",
                     "LingroveTests/VocabularySearchPreparationTests",
@@ -161,6 +166,8 @@ def main():
                     "LingroveTests/VocabularyEntryImportTests"])
             if args.checks_only:
                 completed = True
+            elif args.paged_only:
+                execute("paged", args.sizes, args.trials, mode="paged")
             elif args.remaining_only:
                 execute("remaining", args.sizes, args.trials, mode="remaining")
             elif args.tail_only:
@@ -174,7 +181,7 @@ def main():
             completed = True
         finally:
             # Only this run's synthetic fixtures and exact repository-scoped build caches retire.
-            for output in (base / "smoke", base / "smoke-focused", base / "focused", base / "measurements", base / "tail", base / "remaining"):
+            for output in (base / "smoke", base / "smoke-focused", base / "focused", base / "measurements", base / "tail", base / "remaining", base / "paged"):
                 if output.exists():
                     for path in output.iterdir():
                         if path.is_dir() and (path.name.startswith("seed-") or path.name.startswith("trial-")):

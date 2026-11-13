@@ -8,6 +8,10 @@ public enum LingroveNotebookSchema {
     public static func table(_ entity: VocabularyPersistenceEntity) -> String { "notebook_" + entity.rawValue }
 
     private static let readIndexes = [
+        // Display order is a query concern, not a persisted membership rank. Expression
+        // indexes are maintained by SQLite on every writer, including sync and raw repairs.
+        ("notebook_entries_newest", "notebook_entries", "workspace_id,json_extract(payload_json,'$.createdAt') DESC,id"),
+        ("notebook_entries_oldest", "notebook_entries", "workspace_id,json_extract(payload_json,'$.createdAt'),id"),
         ("notebook_usages_sense_fk", "notebook_usages", "workspace_id,sense_id"),
         ("notebook_usages_occurrence_fk", "notebook_usages", "workspace_id,occurrence_id"),
         ("notebook_mapping_evidence_usage_fk", "notebook_mapping_evidence", "workspace_id,usage_id"),

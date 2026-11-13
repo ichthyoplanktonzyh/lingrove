@@ -163,7 +163,6 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         } else {
             apply(request)
         }
-        store.loadIfNeeded()
         if window?.isMiniaturized == true { window?.deminiaturize(nil) }
         NSApplication.shared.activate(ignoringOtherApps: true)
         showWindow(nil)

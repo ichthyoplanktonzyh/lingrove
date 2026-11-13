@@ -1,0 +1,2041 @@
+{
+  "reportDate": "2026-11-13",
+  "scope": "Bounded corpus browsing and cold first-command inventory",
+  "methodology": [
+    "Release arm64, private native validation host, production store/actor commands, no real clicks or installed application data.",
+    "Each size/variant uses a closed generated seed; each trial copies it. Different variants are equivalent in workload/counts, not byte-identical seeds.",
+    "Cold refers to empty application/engine caches; OS disk caches are not purged. Setup, repository construction/index creation, assertions and actual frame painting are outside timers.",
+    "First page is data-ready for 100 summaries plus the global count; it is a different milestone from complete store/index readiness.",
+    "A summary work count reports returned entry/sense scalar rows, not all SQL rows scanned. Detail work counts report decoded payload rows. Tests separately bound detail SQL work as unrelated corpus size grows.",
+    "First favorite uses an archive not warmed by preceding read-only queries. Cold deletion and full-store readiness use separate copies of the same seed.",
+    "Visible-entry counters refer to the primary paged browser. Auxiliary deletion/full-load fixture contents and all 1000 retained ratings are checked by separate postconditions.",
+    "Prototype variants are intermediate implementations in this change, not a pre-change Dev UI benchmark; cache warming by their old workspace scans affects later windows.",
+    "The previous complete 43-window inventory was not rerun. This checkpoint measures eight windows at both sizes, three trials each."
+  ],
+  "variants": {
+    "initialLocalReadPrototype": {
+      "identity": {
+        "commit": "d85c9592423dd8b4e09b41c6872ceff83c5c1b7b",
+        "configuration": "Release",
+        "architecture": "arm64",
+        "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+        "hostBinarySHA256": "5cc816bce0f61c651f543d6bd6cb0014ad56d63b91bf478b7b0b64b222856d54",
+        "installedAppAccessed": false,
+        "input": "generated synthetic notebooks only",
+        "hardware": "MacBookPro18,2",
+        "sizes": "10000,20000",
+        "trials": 3,
+        "scanTrials": 1,
+        "focusedTrials": 3,
+        "tailOnly": false,
+        "remainingOnly": false,
+        "remainingTrials": 0,
+        "pagedOnly": true,
+        "pagedTrials": 3,
+        "sourceManifestSHA256": "c6d8be89dbe1d2a0ab153c46b511cb0c7091bd2aaa1349ed23bcb78c030e6173",
+        "sourceManifestEntries": 1873,
+        "commitIsWorktreeBase": true
+      },
+      "fixtures": {
+        "10000": {
+          "categoryMemberships": 14000,
+          "databaseBytes": 280576000,
+          "meanings": 14000,
+          "categories": 688,
+          "senses": 20000,
+          "ratingRecords": 1000,
+          "mappings": 14011,
+          "enrolledSenses": 2000,
+          "entries": 10000,
+          "examples": 40000
+        },
+        "20000": {
+          "enrolledSenses": 4000,
+          "meanings": 28000,
+          "mappings": 28011,
+          "categories": 1038,
+          "senses": 40000,
+          "categoryMemberships": 28000,
+          "ratingRecords": 1000,
+          "databaseBytes": 551636992,
+          "entries": 20000,
+          "examples": 80000
+        }
+      },
+      "milliseconds": {
+        "10000": {
+          "browse.first.page": {
+            "median": 92.177,
+            "minimum": 88.875,
+            "maximum": 112.965
+          },
+          "browse.next.page": {
+            "median": 19.895,
+            "minimum": 19.451,
+            "maximum": 19.958
+          },
+          "browse.entry.detail": {
+            "median": 430.983,
+            "minimum": 429.017,
+            "maximum": 440.413
+          },
+          "browse.saved.lookup": {
+            "median": 71.532,
+            "minimum": 68.802,
+            "maximum": 76.763
+          },
+          "browse.filter.page": {
+            "median": 102.603,
+            "minimum": 97.096,
+            "maximum": 104.317
+          },
+          "favorite.cold.first": {
+            "median": 3750.409,
+            "minimum": 3689.254,
+            "maximum": 3885.667
+          },
+          "sense.remove.cold.first": {
+            "median": 4276.501,
+            "minimum": 4229.273,
+            "maximum": 4321.641
+          },
+          "corpus.full.ready": {
+            "median": 4107.514,
+            "minimum": 4083.773,
+            "maximum": 4247.731
+          }
+        },
+        "20000": {
+          "browse.first.page": {
+            "median": 155.361,
+            "minimum": 153.457,
+            "maximum": 198.805
+          },
+          "browse.next.page": {
+            "median": 22.384,
+            "minimum": 22.102,
+            "maximum": 22.838
+          },
+          "browse.entry.detail": {
+            "median": 999.873,
+            "minimum": 986.186,
+            "maximum": 1009.198
+          },
+          "browse.saved.lookup": {
+            "median": 183.366,
+            "minimum": 176.625,
+            "maximum": 183.555
+          },
+          "browse.filter.page": {
+            "median": 216.41,
+            "minimum": 213.292,
+            "maximum": 230.292
+          },
+          "favorite.cold.first": {
+            "median": 7753.294,
+            "minimum": 7645.157,
+            "maximum": 8008.105
+          },
+          "sense.remove.cold.first": {
+            "median": 8823.486,
+            "minimum": 8759.863,
+            "maximum": 9029.541
+          },
+          "corpus.full.ready": {
+            "median": 8600.015,
+            "minimum": 8437.781,
+            "maximum": 8640.959
+          }
+        }
+      },
+      "samples": [
+        {
+          "layer": "model",
+          "milliseconds": 112.964625,
+          "operation": "browse.first.page",
+          "visibleEntriesBefore": 0,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "trial": 1
+        },
+        {
+          "layer": "model",
+          "milliseconds": 19.451291,
+          "operation": "browse.next.page",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 1
+        },
+        {
+          "layer": "model",
+          "milliseconds": 440.412583,
+          "operation": "browse.entry.detail",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 1
+        },
+        {
+          "layer": "model",
+          "milliseconds": 76.763083,
+          "operation": "browse.saved.lookup",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 1
+        },
+        {
+          "layer": "model",
+          "milliseconds": 102.603292,
+          "operation": "browse.filter.page",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "trial": 1
+        },
+        {
+          "layer": "store",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "trial": 1,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 3885.667125,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "layer": "store",
+          "milliseconds": 4321.641417,
+          "trial": 1
+        },
+        {
+          "trial": 1,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 4083.773208
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "operation": "browse.first.page",
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 92.17675,
+          "trial": 2,
+          "visibleEntriesAfter": 100
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "operation": "browse.next.page",
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 19.957959,
+          "trial": 2,
+          "visibleEntriesAfter": 200
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "operation": "browse.entry.detail",
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 429.017042,
+          "trial": 2,
+          "visibleEntriesAfter": 200
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "operation": "browse.saved.lookup",
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 68.801833,
+          "trial": 2,
+          "visibleEntriesAfter": 200
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "operation": "browse.filter.page",
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 97.095875,
+          "trial": 2,
+          "visibleEntriesAfter": 100
+        },
+        {
+          "layer": "store",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "trial": 2,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 3750.409458,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "layer": "store",
+          "milliseconds": 4276.501209,
+          "trial": 2
+        },
+        {
+          "trial": 2,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 4107.513708
+        },
+        {
+          "layer": "model",
+          "milliseconds": 88.875041,
+          "operation": "browse.first.page",
+          "visibleEntriesBefore": 0,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "trial": 3
+        },
+        {
+          "layer": "model",
+          "milliseconds": 19.894959,
+          "operation": "browse.next.page",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 3
+        },
+        {
+          "layer": "model",
+          "milliseconds": 430.983375,
+          "operation": "browse.entry.detail",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 3
+        },
+        {
+          "layer": "model",
+          "milliseconds": 71.531708,
+          "operation": "browse.saved.lookup",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 10000,
+          "trial": 3
+        },
+        {
+          "layer": "model",
+          "milliseconds": 104.317459,
+          "operation": "browse.filter.page",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "trial": 3
+        },
+        {
+          "layer": "store",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "trial": 3,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 3689.253584,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "layer": "store",
+          "milliseconds": 4229.2725,
+          "trial": 3
+        },
+        {
+          "trial": 3,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 10000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 4247.730709
+        },
+        {
+          "trial": 1,
+          "operation": "browse.first.page",
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 198.805416,
+          "entries": 20000,
+          "visibleEntriesBefore": 0
+        },
+        {
+          "trial": 1,
+          "operation": "browse.next.page",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 22.838416,
+          "entries": 20000,
+          "visibleEntriesBefore": 100
+        },
+        {
+          "trial": 1,
+          "operation": "browse.entry.detail",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 1009.197958,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "trial": 1,
+          "operation": "browse.saved.lookup",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 183.555375,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "trial": 1,
+          "operation": "browse.filter.page",
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 230.292,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "layer": "store",
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "trial": 1,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 8008.104875,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "layer": "store",
+          "milliseconds": 9029.541375,
+          "trial": 1
+        },
+        {
+          "trial": 1,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 8600.015084
+        },
+        {
+          "layer": "model",
+          "milliseconds": 155.361167,
+          "operation": "browse.first.page",
+          "visibleEntriesBefore": 0,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "trial": 2
+        },
+        {
+          "layer": "model",
+          "milliseconds": 22.102416,
+          "operation": "browse.next.page",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 200,
+          "entries": 20000,
+          "trial": 2
+        },
+        {
+          "layer": "model",
+          "milliseconds": 986.185875,
+          "operation": "browse.entry.detail",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 20000,
+          "trial": 2
+        },
+        {
+          "layer": "model",
+          "milliseconds": 183.366459,
+          "operation": "browse.saved.lookup",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "entries": 20000,
+          "trial": 2
+        },
+        {
+          "layer": "model",
+          "milliseconds": 216.410083,
+          "operation": "browse.filter.page",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "trial": 2
+        },
+        {
+          "layer": "store",
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "trial": 2,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 7753.293834,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "layer": "store",
+          "milliseconds": 8823.486333,
+          "trial": 2
+        },
+        {
+          "trial": 2,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 8640.95875
+        },
+        {
+          "trial": 3,
+          "operation": "browse.first.page",
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 153.456917,
+          "entries": 20000,
+          "visibleEntriesBefore": 0
+        },
+        {
+          "trial": 3,
+          "operation": "browse.next.page",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 22.384375,
+          "entries": 20000,
+          "visibleEntriesBefore": 100
+        },
+        {
+          "trial": 3,
+          "operation": "browse.entry.detail",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 999.872834,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "trial": 3,
+          "operation": "browse.saved.lookup",
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "milliseconds": 176.625083,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "trial": 3,
+          "operation": "browse.filter.page",
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 213.292458,
+          "entries": 20000,
+          "visibleEntriesBefore": 200
+        },
+        {
+          "layer": "store",
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "trial": 3,
+          "visibleEntriesBefore": 100,
+          "milliseconds": 7645.156833,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "layer": "store",
+          "milliseconds": 8759.863291,
+          "trial": 3
+        },
+        {
+          "trial": 3,
+          "operation": "corpus.full.ready",
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "milliseconds": 8437.780834
+        }
+      ],
+      "workCounts": [
+        {
+          "entries": 10000,
+          "trial": 1,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "succeeded": true,
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "entries": 10000,
+          "trial": 1,
+          "message": "17 payload rows for one entry",
+          "succeeded": true,
+          "operation": "browse.entry.detail.rows"
+        },
+        {
+          "entries": 10000,
+          "succeeded": true,
+          "operation": "browse.first.page.rows",
+          "trial": 2,
+          "message": "300 summary rows; zero evidence payload decodes"
+        },
+        {
+          "entries": 10000,
+          "succeeded": true,
+          "operation": "browse.entry.detail.rows",
+          "trial": 2,
+          "message": "17 payload rows for one entry"
+        },
+        {
+          "entries": 10000,
+          "trial": 3,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "succeeded": true,
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "entries": 10000,
+          "trial": 3,
+          "message": "17 payload rows for one entry",
+          "succeeded": true,
+          "operation": "browse.entry.detail.rows"
+        },
+        {
+          "entries": 20000,
+          "trial": 1,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "trial": 1,
+          "message": "17 payload rows for one entry",
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "succeeded": true,
+          "trial": 2,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "entries": 20000,
+          "succeeded": true,
+          "trial": 2,
+          "message": "17 payload rows for one entry",
+          "operation": "browse.entry.detail.rows"
+        },
+        {
+          "entries": 20000,
+          "trial": 3,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "trial": 3,
+          "message": "17 payload rows for one entry",
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        }
+      ],
+      "cleanup": {
+        "derivedDataAbsent": true,
+        "syntheticFixturesRemoved": true,
+        "packageCopiesRemoved": true,
+        "hostRemoved": true,
+        "installedAppAccessed": false
+      }
+    },
+    "indexedDetailsBeforeTagRewrite": {
+      "identity": {
+        "commit": "d85c9592423dd8b4e09b41c6872ceff83c5c1b7b",
+        "configuration": "Release",
+        "architecture": "arm64",
+        "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+        "hostBinarySHA256": "6191f4705a169a3067020071d37013af59fac14c44fa0aff55ab2a64a18b11f2",
+        "installedAppAccessed": false,
+        "input": "generated synthetic notebooks only",
+        "hardware": "MacBookPro18,2",
+        "sizes": "10000,20000",
+        "trials": 3,
+        "scanTrials": 1,
+        "focusedTrials": 3,
+        "tailOnly": false,
+        "remainingOnly": false,
+        "remainingTrials": 0,
+        "pagedOnly": true,
+        "pagedTrials": 3,
+        "sourceManifestSHA256": "7a974feb1b4bea06d80925b5d298a25356fb6caaa0ec8d5b5046cdd45c7ee2d6",
+        "sourceManifestEntries": 1873,
+        "commitIsWorktreeBase": true
+      },
+      "fixtures": {
+        "10000": {
+          "enrolledSenses": 2000,
+          "entries": 10000,
+          "databaseBytes": 280612864,
+          "senses": 20000,
+          "examples": 40000,
+          "categories": 688,
+          "mappings": 14011,
+          "ratingRecords": 1000,
+          "categoryMemberships": 14000,
+          "meanings": 14000
+        },
+        "20000": {
+          "mappings": 28011,
+          "enrolledSenses": 4000,
+          "categoryMemberships": 28000,
+          "databaseBytes": 551677952,
+          "meanings": 28000,
+          "entries": 20000,
+          "senses": 40000,
+          "examples": 80000,
+          "ratingRecords": 1000,
+          "categories": 1038
+        }
+      },
+      "milliseconds": {
+        "10000": {
+          "browse.first.page": {
+            "median": 92.663,
+            "minimum": 89.338,
+            "maximum": 141.147
+          },
+          "browse.next.page": {
+            "median": 16.397,
+            "minimum": 16.258,
+            "maximum": 19.506
+          },
+          "browse.entry.detail": {
+            "median": 7.24,
+            "minimum": 7.031,
+            "maximum": 9.236
+          },
+          "browse.saved.lookup": {
+            "median": 1.153,
+            "minimum": 1.086,
+            "maximum": 1.382
+          },
+          "browse.filter.page": {
+            "median": 218.633,
+            "minimum": 208.174,
+            "maximum": 257.205
+          },
+          "favorite.cold.first": {
+            "median": 4100.046,
+            "minimum": 4071.451,
+            "maximum": 4377.572
+          },
+          "sense.remove.cold.first": {
+            "median": 4363.262,
+            "minimum": 4324.19,
+            "maximum": 4465.58
+          },
+          "corpus.full.ready": {
+            "median": 4217.178,
+            "minimum": 4120.805,
+            "maximum": 4277.579
+          }
+        },
+        "20000": {
+          "browse.first.page": {
+            "median": 162.81,
+            "minimum": 159.819,
+            "maximum": 211.475
+          },
+          "browse.next.page": {
+            "median": 23.392,
+            "minimum": 22.362,
+            "maximum": 26.256
+          },
+          "browse.entry.detail": {
+            "median": 7.827,
+            "minimum": 7.66,
+            "maximum": 9.104
+          },
+          "browse.saved.lookup": {
+            "median": 1.149,
+            "minimum": 1.071,
+            "maximum": 1.15
+          },
+          "browse.filter.page": {
+            "median": 472.726,
+            "minimum": 461.823,
+            "maximum": 484.969
+          },
+          "favorite.cold.first": {
+            "median": 8315.684,
+            "minimum": 8284.91,
+            "maximum": 8529.227
+          },
+          "sense.remove.cold.first": {
+            "median": 8860.033,
+            "minimum": 8788.284,
+            "maximum": 8953.797
+          },
+          "corpus.full.ready": {
+            "median": 8549.07,
+            "minimum": 8493.422,
+            "maximum": 8637.968
+          }
+        }
+      },
+      "samples": [
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 0,
+          "trial": 1,
+          "operation": "browse.first.page",
+          "milliseconds": 141.14725
+        },
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 100,
+          "trial": 1,
+          "operation": "browse.next.page",
+          "milliseconds": 19.506083
+        },
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "trial": 1,
+          "operation": "browse.entry.detail",
+          "milliseconds": 9.236291
+        },
+        {
+          "layer": "model",
+          "trial": 1,
+          "operation": "browse.saved.lookup",
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "entries": 10000,
+          "milliseconds": 1.381791
+        },
+        {
+          "layer": "model",
+          "trial": 1,
+          "operation": "browse.filter.page",
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 200,
+          "entries": 10000,
+          "milliseconds": 257.204834
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "operation": "favorite.cold.first",
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4377.572375
+        },
+        {
+          "layer": "store",
+          "milliseconds": 4465.579833,
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "trial": 1,
+          "visibleEntriesBefore": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "milliseconds": 4217.178166,
+          "entries": 10000,
+          "operation": "corpus.full.ready",
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "layer": "model",
+          "visibleEntriesBefore": 100
+        },
+        {
+          "trial": 2,
+          "operation": "browse.first.page",
+          "layer": "model",
+          "visibleEntriesBefore": 0,
+          "visibleEntriesAfter": 100,
+          "milliseconds": 89.338459,
+          "entries": 10000
+        },
+        {
+          "trial": 2,
+          "operation": "browse.next.page",
+          "layer": "model",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 200,
+          "milliseconds": 16.257958,
+          "entries": 10000
+        },
+        {
+          "trial": 2,
+          "operation": "browse.entry.detail",
+          "layer": "model",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "milliseconds": 7.031042,
+          "entries": 10000
+        },
+        {
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup",
+          "visibleEntriesBefore": 200,
+          "trial": 2,
+          "milliseconds": 1.086291,
+          "entries": 10000
+        },
+        {
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page",
+          "visibleEntriesBefore": 200,
+          "trial": 2,
+          "milliseconds": 208.174333,
+          "entries": 10000
+        },
+        {
+          "trial": 2,
+          "operation": "favorite.cold.first",
+          "milliseconds": 4100.046333,
+          "layer": "store",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 100
+        },
+        {
+          "entries": 10000,
+          "milliseconds": 4363.261542,
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "layer": "store"
+        },
+        {
+          "milliseconds": 4277.578917,
+          "entries": 10000,
+          "operation": "corpus.full.ready",
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "layer": "model",
+          "visibleEntriesBefore": 100
+        },
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 0,
+          "trial": 3,
+          "operation": "browse.first.page",
+          "milliseconds": 92.663208
+        },
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 100,
+          "trial": 3,
+          "operation": "browse.next.page",
+          "milliseconds": 16.396958
+        },
+        {
+          "layer": "model",
+          "entries": 10000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "trial": 3,
+          "operation": "browse.entry.detail",
+          "milliseconds": 7.239583
+        },
+        {
+          "entries": 10000,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup",
+          "trial": 3,
+          "visibleEntriesBefore": 200,
+          "milliseconds": 1.153375,
+          "layer": "model"
+        },
+        {
+          "entries": 10000,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page",
+          "trial": 3,
+          "visibleEntriesBefore": 200,
+          "milliseconds": 218.633375,
+          "layer": "model"
+        },
+        {
+          "milliseconds": 4071.451,
+          "trial": 3,
+          "entries": 10000,
+          "layer": "store",
+          "visibleEntriesBefore": 100,
+          "operation": "favorite.cold.first",
+          "visibleEntriesAfter": 100
+        },
+        {
+          "visibleEntriesAfter": 100,
+          "layer": "store",
+          "visibleEntriesBefore": 100,
+          "operation": "sense.remove.cold.first",
+          "entries": 10000,
+          "milliseconds": 4324.189792,
+          "trial": 3
+        },
+        {
+          "milliseconds": 4120.805125,
+          "entries": 10000,
+          "operation": "corpus.full.ready",
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "layer": "model",
+          "visibleEntriesBefore": 100
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 0,
+          "trial": 1,
+          "operation": "browse.first.page",
+          "milliseconds": 211.475167
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 100,
+          "trial": 1,
+          "operation": "browse.next.page",
+          "milliseconds": 26.255959
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "trial": 1,
+          "operation": "browse.entry.detail",
+          "milliseconds": 9.103541
+        },
+        {
+          "operation": "browse.saved.lookup",
+          "entries": 20000,
+          "milliseconds": 1.150042,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "trial": 1
+        },
+        {
+          "operation": "browse.filter.page",
+          "entries": 20000,
+          "milliseconds": 484.968583,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "trial": 1
+        },
+        {
+          "layer": "store",
+          "visibleEntriesBefore": 100,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first",
+          "milliseconds": 8529.227334,
+          "entries": 20000
+        },
+        {
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "trial": 1,
+          "milliseconds": 8953.797,
+          "layer": "store",
+          "operation": "sense.remove.cold.first",
+          "visibleEntriesBefore": 100
+        },
+        {
+          "operation": "corpus.full.ready",
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "trial": 1,
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8637.968375
+        },
+        {
+          "trial": 2,
+          "operation": "browse.first.page",
+          "layer": "model",
+          "visibleEntriesBefore": 0,
+          "visibleEntriesAfter": 100,
+          "milliseconds": 162.810041,
+          "entries": 20000
+        },
+        {
+          "trial": 2,
+          "operation": "browse.next.page",
+          "layer": "model",
+          "visibleEntriesBefore": 100,
+          "visibleEntriesAfter": 200,
+          "milliseconds": 23.392208,
+          "entries": 20000
+        },
+        {
+          "trial": 2,
+          "operation": "browse.entry.detail",
+          "layer": "model",
+          "visibleEntriesBefore": 200,
+          "visibleEntriesAfter": 200,
+          "milliseconds": 7.827166,
+          "entries": 20000
+        },
+        {
+          "milliseconds": 1.149417,
+          "visibleEntriesAfter": 200,
+          "entries": 20000,
+          "visibleEntriesBefore": 200,
+          "trial": 2,
+          "layer": "model",
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "milliseconds": 472.725583,
+          "visibleEntriesAfter": 100,
+          "entries": 20000,
+          "visibleEntriesBefore": 200,
+          "trial": 2,
+          "layer": "model",
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8284.909667,
+          "layer": "store",
+          "visibleEntriesBefore": 100,
+          "trial": 2,
+          "operation": "favorite.cold.first",
+          "entries": 20000
+        },
+        {
+          "trial": 2,
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "operation": "sense.remove.cold.first",
+          "entries": 20000,
+          "milliseconds": 8788.284417,
+          "visibleEntriesAfter": 100
+        },
+        {
+          "operation": "corpus.full.ready",
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "trial": 2,
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8493.421584
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 100,
+          "visibleEntriesBefore": 0,
+          "trial": 3,
+          "operation": "browse.first.page",
+          "milliseconds": 159.8185
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 100,
+          "trial": 3,
+          "operation": "browse.next.page",
+          "milliseconds": 22.361833
+        },
+        {
+          "layer": "model",
+          "entries": 20000,
+          "visibleEntriesAfter": 200,
+          "visibleEntriesBefore": 200,
+          "trial": 3,
+          "operation": "browse.entry.detail",
+          "milliseconds": 7.660042
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup",
+          "milliseconds": 1.070542,
+          "trial": 3,
+          "entries": 20000
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page",
+          "milliseconds": 461.823,
+          "trial": 3,
+          "entries": 20000
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "operation": "favorite.cold.first",
+          "trial": 3,
+          "layer": "store",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8315.684417,
+          "entries": 20000
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8860.032666,
+          "entries": 20000,
+          "operation": "sense.remove.cold.first",
+          "trial": 3
+        },
+        {
+          "operation": "corpus.full.ready",
+          "entries": 20000,
+          "visibleEntriesBefore": 100,
+          "trial": 3,
+          "layer": "model",
+          "visibleEntriesAfter": 100,
+          "milliseconds": 8549.069792
+        }
+      ],
+      "workCounts": [
+        {
+          "operation": "browse.first.page.rows",
+          "trial": 1,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 10000
+        },
+        {
+          "operation": "browse.entry.detail.rows",
+          "trial": 1,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 10000
+        },
+        {
+          "operation": "browse.first.page.rows",
+          "trial": 2,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 10000
+        },
+        {
+          "operation": "browse.entry.detail.rows",
+          "trial": 2,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 10000
+        },
+        {
+          "operation": "browse.first.page.rows",
+          "trial": 3,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 10000
+        },
+        {
+          "operation": "browse.entry.detail.rows",
+          "trial": 3,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 10000
+        },
+        {
+          "trial": 1,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 20000,
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "trial": 1,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 20000,
+          "operation": "browse.entry.detail.rows"
+        },
+        {
+          "trial": 2,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 20000,
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "trial": 2,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 20000,
+          "operation": "browse.entry.detail.rows"
+        },
+        {
+          "trial": 3,
+          "succeeded": true,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "entries": 20000,
+          "operation": "browse.first.page.rows"
+        },
+        {
+          "trial": 3,
+          "succeeded": true,
+          "message": "17 payload rows for one entry",
+          "entries": 20000,
+          "operation": "browse.entry.detail.rows"
+        }
+      ],
+      "cleanup": {
+        "derivedDataAbsent": true,
+        "syntheticFixturesRemoved": true,
+        "packageCopiesRemoved": true,
+        "hostRemoved": true,
+        "installedAppAccessed": false
+      }
+    },
+    "final": {
+      "identity": {
+        "commit": "d85c9592423dd8b4e09b41c6872ceff83c5c1b7b",
+        "configuration": "Release",
+        "architecture": "arm64",
+        "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+        "hostBinarySHA256": "f538454b60abfeeff54c0ce68afc20dc6addb9ef1fa591fd1431a1c1956b0bb1",
+        "installedAppAccessed": false,
+        "input": "generated synthetic notebooks only",
+        "hardware": "MacBookPro18,2",
+        "sizes": "10000,20000",
+        "trials": 3,
+        "scanTrials": 1,
+        "focusedTrials": 3,
+        "tailOnly": false,
+        "remainingOnly": false,
+        "remainingTrials": 0,
+        "pagedOnly": true,
+        "pagedTrials": 3,
+        "sourceManifestSHA256": "a4f450c82eb0d430faa76fbfc591977cb387d91586476dc1bda609c012630bfc",
+        "sourceManifestEntries": 1873,
+        "commitIsWorktreeBase": true
+      },
+      "fixtures": {
+        "10000": {
+          "examples": 40000,
+          "entries": 10000,
+          "mappings": 14011,
+          "meanings": 14000,
+          "categoryMemberships": 14000,
+          "senses": 20000,
+          "categories": 688,
+          "databaseBytes": 278671360,
+          "enrolledSenses": 2000,
+          "ratingRecords": 1000
+        },
+        "20000": {
+          "examples": 80000,
+          "entries": 20000,
+          "categoryMemberships": 28000,
+          "mappings": 28011,
+          "meanings": 28000,
+          "senses": 40000,
+          "categories": 1038,
+          "databaseBytes": 547815424,
+          "enrolledSenses": 4000,
+          "ratingRecords": 1000
+        }
+      },
+      "milliseconds": {
+        "10000": {
+          "browse.first.page": {
+            "median": 86.718,
+            "minimum": 85.9,
+            "maximum": 108.464
+          },
+          "browse.next.page": {
+            "median": 17.717,
+            "minimum": 17.608,
+            "maximum": 17.983
+          },
+          "browse.entry.detail": {
+            "median": 7.128,
+            "minimum": 6.942,
+            "maximum": 7.306
+          },
+          "browse.saved.lookup": {
+            "median": 1.059,
+            "minimum": 0.976,
+            "maximum": 1.059
+          },
+          "browse.filter.page": {
+            "median": 95.309,
+            "minimum": 93.213,
+            "maximum": 95.554
+          },
+          "favorite.cold.first": {
+            "median": 4118.337,
+            "minimum": 4115.44,
+            "maximum": 4162.792
+          },
+          "sense.remove.cold.first": {
+            "median": 4304.373,
+            "minimum": 4283.028,
+            "maximum": 4368.68
+          },
+          "corpus.full.ready": {
+            "median": 4142.49,
+            "minimum": 4114.293,
+            "maximum": 4161.377
+          }
+        },
+        "20000": {
+          "browse.first.page": {
+            "median": 159.897,
+            "minimum": 159.458,
+            "maximum": 207.577
+          },
+          "browse.next.page": {
+            "median": 22.068,
+            "minimum": 21.725,
+            "maximum": 22.532
+          },
+          "browse.entry.detail": {
+            "median": 7.177,
+            "minimum": 6.935,
+            "maximum": 7.401
+          },
+          "browse.saved.lookup": {
+            "median": 1.072,
+            "minimum": 0.999,
+            "maximum": 1.199
+          },
+          "browse.filter.page": {
+            "median": 204.375,
+            "minimum": 203.102,
+            "maximum": 209.339
+          },
+          "favorite.cold.first": {
+            "median": 8634.062,
+            "minimum": 8474.372,
+            "maximum": 8656.275
+          },
+          "sense.remove.cold.first": {
+            "median": 9113.774,
+            "minimum": 8996.089,
+            "maximum": 9128.817
+          },
+          "corpus.full.ready": {
+            "median": 8622.457,
+            "minimum": 8601.791,
+            "maximum": 8757.513
+          }
+        }
+      },
+      "samples": [
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 108.46425,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 17.982792,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 7.30575,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 1.05925,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 93.213459,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4115.439916,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4283.027667,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 4161.377291,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 85.899834,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 17.608459,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 7.128208,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 1.05925,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 95.554084,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4162.791625,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4368.680417,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 4142.4905,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 86.717875,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 17.717375,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 6.942416,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 0.975542,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 95.309209,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4118.337,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 10000,
+          "milliseconds": 4304.372709,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 10000,
+          "milliseconds": 4114.293125,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 207.577375,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 22.531584,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 7.401291,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 1.072375,
+          "trial": 1,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 209.339208,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 8634.061875,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 9128.817,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 8757.512666,
+          "trial": 1,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 159.458459,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 22.067875,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 6.935333,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 0.998625,
+          "trial": 2,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 204.3745,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 8656.274708,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 9113.774417,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 8622.456833,
+          "trial": 2,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        },
+        {
+          "visibleEntriesBefore": 0,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 159.896667,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.first.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 21.725083,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.next.page"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 7.176708,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.entry.detail"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 1.199375,
+          "trial": 3,
+          "visibleEntriesAfter": 200,
+          "operation": "browse.saved.lookup"
+        },
+        {
+          "visibleEntriesBefore": 200,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 203.1025,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "browse.filter.page"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 8474.371917,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "favorite.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "store",
+          "entries": 20000,
+          "milliseconds": 8996.08875,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "sense.remove.cold.first"
+        },
+        {
+          "visibleEntriesBefore": 100,
+          "layer": "model",
+          "entries": 20000,
+          "milliseconds": 8601.791208,
+          "trial": 3,
+          "visibleEntriesAfter": 100,
+          "operation": "corpus.full.ready"
+        }
+      ],
+      "workCounts": [
+        {
+          "entries": 10000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 1,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 10000,
+          "message": "17 payload rows for one entry",
+          "trial": 1,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 10000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 2,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 10000,
+          "message": "17 payload rows for one entry",
+          "trial": 2,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 10000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 3,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 10000,
+          "message": "17 payload rows for one entry",
+          "trial": 3,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 1,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "17 payload rows for one entry",
+          "trial": 1,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 2,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "17 payload rows for one entry",
+          "trial": 2,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "300 summary rows; zero evidence payload decodes",
+          "trial": 3,
+          "operation": "browse.first.page.rows",
+          "succeeded": true
+        },
+        {
+          "entries": 20000,
+          "message": "17 payload rows for one entry",
+          "trial": 3,
+          "operation": "browse.entry.detail.rows",
+          "succeeded": true
+        }
+      ],
+      "cleanup": {
+        "derivedDataAbsent": true,
+        "syntheticFixturesRemoved": true,
+        "packageCopiesRemoved": true,
+        "hostRemoved": true,
+        "installedAppAccessed": false
+      }
+    }
+  },
+  "validation": {
+    "engineIntegrationTests": {
+      "passed": 6,
+      "log": "build/mac-w2-c/corpus-browsing-final-engine.log",
+      "checks": [
+        "global pagination/filter coverage",
+        "complete selected subtree and merged aliases",
+        "same-revision/raw-write/generation cursor fences",
+        "index/payload disagreement rejection",
+        "scoped image ownership/fences",
+        "bounded detail SQL work for 100 versus 2000 entries"
+      ]
+    },
+    "nativeChecks": {
+      "result": "Passed",
+      "passedTests": 74,
+      "failedTests": 0,
+      "skippedTests": 1
+    },
+    "skippedNativeJourney": "Visible desktop create/edit/reopen journey intentionally excluded from this no-click checkpoint",
+    "performanceEnvelope": {
+      "passedTests": 1,
+      "samples": 48,
+      "failedTests": 0
+    },
+    "sourceManifestMatchesFinalProductSources": true,
+    "newOrChangedSwiftLinesLintViolations": 0
+  },
+  "remainingCosts": [
+    "Cold first writes still reconstruct/validate the complete corpus and prepare its full read index.",
+    "Tag filtering still scans the corpus tag JSON; there is no persisted multi-value tag index.",
+    "Graph/search/global selection/export explicitly prepare their complete dependencies.",
+    "Readiness measurements do not establish actual frame/animation latency."
+  ],
+  "harnessSHA256": "d094dddab06aae7da4495e01c6f0331022d47212bfda8baa374f9b0c2d401421"
+}

@@ -173,7 +173,7 @@ extension VocabularyArchive {
         return (result, encoded)
     }
 
-    private func validateCLIScope(_ batch: CLIBatch, current scope: VocabularyOperationScope) throws {
+    private func validateCLIScope(_ batch: CLIBatch, current scope: LingroveNotebookSnapshot) throws {
         if let supplied = batch.notebookScope {
             guard supplied == CLINotebookScope(workspaceID: scope.workspaceId, notebookID: scope.notebookId,
                 generation: scope.generation) else { throw VocabularyError.editConflict }

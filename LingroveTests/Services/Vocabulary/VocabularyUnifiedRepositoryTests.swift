@@ -90,7 +90,7 @@ struct VocabularyUnifiedRepositoryTests {
                 try await archive.perform(basedOn: LingroveNotebookVersion(changed)) { try $0.load() }
             }
             await f.store.save(.init(expression: "must not write", dictionaryForm: "must not write",
-                language: .english, kind: .word), scope: original)
+                language: .english, kind: .word), scope: .init(original))
             #expect(try f.repository.snapshot() == fresh)
         }
     }
@@ -158,16 +158,17 @@ struct VocabularyUnifiedRepositoryTests {
             let saved = try f.repository.snapshot()
             #expect(saved.document.entries[0].senses[0].note == "authored on Mac")
             #expect(saved.document.entries[0].dictionaryForm == "bank (noun)")
-            #expect(await f.store.image(png.reference, scope: saved) == png.data)
+            #expect(await f.store.image(png.reference, scope: .init(saved)) == png.data)
             #expect(try f.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_media_assets", values: []) == 1)
             let backup = f.root.appendingPathComponent("corpus.lingrove")
-            await f.store.backup(to: backup, scope: saved)
+            await f.store.backup(to: backup, scope: .init(saved))
             var options = VocabularyExportConfiguration(); options.images = true
-            let package = try await f.store.prepareExport(selections: [.init(entryID: original.id, senseID: original.senses[0].id)], configuration: options, scope: saved)
+            let package = try await f.store.prepareExport(selections: [.init(entryID: original.id, senseID: original.senses[0].id)],
+                configuration: options, scope: .init(saved))
             #expect(package.images[png.reference.filename] == png.data)
-            #expect(await f.store.removeSense(entryID: original.id, senseID: original.senses[0].id, scope: saved))
+            #expect(await f.store.removeSense(entryID: original.id, senseID: original.senses[0].id, scope: .init(saved)))
             #expect(f.store.entries.isEmpty)
-            await f.store.restore(from: backup, scope: try f.repository.snapshot())
+            await f.store.restore(from: backup, scope: .init(try f.repository.snapshot()))
             #expect(f.store.entries == saved.document.entries)
             #expect(try f.repository.engine.loadLingroveNotebookReviewEnrollments(workspaceId: saved.workspaceId).isEmpty)
             await f.store.shutdown()
@@ -187,6 +188,7 @@ struct VocabularyUnifiedRepositoryTests {
             await f.store.load()
             _ = try await f.store.addEntries([.init(expression: "serendipity", meaning: "a happy discovery")])
             let oldScope = try #require(f.store.operationScope), oldIdentity = f.store.scopeIdentity
+            let oldDocument = try #require(f.store.completeSnapshot).document
             let oldEntry = try #require(f.store.entries.first)
             let anki = AnkiReviewController(settings: AnkiReviewSettings(defaults: f.defaults, credentials: AnkiCredentialStore(service: nil)),
                 store: f.store, client: ReviewFakeAnki(), activateAnki: {})
@@ -220,7 +222,7 @@ struct VocabularyUnifiedRepositoryTests {
                 activeWorkspaceId: oldScope.workspaceId, linkedEmail: nil)
             f.repository.publishChange(); await f.store.load()
             let returned = try f.repository.snapshot()
-            #expect(returned.generation != oldScope.generation && returned.document == oldScope.document)
+            #expect(returned.generation != oldScope.generation && returned.document == oldDocument)
             #expect(!(await f.store.update(oldEntry, basedOn: oldEntry, scope: oldScope)))
             latePersistence(record)
             for _ in 0..<10 { await Task.yield() }
@@ -303,7 +305,7 @@ struct VocabularyUnifiedRepositoryTests {
             #expect(!f.store.contains(capture))
             let later = LearningExplanationRecord(id: UUID(), input: input, language: .english,
                 result: .init(meaning: "new temporary result", explanation: "must stay temporary"), model: "synthetic", createdAt: Date())
-            await f.store.saveExplanation(later, scope: removed)
+            await f.store.saveExplanation(later, scope: .init(removed))
             #expect(try f.repository.snapshot() == removed)
         }
     }

@@ -31,6 +31,7 @@ struct VocabularyOperationBenchmarkTests {
         let focused = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "focused"
         let tail = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "tail"
         let remaining = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "remaining"
+        let paged = environment["LINGROVE_OPERATION_BENCHMARK_MODE"] == "paged"
         try #require(!sizes.isEmpty && sizes.allSatisfy { $0 >= 100 && $0 <= 20_000 } && (1...10).contains(trials))
         for size in sizes {
             let seed = output.appendingPathComponent("seed-\(size)")
@@ -43,8 +44,11 @@ struct VocabularyOperationBenchmarkTests {
                     directory: output.appendingPathComponent("trial-\(size)-\(trial)"))
                 let recorder = VocabularyBenchmarkRecorder(entries: size, trial: trial, output: output)
                 do {
-                    if remaining { try await runRemaining(fixture, recorder) }
-                    else if tail { try await runTail(fixture, recorder) } else {
+                    if paged {
+                        try await runPaged(fixture, recorder, seed: seed.appendingPathComponent("primary.sqlite"))
+                    } else if remaining {
+                        try await runRemaining(fixture, recorder)
+                    } else if tail { try await runTail(fixture, recorder) } else {
                         try await run(fixture, recorder, focused: focused)
                     }
                     await fixture.close()
@@ -68,6 +72,54 @@ struct VocabularyOperationBenchmarkTests {
             }
             try FileManager.default.removeItem(at: seed)
         }
+    }
+
+    /// Page-ready and full-store-ready are different user-visible milestones. Cold commands
+    /// use separate copies of the same closed seed; no preceding warm-up hides their full-load
+    /// fallback. Every timer invokes production actors/models, without windows or clicks.
+    private func runPaged(_ fixture: VocabularyBenchmarkFixture, _ recorder: VocabularyBenchmarkRecorder, seed: URL) async throws {
+        let browse = try #require(fixture.store.browsing)
+        recorder.visibleEntries = { browse.entries.count }
+        try await recorder.measure("browse.first.page", layer: "model") {
+            fixture.store.browse(.init()); await browse.waitForPage()
+        }
+        try #require(browse.isReady && browse.error == nil && browse.total == recorder.entries && browse.entries.count == 100)
+        #expect(fixture.store.entries.isEmpty && !fixture.store.isLoaded)
+        try recorder.outcome("browse.first.page.rows", succeeded: browse.decodedRows == 300,
+            message: "\(browse.decodedRows) summary rows; zero evidence payload decodes")
+        try await recorder.measure("browse.next.page", layer: "model") { browse.loadMore(); await browse.waitForPage() }
+        try #require(browse.entries.count == min(200, recorder.entries))
+        let target = VocabularyBenchmarkFixture.id(1_000_042)
+        try await recorder.measure("browse.entry.detail", layer: "model") { browse.select(entryID: target); await browse.waitForDetail() }
+        let detail = try #require(browse.detail)
+        #expect(detail.id == target && detail.senses.count == 2 && detail.examples.count == 4)
+        try recorder.outcome("browse.entry.detail.rows", succeeded: browse.detailDecodedRows < 100,
+            message: "\(browse.detailDecodedRows) payload rows for one entry")
+        let capture = VocabularyBenchmarkFixture.capture("word42")
+        let saved = try await recorder.measure("browse.saved.lookup", layer: "model") { await fixture.store.savedStatus(capture) }
+        #expect(saved == true && !fixture.store.isLoaded && fixture.store.entries.isEmpty)
+        try await recorder.measure("browse.filter.page", layer: "model") {
+            fixture.store.browse(.init(language: .english, tag: "group-2")); await browse.waitForPage()
+        }
+        try #require(browse.isReady && browse.total == recorder.entries / 20 && browse.entries.count == min(100, recorder.entries / 20))
+        let fresh = VocabularyBenchmarkFixture.capture("paged-cold-favorite-\(recorder.trial)")
+        try await recorder.measure("favorite.cold.first", layer: "store") { await fixture.store.save(fresh) }
+        try #require(fixture.store.isLoaded && fixture.store.contains(fresh) && fixture.store.entries.count == recorder.entries + 1)
+        #expect(try fixture.repository.engine.loadReviewEventCount() == 1_000)
+        let deleted = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("cold-delete"))
+        do {
+            let removed = try await recorder.measure("sense.remove.cold.first", layer: "store") {
+                await deleted.store.removeSense(entryID: target, senseID: VocabularyBenchmarkFixture.id(2_000_084))
+            }
+            try #require(removed && deleted.store.entries.count == recorder.entries)
+            #expect(deleted.store.readIndex.entriesByID[target]?.senses.count == 1)
+            #expect(try deleted.repository.engine.loadReviewEventCount() == 1_000)
+            await deleted.close()
+        } catch { await deleted.close(); throw error }
+        let full = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("cold-full"))
+        try await recorder.measure("corpus.full.ready", layer: "model") { await full.store.load() }
+        #expect(full.store.isLoaded && full.store.entries.count == recorder.entries)
+        await full.close()
     }
 
     /// Component windows run on a separate fresh copy after the three operation trials. Their

@@ -16,7 +16,7 @@ public nonisolated struct LingroveNotebookVersion: Equatable, Sendable {
             revision: snapshot.revision, generation: snapshot.generation)
     }
 
-    init(workspaceId: String, notebookId: UUID, revision: UInt64, generation: String) {
+    public init(workspaceId: String, notebookId: UUID, revision: UInt64, generation: String) {
         self.workspaceId = workspaceId; self.notebookId = notebookId
         self.revision = revision; self.generation = generation
     }

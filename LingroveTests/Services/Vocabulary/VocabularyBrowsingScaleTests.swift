@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import LingroveNotebook
+import LingroveNotebookEngine
 import Testing
 @testable import Lingrove
 
@@ -8,6 +9,77 @@ import Testing
 /// repaint, aliases must still navigate, and UI state must not invalidate stored projections.
 @MainActor
 struct VocabularyBrowsingScaleTests {
+    @Test func firstCaptureLookupBootstrapsOnlyAnEmptyNotebookAndShutdownRetiresReads() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-empty-browse-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let repository = try MacNotebookRepository(databaseURL: folder.appendingPathComponent("primary.sqlite"),
+            mediaDirectoryURL: folder.appendingPathComponent("Media"))
+        let store = VocabularyStore(repository: repository)
+        let capture = VocabularyCapture(expression: "new", dictionaryForm: "new", language: .english, kind: .word)
+        #expect(await store.savedStatus(capture) == false)
+        #expect(!store.isLoaded && store.entries.isEmpty && store.operationScope != nil && store.completeSnapshot == nil)
+        store.browse(.init()); await store.browsing?.waitForPage()
+        store.browsing?.loadTagsIfNeeded()
+        // Cancel before the first metadata task can run. The replacement query must own a
+        // new task rather than retaining the cancelled request as a permanent "in flight".
+        store.browse(.init(language: .english)); await store.browsing?.waitForPage()
+        await store.browsing?.waitForTags()
+        #expect(store.browsing?.tagsReady == true && store.browsing?.tags.isEmpty == true)
+        let identity = store.scopeIdentity
+        try repository.engine.core.execute(sql: """
+            UPDATE notebook_window_binding SET generation=lower(hex(randomblob(16))) WHERE settings_id=1
+            """,
+            values: [])
+        #expect(await store.savedStatus(capture) == nil)
+        #expect(store.scopeIdentity != identity)
+        await store.browsing?.waitForPage()
+        #expect(try store.browsing?.fence?.version == repository.version())
+        #expect(await store.savedStatus(capture) == false)
+        let io = try #require(store.browsing?.io)
+        await store.shutdown()
+        #expect(await store.savedStatus(capture) == nil)
+        await #expect(throws: VocabularyError.editConflict) { try await io.page(.init()) }
+        try repository.shutdown()
+    }
+
+    @Test func pagedReadAndExactSavedLookupLeaveFullStoreUnloadedUntilACommandNeedsIt() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-paged-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("primary.sqlite"), now = Date()
+        let archive = VocabularyArchive(url: url)
+        let entries: [VocabularyEntry] = (0..<205).map { index in
+            .init(id: UUID(), expression: "word\(index)", dictionaryForm: "word\(index)", language: .english, kind: .word,
+                senses: [.init(id: UUID(), meaning: "meaning", tags: [index.isMultiple(of: 2) ? "even" : "odd"],
+                    createdAt: now, updatedAt: now)],
+                createdAt: now.addingTimeInterval(Double(index)), updatedAt: now)
+        }
+        _ = try await archive.commit(.init(entries: entries)); await archive.shutdown()
+        let repository = try MacNotebookRepository(databaseURL: url, mediaDirectoryURL: folder.appendingPathComponent("Media"))
+        let store = VocabularyStore(repository: repository), browse = try #require(store.browsing)
+        #expect(store.operationScope != nil && !store.isLoaded && store.completeSnapshot == nil)
+        store.browse(.init()); await browse.waitForPage()
+        #expect(browse.isReady && browse.total == 205 && browse.entries.count == 100)
+        #expect(!store.isLoaded && store.entries.isEmpty && store.operationScope == browse.fence?.version)
+        #expect(await store.savedStatus(.init(expression: "word0", dictionaryForm: "word0", language: .english, kind: .word)) == true)
+        #expect(await store.savedStatus(.init(expression: "absent", dictionaryForm: "absent", language: .english, kind: .word)) == false)
+        #expect(!store.isLoaded)
+        browse.select(entryID: entries[0].id); await browse.waitForDetail()
+        #expect(browse.detail?.id == entries[0].id && store.entries.isEmpty)
+        browse.loadMore(); await browse.waitForPage()
+        #expect(browse.entries.count == 200 && Set(browse.entries.map(\.id)).count == 200)
+        let original = try #require(browse.detail)
+        var edited = original; edited.senses[0].note = "Cold scoped edit"
+        #expect(await store.update(edited, basedOn: original, scope: store.operationScope))
+        await browse.waitForPage()
+        #expect(store.isLoaded && store.entries.count == 205 && browse.total == 205 && browse.entries.count == 200)
+        #expect(store.readIndex.entriesByID[original.id]?.senses[0].note == "Cold scoped edit")
+        store.browse(.init(tag: "even")); await browse.waitForPage()
+        await browse.waitForDetail()
+        #expect(browse.total == 103 && browse.entries.count == 100)
+        #expect(browse.detail?.id == original.id)
+        await store.shutdown(); try repository.shutdown()
+    }
+
     @Test func literalDraftComparisonIgnoresMembersButPreservesAuthoredBytesAndBodyOrder() throws {
         let now = Date()
         let examples = ["First", "Second"].map {

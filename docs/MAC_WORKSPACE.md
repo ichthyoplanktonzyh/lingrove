@@ -726,3 +726,71 @@ rerun after this single SQL ordering clause. The follow-up passed 24 targeted en
 organization and change-tracking checks, including reopen, cross-connection commits, raw
 corruption, rollback and generation fencing. Its package source manifest was checked against
 the final tree. First load remains a full-corpus operation and a significant remaining cost.
+
+## Bounded corpus reads (2026-11-12)
+
+[ADR 0005](adr/0005-bounded-corpus-reads.md) separates list/detail readiness from complete
+document readiness. The default list reads 100 summaries and a global SQL count, then uses
+query/version-bound keyset pages. Selecting a sense reconstructs only its complete entry and
+source/interpretation closure. These DTOs never populate `VocabularyStore.entries` or establish
+the writer's complete checked state. A separate read-only connection prevents archive validation
+from serializing later pages/details behind a full decode. The visited window is refreshed after
+edits rather than resetting a reader to page one.
+
+Operation scopes now carry identity/revision rather than a document. Complete consumers such as
+review explicitly reuse `completeSnapshot` or prepare their complete dependency. Graph/search,
+global selection and export retain global semantics; they do not consume only displayed pages.
+Favorite status performs an exact entry-key lookup and distinguishes pending/unavailable from
+confirmed absence. Detail images require subtree membership and the current workspace/fence.
+
+The opt-in native benchmark supports `--paged-only --sizes 10000,20000 --trials 3`. Each size
+uses one closed synthetic seed with two senses/four examples per entry, plus the same semantic,
+classification and retained review-history workload as the preceding inventory. Fresh stores
+measure first page, next page, selected detail, saved lookup, filtered page and full-store-ready
+separately. First favorite and first sense removal each use a cold archive, with removal/full
+load on independent copies of that same seed. They have no preceding full-store warm-up.
+Cold means empty application/engine caches; the system disk cache is not purged. Timings exclude
+fixture construction, repository construction/index setup, assertions and actual frame painting.
+Scoped writes still fall back to complete validation on the first command; page readiness is
+not a claim that this cost has been removed.
+
+The completed 2026-11-13 checkpoint is recorded in
+[the raw samples and source-manifest digests](benchmarks/corpus-browsing-2026-11-13.json).
+Release medians in milliseconds, three trials per size:
+
+| Data-ready operation | 10,000 entries | 20,000 entries |
+| --- | ---: | ---: |
+| First 100 summaries and global count | 86.718 | 159.897 |
+| Next page | 17.717 | 22.068 |
+| Selected entry detail | 7.128 | 7.177 |
+| Exact favorite-status lookup | 1.059 | 1.072 |
+| Language/tag filtered page | 95.309 | 204.375 |
+| First cold favorite | 4118.337 | 8634.062 |
+| First cold sense removal | 4304.373 | 9113.774 |
+| Complete store and read index | 4142.490 | 8622.457 |
+
+Every first page returns 300 entry/sense scalar summaries; each selected detail decodes 17
+payload rows in this fixture. These are returned-work counts, not counts of every row visited
+by SQL's global count/filter. The first local-read prototype still requested `ORDER BY id`
+inside its selected-subtree SQL, encouraging a workspace-wide primary-key walk. Removing that
+ordering lets the existing parent indexes constrain reads; the codec assembles only the returned
+subtree. Intermediate detail medians were 430.983/999.873ms and saved lookups 71.532/183.366ms.
+Those are prototype measurements, not the pre-change Dev sidebar's warm in-memory lookup.
+The final tag query builds matching sense IDs once before joining headwords. Global tag metadata
+is reused across filter changes at the same corpus fence. Only the two creation-order indexes
+are added; the existing collection/sense uniqueness constraint already supplies its lookup index.
+
+Six engine integration tests passed, including lossless detail/media checks and a SQL-instruction
+regression with 100 versus 2,000 entries. The 74 native checks passed; one visible desktop journey
+was intentionally skipped. They cover page-only explanation adoption, cancellation/replacement of
+tag reads, retained selection/window after edits/filters and an external generation change without
+a repository notification. The performance envelope passed all 48 windows with their count and
+review-history postconditions. Product source hashes match the final measurement manifest;
+new/changed Swift lines have no lint violations, and diff checks passed. Owned DerivedData,
+copied packages, private hosts and synthetic databases were removed. The installed Dev app and
+real corpus were not accessed or replaced.
+
+First-page readiness now precedes full preparation, but cold first writes still pay that complete
+preparation cost. Tag filtering also retains a corpus-wide JSON tag scan. These are remaining
+boundaries for subsequent work; this checkpoint does not claim that every operation is constant
+time or that graph/search/global export have become paged readers.

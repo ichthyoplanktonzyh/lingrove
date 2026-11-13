@@ -15,6 +15,7 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var contentRevision = UUID()
+    @Published private(set) var savedStatusRevision = UUID()
     private(set) var searchEntryChange: VocabularySearchEntryChange?
     private(set) var readIndex = VocabularyReadIndex()
     private let indexWorker = VocabularyReadIndexWorker()
@@ -28,12 +29,17 @@ final class VocabularyStore: ObservableObject {
     var onRequestReviewTemplates: (() -> Void)?
     @Published private(set) var scopeIdentity = UUID()
     @Published private(set) var operationScope: VocabularyOperationScope?
+    /// Complete consumers such as review may reuse this acknowledged snapshot. A browsing
+    /// fence never populates it, so a fast page cannot masquerade as a full saved document.
+    private(set) var completeSnapshot: LingroveNotebookSnapshot?
     let isAvailable: Bool
     var openSelection: ((VocabularySelection?) -> Void)?
     /// Composition supplies cached annotations only; saving a favorite never starts a model.
     var enrichCapture: ((VocabularyCapture) -> VocabularyCapture)?
     private let archive: VocabularyArchive?
     private let repository: MacNotebookRepository?
+    let browsing: VocabularyBrowseModel?
+    private var browsingSubscription: AnyCancellable?
     private let unavailableError: (any Error)?
     private var explanationScopeSubscription: AnyCancellable?
     private var repositorySubscription: AnyCancellable?
@@ -52,6 +58,8 @@ final class VocabularyStore: ObservableObject {
     /// Standalone fixtures retain the same public surface without discovering application data.
     init(archive: VocabularyArchive) {
         self.archive = archive; repository = nil; unavailableError = nil; isAvailable = true
+        browsing = archive.url.map { VocabularyBrowseModel(databaseURL: $0, mediaDirectoryURL: archive.mediaDirectoryURL) }
+        observeBrowsing()
     }
 
     /// The composition root owns repository lifetime. The worker only receives immutable URLs;
@@ -60,8 +68,14 @@ final class VocabularyStore: ObservableObject {
         self.repository = repository
         archive = VocabularyArchive(url: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL,
             installsBundledClassification: true)
+        browsing = VocabularyBrowseModel(databaseURL: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL,
+            repository: repository)
         unavailableError = nil; isAvailable = true
-        // The first actor-backed load supplies the full saved scope. Decoding it here would
+        // Review and Anki can be the first destination. Capturing their account scope needs
+        // only this header probe, not a prior visit to the complete corpus or its first page.
+        operationScope = try? repository.engine.currentNotebookVersion()
+        observeBrowsing()
+        // The first actor-backed load supplies complete content. Decoding it here would
         // block app/window construction before SwiftUI can even present a loading state.
         repositorySubscription = repository.$change.dropFirst().sink { [weak self] change in
             guard change.domains.contains(.corpus) else { return }
@@ -71,12 +85,60 @@ final class VocabularyStore: ObservableObject {
 
     private init(unavailable error: any Error) {
         archive = nil; repository = nil; unavailableError = error; isAvailable = false
+        browsing = nil
         errorMessage = String(localized: "The notebook is unavailable. Your original data has been preserved.", table: "Vocabulary")
     }
 
     /// Opening the shared database may fail without preventing autocomplete/translation startup.
     /// This mode owns no replacement directory and every persistence request fails explicitly.
     static func unavailable(_ error: any Error) -> VocabularyStore { VocabularyStore(unavailable: error) }
+
+    private func observeBrowsing() {
+        browsingSubscription = browsing?.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        browsing?.onRead = { [weak self] fence in self?.admitBrowseScope(fence) ?? false }
+    }
+
+    /// An external connection can change generation without publishing this process's Combine
+    /// event. Reset old sheets/selections before admitting any new owner's read-only result.
+    private func admitBrowseScope(_ fence: NotebookBrowseFence) -> Bool {
+        guard !isShutDown else { return false }
+        if let old = operationScope, !old.hasSameOwner(as: fence.version) {
+            resetScope(to: fence.version); browsing?.invalidate()
+            return false
+        }
+        if !hasAppliedSnapshot { operationScope = fence.version }
+        return true
+    }
+
+    /// Empty notebooks need their header created once. Existing notebooks only perform the
+    /// metadata probe here; opening a list must never schedule the complete archive load.
+    func browse(_ query: NotebookBrowseQuery) {
+        guard isAvailable, !isShutDown else { return }
+        if let repository {
+            do { _ = try repository.version() } catch { report(error); return }
+        }
+        browsing?.activate(query)
+    }
+
+    /// A capture lookup names one canonical entry, even when its row is outside loaded pages.
+    /// nil means unavailable/changed, distinct from a confirmed unsaved result.
+    func savedStatus(_ capture: VocabularyCapture) async -> Bool? {
+        guard !isShutDown else { return nil }
+        if isLoaded, repository == nil { return contains(capture) }
+        guard let browsing else { return nil }
+        let identity = scopeIdentity
+        do {
+            // A new installation may not have a notebook header yet. This creates only the
+            // empty book; an existing book still pays a metadata probe, never a full load.
+            if let repository { _ = try repository.version() }
+            let result = try await browsing.io.detail(lookupKey: VocabularyPolicy.entryKey(capture))
+            guard !Task.isCancelled, identity == scopeIdentity, !isShutDown else { return nil }
+            if let repository, (try? repository.engine.notebookBrowseFence()) != result.fence { return nil }
+            guard admitBrowseScope(result.fence) else { return nil }
+            guard let entry = result.entry else { return false }
+            return VocabularyReadIndex(entries: [entry]).contains(capture)
+        } catch { report(error); return nil }
+    }
 
     /// Composition calls this once in place of the old unscoped didExplain closure. Saved
     /// annotations are optional enrichment; a translation/explanation never collects a sense.
@@ -110,6 +172,8 @@ final class VocabularyStore: ObservableObject {
         return operationScope?.hasSameOwner(as: scope) == true
     }
 
+    func matches(_ snapshot: LingroveNotebookSnapshot) -> Bool { matches(.init(snapshot)) }
+
     private func access<T: Sendable>(
         scope: VocabularyOperationScope? = nil,
         publishesChanges: Bool = true,
@@ -126,7 +190,7 @@ final class VocabularyStore: ObservableObject {
             }
         }
         let live = try repository?.version()
-        let original = scope.map(LingroveNotebookVersion.init) ?? live ?? operationScope.map(LingroveNotebookVersion.init)
+        let original = scope ?? live ?? operationScope
         if let scope, let live, !live.hasSameOwner(as: scope) { throw VocabularyError.editConflict }
         let result = try await archive.perform(basedOn: original, operation)
         if publishesChanges, !isShutDown, let repository, let live, let after = try? repository.version(),
@@ -194,13 +258,7 @@ final class VocabularyStore: ObservableObject {
     func load() async { loadIfNeeded(); await loadWork?.value }
 
     func contains(_ capture: VocabularyCapture) -> Bool {
-        let entry = readIndex.entry(forKey: VocabularyPolicy.entryKey(capture))
-        if capture.example == nil {
-            guard let sense = capture.senseID else { return entry != nil }
-            return entry.map { VocabularySensePolicy.index(sense, in: $0) != nil } ?? false
-        }
-        if capture.senseID != nil { return entry.flatMap { VocabularySensePolicy.destination(capture, in: $0) } != nil }
-        return readIndex.savedKeys.contains(VocabularyPolicy.captureKey(capture))
+        readIndex.contains(capture)
     }
     func isPending(_ capture: VocabularyCapture) -> Bool { pending.contains(VocabularyPolicy.captureKey(capture)) }
 
@@ -214,20 +272,23 @@ final class VocabularyStore: ObservableObject {
     }
 
     func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
-        entries.lazy.flatMap { $0.explanations ?? [] }.last { $0.input == input && $0.language == language }
+        if let record = browsing?.detail?.explanations?.last(where: { $0.input == input && $0.language == language }) { return record }
+        return entries.lazy.flatMap { $0.explanations ?? [] }.last { $0.input == input && $0.language == language }
     }
 
     /// A record can be reused across identical contexts, but its write destination is explicit.
     /// In particular, two usages with different translation languages must not alias on adoption.
     func explanationDestination(_ capture: VocabularyCapture) -> VocabularyExplanationDestination? {
-        guard let entry = entries.first(where: { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }) else { return nil }
+        let key = VocabularyPolicy.entryKey(capture)
+        let detail = browsing?.detail.flatMap { VocabularyPolicy.entryKey($0) == key ? $0 : nil }
+        guard let entry = detail ?? readIndex.entry(forKey: key) else { return nil }
         var destination = VocabularySensePolicy.destination(capture, in: entry)
         destination?.scope = operationScope
         return destination
     }
 
     func userMeaning(at destination: VocabularyExplanationDestination) -> String? {
-        guard let entry = entries.first(where: { $0.id == destination.entryID }) else { return nil }
+        guard matches(destination.scope), let entry = readEntry(destination.entryID) else { return nil }
         if let id = destination.exampleID {
             return entry.senses.first { $0.examples.contains { $0.id == id } && $0.meaningOrigin == .user }?.meaning
         }
@@ -237,7 +298,7 @@ final class VocabularyStore: ObservableObject {
     }
 
     func adoptExplanation(_ record: LearningExplanationRecord, at destination: VocabularyExplanationDestination) async -> Bool {
-        guard matches(destination.scope), let original = entries.first(where: { $0.id == destination.entryID }) else { return false }
+        guard matches(destination.scope), let original = readEntry(destination.entryID) else { return false }
         var edited = original
         if let exampleID = destination.exampleID {
             // A move can finish while the model runs. Stable usage identity resolves its current
@@ -261,6 +322,13 @@ final class VocabularyStore: ObservableObject {
         return await update(edited, basedOn: original, scope: destination.scope)
     }
 
+    /// Detail owns a complete entry even before the whole-corpus interface is ready. Explicit
+    /// adoption can use this draft while the writer independently establishes its full proof.
+    private func readEntry(_ id: UUID) -> VocabularyEntry? {
+        if let detail = browsing?.detail, detail.id == id { return detail }
+        return readIndex.entriesByID[id]
+    }
+
     /// Bool-returning UI commands keep failures on the observable store; throwing import/Anki
     /// commands below return their errors to the requesting sheet or structured CLI response.
     private func mutation(
@@ -278,7 +346,7 @@ final class VocabularyStore: ObservableObject {
                     expectedRevision: expectedRevision)
             }
             await apply(snapshot)
-            guard matches(undo.after), revision == undo.after.revision else { return true }
+            guard matches(.init(undo.after)), revision == undo.after.revision else { return true }
             senseMergeUndo = undo; canUndoSenseMerge = true
             return true
         } catch { report(error); return false }
@@ -287,7 +355,7 @@ final class VocabularyStore: ObservableObject {
     func undoLastSenseMerge() async -> VocabularySelection? {
         guard let undo = senseMergeUndo else { return nil }
         do {
-            let snapshot = try await access(scope: undo.after) { archive in try archive.undoSenseMerge(undo) }
+            let snapshot = try await access(scope: .init(undo.after)) { archive in try archive.undoSenseMerge(undo) }
             await apply(snapshot)
             return undo.selection
         } catch { report(error); return nil }
@@ -406,7 +474,14 @@ final class VocabularyStore: ObservableObject {
         try await access { archive in try archive.prepareImage(at: url) }
     }
     func image(_ reference: VocabularyImageReference, scope: VocabularyOperationScope? = nil) async -> Data? {
-        try? await access(scope: scope) { archive in try archive.image(reference) }
+        if let browsing, let detail = browsing.readDetail, scope == nil || scope == detail.fence.version {
+            let identity = scopeIdentity
+            guard let bytes = try? await browsing.io.image(reference, detail: detail), identity == scopeIdentity,
+                  !isShutDown else { return nil }
+            if let repository, (try? repository.engine.notebookBrowseFence()) != detail.fence { return nil }
+            return bytes
+        }
+        return try? await access(scope: scope) { archive in try archive.image(reference) }
     }
 
     func backup(to url: URL, scope: VocabularyOperationScope? = nil) async {
@@ -437,6 +512,20 @@ final class VocabularyStore: ObservableObject {
     }
 
     func show(_ capture: VocabularyCapture) {
+        if !isLoaded, let browsing {
+            let identity = scopeIdentity
+            Task {
+                do {
+                    let result = try await browsing.io.detail(lookupKey: VocabularyPolicy.entryKey(capture))
+                    guard scopeIdentity == identity, !isShutDown else { return }
+                    if let repository, (try? repository.engine.notebookBrowseFence()) != result.fence { return }
+                    let entry = result.entry
+                    let sense = entry.flatMap { VocabularySensePolicy.destination(capture, in: $0)?.senseID ?? $0.defaultSense?.id }
+                    openSelection?(entry.flatMap { entry in sense.map { .init(entryID: entry.id, senseID: $0) } })
+                } catch { report(error) }
+            }
+            return
+        }
         let destination = explanationDestination(capture)
         let selection = destination.map { VocabularySelection(entryID: $0.entryID, senseID: $0.senseID) }
             ?? entries.first { VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(capture) }.flatMap { entry in
@@ -476,7 +565,7 @@ final class VocabularyStore: ObservableObject {
                 }
                 guard current.revision == scope.revision else { return false }
             }
-            if let old = operationScope, !old.hasSameOwner(as: scope) { resetScope(to: scope) }
+            if let old = operationScope, !old.hasSameOwner(as: scope) { resetScope(to: .init(scope)) }
         }
         return snapshot.revision >= revision
     }
@@ -500,7 +589,7 @@ final class VocabularyStore: ObservableObject {
             // Another acknowledged operation may have finished while the projection was queued.
             guard !hasAppliedSnapshot || snapshot.revision > revision else { return }
         }
-        if let scope = snapshot.scope { operationScope = scope }
+        if let scope = snapshot.scope { operationScope = .init(scope); completeSnapshot = scope }
         if let undo = senseMergeUndo, snapshot.revision != undo.after.revision {
             senseMergeUndo = nil; canUndoSenseMerge = false
         }
@@ -518,6 +607,7 @@ final class VocabularyStore: ObservableObject {
         hasAppliedSnapshot = true
         contentRevision = nextContentRevision
         isLoaded = true
+        browsing?.invalidate()
         errorMessage = nil
         LingroveLogger.learning.debug("Vocabulary updated", metadata: ["entry_count": .stringConvertible(entries.count)])
     }
@@ -534,7 +624,8 @@ final class VocabularyStore: ObservableObject {
 
     private func indexFromCommittedChange(_ snapshot: VocabularyArchiveSnapshot) -> VocabularyReadIndex? {
         guard hasAppliedSnapshot, let receipt = snapshot.committedChange, !receipt.requiresEntryReload,
-              receipt.base == operationScope.map(LingroveNotebookVersion.init),
+              receipt.base.revision == revision,
+              receipt.base == operationScope,
               receipt.version == snapshot.scope.map(LingroveNotebookVersion.init) else { return nil }
         var updated = readIndex
         updated.apply(updatedEntries: receipt.updatedEntries, removing: receipt.removedEntryIDs)
@@ -550,6 +641,7 @@ final class VocabularyStore: ObservableObject {
         loadWork?.cancel()
         await loadWork?.value
         loadWork = nil
+        await browsing?.shutdown()
         if activeAccesses > 0 {
             await withCheckedContinuation { continuation in drainWaiters.append(continuation) }
         }
@@ -564,15 +656,23 @@ final class VocabularyStore: ObservableObject {
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
         hasAppliedSnapshot = false; readIndex = .init(); searchEntryChange = nil; contentRevision = UUID()
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
+        completeSnapshot = nil
+        browsing?.reset()
         pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil
     }
 
     private func repositoryDidChange() {
+        savedStatusRevision = UUID()
         do {
             guard let current = try repository?.version() else { return }
             if operationScope.map({ current.hasSameOwner(as: $0) }) != true { resetScope(to: nil) }
+            if let fence = browsing?.fence, try repository?.engine.notebookBrowseFence() != fence { browsing?.invalidate() }
             if current.revision == revision, operationScope != nil { return }
+            browsing?.invalidate()
+            // A page-only browser stays page-only after an external edit. Full-feature
+            // consumers keep their existing reload contract once a full snapshot was used.
+            if !hasAppliedSnapshot, loadWork == nil { mediaRevision = UUID(); return }
             // Keep the complete saved draft scope until a fresh read is acknowledged. Same-scope
             // edits can merge; a late response from another generation is rejected by apply().
             isLoaded = false

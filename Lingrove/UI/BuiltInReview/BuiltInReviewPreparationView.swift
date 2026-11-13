@@ -92,7 +92,7 @@ struct BuiltInReviewPreparationView: View {
                     DisclosureGroup(BuiltInReviewCopy.text("material.options"), isExpanded: $showingOptions) {
                         if let source, let store = session.materialStore {
                             ReviewMaterialEditor(plan: plan, entry: source.entry, sense: source.sense, store: store,
-                                scope: draft.snapshot, importedImages: $draft.importedImages, importingImage: $importingImage,
+                                scope: .init(draft.snapshot), importedImages: $draft.importedImages, importingImage: $importingImage,
                                 operation: $operation, hostedSide: $answer, showsPreview: false, prepareAudio: { kind in
                                     draft = try await BuiltInReviewMaterialPreparation.prepare(kind, draft: draft, audio: audio,
                                                                                              audition: true)
@@ -138,7 +138,7 @@ struct BuiltInReviewPreparationView: View {
         .task {
             if let source, let store = session.materialStore {
                 for reference in VocabularyContentPolicy.images(source.sense.content ?? []) {
-                    let data = await store.image(reference, scope: draft.snapshot)
+                    let data = await store.image(reference, scope: .init(draft.snapshot))
                     guard !Task.isCancelled else { return }
                     sourceImages[reference.filename] = data
                 }

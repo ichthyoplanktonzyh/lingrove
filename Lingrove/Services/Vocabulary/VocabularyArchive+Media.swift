@@ -35,7 +35,7 @@ extension VocabularyArchive {
 
     /// Read the before-image without refreshing the archive's save baseline. An external
     /// writer during media IO must make the later merge fail its original revision check.
-    func imagesForUndo(_ references: Set<VocabularyImageReference>, scope: VocabularyOperationScope) throws -> [String: Data] {
+    func imagesForUndo(_ references: Set<VocabularyImageReference>, scope: LingroveNotebookSnapshot) throws -> [String: Data] {
         let media = LingroveNotebookMediaStore(core: try persistence().core)
         var result: [String: Data] = [:]
         for reference in references {

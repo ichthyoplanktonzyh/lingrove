@@ -95,7 +95,7 @@ struct ReviewNoteTypeEditor: View {
             images = [:]
             guard let (_, sense) = source, let store = session.materialStore else { return }
             for reference in VocabularyContentPolicy.images(sense.content ?? []) {
-                let bytes = await store.image(reference, scope: draft.scope)
+                let bytes = await store.image(reference, scope: .init(draft.scope))
                 guard !Task.isCancelled else { return }
                 images[reference.filename] = bytes
             }

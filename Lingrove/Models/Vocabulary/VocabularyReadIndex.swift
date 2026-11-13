@@ -62,6 +62,16 @@ nonisolated struct VocabularyReadIndex: Sendable {
         entryIDsByKey[key].flatMap { entriesByID[$0] }
     }
 
+    func contains(_ capture: VocabularyCapture) -> Bool {
+        let entry = entry(forKey: VocabularyPolicy.entryKey(capture))
+        if capture.example == nil {
+            guard let sense = capture.senseID else { return entry != nil }
+            return entry.map { VocabularySensePolicy.index(sense, in: $0) != nil } ?? false
+        }
+        if capture.senseID != nil { return entry.flatMap { VocabularySensePolicy.destination(capture, in: $0) } != nil }
+        return savedKeys.contains(VocabularyPolicy.captureKey(capture))
+    }
+
     func entry(forSense id: UUID) -> VocabularyEntry? {
         selectionsBySenseID[id].flatMap { entriesByID[$0.entryID] }
     }
