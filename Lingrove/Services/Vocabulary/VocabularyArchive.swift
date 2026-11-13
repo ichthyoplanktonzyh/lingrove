@@ -18,6 +18,11 @@ actor VocabularyArchive {
     private var expectedScope: LingroveNotebookVersion?
     private let installsBundledClassification: Bool
     private var classificationCatalog: VocabularyClassificationCatalog?
+    var hasCompleteBaseline: Bool { saved != nil }
+
+    func checkCommandOwner(_ version: LingroveNotebookVersion) throws {
+        if let expectedScope, !expectedScope.hasSameOwner(as: version) { throw VocabularyError.editConflict }
+    }
 
     /// nil creates a disposable fixture, never a discovery path into the user's application.
     /// Production receives both immutable repository URLs through VocabularyStore(repository:).
@@ -39,13 +44,14 @@ actor VocabularyArchive {
     /// without transferring their connection. No await is possible inside this command body.
     func perform<T: Sendable>(
         basedOn scope: LingroveNotebookVersion?,
+        preparingFullSnapshot: Bool = true,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> T
     ) throws -> T {
         let previous = expectedScope
         expectedScope = scope
         defer { expectedScope = previous }
         return try storageAccess(write: false) {
-            _ = try readSnapshot()
+            if preparingFullSnapshot { _ = try readSnapshot() }
             return try operation(self)
         }
     }

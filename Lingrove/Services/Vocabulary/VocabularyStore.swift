@@ -15,6 +15,7 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var contentRevision = UUID()
+    @Published private(set) var lastEntryCommit: LingroveNotebookEntryCommit?
     @Published private(set) var savedStatusRevision = UUID()
     private(set) var searchEntryChange: VocabularySearchEntryChange?
     private(set) var readIndex = VocabularyReadIndex()
@@ -52,7 +53,7 @@ final class VocabularyStore: ObservableObject {
     @Published private(set) var canUndoSenseMerge = false
     private var senseMergeUndo: VocabularySenseMergeUndo?
     private var revision: UInt64 = 0
-    var currentRevision: UInt64 { revision }
+    var currentRevision: UInt64 { operationScope?.revision ?? revision }
     private var pendingCounts: [String: Int] = [:]
 
     /// Standalone fixtures retain the same public surface without discovering application data.
@@ -102,6 +103,7 @@ final class VocabularyStore: ObservableObject {
     /// event. Reset old sheets/selections before admitting any new owner's read-only result.
     private func admitBrowseScope(_ fence: NotebookBrowseFence) -> Bool {
         guard !isShutDown else { return false }
+        if let commit = lastEntryCommit, commit.version != fence.version || commit.corpus != fence.corpus { lastEntryCommit = nil }
         if let old = operationScope, !old.hasSameOwner(as: fence.version) {
             resetScope(to: fence.version); browsing?.invalidate()
             return false
@@ -177,6 +179,7 @@ final class VocabularyStore: ObservableObject {
     private func access<T: Sendable>(
         scope: VocabularyOperationScope? = nil,
         publishesChanges: Bool = true,
+        preparingFullSnapshot: Bool = true,
         _ operation: @Sendable (isolated VocabularyArchive) throws -> T
     ) async throws -> T {
         guard !isShutDown else { throw VocabularyError.editConflict }
@@ -192,7 +195,7 @@ final class VocabularyStore: ObservableObject {
         let live = try repository?.version()
         let original = scope ?? live ?? operationScope
         if let scope, let live, !live.hasSameOwner(as: scope) { throw VocabularyError.editConflict }
-        let result = try await archive.perform(basedOn: original, operation)
+        let result = try await archive.perform(basedOn: original, preparingFullSnapshot: preparingFullSnapshot, operation)
         if publishesChanges, !isShutDown, let repository, let live, let after = try? repository.version(),
            after.hasSameOwner(as: live), after.revision != live.revision { repository.publishChange() }
         return result
@@ -206,7 +209,47 @@ final class VocabularyStore: ObservableObject {
     ) async throws {
         let snapshot = try await access(scope: scope, publishesChanges: false, operation)
         await apply(snapshot)
-        if !isShutDown, let repository, let saved = snapshot.scope, let current = try? repository.version(),
+        publishCommittedVersion(snapshot.scope.map(LingroveNotebookVersion.init))
+    }
+
+    /// Local commands publish only their acknowledged owner and invalidate page queries. They
+    /// never set isLoaded or fill entries with a fragment. Complete consumers still call load().
+    private func applyEntryMutation(
+        scope: VocabularyOperationScope?,
+        _ operation: @Sendable (isolated VocabularyArchive) throws -> VocabularyArchiveMutation
+    ) async throws {
+        let result = try await access(scope: scope, publishesChanges: false, preparingFullSnapshot: false, operation)
+        let saved: LingroveNotebookVersion?
+        switch result {
+        case let .complete(snapshot):
+            await apply(snapshot)
+            saved = snapshot.scope.map(LingroveNotebookVersion.init)
+        case let .entry(commit):
+            saved = commit.version
+            let admitted: Bool
+            if let repository, let current = try? repository.engine.notebookBrowseFence() {
+                admitted = current.version == commit.version && current.corpus == commit.corpus && admitBrowseScope(current)
+            } else { admitted = repository == nil && !isShutDown }
+            if admitted {
+                if hasAppliedSnapshot {
+                    // A complete consumer that raced this cold command must receive complete
+                    // content again. Its old document cannot be patched with an entry alone.
+                    isLoaded = false; await load()
+                } else {
+                    operationScope = commit.version
+                    if commit.base != commit.version {
+                        lastEntryCommit = commit; contentRevision = UUID(); searchEntryChange = nil
+                        browsing?.didCommitEntry(commit)
+                    }
+                    errorMessage = nil
+                }
+            } else { browsing?.invalidate() }
+        }
+        publishCommittedVersion(saved)
+    }
+
+    private func publishCommittedVersion(_ saved: LingroveNotebookVersion?) {
+        if !isShutDown, let repository, let saved, let current = try? repository.version(),
            current.hasSameOwner(as: saved), current.revision >= saved.revision { repository.publishChange() }
     }
 
@@ -243,9 +286,10 @@ final class VocabularyStore: ObservableObject {
             // queued reload starts. That result already contains the saved content and revision.
             guard !isLoaded else { loadWork = nil; reloadRequested = false; return }
             do {
-                let snapshot = try await access { archive in try archive.load() }
+                let snapshot = try await access(publishesChanges: false) { archive in try archive.load() }
                 guard loadIdentity == identity else { return }
                 await apply(snapshot)
+                publishCommittedVersion(snapshot.scope.map(LingroveNotebookVersion.init))
             } catch { if loadIdentity == identity { report(error) } }
             if loadIdentity == identity {
                 loadWork = nil
@@ -264,7 +308,7 @@ final class VocabularyStore: ObservableObject {
 
     func save(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         let enriched = enrichCapture?(capture) ?? capture
-        await change(capture) { try await self.applyMutation(scope: scope) { archive in try archive.save(enriched) } }
+        await change(capture) { try await self.applyEntryMutation(scope: scope) { archive in try archive.saveIncrementally(enriched) } }
     }
 
     func saveExplanation(_ record: LearningExplanationRecord, scope: VocabularyOperationScope? = nil) async {
@@ -273,6 +317,9 @@ final class VocabularyStore: ObservableObject {
 
     func explanation(for input: LearningExplanationInput, language: LearningLanguage) -> LearningExplanationRecord? {
         if let record = browsing?.detail?.explanations?.last(where: { $0.input == input && $0.language == language }) { return record }
+        if let record = lastEntryCommit?.entry?.explanations?.last(where: { $0.input == input && $0.language == language }) {
+            return record
+        }
         return entries.lazy.flatMap { $0.explanations ?? [] }.last { $0.input == input && $0.language == language }
     }
 
@@ -281,7 +328,8 @@ final class VocabularyStore: ObservableObject {
     func explanationDestination(_ capture: VocabularyCapture) -> VocabularyExplanationDestination? {
         let key = VocabularyPolicy.entryKey(capture)
         let detail = browsing?.detail.flatMap { VocabularyPolicy.entryKey($0) == key ? $0 : nil }
-        guard let entry = detail ?? readIndex.entry(forKey: key) else { return nil }
+        let committed = lastEntryCommit?.entry.flatMap { VocabularyPolicy.entryKey($0) == key ? $0 : nil }
+        guard let entry = detail ?? committed ?? readIndex.entry(forKey: key) else { return nil }
         var destination = VocabularySensePolicy.destination(capture, in: entry)
         destination?.scope = operationScope
         return destination
@@ -326,6 +374,7 @@ final class VocabularyStore: ObservableObject {
     /// adoption can use this draft while the writer independently establishes its full proof.
     private func readEntry(_ id: UUID) -> VocabularyEntry? {
         if let detail = browsing?.detail, detail.id == id { return detail }
+        if let entry = lastEntryCommit?.entry, entry.id == id { return entry }
         return readIndex.entriesByID[id]
     }
 
@@ -387,7 +436,9 @@ final class VocabularyStore: ObservableObject {
 
     func removeSense(entryID: UUID, senseID: UUID, scope: VocabularyOperationScope? = nil) async -> Bool {
         do {
-            try await applyMutation(scope: scope) { archive in try archive.removeSense(entryID: entryID, senseID: senseID) }
+            try await applyEntryMutation(scope: scope) { archive in
+                try archive.removeSenseIncrementally(entryID: entryID, senseID: senseID)
+            }
             return true
         } catch { report(error); return false }
     }
@@ -605,6 +656,7 @@ final class VocabularyStore: ObservableObject {
         reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
         hasAppliedSnapshot = true
+        lastEntryCommit = nil
         contentRevision = nextContentRevision
         isLoaded = true
         browsing?.invalidate()
@@ -657,6 +709,7 @@ final class VocabularyStore: ObservableObject {
         hasAppliedSnapshot = false; readIndex = .init(); searchEntryChange = nil; contentRevision = UUID()
         entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
         completeSnapshot = nil
+        lastEntryCommit = nil
         browsing?.reset()
         pending = []; pendingCounts = [:]
         mediaRevision = UUID(); errorMessage = nil
@@ -666,6 +719,8 @@ final class VocabularyStore: ObservableObject {
         savedStatusRevision = UUID()
         do {
             guard let current = try repository?.version() else { return }
+            if let commit = lastEntryCommit, let fence = try repository?.engine.notebookBrowseFence(),
+               commit.version != fence.version || commit.corpus != fence.corpus { lastEntryCommit = nil }
             if operationScope.map({ current.hasSameOwner(as: $0) }) != true { resetScope(to: nil) }
             if let fence = browsing?.fence, try repository?.engine.notebookBrowseFence() != fence { browsing?.invalidate() }
             if current.revision == revision, operationScope != nil { return }

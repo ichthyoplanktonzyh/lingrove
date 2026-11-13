@@ -156,6 +156,7 @@ def main():
                     "LingroveTests/VocabularyUnifiedRepositoryTests",
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
+                    "LingroveTests/VocabularyColdEntryCommandTests",
                     "LingroveTests/VocabularyExplanationTests",
                     "LingroveTests/VocabularyTagDeletionTests",
                     "LingroveTests/NoteAnkiSenderTests",

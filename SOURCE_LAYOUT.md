@@ -273,9 +273,22 @@ targets outside loaded pages. Shutdown drains and closes the read worker with th
 
 `Services/Vocabulary/VocabularyArchive.swift` owns one serialized engine connection until shutdown
 drains accepted saves. `VocabularyPolicy.entryForSave` prepares a single joined entry; the archive
-returns a committed immutable snapshot to the UI-facing store. It does not create a second corpus.
+returns a committed immutable snapshot or an explicitly partial entry receipt to the UI-facing
+store. `VocabularyArchive+EntryCommands` attempts certified cold captures/retirements before the
+ordinary full fallback. It does not create a second corpus.
 `Support/Vocabulary/VocabularySaveLiteralEquality.swift` keeps the editor's three-way comparisons
 byte-sensitive while normalizing unordered collection encodings.
+
+`Persistence/NotebookStore/NotebookEntryCheckpoint` owns durable, derived full-validation metadata
+at the exact canonical/schema/policy fence, including the complete media pin set.
+`NotebookEntryAdmission` owns indexed global identity/key checks and conservative dependency
+fallbacks during one synchronous transaction. `Commands/LingroveNotebookEngine+LocalEntry` reuses
+the existing codec/domain rules for one subtree and the existing row/CAS/journal writer without
+installing a partial full-cache. Its `LingroveNotebookEntryCommit` is a bounded acknowledgment,
+not a document. `VocabularyStore.lastEntryCommit` retains only that latest admitted owner for
+immediate explanation adoption; pages refresh while complete interfaces remain unloaded.
+Warm complete writers retain their established incremental receipts. See
+`docs/adr/0006-certified-local-entry-writes.md` for proof lifetime and full-fallback boundaries.
 
 In `Packages/LingroveNotebook`, `VocabularyEntrySaveState` holds a fully validated document and
 creates restricted single-entry changes. Its private `VocabularyEntryValidationIndex` retains

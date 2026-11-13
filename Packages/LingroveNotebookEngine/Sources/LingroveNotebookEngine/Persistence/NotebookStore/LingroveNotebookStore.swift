@@ -45,6 +45,9 @@ public struct LingroveNotebookStore {
             try self.checkActiveWorkspace(workspaceId, required: requireActiveWorkspace)
             try self.ensureNotebook(workspaceId: workspaceId)
             let snapshot = try self.readSnapshot(workspaceId: workspaceId)
+            if let checked = core.notebookSaveCache {
+                try NotebookEntryCheckpoint.record(in: core, version: .init(snapshot), media: checked.state.mediaReferences)
+            }
             if let binding { try LingroveNotebookWindowStore(core: core).checkBindingInTransaction(binding) }
             return snapshot
         }
@@ -122,7 +125,7 @@ public struct LingroveNotebookStore {
                 """, values: [.integer(Int64(revision)), .integer(next.reviewTemplates == nil ? 0 : 1), .text(now),
                     .text(current.workspaceId), .text(current.notebookId.uuidString), .integer(Int64(current.revision))])
             guard count == 1 else { throw VocabularyError.editConflict }
-            try self.recordPending(current: current, revision: revision, changed: changed, removed: removed,
+            try self.recordPending(current: .init(current), revision: revision, changed: changed, removed: removed,
                 reviewTemplatesPresent: next.reviewTemplates != nil, publicChange: publicChange, operationId: operationId, now: now)
         try recordRepositioned(plan.rows.repositioned, workspaceId: current.workspaceId, operationId: operationId,
             journalOffset: changed.count + removed.count)
@@ -131,6 +134,7 @@ public struct LingroveNotebookStore {
             senseIDs: plan.reviewSenseIDs, entries: plan.state.entries)
         core.notebookSaveCache = .init(snapshot: saved, state: plan.state, projection: plan.rows.projection,
             token: try core.notebookCacheToken(), lineage: lineage, committedChange: plan.receipt(from: current, to: saved))
+        try NotebookEntryCheckpoint.record(in: core, version: .init(saved), media: plan.state.mediaReferences)
             return saved
     }
 
@@ -272,7 +276,7 @@ public struct LingroveNotebookStore {
                     guard updated == 1 else { throw VocabularyError.editConflict }
                     let baseline = LingroveNotebookSnapshot(workspaceId: workspace, notebookId: notebook, revision: revision,
                         document: document, generation: generation)
-                    try store.recordPending(current: baseline, revision: revision + 1, changed: changed, removed: removed,
+                    try store.recordPending(current: .init(baseline), revision: revision + 1, changed: changed, removed: removed,
                         reviewTemplatesPresent: hasTemplates, publicChange: true, operationId: UUID().uuidString.lowercased(), now: now)
                 }
                 let reopened = try store.readSnapshot(workspaceId: workspace)
@@ -336,8 +340,11 @@ public struct LingroveNotebookStore {
         return try requiredText(statement, index)
     }
 
-    private func recordPending(
-        current: LingroveNotebookSnapshot, revision: UInt64, changed: [VocabularyPersistenceRow],
+    // Full and local writers share this established journal shape; keep the complete header
+    // and row metadata together rather than introducing a second recovery format.
+    // swiftlint:disable:next function_parameter_count
+    func recordPending(
+        current: LingroveNotebookVersion, revision: UInt64, changed: [VocabularyPersistenceRow],
         removed: [VocabularyPersistenceRow], reviewTemplatesPresent: Bool, publicChange: Bool, operationId: String, now: String
     ) throws {
         try self.core.execute(sql: """

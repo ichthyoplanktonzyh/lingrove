@@ -794,3 +794,69 @@ First-page readiness now precedes full preparation, but cold first writes still 
 preparation cost. Tag filtering also retains a corpus-wide JSON tag scan. These are remaining
 boundaries for subsequent work; this checkpoint does not claim that every operation is constant
 time or that graph/search/global export have become paged readers.
+
+## Certified cold entry writes (2026-11-13)
+
+[ADR 0006](adr/0006-certified-local-entry-writes.md) replaces the cold ordinary text command's
+complete-preparation prerequisite with a durable, exact-fence validation certificate. The
+engine reads the target subtree through the same lossless detail selector, validates it with
+the existing domain rules, checks indexed global IDs/keys and conservative dependency limits,
+and reuses the canonical row writer, CAS and pending journal in one transaction. It still
+rechecks the complete document media ownership/pin set. The local fragment never becomes a
+complete engine cache, document or `VocabularyStore.entries` value.
+
+The archive returns an explicit entry receipt or the ordinary complete result. The store
+admits that receipt before notifying other subsystems, refreshes visited pages/detail and
+favorite status, and retains one latest owner for immediate explanation adoption. Complete
+selection/review/graph/export consumers still request their complete dependency. The existing
+workspace test fixture now does so explicitly rather than assuming a favorite loads everything.
+Account identity is checked again on the actual detail used to prepare a save; the writer then
+rechecks its exact version inside the commit transaction.
+
+An installed database without this derived certificate still needs one complete preparation.
+Missing/damaged/stale proof, external canonical/schema/policy changes, enrolled/note-consuming
+senses, changed media references, existing interpretation changes and foreign semantic citations
+retain complete preparation. The benchmark reports eligible commands and fallback commands
+separately. Seeds contain a certificate from their untimed, validated creation; process caches
+are empty for each cold command. They contain no image-heavy content or dense merged-alias
+workload; media/alias correctness is covered by separate focused tests, not a latency claim.
+
+Version metadata remains readable before content reconstruction rejects corrupt JSON. New
+alias/plan expression indexes guard JSON evaluation explicitly. An initial unguarded index
+changed corruption-test failures from full validation to index maintenance; that side effect
+was removed. Normal content saves/loads remain strict. No universal JSON database constraint
+or recovery contract was introduced as a performance side effect.
+
+The [raw samples, comparison and source evidence](benchmarks/corpus-cold-entry-2026-11-13.json)
+record twelve windows, three trials at each size. Release medians in milliseconds:
+
+| Data-ready operation | 10,000 entries | 20,000 entries |
+| --- | ---: | ---: |
+| First 100 summaries and global count | 98.934 | 151.960 |
+| Next page | 18.505 | 22.734 |
+| Selected entry detail | 7.599 | 7.542 |
+| Exact favorite-status lookup | 1.319 | 1.044 |
+| Language/tag filtered page | 97.650 | 212.626 |
+| Cold translation favorite, valid proof | 31.501 | 48.643 |
+| Cold ordinary sense removal, valid proof | 31.856 | 46.775 |
+| Cold context favorite, valid proof | 38.347 | 56.950 |
+| Cold example append to existing sense, valid proof | 45.266 | 62.811 |
+| Cold enrolled-sense removal, full fallback | 4246.983 | 8800.997 |
+| Cold favorite without proof, full fallback | 4283.140 | 8926.785 |
+| Complete store and read index | 4047.573 | 8454.999 |
+
+Against the preceding matched command windows, 20k ordinary cold favorite changes from
+8634.062ms to 48.643ms and ordinary removal from 9113.774ms to 46.775ms. Complete preparation
+and tag filtering remain global work. The same-shape seeds were generated independently across
+versions; these three observations do not establish a percentile or a hardware-independent
+latency guarantee. The preceding 43-operation inventory was not rerun.
+
+Validation passed 119 engine Swift Testing checks and 40 engine XCTest checks. The final signed
+private Release host passed 76 native checks; one opt-in visible-desktop journey stayed skipped.
+All 72 timing windows and their postconditions passed, including retained 1,000-rating history
+on the cold mutation/fallback copies. An initial six-test failure was confined to the shared
+workspace fixture's old implicit-full-load assumption; those six tests passed after the fixture
+explicitly prepared its dependency. All measured product/test source hashes match the final
+tree. New/changed Swift lines have no lint violations, and diff checks passed. Owned DerivedData,
+copied packages, private hosts and synthetic databases were removed and cleanup verified. The
+installed Dev application and real corpus were not accessed or replaced.

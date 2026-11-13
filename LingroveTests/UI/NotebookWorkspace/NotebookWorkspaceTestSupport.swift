@@ -64,6 +64,9 @@ final class NotebookWorkspaceFixture {
     func seed(_ expression: String = "harbor") async throws -> VocabularySelection {
         await store.save(.init(expression: expression, dictionaryForm: expression, language: .english,
             kind: .word, meaning: "a sheltered place for boats", meaningLanguage: .english))
+        // Workspace journeys borrow complete selection/review interfaces. A cold capture
+        // now acknowledges just its entry, so this fixture prepares its own full dependency.
+        await store.load()
         let entry = try workspaceRequire(store.entries.first { $0.expression == expression })
         return .init(entryID: entry.id, senseID: try workspaceRequire(entry.senses.first).id)
     }

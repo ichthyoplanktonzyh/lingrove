@@ -112,16 +112,29 @@ nonisolated enum VocabularyPolicy {
         try validate(input)
         var capture = input
         let header = document.catalog.first { entryKey($0) == entryKey(capture) }
+        let joined = header.flatMap { VocabularyNotebookProjection.entry($0.id, in: document) }
+        let oldSenses = Set(joined?.senses.map(\.id) ?? [])
+        if let example = capture.example, document.interpretations.contains(where: {
+            $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
+        }) { capture.example = example.copiedWithNewID() }
+        return try entryForValidatedCapture(capture, existing: joined, now: now)
+    }
+
+    /// The local writer supplies one exact saved owner. Global evidence reuse and identity
+    /// admission remain with the engine; this pure rule creates the same capture draft as load().
+    static func entryForSave(_ capture: VocabularyCapture, existing: VocabularyEntry?, now: Date) throws -> VocabularyEntry {
+        try validate(capture)
+        return try entryForValidatedCapture(capture, existing: existing, now: now)
+    }
+
+    private static func entryForValidatedCapture(_ capture: VocabularyCapture, existing: VocabularyEntry?, now: Date)
+        throws -> VocabularyEntry {
         var entry: VocabularyEntry
-        if let header, let joined = VocabularyNotebookProjection.entry(header.id, in: document) { entry = joined } else {
+        if let existing { entry = existing } else {
             guard capture.senseID == nil else { throw VocabularyError.invalidContent }
             entry = .init(id: UUID(), expression: capture.expression, dictionaryForm: capture.dictionaryForm,
                 language: capture.language, kind: capture.kind, senses: [], createdAt: now, updatedAt: now)
         }
-        let oldSenses = Set(entry.senses.map(\.id))
-        if let example = capture.example, document.interpretations.contains(where: {
-            $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
-        }) { capture.example = example.copiedWithNewID() }
         try VocabularySensePolicy.save(capture, in: &entry, now: now)
         return entry
     }

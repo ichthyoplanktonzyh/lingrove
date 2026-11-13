@@ -69,6 +69,12 @@ public nonisolated enum VocabularyDocumentValidation {
         _ = try validate(document, entries: document.entries)
     }
 
+    /// The persistence writer uses the established entry namespace for indexed global
+    /// collision checks. This validates one entry only; it is never a complete-corpus proof.
+    public static func identifiers(in entry: VocabularyEntry) throws -> Set<UUID> {
+        try entryIdentifiers(entry)
+    }
+
     static func validate(_ document: VocabularyDocument, entries: [VocabularyEntry], lifecycleChecked: Bool = false) throws -> [UUID: Set<UUID>] {
         guard document.schemaVersion == VocabularyDocument.currentVersion,
               document.schemaVersion >= VocabularyDocument.requiredVersion(for: entries),

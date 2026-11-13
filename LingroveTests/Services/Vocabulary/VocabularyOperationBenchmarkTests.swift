@@ -104,22 +104,69 @@ struct VocabularyOperationBenchmarkTests {
         try #require(browse.isReady && browse.total == recorder.entries / 20 && browse.entries.count == min(100, recorder.entries / 20))
         let fresh = VocabularyBenchmarkFixture.capture("paged-cold-favorite-\(recorder.trial)")
         try await recorder.measure("favorite.cold.first", layer: "store") { await fixture.store.save(fresh) }
-        try #require(fixture.store.isLoaded && fixture.store.contains(fresh) && fixture.store.entries.count == recorder.entries + 1)
+        let receipt = try #require(fixture.store.lastEntryCommit)
+        try #require(!fixture.store.isLoaded && fixture.store.entries.isEmpty)
+        #expect(await fixture.store.savedStatus(fresh) == true)
+        #expect(try fixture.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_entries WHERE workspace_id=?",
+            values: [.text(receipt.version.workspaceId)]) == recorder.entries + 1)
         #expect(try fixture.repository.engine.loadReviewEventCount() == 1_000)
         let deleted = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("cold-delete"))
         do {
             let removed = try await recorder.measure("sense.remove.cold.first", layer: "store") {
                 await deleted.store.removeSense(entryID: target, senseID: VocabularyBenchmarkFixture.id(2_000_084))
             }
-            try #require(removed && deleted.store.entries.count == recorder.entries)
-            #expect(deleted.store.readIndex.entriesByID[target]?.senses.count == 1)
+            try #require(removed && !deleted.store.isLoaded && deleted.store.entries.isEmpty)
+            #expect(deleted.store.lastEntryCommit?.entry?.senses.count == 1)
+            let version = try #require(deleted.store.operationScope)
+            #expect(try deleted.repository.engine.core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_entries WHERE workspace_id=?",
+                values: [.text(version.workspaceId)]) == recorder.entries)
             #expect(try deleted.repository.engine.loadReviewEventCount() == 1_000)
             await deleted.close()
         } catch { await deleted.close(); throw error }
+        try await coldEntryCases(fixture, recorder, seed: seed)
         let full = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("cold-full"))
         try await recorder.measure("corpus.full.ready", layer: "model") { await full.store.load() }
         #expect(full.store.isLoaded && full.store.entries.count == recorder.entries)
         await full.close()
+    }
+
+    /// Unsupported dependency shapes stay explicit in the inventory. Media/review safety
+    /// fallbacks must not disappear inside the fast-path median or a preceding warm-up.
+    private func coldEntryCases(_ fixture: VocabularyBenchmarkFixture, _ recorder: VocabularyBenchmarkRecorder,
+                                seed: URL) async throws {
+        for existing in [false, true] {
+            let label = existing ? "existing-sense" : "context"
+            let cold = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent(label))
+            do {
+                var capture = VocabularyBenchmarkFixture.capture(existing ? "word42" : "new-context", example: true)
+                if existing { capture.senseID = VocabularyBenchmarkFixture.id(2_000_084) }
+                try await recorder.measure("favorite.cold." + label) { await cold.store.save(capture) }
+                try #require(!cold.store.isLoaded && cold.store.lastEntryCommit != nil)
+                #expect(await cold.store.savedStatus(capture) == true)
+                #expect(cold.store.lastEntryCommit?.entry?.examples.count == (existing ? 5 : 1))
+                #expect(try cold.repository.engine.loadReviewEventCount() == 1_000)
+                await cold.close()
+            } catch { await cold.close(); throw error }
+        }
+        let reviewed = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("review-fallback"))
+        do {
+            let removed = try await recorder.measure("sense.remove.cold.enrolled-fallback") {
+                await reviewed.store.removeSense(entryID: VocabularyBenchmarkFixture.id(1_000_040),
+                    senseID: VocabularyBenchmarkFixture.id(2_000_080))
+            }
+            try #require(removed && reviewed.store.isLoaded && reviewed.store.entries.count == recorder.entries)
+            #expect(try reviewed.repository.engine.loadReviewEventCount() == 1_000)
+            await reviewed.close()
+        } catch { await reviewed.close(); throw error }
+        let unprepared = try VocabularyBenchmarkFixture(seed: seed, directory: fixture.directory.appendingPathComponent("proof-fallback"))
+        do {
+            try unprepared.repository.engine.core.execute(sql: "DELETE FROM notebook_entry_checkpoint", values: [])
+            let capture = VocabularyBenchmarkFixture.capture("missing-proof")
+            try await recorder.measure("favorite.cold.missing-proof-fallback") { await unprepared.store.save(capture) }
+            try #require(unprepared.store.isLoaded && unprepared.store.contains(capture))
+            #expect(try unprepared.repository.engine.loadReviewEventCount() == 1_000)
+            await unprepared.close()
+        } catch { await unprepared.close(); throw error }
     }
 
     /// Component windows run on a separate fresh copy after the three operation trials. Their

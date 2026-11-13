@@ -83,6 +83,7 @@ public final class LingroveNotebookEngine {
         self.syncApplier = SyncApplier(core: core)
         self.workspaceSettingsStore = WorkspaceSettingsStore(core: core)
         if performsMaintenance {
+            try NotebookEntryCheckpoint.ensureInstalled(in: core)
             try NotebookChangeTracking.ensureInstalled(in: core)
             try self.lingroveNotebookWindowStore.purgeExpired(now: Date())
         }

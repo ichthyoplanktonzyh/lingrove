@@ -337,6 +337,14 @@ struct VocabularyNotebookView: View {
         .onDisappear { store.browsing?.deactivate() }
         .onChange(of: browseQuery) { _, _ in if usesPagedEntries { store.browse(browseQuery) } }
         .onChange(of: selectingSenses) { _, _ in prepareBrowser() }
+        .onChange(of: store.lastEntryCommit?.version) { _, _ in
+            guard let commit = store.lastEntryCommit else { return }
+            if let selection, commit.previousSenseIDs.contains(selection) {
+                self.selection = commit.entry.flatMap { entry in
+                    VocabularySensePolicy.index(selection, in: entry).map { entry.senses[$0].id }
+                }
+            }
+        }
         .onChange(of: store.browsing?.fence) { _, value in
             guard value != nil else { return }
             if let requestedID { store.browsing?.select(entryID: requestedID) } else if let activeSenseID {

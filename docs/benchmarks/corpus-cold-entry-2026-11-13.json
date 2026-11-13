@@ -1,0 +1,1073 @@
+{
+  "reportDate": "2026-11-13",
+  "scope": "Certified cold single-entry writes with bounded browsing and explicit full-preparation fallbacks",
+  "methodology": [
+    "Release arm64 production store/archive/engine commands in a signed private native validation host; synthetic state only, no real clicks or installed Dev application/data access.",
+    "Cold means fresh application/archive/engine caches. Eligible seeds already contain a durable full-validation certificate recorded by their untimed validated creation. The OS disk cache is not purged.",
+    "Each size uses one closed seed copied separately for each trial and cold command. The earlier baseline uses equivalent counts, graph/review shape and operation order, not byte-identical database files.",
+    "Setup, repository construction/index installation, fixture copying, assertions and frame painting are outside timers. Store command time includes result admission and scheduling page invalidation, not completion of subsequent page rendering.",
+    "Missing-proof favorite deletes only the derived certificate before its timer. Enrolled-sense removal keeps its review consumers; both assert complete fallback. No full-load warm-up is hidden in those windows.",
+    "The common eight windows retain their preceding stage command boundaries. The harness adds four cold cases and checks explicit partial receipts instead of expecting a whole loaded corpus after eligible writes.",
+    "Three trials per size/operation, 72 unique samples; median/min/max are observations, not percentile estimates. The earlier 43-operation inventory was not rerun.",
+    "Each fixture has two senses and four examples per entry, semantic/classification records, review enrollments and 1000 retained ratings. It has no image-heavy bodies or dense merged-alias workload. Focused tests cover those safety boundaries, not their large-library latency.",
+    "Summary row work counts describe returned scalar rows, not all SQL rows scanned; selected-detail work counts describe payload rows decoded.",
+    "Visible-entry counters belong to the primary paged browse model. Separate assertions check auxiliary cold fixture contents and retained review history."
+  ],
+  "identity": {
+    "commit": "29fadd48ffa6bda3f516a69ea889ca7a3f05f823",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "c991699dd231ca44d9b381629fe77b919b4001dedc1de2ef9a3999e9e0f5d6f6",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000,20000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "remainingOnly": false,
+    "remainingTrials": 0,
+    "pagedOnly": true,
+    "pagedTrials": 3,
+    "sourceManifestSHA256": "42b6b7cc4d4724ec3e1ccffe901299b6e20f7f444321c1296ad51cf3e258da8c",
+    "sourceManifestEntries": 1879,
+    "commitIsWorktreeBase": true
+  },
+  "fixtures": {
+    "10000": {
+      "databaseBytes": 278773760,
+      "mappings": 14011,
+      "entries": 10000,
+      "ratingRecords": 1000,
+      "meanings": 14000,
+      "categories": 688,
+      "senses": 20000,
+      "enrolledSenses": 2000,
+      "categoryMemberships": 14000,
+      "examples": 40000
+    },
+    "20000": {
+      "databaseBytes": 548151296,
+      "senses": 40000,
+      "entries": 20000,
+      "meanings": 28000,
+      "ratingRecords": 1000,
+      "categories": 1038,
+      "categoryMemberships": 28000,
+      "examples": 80000,
+      "mappings": 28011,
+      "enrolledSenses": 4000
+    }
+  },
+  "milliseconds": {
+    "10000": {
+      "browse.first.page": {
+        "median": 98.934,
+        "minimum": 93.314,
+        "maximum": 110.552
+      },
+      "browse.next.page": {
+        "median": 18.505,
+        "minimum": 16.97,
+        "maximum": 18.566
+      },
+      "browse.entry.detail": {
+        "median": 7.599,
+        "minimum": 7.222,
+        "maximum": 7.625
+      },
+      "browse.saved.lookup": {
+        "median": 1.319,
+        "minimum": 1.313,
+        "maximum": 1.353
+      },
+      "browse.filter.page": {
+        "median": 97.65,
+        "minimum": 97.634,
+        "maximum": 99.229
+      },
+      "favorite.cold.first": {
+        "median": 31.501,
+        "minimum": 24.847,
+        "maximum": 34.363
+      },
+      "sense.remove.cold.first": {
+        "median": 31.856,
+        "minimum": 30.974,
+        "maximum": 33.471
+      },
+      "favorite.cold.context": {
+        "median": 38.347,
+        "minimum": 37.472,
+        "maximum": 40.868
+      },
+      "favorite.cold.existing-sense": {
+        "median": 45.266,
+        "minimum": 43.147,
+        "maximum": 45.893
+      },
+      "sense.remove.cold.enrolled-fallback": {
+        "median": 4246.983,
+        "minimum": 4235.83,
+        "maximum": 4429.797
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 4283.14,
+        "minimum": 4256.032,
+        "maximum": 4445.699
+      },
+      "corpus.full.ready": {
+        "median": 4047.573,
+        "minimum": 4039.859,
+        "maximum": 4105.772
+      }
+    },
+    "20000": {
+      "browse.first.page": {
+        "median": 151.96,
+        "minimum": 151.249,
+        "maximum": 195.972
+      },
+      "browse.next.page": {
+        "median": 22.734,
+        "minimum": 22.385,
+        "maximum": 23.326
+      },
+      "browse.entry.detail": {
+        "median": 7.542,
+        "minimum": 7.385,
+        "maximum": 8.766
+      },
+      "browse.saved.lookup": {
+        "median": 1.044,
+        "minimum": 0.953,
+        "maximum": 1.145
+      },
+      "browse.filter.page": {
+        "median": 212.626,
+        "minimum": 211.03,
+        "maximum": 213.332
+      },
+      "favorite.cold.first": {
+        "median": 48.643,
+        "minimum": 43.09,
+        "maximum": 53.174
+      },
+      "sense.remove.cold.first": {
+        "median": 46.775,
+        "minimum": 46.353,
+        "maximum": 47.911
+      },
+      "favorite.cold.context": {
+        "median": 56.95,
+        "minimum": 53.57,
+        "maximum": 58.623
+      },
+      "favorite.cold.existing-sense": {
+        "median": 62.811,
+        "minimum": 60.83,
+        "maximum": 66.023
+      },
+      "sense.remove.cold.enrolled-fallback": {
+        "median": 8800.997,
+        "minimum": 8797.829,
+        "maximum": 9077.522
+      },
+      "favorite.cold.missing-proof-fallback": {
+        "median": 8926.785,
+        "minimum": 8799.326,
+        "maximum": 9004.484
+      },
+      "corpus.full.ready": {
+        "median": 8454.999,
+        "minimum": 8393.499,
+        "maximum": 8457.849
+      }
+    }
+  },
+  "comparison": {
+    "baselineReport": "docs/benchmarks/corpus-browsing-2026-11-13.json",
+    "baselineReportSHA256": "63cf7b9c4c8577d340714ff281955fbd5de0af98b563a4b1af27d3c3e01cf514",
+    "baselineIdentity": {
+      "commit": "d85c9592423dd8b4e09b41c6872ceff83c5c1b7b",
+      "configuration": "Release",
+      "architecture": "arm64",
+      "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+      "hostBinarySHA256": "f538454b60abfeeff54c0ce68afc20dc6addb9ef1fa591fd1431a1c1956b0bb1",
+      "installedAppAccessed": false,
+      "input": "generated synthetic notebooks only",
+      "hardware": "MacBookPro18,2",
+      "sizes": "10000,20000",
+      "trials": 3,
+      "scanTrials": 1,
+      "focusedTrials": 3,
+      "tailOnly": false,
+      "remainingOnly": false,
+      "remainingTrials": 0,
+      "pagedOnly": true,
+      "pagedTrials": 3,
+      "sourceManifestSHA256": "a4f450c82eb0d430faa76fbfc591977cb387d91586476dc1bda609c012630bfc",
+      "sourceManifestEntries": 1873,
+      "commitIsWorktreeBase": true
+    },
+    "matchedOperations": {
+      "10000": {
+        "browse.first.page": {
+          "beforeMedian": 86.718,
+          "afterMedian": 98.934
+        },
+        "browse.next.page": {
+          "beforeMedian": 17.717,
+          "afterMedian": 18.505
+        },
+        "browse.entry.detail": {
+          "beforeMedian": 7.128,
+          "afterMedian": 7.599
+        },
+        "browse.saved.lookup": {
+          "beforeMedian": 1.059,
+          "afterMedian": 1.319
+        },
+        "browse.filter.page": {
+          "beforeMedian": 95.309,
+          "afterMedian": 97.65
+        },
+        "favorite.cold.first": {
+          "beforeMedian": 4118.337,
+          "afterMedian": 31.501
+        },
+        "sense.remove.cold.first": {
+          "beforeMedian": 4304.373,
+          "afterMedian": 31.856
+        },
+        "corpus.full.ready": {
+          "beforeMedian": 4142.49,
+          "afterMedian": 4047.573
+        }
+      },
+      "20000": {
+        "browse.first.page": {
+          "beforeMedian": 159.897,
+          "afterMedian": 151.96
+        },
+        "browse.next.page": {
+          "beforeMedian": 22.068,
+          "afterMedian": 22.734
+        },
+        "browse.entry.detail": {
+          "beforeMedian": 7.177,
+          "afterMedian": 7.542
+        },
+        "browse.saved.lookup": {
+          "beforeMedian": 1.072,
+          "afterMedian": 1.044
+        },
+        "browse.filter.page": {
+          "beforeMedian": 204.375,
+          "afterMedian": 212.626
+        },
+        "favorite.cold.first": {
+          "beforeMedian": 8634.062,
+          "afterMedian": 48.643
+        },
+        "sense.remove.cold.first": {
+          "beforeMedian": 9113.774,
+          "afterMedian": 46.775
+        },
+        "corpus.full.ready": {
+          "beforeMedian": 8622.457,
+          "afterMedian": 8454.999
+        }
+      }
+    }
+  },
+  "rawSamples": [
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 0,
+      "operation": "browse.first.page",
+      "milliseconds": 110.551625,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 100,
+      "operation": "browse.next.page",
+      "milliseconds": 16.970333,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.entry.detail",
+      "milliseconds": 7.221833,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.saved.lookup",
+      "milliseconds": 1.313417,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.filter.page",
+      "milliseconds": 99.229334,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 1,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.first",
+      "milliseconds": 24.846958,
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "milliseconds": 30.973666,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 1,
+      "operation": "favorite.cold.context",
+      "milliseconds": 37.472375,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 45.893458,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 4429.7965,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 4445.698583,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 10000,
+      "trial": 1
+    },
+    {
+      "trial": 1,
+      "operation": "corpus.full.ready",
+      "milliseconds": 4105.772292,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 0,
+      "operation": "browse.first.page",
+      "milliseconds": 93.314125,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 100,
+      "operation": "browse.next.page",
+      "milliseconds": 18.566417,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.entry.detail",
+      "milliseconds": 7.625083,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.saved.lookup",
+      "milliseconds": 1.353,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.filter.page",
+      "milliseconds": 97.634166,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 2,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.first",
+      "milliseconds": 34.363041,
+      "layer": "store"
+    },
+    {
+      "trial": 2,
+      "milliseconds": 31.856166,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 2,
+      "operation": "favorite.cold.context",
+      "milliseconds": 40.868458,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 2,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 45.265917,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 2,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 4246.983125,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 4256.031625,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 10000,
+      "trial": 2
+    },
+    {
+      "trial": 2,
+      "operation": "corpus.full.ready",
+      "milliseconds": 4047.572791,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 0,
+      "operation": "browse.first.page",
+      "milliseconds": 98.933958,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 100,
+      "operation": "browse.next.page",
+      "milliseconds": 18.504667,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.entry.detail",
+      "milliseconds": 7.599375,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 200,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.saved.lookup",
+      "milliseconds": 1.319125,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 200,
+      "operation": "browse.filter.page",
+      "milliseconds": 97.650083,
+      "layer": "model"
+    },
+    {
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "trial": 3,
+      "visibleEntriesBefore": 100,
+      "operation": "favorite.cold.first",
+      "milliseconds": 31.501208,
+      "layer": "store"
+    },
+    {
+      "trial": 3,
+      "milliseconds": 33.471042,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 10000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 3,
+      "operation": "favorite.cold.context",
+      "milliseconds": 38.3475,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 3,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 43.147042,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 3,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 4235.83,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 4283.140334,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 10000,
+      "trial": 3
+    },
+    {
+      "trial": 3,
+      "operation": "corpus.full.ready",
+      "milliseconds": 4039.85875,
+      "visibleEntriesBefore": 100,
+      "entries": 10000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    },
+    {
+      "operation": "browse.first.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 1,
+      "milliseconds": 195.972459,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 0
+    },
+    {
+      "operation": "browse.next.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 1,
+      "milliseconds": 23.325541,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "operation": "browse.entry.detail",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 1,
+      "milliseconds": 8.766125,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 1,
+      "milliseconds": 1.145375,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.filter.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 1,
+      "milliseconds": 212.62625,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "favorite.cold.first",
+      "entries": 20000,
+      "layer": "store",
+      "trial": 1,
+      "milliseconds": 43.089708,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 1,
+      "milliseconds": 46.352583,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 1,
+      "operation": "favorite.cold.context",
+      "milliseconds": 56.949625,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 60.829583,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 1,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 9077.521959,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 8926.784958,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 20000,
+      "trial": 1
+    },
+    {
+      "trial": 1,
+      "operation": "corpus.full.ready",
+      "milliseconds": 8457.848625,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    },
+    {
+      "operation": "browse.first.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 2,
+      "milliseconds": 151.959542,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 0
+    },
+    {
+      "operation": "browse.next.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 2,
+      "milliseconds": 22.384792,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "operation": "browse.entry.detail",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 2,
+      "milliseconds": 7.542084,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 2,
+      "milliseconds": 1.04375,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.filter.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 2,
+      "milliseconds": 213.331584,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "favorite.cold.first",
+      "entries": 20000,
+      "layer": "store",
+      "trial": 2,
+      "milliseconds": 53.173958,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 2,
+      "milliseconds": 46.77525,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 2,
+      "operation": "favorite.cold.context",
+      "milliseconds": 58.623084,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 2,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 66.023333,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 2,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 8797.82925,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 9004.484166,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 20000,
+      "trial": 2
+    },
+    {
+      "trial": 2,
+      "operation": "corpus.full.ready",
+      "milliseconds": 8454.999042,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    },
+    {
+      "operation": "browse.first.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 3,
+      "milliseconds": 151.249375,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 0
+    },
+    {
+      "operation": "browse.next.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 3,
+      "milliseconds": 22.73425,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "operation": "browse.entry.detail",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 3,
+      "milliseconds": 7.384792,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.saved.lookup",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 3,
+      "milliseconds": 0.95325,
+      "visibleEntriesAfter": 200,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "browse.filter.page",
+      "entries": 20000,
+      "layer": "model",
+      "trial": 3,
+      "milliseconds": 211.0305,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 200
+    },
+    {
+      "operation": "favorite.cold.first",
+      "entries": 20000,
+      "layer": "store",
+      "trial": 3,
+      "milliseconds": 48.642542,
+      "visibleEntriesAfter": 100,
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 3,
+      "milliseconds": 47.911375,
+      "operation": "sense.remove.cold.first",
+      "visibleEntriesAfter": 100,
+      "entries": 20000,
+      "layer": "store",
+      "visibleEntriesBefore": 100
+    },
+    {
+      "trial": 3,
+      "operation": "favorite.cold.context",
+      "milliseconds": 53.569542,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 3,
+      "operation": "favorite.cold.existing-sense",
+      "milliseconds": 62.811417,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "trial": 3,
+      "operation": "sense.remove.cold.enrolled-fallback",
+      "milliseconds": 8800.997041999999,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "store"
+    },
+    {
+      "milliseconds": 8799.325792,
+      "visibleEntriesBefore": 100,
+      "visibleEntriesAfter": 100,
+      "layer": "store",
+      "operation": "favorite.cold.missing-proof-fallback",
+      "entries": 20000,
+      "trial": 3
+    },
+    {
+      "trial": 3,
+      "operation": "corpus.full.ready",
+      "milliseconds": 8393.498875,
+      "visibleEntriesBefore": 100,
+      "entries": 20000,
+      "visibleEntriesAfter": 100,
+      "layer": "model"
+    }
+  ],
+  "outcomes": [
+    {
+      "entries": 10000,
+      "operation": "browse.first.page.rows",
+      "succeeded": true,
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 1
+    },
+    {
+      "entries": 10000,
+      "operation": "browse.entry.detail.rows",
+      "succeeded": true,
+      "message": "17 payload rows for one entry",
+      "trial": 1
+    },
+    {
+      "succeeded": true,
+      "operation": "browse.first.page.rows",
+      "message": "300 summary rows; zero evidence payload decodes",
+      "entries": 10000,
+      "trial": 2
+    },
+    {
+      "succeeded": true,
+      "operation": "browse.entry.detail.rows",
+      "message": "17 payload rows for one entry",
+      "entries": 10000,
+      "trial": 2
+    },
+    {
+      "succeeded": true,
+      "operation": "browse.first.page.rows",
+      "message": "300 summary rows; zero evidence payload decodes",
+      "entries": 10000,
+      "trial": 3
+    },
+    {
+      "succeeded": true,
+      "operation": "browse.entry.detail.rows",
+      "message": "17 payload rows for one entry",
+      "entries": 10000,
+      "trial": 3
+    },
+    {
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 1,
+      "operation": "browse.first.page.rows",
+      "entries": 20000,
+      "succeeded": true
+    },
+    {
+      "message": "17 payload rows for one entry",
+      "trial": 1,
+      "operation": "browse.entry.detail.rows",
+      "entries": 20000,
+      "succeeded": true
+    },
+    {
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 2,
+      "operation": "browse.first.page.rows",
+      "entries": 20000,
+      "succeeded": true
+    },
+    {
+      "message": "17 payload rows for one entry",
+      "trial": 2,
+      "operation": "browse.entry.detail.rows",
+      "entries": 20000,
+      "succeeded": true
+    },
+    {
+      "message": "300 summary rows; zero evidence payload decodes",
+      "trial": 3,
+      "operation": "browse.first.page.rows",
+      "entries": 20000,
+      "succeeded": true
+    },
+    {
+      "message": "17 payload rows for one entry",
+      "trial": 3,
+      "operation": "browse.entry.detail.rows",
+      "entries": 20000,
+      "succeeded": true
+    }
+  ],
+  "validation": {
+    "engineSwiftTestingPassed": 119,
+    "engineXCTestPassed": 40,
+    "engineEvidence": "build/mac-w2-c/corpus-local-entry-checked-core.log",
+    "additionalTargetedRecheck": {
+      "passed": 9,
+      "evidence": "build/mac-w2-c/corpus-local-entry-admission-final.log",
+      "includedInEngineSuiteCount": true
+    },
+    "native": {
+      "passed": 76,
+      "failed": 0,
+      "skipped": 1,
+      "skip": "nativeCreateCancelSaveEditAndReopenJourney requires opt-in visible desktop validation"
+    },
+    "performance": {
+      "samples": 72,
+      "uniqueSampleKeys": 72,
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0
+    },
+    "sourceManifestMatchesFinalTree": true,
+    "initialNativeFailure": "Six NoteAnkiSender tests failed in the shared fixture before reaching Anki behavior because seed() assumed save loaded all entries. The fixture now explicitly prepares its full dependency; all six passed in the final run. No performance measurements came from that failed run.",
+    "initialEngineFailure": "An unguarded JSON expression index moved raw-corruption errors into index maintenance. Safe CASE expressions restore metadata/content validation separation; the complete engine regression passed. A new test assertion also switched unordered node comparison to identity order.",
+    "cleanup": {
+      "derivedDataAbsent": true,
+      "syntheticFixturesRemoved": true,
+      "packageCopiesRemoved": true,
+      "hostRemoved": true,
+      "installedAppAccessed": false
+    },
+    "staticChecks": {
+      "changedSwiftLineViolations": 0,
+      "swiftFilesChecked": 18,
+      "evidence": "build/mac-w2-c/corpus-local-entry-final-diff-lint.json",
+      "scope": "New/changed lines; pre-existing diagnostics elsewhere in touched files are not claimed clean."
+    }
+  },
+  "remainingCosts": [
+    "Existing databases without a certificate require one complete preparation. External canonical writes, schema/policy/account/generation changes and damaged proof conservatively require preparation again.",
+    "Enrolled/note-consuming entries, image-reference changes, existing interpretation edits, external evidence reuse, foreign citations and authored reordering retain full preparation in this stage.",
+    "Global media ownership/pin checks still scale with the complete media reference set. Alias/review/global identity admission retains SQL work; these results do not establish constant-time writes for every corpus shape.",
+    "Language/tag filtering retains a corpus-wide JSON tag scan. Complete store/index preparation, graph/search/export and structural batch operations retain their global semantics."
+  ],
+  "harnessSHA256": {
+    "LingroveTests/Services/Vocabulary/VocabularyOperationBenchmarkTests.swift": "8c3341c0e9e6fe4bd0da533797c5ac975ee33209d79801853a3bd46b547a2e69",
+    "LingroveTests/Services/Vocabulary/VocabularyBenchmarkFixture.swift": "da6f6ea402ef2ef2d76d900330a180d5d587283a944a2ed6273a660288cc9fb7",
+    "scripts/validation/benchmark-corpus-operations.py": "32ea28fed86834df161a612d45a2dc1187a58bbba66abe7b8fcc116ee57e655a"
+  },
+  "evidenceDirectory": "build/corpus-operation-benchmark/corpus-cold-entry-final"
+}

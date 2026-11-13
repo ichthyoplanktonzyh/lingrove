@@ -199,30 +199,10 @@ extension LingroveNotebookEngine {
                     values: [.text(workspace), .text(lookupKey)]) { try Self.browseText($0, 0) }.first
             } else { throw VocabularyError.invalidContent }
             guard let id else { return .init(fence: fence, entry: nil, decodedRows: 0, mappedSenseIDs: []) }
+            let rows = try notebookEntryRowsInTransaction(entryID: id, workspace: workspace)
+            guard !rows.isEmpty else { return .init(fence: fence, entry: nil, decodedRows: 0, mappedSenseIDs: []) }
             let senses = "SELECT id FROM notebook_senses WHERE workspace_id=? AND parent_id=?"
-            let collections = "SELECT id FROM notebook_collections WHERE workspace_id=? AND sense_id IN (\(senses))"
-            let usages = "SELECT id FROM notebook_usages WHERE workspace_id=? AND sense_id IN (\(senses))"
-            let occurrences = "SELECT occurrence_id FROM notebook_usages WHERE workspace_id=? AND sense_id IN (\(senses))"
             let base: [SQLiteValue] = [.text(workspace), .text(id)]
-            var rows: [VocabularyPersistenceRow] = []
-            func append(_ entity: VocabularyPersistenceEntity, _ predicate: String, _ arguments: [SQLiteValue]) throws {
-                rows += try browseRows(entity, workspace: workspace, predicate: predicate, arguments: arguments)
-            }
-            try append(.entries, "id=?", [.text(id)])
-            if rows.isEmpty { return .init(fence: fence, entry: nil, decodedRows: 0, mappedSenseIDs: []) }
-            try append(.senses, "parent_id=?", [.text(id)])
-            try append(.senseExplanations, "parent_id IN (\(senses))", base)
-            try append(.collections, "sense_id IN (\(senses))", base)
-            for entity in [VocabularyPersistenceEntity.blocks, .reviews, .collectionInterpretations] {
-                try append(entity, "parent_id IN (\(collections))", [.text(workspace)] + base)
-            }
-            try append(.bindings, "parent_id IN (SELECT id FROM notebook_reviews WHERE workspace_id=? AND parent_id IN (\(collections)))",
-                [.text(workspace), .text(workspace)] + base)
-            try append(.usages, "sense_id IN (\(senses))", base)
-            try append(.usageExplanations, "parent_id IN (\(usages))", [.text(workspace)] + base)
-            try append(.occurrences, "id IN (\(occurrences))", [.text(workspace)] + base)
-            try append(.sources, "id IN (SELECT parent_id FROM notebook_occurrences WHERE workspace_id=? AND id IN (\(occurrences)))",
-                [.text(workspace), .text(workspace)] + base)
             let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: false))
             let entries = document.entries
             guard entries.count == 1, let entry = entries.first, entry.id.uuidString == id else { throw VocabularyError.invalidArchive }
@@ -263,7 +243,37 @@ extension LingroveNotebookEngine {
         }
     }
 
-    private func browseRows(_ entity: VocabularyPersistenceEntity, workspace: String, predicate: String,
+    /// A caller-owned SQL transaction selects the complete lexical/evidence subtree. Both
+    /// detail readers and admitted local writers use this same lossless row selection.
+    func notebookEntryRowsInTransaction(entryID id: String, workspace: String) throws -> [VocabularyPersistenceRow] {
+        let senses = "SELECT id FROM notebook_senses WHERE workspace_id=? AND parent_id=?"
+        let collections = "SELECT id FROM notebook_collections WHERE workspace_id=? AND sense_id IN (\(senses))"
+        let usages = "SELECT id FROM notebook_usages WHERE workspace_id=? AND sense_id IN (\(senses))"
+        let occurrences = "SELECT occurrence_id FROM notebook_usages WHERE workspace_id=? AND sense_id IN (\(senses))"
+        let base: [SQLiteValue] = [.text(workspace), .text(id)]
+        var rows: [VocabularyPersistenceRow] = []
+        func append(_ entity: VocabularyPersistenceEntity, _ predicate: String, _ arguments: [SQLiteValue]) throws {
+            rows += try readNotebookRows(entity, workspace: workspace, predicate: predicate, arguments: arguments)
+        }
+        try append(.entries, "id=?", [.text(id)])
+        if rows.isEmpty { return [] }
+        try append(.senses, "parent_id=?", [.text(id)])
+        try append(.senseExplanations, "parent_id IN (\(senses))", base)
+        try append(.collections, "sense_id IN (\(senses))", base)
+        for entity in [VocabularyPersistenceEntity.blocks, .reviews, .collectionInterpretations] {
+            try append(entity, "parent_id IN (\(collections))", [.text(workspace)] + base)
+        }
+        try append(.bindings, "parent_id IN (SELECT id FROM notebook_reviews WHERE workspace_id=? AND parent_id IN (\(collections)))",
+            [.text(workspace), .text(workspace)] + base)
+        try append(.usages, "sense_id IN (\(senses))", base)
+        try append(.usageExplanations, "parent_id IN (\(usages))", [.text(workspace)] + base)
+        try append(.occurrences, "id IN (\(occurrences))", [.text(workspace)] + base)
+        try append(.sources, "id IN (SELECT parent_id FROM notebook_occurrences WHERE workspace_id=? AND id IN (\(occurrences)))",
+            [.text(workspace), .text(workspace)] + base)
+        return rows
+    }
+
+    func readNotebookRows(_ entity: VocabularyPersistenceEntity, workspace: String, predicate: String,
                             arguments: [SQLiteValue]) throws -> [VocabularyPersistenceRow] {
         let columns = ["id", "parent_id", "position", "payload_json"] + entity.indexKeys.map(\.rawValue)
         // The codec orders this tiny subtree by identity/explicit authored position. Asking

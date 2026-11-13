@@ -98,6 +98,17 @@ final class VocabularyBrowseModel: ObservableObject {
 
     func invalidate() { if active { reload(preservingWindow: true) } else { reset() } }
 
+    /// A retired selection must not trigger a global merged-alias lookup on the next page
+    /// refresh. Other requested destinations survive the commit and reload at its new fence.
+    func didCommitEntry(_ commit: LingroveNotebookEntryCommit) {
+        let live = Set(commit.entry?.senses.flatMap { [$0.id] + $0.mergedFrom } ?? [])
+        if requestedSenseID.map({ commit.previousSenseIDs.contains($0) && !live.contains($0) }) == true ||
+            requestedEntryID == commit.entryID && commit.entry == nil {
+            requestedSenseID = nil; requestedEntryID = nil
+        }
+        invalidate()
+    }
+
     func loadMoreIfNeeded(after id: UUID) {
         guard id == entries.last?.id, let next, pageWork == nil else { return }
         readPage(after: next)

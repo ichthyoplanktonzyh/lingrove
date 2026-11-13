@@ -109,6 +109,13 @@ nonisolated struct VocabularyArchiveSnapshot: Equatable, Sendable {
 /// scope must not require a complete document; its explicit draft is the merge baseline.
 typealias VocabularyOperationScope = LingroveNotebookVersion
 
+/// A local receipt has no complete document. Its distinct case prevents the store from
+/// publishing a changed entry through the complete-corpus compatibility interface.
+nonisolated enum VocabularyArchiveMutation: Sendable {
+    case complete(VocabularyArchiveSnapshot)
+    case entry(LingroveNotebookEntryCommit)
+}
+
 extension LingroveNotebookSnapshot {
     nonisolated func hasSameOwner(as other: LingroveNotebookVersion) -> Bool {
         other.hasSameOwner(as: self)
