@@ -9,12 +9,12 @@ extension LingroveNotebookEngine {
     /// retain the full save/import API, so arbitrary replacement documents get full validation.
     public func saveNotebookEntry(_ entry: VocabularyEntry,
         basedOn baseline: LingroveNotebookSnapshot, images: [String: Data] = [:],
-        operationId: String = UUID().uuidString.lowercased()) throws -> LingroveNotebookSnapshot {
+        operationId: String = UUID().uuidString.lowercased(), expectedCorpus: NotebookChangeToken? = nil) throws -> LingroveNotebookSnapshot {
         try Task.checkCancellation()
         let mediaDocument = VocabularyDocument(entries: [entry])
         let media = LingroveNotebookMediaStore(core: core)
         let staged: Set<VocabularyImageReference> = try images.isEmpty ? [] : media.stageSuppliedImages(document: mediaDocument, supplied: images)
-        return try saveEntryChange(basedOn: baseline, staged: staged, operationId: operationId) {
+        return try saveEntryChange(basedOn: baseline, staged: staged, operationId: operationId, expectedCorpus: expectedCorpus) {
             try $0.replacing(entry)
         }
     }
@@ -54,10 +54,11 @@ extension LingroveNotebookEngine {
     }
 
     private func saveEntryChange(basedOn baseline: LingroveNotebookSnapshot, staged: Set<VocabularyImageReference>,
-                                 operationId: String, prepare: (VocabularyEntrySaveState) throws -> VocabularyEntrySaveChange)
+                                 operationId: String, expectedCorpus: NotebookChangeToken? = nil, prepare: (VocabularyEntrySaveState) throws -> VocabularyEntrySaveChange)
         throws -> LingroveNotebookSnapshot {
         try Task.checkCancellation()
         return try core.inTransaction {
+            if let expectedCorpus, try core.notebookChangeStamp().corpus != expectedCorpus { throw VocabularyError.editConflict }
             let store = lingroveNotebookStore
             try store.checkActiveWorkspace(baseline.workspaceId, required: true)
             let current = try store.readSnapshot(workspaceId: baseline.workspaceId)

@@ -114,3 +114,30 @@ extension LingroveNotebookEngine {
         }
     }
 }
+
+/// Batch planning receives only existing lexical owners under one exact read fence. Missing
+/// keys represent new entries; no caller-supplied key list grants complete save authority.
+public nonisolated struct NotebookEntryLookup: Sendable {
+    public let fence: NotebookBrowseFence
+    public let entries: [VocabularyEntry]
+}
+
+extension LingroveNotebookEngine {
+    public func notebookEntries(lookupKeys: Set<String>, expected: LingroveNotebookVersion) throws -> NotebookEntryLookup {
+        guard lookupKeys.count <= 100 else { throw VocabularyError.invalidContent }
+        return try core.inReadTransaction {
+            try Task.checkCancellation()
+            let fence = try browseFenceInTransaction()
+            guard fence.version == expected else { throw VocabularyError.editConflict }
+            let keys = String(decoding: try core.encoder.encode(lookupKeys.sorted()), as: UTF8.self)
+            let ids = try core.query(sql: "SELECT id FROM notebook_entries WHERE workspace_id=? AND lookup_key IN (SELECT value FROM json_each(?)) ORDER BY id",
+                values: [.text(expected.workspaceId), .text(keys)]) { DatabaseCore.columnText(statement: $0, index: 0) }
+            let entries = try ids.flatMap { id -> [VocabularyEntry] in
+                try Task.checkCancellation()
+                let rows = try notebookEntryRowsInTransaction(entryID: id, workspace: expected.workspaceId)
+                return try VocabularyPersistenceCodec.decode(.init(rows: rows)).entries
+            }
+            return .init(fence: fence, entries: entries)
+        }
+    }
+}

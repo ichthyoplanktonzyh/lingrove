@@ -38,11 +38,12 @@ extension LingroveNotebookEngine {
     /// Existing warm caches keep their established incremental path and complete receipts.
     public func trySaveNotebookEntry(
         _ entry: VocabularyEntry, basedOn version: LingroveNotebookVersion, images: [String: Data] = [:],
-        operationId: String = UUID().uuidString.lowercased()
+        operationId: String = UUID().uuidString.lowercased(), expectedCorpus: NotebookChangeToken? = nil
     ) throws -> LingroveNotebookEntryCommit? {
         try Task.checkCancellation()
         let staged = try LingroveNotebookMediaStore(core: core).stageSuppliedImages(document: .init(entries: [entry]), supplied: images)
         return try core.inTransaction {
+            if let expectedCorpus, try core.notebookChangeStamp().corpus != expectedCorpus { throw VocabularyError.editConflict }
             guard let checkpoint = try entryCheckpoint(version) else { return nil }
             let admission = NotebookEntryAdmission(engine: self, version: version)
             guard let rows = try admission.localRows(entryID: entry.id, incoming: entry) else { return nil }

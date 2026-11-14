@@ -16,7 +16,7 @@ public struct NotebookReviewNoteCard: Codable, Equatable, Sendable {
         try questionVersion(in: LingroveNotebookVersion(scope))
     }
 
-    func questionVersion(in scope: LingroveNotebookVersion) throws -> String {
+    public func questionVersion(in scope: LingroveNotebookVersion) throws -> String {
         struct Value: Encodable {
             let model: NotebookReviewNoteCard
             let workspace: String

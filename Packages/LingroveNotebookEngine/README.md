@@ -132,3 +132,20 @@ Mac CLI batch acknowledgements. Its key cannot be reused in another workspace/ow
 completed replies survive journal ACK and restart. The existing corpus writer and receipt share
 one transaction through `saveNotebookCLI`; no receipt enters a public journal. Unsupported
 development schema snapshots are not migrated or erased.
+
+### Focused mobile consumers
+
+An entry editor can retain `NotebookEntryDetail` and submit it through the detail overload of
+`saveNotebookEntry`. The engine compares the durable corpus clock inside either the certified
+writer or the fully validated fallback. A partial detail is never accepted as a complete document.
+`notebookEntries(lookupKeys:expected:)` resolves batch owners in one frozen read transaction.
+
+`notebookLiteralSearchMaterial` projects searchable scalar fields, accepted evidence and confirmed
+meaning/cue/pattern joins without loading the full document or classification directory. A browser
+actor owns this disposable material and pages frozen summary results. Reuse requires its exact
+corpus fence and locale. Literal fields and semantic admission follow the shared browser rules;
+retrieval neither creates relations nor establishes a writer's validation certificate.
+
+`notebookReviewQuestion` reads one Note/type/source and only the images referenced by its rendered
+faces. It returns a corpus fence, review clock and rating question token. Hosts recheck admission
+after asynchronous work. Generic Cards return nil; unavailable Note sources fail explicitly.
