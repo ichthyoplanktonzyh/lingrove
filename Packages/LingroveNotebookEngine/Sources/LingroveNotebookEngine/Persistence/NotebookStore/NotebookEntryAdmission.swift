@@ -4,7 +4,7 @@ import LingroveNotebookPersistenceCodec
 
 /// One writer transaction borrows this SQL admission helper. It checks the global facts that
 /// a detached entry fragment cannot prove: identity/key ownership, external evidence reuse,
-/// review consumers and incoming semantic citations. Unsupported changes use the full path.
+/// accepted occurrence ownership and shared evidence. Missing proof uses the full path.
 struct NotebookEntryAdmission {
     let engine: LingroveNotebookEngine
     let version: LingroveNotebookVersion
@@ -14,20 +14,6 @@ struct NotebookEntryAdmission {
         let data = try JSONEncoder().encode(ids.map(\.uuidString).sorted())
         guard let text = String(data: data, encoding: .utf8) else { throw VocabularyError.invalidArchive }
         return text
-    }
-
-    func hasReviewConsumers(_ entries: [VocabularyEntry]) throws -> Bool {
-        let ids = Set(entries.flatMap { $0.senses.flatMap { [$0.id] + $0.mergedFrom } })
-        guard !ids.isEmpty else { return false }
-        let values: [SQLiteValue] = [.text(version.workspaceId), .text(try json(ids))]
-        if try core.scalarInt(sql: """
-            SELECT EXISTS(SELECT 1 FROM notebook_card_links WHERE workspace_id=?
-                AND sense_id IN (SELECT value FROM json_each(?)))
-            """, values: values) != 0 { return true }
-        return try core.scalarInt(sql: """
-            SELECT EXISTS(SELECT 1 FROM notebook_notes WHERE workspace_id=?
-                AND json_extract(payload_json,'$.senseID') IN (SELECT value FROM json_each(?)))
-            """, values: values) != 0
     }
 
     /// Existing evidence outside this fragment may require cloning/reconciling its source or
@@ -78,13 +64,6 @@ struct NotebookEntryAdmission {
                  SELECT 1 FROM notebook_blocks b JOIN notebook_collections c ON c.workspace_id=b.workspace_id AND c.id=b.parent_id
                  JOIN notebook_senses s ON s.workspace_id=c.workspace_id AND s.id=c.sense_id
                  WHERE b.workspace_id=? AND b.id IN (\(ids)) AND s.parent_id<>?
-                 """, [workspace, encoded, owner]),
-                ("""
-                 SELECT 1 FROM notebook_reviews r JOIN notebook_collections c ON c.workspace_id=r.workspace_id AND c.id=r.parent_id
-                 JOIN notebook_senses s ON s.workspace_id=c.workspace_id AND s.id=c.sense_id
-                 WHERE r.workspace_id=? AND r.id GLOB '*:card:*'
-                   AND CASE WHEN json_valid(r.payload_json) THEN json_extract(r.payload_json,'$.plan.id') END IN (\(ids))
-                   AND s.parent_id<>?
                  """, [workspace, encoded, owner])
             ]
             for (sql, values) in tests {
@@ -105,32 +84,4 @@ struct NotebookEntryAdmission {
         }
     }
 
-    func hasForeignCitations(senseID: UUID, entry: VocabularyEntry) throws -> Bool {
-        let examples = Set(entry.senses.filter { $0.id == senseID }.flatMap(\.examples).map(\.id))
-        guard !examples.isEmpty else { return false }
-        return try core.scalarInt(sql: """
-            SELECT EXISTS(SELECT 1 FROM notebook_mapping_evidence e JOIN notebook_meaning_mappings m
-                ON m.workspace_id=e.workspace_id AND m.id=e.parent_id
-                WHERE e.workspace_id=? AND e.usage_id IN (SELECT value FROM json_each(?)) AND m.parent_id<>?)
-            """, values: [.text(version.workspaceId), .text(try json(examples)), .text(senseID.uuidString)]) != 0
-    }
-
-    /// Retired-sense patterns/mappings are owned subtrees. Incoming foreign citations were
-    /// excluded above; no node, hierarchy, category or other sense's mapping can be removed.
-    func retiredSemanticRows(senseID: UUID) throws -> [VocabularyPersistenceRow] {
-        let workspace = version.workspaceId, raw = senseID.uuidString
-        let parents: [(VocabularyPersistenceEntity, VocabularyPersistenceEntity)] = [
-            (.usagePatterns, .patternSlots), (.meaningMappings, .mappingRoles), (.meaningMappings, .mappingEvidence)
-        ]
-        var rows: [VocabularyPersistenceRow] = []
-        for entity in [VocabularyPersistenceEntity.usagePatterns, .meaningMappings] {
-            rows += try engine.readNotebookRows(entity, workspace: workspace, predicate: "parent_id=?", arguments: [.text(raw)])
-        }
-        for (parent, child) in parents {
-            rows += try engine.readNotebookRows(child, workspace: workspace, predicate: """
-                parent_id IN (SELECT id FROM \(LingroveNotebookSchema.table(parent)) WHERE workspace_id=? AND parent_id=?)
-                """, arguments: [.text(workspace), .text(raw)])
-        }
-        return rows
-    }
 }

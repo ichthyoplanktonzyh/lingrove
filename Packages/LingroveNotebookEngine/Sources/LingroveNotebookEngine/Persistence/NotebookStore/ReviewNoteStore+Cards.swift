@@ -4,16 +4,19 @@ import LingroveNotebook
 /// Card generation belongs to the same transaction as source/type changes. Stable membership
 /// prevents regeneration from resetting memory or depending on a template's list position.
 extension ReviewNoteStore {
-    func reconcile(_ note: ReviewNote, type: ReviewNoteType, scope: LingroveNotebookSnapshot) throws {
+    @discardableResult
+    func reconcile(_ note: ReviewNote, type: ReviewNoteType, scope: LingroveNotebookSnapshot) throws -> [Membership] {
         let (entry, sense) = try NotebookReviewNoteCard.source(for: note, in: scope)
-        try reconcile(note, type: type, version: .init(scope), entry: entry, sense: sense)
+        return try reconcile(note, type: type, version: .init(scope), entry: entry, sense: sense)
     }
 
+    @discardableResult
     func reconcile(_ note: ReviewNote, type: ReviewNoteType, version: LingroveNotebookVersion,
-                   entry: VocabularyEntry, sense: VocabularySense) throws {
+                   entry: VocabularyEntry, sense: VocabularySense, knownMembers: [Membership]? = nil,
+                   prepared: ReviewTemplateRenderer.Prepared? = nil) throws -> [Membership] {
         let lingroveNotebookReviewStore = LingroveNotebookReviewStore(core: core)
         let lingroveNotebookCardLinkStore = LingroveNotebookCardLinkStore(core: core)
-        let members = try memberships(workspace: version.workspaceId, noteID: note.id)
+        var members = try knownMembers ?? memberships(workspace: version.workspaceId, noteID: note.id)
         let source = LingroveNotebookCardSource(workspaceId: version.workspaceId, notebookId: version.notebookId,
             entryId: note.entryID, senseId: note.senseID, exampleId: note.exampleID)
         let groups = try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
@@ -22,7 +25,7 @@ extension ReviewNoteStore {
         for template in type.templates where template.enabled {
             if members.contains(where: { $0.noteID == note.id && $0.templateID == template.id }) { continue }
             let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: template.id)
-            guard let rendered = try? model.render(entry: entry, sense: sense) else { continue }
+            guard let rendered = try? model.render(entry: entry, sense: sense, using: prepared) else { continue }
             let input = try cardInput(rendered, sense: sense, workspace: version.workspaceId)
             if input.frontText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
             let cardID = LingroveNotebookCardMaterial.stableID("note-card|" + note.id.uuidString + "|" + template.id.uuidString,
@@ -37,12 +40,15 @@ extension ReviewNoteStore {
             try OutboxStore(core: core).enqueueCardUpsertOperation(workspaceId: version.workspaceId,
                 installationId: settings.installationId, operationId: operation, clientUpdatedAt: now,
                 card: card, isInitialCreate: true, reviewScheduleImpact: true)
-            let draft = LingroveNotebookCardDraft(id: linkID, source: source, sourceRevision: version.revision, generatedContent: input)
-            _ = try lingroveNotebookCardLinkStore.insert(draft: draft, cardId: cardID, generatedContent: input,
+            let draft = ReviewNoteCardLinkDraft(id: linkID, source: source, sourceRevision: version.revision, generatedContent: input)
+            _ = try lingroveNotebookCardLinkStore.insert(draft: draft, cardId: cardID,
                 fingerprint: LingroveNotebookCardMaterial.fingerprint(note), cardOperationId: card.lastOperationId, now: now)
             try lingroveNotebookCardLinkStore.holdCreatedCard(card, source: source, now: now)
             owner = try lingroveNotebookReviewStore.attach(cardId: cardID, linkId: linkID, to: owner, now: now)
-            try attach(.init(noteID: note.id, templateID: template.id, cardID: cardID), workspace: version.workspaceId)
+            let member = Membership(noteID: note.id, templateID: template.id, cardID: cardID)
+            try attach(member, workspace: version.workspaceId)
+            members.append(member)
         }
+        return members
     }
 }

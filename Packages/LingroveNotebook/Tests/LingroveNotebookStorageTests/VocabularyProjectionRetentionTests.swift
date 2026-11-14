@@ -60,11 +60,11 @@ struct VocabularyProjectionRetentionTests {
         let change = try state.changingOrganization(.init(semantics: edited, basedOn: document.semantics))
         let rows = try before.applyingOrganization(change)
         #expect(rows.changed.count == 2 && rows.removed.count == 2)
-        #expect(try VocabularyPersistenceCodec.decodeSaveState(rows.projection.rows(reviewTemplatesPresent: false)).document == change.state.document)
-        #expect(try VocabularyPersistenceCodec.decode(before.rows(reviewTemplatesPresent: false)) == document)
+        #expect(try VocabularyPersistenceCodec.decodeSaveState(rows.projection.rows()).document == change.state.document)
+        #expect(try VocabularyPersistenceCodec.decode(before.rows()) == document)
         var note = change.state.entries[0]; note.senses[0].note = "e\u{301}"
         let noteChange = try change.state.replacing(note)
         let next = try rows.projection.applying(noteChange)
-        #expect(try VocabularyPersistenceCodec.decode(next.projection.rows(reviewTemplatesPresent: false)) == noteChange.document)
+        #expect(try VocabularyPersistenceCodec.decode(next.projection.rows()) == noteChange.document)
     }
 }

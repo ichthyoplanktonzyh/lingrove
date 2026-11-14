@@ -1,5 +1,6 @@
 import Combine
 import LingroveNotebook
+import LingroveNotebookEngine
 import SwiftUI
 
 /// These are product journeys, not providers. Home owns the selected journey and its local
@@ -134,12 +135,14 @@ final class HomeLearningDemoModel: ObservableObject {
     @Published var expandedHeadwords: Set<UUID> = []
     @Published var presentsNotebook = false
     @Published var readingSource = LearningReadingSource.selection
-    @Published var ankiSession: AnkiReviewSession?
+    @Published var ankiSession: NoteAnkiSession?
     @Published var ankiDestinationShown = false
     @Published var previewBack = false
     @Published var reviewFailure: String?
     @Published private(set) var ready = false
-    let store = VocabularyStore(archive: VocabularyArchive(url: nil))
+    let store: VocabularyStore
+    private let demoRepository: MacNotebookRepository?
+    private let demoDirectory: URL
     let explainer = HomeDemoExplainer()
     let explanation: LearningExplanationSession
     let dictionary: LearningDictionarySession
@@ -155,11 +158,16 @@ final class HomeLearningDemoModel: ObservableObject {
     private var revision = UUID()
     private var hoveredPlayback = false
     private var manuallyControlled = false
-    private let cardID = UUID()
 
     init(preferences: UserDefaults? = nil, speechProvider: (any SpeechProviding)? = nil) {
         let preferences = preferences ?? UserDefaults(suiteName: "io.ichthyoplanktonzyh.lingrove.home-demo") ?? .standard
         self.preferences = preferences
+        // Home owns a private disposable repository so the sample exercises the same Note
+        // persistence and sender as the app, without accessing the installed corpus.
+        demoDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-home-note-" + UUID().uuidString)
+        demoRepository = try? MacNotebookRepository(databaseURL: demoDirectory.appendingPathComponent("notebook.sqlite"),
+            mediaDirectoryURL: demoDirectory.appendingPathComponent("media"))
+        store = demoRepository.map { VocabularyStore(repository: $0) } ?? VocabularyStore(archive: VocabularyArchive(url: nil))
         readingSettings = LanguageLearningSettings(defaults: preferences)
         let speechSettings = LearningSpeechSettings(defaults: preferences)
         speechSettings.selectProvider(.system)
@@ -170,7 +178,8 @@ final class HomeLearningDemoModel: ObservableObject {
         dictionary = LearningDictionarySession(provider: HomeDemoDictionary(), explanationService: explainer)
         notebook = VocabularyNotebookSession(service: explainer, provider: HomeDemoDictionary())
         review = AnkiReviewController(settings: AnkiReviewSettings(defaults: preferences,
-            credentials: AnkiCredentialStore(service: nil)), store: store, client: HomeDemoAnki(), activateAnki: {})
+            credentials: AnkiCredentialStore(service: nil)), store: store, repository: demoRepository,
+            client: HomeDemoAnki(), activateAnki: {})
         explanation.setTarget(LearningExplanationPolicy.input(VocabularyCaptureFactory.preview(presentation)
             ?? HomeLearningDemoFixtures.capture))
         store.openSelection = { [weak self] selection in
@@ -179,6 +188,8 @@ final class HomeLearningDemoModel: ObservableObject {
             self.selectSense(selection)
         }
     }
+
+    deinit { try? FileManager.default.removeItem(at: demoDirectory) }
 
     var action: HomeLearningDemoAction { scene.steps[step] }
     var presentation: LearningSentencePresentation {
@@ -217,6 +228,7 @@ final class HomeLearningDemoModel: ObservableObject {
         if let preparation { await preparation.value; return }
         let task = Task { [weak self] in
             guard let self else { return }
+            if !self.store.isLoaded { await self.store.load() }
             for capture in HomeLearningDemoFixtures.seedCaptures { await self.store.save(capture) }
             self.ready = true
         }
@@ -309,6 +321,7 @@ final class HomeLearningDemoModel: ObservableObject {
     /// Resolve that exact usage, fill only its still-empty sample meaning through the normal
     /// annotation API, and select it explicitly instead of assuming the first sense is usable.
     private func reviewSelection() async -> VocabularyExplanationDestination? {
+        if !store.isLoaded { await store.load() }
         let capture = HomeLearningDemoFixtures.capture
         await store.save(capture)
         guard let destination = store.explanationDestination(capture),
@@ -325,9 +338,9 @@ final class HomeLearningDemoModel: ObservableObject {
         guard let destination = await reviewSelection(),
               let entry = store.entries.first(where: { $0.id == destination.entryID }),
               let sense = entry.senses.first(where: { $0.id == destination.senseID }) else { return }
-        if ankiSession?.entryID == entry.id, ankiSession?.senseID == sense.id { return }
-        let session = AnkiReviewSession(controller: review, entry: entry, sense: sense, cardID: cardID)
-        session.plan.exampleID = destination.exampleID
+        let selection = VocabularySelection(entryID: entry.id, senseID: sense.id)
+        if ankiSession?.selection == selection { return }
+        let session = NoteAnkiSession(controller: review, selection: selection)
         ankiSession = session
         await session.load()
     }
@@ -338,8 +351,8 @@ final class HomeLearningDemoModel: ObservableObject {
     }
     func reviewCard() async {
         interact()
-        guard let binding = ankiSession?.binding, binding.noteID != nil else { return }
-        reviewFailure = await review.reviewDeck(binding)
+        guard ankiSession?.hasAssociation == true else { return }
+        reviewFailure = await review.reviewDeck()
         ankiDestinationShown = reviewFailure == nil
     }
     func useReadingSource(_ source: LearningReadingSource) {
@@ -390,6 +403,7 @@ final class HomeLearningDemoModel: ObservableObject {
     }
 
     private func demonstrateFavorite(_ action: HomeLearningDemoAction, revision: UUID) async {
+        if !store.isLoaded { await store.load() }
         await store.save(currentCapture)
         guard !Task.isCancelled, self.revision == revision else { return }
         favoriteMenuPresented = action == .favoriteMenu
@@ -408,9 +422,9 @@ final class HomeLearningDemoModel: ObservableObject {
         guard !Task.isCancelled, self.revision == revision, let session = ankiSession else { return }
         if action == .addAnki { _ = await session.send() }
         guard action == .reviewAnki else { return }
-        if session.binding?.noteID == nil { _ = await session.send() }
-        guard !Task.isCancelled, self.revision == revision, let binding = session.binding else { return }
-        reviewFailure = await review.reviewDeck(binding)
+        if !session.hasAssociation { _ = await session.send() }
+        guard !Task.isCancelled, self.revision == revision, session.hasAssociation else { return }
+        reviewFailure = await review.reviewDeck()
         guard !Task.isCancelled, self.revision == revision else { return }
         ankiDestinationShown = reviewFailure == nil
     }

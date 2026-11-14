@@ -48,8 +48,6 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(river.examples.isEmpty)
         #expect(river.isSavedWithoutContext)
         #expect(river.content?.isEmpty == true)
-        #expect(river.review == nil)
-        #expect(river.reviewCards?.isEmpty == true)
 
         let richContent = try #require(finance.content)
         #expect(richContent.count == 2)
@@ -65,18 +63,6 @@ struct VocabularyDocumentCodableCompatibilityTests {
         }
         #expect(imageReference.digest == "0123456789abcdef")
         #expect(caption == "Downtown branch")
-
-        let review = try #require(finance.review)
-        #expect(review.plan.audioKinds == [.expression])
-        #expect(review.plan.audioReceipts?[.expression]?.filename == "bank-expression-fixture.mp3")
-        #expect(review.preservedPlans.count == 1)
-        #expect(review.preservedPlans[0].includeSenseContent == nil)
-        #expect(review.preservedPlans[0].audioKinds == nil)
-        #expect(review.preservedPlans[0].audioReceipts == nil)
-        #expect(review.bindings.count == 1)
-        #expect(review.activeBinding?.noteID == 24681012)
-        #expect(review.activeBinding?.mapping[.expressionAudio] == "Audio")
-        #expect(review.activeBinding?.fields["Front"] == "bank")
 
         #expect(document.semantics.nodes.count == 2)
         #expect(document.semantics.nodes[0].labels.map(\.text) == ["bank", "financial institution"])
@@ -177,15 +163,6 @@ struct VocabularyDocumentCodableCompatibilityTests {
         #expect(defaultText.style == .paragraph)
         #expect(!defaultText.bold && !defaultText.italic)
 
-        let firstPlan = ReviewPlan()
-        let secondPlan = ReviewPlan()
-        #expect(firstPlan.id != secondPlan.id)
-        #expect(firstPlan.recognition)
-        #expect(!firstPlan.gap)
-        #expect(!firstPlan.includeNotes && !firstPlan.includeExplanation)
-        #expect(firstPlan.includeSenseContent == nil)
-        #expect(firstPlan.audioKinds == nil && firstPlan.audioReceipts == nil)
-        #expect(ReviewLayout().front.isEmpty && ReviewLayout().back.isEmpty)
 
         let defaultCategory = VocabularyCategory(id: Self.fixedID("00000000-0000-4000-8000-000000000801"), axis: .content, labels: [])
         #expect(defaultCategory.definition.isEmpty)
@@ -197,7 +174,6 @@ struct VocabularyDocumentCodableCompatibilityTests {
         let document = VocabularyDocument()
         #expect(document.schemaVersion == VocabularyDocument.currentVersion)
         #expect(document.catalog.isEmpty)
-        #expect(document.reviewTemplates == nil)
         #expect(VocabularyBackup(document: document, images: [:]).version == 1)
         #expect(LearningLanguage.allCases.map(\.rawValue) == [
             "en", "es", "fr", "de", "it", "pt", "nl", "ru", "zh-Hans", "zh-Hant", "ja", "ko", "hi", "ar"

@@ -14,9 +14,7 @@ struct VocabularyMediaReferenceIndex: Sendable {
             if !refs.isEmpty { byEntry[entry.id] = refs }
             for ref in refs { counts[ref, default: 0] += 1 }
         }
-        let templates = VocabularyDocument(catalog: [], sources: [], occurrences: [], interpretations: [],
-            reviewTemplates: document.reviewTemplates)
-        for ref in Set(VocabularyDocumentValidation.imageReferences(templates)) { counts[ref, default: 0] += 1 }
+
     }
 
     var references: Set<VocabularyImageReference> { Set(counts.keys) }

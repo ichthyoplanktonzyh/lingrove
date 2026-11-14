@@ -1,43 +1,6 @@
 import CryptoKit
 import Foundation
 
-/// A target-neutral recipe belongs to a saved exercise, independently of scheduling and Anki.
-/// Editors copy it until Save. Stable layout references follow the original sense; custom blocks
-/// and generated audio remain owned material. Neither a remote deck nor a tool receipt belongs here.
-public nonisolated struct ReviewMaterialPlan: Codable, Hashable, Sendable {
-    public var name: String?
-    public var layout: ReviewLayout
-    public var exampleID: UUID?
-    public var audio: [ReviewAudioKind: ReviewMaterialAudio]
-
-    public init(name: String? = nil, layout: ReviewLayout, exampleID: UUID? = nil,
-                audio: [ReviewAudioKind: ReviewMaterialAudio] = [:]) {
-        self.name = name; self.layout = layout; self.exampleID = exampleID; self.audio = audio
-    }
-
-    private enum CodingKeys: String, CodingKey { case name, layout, exampleID, audio }
-    public init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        name = try values.decodeIfPresent(String.self, forKey: .name)
-        layout = try values.decode(ReviewLayout.self, forKey: .layout)
-        exampleID = try values.decodeIfPresent(UUID.self, forKey: .exampleID)
-        let stored = try values.decode([String: ReviewMaterialAudio].self, forKey: .audio)
-        audio = [:]
-        for (key, value) in stored {
-            guard let kind = ReviewAudioKind(rawValue: key) else { throw VocabularyError.invalidContent }
-            audio[kind] = value
-        }
-    }
-    public func encode(to encoder: Encoder) throws {
-        var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encodeIfPresent(name, forKey: .name); try values.encode(layout, forKey: .layout)
-        try values.encodeIfPresent(exampleID, forKey: .exampleID)
-        // Codable encodes enum-keyed dictionaries as unordered alternating arrays. String keys
-        // let sorted JSON canonicalize creation fingerprints across retry/process boundaries.
-        try values.encode(Dictionary(uniqueKeysWithValues: audio.map { ($0.key.rawValue, $0.value) }), forKey: .audio)
-    }
-}
-
 /// Content addressing names portable bytes, never a local path or an Anki filename. Optional
 /// dimensions are required for PNGs and forbidden for audio. The engine grants workspace access
 /// only when the matching validated bytes are committed with an exercise.
@@ -78,35 +41,4 @@ public nonisolated struct ReviewMaterialPreparedMedia: Codable, Equatable, Senda
     public let reference: ReviewMaterialMediaReference
     public let data: Data
     public init(reference: ReviewMaterialMediaReference, data: Data) { self.reference = reference; self.data = data }
-}
-
-/// Audio stays typed through resolution. Its source hash prevents an old recording from silently
-/// speaking new source text after refresh; fingerprint identifies the user's chosen voice/settings.
-public nonisolated struct ReviewMaterialAudio: Codable, Hashable, Sendable {
-    public let reference: ReviewMaterialMediaReference
-    public let textHash: String
-    public let fingerprint: String
-    public init(reference: ReviewMaterialMediaReference, textHash: String, fingerprint: String) {
-        self.reference = reference; self.textHash = textHash; self.fingerprint = fingerprint
-    }
-    public static func textHash(_ text: String) -> String { ReviewMaterialMediaReference.digest(Data(text.utf8)) }
-}
-
-/// Ordered resolved parts are portable data. Each renderer chooses native content or safe HTML;
-/// user text never doubles as a media placeholder, and resolution never opens a review tool.
-public nonisolated enum ReviewResolvedPart: Equatable, Sendable {
-    case text(String), blocks([VocabularyContentBlock]), audio(ReviewAudioKind)
-}
-/// One short-lived resolution keeps both sides ordered for the target adapter. It carries no
-/// mutable editor, scheduling state or remote serialization decisions.
-public nonisolated struct ReviewMaterialContent: Equatable, Sendable {
-    public let front: [ReviewResolvedPart]
-    public let back: [ReviewResolvedPart]
-    public init(front: [ReviewResolvedPart], back: [ReviewResolvedPart]) { self.front = front; self.back = back }
-}
-
-/// Hosts localize these finite failures for their own preparation surface. Missing evidence is
-/// distinct from malformed saved data, so a retained exercise can stay readable without guessing.
-public nonisolated enum ReviewMaterialError: Error, Equatable, Sendable {
-    case missingContent(ReviewContentSource), emptyFace, missingAudio(ReviewAudioKind)
 }

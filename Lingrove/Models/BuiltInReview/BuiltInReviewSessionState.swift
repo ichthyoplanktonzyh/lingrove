@@ -60,15 +60,6 @@ nonisolated struct BuiltInReviewSavedImage: Identifiable, Sendable {
     let data: Data
 }
 
-/// Validated audio is borrowed by the practice face, just like images. The session's existing
-/// speech owner plays these bytes directly, without regeneration or another provider request.
-nonisolated struct BuiltInReviewSavedAudio: Identifiable, Sendable {
-    let id: String
-    let kind: ReviewAudioKind
-    let data: Data
-    let fileExtension: String
-}
-
 /// The session retains this window-only browser state while detail views are replaced. It
 /// carries no write authority; closing or changing account clears searches and selections.
 nonisolated struct BuiltInReviewBrowsing {

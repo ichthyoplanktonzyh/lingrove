@@ -43,12 +43,15 @@ public struct NotebookReviewNoteCard: Codable, Equatable, Sendable {
         return (entry, sense)
     }
 
-    func render(entry: VocabularyEntry, sense: VocabularySense) throws -> ReviewRenderedCard {
+    func render(entry: VocabularyEntry, sense: VocabularySense,
+                using prepared: ReviewTemplateRenderer.Prepared? = nil) throws -> ReviewRenderedCard {
         guard let template = noteType.templates.first(where: { $0.id == templateID && $0.enabled }) else {
             throw ReviewTemplateError.sourceUnavailable
         }
+        let definition = try prepared ?? ReviewTemplateRenderer.Prepared(noteType)
+        guard definition.type == noteType else { throw ReviewTemplateError.invalidDefinition }
         var resolved = note; resolved.entryID = entry.id
-        let fields = try ReviewNoteProjection.fields(note: resolved, type: noteType, entry: entry, sense: sense)
-        return try ReviewTemplateRenderer.render(type: noteType, template: template, fields: fields)
+        let fields = try ReviewNoteProjection.fields(note: resolved, prepared: definition, entry: entry, sense: sense)
+        return try definition.render(templateID: template.id, fields: fields)
     }
 }

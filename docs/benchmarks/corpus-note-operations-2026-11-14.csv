@@ -1,0 +1,169 @@
+operation,label,layer,seedEntries,visibleEntriesBefore,visibleEntriesAfter,samples,rejectedSamples,measurementMode,statistic,valueMs,minMs,maxMs,scanMs
+corpus.load.first,生词本首次加载,model,10000,0,10000,3,0,focused,median,4139.705667,4054.591667,4297.536,4419.168292
+corpus.load.first,生词本首次加载,model,20000,0,20000,3,0,focused,median,8462.01,8224.109084,8545.922625,9304.738459
+corpus.load.cached,生词本重复加载,model,10000,10000,10000,3,0,focused,median,0.00125,0.001125,0.003792,0.001792
+corpus.load.cached,生词本重复加载,model,20000,20000,20000,3,0,focused,median,0.001292,0.001125,0.001375,0.001417
+browse.list.first,列表首次排序与行准备,projection,10000,10000,10000,3,0,focused,median,4.485375,4.235875,5.126833,4.875542
+browse.list.first,列表首次排序与行准备,projection,20000,20000,20000,3,0,focused,median,9.356541,9.106458,9.525166,9.850375
+browse.list.cached,列表缓存读取,projection,10000,10000,10000,3,0,focused,median,0.002917,0.002208,0.006834,0.0085
+browse.list.cached,列表缓存读取,projection,20000,20000,20000,3,0,focused,median,0.003167,0.002125,0.0035,0.008541
+browse.expand.one,展开一个多义词,projection,10000,10000,10000,3,0,focused,median,2.716583,2.5645,3.015291,3.00025
+browse.expand.one,展开一个多义词,projection,20000,20000,20000,3,0,focused,median,6.857042,6.138917,7.132,7.613916
+browse.filter.language,按语言筛选,projection,10000,10000,10000,3,0,focused,median,0.740375,0.694,0.756625,0.744958
+browse.filter.language,按语言筛选,projection,20000,20000,20000,3,0,focused,median,1.465334,1.4505,1.607458,1.518209
+browse.filter.tag,按标签筛选,projection,10000,10000,10000,3,0,focused,median,3.840291,3.725292,4.127209,3.899708
+browse.filter.tag,按标签筛选,projection,20000,20000,20000,3,0,focused,median,7.195208,7.143042,7.264625,7.71325
+browse.literal.query,列表文字筛选,projection,10000,10000,10000,3,0,focused,median,278.000833,272.159292,282.689291,282.146709
+browse.literal.query,列表文字筛选,projection,20000,20000,20000,3,0,focused,median,534.131375,533.189833,542.915958,559.924958
+browse.meanings.first,共享义浏览准备,projection,10000,10000,10000,3,0,focused,median,23.900208,22.907,24.437583,25.608042
+browse.meanings.first,共享义浏览准备,projection,20000,20000,20000,3,0,focused,median,46.572375,46.509375,47.4115,58.746333
+browse.category.outline,分类大纲准备,projection,10000,10000,10000,3,0,focused,median,20.224667,20.2005,23.100875,23.719875
+browse.category.outline,分类大纲准备,projection,20000,20000,20000,3,0,focused,median,40.543291,40.087125,42.505875,46.807459
+browse.unclassified,未分类义项准备,projection,10000,10000,10000,3,0,focused,median,4.139,3.932416,4.2485,4.341334
+browse.unclassified,未分类义项准备,projection,20000,20000,20000,3,0,focused,median,8.050792,7.972084,8.08075,8.652416
+search.prepare.first,首次检索文档准备,projection,10000,10000,10000,3,0,focused,median,276.231541,269.768875,293.661584,299.9975
+search.prepare.first,首次检索文档准备,projection,20000,20000,20000,3,0,focused,median,540.940958,531.977042,542.784875,625.226375
+search.keyword.query,关键词检索,projection,10000,10000,10000,3,0,focused,median,58.105708,56.826167,61.9455,69.826792
+search.keyword.query,关键词检索,projection,20000,20000,20000,3,0,focused,median,112.502083,111.724792,112.814583,132.200083
+search.prepare.one.receipt,个人笔记变化后的检索准备（检索文本未变）,projection,10000,10000,10000,3,0,focused,median,0.018292,0.017,0.024416,0.0225
+search.prepare.one.receipt,个人笔记变化后的检索准备（检索文本未变）,projection,20000,20000,20000,3,0,focused,median,0.020416,0.017416,0.027375,0.023167
+graph.taxonomy.first,分类图谱首次投影,projection,10000,10000,10000,3,0,focused,median,126.191,121.801334,129.050334,138.523416
+graph.taxonomy.first,分类图谱首次投影,projection,20000,20000,20000,3,0,focused,median,251.915667,245.700083,256.3275,272.739625
+graph.taxonomy.cached,分类图谱缓存读取,projection,10000,10000,10000,3,0,focused,median,0.061292,0.05875,0.064042,0.045917
+graph.taxonomy.cached,分类图谱缓存读取,projection,20000,20000,20000,3,0,focused,median,0.056333,0.050542,0.06075,0.067042
+graph.entries.first,词条图谱首次投影,projection,10000,10000,10000,3,0,focused,median,22.953959,21.561875,23.193834,23.487541
+graph.entries.first,词条图谱首次投影,projection,20000,20000,20000,3,0,focused,median,42.859584,42.706334,43.688583,45.631583
+favorite.translation.first,收藏无上下文翻译（首次写入）,store,10000,10000,10001,3,0,focused,median,83.639291,81.513208,85.43825,92.478333
+favorite.translation.first,收藏无上下文翻译（首次写入）,store,20000,20000,20001,3,0,focused,median,156.623166,156.334375,157.706834,165.774
+favorite.context.first,收藏带例句翻译（首次写入）,store,10000,10001,10002,3,0,focused,median,81.534084,81.287375,85.400583,90.355416
+favorite.context.first,收藏带例句翻译（首次写入）,store,20000,20001,20002,3,0,focused,median,160.565042,157.198375,163.037375,170.962833
+search.prepare.after.favorite,收藏后的检索准备,projection,10000,10002,10002,3,0,focused,median,93.696708,91.643791,98.230458,104.116208
+search.prepare.after.favorite,收藏后的检索准备,projection,20000,20002,20002,3,0,focused,median,192.2655,192.129584,202.652125,227.532583
+browse.list.after.favorite,收藏后的列表准备,projection,10000,10002,10002,3,0,focused,median,4.232708,4.187708,4.390542,5.099917
+browse.list.after.favorite,收藏后的列表准备,projection,20000,20002,20002,3,0,focused,median,8.856959,8.845458,8.9165,9.336666
+favorite.translation.repeat,收藏另一无上下文翻译（后续写入）,store,10000,10002,10003,3,0,focused,median,74.494375,73.277042,78.451333,85.27525
+favorite.translation.repeat,收藏另一无上下文翻译（后续写入）,store,20000,20002,20003,3,0,focused,median,149.602333,149.54225,153.293875,155.063791
+favorite.context.repeat,收藏另一带例句翻译（后续写入）,store,10000,10003,10004,3,0,focused,median,81.290542,80.987208,88.731541,88.595125
+favorite.context.repeat,收藏另一带例句翻译（后续写入）,store,20000,20003,20004,3,0,focused,median,160.826667,158.635625,166.898,170.683333
+favorite.context.existing,为已有义项收藏例句,store,10000,10004,10004,3,0,focused,median,32.47725,32.075667,37.456792,35.779166
+favorite.context.existing,为已有义项收藏例句,store,20000,20004,20004,3,0,focused,median,61.094166,60.965958,63.670125,66.95625
+favorite.context.remove,取消收藏一条例句,store,10000,10004,10004,1,0,scan,single observation,42.338959,42.338959,42.338959,42.338959
+favorite.context.remove,取消收藏一条例句,store,20000,20004,20004,1,0,scan,single observation,82.952542,82.952542,82.952542,82.952542
+editor.save.note,保存个人笔记,store,10000,10004,10004,3,0,focused,median,59.932125,59.229167,63.624375,64.343042
+editor.save.note,保存个人笔记,store,20000,20004,20004,3,0,focused,median,118.527,117.378792,119.428459,125.582167
+editor.save.translation,保存义项翻译,store,10000,10004,10004,3,0,focused,median,58.395208,58.291167,61.684333,63.850666
+editor.save.translation,保存义项翻译,store,20000,20004,20004,3,0,focused,median,115.15575,114.512541,115.809042,122.100875
+sense.create,新增有内容的义项,store,10000,10004,10004,1,0,scan,single observation,227.896958,227.896958,227.896958,227.896958
+sense.create,新增有内容的义项,store,20000,20004,20004,1,0,scan,single observation,495.244208,495.244208,495.244208,495.244208
+sense.merge,合并义项,store,10000,10004,10004,1,0,scan,single observation,40.805209,40.805209,40.805209,40.805209
+sense.merge,合并义项,store,20000,20004,20004,1,0,scan,single observation,79.82275,79.82275,79.82275,79.82275
+sense.merge.undo,撤销义项合并,store,10000,10004,10004,1,0,scan,single observation,2161.568167,2161.568167,2161.568167,2161.568167
+sense.merge.undo,撤销义项合并,store,20000,20004,20004,1,0,scan,single observation,4743.601833,4743.601833,4743.601833,4743.601833
+sense.remove.mapped,移除前部有关联义项（第59词条）,store,10000,10004,10004,3,0,focused,median,45.870708,45.20975,46.559166,51.239667
+sense.remove.mapped,移除前部有关联义项（第59词条）,store,20000,20004,20004,3,0,focused,median,90.720792,89.477792,92.854625,100.88275
+search.prepare.after.remove,移除义项后的检索准备,projection,10000,10004,10004,3,0,focused,median,95.856125,95.7215,102.399041,116.318833
+search.prepare.after.remove,移除义项后的检索准备,projection,20000,20004,20004,3,0,focused,median,204.023042,202.820959,204.1265,251.761625
+browse.list.after.remove,移除义项后的列表准备,projection,10000,10004,10004,3,0,focused,median,4.260375,4.143041,4.391666,4.432833
+browse.list.after.remove,移除义项后的列表准备,projection,20000,20004,20004,3,0,focused,median,8.809625,8.7855,8.985625,10.325709
+sense.remove.unmapped,移除尾部无关联义项（倒数第2词条）,store,10000,10004,10004,3,0,focused,median,36.768125,36.35025,39.420709,43.192
+sense.remove.unmapped,移除尾部无关联义项（倒数第2词条）,store,20000,20004,20004,3,0,focused,median,74.72,74.657,74.9155,78.857125
+sense.remove.enrolled,从生词本移除已加入复习的义项,store,10000,10004,10004,3,0,focused,median,53.037125,51.569583,54.351333,59.130292
+sense.remove.enrolled,从生词本移除已加入复习的义项,store,20000,20004,20004,3,0,focused,median,103.606875,102.314125,107.183416,117.361334
+entry.remove,从生词本移除整个词条,store,10000,10004,10003,1,0,scan,single observation,86.143542,86.143542,86.143542,86.143542
+entry.remove,从生词本移除整个词条,store,20000,20004,20003,1,0,scan,single observation,161.47375,161.47375,161.47375,161.47375
+entry.create.manual,手工创建一个词条,store,10000,10003,10004,1,0,scan,single observation,279.963958,279.963958,279.963958,279.963958
+entry.create.manual,手工创建一个词条,store,20000,20003,20004,1,0,scan,single observation,467.758042,467.758042,467.758042,467.758042
+entry.import.50,批量添加50个词条,store,10000,10004,10054,1,0,scan,single observation,2390.883083,2390.883083,2390.883083,2390.883083
+entry.import.50,批量添加50个词条,store,20000,20004,20054,1,0,scan,single observation,5079.597875,5079.597875,5079.597875,5079.597875
+entry.import.50.again,再次手工导入同样50行（新增50义项）,store,10000,10054,10054,1,0,scan,single observation,2250.56875,2250.56875,2250.56875,2250.56875
+entry.import.50.again,再次手工导入同样50行（新增50义项）,store,20000,20054,20054,1,0,scan,single observation,4754.766333,4754.766333,4754.766333,4754.766333
+tag.remove.global,全库删除一个标签,store,10000,10054,10054,1,0,scan,single observation,909.733708,909.733708,909.733708,909.733708
+tag.remove.global,全库删除一个标签,store,20000,20054,20054,1,0,scan,single observation,1785.144291,1785.144291,1785.144291,1785.144291
+image.prepare,准备一张合成图片,store,10000,10054,10054,1,0,scan,single observation,17.487875,17.487875,17.487875,17.487875
+image.prepare,准备一张合成图片,store,20000,20054,20054,1,0,scan,single observation,1.746959,1.746959,1.746959,1.746959
+image.attach.save,保存带图片的义项说明,store,10000,10054,10054,1,0,scan,single observation,72.129667,72.129667,72.129667,72.129667
+image.attach.save,保存带图片的义项说明,store,20000,20054,20054,1,0,scan,single observation,124.846583,124.846583,124.846583,124.846583
+image.read,读取已存图片,store,10000,10054,10054,1,0,scan,single observation,4.690459,4.690459,4.690459,4.690459
+image.read,读取已存图片,store,20000,20054,20054,1,0,scan,single observation,6.079458,6.079458,6.079458,6.079458
+meaning.edit.shared,编辑关联12个义项的共享义,store,10000,10054,10054,1,0,scan,single observation,117.888708,117.888708,117.888708,117.888708
+meaning.edit.shared,编辑关联12个义项的共享义,store,20000,20054,20054,1,0,scan,single observation,212.439625,212.439625,212.439625,212.439625
+meaning.create,新增共享义,store,10000,10054,10054,1,0,scan,single observation,108.01525,108.01525,108.01525,108.01525
+meaning.create,新增共享义,store,20000,20054,20054,1,0,scan,single observation,177.02675,177.02675,177.02675,177.02675
+meaning.associate,将义项关联到共享义,store,10000,10054,10054,1,0,scan,single observation,85.679916,85.679916,85.679916,85.679916
+meaning.associate,将义项关联到共享义,store,20000,20054,20054,1,0,scan,single observation,168.979917,168.979917,168.979917,168.979917
+meaning.categorize,将共享义加入分类,store,10000,10054,10054,1,0,scan,single observation,77.314625,77.314625,77.314625,77.314625
+meaning.categorize,将共享义加入分类,store,20000,20054,20054,1,0,scan,single observation,124.624833,124.624833,124.624833,124.624833
+category.edit,编辑分类说明,store,10000,10054,10054,1,0,scan,single observation,90.932875,90.932875,90.932875,90.932875
+category.edit,编辑分类说明,store,20000,20054,20054,1,0,scan,single observation,138.082125,138.082125,138.082125,138.082125
+meaning.remove,删除共享义及其关联,store,10000,10054,10054,1,0,scan,single observation,150.886459,150.886459,150.886459,150.886459
+meaning.remove,删除共享义及其关联,store,20000,20054,20054,1,0,scan,single observation,284.830625,284.830625,284.830625,284.830625
+cli.status,CLI读取库状态,store-command,10000,10054,10054,1,0,scan,single observation,1.480166,1.480166,1.480166,1.480166
+cli.status,CLI读取库状态,store-command,20000,20054,20054,1,0,scan,single observation,1.441042,1.441042,1.441042,1.441042
+cli.list.page,CLI读取50条列表页,store-command,10000,10054,10054,1,0,scan,single observation,84.574917,84.574917,84.574917,84.574917
+cli.list.page,CLI读取50条列表页,store-command,20000,20054,20054,1,0,scan,single observation,190.153958,190.153958,190.153958,190.153958
+cli.list.query,CLI查询列表,store-command,10000,10054,10054,1,0,scan,single observation,364.337916,364.337916,364.337916,364.337916
+cli.list.query,CLI查询列表,store-command,20000,20054,20054,1,0,scan,single observation,726.542291,726.542291,726.542291,726.542291
+cli.entry.read,CLI读取一个词条,store-command,10000,10054,10054,1,0,scan,single observation,118.757125,118.757125,118.757125,118.757125
+cli.entry.read,CLI读取一个词条,store-command,20000,20054,20054,1,0,scan,single observation,212.855875,212.855875,212.855875,212.855875
+cli.sense.read,CLI读取一个义项,store-command,10000,10054,10054,1,0,scan,single observation,115.357458,115.357458,115.357458,115.357458
+cli.sense.read,CLI读取一个义项,store-command,20000,20054,20054,1,0,scan,single observation,210.738667,210.738667,210.738667,210.738667
+cli.entries.read25,CLI读取25个词条,store-command,10000,10054,10054,1,0,scan,single observation,141.111458,141.111458,141.111458,141.111458
+cli.entries.read25,CLI读取25个词条,store-command,20000,20054,20054,1,0,scan,single observation,230.366667,230.366667,230.366667,230.366667
+cli.capture50,CLI批量保存50个词条,store-command,10000,10054,10104,1,0,scan,single observation,1085.7444169999999,1085.7444169999999,1085.7444169999999,1085.7444169999999
+cli.capture50,CLI批量保存50个词条,store-command,20000,20054,20104,1,0,scan,single observation,1973.964,1973.964,1973.964,1973.964
+cli.capture50.idempotent,CLI重试同一批次（幂等）,store-command,10000,10104,10104,1,0,scan,single observation,9.901,9.901,9.901,9.901
+cli.capture50.idempotent,CLI重试同一批次（幂等）,store-command,20000,20104,20104,1,0,scan,single observation,8.89625,8.89625,8.89625,8.89625
+review.enroll.one.hidden,生词本内将单个义项加入复习（复习页隐藏）,model,10000,10104,10104,1,0,scan,single observation,32.747083,32.747083,32.747083,32.747083
+review.enroll.one.hidden,生词本内将单个义项加入复习（复习页隐藏）,model,20000,20104,20104,1,0,scan,single observation,43.065916,43.065916,43.065916,43.065916
+review.open.first,首次进入复习,model,10000,10104,10104,1,0,scan,single observation,381.2705,381.2705,381.2705,381.2705
+review.open.first,首次进入复习,model,20000,20104,20104,1,0,scan,single observation,704.549292,704.549292,704.549292,704.549292
+review.open.repeat,关闭后再次进入复习,model,10000,10104,10104,1,0,scan,single observation,238.203334,238.203334,238.203334,238.203334
+review.open.repeat,关闭后再次进入复习,model,20000,20104,20104,1,0,scan,single observation,509.071291,509.071291,509.071291,509.071291
+review.enroll.one,复习页可见时加入义项并刷新,model,10000,10104,10104,1,0,scan,single observation,315.942333,315.942333,315.942333,315.942333
+review.enroll.one,复习页可见时加入义项并刷新,model,20000,20104,20104,1,0,scan,single observation,591.145417,591.145417,591.145417,591.145417
+review.note.edit.and.refresh,编辑单条 Note 并刷新复习页,model,10000,10104,10104,1,0,scan,single observation,247.065416,247.065416,247.065416,247.065416
+review.note.edit.and.refresh,编辑单条 Note 并刷新复习页,model,20000,20104,20104,1,0,scan,single observation,482.756583,482.756583,482.756583,482.756583
+review.type.edit.shared.and.refresh,编辑共享 Note Type 并刷新复习页,model,10000,10104,10104,1,0,scan,single observation,3379.756708,3379.756708,3379.756708,3379.756708
+review.type.edit.shared.and.refresh,编辑共享 Note Type 并刷新复习页,model,20000,20104,20104,1,0,scan,single observation,6329.808084,6329.808084,6329.808084,6329.808084
+review.participation,读取单个义项复习状态,model,10000,10104,10104,1,0,scan,single observation,6.156,6.156,6.156,6.156
+review.participation,读取单个义项复习状态,model,20000,20104,20104,1,0,scan,single observation,2.350375,2.350375,2.350375,2.350375
+review.content.search,复习内容列表检索,model,10000,10104,10104,1,0,scan,single observation,6.289125,6.289125,6.289125,6.289125
+review.content.search,复习内容列表检索,model,20000,20104,20104,1,0,scan,single observation,19.293208,19.293208,19.293208,19.293208
+review.practice.start,开始单项复习,model,10000,10104,10104,1,0,scan,single observation,37.217209,37.217209,37.217209,37.217209
+review.practice.start,开始单项复习,model,20000,20104,20104,1,0,scan,single observation,69.380292,69.380292,69.380292,69.380292
+review.answer.reveal,显示答案,model,10000,10104,10104,1,0,scan,single observation,0.01675,0.01675,0.01675,0.01675
+review.answer.reveal,显示答案,model,20000,20104,20104,1,0,scan,single observation,0.014291,0.014291,0.014291,0.014291
+review.rate.and.refresh,评分并刷新复习状态,model,10000,10104,10104,1,0,scan,single observation,249.303959,249.303959,249.303959,249.303959
+review.rate.and.refresh,评分并刷新复习状态,model,20000,20104,20104,1,0,scan,single observation,511.9565,511.9565,511.9565,511.9565
+review.rating.undo.and.refresh,撤销评分并刷新,model,10000,10104,10104,1,0,scan,single observation,280.317459,280.317459,280.317459,280.317459
+review.rating.undo.and.refresh,撤销评分并刷新,model,20000,20104,20104,1,0,scan,single observation,572.251416,572.251416,572.251416,572.251416
+review.pause.and.refresh,暂停复习并刷新,model,10000,10104,10104,1,0,scan,single observation,247.4355,247.4355,247.4355,247.4355
+review.pause.and.refresh,暂停复习并刷新,model,20000,20104,20104,1,0,scan,single observation,479.71725,479.71725,479.71725,479.71725
+review.resume.and.refresh,恢复复习并刷新,model,10000,10104,10104,1,0,scan,single observation,287.014875,287.014875,287.014875,287.014875
+review.resume.and.refresh,恢复复习并刷新,model,20000,20104,20104,1,0,scan,single observation,544.5085,544.5085,544.5085,544.5085
+review.withdraw.and.refresh,退出复习并刷新,model,10000,10104,10104,1,0,scan,single observation,246.341875,246.341875,246.341875,246.341875
+review.withdraw.and.refresh,退出复习并刷新,model,20000,20104,20104,1,0,scan,single observation,495.433458,495.433458,495.433458,495.433458
+review.navigation.resume,切回复习页并刷新,model,10000,10104,10104,1,0,scan,single observation,294.59325,294.59325,294.59325,294.59325
+review.navigation.resume,切回复习页并刷新,model,20000,20104,20104,1,0,scan,single observation,598.117833,598.117833,598.117833,598.117833
+progress.open.first,首次进入进度页,model,10000,10104,10104,1,0,scan,single observation,123.571125,123.571125,123.571125,123.571125
+progress.open.first,首次进入进度页,model,20000,20104,20104,1,0,scan,single observation,194.768958,194.768958,194.768958,194.768958
+progress.open.repeat,再次进入进度页,model,10000,10104,10104,1,0,scan,single observation,128.489417,128.489417,128.489417,128.489417
+progress.open.repeat,再次进入进度页,model,20000,20104,20104,1,0,scan,single observation,166.839208,166.839208,166.839208,166.839208
+progress.reload,刷新进度统计,model,10000,10104,10104,1,0,scan,single observation,98.692334,98.692334,98.692334,98.692334
+progress.reload,刷新进度统计,model,20000,20104,20104,1,0,scan,single observation,173.260042,173.260042,173.260042,173.260042
+export.selected.prepare,准备选中约50义项的CSV导出,store,10000,10104,10104,1,0,scan,single observation,88.56375,88.56375,88.56375,88.56375
+export.selected.prepare,准备选中约50义项的CSV导出,store,20000,20104,20104,1,0,scan,single observation,160.573791,160.573791,160.573791,160.573791
+export.selected.write,写出已准备的CSV文件,store,10000,10104,10104,1,0,scan,single observation,1.962459,1.962459,1.962459,1.962459
+export.selected.write,写出已准备的CSV文件,store,20000,20104,20104,1,0,scan,single observation,1.735041,1.735041,1.735041,1.735041
+backup.full.write,生成并写出完整语料备份,store,10000,10104,10104,1,0,scan,single observation,1276.953292,1276.953292,1276.953292,1276.953292
+backup.full.write,生成并写出完整语料备份,store,20000,20104,20104,1,0,scan,single observation,2285.050417,2285.050417,2285.050417,2285.050417
+backup.full.restore,校验并恢复完整语料备份,store,10000,10104,10104,1,0,scan,single observation,3984.088167,3984.088167,3984.088167,3984.088167
+backup.full.restore,校验并恢复完整语料备份,store,20000,20104,20104,1,0,scan,single observation,7123.374292,7123.374292,7123.374292,7123.374292
+favorite.stage.plan,收藏分段：生成待保存词条,policy,10000,10004,10004,3,0,focused,median,48.153667,47.735666,53.847416,49.693209
+favorite.stage.plan,收藏分段：生成待保存词条,policy,20000,20004,20004,3,0,focused,median,95.3515,95.224458,95.466542,96.885291
+favorite.stage.transaction,收藏分段：引擎事务,engine,10000,10004,10004,3,0,focused,median,25.366166,15.124167,37.038375,16.681208
+favorite.stage.transaction,收藏分段：引擎事务,engine,20000,20004,20004,3,0,focused,median,31.9035,29.110291,32.414917,32.042833
+favorite.stage.readindex,收藏分段：UI读取索引增量,projection,10000,10004,10004,3,0,focused,median,3.533584,1.579167,5.859667,5.276041
+favorite.stage.readindex,收藏分段：UI读取索引增量,projection,20000,20004,20004,3,0,focused,median,4.653,4.440792,4.673334,10.642625
+sense.remove.stage.transaction,移除义项分段：引擎事务,engine,10000,10004,10004,3,0,focused,median,38.498708,38.055541,43.857583,39.554
+sense.remove.stage.transaction,移除义项分段：引擎事务,engine,20000,20004,20004,3,0,focused,median,77.79925,75.227834,78.695375,77.382083

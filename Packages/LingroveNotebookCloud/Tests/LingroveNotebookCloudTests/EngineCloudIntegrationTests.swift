@@ -27,17 +27,18 @@ struct EngineCloudIntegrationTests {
         let f = try EngineCloudFixture(); defer { f.cleanUp() }
         let saved = try f.engine.saveLingroveNotebook(Self.document(),
             basedOn: f.engine.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let enrollment = try #require(try f.engine.enrollNotebookSenses([draft], basedOn: saved).first)
-        let exercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(enrollment).first)
+        let selection = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
+        _ = try f.engine.enrollReviewNotes(selections: [selection], type: ReviewNoteDefaults.type, scope: saved)
+        let content = try f.engine.loadBuiltInNotebookReview(scope: saved, now: Date())
+        let card = try #require(content.queue.first)
         let storage = NotebookEngineStorage(engine: f.engine)
         let binding = try storage.capture(scope: f.scope)
         let request = try await storage.request(binding)
         let canonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: request.body)
         #expect(request.hasWork && !canonical.enrollments.isEmpty && !canonical.operations.isEmpty)
-        _ = try f.engine.submitNotebookRating(.init(cardId: exercise.cardId, rating: .good,
-            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
+        _ = try f.engine.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), card: card,
+            action: .init(content: content, selection: selection))
         let sentIDs = canonical.enrollments.map(\.operationId) + canonical.links.map(\.operationId)
             + canonical.operations.compactMap { op -> String? in
                 guard case let .object(fields) = op.operation, case let .string(id)? = fields["operationId"] else { return nil }
@@ -54,7 +55,7 @@ struct EngineCloudIntegrationTests {
         #expect(next.hasWork)
         let pending = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: next.body)
         #expect(pending.operations.count == 2, "The later rating and event were never sent in this ACK")
-        #expect(try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId).reps == 1)
+        #expect(try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: card.cardId).reps == 1)
         try f.engine.close()
         let reopened = try LingroveNotebookEngine(databaseURL: f.database, mediaDirectoryURL: f.media)
         defer { try? reopened.close() }
@@ -64,15 +65,18 @@ struct EngineCloudIntegrationTests {
 
     @Test func pendingMaterialMediaRemainsWorkUntilExactVersion3Acknowledgment() async throws {
         let f = try EngineCloudFixture(); defer { f.cleanUp() }
-        let saved = try f.engine.saveLingroveNotebook(Self.document(), basedOn: f.engine.loadLingroveNotebook(workspaceId: f.workspace))
-        let entry = saved.document.entries[0]
-        var bytes = Data("RIFF".utf8); bytes.append(contentsOf: [36, 0, 0, 0]); bytes.append(Data("WAVE".utf8)); bytes.append(Data(repeating: 0, count: 32))
-        let reference = ReviewMaterialMediaReference(digest: ReviewMaterialMediaReference.digest(bytes), mimeType: "audio/wav", byteCount: bytes.count)
+        let bytes = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
+        let image = VocabularyImageReference(digest: ReviewMaterialMediaReference.digest(bytes), width: 1, height: 1,
+            byteCount: bytes.count)
+        let reference = ReviewMaterialMediaReference(image: image)
         let prepared = ReviewMaterialPreparedMedia(reference: reference, data: bytes)
-        let plan = ReviewMaterialPlan(layout: .init(front: [.init(source: .expressionAudio)], back: [.init(source: .meaning)]),
-            audio: [.expression: .init(reference: reference, textHash: ReviewMaterialAudio.textHash(entry.expression), fingerprint: String(repeating: "a", count: 64))])
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: .init(entryID: entry.id, senseID: entry.senses[0].id), materialPlan: plan)
-        _ = try f.engine.enrollLingroveNotebookSenses([draft], scope: saved, media: [prepared])
+        var document = Self.document()
+        document.entries[0].senses[0].content = [.init(content: .image(image, caption: "Synthetic Note media"))]
+        let saved = try f.engine.saveLingroveNotebook(document, basedOn: f.engine.loadLingroveNotebook(workspaceId: f.workspace),
+            images: [image.filename: bytes])
+        let entry = saved.document.entries[0]
+        _ = try f.engine.enrollReviewNotes(selections: [.init(entryID: entry.id, senseID: entry.senses[0].id)],
+            type: ReviewNoteDefaults.type, scope: saved)
         let storage = NotebookEngineStorage(engine: f.engine), binding = try storage.capture(scope: f.scope)
         let request = try await storage.request(binding)
         let canonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: request.body)
@@ -91,7 +95,7 @@ struct EngineCloudIntegrationTests {
         _ = try await storage.apply(reply(version: 3, digests: [reference.digest]), request: request, binding: binding)
         let next = try await storage.request(binding)
         let nextCanonical = try JSONDecoder().decode(LingroveNotebookReviewRequest.self, from: next.body)
-        #expect(next.hasWork && nextCanonical.media == nil && nextCanonical.links.first?.value.materialPlan == plan)
+        #expect(next.hasWork && nextCanonical.media == nil && nextCanonical.noteState?.notes.count == 1)
     }
 
     @Test func retiredBindingsAndClosedOriginalConnectionCannotWriteThroughPorts() async throws {

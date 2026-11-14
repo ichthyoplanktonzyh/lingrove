@@ -9,22 +9,9 @@ nonisolated enum VocabularyWirePrivateOverlay {
     typealias C = VocabularyWireCoding
 
     static func capture(_ document: VocabularyDocument, notebookID: UUID) throws -> State {
-        var reviews: [State.Review] = [], explanations: [State.Explanation] = []
+        var explanations: [State.Explanation] = []
         func explanation(_ value: LearningExplanationRecord, owner: UUID, kind: VocabularyWireEntityKind) throws -> State.Explanation {
             .init(ownerKind: kind, ownerID: owner, explanationID: value.id, inputSignature: try C.signature(C.input(value.input)), occurrenceIdentity: value.input.occurrenceIdentity)
-        }
-        func review(_ value: VocabularyReview, sense: UUID, role: State.Role) throws -> State.Review? {
-            var audio: [State.Audio] = []
-            if let receipts = value.plan.audioReceipts {
-                audio.append(.init(planID: value.plan.id, preservedIndex: nil, materialSignature: try C.signature(C.plan(value.plan)), receipts: receipts))
-            }
-            for (index, plan) in value.preservedPlans.enumerated() {
-                if let receipts = plan.audioReceipts {
-                    audio.append(.init(planID: plan.id, preservedIndex: index, materialSignature: try C.signature(C.plan(plan)), receipts: receipts))
-                }
-            }
-            guard !value.bindings.isEmpty || value.activeBindingID != nil || !audio.isEmpty else { return nil }
-            return .init(senseID: sense, role: role, bindings: value.bindings, activeBindingID: value.activeBindingID, audio: audio)
         }
         for entry in document.catalog {
             for sense in entry.senses {
@@ -34,13 +21,7 @@ nonisolated enum VocabularyWirePrivateOverlay {
         for claim in document.interpretations {
             explanations += try claim.explanations.map { try explanation($0, owner: claim.id, kind: .interpretationExplanation) }
         }
-        for sense in document.catalog.flatMap(\.senses) {
-            if let value = sense.review, let local = try review(value, sense: sense.id, role: .legacy) { reviews.append(local) }
-            for value in sense.reviewCards ?? [] {
-                if let local = try review(value, sense: sense.id, role: .card(value.plan.id)) { reviews.append(local) }
-            }
-        }
-        return .init(notebookID: notebookID, reviews: reviews, explanations: explanations)
+        return .init(notebookID: notebookID, explanations: explanations)
     }
 
     static func apply(_ original: State, to document: inout VocabularyDocument) throws -> State {
@@ -50,79 +31,7 @@ nonisolated enum VocabularyWirePrivateOverlay {
                 guard aliases.updateValue(sense.id, forKey: key) == nil else { throw VocabularyWireError.invalidDocument }
             }
         }
-        var reviews = original.reviews, explanations = original.explanations
-        func restoreReview(_ value: VocabularyReview, senseID: UUID, role: State.Role) throws -> VocabularyReview {
-            let matches = reviews.indices.filter { aliases[reviews[$0].senseID] == senseID && reviews[$0].role == role }
-            // A prior materialization may have left only stale audio for this
-            // same review. That remainder is not another binding owner and must
-            // not reset the user's active choice on the next round trip.
-            let bindingMatches = matches.filter { !reviews[$0].bindings.isEmpty || reviews[$0].activeBindingID != nil }
-            var result = value, bindings: [AnkiNoteBinding] = [], seen: [UUID: AnkiNoteBinding] = [:]
-            var bindingConflict = false
-            for index in bindingMatches {
-                for binding in reviews[index].bindings {
-                    if let prior = seen[binding.id] {
-                        if prior != binding { bindingConflict = true }
-                    } else { seen[binding.id] = binding; bindings.append(binding) }
-                }
-            }
-            if !bindingConflict {
-                result.bindings = bindings
-                if bindingMatches.count == 1, let index = bindingMatches.first { result.activeBindingID = reviews[index].activeBindingID }
-                else {
-                    // Restoring private state is not a new tool-selection action.
-                    // Merged aliases may agree on a choice, but an explicit nil
-                    // or competing choices must continue to require a choice.
-                    let choices = Set(bindingMatches.compactMap { reviews[$0].activeBindingID })
-                    result.activeBindingID = bindingMatches.allSatisfy({ reviews[$0].activeBindingID != nil }) && choices.count == 1
-                        ? choices.first : nil
-                }
-                for index in bindingMatches { reviews[index].bindings = []; reviews[index].activeBindingID = nil }
-            }
-            func restoreAudio(_ plan: ReviewPlan, position: Int?) throws -> ReviewPlan {
-                let signature = try C.signature(C.plan(plan))
-                let candidates = matches.flatMap { index in
-                    reviews[index].audio.indices.compactMap { audioIndex -> (Int, Int)? in
-                        let audio = reviews[index].audio[audioIndex]
-                        return audio.planID == plan.id && audio.materialSignature == signature ? (index, audioIndex) : nil
-                    }
-                }
-                guard !candidates.isEmpty else { return plan }
-                let preferred = candidates.filter { reviews[$0.0].senseID == senseID && reviews[$0.0].audio[$0.1].preservedIndex == position }
-                let chosen: [(Int, Int)]
-                if preferred.count == 1 { chosen = preferred }
-                else {
-                    guard let first = candidates.first else { return plan }
-                    let receipts = reviews[first.0].audio[first.1].receipts
-                    guard candidates.allSatisfy({ reviews[$0.0].audio[$0.1].receipts == receipts }) else { return plan }
-                    chosen = candidates
-                }
-                guard let first = chosen.first else { return plan }
-                var restored = plan; restored.audioReceipts = reviews[first.0].audio[first.1].receipts
-                // Remove in descending local index order; a candidate from an
-                // earlier preserved plan must not shift a later removal target.
-                for index in Set(chosen.map(\.0)) {
-                    let positions = Set(chosen.filter { $0.0 == index }.map(\.1))
-                    reviews[index].audio = reviews[index].audio.enumerated().filter { !positions.contains($0.offset) }.map(\.element)
-                }
-                return restored
-            }
-            result.plan = try restoreAudio(result.plan, position: nil)
-            for index in result.preservedPlans.indices { result.preservedPlans[index] = try restoreAudio(result.preservedPlans[index], position: index) }
-            return result
-        }
-        for entry in document.catalog.indices {
-            for index in document.catalog[entry].senses.indices {
-                var sense = document.catalog[entry].senses[index]
-                if let value = sense.review { sense.review = try restoreReview(value, senseID: sense.id, role: .legacy) }
-                if var cards = sense.reviewCards {
-                    for card in cards.indices { cards[card] = try restoreReview(cards[card], senseID: sense.id, role: .card(cards[card].plan.id)) }
-                    sense.reviewCards = cards
-                }
-                document.catalog[entry].senses[index] = sense
-            }
-        }
-
+        var explanations = original.explanations
         let joined = document.entries
         var owners: [UUID: VocabularySense] = [:]
         for entry in joined { for sense in entry.senses { owners[sense.id] = sense } }
@@ -180,6 +89,6 @@ nonisolated enum VocabularyWirePrivateOverlay {
             }
         }
         return .init(notebookID: original.notebookID,
-            reviews: reviews.filter { !$0.bindings.isEmpty || $0.activeBindingID != nil || !$0.audio.isEmpty }, explanations: explanations)
+            explanations: explanations)
     }
 }

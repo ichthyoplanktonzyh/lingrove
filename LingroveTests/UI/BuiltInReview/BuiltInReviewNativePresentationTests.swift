@@ -11,20 +11,6 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(3)))
 @MainActor
 struct BuiltInReviewNativePresentationTests {
-    @Test func materialBaselineTracksEditsAndReversions() throws {
-        let fixture = try ReviewNativePresentationFixture()
-        defer { fixture.cleanUp() }
-        var draft = try BuiltInReviewDraft(content: fixture.review(), selection: fixture.selection)
-        let original = BuiltInReviewDraftPresentationSnapshot(draft)
-        draft.front += " — edited"
-        #expect(BuiltInReviewDraftPresentationSnapshot(draft) != original)
-        draft.front = original.front
-        #expect(BuiltInReviewDraftPresentationSnapshot(draft) == original)
-        let example = try #require(draft.snapshot.document.entries.first?.senses.first?.examples.first?.id)
-        draft.chooseExample(example)
-        #expect(BuiltInReviewDraftPresentationSnapshot(draft) != original)
-        #expect(try fixture.review().statistics.exercises == 0)
-    }
 
     @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
     func nativeDestinationsAndKeyboardScope(_ appearance: NSAppearance.Name) async throws {
@@ -46,13 +32,10 @@ struct BuiltInReviewNativePresentationTests {
         try await host.settle()
         try host.capture("review-add-from-corpus")
         fixture.session.showDetail(fixture.selection)
-        fixture.session.prepare(selection: fixture.selection, basedOn: try #require(fixture.session.content))
+        fixture.session.editNoteType()
         try await host.settle()
-        try host.capture("review-material-form", window: try #require(host.window.attachedSheet))
-        let draft = try #require(fixture.session.draft)
-        try await capture(LingroveReviewTextEditorScreen(field: .front, text: .constant(draft.front)),
-            name: "review-material-editor", appearance: appearance, size: .init(width: 620, height: 520))
-        fixture.session.draft = nil
+        try host.capture("review-note-type-form", window: try #require(host.window.attachedSheet))
+        fixture.session.noteTypeDraft = nil
         try await host.settle()
         #expect(try fixture.review().statistics.exercises == 0)
         try fixture.enroll()
@@ -81,11 +64,10 @@ struct BuiltInReviewNativePresentationTests {
         fixture.session.onOpenSource = { source = $0 }
         fixture.session.openSource(context)
         #expect(source == fixture.selection)
-        fixture.session.edit(card: context.card, link: context.link,
-            selection: context.group.selection, basedOn: try #require(fixture.session.content))
+        fixture.session.editNote(try #require(context.action.noteCards[context.card.cardId]))
         try await host.settle()
         #expect(keyboard.keyboardAction(for: digit, isKeyWindow: true) == nil)
-        fixture.session.draft = nil
+        fixture.session.noteDraft = nil
         try await host.settle()
         keyboard.handle(try #require(keyboard.keyboardAction(for: digit, isKeyWindow: true)))
         await fixture.session.waitForIdle()
@@ -126,7 +108,7 @@ struct BuiltInReviewNativePresentationTests {
             appearance: .aqua, size: .init(width: 900, height: 760))
         defer { host.close() }
         host.window.center()
-        fixture.session.prepare(selection: fixture.selection, basedOn: try #require(fixture.session.content))
+        fixture.session.editNoteType()
         try await host.settle()
         let sheet = try #require(host.window.attachedSheet)
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
@@ -142,10 +124,10 @@ struct BuiltInReviewNativePresentationTests {
             try await Task.sleep(for: .milliseconds(100))
         }
         #expect(FileManager.default.fileExists(atPath: done.path), "The bounded private-host handoff must finish")
-        #expect(fixture.session.draft == nil && host.window.attachedSheet == nil)
+        #expect(fixture.session.noteTypeDraft == nil && host.window.attachedSheet == nil)
         let exercises = try fixture.review().statistics.exercises
         #expect(exercises == 0)
-        try JSONSerialization.data(withJSONObject: ["draftClosed": fixture.session.draft == nil,
+        try JSONSerialization.data(withJSONObject: ["draftClosed": fixture.session.noteTypeDraft == nil,
             "exercises": exercises, "userDataTouched": false], options: [.prettyPrinted, .sortedKeys])
             .write(to: output.appendingPathComponent("stored-result.json"))
     }

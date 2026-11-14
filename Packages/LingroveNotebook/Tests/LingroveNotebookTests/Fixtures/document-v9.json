@@ -49,118 +49,6 @@
           "meaningOrigin": "captured",
           "mergedFrom": [],
           "note": "Compare with the river sense.",
-          "review": {
-            "activeBindingID": "00000000-0000-4000-8000-000000000607",
-            "bindings": [
-              {
-                "deck": "English::Vocabulary",
-                "endpoint": "http://127.0.0.1:8765",
-                "fields": {
-                  "Audio": "[sound:bank-expression-fixture.mp3]",
-                  "Back": "A financial institution",
-                  "Front": "bank"
-                },
-                "id": "00000000-0000-4000-8000-000000000607",
-                "identityField": "LingroveID",
-                "mapping": [
-                  "Expression",
-                  "Front",
-                  "Meaning",
-                  "Back",
-                  "ExpressionAudio",
-                  "Audio"
-                ],
-                "model": "Basic",
-                "noteID": 24681012,
-                "originSenseID": "00000000-0000-4000-8000-000000000101",
-                "profile": "Local Anki",
-                "syncedAt": 795173213
-              }
-            ],
-            "plan": {
-              "answer": "A financial institution",
-              "audioKinds": [
-                "expression"
-              ],
-              "audioReceipts": [
-                "expression",
-                {
-                  "endpoint": "http://127.0.0.1:8765",
-                  "filename": "bank-expression-fixture.mp3",
-                  "fingerprint": "voice-fixture-v1",
-                  "profile": "local-test-voice",
-                  "textHash": "sha256:fixture-audio-text"
-                }
-              ],
-              "deck": "English::Vocabulary",
-              "exampleID": "00000000-0000-4000-8000-000000000301",
-              "fieldOverrides": {
-                "Meaning": "A place that keeps money."
-              },
-              "gap": true,
-              "id": "00000000-0000-4000-8000-000000000605",
-              "includeExplanation": true,
-              "includeNotes": true,
-              "includeSenseContent": true,
-              "layout": {
-                "back": [
-                  {
-                    "content": [],
-                    "id": "00000000-0000-4000-8000-000000000603",
-                    "showCaption": false,
-                    "source": "meaning"
-                  },
-                  {
-                    "blockID": "00000000-0000-4000-8000-000000000502",
-                    "content": [],
-                    "id": "00000000-0000-4000-8000-000000000604",
-                    "showCaption": true,
-                    "source": "senseImage"
-                  }
-                ],
-                "front": [
-                  {
-                    "content": [],
-                    "id": "00000000-0000-4000-8000-000000000601",
-                    "showCaption": false,
-                    "source": "expression"
-                  },
-                  {
-                    "content": [
-                      {
-                        "content": {
-                          "text": {
-                            "_0": {
-                              "bold": true,
-                              "italic": false,
-                              "style": "heading",
-                              "text": "bank — deposits and 🏦 services"
-                            }
-                          }
-                        },
-                        "id": "00000000-0000-4000-8000-000000000501"
-                      }
-                    ],
-                    "id": "00000000-0000-4000-8000-000000000602",
-                    "showCaption": false,
-                    "source": "custom"
-                  }
-                ]
-              },
-              "name": "Bank recall",
-              "recognition": true
-            },
-            "preservedPlans": [
-              {
-                "fieldOverrides": {},
-                "gap": false,
-                "id": "00000000-0000-4000-8000-000000000606",
-                "includeExplanation": false,
-                "includeNotes": false,
-                "recognition": true
-              }
-            ]
-          },
           "standaloneMeanings": [],
           "tags": [
             "finance",
@@ -181,7 +69,6 @@
           "meaningOrigin": "captured",
           "mergedFrom": [],
           "note": "",
-          "reviewCards": [],
           "standaloneMeanings": [],
           "tags": [],
           "updatedAt": 795173213
@@ -389,7 +276,6 @@
       "sourceID": "00000000-0000-4000-8000-000000000200"
     }
   ],
-  "reviewTemplates": [],
   "schemaVersion": 9,
   "semantics": {
     "cueTargets": [

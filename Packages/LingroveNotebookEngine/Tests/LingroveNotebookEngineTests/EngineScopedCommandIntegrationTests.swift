@@ -53,9 +53,8 @@ struct EngineScopedCommandIntegrationTests {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let saved = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let enrolled = try f.db.enrollNotebookSenses([draft], basedOn: saved)
+        let draft = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
+        let enrolled = try f.db.enrollNoteSources([draft], scope: saved)
         let cardID = try #require(try f.db.lingroveNotebookReviewStore.exercises(enrolled[0]).first).cardId
         let pauseID = UUID()
         let paused = try f.db.setNotebookReviewStatus(.paused, enrollments: enrolled, basedOn: saved, requestID: pauseID)
@@ -65,17 +64,17 @@ struct EngineScopedCommandIntegrationTests {
         try f.db.updateCloudSettings(cloudState: .linked, linkedUserId: f.owner,
             linkedWorkspaceId: f.workspace, activeWorkspaceId: f.workspace, linkedEmail: nil)
         let before = try counts(f.db)
-        #expect(throws: VocabularyError.self) { try f.db.enrollNotebookSenses([draft], basedOn: saved) }
+        #expect(throws: VocabularyError.self) { try f.db.enrollNoteSources([draft], scope: saved) }
         #expect(throws: VocabularyError.self) {
             try f.db.setNotebookReviewStatus(.paused, enrollments: enrolled, basedOn: saved, requestID: pauseID)
         }
         #expect(throws: VocabularyError.self) {
-            try f.db.submitNotebookRating(.init(cardId: cardID, rating: .good,
+            try f.db.submitTestNoteRating(.init(cardId: cardID, rating: .good,
                 reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
         }
         #expect(try counts(f.db) == before)
         let fresh = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
-        let rated = try f.db.submitNotebookRating(.init(cardId: cardID, rating: .good,
+        let rated = try f.db.submitTestNoteRating(.init(cardId: cardID, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: fresh)
         #expect(rated.reps == 1)
         #expect(throws: CancellationError.self) {
@@ -91,9 +90,8 @@ struct EngineScopedCommandIntegrationTests {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let saved = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let enrollment = try #require(try f.db.enrollNotebookSenses([draft], basedOn: saved).first)
+        let draft = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
+        let enrollment = try #require(try f.db.enrollNoteSources([draft], scope: saved).first)
         let cardID = try #require(try f.db.lingroveNotebookReviewStore.exercises(enrollment).first).cardId
         let before = try counts(f.db)
         let cancelled = await Task { @MainActor in
@@ -103,7 +101,7 @@ struct EngineScopedCommandIntegrationTests {
             catch is CancellationError { rejected += 1 }
             catch { Issue.record(error) }
             do {
-                _ = try f.db.submitNotebookRating(.init(cardId: cardID, rating: .good,
+                _ = try f.db.submitTestNoteRating(.init(cardId: cardID, rating: .good,
                     reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
             } catch is CancellationError { rejected += 1 }
             catch { Issue.record(error) }
@@ -147,7 +145,7 @@ struct EngineScopedCommandIntegrationTests {
             senseID: saved.document.entries[0].senses[0].id)], type: ReviewNoteDefaults.type, scope: saved)
         let oldCard = try #require(try ReviewNoteStore(core: engine.core).memberships(workspace: source).first).cardID
         let question = try #require(try ReviewNoteStore(core: engine.core).cardModels(scope: saved)[oldCard])
-        _ = try engine.submitNotebookRating(.init(cardId: oldCard, rating: .good,
+        _ = try engine.submitTestNoteRating(.init(cardId: oldCard, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC", noteVersion: question.questionVersion(in: saved)), basedOn: saved)
         let target = UUID().uuidString.lowercased()
         let account = CloudLinkedSession(userId: "synthetic-engine-owner", workspaceId: target, email: nil,
@@ -179,13 +177,12 @@ struct EngineScopedCommandIntegrationTests {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let saved = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
             basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let enrollment = try #require(try f.db.enrollNotebookSenses([draft], basedOn: saved).first)
+        let draft = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
+        let enrollment = try #require(try f.db.enrollNoteSources([draft], scope: saved).first)
         let cardID = try #require(try f.db.lingroveNotebookReviewStore.exercises(enrollment).first).cardId
         let sync = LingroveNotebookReviewSyncStore(core: f.db.core), binding = try f.binding()
         let request = try sync.request(binding)
-        let after = try f.db.submitNotebookRating(.init(cardId: cardID, rating: .good,
+        let after = try f.db.submitTestNoteRating(.init(cardId: cardID, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
         let sent = request.enrollments.map(\.operationId) + request.links.map(\.operationId) + request.operations.compactMap { op -> String? in
             guard case let .object(fields) = op.operation, case let .string(id)? = fields["operationId"] else { return nil }
@@ -214,31 +211,6 @@ struct EngineScopedCommandIntegrationTests {
         #expect(throws: LocalStoreError.self) { try borrowed.loadLingroveNotebook(workspaceId: f.workspace) }
     }
 
-    @Test("A canonically equivalent authored spelling survives later generated material refresh")
-    func literalManualOwnership() throws {
-        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
-        let now = Date()
-        let sense = VocabularySense(id: UUID(), meaning: "cafe\u{0301}", meaningLanguage: .english,
-            meaningOrigin: .user, isSavedWithoutContext: true, createdAt: now, updatedAt: now)
-        let document = VocabularyDocument(entries: [.init(id: UUID(), expression: "coffee", dictionaryForm: "coffee",
-            language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now)])
-        let saved = try f.db.saveLingroveNotebook(document, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-        let selected = try #require(try f.db.enrollNotebookSenses([draft], basedOn: saved).first)
-        let cardID = try #require(try f.db.lingroveNotebookReviewStore.exercises(selected).first).cardId
-        var card = try f.db.loadActiveCard(workspaceId: f.workspace, cardId: cardID)
-        let authored = card.backText.precomposedStringWithCanonicalMapping
-        #expect(!authored.utf8.elementsEqual(card.backText.utf8))
-        _ = try f.db.saveCard(workspaceId: f.workspace, input: .init(frontText: card.frontText,
-            backText: authored, tags: card.tags), cardId: cardID, mediaAssetIdsReadyForUpload: [])
-        var changed = saved.document
-        changed.entries[0].senses[0].meaning = "new generated answer"
-        _ = try f.db.saveLingroveNotebook(changed, basedOn: saved, restoringBackup: true)
-        card = try f.db.loadActiveCard(workspaceId: f.workspace, cardId: cardID)
-        #expect(card.backText.utf8.elementsEqual(authored.utf8))
-        #expect(card.reps == 0)
-    }
 
     @Test("Generated Unicode spelling and its baseline advance together across repeated source edits")
     func generatedCanonicalSpellingRemainsSourceOwned() throws {
@@ -249,9 +221,8 @@ struct EngineScopedCommandIntegrationTests {
         let doc = VocabularyDocument(entries: [.init(id: UUID(), expression: "coffee", dictionaryForm: "coffee",
             language: .english, kind: .word, senses: [sense], createdAt: now, updatedAt: now)])
         var saved = try f.db.saveLingroveNotebook(doc, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-            selection: .init(entryID: saved.document.entries[0].id, senseID: sense.id))
-        let enrollment = try #require(try f.db.enrollNotebookSenses([draft], basedOn: saved).first)
+        let draft = VocabularySelection(entryID: saved.document.entries[0].id, senseID: sense.id)
+        let enrollment = try #require(try f.db.enrollNoteSources([draft], scope: saved).first)
         let exercise = try #require(try f.db.lingroveNotebookReviewStore.exercises(enrollment).first)
         for meaning in ["cafe\u{0301}", "caf\u{00e9} updated"] {
             var changed = saved.document

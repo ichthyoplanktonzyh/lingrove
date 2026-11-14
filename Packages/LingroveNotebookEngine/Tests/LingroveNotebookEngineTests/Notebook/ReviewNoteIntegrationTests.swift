@@ -5,6 +5,27 @@ import LingroveNotebook
 
 @MainActor
 struct ReviewNoteIntegrationTests {
+    @Test func onlyNoteMembershipOwnsNativeQueueParticipationAndProgress() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        let (scope, selection) = try source(fixture)
+        _ = try fixture.db.enrollReviewNotes(selections: [selection], version: .init(scope))
+        let content = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        let card = try #require(content.queue.first)
+        _ = try fixture.db.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), card: card,
+            action: .init(content: content, selection: selection))
+        try fixture.db.core.execute(sql: "DELETE FROM notebook_note_cards WHERE workspace_id=? AND card_id=?",
+            values: [.text(scope.workspaceId), .text(card.cardId)])
+        let review = try fixture.db.loadBuiltInNotebookReview(scope: scope, now: Date())
+        #expect(review.queue.isEmpty && review.review.groups.isEmpty && review.recentHistory.isEmpty)
+        #expect(review.statistics.exercises == 0 && review.statistics.ratingRecords == 0)
+        let participation = try fixture.db.loadNotebookParticipation(selection: selection, version: .init(scope))
+        #expect(participation.status == nil && participation.exerciseCount == 0)
+        let progress = try fixture.db.loadNotebookProgress(scope: fixture.db.notebookProgressReadFence().scope,
+            now: Date(), calendar: .current)
+        #expect(progress.totalReviews == 0 && progress.enrolledSenses == 0 && progress.schedule.totalCards == 0)
+    }
+
     @Test func coldRatingUndoAndCardReadsKeepTheCorpusUnloaded() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
         let (scope, selection) = try source(fixture)

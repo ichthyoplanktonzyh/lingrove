@@ -28,8 +28,14 @@ extension LingroveNotebookEngine {
             let enrollments = try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
                 notebookId: version.notebookId, senseIDs: aliases)
             var count = 0, unavailable = false
+            var ownedEnrollments: [LingroveNotebookReviewEnrollment] = []
             for enrollment in enrollments {
-                for exercise in try lingroveNotebookReviewStore.exercises(enrollment) {
+                let exercises = try lingroveNotebookReviewStore.exercises(enrollment)
+                let owned = try ReviewNoteStore(core: core).ownedCardIDs(workspace: version.workspaceId,
+                    cardIDs: Set(exercises.map(\.cardId)))
+                guard !owned.isEmpty else { continue }
+                ownedEnrollments.append(enrollment)
+                for exercise in exercises where owned.contains(exercise.cardId) {
                     try Task.checkCancellation()
                     guard let card = try cardStore.loadOptionalCardIncludingDeleted(workspaceId: version.workspaceId,
                         cardId: exercise.cardId), card.deletedAt == nil else { continue }
@@ -38,13 +44,15 @@ extension LingroveNotebookEngine {
                     if try ReviewNoteStore(core: core).isTemplateDisabled(cardID: card.cardId, workspace: version.workspaceId) {
                         continue
                     }
-                    if try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status NOT IN ('ready','retained')",
+                    if try core.scalarInt(sql: """
+                        SELECT COUNT(*) FROM notebook_review_material_state WHERE workspace_id=? AND card_id=? AND status !='ready'
+                        """,
                         values: [.text(version.workspaceId), .text(card.cardId)]) > 0 { unavailable = true }
                 }
             }
-            let status: LingroveNotebookReviewStatus? = enrollments.isEmpty ? nil :
-                enrollments.contains(where: { $0.status == .active }) ? .active :
-                enrollments.contains(where: { $0.status == .paused }) ? .paused : .withdrawn
+            let status: LingroveNotebookReviewStatus? = ownedEnrollments.isEmpty ? nil :
+                ownedEnrollments.contains(where: { $0.status == .active }) ? .active :
+                ownedEnrollments.contains(where: { $0.status == .paused }) ? .paused : .withdrawn
             return .init(status: status, exerciseCount: count, hasUnavailableMaterial: unavailable)
         }
     }

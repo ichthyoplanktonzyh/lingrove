@@ -35,8 +35,7 @@ private extension VocabularyDatabaseRecord.Payload {
         case let .entry(value) where value.senses.isEmpty:
             return .init([value.expression, value.dictionaryForm, value.language?.rawValue],
                 numbers: [value.createdAt.timeIntervalSinceReferenceDate.bitPattern, value.updatedAt.timeIntervalSinceReferenceDate.bitPattern])
-        case let .sense(value) where value.examples.isEmpty && value.explanations.isEmpty && value.content == nil &&
-            value.review == nil && value.reviewCards == nil:
+        case let .sense(value) where value.examples.isEmpty && value.explanations.isEmpty && value.content == nil:
             return .init([value.meaning, value.meaningLanguage?.rawValue, value.note] + value.tags.map(Optional.some) +
                 meaningText(value.standaloneMeanings) + meaningText(value.alternateMeanings),
                 numbers: [value.createdAt.timeIntervalSinceReferenceDate.bitPattern, value.updatedAt.timeIntervalSinceReferenceDate.bitPattern,
@@ -49,7 +48,7 @@ private extension VocabularyDatabaseRecord.Payload {
             return .init([value.meaning, value.meaningLanguage?.rawValue, value.translation, value.translationLanguage?.rawValue,
                 value.provenance.source] + meaningText(value.translationVariants),
                 numbers: [value.createdAt.timeIntervalSinceReferenceDate.bitPattern, value.provenance.confidence?.bitPattern ?? 0])
-        case let .collection(value) where value.content?.isEmpty != false && value.review == nil && value.reviewCards?.isEmpty != false:
+        case let .collection(value) where value.content?.isEmpty != false:
             return .init([value.note] + value.tags.map(Optional.some), numbers: [value.savedAt?.timeIntervalSinceReferenceDate.bitPattern ?? 0])
         case let .meaningNode(value) where value.labels.isEmpty && value.roles.isEmpty:
             return .init([value.definition, value.scopeNote, value.provenance.source],

@@ -44,6 +44,11 @@ plain replacement is restricted to an unformatted, image-free body. Metadata, ex
 links have explicit operations rather than implicit changes to the headword or review ownership. Stored interpretation/generation receipts remain evidence;
 they are not competing definitions or fallback review answers.
 
+New/edited sense drafts need actual content before saving; there is no durable empty-sense
+placeholder command. Image-only explanation content and authored meanings without examples remain
+valid. Example editing exposes wording and translation without a manual sentence/fragment/unknown
+picker. Source-supplied completeness metadata remains an internal input to existing behavior.
+
 Keep the existing icons, native components, typography and callout styling. Dictionary lookup stays
 in the detail page. Reading retains speech, copy, sense switching and semantic navigation. One Edit
 command in More edits the selected sense, without renaming its headword. Structural commands (new or

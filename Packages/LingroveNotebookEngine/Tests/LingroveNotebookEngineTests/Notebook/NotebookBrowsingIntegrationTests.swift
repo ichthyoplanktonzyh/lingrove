@@ -8,6 +8,70 @@ import Testing
 /// clicks. A fresh read-only connection must never establish the writer's whole-corpus proof.
 @MainActor
 struct NotebookBrowsingIntegrationTests {
+    @Test func tagIndexFollowsRawChangesRollbackDeletionAndRebuild() throws {
+        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+        let entries = makeEntries(2)
+        let saved = try fixture.db.saveLingroveNotebook(.init(entries: entries),
+            basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))
+        let values: [SQLiteValue] = [.text(fixture.workspace), .text(entries[0].senses[0].id.uuidString)]
+        let edit = """
+            UPDATE notebook_collections SET payload_json=json_set(payload_json,'$.tags',json('["changed"]'))
+            WHERE workspace_id=? AND sense_id=?
+            """
+        #expect(throws: VocabularyError.editConflict) {
+            try fixture.db.core.inTransaction {
+                try fixture.db.core.execute(sql: edit, values: values)
+                throw VocabularyError.editConflict
+            }
+        }
+        #expect(try fixture.db.browseNotebook(.init(tag: "changed")).total == 0)
+        try fixture.db.core.execute(sql: edit, values: values)
+        #expect(try fixture.db.currentNotebookVersion() == .init(saved))
+        let reader = try LingroveNotebookEngine(readOnlyDatabaseURL: fixture.url, mediaDirectoryURL: fixture.directory)
+        #expect(try reader.browseNotebook(.init(language: .english, tag: "changed")).total == 1)
+        #expect(try reader.browseNotebook(.init(language: .french, tag: "changed")).total == 0)
+        try reader.close()
+        try fixture.db.core.executeScript(sql: "DROP TRIGGER notebook_tags_update;", errorContext: "Test rebuilding derived tags")
+        try fixture.reopen()
+        #expect(try fixture.db.browseNotebook(.init(tag: "changed")).total == 1)
+        try fixture.db.core.inTransaction {
+            for table in ["notebook_blocks", "notebook_collection_interpretations"] {
+                try fixture.db.core.execute(sql: """
+                    DELETE FROM \(table) WHERE workspace_id=? AND parent_id IN
+                      (SELECT id FROM notebook_collections WHERE workspace_id=? AND sense_id=?)
+                    """, values: [.text(fixture.workspace)] + values)
+            }
+            try fixture.db.core.execute(sql: "DELETE FROM notebook_collections WHERE workspace_id=? AND sense_id=?", values: values)
+        }
+        #expect(try fixture.db.browseNotebook(.init(tag: "changed")).total == 0)
+        try fixture.db.core.execute(sql: "UPDATE notebook_collections SET payload_json='broken json' WHERE workspace_id=?",
+            values: [.text(fixture.workspace)])
+        #expect(try fixture.db.currentNotebookVersion() == .init(saved))
+        #expect(throws: VocabularyError.invalidArchive) { try fixture.db.browseNotebook(.init(tag: "one")) }
+    }
+
+    @Test func selectiveTagSQLWorkDoesNotGrowWithUnrelatedCollections() throws {
+        func work(_ count: Int) throws -> Int {
+            let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
+            var entries = makeEntries(count)
+            entries[0].senses[0].tags = ["selective"]
+            _ = try fixture.db.saveLingroveNotebook(.init(entries: entries),
+                basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))
+            let probe = NotebookBrowseSQLWork()
+            sqlite3_trace_v2(fixture.db.core.connection, UInt32(SQLITE_TRACE_PROFILE), { _, context, statement, _ in
+                guard let context, let statement else { return 0 }
+                let probe = Unmanaged<NotebookBrowseSQLWork>.fromOpaque(context).takeUnretainedValue()
+                probe.steps += Int(sqlite3_stmt_status(OpaquePointer(statement), SQLITE_STMTSTATUS_VM_STEP, 0))
+                return 0
+            }, Unmanaged.passUnretained(probe).toOpaque())
+            defer { sqlite3_trace_v2(fixture.db.core.connection, 0, nil, nil) }
+            #expect(try fixture.db.browseNotebook(.init(tag: "selective")).total == 1)
+            return probe.steps
+        }
+        let small = try work(100), large = try work(2_000)
+        #expect(small > 0 && large < small * 2, "Selective tag VM steps: \(small) / \(large)")
+    }
+
     @Test func detailSQLWorkStaysBoundedWhenUnrelatedRowsGrow() throws {
         func work(_ count: Int) throws -> Int {
             let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }

@@ -134,12 +134,13 @@ nonisolated struct VocabularyExplanationDestination: Equatable, Sendable {
     var scope: VocabularyOperationScope?
 }
 
-/// One in-memory undo receipt belongs to the store's last explicit sense merge. Retaining
-/// removed image bytes makes undo independent of media garbage collection. The saved scope
-/// requires the same account and exact post-merge revision before restoring the before-image.
+/// The last explicit merge retains only its original entry, owned patterns/mappings and
+/// removed image bytes. The post-merge version protects account/revision identity; unrelated
+/// corpus content and shared nodes are neither retained as an old snapshot nor restored.
 nonisolated struct VocabularySenseMergeUndo: Sendable {
-    let before: VocabularyDocument
-    let after: LingroveNotebookSnapshot
+    let entry: VocabularyEntry
+    let ownedSemantics: VocabularySemanticIndex
+    let after: LingroveNotebookVersion
     let images: [String: Data]
     let selection: VocabularySelection
 }

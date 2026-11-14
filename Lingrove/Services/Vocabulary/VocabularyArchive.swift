@@ -19,6 +19,8 @@ actor VocabularyArchive {
     private let installsBundledClassification: Bool
     private var classificationCatalog: VocabularyClassificationCatalog?
     var hasCompleteBaseline: Bool { saved != nil }
+    // The actor owns this rebuildable read index; it never authorizes a save or replaces SQL.
+    var cliLiteralIndex = VocabularyLiteralSearchIndex()
 
     func checkCommandOwner(_ version: LingroveNotebookVersion) throws {
         if let expectedScope, !expectedScope.hasSameOwner(as: version) { throw VocabularyError.editConflict }
@@ -108,6 +110,13 @@ actor VocabularyArchive {
         return engine
     }
 
+    /// A compound entry writer returns a complete checked result. Publish its bounded receipt
+    /// while keeping this actor's next CAS baseline aligned with the committed revision.
+    func acknowledgeEntryBatch(_ result: LingroveNotebookSnapshot) throws -> VocabularyArchiveSnapshot {
+        saved = result
+        return try committedSnapshot(result)
+    }
+
     func transactionBaseline() throws -> LingroveNotebookSnapshot {
         if let saved { return saved }
         _ = try readSnapshot()
@@ -135,7 +144,9 @@ actor VocabularyArchive {
 
     func save(_ capture: VocabularyCapture) throws -> VocabularyArchiveSnapshot {
         let document = try load().document
-        let entry = try VocabularyPolicy.entryForSave(capture, in: document, now: Date())
+        let detail = try persistence().notebookEntryDetail(lookupKey: VocabularyPolicy.entryKey(capture))
+        let entry = try VocabularyPolicy.entryForSave(capture, existing: detail.entry,
+            interpretations: document.interpretations, now: Date())
         return try commitEntry(entry)
     }
 
@@ -165,15 +176,26 @@ actor VocabularyArchive {
 
     func update(_ entry: VocabularyEntry, basedOn baseline: VocabularyEntry,
                 importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
-        let document = try load().document
-        guard let original = VocabularyNotebookProjection.entry(entry.id, in: document) else { throw VocabularyError.editConflict }
+        _ = try load()
+        let engine = try persistence()
+        guard let original = try engine.notebookEntryDetail(entryID: entry.id).entry else { throw VocabularyError.editConflict }
+        // Warm editors use the same indexed ownership lookup as cold capture. Cached complete
+        // content must not make a local edit normalize every unrelated headword key.
+        if let owner = try engine.notebookEntryDetail(lookupKey: VocabularyPolicy.entryKey(entry)).entry,
+           owner.id != entry.id { throw VocabularyError.invalidContent }
+        let merged = try mergedEntry(entry, baseline: baseline, current: original)
+        if merged.senses.isEmpty { return try remove(id: merged.id) }
+        return try commitEntry(merged, images: importedImages)
+    }
+
+    /// Both full and certified local saves merge the editor's baseline against the current
+    /// owner. The engine, rather than a partial UI draft, checks global key/ID ownership.
+    func mergedEntry(_ entry: VocabularyEntry, baseline: VocabularyEntry, current original: VocabularyEntry) throws -> VocabularyEntry {
         guard baseline.id == entry.id,
               Set(entry.senses.map(\.id)).count == entry.senses.count,
               Set(entry.examples.map(\.id)).count == entry.examples.count else { throw VocabularyError.invalidContent }
         guard entry.language == original.language, entry.kind == original.kind,
               !VocabularyPolicy.normalized(entry.expression).isEmpty else { throw VocabularyError.invalidContent }
-        guard !document.catalog.contains(where: { $0.id != entry.id && VocabularyPolicy.entryKey($0) == VocabularyPolicy.entryKey(entry) })
-        else { throw VocabularyError.invalidContent }
         var merged = original
         merged.expression = try merge(baseline.expression, original.expression, entry.expression)
         merged.dictionaryForm = try merge(baseline.dictionaryForm, original.dictionaryForm, entry.dictionaryForm)
@@ -184,8 +206,13 @@ actor VocabularyArchive {
             values.count <= 1 || values.count <= (priorOccurrences[key]?.count ?? 0)
         }) else { throw VocabularyError.editConflict }
         merged.updatedAt = Date()
-        if merged.senses.isEmpty { return try remove(id: merged.id) }
-        return try commitEntry(merged, images: importedImages)
+        for sense in merged.senses where !VocabularySenseContentPolicy.hasContent(sense) {
+            // Old empty records remain readable and can be left untouched by another edit.
+            // New or changed drafts need content before acquiring a saved sense identity.
+            guard let before = original.senses.first(where: { $0.id == sense.id }),
+                  try VocabularySaveLiteralEquality.equal(before, sense) else { throw VocabularyError.invalidContent }
+        }
+        return merged
     }
 
     /// A sheet edits one sense while cards may append another. Merge by stable IDs and fields;
@@ -325,7 +352,11 @@ actor VocabularyArchive {
         let images = try imagesForUndo(removedImages, scope: originalScope)
         let saved = try commitEntry(entry)
         guard let scope = saved.scope else { throw VocabularyError.invalidArchive }
-        return (saved, .init(before: before.document, after: scope, images: images,
+        let ids = Set(original.senses.flatMap { [$0.id] + $0.mergedFrom })
+        let graph = before.document.semantics
+        let owned = VocabularySemanticIndex(patterns: graph.patterns.filter { ids.contains($0.senseID) },
+            mappings: graph.mappings.filter { ids.contains($0.senseID) })
+        return (saved, .init(entry: original, ownedSemantics: owned, after: .init(scope), images: images,
             selection: .init(entryID: entryID, senseID: source)))
     }
 
@@ -333,23 +364,9 @@ actor VocabularyArchive {
         let current = try load()
         guard let scope = current.scope, scope.hasSameOwner(as: undo.after),
               current.revision == undo.after.revision else { throw VocabularyError.editConflict }
-        return try commitWithImages(undo.before, supplied: undo.images)
-    }
-
-    func moveExample(entryID: UUID, exampleID: UUID, source: UUID, target: UUID?) throws -> VocabularyArchiveSnapshot {
-        let document = try load().document
-        guard var entry = VocabularyNotebookProjection.entry(entryID, in: document) else { throw VocabularyError.invalidContent }
-        _ = try VocabularySensePolicy.move(exampleID: exampleID, from: source, to: target, in: &entry, now: Date())
-        return try commitEntry(entry)
-    }
-
-    func createSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
-        let document = try load().document
-        guard var entry = VocabularyNotebookProjection.entry(entryID, in: document) else { throw VocabularyError.invalidContent }
-        let now = Date()
-        entry.senses.append(VocabularySense(id: senseID, meaning: "", createdAt: now, updatedAt: now))
-        entry.updatedAt = now
-        return try commitEntry(entry)
+        let result = try persistence().saveNotebookEntries([undo.entry], basedOn: scope, images: undo.images,
+            restoringOwnedSemantics: undo.ownedSemantics)
+        return try acknowledgeEntryBatch(result)
     }
 
     func removeSense(entryID: UUID, senseID: UUID) throws -> VocabularyArchiveSnapshot {
@@ -388,38 +405,6 @@ actor VocabularyArchive {
             saved = result
             return try committedSnapshot(result)
         }
-    }
-
-    /// Review drafts use compare-and-swap rather than whole-entry replacement. A sheet cannot
-    /// overwrite a newly merged binding or another window's review edits while HTTP is pending.
-    func saveReview(entryID: UUID, senseID: UUID, value: VocabularyReview,
-                    expected: VocabularyReview?, cardID: UUID? = nil,
-                    importedImages: [String: Data] = [:]) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
-              let sense = next.entries[entry].senses.firstIndex(where: { $0.id == senseID }),
-              next.entries[entry].senses[sense].reviewValue(cardID) == expected else { throw VocabularyError.editConflict }
-        guard cardID == nil || value.plan.id == cardID else { throw VocabularyError.invalidContent }
-        next.entries[entry].senses[sense].setReview(value, cardID: cardID)
-        return try commitWithImages(next, supplied: importedImages)
-    }
-
-    /// A merge may finish during a network write. Resolve the retired sense ID, keep the latest
-    /// draft intact, and append the verified receipt. Deleted senses are never resurrected.
-    func recordAnkiBinding(
-        entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil
-    ) throws -> VocabularyArchiveSnapshot {
-        var next = try load().document
-        guard let entry = next.entries.firstIndex(where: { $0.id == entryID }),
-              let sense = VocabularySensePolicy.index(senseID, in: next.entries[entry]),
-              var review = next.entries[entry].senses[sense].reviewValue(cardID) else { throw VocabularyError.editConflict }
-        if let index = review.bindings.firstIndex(where: { $0.id == binding.id }) { review.bindings[index] = binding } else {
-            review.bindings.append(binding)
-            if review.bindings.count > 1 { review.activeBindingID = nil }
-        }
-        if review.bindings.count == 1 { review.activeBindingID = binding.id }
-        next.entries[entry].senses[sense].setReview(review, cardID: cardID)
-        return try commit(next)
     }
 
     func export(to destination: URL) throws {
@@ -478,10 +463,6 @@ actor VocabularyArchive {
     /// The shared rule walks the complete graph without performing IO or selecting a tool.
     func validate(_ document: VocabularyDocument) throws {
         try VocabularyDocumentValidation.validate(document)
-    }
-
-    func validateReview(_ review: VocabularyReview) throws {
-        try VocabularyReviewValidation.validate(review)
     }
 
     private static func encoded(_ document: VocabularyDocument) throws -> Data {

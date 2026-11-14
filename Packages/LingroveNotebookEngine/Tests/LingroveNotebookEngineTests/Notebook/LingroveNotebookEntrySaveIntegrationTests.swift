@@ -67,7 +67,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
             let state = try VocabularyEntrySaveState(validating: saved.document)
             let change = try state.replacing(entry)
             let projection = try VocabularyEntryRowProjection(VocabularyPersistenceCodec.encode(saved.document)).applying(change)
-            try assertSameRows(projection.projection.rows(reviewTemplatesPresent: change.document.reviewTemplates != nil),
+            try assertSameRows(projection.projection.rows(),
                 VocabularyPersistenceCodec.encode(change.document))
             #expect(try VocabularyWirePublicIntent.hasChanges(change, notebookID: saved.notebookId) ==
                 VocabularyWirePublicIntent.hasChanges(from: saved.document, to: change.document, notebookID: saved.notebookId))
@@ -142,15 +142,15 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         })
         let original = try f.engine.saveLingroveNotebook(document, basedOn: f.load())
         let selection = VocabularySelection(entryID: entries[0].id, senseID: entries[0].senses[0].id)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: original, selection: selection)
-        let enrollment = try #require(try f.engine.enrollNotebookSenses([draft], basedOn: original).first)
+        let draft = selection
+        let enrollment = try #require(try f.engine.enrollNoteSources([draft], scope: original).first)
         let exercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(enrollment).first)
         let otherSelection = VocabularySelection(entryID: entries[1].id, senseID: entries[1].senses[0].id)
-        let otherDraft = try LingroveNotebookCardMaterial.draft(snapshot: original, selection: otherSelection)
-        let otherEnrollment = try #require(try f.engine.enrollNotebookSenses([otherDraft], basedOn: original).first)
+        let otherDraft = otherSelection
+        let otherEnrollment = try #require(try f.engine.enrollNoteSources([otherDraft], scope: original).first)
         let otherExercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(otherEnrollment).first)
         let otherLink = try #require(try f.engine.lingroveNotebookCardLinkStore.find(workspaceId: f.workspace, id: otherExercise.linkId))
-        _ = try f.engine.submitNotebookRating(.init(cardId: exercise.cardId, rating: .good,
+        _ = try f.engine.submitTestNoteRating(.init(cardId: exercise.cardId, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: original)
         let rated = try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId)
         let survivor = entries[1].senses[0].examples[0].id.uuidString
@@ -270,19 +270,13 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         #expect(try LingroveNotebookMediaStore(core: f.engine.core).image(image.reference, scope: committed) == image.data)
     }
 
-    @Test("Timestamp/private receipts stay private while literal authored text is public intent")
+    @Test("Timestamp-only edits stay private while literal authored text is public intent")
     func publicIntentRetainsCancellationSemantics() throws {
         let f = try Fixture(); defer { f.cleanUp() }
-        var document = Self.document()
-        document.catalog[0].senses[0].review = .init(plan: .init(audioKinds: [.expression, .sentence]))
+        let document = Self.document()
         var saved = try f.engine.saveLingroveNotebook(document, basedOn: f.load())
         var entry = saved.document.entries[0]
         entry.updatedAt = Date()
-        let binding = AnkiNoteBinding(originSenseID: entry.senses[0].id, endpoint: "http://127.0.0.1:19680",
-            profile: "synthetic", noteID: 1, model: "synthetic", deck: "synthetic", identityField: "ID",
-            mapping: [.identity: "ID"], fields: ["ID": entry.senses[0].id.uuidString.lowercased()])
-        entry.senses[0].review?.bindings = [binding]
-        entry.senses[0].review?.activeBindingID = binding.id
         var change = try VocabularyEntrySaveState(validating: saved.document).replacing(entry)
         #expect(try !VocabularyWirePublicIntent.hasChanges(change, notebookID: saved.notebookId))
         #expect(try !VocabularyWirePublicIntent.hasChanges(from: saved.document, to: change.document, notebookID: saved.notebookId))
@@ -304,14 +298,16 @@ struct LingroveNotebookEntrySaveIntegrationTests {
         let f = try Fixture(); defer { f.cleanUp() }
         var saved = try f.engine.saveLingroveNotebook(Self.document(), basedOn: f.load())
         let selected = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selected)
-        let enrollment = try #require(try f.engine.enrollNotebookSenses([draft], basedOn: saved).first)
+        let draft = selected
+        let enrollment = try #require(try f.engine.enrollNoteSources([draft], scope: saved).first)
         let exercise = try #require(try f.engine.lingroveNotebookReviewStore.exercises(enrollment).first)
-        _ = try f.engine.submitNotebookRating(.init(cardId: exercise.cardId, rating: .good,
+        _ = try f.engine.submitTestNoteRating(.init(cardId: exercise.cardId, rating: .good,
             reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: saved)
         let rated = try f.engine.loadActiveCard(workspaceId: f.workspace, cardId: exercise.cardId)
-        _ = try f.engine.saveCard(workspaceId: f.workspace, input: .init(frontText: "authored prompt", backText: rated.backText, tags: []),
-            cardId: exercise.cardId, mediaAssetIdsReadyForUpload: [])
+        let model = try #require(try ReviewNoteStore(core: f.engine.core).cardModels(scope: saved)[exercise.cardId])
+        var type = model.noteType; type.revision += 1
+        type.templates[0].front = "authored prompt"
+        try f.engine.saveReviewNoteType(type, expected: model.noteType, scope: saved)
         let image = try LingroveNotebookMediaQueueIntegrationTests.image()
         var entry = saved.document.entries[0]
         entry.senses[0].meaning = "updated source answer"
@@ -368,7 +364,7 @@ struct LingroveNotebookEntrySaveIntegrationTests {
 
     private func assertRows(_ engine: LingroveNotebookEngine, document: VocabularyDocument) throws {
         let cached = try #require(engine.core.notebookSaveCache)
-        try assertSameRows(cached.projection.rows(reviewTemplatesPresent: document.reviewTemplates != nil), VocabularyPersistenceCodec.encode(document))
+        try assertSameRows(cached.projection.rows(), VocabularyPersistenceCodec.encode(document))
     }
     private func assertSameRows(_ lhs: VocabularyPersistenceRows, _ rhs: VocabularyPersistenceRows) throws {
         let left = try lhs.keyedRows(), right = try rhs.keyedRows()

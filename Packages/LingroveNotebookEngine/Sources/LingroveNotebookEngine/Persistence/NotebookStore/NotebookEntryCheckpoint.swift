@@ -23,18 +23,18 @@ struct NotebookEntryCheckpoint {
         );
         CREATE INDEX IF NOT EXISTS notebook_sense_alias_owners ON notebook_senses(workspace_id,id)
             WHERE CASE WHEN json_valid(payload_json) THEN json_array_length(payload_json,'$.mergedFrom') ELSE 0 END>0;
-        CREATE INDEX IF NOT EXISTS notebook_review_plan_owners
-            ON notebook_reviews(workspace_id,CASE WHEN json_valid(payload_json) THEN json_extract(payload_json,'$.plan.id') END)
-            WHERE id GLOB '*:card:*';
+        CREATE INDEX IF NOT EXISTS notebook_block_image_owners ON notebook_blocks(workspace_id,
+            CASE WHEN json_valid(payload_json) THEN json_extract(payload_json,'$.content.image._0.digest') END);
         """
 
     // Bump when the meaning of the validation certificate changes, even without SQL DDL.
-    private static let validationVersion = 1
+    private static let validationVersion = 2
 
     static func ensureInstalled(in core: DatabaseCore) throws {
         guard try core.scalarInt(sql: """
             SELECT COUNT(*) FROM sqlite_master
-            WHERE name IN ('notebook_entry_checkpoint','notebook_sense_alias_owners','notebook_review_plan_owners')
+            WHERE name IN ('notebook_entry_checkpoint','notebook_sense_alias_owners',
+                           'notebook_block_image_owners')
             """, values: []) != 3 else { return }
         try core.inTransaction { try core.executeScript(sql: createSQL, errorContext: "Create entry validation checkpoint") }
     }

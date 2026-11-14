@@ -216,16 +216,6 @@ struct VocabularySemanticTests {
         }
     }
 
-    @Test func movingAnExampleRemovesItsOldEvidenceClaimWithoutMovingTheMeaning() async throws {
-        let archive = VocabularyArchive(url: nil), document = Self.fixture()
-        _ = try await archive.commit(document)
-        let entry = document.entries[0], example = entry.senses[0].examples[0]
-        let moved = try await archive.moveExample(entryID: entry.id, exampleID: example.id,
-            source: entry.senses[0].id, target: entry.senses[1].id)
-        #expect(moved.document.semantics.mappings[0].evidenceIDs.isEmpty)
-        #expect(moved.document.semantics.mappings[0].senseID == entry.senses[0].id)
-        #expect(moved.document.entries[0].senses[1].examples.first?.id == example.id)
-    }
 
     @Test func sharedSourceSupportsSeveralOccurrencesAndEditingOneForksItsEvidence() async throws {
         let folder = try directory(); defer { try? FileManager.default.removeItem(at: folder) }

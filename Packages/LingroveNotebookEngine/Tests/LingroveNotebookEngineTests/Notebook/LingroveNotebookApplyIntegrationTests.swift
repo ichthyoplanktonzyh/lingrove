@@ -128,9 +128,8 @@ struct LingroveNotebookApplyIntegrationTests {
     func convergedJournalsRetireLocallyAndRollbackOnLateFailure() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: first,
-            selection: .init(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id), intentId: UUID())
-        _ = try f.db.enrollLingroveNotebookSense(draft)
+        let draft = VocabularySelection(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id)
+        _ = try f.db.enrollNoteSources([draft], scope: first)
         var changed = original; changed.catalog[0].senses[0].note = "temporary local edit"
         let edited = try f.db.saveLingroveNotebook(changed, basedOn: first, operationId: "converged-first")
         let restored = try f.db.saveLingroveNotebook(original, basedOn: edited, operationId: "converged-second")
@@ -160,19 +159,12 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(try f.db.nextLingroveNotebookUpload(binding: f.binding) == nil)
     }
 
-    @Test("Private Anki and timestamp-only edits remain on disk after their non-uploadable journals retire")
-    func privateAndTimestampEditsNeedNoFabricatedServerReceipt() throws {
+    @Test("Timestamp-only edits remain on disk after their non-uploadable journals retire")
+    func timestampEditsNeedNoFabricatedServerReceipt() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
-        var original = Self.document()
-        original.catalog[0].senses[0].review = .init(plan: .init(audioKinds: []))
-        let first = try f.apply(original), sense = original.catalog[0].senses[0].id
-        let anki = AnkiNoteBinding(originSenseID: sense, endpoint: "http://localhost:8765", profile: "private-retirement",
-            noteID: 42, model: "Model", deck: "Deck", identityField: ReviewField.identity.rawValue,
-            mapping: [.identity: ReviewField.identity.rawValue, .expression: "Expression", .meaning: "Meaning"],
-            fields: [ReviewField.identity.rawValue: sense.uuidString.lowercased()])
+        let original = Self.document()
+        let first = try f.apply(original)
         var local = first.document
-        local.catalog[0].senses[0].review?.bindings = [anki]
-        local.catalog[0].senses[0].review?.activeBindingID = anki.id
         local.catalog[0].updatedAt = local.catalog[0].updatedAt.addingTimeInterval(60)
         let saved = try f.db.saveLingroveNotebook(local, basedOn: first, operationId: "private-and-timestamp")
         #expect(try f.db.core.scalarInt(sql: "SELECT has_public_change FROM notebook_pending_transactions WHERE operation_id='private-and-timestamp'", values: []) == 0)
@@ -185,7 +177,6 @@ struct LingroveNotebookApplyIntegrationTests {
         let idle = try f.emptyDelta(sequence: "1")
         let after = try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(idle, binding: f.binding, now: Date()), now: Date())
         #expect(after == saved)
-        #expect(after.document.catalog[0].senses[0].review?.bindings == [anki])
     }
 
     @Test("Convergence after freezing cannot discard an unknown server outcome")
@@ -215,11 +206,11 @@ struct LingroveNotebookApplyIntegrationTests {
         #expect(first.notebookId != f.scope.notebookID)
         #expect(try f.db.lingroveNotebookStore.pendingCount(workspaceId: f.workspaceID) == 0)
         let selection = VocabularySelection(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: first, selection: selection, intentId: UUID())
-        _ = try f.db.enrollLingroveNotebookSense(draft)
+        let draft = selection
+        _ = try f.db.enrollNoteSources([draft], scope: first)
         let managedID = try f.db.core.scalarText(sql: "SELECT card_id FROM notebook_review_exercises LIMIT 1", values: [])
-        _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: managedID, rating: .good,
-            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"))
+        _ = try f.db.submitTestNoteRating(.init(cardId: managedID, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: first)
         let ordinary = try f.db.saveCard(workspaceId: f.workspaceID,
             input: .init(frontText: "ordinary prompt", backText: "ordinary answer", tags: []), cardId: nil, mediaAssetIdsReadyForUpload: [])
         _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: ordinary.cardId, rating: .good,
@@ -345,12 +336,11 @@ struct LingroveNotebookApplyIntegrationTests {
     func uploadReplayAndCoveredReceiptPreserveLaterEdits() throws {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), first = try f.apply(original)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: first,
-            selection: .init(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id), intentId: UUID())
-        _ = try f.db.enrollLingroveNotebookSense(draft)
+        let draft = VocabularySelection(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id)
+        _ = try f.db.enrollNoteSources([draft], scope: first)
         let card = try f.db.core.scalarText(sql: "SELECT card_id FROM notebook_review_exercises LIMIT 1", values: [])
-        _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: card, rating: .good,
-            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"))
+        _ = try f.db.submitTestNoteRating(.init(cardId: card, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: first)
         var sent = original; sent.catalog[0].senses[0].note = "sent note"; sent.catalog[0].senses[0].tags += ["b", "c"]
         let saved = try f.db.saveLingroveNotebook(sent, basedOn: first, operationId: "upload-sent")
         let plainWindow = try f.window(original, previous: original)
@@ -516,12 +506,11 @@ struct LingroveNotebookApplyIntegrationTests {
         let f = try ApplyFixture(); defer { f.cleanUp() }
         let original = Self.document(), proof = try f.window(original)
         let first = try f.db.commitLingroveNotebookApply(f.db.prepareLingroveNotebookApply(proof, binding: f.binding, now: Date()), now: Date())
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: first,
-            selection: .init(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id), intentId: UUID())
-        _ = try f.db.enrollLingroveNotebookSense(draft)
+        let draft = VocabularySelection(entryID: original.catalog[0].id, senseID: original.catalog[0].senses[0].id)
+        _ = try f.db.enrollNoteSources([draft], scope: first)
         let managed = try f.db.core.scalarText(sql: "SELECT card_id FROM notebook_review_exercises LIMIT 1", values: [])
-        _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: managed, rating: .good,
-            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"))
+        _ = try f.db.submitTestNoteRating(.init(cardId: managed, rating: .good,
+            reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "UTC"), basedOn: first)
         let ordinary = try f.db.saveCard(workspaceId: f.workspaceID,
             input: .init(frontText: "ordinary prompt", backText: "ordinary answer", tags: []), cardId: nil, mediaAssetIdsReadyForUpload: [])
         _ = try f.db.submitReview(workspaceId: f.workspaceID, reviewSubmission: .init(cardId: ordinary.cardId, rating: .good,

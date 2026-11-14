@@ -239,7 +239,7 @@ struct VocabularyOperationBenchmarkTests {
                     parentID: input.row.parentID, position: input.row.position, payload: input.data, indexValues: input.indexes)
             }
         }
-        let encoded = VocabularyPersistenceRows(rows: decoded, reviewTemplatesPresent: rows.reviewTemplatesPresent)
+        let encoded = VocabularyPersistenceRows(rows: decoded)
         let restored = try await r.measure("cold.rows.reconstruct.validate", layer: "codec") {
             try VocabularyPersistenceCodec.decodeSaveState(encoded)
         }
@@ -423,13 +423,11 @@ struct VocabularyOperationBenchmarkTests {
         var meaningEdited = meaningBefore; meaningEdited.senses[0].meaning += " An edited translation."
         try #require(try await r.measure("editor.save.translation") { await store.update(meaningEdited, basedOn: meaningBefore) })
         if !focused {
-            let created = try await r.measure("sense.create") { await store.createSense(entryID: existing.id) }
-            try #require(created != nil)
-            let move = try f.entry(56)
-            try #require(try await r.measure("example.move") {
-                await store.moveExample(entryID: move.id, exampleID: move.senses[0].examples[0].id,
-                    source: move.senses[0].id, target: move.senses[1].id)
-            })
+            let created = try await r.measure("sense.create") {
+                try await store.addEntries([.init(expression: existing.expression, language: existing.language,
+                    kind: existing.kind, meaning: "An explicitly authored additional meaning")])
+            }
+            try #require(created.addedSenses == 1)
             let merge = try f.entry(57)
             try #require(try await r.measure("sense.merge") {
                 await store.mergeSenses(entryID: merge.id, source: merge.senses[0].id, target: merge.senses[1].id)
@@ -591,6 +589,23 @@ struct VocabularyOperationBenchmarkTests {
             await session.waitForIdle(); return error
         }
         try #require(failure == nil)
+        let noteModel = try #require(session.content?.noteCards.values.first { $0.note.senseID == target.senseID })
+        session.editNote(noteModel)
+        var noteDraft = try #require(session.noteDraft)
+        noteDraft.note.exampleID = try #require(f.entry(63).senses[0].examples.last).id
+        try await r.measure("review.note.edit.and.refresh", layer: "model") {
+            session.saveNote(noteDraft); await session.waitForIdle()
+        }
+        try #require(session.message == nil && session.noteDraft == nil)
+        #expect(session.content?.noteCards.values.first { $0.note.id == noteModel.note.id }?.note.exampleID == noteDraft.note.exampleID)
+        session.editNoteType()
+        var typeDraft = try #require(session.noteTypeDraft)
+        typeDraft.type.templates[0].back += "<p>Benchmark shared template</p>"
+        try await r.measure("review.type.edit.shared.and.refresh", layer: "model") {
+            session.saveNoteType(typeDraft); await session.waitForIdle()
+        }
+        try #require(session.message == nil && session.noteTypeDraft == nil, "\(session.message ?? "The type draft did not close")")
+        #expect(session.content?.defaultNoteType.revision == (typeDraft.expected?.revision ?? 0) + 1)
         let participation = try await r.measure("review.participation", layer: "model") {
             try await session.inspectParticipation(target)
         }

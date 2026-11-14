@@ -32,8 +32,8 @@ struct MacWave3OnscreenAcceptanceTests {
             let entry = try #require(saved.document.entries.first)
             let selection = VocabularySelection(entryID: entry.id, senseID: entry.senses[0].id)
             #expect(try fixture.repository.engine.loadLingroveNotebookReviewEnrollments(workspaceId: saved.workspaceId).isEmpty)
-            let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-            _ = try fixture.repository.engine.enrollNotebookSenses([draft], basedOn: saved)
+            let draft = selection
+            _ = try fixture.repository.engine.enrollReviewNotes(selections: [draft], type: ReviewNoteDefaults.type, scope: saved)
             fixture.repository.publishChange()
             fixture.start()
             #expect(fixture.account.configure(api: fixture.server.configuration.apiBaseURL.absoluteString,

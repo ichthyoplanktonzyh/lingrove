@@ -4,21 +4,47 @@ import Foundation
 /// fields, so braces inside user content remain literal. Supported syntax is explicit: fields,
 /// text: filters, nested #/^ conditionals and FrontSide. Unsupported constructs fail, not vanish.
 public nonisolated enum ReviewTemplateRenderer {
-    private indirect enum Node { case literal(String), field(String, Bool), section(String, Bool, [Node]) }
+    private indirect enum Node: Sendable { case literal(String), field(String, Bool), section(String, Bool, [Node]) }
+
+    /// A transaction or preview owns this immutable compiled definition. Parsing and validating
+    /// shared templates once keeps rendering N Notes proportional to their field values rather
+    /// than repeatedly parsing every template for every generated Card.
+    public struct Prepared: Sendable {
+        public let type: ReviewNoteType
+        private let names: Set<String>
+        private let templates: [UUID: ([Node], [Node])]
+
+        public init(_ type: ReviewNoteType) throws {
+            try validateMetadata(type)
+            let names = Set(type.fields.map(\.name))
+            var templates: [UUID: ([Node], [Node])] = [:]
+            for template in type.templates {
+                templates[template.id] = try (parse(template.front, names: names, allowsFront: false),
+                    parse(template.back, names: names, allowsFront: true))
+            }
+            self.type = type; self.names = names; self.templates = templates
+        }
+
+        public func render(templateID: UUID, fields: [String: String]) throws -> ReviewRenderedCard {
+            guard let (frontNodes, backNodes) = templates[templateID], fields.keys.allSatisfy(names.contains) else {
+                throw ReviewTemplateError.invalidDefinition
+            }
+            let front = try expand(frontNodes, fields: fields)
+            let back = try expand(backNodes, fields: fields.merging(["FrontSide": front]) { _, rhs in rhs })
+            guard front.utf8.count <= 1_048_576, back.utf8.count <= 1_048_576 else { throw ReviewTemplateError.invalidDefinition }
+            return .init(frontHTML: front, backHTML: back, css: type.css, fields: fields)
+        }
+    }
 
     public static func render(type: ReviewNoteType, template: ReviewCardTemplate,
                               fields: [String: String]) throws -> ReviewRenderedCard {
-        try validate(type)
-        guard type.templates.contains(template), fields.keys.allSatisfy({ key in type.fields.contains { $0.name == key } })
-        else { throw ReviewTemplateError.invalidDefinition }
-        let names = Set(type.fields.map(\.name))
-        let front = try expand(parse(template.front, names: names, allowsFront: false), fields: fields)
-        let back = try expand(parse(template.back, names: names, allowsFront: true), fields: fields.merging(["FrontSide": front]) { _, rhs in rhs })
-        guard front.utf8.count <= 1_048_576, back.utf8.count <= 1_048_576 else { throw ReviewTemplateError.invalidDefinition }
-        return .init(frontHTML: front, backHTML: back, css: type.css, fields: fields)
+        guard type.templates.contains(template) else { throw ReviewTemplateError.invalidDefinition }
+        return try Prepared(type).render(templateID: template.id, fields: fields)
     }
 
-    public static func validate(_ type: ReviewNoteType) throws {
+    public static func validate(_ type: ReviewNoteType) throws { _ = try Prepared(type) }
+
+    private static func validateMetadata(_ type: ReviewNoteType) throws {
         let fields = type.fields, templates = type.templates
         guard !type.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               type.name.utf8.count <= 1024, type.revision > 0, (1...64).contains(fields.count),
@@ -31,14 +57,11 @@ public nonisolated enum ReviewTemplateRenderer {
                   field.name.utf8.count <= 128, !["FrontSide", "Tags", "Type", "Deck", "Subdeck", "CardFlag", "Card", "LingroveNoteID"].contains(field.name),
                   field.name.rangeOfCharacter(from: forbidden) == nil else { throw ReviewTemplateError.invalidDefinition }
         }
-        let names = Set(fields.map(\.name))
         for template in templates {
             guard !template.name.isEmpty, template.name.utf8.count <= 1024,
                   template.front.utf8.count <= 131_072, template.back.utf8.count <= 131_072 else {
                 throw ReviewTemplateError.invalidDefinition
             }
-            _ = try parse(template.front, names: names, allowsFront: false)
-            _ = try parse(template.back, names: names, allowsFront: true)
         }
     }
 
@@ -90,7 +113,7 @@ public nonisolated enum ReviewTemplateRenderer {
             case let .section(name, inverse, children):
                 let value = fields[name] ?? ""
                 let present = !plainText(value).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || value.range(of: "<(img|audio)\\b", options: [.regularExpression, .caseInsensitive]) != nil
+                    || (value.contains("<") && value.range(of: "<(img|audio)\\b", options: [.regularExpression, .caseInsensitive]) != nil)
                 if present != inverse { output += try expand(children, fields: fields) }
             }
             guard output.utf8.count <= 1_048_576 else { throw ReviewTemplateError.invalidDefinition }
@@ -107,7 +130,10 @@ public nonisolated enum ReviewTemplateRenderer {
     /// Plain fallback is for copy/speech/search, never a second rendering engine. Decode entities
     /// after removing markup so an escaped user literal such as &lt;tag&gt; stays visible text.
     public static func plainText(_ html: String) -> String {
-        html.replacingOccurrences(of: "<(script|style)\\b[^>]*>[\\s\\S]*?</\\1>", with: "", options: [.regularExpression, .caseInsensitive])
+        // Most source fields are already plain text. Regex markup stripping cannot affect
+        // them, and an empty optional field needs no regex work to decide a conditional.
+        guard html.contains("<") || html.contains("&") else { return html }
+        return html.replacingOccurrences(of: "<(script|style)\\b[^>]*>[\\s\\S]*?</\\1>", with: "", options: [.regularExpression, .caseInsensitive])
             .replacingOccurrences(of: "<(br\\s*/?|/p|/div|/section|/li|/h[1-6])>", with: "\n", options: .regularExpression)
             .replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
             .replacingOccurrences(of: "&nbsp;", with: " ").replacingOccurrences(of: "&quot;", with: "\"")

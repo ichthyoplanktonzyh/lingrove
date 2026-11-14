@@ -195,7 +195,7 @@ public struct LingroveNotebookSyncStore {
                 let changed = try core.execute(sql: """
                     UPDATE notebook_state SET revision=?,has_templates=?,updated_at=?
                     WHERE workspace_id=? AND notebook_id=? AND revision=?
-                    """, values: [.integer(Int64(next)), .integer(document.reviewTemplates == nil ? 0 : 1), .text(nowIsoTimestamp()),
+                    """, values: [.integer(Int64(next)), .integer(0), .text(nowIsoTimestamp()),
                         .text(current.workspaceId), .text(current.notebookId.uuidString), .integer(Int64(current.revision))])
                 guard changed == 1 else { throw LingroveNotebookSyncStoreError.stalePreparation }
             }

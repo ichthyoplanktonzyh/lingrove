@@ -1,4 +1,3 @@
-import LingroveNotebook
 import CryptoKit
 import Foundation
 
@@ -10,7 +9,7 @@ nonisolated enum SpeechExportPolicy {
     static func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
     static func filename(_ audio: SpeechExportAudio) -> String { "lingrove-" + digest(audio.data) + "." + audio.fileExtension }
     static func validFilename(_ value: String) -> Bool {
-        VocabularyReviewValidation.validAudioFilename(value)
+        value.range(of: "^lingrove-[a-f0-9]{64}\\.(wav|mp3)$", options: .regularExpression) != nil
     }
     static func wav(_ bytes: Data, sampleRate: Int) throws -> SpeechExportAudio {
         guard !bytes.isEmpty, bytes.count <= maximumBytes - 44, bytes.count.isMultiple(of: 4),

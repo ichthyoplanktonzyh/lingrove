@@ -21,6 +21,8 @@ public struct ReviewNoteStore {
           PRIMARY KEY(workspace_id,note_id));
         CREATE INDEX IF NOT EXISTS notebook_notes_by_source
           ON notebook_notes(workspace_id,notebook_id,json_extract(payload_json,'$.senseID'));
+        CREATE INDEX IF NOT EXISTS notebook_notes_by_type
+          ON notebook_notes(workspace_id,notebook_id,json_extract(payload_json,'$.noteTypeID'));
         CREATE TABLE IF NOT EXISTS notebook_note_cards(
           workspace_id TEXT NOT NULL, note_id TEXT NOT NULL, template_id TEXT NOT NULL, card_id TEXT NOT NULL,
           PRIMARY KEY(workspace_id,note_id,template_id), UNIQUE(workspace_id,card_id),
@@ -38,14 +40,36 @@ public struct ReviewNoteStore {
         for type in stored { try ReviewTemplateRenderer.validate(type) }
         return stored.contains(where: { $0.id == ReviewNoteDefaults.type.id }) ? stored : [ReviewNoteDefaults.type] + stored
     }
+
+    /// Source edits borrow definitions only for selected Notes. Other definition payloads
+    /// cannot make a one-entry refresh scale with the number of unrelated custom types.
+    func types(workspace: String, ids: Set<UUID>) throws -> [ReviewNoteType] {
+        guard !ids.isEmpty else { return [] }
+        let encoded = try json(ids.map(\.uuidString))
+        var stored: [ReviewNoteType] = try core.query(sql: """
+            SELECT payload_json FROM notebook_note_types WHERE workspace_id=?
+              AND type_id IN (SELECT value FROM json_each(?))
+            """, values: [.text(workspace), .text(encoded)]) {
+            try core.decoder.decode(ReviewNoteType.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
+        }
+        if ids.contains(ReviewNoteDefaults.type.id), !stored.contains(where: { $0.id == ReviewNoteDefaults.type.id }) {
+            stored.append(ReviewNoteDefaults.type)
+        }
+        for type in stored { try ReviewTemplateRenderer.validate(type) }
+        return stored
+    }
     public func defaultType(workspace: String) throws -> ReviewNoteType {
         let values: [ReviewNoteType] = try core.query(sql: "SELECT payload_json FROM notebook_note_types WHERE workspace_id=? AND is_default=1",
             values: [.text(workspace)]) { try core.decoder.decode(ReviewNoteType.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8)) }
-        return try values.first ?? types(workspace: workspace).first { $0.id == ReviewNoteDefaults.type.id } ?? ReviewNoteDefaults.type
+        return try values.first ?? type(id: ReviewNoteDefaults.type.id, workspace: workspace) ?? ReviewNoteDefaults.type
     }
     public func notes(scope: LingroveNotebookSnapshot) throws -> [ReviewNote] {
+        try notes(version: .init(scope))
+    }
+
+    func notes(version: LingroveNotebookVersion) throws -> [ReviewNote] {
         try core.query(sql: "SELECT payload_json FROM notebook_notes WHERE workspace_id=? AND notebook_id=? ORDER BY note_id",
-            values: [.text(scope.workspaceId), .text(scope.notebookId.uuidString)]) {
+            values: [.text(version.workspaceId), .text(version.notebookId.uuidString)]) {
             try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
         }
     }
@@ -65,6 +89,29 @@ public struct ReviewNoteStore {
         // index. Keep the established deterministic return order on this small result only.
         return selected.sorted { $0.id.uuidString < $1.id.uuidString }
     }
+    /// Writers admit one Note by its primary key, or one type's dependents through an index.
+    /// The notebook restriction remains part of ownership even when a Note ID is known.
+    func note(id: UUID, version: LingroveNotebookVersion) throws -> ReviewNote? {
+        try core.query(sql: "SELECT payload_json FROM notebook_notes WHERE workspace_id=? AND note_id=? AND notebook_id=?",
+            values: [.text(version.workspaceId), .text(id.uuidString), .text(version.notebookId.uuidString)]) {
+            try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
+        }.first
+    }
+
+    func notes(version: LingroveNotebookVersion, typeID: UUID) throws -> [ReviewNote] {
+        let selected = try core.query(sql: """
+            SELECT payload_json FROM notebook_notes WHERE workspace_id=? AND notebook_id=?
+              AND json_extract(payload_json,'$.noteTypeID')=?
+            """, values: [.text(version.workspaceId), .text(version.notebookId.uuidString), .text(typeID.uuidString)]) {
+            try core.decoder.decode(ReviewNote.self, from: Data(DatabaseCore.columnText(statement: $0, index: 0).utf8))
+        }
+        return selected.sorted { $0.id.uuidString < $1.id.uuidString }
+    }
+
+    func type(id: UUID, workspace: String) throws -> ReviewNoteType? {
+        try types(workspace: workspace, ids: [id]).first
+    }
+
     public func memberships(workspace: String) throws -> [Membership] {
         try memberships(workspace: workspace, noteID: nil)
     }
@@ -122,7 +169,7 @@ public struct ReviewNoteStore {
             values: [.text(workspace), .text(type.id.uuidString), .text(try json(type))])
     }
     public func setDefault(_ id: UUID, workspace: String) throws {
-        guard try types(workspace: workspace).contains(where: { $0.id == id }) else { throw VocabularyError.invalidContent }
+        guard try type(id: id, workspace: workspace) != nil else { throw VocabularyError.invalidContent }
         if id == ReviewNoteDefaults.type.id, try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_note_types WHERE workspace_id=? AND type_id=?", values: [.text(workspace), .text(id.uuidString)]) == 0 {
             try put(ReviewNoteDefaults.type, workspace: workspace)
         }

@@ -113,8 +113,7 @@ public struct LingroveNotebookStore {
     func commit(_ plan: LingroveNotebookSavePlan, current: LingroveNotebookSnapshot,
                 publicChange: Bool, operationId: String, lineage: UUID) throws -> LingroveNotebookSnapshot {
         try Task.checkCancellation()
-        if current.revision > 0, plan.rows.changed.isEmpty && plan.rows.removed.isEmpty && plan.rows.repositioned.isEmpty,
-           (plan.state.document.reviewTemplates != nil) == (current.document.reviewTemplates != nil) { return current }
+        if current.revision > 0, plan.rows.changed.isEmpty && plan.rows.removed.isEmpty && plan.rows.repositioned.isEmpty { return current }
             let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
             try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId)
             let revision = current.revision + 1
@@ -122,11 +121,11 @@ public struct LingroveNotebookStore {
             let count = try self.core.execute(sql: """
                 UPDATE notebook_state SET revision=?,has_templates=?,updated_at=?
                 WHERE workspace_id=? AND notebook_id=? AND revision=?
-                """, values: [.integer(Int64(revision)), .integer(next.reviewTemplates == nil ? 0 : 1), .text(now),
+                """, values: [.integer(Int64(revision)), .integer(0), .text(now),
                     .text(current.workspaceId), .text(current.notebookId.uuidString), .integer(Int64(current.revision))])
             guard count == 1 else { throw VocabularyError.editConflict }
             try self.recordPending(current: .init(current), revision: revision, changed: changed, removed: removed,
-                reviewTemplatesPresent: next.reviewTemplates != nil, publicChange: publicChange, operationId: operationId, now: now)
+                publicChange: publicChange, operationId: operationId, now: now)
         try recordRepositioned(plan.rows.repositioned, workspaceId: current.workspaceId, operationId: operationId,
             journalOffset: changed.count + removed.count)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
@@ -204,14 +203,13 @@ public struct LingroveNotebookStore {
         // so another connection's review writes cannot evict trusted corpus state. The stability
         // check also protects read-only databases that still use the broad fallback counter.
         let token = try core.notebookCacheToken()
-        let headers = try self.core.query(sql: "SELECT notebook_id,revision,has_templates FROM notebook_state WHERE workspace_id=?",
-            values: [.text(workspaceId)]) { statement -> (UUID, UInt64, Bool) in
+        let headers = try self.core.query(sql: "SELECT notebook_id,revision FROM notebook_state WHERE workspace_id=?",
+            values: [.text(workspaceId)]) { statement -> (UUID, UInt64) in
             guard let id = UUID(uuidString: try Self.requiredText(statement, 0)),
-                  sqlite3_column_type(statement, 1) == SQLITE_INTEGER,
-                  sqlite3_column_type(statement, 2) == SQLITE_INTEGER else { throw VocabularyError.invalidArchive }
-            let revision = sqlite3_column_int64(statement, 1), templates = sqlite3_column_int64(statement, 2)
-            guard revision >= 0, templates == 0 || templates == 1 else { throw VocabularyError.invalidArchive }
-            return (id, UInt64(revision), templates == 1)
+                  sqlite3_column_type(statement, 1) == SQLITE_INTEGER else { throw VocabularyError.invalidArchive }
+            let revision = sqlite3_column_int64(statement, 1)
+            guard revision >= 0 else { throw VocabularyError.invalidArchive }
+            return (id, UInt64(revision))
         }
         guard let header = headers.first else { throw VocabularyError.editConflict }
         let generation = try LingroveNotebookLocalScopeStore(core: core).generationInTransaction()
@@ -222,12 +220,12 @@ public struct LingroveNotebookStore {
             return cached.snapshot
         }
         let rows = try readRows(workspaceId: workspaceId)
-        let state = try VocabularyPersistenceCodec.decodeSaveState(.init(rows: rows, reviewTemplatesPresent: header.2))
+        let state = try VocabularyPersistenceCodec.decodeSaveState(.init(rows: rows))
         let document = state.document
         let snapshot = LingroveNotebookSnapshot(workspaceId: workspaceId, notebookId: header.0,
             revision: header.1, document: document, generation: generation)
         core.notebookSaveCache = .init(snapshot: snapshot, state: state,
-            projection: try .init(.init(rows: rows, reviewTemplatesPresent: header.2)), token: token, lineage: UUID())
+            projection: try .init(.init(rows: rows)), token: token, lineage: UUID())
         return snapshot
     }
 
@@ -251,18 +249,17 @@ public struct LingroveNotebookStore {
                   try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_staged_uploads", values: []) == 0 else {
                 throw LocalStoreError.database("Dev corpus is bound to an older sync format")
             }
-            let scopes = try core.query(sql: "SELECT workspace_id,notebook_id,revision,has_templates FROM notebook_state",
-                values: []) { row -> (String, UUID, UInt64, Bool) in
+            let scopes = try core.query(sql: "SELECT workspace_id,notebook_id,revision FROM notebook_state",
+                values: []) { row -> (String, UUID, UInt64) in
                 let revision = sqlite3_column_int64(row, 2)
                 guard let id = UUID(uuidString: try Self.requiredText(row, 1)),
                       revision >= 0, revision < Int64.max else { throw VocabularyError.invalidArchive }
-                return (try Self.requiredText(row, 0), id, UInt64(revision), sqlite3_column_int64(row, 3) == 1)
+                return (try Self.requiredText(row, 0), id, UInt64(revision))
             }
             var migratedEntries = 0
             let generation = try LingroveNotebookLocalScopeStore(core: core).generationInTransaction()
-            for (workspace, notebook, revision, hasTemplates) in scopes {
-                let before = VocabularyPersistenceRows(rows: try store.readRows(workspaceId: workspace),
-                    reviewTemplatesPresent: hasTemplates)
+            for (workspace, notebook, revision) in scopes {
+                let before = VocabularyPersistenceRows(rows: try store.readRows(workspaceId: workspace))
                 let document = try VocabularyPersistenceCodec.migrateDevCorpus(before)
                 let after = try VocabularyPersistenceCodec.encode(document)
                 let old = try before.keyedRows(), new = try after.keyedRows()
@@ -277,7 +274,7 @@ public struct LingroveNotebookStore {
                     let baseline = LingroveNotebookSnapshot(workspaceId: workspace, notebookId: notebook, revision: revision,
                         document: document, generation: generation)
                     try store.recordPending(current: .init(baseline), revision: revision + 1, changed: changed, removed: removed,
-                        reviewTemplatesPresent: hasTemplates, publicChange: true, operationId: UUID().uuidString.lowercased(), now: now)
+                        publicChange: true, operationId: UUID().uuidString.lowercased(), now: now)
                 }
                 let reopened = try store.readSnapshot(workspaceId: workspace)
                 guard reopened.document == document else { throw VocabularyError.invalidArchive }
@@ -345,13 +342,13 @@ public struct LingroveNotebookStore {
     // swiftlint:disable:next function_parameter_count
     func recordPending(
         current: LingroveNotebookVersion, revision: UInt64, changed: [VocabularyPersistenceRow],
-        removed: [VocabularyPersistenceRow], reviewTemplatesPresent: Bool, publicChange: Bool, operationId: String, now: String
+        removed: [VocabularyPersistenceRow], publicChange: Bool, operationId: String, now: String
     ) throws {
         try self.core.execute(sql: """
             INSERT INTO notebook_pending_transactions(operation_id,workspace_id,notebook_id,base_revision,revision,has_templates,created_at,has_public_change)
             VALUES(?,?,?,?,?,?,?,?)
             """, values: [.text(operationId), .text(current.workspaceId), .text(current.notebookId.uuidString),
-                .integer(Int64(current.revision)), .integer(Int64(revision)), .integer(reviewTemplatesPresent ? 1 : 0), .text(now), .integer(publicChange ? 1 : 0)])
+                .integer(Int64(current.revision)), .integer(Int64(revision)), .integer(0), .text(now), .integer(publicChange ? 1 : 0)])
         // This journal is local persistence, including optional legacy adapter metadata.
         // Upload projection filters tool-local fields and adds remote versions;
         // this journal remains complete for local recovery and exact retirement.

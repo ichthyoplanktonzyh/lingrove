@@ -17,7 +17,6 @@ final class LingroveNotebookStoreIntegrationTests: LocalDatabaseTestCase {
 
         let empty = try database.loadLingroveNotebook(workspaceId: workspaceId)
         XCTAssertEqual(VocabularyDocument(), empty.document)
-        XCTAssertNil(empty.document.reviewTemplates)
 
         let expression = "café\u{0000}猫"
         let note = "A saved note with Unicode 🐈 and an embedded\u{0000}separator."
@@ -27,7 +26,6 @@ final class LingroveNotebookStoreIntegrationTests: LocalDatabaseTestCase {
             basedOn: empty,
             operationId: "notebook-round-trip"
         )
-        XCTAssertNil(saved.document.reviewTemplates)
         XCTAssertEqual(0, try self.templatePresence(database: database, workspaceId: workspaceId))
         XCTAssertEqual([0], try self.journalTemplateFlags(database: database, workspaceId: workspaceId))
 
@@ -42,37 +40,6 @@ final class LingroveNotebookStoreIntegrationTests: LocalDatabaseTestCase {
 
         // `nil` and `[]` encode the same number of template rows, so the notebook header carries
         // their distinct meaning. Reopen after both writes to test the durable representation.
-        var explicitEmptyTemplates = reloaded.document
-        explicitEmptyTemplates.reviewTemplates = []
-        let emptyTemplatesSaved = try reopened.saveLingroveNotebook(
-            explicitEmptyTemplates,
-            basedOn: reloaded,
-            operationId: "notebook-empty-templates"
-        )
-        XCTAssertTrue(try XCTUnwrap(emptyTemplatesSaved.document.reviewTemplates).isEmpty)
-        XCTAssertEqual(1, try self.templatePresence(database: reopened, workspaceId: workspaceId))
-        XCTAssertEqual([0, 1], try self.journalTemplateFlags(database: reopened, workspaceId: workspaceId))
-
-        let reopenedAgain = try self.reopen(reopened)
-        let emptyTemplatesReloaded = try reopenedAgain.loadLingroveNotebook(workspaceId: workspaceId)
-        XCTAssertEqual(emptyTemplatesSaved, emptyTemplatesReloaded)
-        XCTAssertTrue(try XCTUnwrap(emptyTemplatesReloaded.document.reviewTemplates).isEmpty)
-
-        var missingTemplates = emptyTemplatesReloaded.document
-        missingTemplates.reviewTemplates = nil
-        let missingTemplatesSaved = try reopenedAgain.saveLingroveNotebook(
-            missingTemplates,
-            basedOn: emptyTemplatesReloaded,
-            operationId: "notebook-missing-templates"
-        )
-        XCTAssertNil(missingTemplatesSaved.document.reviewTemplates)
-        XCTAssertEqual(0, try self.templatePresence(database: reopenedAgain, workspaceId: workspaceId))
-
-        let reopenedThird = try self.reopen(reopenedAgain)
-        let missingTemplatesReloaded = try reopenedThird.loadLingroveNotebook(workspaceId: workspaceId)
-        XCTAssertEqual(missingTemplatesSaved, missingTemplatesReloaded)
-        XCTAssertNil(missingTemplatesReloaded.document.reviewTemplates)
-        XCTAssertEqual([0, 1, 0], try self.journalTemplateFlags(database: reopenedThird, workspaceId: workspaceId))
     }
 
     func testCategoryKeyExchangeAndReplacementPreserveUnchangedChildren() throws {

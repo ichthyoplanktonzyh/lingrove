@@ -9,10 +9,6 @@ import Security
 final class AnkiReviewSettings: ObservableObject {
     @Published var address: String { didSet { defaults.set(address, forKey: "ankiReviewAddress") } }
     @Published var deck: String { didSet { defaults.set(deck, forKey: "ankiReviewDeck") } }
-    @Published var model: String { didSet { defaults.set(model, forKey: "ankiReviewModel") } }
-    @Published var mapping: [ReviewField: String] { didSet { persistMapping() } }
-    @Published var defaultRecognition: Bool { didSet { defaults.set(defaultRecognition, forKey: "ankiReviewRecognition") } }
-    @Published var defaultGap: Bool { didSet { defaults.set(defaultGap, forKey: "ankiReviewGap") } }
     private let defaults: UserDefaults
     private let credentials: AnkiCredentialStore
 
@@ -21,16 +17,7 @@ final class AnkiReviewSettings: ObservableObject {
         self.credentials = credentials ?? AnkiCredentialStore()
         address = defaults.string(forKey: "ankiReviewAddress") ?? "http://127.0.0.1:8765"
         deck = defaults.string(forKey: "ankiReviewDeck") ?? "Default"
-        model = defaults.string(forKey: "ankiReviewModel") ?? AnkiReviewPolicy.presetName
-        mapping = defaults.data(forKey: "ankiReviewMapping").flatMap {
-            try? JSONDecoder().decode([ReviewField: String].self, from: $0)
-        } ?? AnkiReviewPolicy.presetMapping
-        defaultRecognition = defaults.object(forKey: "ankiReviewRecognition") as? Bool ?? true
-        defaultGap = defaults.bool(forKey: "ankiReviewGap")
     }
-
-    var effectiveMapping: [ReviewField: String] { model == AnkiReviewPolicy.presetName ? AnkiReviewPolicy.presetMapping : mapping }
-    var hasSavedDeck: Bool { defaults.string(forKey: "ankiReviewDeck") != nil }
 
     func connection() throws -> AnkiConnection {
         guard let endpoint = AnkiReviewPolicy.endpoint(address) else {
@@ -40,9 +27,7 @@ final class AnkiReviewSettings: ObservableObject {
     }
     func readKey() throws -> String { try credentials.read() }
     func saveKey(_ value: String) throws { try credentials.save(value) }
-    private func persistMapping() {
-        if let data = try? JSONEncoder().encode(mapping) { defaults.set(data, forKey: "ankiReviewMapping") }
-    }
+
 }
 
 /// A small Keychain boundary keeps Anki credentials separate from inference endpoint tokens.

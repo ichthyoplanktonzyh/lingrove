@@ -62,7 +62,6 @@ struct BuiltInReviewWindowView: View {
         .sheet(item: $session.batchDraft) { batch in BuiltInReviewBatchView(session: session, batch: batch) }
         .sheet(item: $session.noteDraft) { draft in ReviewNoteEditor(session: session, draft: draft) }
         .sheet(item: $session.noteTypeDraft) { draft in ReviewNoteTypeEditor(session: session, draft: draft) }
-        .sheet(item: $session.draft) { draft in BuiltInReviewPreparationView(session: session, draft: draft) }
         .accessibilityIdentifier("builtinReview.window")
     }
 

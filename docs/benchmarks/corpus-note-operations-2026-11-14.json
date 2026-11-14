@@ -1,0 +1,4156 @@
+{
+  "identity": {
+    "commit": "c2cf05a14aa47d5d8a95f9c1d5ae9383891921b4",
+    "configuration": "Release",
+    "architecture": "arm64",
+    "hostBundleID": "io.ichthyoplanktonzyh.lingrove.operations.validation",
+    "hostBinarySHA256": "c0cf3a4e950f67ab0364869e7b794928ac11cd607df64862f9e842f128f22fc6",
+    "installedAppAccessed": false,
+    "input": "generated synthetic notebooks only",
+    "hardware": "MacBookPro18,2",
+    "sizes": "10000,20000",
+    "trials": 3,
+    "scanTrials": 1,
+    "focusedTrials": 3,
+    "tailOnly": false,
+    "remainingOnly": false,
+    "remainingTrials": 0,
+    "pagedOnly": false,
+    "pagedTrials": 0
+  },
+  "validation": {
+    "measurements": {
+      "result": "Passed",
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0,
+      "startTime": 1794622649.769,
+      "finishTime": 1794622852.696,
+      "platform": {
+        "modelName": "MacBook Pro",
+        "osVersion": "26.6.2",
+        "osBuildNumber": "25G83",
+        "architecture": "arm64e"
+      }
+    },
+    "focused": {
+      "result": "Passed",
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0,
+      "startTime": 1794622452.829,
+      "finishTime": 1794622648.489,
+      "platform": {
+        "modelName": "MacBook Pro",
+        "osVersion": "26.6.2",
+        "osBuildNumber": "25G83",
+        "architecture": "arm64e"
+      }
+    }
+  },
+  "outcomes": [
+    {
+      "message": "",
+      "succeeded": true,
+      "operation": "sense.remove.enrolled",
+      "entries": 10000,
+      "trial": 1,
+      "measurementMode": "scan"
+    },
+    {
+      "succeeded": true,
+      "message": "",
+      "entries": 20000,
+      "operation": "sense.remove.enrolled",
+      "trial": 1,
+      "measurementMode": "scan"
+    },
+    {
+      "message": "",
+      "trial": 1,
+      "entries": 10000,
+      "operation": "sense.remove.enrolled",
+      "succeeded": true,
+      "measurementMode": "focused"
+    },
+    {
+      "message": "",
+      "trial": 2,
+      "entries": 10000,
+      "operation": "sense.remove.enrolled",
+      "succeeded": true,
+      "measurementMode": "focused"
+    },
+    {
+      "message": "",
+      "trial": 3,
+      "entries": 10000,
+      "operation": "sense.remove.enrolled",
+      "succeeded": true,
+      "measurementMode": "focused"
+    },
+    {
+      "succeeded": true,
+      "message": "",
+      "trial": 1,
+      "operation": "sense.remove.enrolled",
+      "entries": 20000,
+      "measurementMode": "focused"
+    },
+    {
+      "succeeded": true,
+      "message": "",
+      "trial": 2,
+      "operation": "sense.remove.enrolled",
+      "entries": 20000,
+      "measurementMode": "focused"
+    },
+    {
+      "succeeded": true,
+      "message": "",
+      "trial": 3,
+      "operation": "sense.remove.enrolled",
+      "entries": 20000,
+      "measurementMode": "focused"
+    }
+  ],
+  "excludedSamples": [],
+  "fixtures": {
+    "10000": {
+      "categoryMemberships": 14000,
+      "senses": 20000,
+      "entries": 10000,
+      "enrolledSenses": 2000,
+      "ratingRecords": 1000,
+      "databaseBytes": 293978112,
+      "mappings": 14011,
+      "meanings": 14000,
+      "examples": 40000,
+      "categories": 688
+    },
+    "20000": {
+      "meanings": 28000,
+      "categoryMemberships": 28000,
+      "senses": 40000,
+      "ratingRecords": 1000,
+      "entries": 20000,
+      "categories": 1038,
+      "databaseBytes": 578826240,
+      "mappings": 28011,
+      "enrolledSenses": 4000,
+      "examples": 80000
+    }
+  },
+  "operationCount": 84,
+  "sampleCount": 378,
+  "focusedOperationCount": 35,
+  "operations": [
+    {
+      "id": "corpus.load.first",
+      "label": "生词本首次加载",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 4139.705667,
+          "minMs": 4054.591667,
+          "maxMs": 4297.536,
+          "rawMs": [
+            4139.705667,
+            4054.591667,
+            4297.536
+          ],
+          "visibleEntriesBefore": [
+            0
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 4419.168292,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 8462.01,
+          "minMs": 8224.109084,
+          "maxMs": 8545.922625,
+          "rawMs": [
+            8462.01,
+            8545.922625,
+            8224.109084
+          ],
+          "visibleEntriesBefore": [
+            0
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 9304.738459,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "corpus.load.cached",
+      "label": "生词本重复加载",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 0.00125,
+          "minMs": 0.001125,
+          "maxMs": 0.003792,
+          "rawMs": [
+            0.001125,
+            0.00125,
+            0.003792
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.001792,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 0.001292,
+          "minMs": 0.001125,
+          "maxMs": 0.001375,
+          "rawMs": [
+            0.001375,
+            0.001125,
+            0.001292
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.001417,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "browse.list.first",
+      "label": "列表首次排序与行准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 4.485375,
+          "minMs": 4.235875,
+          "maxMs": 5.126833,
+          "rawMs": [
+            4.485375,
+            5.126833,
+            4.235875
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 4.875542,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 9.356541,
+          "minMs": 9.106458,
+          "maxMs": 9.525166,
+          "rawMs": [
+            9.356541,
+            9.525166,
+            9.106458
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 9.850375,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.list.cached",
+      "label": "列表缓存读取",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 0.002917,
+          "minMs": 0.002208,
+          "maxMs": 0.006834,
+          "rawMs": [
+            0.006834,
+            0.002917,
+            0.002208
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.0085,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 0.003167,
+          "minMs": 0.002125,
+          "maxMs": 0.0035,
+          "rawMs": [
+            0.003167,
+            0.002125,
+            0.0035
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.008541,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.expand.one",
+      "label": "展开一个多义词",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 2.716583,
+          "minMs": 2.5645,
+          "maxMs": 3.015291,
+          "rawMs": [
+            3.015291,
+            2.5645,
+            2.716583
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 3.00025,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 6.857042,
+          "minMs": 6.138917,
+          "maxMs": 7.132,
+          "rawMs": [
+            6.857042,
+            7.132,
+            6.138917
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 7.613916,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.filter.language",
+      "label": "按语言筛选",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 0.740375,
+          "minMs": 0.694,
+          "maxMs": 0.756625,
+          "rawMs": [
+            0.756625,
+            0.694,
+            0.740375
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.744958,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 1.465334,
+          "minMs": 1.4505,
+          "maxMs": 1.607458,
+          "rawMs": [
+            1.607458,
+            1.4505,
+            1.465334
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 1.518209,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.filter.tag",
+      "label": "按标签筛选",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 3.840291,
+          "minMs": 3.725292,
+          "maxMs": 4.127209,
+          "rawMs": [
+            3.725292,
+            4.127209,
+            3.840291
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 3.899708,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 7.195208,
+          "minMs": 7.143042,
+          "maxMs": 7.264625,
+          "rawMs": [
+            7.264625,
+            7.143042,
+            7.195208
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 7.71325,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.literal.query",
+      "label": "列表文字筛选",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 278.000833,
+          "minMs": 272.159292,
+          "maxMs": 282.689291,
+          "rawMs": [
+            278.000833,
+            282.689291,
+            272.159292
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 282.146709,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 534.131375,
+          "minMs": 533.189833,
+          "maxMs": 542.915958,
+          "rawMs": [
+            534.131375,
+            542.915958,
+            533.189833
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 559.924958,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.meanings.first",
+      "label": "共享义浏览准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 23.900208,
+          "minMs": 22.907,
+          "maxMs": 24.437583,
+          "rawMs": [
+            24.437583,
+            22.907,
+            23.900208
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 25.608042,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 46.572375,
+          "minMs": 46.509375,
+          "maxMs": 47.4115,
+          "rawMs": [
+            46.572375,
+            47.4115,
+            46.509375
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 58.746333,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.category.outline",
+      "label": "分类大纲准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 20.224667,
+          "minMs": 20.2005,
+          "maxMs": 23.100875,
+          "rawMs": [
+            23.100875,
+            20.2005,
+            20.224667
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 23.719875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 40.543291,
+          "minMs": 40.087125,
+          "maxMs": 42.505875,
+          "rawMs": [
+            40.543291,
+            42.505875,
+            40.087125
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 46.807459,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.unclassified",
+      "label": "未分类义项准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 4.139,
+          "minMs": 3.932416,
+          "maxMs": 4.2485,
+          "rawMs": [
+            4.139,
+            4.2485,
+            3.932416
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 4.341334,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 8.050792,
+          "minMs": 7.972084,
+          "maxMs": 8.08075,
+          "rawMs": [
+            7.972084,
+            8.08075,
+            8.050792
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 8.652416,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "search.prepare.first",
+      "label": "首次检索文档准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 276.231541,
+          "minMs": 269.768875,
+          "maxMs": 293.661584,
+          "rawMs": [
+            293.661584,
+            276.231541,
+            269.768875
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 299.9975,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 540.940958,
+          "minMs": 531.977042,
+          "maxMs": 542.784875,
+          "rawMs": [
+            542.784875,
+            540.940958,
+            531.977042
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 625.226375,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "search.keyword.query",
+      "label": "关键词检索",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 58.105708,
+          "minMs": 56.826167,
+          "maxMs": 61.9455,
+          "rawMs": [
+            61.9455,
+            56.826167,
+            58.105708
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 69.826792,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 112.502083,
+          "minMs": 111.724792,
+          "maxMs": 112.814583,
+          "rawMs": [
+            112.502083,
+            112.814583,
+            111.724792
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 132.200083,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "search.prepare.one.receipt",
+      "label": "个人笔记变化后的检索准备（检索文本未变）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 0.018292,
+          "minMs": 0.017,
+          "maxMs": 0.024416,
+          "rawMs": [
+            0.024416,
+            0.017,
+            0.018292
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.0225,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 0.020416,
+          "minMs": 0.017416,
+          "maxMs": 0.027375,
+          "rawMs": [
+            0.020416,
+            0.027375,
+            0.017416
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.023167,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "graph.taxonomy.first",
+      "label": "分类图谱首次投影",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 126.191,
+          "minMs": 121.801334,
+          "maxMs": 129.050334,
+          "rawMs": [
+            129.050334,
+            121.801334,
+            126.191
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 138.523416,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 251.915667,
+          "minMs": 245.700083,
+          "maxMs": 256.3275,
+          "rawMs": [
+            245.700083,
+            256.3275,
+            251.915667
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 272.739625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "graph.taxonomy.cached",
+      "label": "分类图谱缓存读取",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 0.061292,
+          "minMs": 0.05875,
+          "maxMs": 0.064042,
+          "rawMs": [
+            0.05875,
+            0.061292,
+            0.064042
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.045917,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 0.056333,
+          "minMs": 0.050542,
+          "maxMs": 0.06075,
+          "rawMs": [
+            0.056333,
+            0.050542,
+            0.06075
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 0.067042,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "graph.entries.first",
+      "label": "词条图谱首次投影",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 22.953959,
+          "minMs": 21.561875,
+          "maxMs": 23.193834,
+          "rawMs": [
+            22.953959,
+            23.193834,
+            21.561875
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 23.487541,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 42.859584,
+          "minMs": 42.706334,
+          "maxMs": 43.688583,
+          "rawMs": [
+            42.859584,
+            43.688583,
+            42.706334
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20000
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 45.631583,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "favorite.translation.first",
+      "label": "收藏无上下文翻译（首次写入）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 83.639291,
+          "minMs": 81.513208,
+          "maxMs": 85.43825,
+          "rawMs": [
+            85.43825,
+            83.639291,
+            81.513208
+          ],
+          "visibleEntriesBefore": [
+            10000
+          ],
+          "visibleEntriesAfter": [
+            10001
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 92.478333,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 156.623166,
+          "minMs": 156.334375,
+          "maxMs": 157.706834,
+          "rawMs": [
+            156.623166,
+            157.706834,
+            156.334375
+          ],
+          "visibleEntriesBefore": [
+            20000
+          ],
+          "visibleEntriesAfter": [
+            20001
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 165.774,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "favorite.context.first",
+      "label": "收藏带例句翻译（首次写入）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 81.534084,
+          "minMs": 81.287375,
+          "maxMs": 85.400583,
+          "rawMs": [
+            85.400583,
+            81.287375,
+            81.534084
+          ],
+          "visibleEntriesBefore": [
+            10001
+          ],
+          "visibleEntriesAfter": [
+            10002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 90.355416,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 160.565042,
+          "minMs": 157.198375,
+          "maxMs": 163.037375,
+          "rawMs": [
+            163.037375,
+            160.565042,
+            157.198375
+          ],
+          "visibleEntriesBefore": [
+            20001
+          ],
+          "visibleEntriesAfter": [
+            20002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 170.962833,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "search.prepare.after.favorite",
+      "label": "收藏后的检索准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 93.696708,
+          "minMs": 91.643791,
+          "maxMs": 98.230458,
+          "rawMs": [
+            98.230458,
+            93.696708,
+            91.643791
+          ],
+          "visibleEntriesBefore": [
+            10002
+          ],
+          "visibleEntriesAfter": [
+            10002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 104.116208,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 192.2655,
+          "minMs": 192.129584,
+          "maxMs": 202.652125,
+          "rawMs": [
+            202.652125,
+            192.2655,
+            192.129584
+          ],
+          "visibleEntriesBefore": [
+            20002
+          ],
+          "visibleEntriesAfter": [
+            20002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 227.532583,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.list.after.favorite",
+      "label": "收藏后的列表准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 4.232708,
+          "minMs": 4.187708,
+          "maxMs": 4.390542,
+          "rawMs": [
+            4.390542,
+            4.187708,
+            4.232708
+          ],
+          "visibleEntriesBefore": [
+            10002
+          ],
+          "visibleEntriesAfter": [
+            10002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 5.099917,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 8.856959,
+          "minMs": 8.845458,
+          "maxMs": 8.9165,
+          "rawMs": [
+            8.856959,
+            8.9165,
+            8.845458
+          ],
+          "visibleEntriesBefore": [
+            20002
+          ],
+          "visibleEntriesAfter": [
+            20002
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 9.336666,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "favorite.translation.repeat",
+      "label": "收藏另一无上下文翻译（后续写入）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 74.494375,
+          "minMs": 73.277042,
+          "maxMs": 78.451333,
+          "rawMs": [
+            78.451333,
+            74.494375,
+            73.277042
+          ],
+          "visibleEntriesBefore": [
+            10002
+          ],
+          "visibleEntriesAfter": [
+            10003
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 85.27525,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 149.602333,
+          "minMs": 149.54225,
+          "maxMs": 153.293875,
+          "rawMs": [
+            153.293875,
+            149.54225,
+            149.602333
+          ],
+          "visibleEntriesBefore": [
+            20002
+          ],
+          "visibleEntriesAfter": [
+            20003
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 155.063791,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "favorite.context.repeat",
+      "label": "收藏另一带例句翻译（后续写入）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 81.290542,
+          "minMs": 80.987208,
+          "maxMs": 88.731541,
+          "rawMs": [
+            88.731541,
+            80.987208,
+            81.290542
+          ],
+          "visibleEntriesBefore": [
+            10003
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 88.595125,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 160.826667,
+          "minMs": 158.635625,
+          "maxMs": 166.898,
+          "rawMs": [
+            166.898,
+            160.826667,
+            158.635625
+          ],
+          "visibleEntriesBefore": [
+            20003
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 170.683333,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "favorite.context.existing",
+      "label": "为已有义项收藏例句",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 32.47725,
+          "minMs": 32.075667,
+          "maxMs": 37.456792,
+          "rawMs": [
+            37.456792,
+            32.075667,
+            32.47725
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 35.779166,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 61.094166,
+          "minMs": 60.965958,
+          "maxMs": 63.670125,
+          "rawMs": [
+            63.670125,
+            61.094166,
+            60.965958
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 66.95625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "favorite.context.remove",
+      "label": "取消收藏一条例句",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 42.338959,
+          "minMs": 42.338959,
+          "maxMs": 42.338959,
+          "rawMs": [
+            42.338959
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 42.338959,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 82.952542,
+          "minMs": 82.952542,
+          "maxMs": 82.952542,
+          "rawMs": [
+            82.952542
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 82.952542,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "editor.save.note",
+      "label": "保存个人笔记",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 59.932125,
+          "minMs": 59.229167,
+          "maxMs": 63.624375,
+          "rawMs": [
+            63.624375,
+            59.932125,
+            59.229167
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 64.343042,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 118.527,
+          "minMs": 117.378792,
+          "maxMs": 119.428459,
+          "rawMs": [
+            118.527,
+            119.428459,
+            117.378792
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 125.582167,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "editor.save.translation",
+      "label": "保存义项翻译",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 58.395208,
+          "minMs": 58.291167,
+          "maxMs": 61.684333,
+          "rawMs": [
+            61.684333,
+            58.291167,
+            58.395208
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 63.850666,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 115.15575,
+          "minMs": 114.512541,
+          "maxMs": 115.809042,
+          "rawMs": [
+            115.15575,
+            115.809042,
+            114.512541
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 122.100875,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "sense.create",
+      "label": "新增有内容的义项",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 227.896958,
+          "minMs": 227.896958,
+          "maxMs": 227.896958,
+          "rawMs": [
+            227.896958
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 227.896958,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 495.244208,
+          "minMs": 495.244208,
+          "maxMs": 495.244208,
+          "rawMs": [
+            495.244208
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 495.244208,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "sense.merge",
+      "label": "合并义项",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 40.805209,
+          "minMs": 40.805209,
+          "maxMs": 40.805209,
+          "rawMs": [
+            40.805209
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 40.805209,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 79.82275,
+          "minMs": 79.82275,
+          "maxMs": 79.82275,
+          "rawMs": [
+            79.82275
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 79.82275,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "sense.merge.undo",
+      "label": "撤销义项合并",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 2161.568167,
+          "minMs": 2161.568167,
+          "maxMs": 2161.568167,
+          "rawMs": [
+            2161.568167
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 2161.568167,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 4743.601833,
+          "minMs": 4743.601833,
+          "maxMs": 4743.601833,
+          "rawMs": [
+            4743.601833
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 4743.601833,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "sense.remove.mapped",
+      "label": "移除前部有关联义项（第59词条）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 45.870708,
+          "minMs": 45.20975,
+          "maxMs": 46.559166,
+          "rawMs": [
+            46.559166,
+            45.870708,
+            45.20975
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 51.239667,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 90.720792,
+          "minMs": 89.477792,
+          "maxMs": 92.854625,
+          "rawMs": [
+            92.854625,
+            90.720792,
+            89.477792
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 100.88275,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "search.prepare.after.remove",
+      "label": "移除义项后的检索准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 95.856125,
+          "minMs": 95.7215,
+          "maxMs": 102.399041,
+          "rawMs": [
+            102.399041,
+            95.7215,
+            95.856125
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 116.318833,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 204.023042,
+          "minMs": 202.820959,
+          "maxMs": 204.1265,
+          "rawMs": [
+            202.820959,
+            204.1265,
+            204.023042
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 251.761625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "browse.list.after.remove",
+      "label": "移除义项后的列表准备",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 4.260375,
+          "minMs": 4.143041,
+          "maxMs": 4.391666,
+          "rawMs": [
+            4.391666,
+            4.143041,
+            4.260375
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 4.432833,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 8.809625,
+          "minMs": 8.7855,
+          "maxMs": 8.985625,
+          "rawMs": [
+            8.809625,
+            8.985625,
+            8.7855
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 10.325709,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "sense.remove.unmapped",
+      "label": "移除尾部无关联义项（倒数第2词条）",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 36.768125,
+          "minMs": 36.35025,
+          "maxMs": 39.420709,
+          "rawMs": [
+            39.420709,
+            36.768125,
+            36.35025
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 43.192,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 74.72,
+          "minMs": 74.657,
+          "maxMs": 74.9155,
+          "rawMs": [
+            74.9155,
+            74.657,
+            74.72
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 78.857125,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "sense.remove.enrolled",
+      "label": "从生词本移除已加入复习的义项",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 53.037125,
+          "minMs": 51.569583,
+          "maxMs": 54.351333,
+          "rawMs": [
+            54.351333,
+            53.037125,
+            51.569583
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 59.130292,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 103.606875,
+          "minMs": 102.314125,
+          "maxMs": 107.183416,
+          "rawMs": [
+            107.183416,
+            102.314125,
+            103.606875
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 117.361334,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "entry.remove",
+      "label": "从生词本移除整个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 86.143542,
+          "minMs": 86.143542,
+          "maxMs": 86.143542,
+          "rawMs": [
+            86.143542
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10003
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 86.143542,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 161.47375,
+          "minMs": 161.47375,
+          "maxMs": 161.47375,
+          "rawMs": [
+            161.47375
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20003
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 161.47375,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "entry.create.manual",
+      "label": "手工创建一个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 279.963958,
+          "minMs": 279.963958,
+          "maxMs": 279.963958,
+          "rawMs": [
+            279.963958
+          ],
+          "visibleEntriesBefore": [
+            10003
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 279.963958,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 467.758042,
+          "minMs": 467.758042,
+          "maxMs": 467.758042,
+          "rawMs": [
+            467.758042
+          ],
+          "visibleEntriesBefore": [
+            20003
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 467.758042,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "entry.import.50",
+      "label": "批量添加50个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 2390.883083,
+          "minMs": 2390.883083,
+          "maxMs": 2390.883083,
+          "rawMs": [
+            2390.883083
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 2390.883083,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 5079.597875,
+          "minMs": 5079.597875,
+          "maxMs": 5079.597875,
+          "rawMs": [
+            5079.597875
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 5079.597875,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "entry.import.50.again",
+      "label": "再次手工导入同样50行（新增50义项）",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 2250.56875,
+          "minMs": 2250.56875,
+          "maxMs": 2250.56875,
+          "rawMs": [
+            2250.56875
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 2250.56875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 4754.766333,
+          "minMs": 4754.766333,
+          "maxMs": 4754.766333,
+          "rawMs": [
+            4754.766333
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 4754.766333,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "tag.remove.global",
+      "label": "全库删除一个标签",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 909.733708,
+          "minMs": 909.733708,
+          "maxMs": 909.733708,
+          "rawMs": [
+            909.733708
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 909.733708,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 1785.144291,
+          "minMs": 1785.144291,
+          "maxMs": 1785.144291,
+          "rawMs": [
+            1785.144291
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1785.144291,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "image.prepare",
+      "label": "准备一张合成图片",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 17.487875,
+          "minMs": 17.487875,
+          "maxMs": 17.487875,
+          "rawMs": [
+            17.487875
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 17.487875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 1.746959,
+          "minMs": 1.746959,
+          "maxMs": 1.746959,
+          "rawMs": [
+            1.746959
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1.746959,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "image.attach.save",
+      "label": "保存带图片的义项说明",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 72.129667,
+          "minMs": 72.129667,
+          "maxMs": 72.129667,
+          "rawMs": [
+            72.129667
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 72.129667,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 124.846583,
+          "minMs": 124.846583,
+          "maxMs": 124.846583,
+          "rawMs": [
+            124.846583
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 124.846583,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "image.read",
+      "label": "读取已存图片",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 4.690459,
+          "minMs": 4.690459,
+          "maxMs": 4.690459,
+          "rawMs": [
+            4.690459
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 4.690459,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 6.079458,
+          "minMs": 6.079458,
+          "maxMs": 6.079458,
+          "rawMs": [
+            6.079458
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 6.079458,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "meaning.edit.shared",
+      "label": "编辑关联12个义项的共享义",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 117.888708,
+          "minMs": 117.888708,
+          "maxMs": 117.888708,
+          "rawMs": [
+            117.888708
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 117.888708,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 212.439625,
+          "minMs": 212.439625,
+          "maxMs": 212.439625,
+          "rawMs": [
+            212.439625
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 212.439625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "meaning.create",
+      "label": "新增共享义",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 108.01525,
+          "minMs": 108.01525,
+          "maxMs": 108.01525,
+          "rawMs": [
+            108.01525
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 108.01525,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 177.02675,
+          "minMs": 177.02675,
+          "maxMs": 177.02675,
+          "rawMs": [
+            177.02675
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 177.02675,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "meaning.associate",
+      "label": "将义项关联到共享义",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 85.679916,
+          "minMs": 85.679916,
+          "maxMs": 85.679916,
+          "rawMs": [
+            85.679916
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 85.679916,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 168.979917,
+          "minMs": 168.979917,
+          "maxMs": 168.979917,
+          "rawMs": [
+            168.979917
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 168.979917,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "meaning.categorize",
+      "label": "将共享义加入分类",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 77.314625,
+          "minMs": 77.314625,
+          "maxMs": 77.314625,
+          "rawMs": [
+            77.314625
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 77.314625,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 124.624833,
+          "minMs": 124.624833,
+          "maxMs": 124.624833,
+          "rawMs": [
+            124.624833
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 124.624833,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "category.edit",
+      "label": "编辑分类说明",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 90.932875,
+          "minMs": 90.932875,
+          "maxMs": 90.932875,
+          "rawMs": [
+            90.932875
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 90.932875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 138.082125,
+          "minMs": 138.082125,
+          "maxMs": 138.082125,
+          "rawMs": [
+            138.082125
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 138.082125,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "meaning.remove",
+      "label": "删除共享义及其关联",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 150.886459,
+          "minMs": 150.886459,
+          "maxMs": 150.886459,
+          "rawMs": [
+            150.886459
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 150.886459,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 284.830625,
+          "minMs": 284.830625,
+          "maxMs": 284.830625,
+          "rawMs": [
+            284.830625
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 284.830625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "cli.status",
+      "label": "CLI读取库状态",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 1.480166,
+          "minMs": 1.480166,
+          "maxMs": 1.480166,
+          "rawMs": [
+            1.480166
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1.480166,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 1.441042,
+          "minMs": 1.441042,
+          "maxMs": 1.441042,
+          "rawMs": [
+            1.441042
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1.441042,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.list.page",
+      "label": "CLI读取50条列表页",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 84.574917,
+          "minMs": 84.574917,
+          "maxMs": 84.574917,
+          "rawMs": [
+            84.574917
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 84.574917,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 190.153958,
+          "minMs": 190.153958,
+          "maxMs": 190.153958,
+          "rawMs": [
+            190.153958
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 190.153958,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.list.query",
+      "label": "CLI查询列表",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 364.337916,
+          "minMs": 364.337916,
+          "maxMs": 364.337916,
+          "rawMs": [
+            364.337916
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 364.337916,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 726.542291,
+          "minMs": 726.542291,
+          "maxMs": 726.542291,
+          "rawMs": [
+            726.542291
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 726.542291,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.entry.read",
+      "label": "CLI读取一个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 118.757125,
+          "minMs": 118.757125,
+          "maxMs": 118.757125,
+          "rawMs": [
+            118.757125
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 118.757125,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 212.855875,
+          "minMs": 212.855875,
+          "maxMs": 212.855875,
+          "rawMs": [
+            212.855875
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 212.855875,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.sense.read",
+      "label": "CLI读取一个义项",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 115.357458,
+          "minMs": 115.357458,
+          "maxMs": 115.357458,
+          "rawMs": [
+            115.357458
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 115.357458,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 210.738667,
+          "minMs": 210.738667,
+          "maxMs": 210.738667,
+          "rawMs": [
+            210.738667
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 210.738667,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.entries.read25",
+      "label": "CLI读取25个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 141.111458,
+          "minMs": 141.111458,
+          "maxMs": 141.111458,
+          "rawMs": [
+            141.111458
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 141.111458,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 230.366667,
+          "minMs": 230.366667,
+          "maxMs": 230.366667,
+          "rawMs": [
+            230.366667
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20054
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 230.366667,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.capture50",
+      "label": "CLI批量保存50个词条",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 1085.7444169999999,
+          "minMs": 1085.7444169999999,
+          "maxMs": 1085.7444169999999,
+          "rawMs": [
+            1085.7444169999999
+          ],
+          "visibleEntriesBefore": [
+            10054
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1085.7444169999999,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 1973.964,
+          "minMs": 1973.964,
+          "maxMs": 1973.964,
+          "rawMs": [
+            1973.964
+          ],
+          "visibleEntriesBefore": [
+            20054
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1973.964,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "cli.capture50.idempotent",
+      "label": "CLI重试同一批次（幂等）",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 9.901,
+          "minMs": 9.901,
+          "maxMs": 9.901,
+          "rawMs": [
+            9.901
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 9.901,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 8.89625,
+          "minMs": 8.89625,
+          "maxMs": 8.89625,
+          "rawMs": [
+            8.89625
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 8.89625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store-command"
+    },
+    {
+      "id": "review.enroll.one.hidden",
+      "label": "生词本内将单个义项加入复习（复习页隐藏）",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 32.747083,
+          "minMs": 32.747083,
+          "maxMs": 32.747083,
+          "rawMs": [
+            32.747083
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 32.747083,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 43.065916,
+          "minMs": 43.065916,
+          "maxMs": 43.065916,
+          "rawMs": [
+            43.065916
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 43.065916,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.open.first",
+      "label": "首次进入复习",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 381.2705,
+          "minMs": 381.2705,
+          "maxMs": 381.2705,
+          "rawMs": [
+            381.2705
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 381.2705,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 704.549292,
+          "minMs": 704.549292,
+          "maxMs": 704.549292,
+          "rawMs": [
+            704.549292
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 704.549292,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.open.repeat",
+      "label": "关闭后再次进入复习",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 238.203334,
+          "minMs": 238.203334,
+          "maxMs": 238.203334,
+          "rawMs": [
+            238.203334
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 238.203334,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 509.071291,
+          "minMs": 509.071291,
+          "maxMs": 509.071291,
+          "rawMs": [
+            509.071291
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 509.071291,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.enroll.one",
+      "label": "复习页可见时加入义项并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 315.942333,
+          "minMs": 315.942333,
+          "maxMs": 315.942333,
+          "rawMs": [
+            315.942333
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 315.942333,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 591.145417,
+          "minMs": 591.145417,
+          "maxMs": 591.145417,
+          "rawMs": [
+            591.145417
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 591.145417,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.note.edit.and.refresh",
+      "label": "编辑单条 Note 并刷新复习页",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 247.065416,
+          "minMs": 247.065416,
+          "maxMs": 247.065416,
+          "rawMs": [
+            247.065416
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 247.065416,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 482.756583,
+          "minMs": 482.756583,
+          "maxMs": 482.756583,
+          "rawMs": [
+            482.756583
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 482.756583,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.type.edit.shared.and.refresh",
+      "label": "编辑共享 Note Type 并刷新复习页",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 3379.756708,
+          "minMs": 3379.756708,
+          "maxMs": 3379.756708,
+          "rawMs": [
+            3379.756708
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 3379.756708,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 6329.808084,
+          "minMs": 6329.808084,
+          "maxMs": 6329.808084,
+          "rawMs": [
+            6329.808084
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 6329.808084,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.participation",
+      "label": "读取单个义项复习状态",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 6.156,
+          "minMs": 6.156,
+          "maxMs": 6.156,
+          "rawMs": [
+            6.156
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 6.156,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 2.350375,
+          "minMs": 2.350375,
+          "maxMs": 2.350375,
+          "rawMs": [
+            2.350375
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 2.350375,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.content.search",
+      "label": "复习内容列表检索",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 6.289125,
+          "minMs": 6.289125,
+          "maxMs": 6.289125,
+          "rawMs": [
+            6.289125
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 6.289125,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 19.293208,
+          "minMs": 19.293208,
+          "maxMs": 19.293208,
+          "rawMs": [
+            19.293208
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 19.293208,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.practice.start",
+      "label": "开始单项复习",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 37.217209,
+          "minMs": 37.217209,
+          "maxMs": 37.217209,
+          "rawMs": [
+            37.217209
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 37.217209,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 69.380292,
+          "minMs": 69.380292,
+          "maxMs": 69.380292,
+          "rawMs": [
+            69.380292
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 69.380292,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.answer.reveal",
+      "label": "显示答案",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 0.01675,
+          "minMs": 0.01675,
+          "maxMs": 0.01675,
+          "rawMs": [
+            0.01675
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 0.01675,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 0.014291,
+          "minMs": 0.014291,
+          "maxMs": 0.014291,
+          "rawMs": [
+            0.014291
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 0.014291,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.rate.and.refresh",
+      "label": "评分并刷新复习状态",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 249.303959,
+          "minMs": 249.303959,
+          "maxMs": 249.303959,
+          "rawMs": [
+            249.303959
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 249.303959,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 511.9565,
+          "minMs": 511.9565,
+          "maxMs": 511.9565,
+          "rawMs": [
+            511.9565
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 511.9565,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.rating.undo.and.refresh",
+      "label": "撤销评分并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 280.317459,
+          "minMs": 280.317459,
+          "maxMs": 280.317459,
+          "rawMs": [
+            280.317459
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 280.317459,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 572.251416,
+          "minMs": 572.251416,
+          "maxMs": 572.251416,
+          "rawMs": [
+            572.251416
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 572.251416,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.pause.and.refresh",
+      "label": "暂停复习并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 247.4355,
+          "minMs": 247.4355,
+          "maxMs": 247.4355,
+          "rawMs": [
+            247.4355
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 247.4355,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 479.71725,
+          "minMs": 479.71725,
+          "maxMs": 479.71725,
+          "rawMs": [
+            479.71725
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 479.71725,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.resume.and.refresh",
+      "label": "恢复复习并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 287.014875,
+          "minMs": 287.014875,
+          "maxMs": 287.014875,
+          "rawMs": [
+            287.014875
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 287.014875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 544.5085,
+          "minMs": 544.5085,
+          "maxMs": 544.5085,
+          "rawMs": [
+            544.5085
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 544.5085,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.withdraw.and.refresh",
+      "label": "退出复习并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 246.341875,
+          "minMs": 246.341875,
+          "maxMs": 246.341875,
+          "rawMs": [
+            246.341875
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 246.341875,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 495.433458,
+          "minMs": 495.433458,
+          "maxMs": 495.433458,
+          "rawMs": [
+            495.433458
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 495.433458,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "review.navigation.resume",
+      "label": "切回复习页并刷新",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 294.59325,
+          "minMs": 294.59325,
+          "maxMs": 294.59325,
+          "rawMs": [
+            294.59325
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 294.59325,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 598.117833,
+          "minMs": 598.117833,
+          "maxMs": 598.117833,
+          "rawMs": [
+            598.117833
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 598.117833,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "progress.open.first",
+      "label": "首次进入进度页",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 123.571125,
+          "minMs": 123.571125,
+          "maxMs": 123.571125,
+          "rawMs": [
+            123.571125
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 123.571125,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 194.768958,
+          "minMs": 194.768958,
+          "maxMs": 194.768958,
+          "rawMs": [
+            194.768958
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 194.768958,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "progress.open.repeat",
+      "label": "再次进入进度页",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 128.489417,
+          "minMs": 128.489417,
+          "maxMs": 128.489417,
+          "rawMs": [
+            128.489417
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 128.489417,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 166.839208,
+          "minMs": 166.839208,
+          "maxMs": 166.839208,
+          "rawMs": [
+            166.839208
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 166.839208,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "progress.reload",
+      "label": "刷新进度统计",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 98.692334,
+          "minMs": 98.692334,
+          "maxMs": 98.692334,
+          "rawMs": [
+            98.692334
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 98.692334,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 173.260042,
+          "minMs": 173.260042,
+          "maxMs": 173.260042,
+          "rawMs": [
+            173.260042
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 173.260042,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "model"
+    },
+    {
+      "id": "export.selected.prepare",
+      "label": "准备选中约50义项的CSV导出",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 88.56375,
+          "minMs": 88.56375,
+          "maxMs": 88.56375,
+          "rawMs": [
+            88.56375
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 88.56375,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 160.573791,
+          "minMs": 160.573791,
+          "maxMs": 160.573791,
+          "rawMs": [
+            160.573791
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 160.573791,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "export.selected.write",
+      "label": "写出已准备的CSV文件",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 1.962459,
+          "minMs": 1.962459,
+          "maxMs": 1.962459,
+          "rawMs": [
+            1.962459
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1.962459,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 1.735041,
+          "minMs": 1.735041,
+          "maxMs": 1.735041,
+          "rawMs": [
+            1.735041
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1.735041,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "backup.full.write",
+      "label": "生成并写出完整语料备份",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 1276.953292,
+          "minMs": 1276.953292,
+          "maxMs": 1276.953292,
+          "rawMs": [
+            1276.953292
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 1276.953292,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 2285.050417,
+          "minMs": 2285.050417,
+          "maxMs": 2285.050417,
+          "rawMs": [
+            2285.050417
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 2285.050417,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "backup.full.restore",
+      "label": "校验并恢复完整语料备份",
+      "measurementMode": "scan",
+      "sizes": {
+        "10000": {
+          "samples": 1,
+          "medianMs": 3984.088167,
+          "minMs": 3984.088167,
+          "maxMs": 3984.088167,
+          "rawMs": [
+            3984.088167
+          ],
+          "visibleEntriesBefore": [
+            10104
+          ],
+          "visibleEntriesAfter": [
+            10104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 3984.088167,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 1,
+          "medianMs": 7123.374292,
+          "minMs": 7123.374292,
+          "maxMs": 7123.374292,
+          "rawMs": [
+            7123.374292
+          ],
+          "visibleEntriesBefore": [
+            20104
+          ],
+          "visibleEntriesAfter": [
+            20104
+          ],
+          "statistic": "single observation",
+          "measurementMode": "scan",
+          "scanMs": 7123.374292,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "store"
+    },
+    {
+      "id": "favorite.stage.plan",
+      "label": "收藏分段：生成待保存词条",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 48.153667,
+          "minMs": 47.735666,
+          "maxMs": 53.847416,
+          "rawMs": [
+            48.153667,
+            53.847416,
+            47.735666
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 49.693209,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 95.3515,
+          "minMs": 95.224458,
+          "maxMs": 95.466542,
+          "rawMs": [
+            95.224458,
+            95.466542,
+            95.3515
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 96.885291,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "policy"
+    },
+    {
+      "id": "favorite.stage.transaction",
+      "label": "收藏分段：引擎事务",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 25.366166,
+          "minMs": 15.124167,
+          "maxMs": 37.038375,
+          "rawMs": [
+            25.366166,
+            37.038375,
+            15.124167
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 16.681208,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 31.9035,
+          "minMs": 29.110291,
+          "maxMs": 32.414917,
+          "rawMs": [
+            31.9035,
+            29.110291,
+            32.414917
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 32.042833,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "engine"
+    },
+    {
+      "id": "favorite.stage.readindex",
+      "label": "收藏分段：UI读取索引增量",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 3.533584,
+          "minMs": 1.579167,
+          "maxMs": 5.859667,
+          "rawMs": [
+            5.859667,
+            3.533584,
+            1.579167
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 5.276041,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 4.653,
+          "minMs": 4.440792,
+          "maxMs": 4.673334,
+          "rawMs": [
+            4.440792,
+            4.673334,
+            4.653
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 10.642625,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "projection"
+    },
+    {
+      "id": "sense.remove.stage.transaction",
+      "label": "移除义项分段：引擎事务",
+      "measurementMode": "focused",
+      "sizes": {
+        "10000": {
+          "samples": 3,
+          "medianMs": 38.498708,
+          "minMs": 38.055541,
+          "maxMs": 43.857583,
+          "rawMs": [
+            38.498708,
+            43.857583,
+            38.055541
+          ],
+          "visibleEntriesBefore": [
+            10004
+          ],
+          "visibleEntriesAfter": [
+            10004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 39.554,
+          "rejectedTrials": []
+        },
+        "20000": {
+          "samples": 3,
+          "medianMs": 77.79925,
+          "minMs": 75.227834,
+          "maxMs": 78.695375,
+          "rawMs": [
+            78.695375,
+            75.227834,
+            77.79925
+          ],
+          "visibleEntriesBefore": [
+            20004
+          ],
+          "visibleEntriesAfter": [
+            20004
+          ],
+          "statistic": "median",
+          "measurementMode": "focused",
+          "scanMs": 77.382083,
+          "rejectedTrials": []
+        }
+      },
+      "layer": "engine"
+    }
+  ],
+  "sourceManifestSHA256": "f2d69f1d61ae81fc2f8c0044d0ddefc3984531408b9cd638d8cba4b982671720",
+  "installedAppAccessed": false,
+  "noteWriterSnapshot": "note-local-writers-2026-11-14.json"
+}

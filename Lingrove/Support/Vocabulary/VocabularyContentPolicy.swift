@@ -10,7 +10,7 @@ extension VocabularyContentPolicy {
         let body = blocks.map { block in
             switch block.content {
             case let .text(value):
-                var text = ReviewCardPolicy.html(value.text)
+                var text = ReviewTemplateRenderer.escapeHTML(value.text).replacingOccurrences(of: "\n", with: "<br>")
                 if value.bold { text = "<strong>" + text + "</strong>" }
                 if value.italic { text = "<em>" + text + "</em>" }
                 switch value.style {
@@ -19,10 +19,11 @@ extension VocabularyContentPolicy {
                 case .bullet: return "<ul><li>" + text + "</li></ul>"
                 }
             case let .image(image, caption):
+                let escapedCaption = ReviewTemplateRenderer.escapeHTML(caption).replacingOccurrences(of: "\n", with: "<br>")
                 // Inline sizing travels with the field even in existing/custom Anki templates.
                 return "<figure style=\"margin:12px 0\"><img src=\"" + image.filename +
-                    "\" style=\"max-width:100%;height:auto\" alt=\"" + ReviewCardPolicy.html(caption) + "\">" +
-                    (caption.isEmpty ? "" : "<figcaption>" + ReviewCardPolicy.html(caption) + "</figcaption>") + "</figure>"
+                    "\" style=\"max-width:100%;height:auto\" alt=\"" + escapedCaption + "\">" +
+                    (caption.isEmpty ? "" : "<figcaption>" + escapedCaption + "</figcaption>") + "</figure>"
             }
         }.joined()
         return "<div class=\"sense-explanation\" style=\"font-weight:400;font-size:0.91em\">" + body + "</div>"

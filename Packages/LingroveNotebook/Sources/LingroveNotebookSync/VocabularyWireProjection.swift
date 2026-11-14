@@ -17,10 +17,9 @@ public nonisolated enum VocabularyWireProjectionCodec {
         guard entities.allSatisfy({ $0.fields.values.allSatisfy(\.hasFiniteNumbers) }) else { throw VocabularyWireError.invalidDocument }
         var state = try VocabularyWirePrivateOverlay.capture(document, notebookID: notebookID)
         if let unattached {
-            var reviews = state.reviews, explanations = state.explanations
-            for value in unattached.reviews where !reviews.contains(value) { reviews.append(value) }
+            var explanations = state.explanations
             for value in unattached.explanations where !explanations.contains(value) { explanations.append(value) }
-            state = .init(notebookID: notebookID, reviews: reviews, explanations: explanations)
+            state = .init(notebookID: notebookID, explanations: explanations)
         }
         return .init(notebookID: notebookID, entities: entities, privateState: state)
     }

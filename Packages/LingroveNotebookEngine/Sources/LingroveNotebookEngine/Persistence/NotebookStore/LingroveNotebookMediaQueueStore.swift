@@ -150,15 +150,21 @@ public struct LingroveNotebookMediaQueueStore {
     }
 
     public func replacePins(_ references: [VocabularyImageReference], workspaceID: String, consumer: String) throws {
-        try core.execute(sql: "DELETE FROM notebook_media_pins WHERE workspace_id=? AND consumer_id=?", values: [.text(workspaceID), .text(consumer)])
-        for reference in Set(references) {
-            // A failed remote release may outlive a local edit. Re-pinning is
-            // atomic with removing that debt, so it can never release live data.
-            try core.execute(sql: "DELETE FROM notebook_media_releases WHERE workspace_id=? AND digest=?",
-                values: [.text(workspaceID), .text(reference.digest)])
-            try core.execute(sql: "INSERT INTO notebook_media_pins(workspace_id,consumer_id,digest) VALUES(?,?,?)",
-                values: [.text(workspaceID), .text(consumer), .text(reference.digest)])
+        guard let digests = String(data: try JSONEncoder().encode(Set(references.map(\.digest)).sorted()), encoding: .utf8) else {
+            throw VocabularyError.invalidArchive
         }
+        try core.execute(sql: """
+            DELETE FROM notebook_media_pins WHERE workspace_id=? AND consumer_id=?
+              AND digest NOT IN (SELECT value FROM json_each(?))
+            """, values: [.text(workspaceID), .text(consumer), .text(digests)])
+        // A failed remote release may outlive a local edit. Re-pinning removes that debt
+        // atomically. Retain unchanged pins instead of deleting/reinserting every image.
+        try core.execute(sql: "DELETE FROM notebook_media_releases WHERE workspace_id=? AND digest IN (SELECT value FROM json_each(?))",
+            values: [.text(workspaceID), .text(digests)])
+        try core.execute(sql: """
+            INSERT OR IGNORE INTO notebook_media_pins(workspace_id,consumer_id,digest)
+                SELECT ?,?,value FROM json_each(?)
+            """, values: [.text(workspaceID), .text(consumer), .text(digests)])
     }
     public func release(consumer: String, binding: LingroveNotebookWindowBinding) throws {
         try core.inTransaction {

@@ -30,8 +30,14 @@ nonisolated enum VocabularyPolicy {
             throw VocabularyError.invalidContent
         }
         if let example = capture.example {
-            guard !example.text.isEmpty, example.text.utf8.count <= 262_144,
+            guard !example.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, example.text.utf8.count <= 262_144,
                   example.ranges.allSatisfy({ valid($0.nsRange, in: example.text) }) else {
+                throw VocabularyError.invalidContent
+            }
+        } else {
+            let explanation = capture.explanation?.result.explanation ?? ""
+            guard !capture.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                    !explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw VocabularyError.invalidContent
             }
         }
@@ -110,20 +116,23 @@ nonisolated enum VocabularyPolicy {
     static func entryForSave(_ input: VocabularyCapture, in document: VocabularyDocument, now: Date)
         throws -> VocabularyEntry {
         try validate(input)
-        var capture = input
+        let capture = input
         let header = document.catalog.first { entryKey($0) == entryKey(capture) }
         let joined = header.flatMap { VocabularyNotebookProjection.entry($0.id, in: document) }
-        let oldSenses = Set(joined?.senses.map(\.id) ?? [])
-        if let example = capture.example, document.interpretations.contains(where: {
-            $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
-        }) { capture.example = example.copiedWithNewID() }
-        return try entryForValidatedCapture(capture, existing: joined, now: now)
+        return try entryForSave(capture, existing: joined, interpretations: document.interpretations, now: now)
     }
 
-    /// The local writer supplies one exact saved owner. Global evidence reuse and identity
-    /// admission remain with the engine; this pure rule creates the same capture draft as load().
-    static func entryForSave(_ capture: VocabularyCapture, existing: VocabularyEntry?, now: Date) throws -> VocabularyEntry {
-        try validate(capture)
+    /// A resolved headword avoids normalizing every saved key. Full capture supplies accepted
+    /// claims to retain its explicit clone-on-foreign-ownership behavior; cold admission checks
+    /// that same global fact through indexed SQL and falls back when cloning is required.
+    static func entryForSave(_ input: VocabularyCapture, existing: VocabularyEntry?,
+                             interpretations: [VocabularyInterpretation] = [], now: Date) throws -> VocabularyEntry {
+        try validate(input)
+        var capture = input
+        let oldSenses = Set(existing?.senses.map(\.id) ?? [])
+        if let example = capture.example, interpretations.contains(where: {
+            $0.id == example.id && $0.status == .accepted && $0.senseID.map { !oldSenses.contains($0) } == true
+        }) { capture.example = example.copiedWithNewID() }
         return try entryForValidatedCapture(capture, existing: existing, now: now)
     }
 
@@ -158,6 +167,12 @@ nonisolated enum VocabularyPolicy {
 
     static func matches(_ entry: VocabularyEntry, query: String) -> Bool {
         let terms = query.split(whereSeparator: \.isWhitespace)
+        let fields = searchFields(entry)
+        return terms.allSatisfy { term in fields.contains { $0.localizedStandardContains(term) } }
+    }
+
+    /// Shared field extraction keeps literal browser and CLI matching aligned.
+    static func searchFields(_ entry: VocabularyEntry) -> [String] {
         var fields = [entry.expression, entry.dictionaryForm]
         for sense in entry.senses {
             fields += [sense.meaning, sense.note] + sense.tags + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
@@ -172,7 +187,7 @@ nonisolated enum VocabularyPolicy {
                 fields += example.translationVariants.map(\.text)
             }
         }
-        return terms.allSatisfy { term in fields.contains { $0.localizedStandardContains(term) } }
+        return fields
     }
 
     /// A saved explanation can follow a moved usage, but cannot recreate a removed/edited one.

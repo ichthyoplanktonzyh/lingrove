@@ -72,13 +72,6 @@ struct NotebookProgressIntegrationTests {
             cardId: nil, mediaAssetIdsReadyForUpload: [])
         _ = try engine.submitReview(workspaceId: saved.workspaceId, reviewSubmission: .init(cardId: generic.cardId,
             rating: .good, reviewedAtClient: formatIsoTimestamp(date: now), reviewedTimeZone: "UTC"))
-        let otherSelection = VocabularySelection(entryID: selection.entryID,
-            senseID: saved.document.entries[0].senses[1].id)
-        let linked = try engine.saveNewLingroveNotebookCard(draft: LingroveNotebookCardMaterial.draft(
-            snapshot: saved, selection: otherSelection), input: .init(frontText: "Linked only", backText: "Excluded", tags: []),
-            mediaAssetIdsReadyForUpload: [])
-        _ = try engine.submitReview(workspaceId: saved.workspaceId, reviewSubmission: .init(cardId: linked.cardId,
-            rating: .easy, reviewedAtClient: formatIsoTimestamp(date: now), reviewedTimeZone: "UTC"))
         try fixture.reopen()
         progress = try read(fixture.db)
         #expect(progress.totalReviews == 20 && progress.undoneReviews == 1)
@@ -108,10 +101,7 @@ struct NotebookProgressIntegrationTests {
         #expect(try read(engine).totalReviews == 1 && read(engine).schedule.totalCards == 0)
         content = try engine.loadBuiltInNotebookReview(scope: removed, now: now)
         card = try #require(content.review.groups[selection.senseID]?.cards.first)
-        let link = try #require(content.review.links.first { $0.cardId == card.cardId })
-        try engine.retainNotebookExercise(link: link, card: card, snapshot: removed,
-            action: .init(content: content, selection: selection))
-        #expect(try read(engine).schedule.totalCards == 1)
+        #expect(try read(engine).schedule.totalCards == 0)
         _ = try engine.deleteCard(workspaceId: saved.workspaceId, cardId: card.cardId)
         let deleted = try read(engine)
         #expect(deleted.totalReviews == 1 && deleted.schedule.totalCards == 0 && deleted.exercises == 0)
@@ -176,12 +166,13 @@ struct NotebookProgressIntegrationTests {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
         try enroll(engine, saved: saved, selection: selection)
-        for _ in 0..<7 {
-            let content = try engine.loadBuiltInNotebookReview(scope: saved, now: reference)
-            let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-            _ = try engine.addBuiltInNotebookExercise(draft, input: draft.generatedContent,
-                action: .init(content: content, selection: selection))
+        let baseType = try engine.defaultReviewNoteType(scope: saved)
+        var type = baseType; type.revision += 1
+        for index in 1...7 {
+            type.templates.append(.init(id: UUID(), name: "Forecast " + String(index),
+                front: "{{Expression}}", back: "{{Meaning}}"))
         }
+        try engine.saveReviewNoteType(type, expected: baseType, scope: saved)
         let initial = try engine.loadBuiltInNotebookReview(scope: saved, now: reference)
         let cards = try #require(initial.review.groups[selection.senseID]?.cards)
         let start = calendar.startOfDay(for: reference)
@@ -244,10 +235,7 @@ struct NotebookProgressIntegrationTests {
 
     private func enroll(_ engine: LingroveNotebookEngine, saved: LingroveNotebookSnapshot,
                         selection: VocabularySelection) throws {
-        let content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        _ = try engine.enrollBuiltInNotebookSense(draft, input: draft.generatedContent,
-            action: .init(content: content, selection: selection))
+        _ = try engine.enrollNoteSources([selection], scope: saved)
     }
 
     private func read(_ engine: LingroveNotebookEngine) throws -> NotebookProgressSnapshot {

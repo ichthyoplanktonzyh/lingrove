@@ -67,7 +67,7 @@ struct NotebookReviewTargetSwitch: View {
     @ObservedObject var session: BuiltInReviewSession
 
     private var isDisabled: Bool {
-        session.draft != nil || session.batchDraft != nil || session.noteTypeDraft != nil
+        session.batchDraft != nil || session.noteTypeDraft != nil
             || session.noteDraft != nil || session.isMutating
     }
 
@@ -155,7 +155,7 @@ struct AnkiReviewDestinationView: View {
                             }
 
                             Button(String(localized: "Test connection", table: "Vocabulary")) {
-                                Task { await controller.testConnection(model: ReviewLayoutPolicy.model) }
+                                Task { await controller.testConnection() }
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.large)

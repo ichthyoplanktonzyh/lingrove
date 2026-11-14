@@ -64,8 +64,7 @@ public nonisolated final class VocabularySQLiteDatabase {
 
     private func readUnlocked() throws -> VocabularySnapshot {
         try connection.transaction(write: false) {
-            let revision = try self.revision(), hasTemplates = try scalar("SELECT has_templates FROM state WHERE singleton=1")
-            guard hasTemplates == 0 || hasTemplates == 1 else { throw VocabularyError.invalidArchive }
+            let revision = try self.revision()
             var records: [Row] = []
             for table in VocabularyPersistenceEntity.allCases {
                 let columns = ["id", "parent_id", "position", "payload"] + table.extraColumns
@@ -80,7 +79,7 @@ public nonisolated final class VocabularySQLiteDatabase {
                         indexValues: Dictionary(uniqueKeysWithValues: zip(table.indexKeys, extra))))
                 }
             }
-            return .init(revision: revision, document: try VocabularyPersistenceCodec.decode(.init(rows: records, reviewTemplatesPresent: hasTemplates == 1)))
+            return .init(revision: revision, document: try VocabularyPersistenceCodec.decode(.init(rows: records)))
         }
     }
 
@@ -135,7 +134,7 @@ public nonisolated final class VocabularySQLiteDatabase {
                     [.text(receipt.key), .text(receipt.fingerprint), .blob(receipt.result)])
             }
             try connection.execute("UPDATE state SET revision=?,has_templates=? WHERE singleton=1",
-                [.integer(Int64(nextRevision)), .integer(next.reviewTemplates == nil ? 0 : 1)])
+                [.integer(Int64(nextRevision)), .integer(0)])
             return nextRevision
         }
         lastWrittenRows = connection.totalChanges - count

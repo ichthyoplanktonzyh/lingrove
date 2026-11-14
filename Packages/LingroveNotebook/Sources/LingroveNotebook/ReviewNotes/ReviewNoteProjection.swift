@@ -6,11 +6,18 @@ import Foundation
 public nonisolated enum ReviewNoteProjection {
     public static func fields(note: ReviewNote, type: ReviewNoteType, entry: VocabularyEntry,
                               sense: VocabularySense) throws -> [String: String] {
+        try fields(note: note, prepared: ReviewTemplateRenderer.Prepared(type), entry: entry, sense: sense)
+    }
+
+    /// The caller has already validated this exact definition, so a bulk source projection
+    /// does not parse the shared templates again for each Note.
+    public static func fields(note: ReviewNote, prepared: ReviewTemplateRenderer.Prepared, entry: VocabularyEntry,
+                              sense: VocabularySense) throws -> [String: String] {
+        let type = prepared.type
         guard note.noteTypeID == type.id, note.entryID == entry.id,
               note.senseID == sense.id || sense.mergedFrom.contains(note.senseID) else {
             throw ReviewTemplateError.sourceUnavailable
         }
-        try ReviewTemplateRenderer.validate(type)
         let example = sense.examples.first { $0.id == note.exampleID }
         var result: [String: String] = [:]
         for field in type.fields {

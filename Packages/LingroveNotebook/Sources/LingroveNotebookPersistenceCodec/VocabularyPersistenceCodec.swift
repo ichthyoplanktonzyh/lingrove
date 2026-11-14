@@ -56,15 +56,13 @@ public nonisolated struct VocabularyPersistenceRow: Equatable, Sendable {
     public static func == (lhs: Self, rhs: Self) -> Bool { lhs.record == rhs.record }
 }
 
-/// A header bit preserves nil versus an explicitly empty template collection, which cannot be
-/// reconstructed from rows alone. Revision/workspace identity belong to the store's transaction.
+/// Corpus rows contain only language material and organization. Note definitions and membership
+/// have their own store; revision/workspace identity belongs to the owning transaction.
 public nonisolated struct VocabularyPersistenceRows: Equatable, Sendable {
     public let rows: [VocabularyPersistenceRow]
-    public let reviewTemplatesPresent: Bool
 
-    public init(rows: [VocabularyPersistenceRow], reviewTemplatesPresent: Bool) {
+    public init(rows: [VocabularyPersistenceRow]) {
         self.rows = rows
-        self.reviewTemplatesPresent = reviewTemplatesPresent
     }
 
     public func keyedRows() throws -> [VocabularyPersistenceRow.Key: VocabularyPersistenceRow] {
@@ -99,8 +97,7 @@ public nonisolated enum VocabularyPersistenceCodec {
     /// by SQL's family-aware writer. Public encode keeps its deterministic interchange order.
     static func unorderedRows(_ state: VocabularyEntrySaveState) throws -> VocabularyPersistenceRows {
         let records = try VocabularyDatabaseProjection.rows(state.document, validated: true)
-        return .init(rows: try records.values.map(VocabularyPersistenceRow.init(record:)),
-            reviewTemplatesPresent: state.document.reviewTemplates != nil)
+        return .init(rows: try records.values.map(VocabularyPersistenceRow.init(record:)))
     }
 
     private static func encoded(_ records: [VocabularyDatabaseRecord.Key: VocabularyDatabaseRecord],
@@ -111,15 +108,15 @@ public nonisolated enum VocabularyPersistenceCodec {
             if $0.position != $1.position { return $0.position < $1.position }
             return $0.id < $1.id
         }
-        return .init(rows: rows, reviewTemplatesPresent: document.reviewTemplates != nil)
+        return .init(rows: rows)
     }
 
     public static func decode(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
-        try VocabularyDatabaseProjection.document(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
+        try VocabularyDatabaseProjection.document(encoded.rows.map(\.record))
     }
 
     public static func decodeSaveState(_ encoded: VocabularyPersistenceRows) throws -> VocabularyEntrySaveState {
-        try VocabularyDatabaseProjection.state(encoded.rows.map(\.record), hasTemplates: encoded.reviewTemplatesPresent)
+        try VocabularyDatabaseProjection.state(encoded.rows.map(\.record))
     }
 
     /// A validated capture that only added material can keep every old row and its position.
@@ -132,7 +129,6 @@ public nonisolated enum VocabularyPersistenceCodec {
               document.sources.starts(with: previous.sources),
               document.occurrences.starts(with: previous.occurrences),
               document.interpretations.starts(with: previous.interpretations),
-              document.reviewTemplates == previous.reviewTemplates,
               appends(document.semantics, to: previous.semantics),
               appends(document.classification, to: previous.classification) else { return nil }
         return try VocabularyDatabaseProjection.rows(document, appendingTo: previous).values.map(VocabularyPersistenceRow.init(record:))
@@ -153,6 +149,6 @@ public nonisolated enum VocabularyPersistenceCodec {
     /// Used by the explicit Dev migration command. Ordinary database reads require v9 rows.
     public static func migrateDevCorpus(_ encoded: VocabularyPersistenceRows) throws -> VocabularyDocument {
         try VocabularyDatabaseProjection.document(encoded.rows.map(\.record),
-            hasTemplates: encoded.reviewTemplatesPresent, migratingDevCorpus: true)
+            migratingDevCorpus: true)
     }
 }

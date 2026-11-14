@@ -27,12 +27,31 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     }
 
     /// Exposed for lossless reconstruction checks; ordinary saves consume just changed/removed.
-    public func rows(reviewTemplatesPresent: Bool) -> VocabularyPersistenceRows {
-        .init(rows: Array(keyed.values), reviewTemplatesPresent: reviewTemplatesPresent)
+    public func rows() -> VocabularyPersistenceRows {
+        .init(rows: Array(keyed.values))
     }
 
     public func canAppend(_ rows: [VocabularyPersistenceRow]) -> Bool {
         rows.allSatisfy { keyed[$0.key] == nil }
+    }
+
+    /// A compound writer collects the touched keys from sealed entry/organization changes.
+    /// Compare their final values with the original projection once: intermediate edits and
+    /// a row added then removed must not leak into the batch's journal or material refresh.
+    public func difference(from original: Self, touching keys: Set<VocabularyPersistenceRow.Key>) throws -> VocabularyEntryRowChange {
+        var delta = Delta()
+        for key in keys {
+            let before = original.keyed[key], after = keyed[key]
+            guard let after else {
+                if let before { delta.removed.append(before) }
+                continue
+            }
+            if let before, before.parentID == after.parentID, before.record.extra == after.record.extra,
+               before.record.payload == after.record.payload, try before.hasSameLiteralPayload(as: after) {
+                if before.position != after.position { delta.repositioned.append(after) }
+            } else { delta.changed.append(after) }
+        }
+        return .init(projection: self, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 
     /// A complete candidate is already validated by the domain module. Diff against this
@@ -76,7 +95,6 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         for key in keys {
             guard let row = keyed[key] else { continue }
             switch row.entity {
-            case .templates: result.allReviewMaterial = true
             case .sources:
                 guard let id = UUID(uuidString: row.id) else { throw VocabularyError.invalidArchive }
                 result.sourceIDs.insert(id)
@@ -294,7 +312,7 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
     private static func root(_ row: VocabularyPersistenceRow, rows: VocabularyProjectionMap<Key, VocabularyPersistenceRow>) throws -> Key? {
         switch row.entity {
         case .entries, .usages, .collections: return row.key
-        case .senses, .senseExplanations, .usageExplanations, .collectionInterpretations, .blocks, .reviews, .bindings:
+        case .senses, .senseExplanations, .usageExplanations, .collectionInterpretations, .blocks:
             guard let parent = row.entity.parent, let id = row.parentID,
                   let owner = rows[.init(entity: parent, id: id)] else { throw VocabularyError.invalidArchive }
             return try root(owner, rows: rows)

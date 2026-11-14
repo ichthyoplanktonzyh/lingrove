@@ -5,11 +5,6 @@ import LingroveNotebook
 /// its durable generation while holding the same writer transaction as the resulting operation;
 /// a switch away and back cannot grant an old task a new account lifetime.
 extension LingroveNotebookEngine {
-    public func enrollNotebookSenses(_ drafts: [LingroveNotebookCardDraft], basedOn scope: LingroveNotebookSnapshot) throws -> [LingroveNotebookReviewEnrollment] {
-        guard drafts.allSatisfy({ $0.source.workspaceId == scope.workspaceId && $0.source.notebookId == scope.notebookId && $0.sourceRevision == scope.revision }) else { throw VocabularyError.editConflict }
-        return try enrollLingroveNotebookSenses(drafts, scope: scope)
-    }
-
     public func setNotebookReviewStatus(_ status: LingroveNotebookReviewStatus,
         enrollments: [LingroveNotebookReviewEnrollment], basedOn scope: LingroveNotebookSnapshot,
         requestID: UUID = UUID()) throws -> [LingroveNotebookReviewEnrollment] {

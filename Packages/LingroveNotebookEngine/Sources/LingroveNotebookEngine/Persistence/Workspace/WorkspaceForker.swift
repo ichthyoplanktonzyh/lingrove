@@ -48,11 +48,7 @@ public struct WorkspaceForker {
             if let generated = link.generatedContent {
                 referencedAssets.formUnion(managedMediaAssetIdsReferencedInMarkdown(text: generated.frontText + "\n" + generated.backText))
             }
-            if let plan = link.materialPlan {
-                var references = Set(plan.audio.values.map(\.reference))
-                references.formUnion(VocabularyContentPolicy.images(plan.layout.customContent).map(ReviewMaterialMediaReference.init(image:)))
-                referencedAssets.formUnion(references.map { LingroveNotebookCardMaterial.mediaAssetID(reference: $0, workspaceID: sourceWorkspaceID) })
-            }
+
         }
         guard referencedAssets.isSubset(of: Set(all.mediaAssetIdsBySourceId.keys)) else { throw LingroveNotebookAccountError.unavailableSource }
         let events = try CardStore(core: core).loadReviewEvents(workspaceId: sourceWorkspaceID)

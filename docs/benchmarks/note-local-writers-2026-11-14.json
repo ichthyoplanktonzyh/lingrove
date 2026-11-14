@@ -1,0 +1,705 @@
+{
+  "date": "2026-11-14",
+  "configuration": "Release",
+  "architecture": "arm64",
+  "hardware": "MacBookPro18,2",
+  "installedAppAccessed": false,
+  "fixture": {
+    "entries": [
+      10000,
+      20000
+    ],
+    "sensesPerEntry": 2,
+    "examplesPerEntry": 4,
+    "notesEveryNthEntry": 5,
+    "ratings": 1000,
+    "ownedPNGCount": 512,
+    "customTypeTemplates": 8
+  },
+  "scope": "Public engine writer only; scope, review read, draft construction, database copies and assertions are outside timer. Same closed SQLite seed per version/trial, not a purged OS disk cache.",
+  "sourceManifests": {
+    "before": {
+      "path": "build/note-write-benchmark/note-local-2026-11-14/before-sources.json",
+      "sha256": "2096755bedd611d880343d58b6c0190cad233754533f18e706123f8731f8c4ad"
+    },
+    "after": {
+      "path": "build/note-write-benchmark/note-local-2026-11-14/after-sources.json",
+      "sha256": "7bf940fb882ea7cb6d6c88a9f008bc9e6d53b48efedbe09f2d9d3417ff38bbb7"
+    }
+  },
+  "operations": [
+    {
+      "entries": 10000,
+      "operation": "note_edit",
+      "affectedNotes": 1,
+      "before": {
+        "medianMs": 1685.6055000000001,
+        "minMs": 1624.910041,
+        "maxMs": 1736.172708,
+        "samples": [
+          {
+            "operation": "note_edit",
+            "milliseconds": 1624.910041,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 1736.172708,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 1685.6055000000001,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 6.93375,
+        "minMs": 6.3075,
+        "maxMs": 14.396208,
+        "samples": [
+          {
+            "operation": "note_edit",
+            "milliseconds": 14.396208,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 6.93375,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 6.3075,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      }
+    },
+    {
+      "entries": 10000,
+      "operation": "type_edit_one",
+      "affectedNotes": 1,
+      "before": {
+        "medianMs": 1717.2294590000001,
+        "minMs": 1712.647375,
+        "maxMs": 1745.9642079999999,
+        "samples": [
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 1717.2294590000001,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 1745.9642079999999,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 1712.647375,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 5.552042,
+        "minMs": 5.455167,
+        "maxMs": 5.597041,
+        "samples": [
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5.552042,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5.455167,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5.597041,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      }
+    },
+    {
+      "entries": 10000,
+      "operation": "type_edit_shared",
+      "affectedNotes": 2000,
+      "before": {
+        "medianMs": 14848.398708,
+        "minMs": 14708.830459,
+        "maxMs": 14864.453833,
+        "samples": [
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 14708.830459,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 14864.453833,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 14848.398708,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 3424.902542,
+        "minMs": 3180.161917,
+        "maxMs": 3572.947792,
+        "samples": [
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 3572.947792,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 1,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 3424.902542,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 2,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 3180.161917,
+            "cards": 2008,
+            "ratings": 1000,
+            "entries": 10000,
+            "trial": 3,
+            "seedSHA256": "1c6ae5a0cbb56d4fff5055ab59a8212210a85ba2563a1a7458d2a82cefff3be9"
+          }
+        ]
+      }
+    },
+    {
+      "entries": 20000,
+      "operation": "note_edit",
+      "affectedNotes": 1,
+      "before": {
+        "medianMs": 5540.335792,
+        "minMs": 5258.800792,
+        "maxMs": 5543.767458,
+        "samples": [
+          {
+            "operation": "note_edit",
+            "milliseconds": 5258.800792,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 5540.335792,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 5543.767458,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 11.844542,
+        "minMs": 11.050083,
+        "maxMs": 13.423834,
+        "samples": [
+          {
+            "operation": "note_edit",
+            "milliseconds": 11.050083,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 11.844542,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "note_edit",
+            "milliseconds": 13.423834,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      }
+    },
+    {
+      "entries": 20000,
+      "operation": "type_edit_one",
+      "affectedNotes": 1,
+      "before": {
+        "medianMs": 5712.034209,
+        "minMs": 5530.644708,
+        "maxMs": 5793.830083,
+        "samples": [
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5712.034209,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5530.644708,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 5793.830083,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 10.423833,
+        "minMs": 9.775667,
+        "maxMs": 10.556208,
+        "samples": [
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 10.556208,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 9.775667,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_one",
+            "milliseconds": 10.423833,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      }
+    },
+    {
+      "entries": 20000,
+      "operation": "type_edit_shared",
+      "affectedNotes": 4000,
+      "before": {
+        "medianMs": 55355.646458,
+        "minMs": 54905.552292,
+        "maxMs": 55829.421667,
+        "samples": [
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 55355.646458,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 55829.421667,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 54905.552292,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      },
+      "after": {
+        "medianMs": 6947.359083,
+        "minMs": 6814.035208,
+        "maxMs": 7402.913875,
+        "samples": [
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 6947.359083,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 1,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 7402.913875,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 2,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          },
+          {
+            "operation": "type_edit_shared",
+            "milliseconds": 6814.035208,
+            "cards": 4008,
+            "ratings": 1000,
+            "entries": 20000,
+            "trial": 3,
+            "seedSHA256": "38d05d4b6194b3893be3551adc367d7894262affdefcbc3a8d1cc597f7a7be61"
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Three samples report medians/min/max, not percentile guarantees.",
+    "Shared-type edit updates all 2000/4000 dependent Notes in one atomic transaction.",
+    "After this paired run, final cleanup retired dormant SQL/header reads and corrected the source resolver to return nil for a deleted source. The original happy-path paired numbers remain observations of the localized implementation; final native operation measurements cover the corrected tree.",
+    "Native model operations including destination reload are measured separately."
+  ],
+  "finalSnapshot": {
+    "configuration": "Release",
+    "scope": "Current corrected tree, three trials on a fresh equivalent seed; these seeds are not the original byte-identical before/after pair.",
+    "sourceManifest": {
+      "path": "build/note-write-benchmark/note-current-2026-11-14/final-sources.json",
+      "sha256": "569e0222e3faaf53d9f655b568c5c13b21708160d3fc3dd33cca33bc090fa234"
+    },
+    "operations": [
+      {
+        "id": "note_edit",
+        "sizes": {
+          "10000": {
+            "medianMs": 9.890959,
+            "minMs": 8.24,
+            "maxMs": 13.735542,
+            "samples": [
+              {
+                "operation": "note_edit",
+                "milliseconds": 9.890959,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 1,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "note_edit",
+                "milliseconds": 13.735542,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 2,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "note_edit",
+                "milliseconds": 8.24,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 3,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              }
+            ]
+          },
+          "20000": {
+            "medianMs": 14.507834,
+            "minMs": 14.0305,
+            "maxMs": 19.489625,
+            "samples": [
+              {
+                "operation": "note_edit",
+                "milliseconds": 14.507834,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 1,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "note_edit",
+                "milliseconds": 19.489625,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 2,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "note_edit",
+                "milliseconds": 14.0305,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 3,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "type_edit_one",
+        "sizes": {
+          "10000": {
+            "medianMs": 10.190334,
+            "minMs": 7.725458,
+            "maxMs": 10.388084,
+            "samples": [
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 10.190334,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 1,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 7.725458,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 2,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 10.388084,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 3,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              }
+            ]
+          },
+          "20000": {
+            "medianMs": 13.135792,
+            "minMs": 12.823583,
+            "maxMs": 13.142208,
+            "samples": [
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 13.135792,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 1,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 13.142208,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 2,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "type_edit_one",
+                "milliseconds": 12.823583,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 3,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "type_edit_shared",
+        "sizes": {
+          "10000": {
+            "medianMs": 2895.22125,
+            "minMs": 2782.700958,
+            "maxMs": 2905.8942500000003,
+            "samples": [
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 2782.700958,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 1,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 2905.8942500000003,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 2,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              },
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 2895.22125,
+                "cards": 2008,
+                "ratings": 1000,
+                "entries": 10000,
+                "trial": 3,
+                "seedSHA256": "cbda44b2dbe48739fc3daba76a81d5f515c516b3cb3408d1d8d9299791fa1d9d"
+              }
+            ]
+          },
+          "20000": {
+            "medianMs": 6770.701875,
+            "minMs": 6523.034125,
+            "maxMs": 7235.592625,
+            "samples": [
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 7235.592625,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 1,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 6770.701875,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 2,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              },
+              {
+                "operation": "type_edit_shared",
+                "milliseconds": 6523.034125,
+                "cards": 4008,
+                "ratings": 1000,
+                "entries": 20000,
+                "trial": 3,
+                "seedSHA256": "f6f8cd8e425d980b301abf92ffdce516f6b057a62709e250b248fd0fd4c00fb8"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,1586 @@
+{
+  "reportDate": "2026-11-13",
+  "scope": "Certified closed-entry dependencies, reviewed-source edits, shared evidence, media metadata/pins and indexed tag browsing",
+  "methodology": [
+    "Release arm64. Synthetic fixtures and private hosts only; no clicks, installed Dev application/data access, real account or endpoint.",
+    "Before packages are archived from c2cf05a1. The same Swift fixture compiles against both revisions. Each size starts from one closed seed; its SQLite SHA256 is verified before variant preparation.",
+    "Each variant installs metadata and completes strict validation outside operation timers, closes, then supplies a fresh connection and independent closed copy for every command/trial. Canonical workload is shared; derived schema/certificate bytes differ after per-variant preparation.",
+    "Each entry has two senses and four examples; semantic node/mapping count is 1.4 times entry count. Every fifth entry has an enrolled sense; 1000 rating events are retained. One reviewed source has eight additional templates.",
+    "There are 512 distinct referenced 2x1 synthetic PNGs plus one prepared owned image outside the document. This stresses registry/pin density, not large-PNG preparation/IO. Prepared-image attachment excludes staging; supplied PNG staging has focused correctness coverage.",
+    "Engine command timers exclude draft/detail construction, fixture copies and assertions. They include certificate admission and the normal full fallback when required. Reviewed cases verify FSRS/schedule retention and every mutation verifies all 1000 historical events.",
+    "Each operation has three alternating before/after observations per size: 120 engine samples. Medians/minima/maxima are descriptive observations, not percentiles. OS disk caches are not purged.",
+    "Example movement was removed from the optimization scope pending business modeling; the existing dedicated command/entry point was not changed.",
+    "Native store readiness and engine commands are separate milestones on different generated fixtures. Their absolute timings cannot be added or substituted. The complete earlier 43-operation inventory was not rerun.",
+    "Missing/stale proof and explicit complete consumers still perform strict full preparation. Dense-alias and large-media byte throughput are not measured by these fixtures.",
+    "Paired samples describe the measured optimization tree before the subsequent empty-sense/manual-context-control business simplification; they are not timings of those later business changes."
+  ],
+  "paired": {
+    "10000": {
+      "seedSHA256": "4cbcf42406c11be82dba82fb5eee436a3d9e92d1c23b49b3610a262a4d17b4c8",
+      "beforeCommit": "c2cf05a1",
+      "fixtureSHA256": "0ad0fff71e063edf40c94bd270781f7b70fd14e75e026a9f5a466cf1d5bb41b1",
+      "configuration": "Release",
+      "architecture": "arm64",
+      "entries": 10000,
+      "enrolledSenses": 2000,
+      "ratings": 1000,
+      "samples": [
+        {
+          "milliseconds": 3206.227458,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 33.430834,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 3314.279167,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 40.760542,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 3353.049208,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 23.039541,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 3317.840708,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 22.479959,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 55.167542,
+          "mode": "local",
+          "variant": "before",
+          "trial": 1,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 22.684459,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 3340.093708,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 28.359916,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 3354.428333,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 23.938333,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 3376.901708,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 25.947209,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 57.13225,
+          "mode": "local",
+          "variant": "before",
+          "trial": 1,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 24.737833,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 30.656417,
+          "mode": "page",
+          "variant": "before",
+          "trial": 1,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 13.033583,
+          "mode": "page",
+          "variant": "after",
+          "trial": 1,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 3390.5430420000002,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 39.259916,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 3368.649625,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 38.855917,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 3368.780875,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 23.78175,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 3350.024875,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 23.328084,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 53.1965,
+          "mode": "local",
+          "variant": "before",
+          "trial": 2,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 21.882083,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 3323.408958,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 25.034666,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 3318.0591249999998,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 23.817208,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 3288.428833,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 16.878709,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 55.347917,
+          "mode": "local",
+          "variant": "before",
+          "trial": 2,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 24.257709,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 30.341584,
+          "mode": "page",
+          "variant": "before",
+          "trial": 2,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 13.277125,
+          "mode": "page",
+          "variant": "after",
+          "trial": 2,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 3410.479208,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 35.792125,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 3364.976541,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 39.422459,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 3379.692917,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 23.164208,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 3375.7535,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 26.007958,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 57.774125,
+          "mode": "local",
+          "variant": "before",
+          "trial": 3,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 27.563042,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 3365.514417,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 29.891542,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 3363.8834580000002,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 28.143375,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 3408.786833,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 25.789792,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 56.1935,
+          "mode": "local",
+          "variant": "before",
+          "trial": 3,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 26.298084,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 31.330459,
+          "mode": "page",
+          "variant": "before",
+          "trial": 3,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 12.988416,
+          "mode": "page",
+          "variant": "after",
+          "trial": 3,
+          "operation": "tag_filter"
+        }
+      ],
+      "candidateFixtureSHA256": "6b3e19e851053d17a129b97a98272a9531e60726396129bcb0f2338ab69528a6",
+      "imageCount": 512,
+      "extraTemplatesOnReviewedSource": 8,
+      "preparation": {
+        "before": {
+          "openInstallAndCompleteValidationMilliseconds": 3141.656083
+        },
+        "after": {
+          "openInstallAndCompleteValidationMilliseconds": 3223.724208
+        }
+      },
+      "sourceManifestSHA256": "eb1cf6815322f7603e812ec950bdc42ba3b27885574f06b9812d7a86731edc8e",
+      "cleanup": {
+        "ownedBuildsRemoved": true,
+        "syntheticSeedRemoved": true,
+        "baselineSourceRemoved": true,
+        "installedAppAccessed": false
+      },
+      "sourceManifestMatchesMeasuredTree": true
+    },
+    "20000": {
+      "seedSHA256": "a09381ea10e9e3d9e184eea8bc9be490619191fefe1cd36a4d31550cb43c2a0b",
+      "beforeCommit": "c2cf05a1",
+      "fixtureSHA256": "0ad0fff71e063edf40c94bd270781f7b70fd14e75e026a9f5a466cf1d5bb41b1",
+      "configuration": "Release",
+      "architecture": "arm64",
+      "entries": 20000,
+      "enrolledSenses": 4000,
+      "ratings": 1000,
+      "samples": [
+        {
+          "milliseconds": 6948.068959,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 29.73975,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 7939.857708,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 42.522583,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 7742.71125,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 30.743333,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 7532.611792,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 28.068667,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 67.907458,
+          "mode": "local",
+          "variant": "before",
+          "trial": 1,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 24.32675,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 7123.112083,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 32.890125,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 7076.042,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 23.84125,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 6910.225375,
+          "mode": "full",
+          "variant": "before",
+          "trial": 1,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 25.957334,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 59.788625,
+          "mode": "local",
+          "variant": "before",
+          "trial": 1,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 29.797833,
+          "mode": "local",
+          "variant": "after",
+          "trial": 1,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 53.750958,
+          "mode": "page",
+          "variant": "before",
+          "trial": 1,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 24.487792,
+          "mode": "page",
+          "variant": "after",
+          "trial": 1,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 7916.097584,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 41.647416,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 6943.941458,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 31.881541,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 7213.164875,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 26.509125,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 7068.057916,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 26.383292,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 60.926958,
+          "mode": "local",
+          "variant": "before",
+          "trial": 2,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 15.723167,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 9061.281334,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 32.466875,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 7561.118916,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 30.017917,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 9497.026375,
+          "mode": "full",
+          "variant": "before",
+          "trial": 2,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 28.675167,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 60.525334,
+          "mode": "local",
+          "variant": "before",
+          "trial": 2,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 15.673583,
+          "mode": "local",
+          "variant": "after",
+          "trial": 2,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 53.713292,
+          "mode": "page",
+          "variant": "before",
+          "trial": 2,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 543.255208,
+          "mode": "page",
+          "variant": "after",
+          "trial": 2,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 10633.20475,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 37.503416,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "reviewed_append"
+        },
+        {
+          "milliseconds": 10582.510958,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 43.920291,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "reviewed_note"
+        },
+        {
+          "milliseconds": 9935.761167,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 17.594583,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "cited_example_edit"
+        },
+        {
+          "milliseconds": 7309.925916,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 13.642625,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "shared_source"
+        },
+        {
+          "milliseconds": 51.234375,
+          "mode": "local",
+          "variant": "before",
+          "trial": 3,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 28.462958,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "plain_capture_images"
+        },
+        {
+          "milliseconds": 9700.377375,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 24.586083,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_add"
+        },
+        {
+          "milliseconds": 9551.4595,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 19.326541,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_remove_shared"
+        },
+        {
+          "milliseconds": 9643.243208,
+          "mode": "full",
+          "variant": "before",
+          "trial": 3,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 19.71625,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "image_remove_last"
+        },
+        {
+          "milliseconds": 66.411417,
+          "mode": "local",
+          "variant": "before",
+          "trial": 3,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 15.074125,
+          "mode": "local",
+          "variant": "after",
+          "trial": 3,
+          "operation": "sense_create"
+        },
+        {
+          "milliseconds": 56.85425,
+          "mode": "page",
+          "variant": "before",
+          "trial": 3,
+          "operation": "tag_filter"
+        },
+        {
+          "milliseconds": 26.190709,
+          "mode": "page",
+          "variant": "after",
+          "trial": 3,
+          "operation": "tag_filter"
+        }
+      ],
+      "candidateFixtureSHA256": "6b3e19e851053d17a129b97a98272a9531e60726396129bcb0f2338ab69528a6",
+      "imageCount": 512,
+      "extraTemplatesOnReviewedSource": 8,
+      "preparation": {
+        "before": {
+          "openInstallAndCompleteValidationMilliseconds": 8920.7065
+        },
+        "after": {
+          "openInstallAndCompleteValidationMilliseconds": 8858.333458
+        }
+      },
+      "sourceManifestSHA256": "eb1cf6815322f7603e812ec950bdc42ba3b27885574f06b9812d7a86731edc8e",
+      "cleanup": {
+        "ownedBuildsRemoved": true,
+        "syntheticSeedRemoved": true,
+        "baselineSourceRemoved": true,
+        "installedAppAccessed": false
+      },
+      "sourceManifestMatchesMeasuredTree": true
+    }
+  },
+  "operations": [
+    {
+      "id": "reviewed_append",
+      "label": "Append context to a reviewed sense (nine exercises)",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3390.5430420000002,
+            "minMs": 3206.227458,
+            "maxMs": 3410.479208,
+            "rawMs": [
+              3206.227458,
+              3390.5430420000002,
+              3410.479208
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 35.792125,
+            "minMs": 33.430834,
+            "maxMs": 39.259916,
+            "rawMs": [
+              33.430834,
+              39.259916,
+              35.792125
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 7916.097584,
+            "minMs": 6948.068959,
+            "maxMs": 10633.20475,
+            "rawMs": [
+              6948.068959,
+              7916.097584,
+              10633.20475
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 37.503416,
+            "minMs": 29.73975,
+            "maxMs": 41.647416,
+            "rawMs": [
+              29.73975,
+              41.647416,
+              37.503416
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "reviewed_note",
+      "label": "Edit a reviewed note (nine exercises)",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3364.976541,
+            "minMs": 3314.279167,
+            "maxMs": 3368.649625,
+            "rawMs": [
+              3314.279167,
+              3368.649625,
+              3364.976541
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 39.422459,
+            "minMs": 38.855917,
+            "maxMs": 40.760542,
+            "rawMs": [
+              40.760542,
+              38.855917,
+              39.422459
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 7939.857708,
+            "minMs": 6943.941458,
+            "maxMs": 10582.510958,
+            "rawMs": [
+              7939.857708,
+              6943.941458,
+              10582.510958
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 42.522583,
+            "minMs": 31.881541,
+            "maxMs": 43.920291,
+            "rawMs": [
+              42.522583,
+              31.881541,
+              43.920291
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "cited_example_edit",
+      "label": "Edit an interpretation cited by a semantic mapping",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3368.780875,
+            "minMs": 3353.049208,
+            "maxMs": 3379.692917,
+            "rawMs": [
+              3353.049208,
+              3368.780875,
+              3379.692917
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 23.164208,
+            "minMs": 23.039541,
+            "maxMs": 23.78175,
+            "rawMs": [
+              23.039541,
+              23.78175,
+              23.164208
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 7742.71125,
+            "minMs": 7213.164875,
+            "maxMs": 9935.761167,
+            "rawMs": [
+              7742.71125,
+              7213.164875,
+              9935.761167
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 26.509125,
+            "minMs": 17.594583,
+            "maxMs": 30.743333,
+            "rawMs": [
+              30.743333,
+              26.509125,
+              17.594583
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "shared_source",
+      "label": "Capture a new entry reusing an existing source",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3350.024875,
+            "minMs": 3317.840708,
+            "maxMs": 3375.7535,
+            "rawMs": [
+              3317.840708,
+              3350.024875,
+              3375.7535
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 23.328084,
+            "minMs": 22.479959,
+            "maxMs": 26.007958,
+            "rawMs": [
+              22.479959,
+              23.328084,
+              26.007958
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 7309.925916,
+            "minMs": 7068.057916,
+            "maxMs": 7532.611792,
+            "rawMs": [
+              7532.611792,
+              7068.057916,
+              7309.925916
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 26.383292,
+            "minMs": 13.642625,
+            "maxMs": 28.068667,
+            "rawMs": [
+              28.068667,
+              26.383292,
+              13.642625
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "plain_capture_images",
+      "label": "Ordinary capture with 512 referenced images",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 55.167542,
+            "minMs": 53.1965,
+            "maxMs": 57.774125,
+            "rawMs": [
+              55.167542,
+              53.1965,
+              57.774125
+            ],
+            "modes": [
+              "local"
+            ]
+          },
+          "after": {
+            "medianMs": 22.684459,
+            "minMs": 21.882083,
+            "maxMs": 27.563042,
+            "rawMs": [
+              22.684459,
+              21.882083,
+              27.563042
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 60.926958,
+            "minMs": 51.234375,
+            "maxMs": 67.907458,
+            "rawMs": [
+              67.907458,
+              60.926958,
+              51.234375
+            ],
+            "modes": [
+              "local"
+            ]
+          },
+          "after": {
+            "medianMs": 24.32675,
+            "minMs": 15.723167,
+            "maxMs": 28.462958,
+            "rawMs": [
+              24.32675,
+              15.723167,
+              28.462958
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "image_add",
+      "label": "Attach a prepared owned image",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3340.093708,
+            "minMs": 3323.408958,
+            "maxMs": 3365.514417,
+            "rawMs": [
+              3340.093708,
+              3323.408958,
+              3365.514417
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 28.359916,
+            "minMs": 25.034666,
+            "maxMs": 29.891542,
+            "rawMs": [
+              28.359916,
+              25.034666,
+              29.891542
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 9061.281334,
+            "minMs": 7123.112083,
+            "maxMs": 9700.377375,
+            "rawMs": [
+              7123.112083,
+              9061.281334,
+              9700.377375
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 32.466875,
+            "minMs": 24.586083,
+            "maxMs": 32.890125,
+            "rawMs": [
+              32.890125,
+              32.466875,
+              24.586083
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "image_remove_shared",
+      "label": "Remove one of two owners of an image",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3354.428333,
+            "minMs": 3318.0591249999998,
+            "maxMs": 3363.8834580000002,
+            "rawMs": [
+              3354.428333,
+              3318.0591249999998,
+              3363.8834580000002
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 23.938333,
+            "minMs": 23.817208,
+            "maxMs": 28.143375,
+            "rawMs": [
+              23.938333,
+              23.817208,
+              28.143375
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 7561.118916,
+            "minMs": 7076.042,
+            "maxMs": 9551.4595,
+            "rawMs": [
+              7076.042,
+              7561.118916,
+              9551.4595
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 23.84125,
+            "minMs": 19.326541,
+            "maxMs": 30.017917,
+            "rawMs": [
+              23.84125,
+              30.017917,
+              19.326541
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "image_remove_last",
+      "label": "Remove the last document owner of an image",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 3376.901708,
+            "minMs": 3288.428833,
+            "maxMs": 3408.786833,
+            "rawMs": [
+              3376.901708,
+              3288.428833,
+              3408.786833
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 25.789792,
+            "minMs": 16.878709,
+            "maxMs": 25.947209,
+            "rawMs": [
+              25.947209,
+              16.878709,
+              25.789792
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 9497.026375,
+            "minMs": 6910.225375,
+            "maxMs": 9643.243208,
+            "rawMs": [
+              6910.225375,
+              9497.026375,
+              9643.243208
+            ],
+            "modes": [
+              "full"
+            ]
+          },
+          "after": {
+            "medianMs": 25.957334,
+            "minMs": 19.71625,
+            "maxMs": 28.675167,
+            "rawMs": [
+              25.957334,
+              28.675167,
+              19.71625
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "sense_create",
+      "label": "Create a sense through the engine command",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 56.1935,
+            "minMs": 55.347917,
+            "maxMs": 57.13225,
+            "rawMs": [
+              57.13225,
+              55.347917,
+              56.1935
+            ],
+            "modes": [
+              "local"
+            ]
+          },
+          "after": {
+            "medianMs": 24.737833,
+            "minMs": 24.257709,
+            "maxMs": 26.298084,
+            "rawMs": [
+              24.737833,
+              24.257709,
+              26.298084
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 60.525334,
+            "minMs": 59.788625,
+            "maxMs": 66.411417,
+            "rawMs": [
+              59.788625,
+              60.525334,
+              66.411417
+            ],
+            "modes": [
+              "local"
+            ]
+          },
+          "after": {
+            "medianMs": 15.673583,
+            "minMs": 15.074125,
+            "maxMs": 29.797833,
+            "rawMs": [
+              29.797833,
+              15.673583,
+              15.074125
+            ],
+            "modes": [
+              "local"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tag_filter",
+      "label": "Read an English page for group-2",
+      "sizes": {
+        "10000": {
+          "before": {
+            "medianMs": 30.656417,
+            "minMs": 30.341584,
+            "maxMs": 31.330459,
+            "rawMs": [
+              30.656417,
+              30.341584,
+              31.330459
+            ],
+            "modes": [
+              "page"
+            ]
+          },
+          "after": {
+            "medianMs": 13.033583,
+            "minMs": 12.988416,
+            "maxMs": 13.277125,
+            "rawMs": [
+              13.033583,
+              13.277125,
+              12.988416
+            ],
+            "modes": [
+              "page"
+            ]
+          }
+        },
+        "20000": {
+          "before": {
+            "medianMs": 53.750958,
+            "minMs": 53.713292,
+            "maxMs": 56.85425,
+            "rawMs": [
+              53.750958,
+              53.713292,
+              56.85425
+            ],
+            "modes": [
+              "page"
+            ]
+          },
+          "after": {
+            "medianMs": 26.190709,
+            "minMs": 24.487792,
+            "maxMs": 543.255208,
+            "rawMs": [
+              24.487792,
+              543.255208,
+              26.190709
+            ],
+            "modes": [
+              "page"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "validation": {
+    "engineSwiftTestingPassed": 135,
+    "engineXCTestPassed": 40,
+    "finalDependencyEdgeTestsPassed": 28,
+    "newOrChangedSwiftLintViolations": 0,
+    "nativeStatus": "Functional integration checkpoint passed with scoped test-fixture recovery; native operation timing inventory not run",
+    "subsequentBusinessCheckpoint": {
+      "scope": "Remove empty-sense placeholder commands and manual example-completeness UI; preserve content-bearing authoring and supplied metadata",
+      "sharedPassed": 129,
+      "sharedOptInBridgesSkipped": 3,
+      "initialNativeExecution": {
+        "result": "Failed",
+        "passedTests": 99,
+        "failedTests": 1,
+        "skippedTests": 1,
+        "totalTestCount": 101
+      },
+      "initialFailure": "A stale-editor fixture attempted to save a content-free word; admission correctly rejected it before the lifecycle assertion",
+      "recovery": {
+        "result": "Passed",
+        "passedTests": 7,
+        "failedTests": 0,
+        "skippedTests": 0,
+        "totalTestCount": 7
+      },
+      "distinctNativeChecksPassed": 100,
+      "optionalVisibleDesktopJourneySkipped": 1,
+      "changedTestFixture": [
+        "LingroveTests/Services/Vocabulary/VocabularyLifecycleTests.swift"
+      ],
+      "unselectedRecovery": "The first method selector executed zero tests and was rejected by the runner; excluded from passing evidence",
+      "productSourcesUnchangedAcrossNativeRecovery": true,
+      "sourceManifestMatchesCheckpointTree": true,
+      "sourceManifestSHA256": "cb24e4a736d4174bbce3908a2a739120aec91f3d753e84072aa540a31b167148",
+      "cleanup": {
+        "derivedDataAbsent": true,
+        "syntheticFixturesRemoved": true,
+        "packageCopiesRemoved": true,
+        "hostRemoved": true,
+        "installedAppAccessed": false
+      }
+    }
+  }
+}

@@ -1,6 +1,14 @@
 # Local retirement of reviewed corpus sources
 
-Status: accepted, 2026-11-13.
+Status: accepted, 2026-11-13; narrowed to Notes on 2026-11-14.
+
+The user subsequently chose Note-only authoring/practice and waived compatibility for existing
+legacy card content/history. The legacy-link/retained-face branches described in the original
+checkpoint below have been removed. The current writer selects affected Notes/memberships and
+uses `sourceMissing` only; corpus atomicity and future Note/Card history guarantees still apply.
+
+[ADR 0009](0009-closed-entry-dependencies-and-tag-index.md) extends the same writer to live
+reviewed sources and replaces conservative semantic/media fallbacks with closed dependency checks.
 
 ADR 0006 conservatively sent every cold entry command with review consumers through complete
 corpus preparation. The 20k Release median for deleting an enrolled sense remained 8800.997ms.

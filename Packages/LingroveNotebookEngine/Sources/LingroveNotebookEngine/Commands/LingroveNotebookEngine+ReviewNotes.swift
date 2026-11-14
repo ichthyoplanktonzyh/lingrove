@@ -24,7 +24,7 @@ extension LingroveNotebookEngine {
             try Task.checkCancellation()
             try requireCurrentScopeInTransaction(scope, requireRevision: true)
             let store = ReviewNoteStore(core: core)
-            guard try store.types(workspace: scope.workspaceId).contains(type) else { throw VocabularyError.editConflict }
+            guard try store.type(id: type.id, workspace: scope.workspaceId) == type else { throw VocabularyError.editConflict }
             let note = try previewReviewNoteInTransaction(selection: selection, type: type, scope: scope)
             // Persist the selected definition once: a future bundled default must not silently
             // redefine already-prepared notes before their shared type is explicitly updated.
@@ -63,21 +63,29 @@ extension LingroveNotebookEngine {
             try Task.checkCancellation()
             try requireCurrentScopeInTransaction(scope, requireRevision: true)
             let store = ReviewNoteStore(core: core)
-            let current = try store.types(workspace: scope.workspaceId).first { $0.id == proposed.id }
+            let version = LingroveNotebookVersion(scope)
+            let current = try store.type(id: proposed.id, workspace: scope.workspaceId)
             guard current == expected, proposed.revision == (current?.revision ?? 0) + 1 else { throw VocabularyError.editConflict }
-            let affected = try store.notes(scope: scope).filter { $0.noteTypeID == proposed.id }
+            // CSS and the type's display name do not change generated plain faces or template
+            // admission. The type revision still fences stale questions and syncs the new style.
+            if let current, current.fields == proposed.fields, current.templates == proposed.templates {
+                try store.put(proposed, workspace: scope.workspaceId)
+                if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
+                return
+            }
+            let fieldIDs = Set(proposed.fields.map { $0.id.uuidString.lowercased() })
+            let affected = try store.notes(version: version, typeID: proposed.id)
             let noteIDs = Set(affected.map(\.id))
-            let usedTemplates = try store.memberships(workspace: scope.workspaceId).filter { noteIDs.contains($0.noteID) }
+            let usedTemplates = try store.memberships(workspace: scope.workspaceId, noteIDs: noteIDs)
             guard Set(usedTemplates.map(\.templateID)).isSubset(of: Set(proposed.templates.map(\.id))),
-                  affected.allSatisfy({ Set($0.customFields.keys).isSubset(of: Set(proposed.fields.map { $0.id.uuidString.lowercased() })) }) else {
+                  affected.allSatisfy({ Set($0.customFields.keys).isSubset(of: fieldIDs) }) else {
                 throw VocabularyError.invalidContent
             }
             try store.put(proposed, workspace: scope.workspaceId)
             if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
-            for note in affected where usedTemplates.contains(where: { $0.noteID == note.id }) {
-                try store.reconcile(note, type: proposed, scope: scope)
+            try store.refreshNotes(affected, definitions: [proposed], members: usedTemplates, version: version) {
+                try store.source(for: $0, workspace: scope.workspaceId)
             }
-            try store.refreshInTransaction(scope)
         }
     }
 
@@ -103,7 +111,7 @@ extension LingroveNotebookEngine {
             let store = ReviewNoteStore(core: core)
             let type: ReviewNoteType
             if let expected {
-                guard try store.types(workspace: version.workspaceId).contains(expected) else { throw VocabularyError.editConflict }
+                guard try store.type(id: expected.id, workspace: version.workspaceId) == expected else { throw VocabularyError.editConflict }
                 type = expected
             } else {
                 type = try store.defaultType(workspace: version.workspaceId)
@@ -115,8 +123,7 @@ extension LingroveNotebookEngine {
                 let (entry, sense) = try store.source(for: selection, workspace: version.workspaceId)
                 let note = try reviewNote(entry: entry, sense: sense, type: type, version: version)
                 try store.put(note, version: version)
-                try store.reconcile(note, type: type, version: version, entry: entry, sense: sense)
-                let members = try store.memberships(workspace: version.workspaceId, noteID: note.id)
+                let members = try store.reconcile(note, type: type, version: version, entry: entry, sense: sense)
                 guard !members.isEmpty else { throw VocabularyError.invalidContent }
                 let aliases = Set([sense.id] + sense.mergedFrom)
                 for enrollment in try lingroveNotebookReviewStore.load(workspaceId: version.workspaceId,
@@ -137,18 +144,20 @@ extension LingroveNotebookEngine {
     public func saveReviewNote(_ proposed: ReviewNote, expected: ReviewNote, scope: LingroveNotebookSnapshot) throws {
         try core.inTransaction {
             try requireCurrentScopeInTransaction(scope, requireRevision: true)
+            try Task.checkCancellation()
             let store = ReviewNoteStore(core: core)
+            let version = LingroveNotebookVersion(scope)
             guard proposed.id == expected.id, proposed.noteTypeID == expected.noteTypeID,
                   proposed.senseID == expected.senseID, proposed.entryID == expected.entryID,
-                  proposed.revision == expected.revision + 1, try store.notes(scope: scope).contains(expected),
-                  let type = try store.types(workspace: scope.workspaceId).first(where: { $0.id == proposed.noteTypeID }),
+                  proposed.revision == expected.revision + 1, try store.note(id: expected.id, version: version) == expected,
+                  let type = try store.type(id: proposed.noteTypeID, workspace: scope.workspaceId),
                   Set(proposed.customFields.keys).isSubset(of: Set(type.fields.map { $0.id.uuidString.lowercased() })),
                   proposed.customFields.values.allSatisfy({ $0.utf8.count <= 131_072 }) else { throw VocabularyError.editConflict }
             try store.put(proposed, scope: scope)
-            if try store.memberships(workspace: scope.workspaceId).contains(where: { $0.noteID == proposed.id }) {
-                try store.reconcile(proposed, type: type, scope: scope)
+            let members = try store.memberships(workspace: scope.workspaceId, noteID: proposed.id)
+            try store.refreshNotes([proposed], definitions: [type], members: members, version: version) {
+                try store.source(for: $0, workspace: scope.workspaceId)
             }
-            try store.refreshInTransaction(scope)
         }
     }
 

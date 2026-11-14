@@ -557,7 +557,6 @@ struct VocabularyCLITests {
             let snapshot = try await fixture.archive.load()
             #expect(snapshot.document.semantics.nodes.count == 1)
             #expect(snapshot.document.classification.memberships.count == 1)
-            #expect(snapshot.document.entries.flatMap(\.senses).allSatisfy { $0.review == nil && ($0.reviewCards ?? []).isEmpty })
         } catch { await fixture.close(); throw error }
         await fixture.close()
     }
@@ -692,7 +691,7 @@ struct VocabularyCLITests {
             #expect(try await fixture.archive.load().document == snapshot.document)
             let first = try #require(document.entries.first { $0.expression == "bank" })
             let sense = try #require(first.senses.first { $0.meaning == "银行" })
-            let node = try #require(document.semantics.nodes.first { $0.title == "金融机构" })
+            let node = try #require(document.semantics.nodes.first { $0.labels.contains { $0.text == "金融机构" } })
             let append: [String: Any] = ["version": 1, "idempotencyKey": "capture-existing", "expectedRevision": snapshot.revision,
                 "defaults": ["language": "en", "meaningLanguage": "zh-Hans"],
                 "meanings": [["ref": "finance", "id": node.id.uuidString]],
@@ -799,7 +798,8 @@ struct VocabularyCLITests {
             let replay: [String: Any] = ["version": 2, "expectedRevision": 1, "idempotencyKey": "unchanged-source", "operations": [
                 ["put": ["resource": "sources", "value": record]]]]
             #expect(try await fixture.apply(replay).0 == 0)
-            let remove: [String: Any] = ["version": 2, "expectedRevision": 2, "idempotencyKey": "delete-raw", "operations": [
+            let afterReplay = try await fixture.archive.load()
+            let remove: [String: Any] = ["version": 2, "expectedRevision": afterReplay.revision, "idempotencyKey": "delete-raw", "operations": [
                 ["delete": ["resource": "occurrences", "id": occurrence]], ["delete": ["resource": "sources", "id": source]]]]
             #expect(try await fixture.apply(remove).0 == 0)
             #expect(try await fixture.archive.load().document.sources.isEmpty)
@@ -919,7 +919,7 @@ struct VocabularyCLITests {
     @Test func listCanFilterTheUnknownLanguageCodeItExports() async throws {
         let fixture = try await Fixture()
         do {
-            _ = try await fixture.archive.save(.init(expression: "compatible", dictionaryForm: "compatible", language: nil, kind: .word))
+            _ = try await fixture.archive.save(.init(expression: "compatible", dictionaryForm: "compatible", language: nil, kind: .word, meaning: "Able to work together"))
             let (status, reply) = try await fixture.call(["vocab", "list", "--language", "und"])
             #expect(status == 0)
             let rows = try #require(try result(reply)["entries"] as? [[String: Any]])

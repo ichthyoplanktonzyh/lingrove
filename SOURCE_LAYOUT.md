@@ -88,7 +88,7 @@ Lingrove/
 │   └── Visual/                       capture, OCR admission/helper lifetime, and visual-context sessions
 ├── Support/
 │   ├── Account/                      connection validation/scoping and safe localized account presentation
-│   ├── BuiltInReview/                landing-state/source projections, draft dirty tracking, keyboard admission and answer presentation
+│   ├── BuiltInReview/                landing-state/source projections, keyboard admission and answer presentation
 │   ├── Accessibility/                pure AX and secure-surface policies
 │   ├── Context/                      sanitization, relevance, and OCR hygiene
 │   ├── Emoji/
@@ -274,25 +274,34 @@ targets outside loaded pages. Shutdown drains and closes the read worker with th
 `Services/Vocabulary/VocabularyArchive.swift` owns one serialized engine connection until shutdown
 drains accepted saves. `VocabularyPolicy.entryForSave` prepares a single joined entry; the archive
 returns a committed immutable snapshot or an explicitly partial entry receipt to the UI-facing
-store. `VocabularyArchive+EntryCommands` attempts certified cold captures/retirements before the
+store. `VocabularyArchive+EntryCommands` attempts certified cold captures, editor saves and retirements before the
 ordinary full fallback. It does not create a second corpus.
 `Support/Vocabulary/VocabularySaveLiteralEquality.swift` keeps the editor's three-way comparisons
 byte-sensitive while normalizing unordered collection encodings.
+`LingroveNotebook/VocabularySenseContentPolicy` distinguishes a content-bearing draft from an empty
+placeholder at authoring boundaries. Existing full reads retain their format/validation contract.
+Manual additions carry content through `VocabularyEntryInputPolicy`; no separate empty-sense command exists.
 
 `Persistence/NotebookStore/NotebookEntryCheckpoint` owns durable, derived full-validation metadata
 at the exact canonical/schema/policy fence, including the complete media pin set.
-`NotebookEntryAdmission` owns indexed global identity/key checks and conservative dependency
-fallbacks during one synchronous transaction. `Commands/LingroveNotebookEngine+LocalEntry` reuses
+`NotebookEntryAdmission` owns indexed global identity/key checks. Its `+Dependencies` extension
+selects closed lexical/semantic/shared-evidence fragments; `+Media` proves the reference delta
+against other canonical owners. `Commands/LingroveNotebookEngine+LocalEntry` reuses
 the existing codec/domain rules for one subtree and the existing row/CAS/journal writer without
 installing a partial full-cache. Its `LingroveNotebookEntryCommit` is a bounded acknowledgment,
 not a document. `VocabularyStore.lastEntryCommit` retains only that latest admitted owner for
 immediate explanation adoption; pages refresh while complete interfaces remain unloaded.
 Warm complete writers retain their established incremental receipts. See
 `docs/adr/0006-certified-local-entry-writes.md` for proof lifetime and full-fallback boundaries.
+`NotebookTagIndex` maintains a rebuildable tag query projection through canonical SQLite triggers.
+`LingroveNotebookMediaStore+Registration` batches current ownership/metadata checks without a
+process cache. `LingroveNotebookMediaQueueStore` diffs pins and atomically cancels release debt.
+Live review material refresh accepts a version and complete affected entries, sharing the full
+renderer/Note/Card writer. See `docs/adr/0009-closed-entry-dependencies-and-tag-index.md`.
 
 `LingroveNotebookReviewMaterialStore.retireSourcesInTransaction` specializes the material tail
 for a certified deleted sense and its merged IDs. It selects only that notebook's affected
-links/Notes/members, shares the existing admission-state writer and keeps Card memory, authored
+Notes/members, shares the existing admission-state writer and keeps Card memory, authored
 Note fields and history. `ReviewNoteStore` selects by source/Note ownership before arranging
 its small result by identity; SQL ordering must not turn scoped lookups into workspace walks.
 This method borrows the canonical writer transaction and never creates a partial snapshot or
@@ -399,9 +408,9 @@ The session retains frozen scope/card/link identity and drains accepted writes; 
 does not recreate the app service graph. See `docs/MAC_REVIEW_ACCOUNT_UI_REUSE.md` for exact provenance and
 the native Markdown/math/table limits. The application bundles `Resources/NibomoUI-LICENSE.txt`. Current native appearance, shared
 button styles and account navigation follow `docs/MAC_UI_SYSTEM.md`; original extraction visual
-choices are provenance. `Support/BuiltInReview/BuiltInReviewDraftPresentationSnapshot` owns the
-pure editable baseline used by the material sheet's discard confirmation, while the existing
-session still owns its original CAS draft and writer.
+choices are provenance. Note and Note Type sheets retain their original CAS values;
+`BuiltInReviewBatchDraft` stores only frozen source selections and their shared type.
+There is no per-exercise material editor or native fallback renderer.
 
 Tests mirror the storage and UI boundaries. `UI/Settings/MacWave3OnscreenAcceptanceTests.swift` is
 explicitly opt-in: it exposes disposable SQLite-backed production windows for a bounded computer-use
@@ -698,7 +707,7 @@ The autocomplete inference package and its revision remain separate.
 and versioned portable snapshots. Dictionary bodies are live queries and are never archived. `Support/Vocabulary` turns immutable card snapshots into
 captures and owns deduplication, bounded context extraction and search rules.
 `Services/Vocabulary` owns the lazy UI store and serialized atomic local archive.
-`VocabularySensePolicy` owns exact-occurrence membership, explicit merge/move rules and retired-ID aliases;
+`VocabularySensePolicy` owns exact-occurrence membership, whole-sense merge rules and retired-ID aliases;
 no generated wording is used as an identity. `VocabularyNotebookSession` belongs to the library window, retains a lightweight explanation
 session per usage of the selected sense, and cancels them on navigation/closure. Browsing only restores records;
 generation remains explicit in the notebook. `UI/Vocabulary` owns browsing and editing drafts.
@@ -1061,78 +1070,34 @@ transactional card generation and review history. Native editors and WebKit rend
 See [Note and template behavior](docs/REVIEW_TEMPLATE_DESIGN.md) and
 [Anki sending](docs/ANKI_NOTE_SYNC.md) for ownership, compatibility and limitations.
 
-The existing `ReviewMaterial` / `ReviewMaterialResolver` and `ReviewMaterialEditor` support
-legacy recipe-based material and exercise paths. Their continued presence does not make the
-preparation editor the default Note enrollment flow. Existing exercises are not auto-converted.
+All executable authoring, refresh and practice paths use Notes. The former per-exercise
+recipe writers, retained-face path, material editor and legacy Anki sessions were removed on
+2026-11-14. Existing cards/content/history are not migrated or reconstructed. Historical corpus
+format DTOs and their persistence/wire leaf codecs were also removed. The corpus no longer owns
+`review`, `reviewCards` or `reviewTemplates`; Notes and types live in their own tables/sync boundary.
+The current corpus wire protocol reserves two false presence flags and two retired entity tags;
+these framing values do not decode or recreate legacy card content.
 
 ## Anki review
 
-The following legacy per-card adapter remains available for existing associations. Current Note
-sending uses the separate boundary documented in [ANKI_NOTE_SYNC.md](docs/ANKI_NOTE_SYNC.md).
+`Services/Review/AnkiConnectClient.swift` owns the bounded loopback HTTP transport.
+`AnkiReviewController` is constructed once by the environment and shared by Settings and Corpus;
+it owns credentials, connection metadata and the operation lease. Connection tests read metadata
+without creating a model. Note types own fields/templates; transport settings hold address and deck.
 
+`Services/Review/Notes/NoteAnkiSession` owns a sheet's selected shared type, preview and conflict
+choices. `NoteAnkiSender` persists recovery plans before external writes and verifies the result.
+`NoteAnkiBatchSession` owns a deduplicated serial queue, freezes one shared type for a run and
+retains successful rows across retries. Its `VocabularyNoteAnkiBatchSheet` reuses the individual
+Note send sheet for per-item conflict decisions. There is no legacy fallback.
 
-`Models/Review` owns review-only plans, durable pending/confirmed Anki bindings, connection
-snapshots and typed wire values. A sense owns independent `reviewCards`; the optional legacy `review` records remain readable
-without migration. The vocabulary archive remains the single atomic writer.
-`Support/Review` prepares cards from exact usage spans, escapes text for HTML, maps logical fields,
-compares last-synced/local/remote values and defines the versioned preset note template.
+`NoteAnkiIO` reads the same repository and stores device/profile-scoped receipts separately.
+Loading/closing previews is read-only; explicit Send prepares a Note without enrolling it in
+built-in review. Anki remains the owner of its own ratings and schedule. Source/type/custom-field
+changes alone never contact Anki. See [ANKI_NOTE_SYNC.md](docs/ANKI_NOTE_SYNC.md).
 
-`Services/Review/AnkiConnectClient.swift` is the loopback-only, bounded, no-redirect HTTP boundary.
-`AnkiReviewController` is constructed once by the environment and shared by Settings and Vocabulary;
-it owns operation exclusion and connection metadata, without startup probes or background sync.
-Each `AnkiReviewSession` belongs to one preparation sheet. It persists creation identity before a
-write, recovers uncertain acknowledgements by that identity, revalidates the active profile/source,
-and records successful synchronization only after rereading the remote fields. Anki card IDs and
-scheduling remain under Anki's ownership. Removing existing card types is managed in Anki.
-
-`UI/Vocabulary/VocabularyReviewSection.swift` lists the sense's independent cards and status;
-`VocabularyReviewSheet.swift` edits review-only content and displays previews/conflict choices.
-`UI/Settings/Panes/LearningReviewSettingsSection.swift` reuses the grouped settings form under
-Language Learning → Review, including searchable reusable card templates. Existing notebooks,
-dictionary lookups, explanation generation and favorites never trigger an Anki write themselves.
-
-### Review audio, template and queue boundaries
-
-`ReviewOperationScope` freezes the Anki connection, profile and selected configuration for one
-explicit operation, including defaults used by unprepared rows. Saving a successful choice only
-updates preferences that have not changed in another window. Batch rows carry `VocabularySelection` IDs and resolve merged aliases before
-work. `AnkiReviewBatchSession` owns one serial cancellable queue; single-sense preparation continues
-through `AnkiReviewSession`, so receipt recovery and field conflicts have one implementation.
-`VocabularyReviewBatchSheet` owns selection/preparation navigation and per-item results; cancelling
-preparation preserves a synchronized row, and reopening a queue recognizes already-saved receipts.
-
-`ReviewAudioPreparation` borrows `SpeechExporting` from the app-owned `LearningSpeechController`.
-The controller reuses its existing generator for local/endpoint audio and lazily owns a silent
-`SystemSpeechAudioExporter` for Apple voices. `SpeechExportBuffer` owns bounded request bytes;
-`SpeechExportPolicy` validates WAV/MP3 and packages native/system audio as 16-bit PCM WAV. Export
-uses normal recording speed; the existing playback-rate preference continues to affect playback,
-not the stored recording. No temporary WAV files or audio bytes enter the notebook. A sheet owns
-its prepared audio only until close; Anki owns uploaded media. Receipts contain scoped fingerprints
-and opaque hash filenames, and reuse checks that Anki still has the file. Voice/language is frozen
-per action and all generation is opt-in; collection, browsing and typing start no export work.
-
-`AnkiNoteTemplate` supplies both exported templates and the HTML preview. The preview borrows
-`DictionaryHTMLView`'s existing no-script, no-network renderer. Gap questions expose neither a
-meaning hint nor answer audio. The two template names and ordinals remain stable during an explicit
-upgrade; customized templates are never overwritten and customized CSS is retained. Navigation
-opens Anki's deck overview, using a linked note's current deck, and leaves scheduling to Anki.
-
-### Flexible review cards
-
-`ReviewLayout` models independent cards under `VocabularySense.reviewCards` and reusable layouts
-under `VocabularyDocument.reviewTemplates`. Each card uses its plan UUID for remote identity;
-legacy review records are not migrated into cards. `ReviewLayoutPolicy` delegates ordered source
-resolution to the shared resolver and owns the Anki HTML adapter. The common editor previews
-the same parts natively. References follow stable usage/block IDs;
-card-only rich content belongs to the card. Missing sources block sending without discarding drafts.
-
-`VocabularyArchive+ReviewCards` keeps per-card CAS and template transactions inside the notebook
-actor. All accepted layouts, including retained plans, participate in backup and media garbage
-collection. `VocabularyReviewLayoutEditor` reuses the native rich-content editor and Front/Back
-segmented selection. Templates copy layout roles and custom prompts; applying one binds source
-slots to the destination sense and never rewrites existing cards. The generic Anki model has one
-card per note and three fields: LingroveID, Front, Back. Sends verify its live templates, destination,
-source and media, while the shared session retains conflict handling and lost-ack recovery.
+The Home sample uses a uniquely named temporary repository and the production Note sender with
+an in-process synthetic Anki transport. It never opens the installed application's corpus.
 
 ## Menu Bar Quick Controls
 
@@ -1253,7 +1218,8 @@ publishes only the committed snapshot; the editor keeps its existing chips and a
 Delete context action to suggestions. No separate tag catalog or background classification exists.
 
 `VocabularySenseEditingPolicy` owns the shared deterministic merge rule: keep the target's authored
-content, move source examples, preserve lifecycle aliases/receipts, and remove the source sense.
+content, retain the source examples during whole-sense consolidation, preserve lifecycle aliases/receipts,
+and remove the source sense. Independent example movement has no policy/store/archive API.
 `VocabularySemanticPolicy` drops source-specific associations without deleting shared nodes.
 The notebook invokes scoped, revision-bound consolidation only through its row context menus;
 list selection has no drag/drop modifier. The store retains one in-memory undo
@@ -1571,7 +1537,7 @@ only when a saved enrollment no longer names a live sense.
 
 `Queries/+ScopedRead` keeps card/media reads inside one version-checked transaction.
 Rating, undo and participation changes validate the displayed card IDs and the current
-sense's aliases directly. `BuiltInReviewIO` reads images and audio in one read-only
+sense's aliases directly. `BuiltInReviewIO` reads bounded Note images in one read-only
 connection, while `BuiltInReviewSource` joins evidence for only the requested entry.
 
 `VocabularyOrganizationEdit` carries changed semantic/directory records with their expected
@@ -1607,9 +1573,62 @@ while retaining the batch idempotency key; an expired envelope is not an idempot
 `fixtures/CorpusDataLayerPaired.swift` against an explicit old revision and the current engine.
 It creates one closed synthetic SQLite seed with the old engine, verifies SHA-256 on every
 trial copy and measures the shared public APIs in Release. This separates byte-identical
-transaction/cache comparisons from the app inventory's equivalent generated scenarios.
+transaction/cache comparisons from the app inventory's equivalent generated scenarios. The `--candidates` mode also compiles
+`fixtures/CorpusCandidateOperations.swift`: independent cold commands on a reviewed corpus
+with 512 distinct synthetic PNGs, eight additional templates on one source, 1k ratings and
+owned prepared media. Each variant installs metadata and certifies a private seed outside
+command timers; fresh per-operation copies retain the same canonical workload. Prepared
+image attachment excludes staging, and engine times remain separate from native store times.
 
 `VocabularySemanticDatabaseProjection` indexes semantic child rows by (table, parent) during
 reconstruction. The codec checks membership identities/references, authored positions and normalized round trips.
 Unordered labels/evidence no longer require contiguous positions. Large-label/evidence fixtures live in
 `VocabularyPersistenceCodecTests`.
+
+## Scoped Note writes (2026-11-14)
+
+`LingroveNotebookEngine+ReviewNotes` owns version/CAS admission and a single atomic save. It asks
+`ReviewNoteStore` for one Note/type or indexed dependents (`notebook_notes_by_type`), rather than
+loading all definitions/Notes in a workspace. `ReviewNoteStore+Source` resolves canonical entry,
+sense, content and accepted evidence rows for each affected Note; only retired IDs need alias
+resolution. `ReviewNoteStore+Rendering` groups admitted memberships once, resolves each source
+once, and shares reconciliation plus generated-face refresh with corpus writers.
+`ReviewNoteStore+Cards` returns the reconciled membership list so callers do not reread it.
+Card scheduling/events remain with CardStore. These boundaries all borrow the same connection
+and transaction; late source/material failures roll back definitions and generated projections.
+`ReviewNoteScopedWriteTests` protects unrelated rows and tests rollback/conditional questions.
+
+## Large-corpus read and batch boundaries (2026-11-14)
+
+- `Queries/NotebookReviewReadRows.swift` is one transaction's temporary review packet: exercises,
+  live Note-owned Cards, material availability and undo IDs are grouped once. It owns no durable
+  cache. `BuiltInReviewContentState` retains corpus labels/selections and sorted group IDs across
+  review-only reloads; corpus invalidation discards them before the next load.
+- `Support/Vocabulary/VocabularyLiteralSearchIndex.swift` is disposable browser/archive text state.
+  It extracts searchable fields only for changed entry values, shares repeated field comparisons
+  within a query, and preserves localized matching for non-ASCII content. The browser and CLI
+  archive own independent instances; neither is a writer's source of truth.
+- `Queries/LingroveNotebookEngine+MaterialRead.swift` resolves selected entry/sense IDs and their
+  closed evidence/semantic dependencies under one read fence. `+SummaryRead.swift` reads bounded
+  CLI page summaries and global counts. Counts reuse an already checked connection snapshot
+  only after version/token validation; cold reads count SQL rows. Their result types deliberately cannot stand in for a
+  complete notebook snapshot or validation proof. `VocabularyArchive+CLIRead.swift` owns app-only
+  command admission, scope/output budgets and transport fields; `VocabularyCLIExecution` keeps
+  read projections distinct from committed complete snapshots. The standalone CLI shares wire
+  values, without importing the engine or app archive.
+- `Commands/LingroveNotebookEngine+EntryBatch.swift` owns one atomic manual-entry batch and local
+  merge undo. It borrows the connection's checked state and row projection, applies sealed entry
+  changes, compares the final touched keys once, then commits one journal/revision. Undo retains
+  only the original entry, its owned patterns/mappings, necessary media and exact version fence.
+- `ReviewTemplateRenderer.Prepared` is immutable parsed Note Type state, owned by a render batch.
+  `ReviewNoteStore+Rendering` shares it among affected Notes; it does not cache mutable fields.
+  Name/CSS/default-only type edits skip material reconciliation, while field/template changes
+  still atomically reconcile all affected Cards and preserve their schedules/history.
+
+CLI summary sense reads explicitly select the existing parent index: an ID sort must not make
+SQLite scan unrelated senses merely to satisfy LIMIT. The storage test bounds VM work as
+unrelated owners grow.
+
+`NotebookMaterialReadTests`, `NotebookReviewReadScaleTests`, `NotebookEntryBatchTests`,
+`VocabularyLiteralSearchIndexTests` and the existing search/review suites protect these boundaries
+with real storage/projection comparisons, SQL work bounds, rollback and stale-scope checks.

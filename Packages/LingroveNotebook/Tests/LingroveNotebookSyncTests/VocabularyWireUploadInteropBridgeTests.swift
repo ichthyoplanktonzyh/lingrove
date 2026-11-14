@@ -59,7 +59,6 @@ struct VocabularyWireUploadInteropBridgeTests {
         expected.savedSenses[index].tags = original.savedSenses[index].tags + ["c", "b", "later"]
         #expect(result.shadow.sequence.rawValue == "3")
         #expect(result.materialization.document == expected)
-        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(result.materialization.unattachedPrivateState.explanations.isEmpty)
     }
 }

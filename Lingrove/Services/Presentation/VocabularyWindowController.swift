@@ -61,7 +61,6 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: nil)
         navigation.onSelect = { [weak self] in self?.navigate(to: $0) }
         builtInReview?.session.materialStore = store
-        builtInReview?.session.materialSpeech = review?.speech ?? speech
         builtInReview?.session.onBrowseCorpus = { [weak self] in self?.navigate(to: .corpus) }
         builtInReview?.session.onOpenProgress = { [weak self] in self?.navigate(to: .progress) }
         reviewNavigation.onChange = { [weak self] target in
@@ -76,7 +75,8 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
         store.$scopeIdentity.dropFirst().sink { [weak self] _ in self?.learning.reset() }.store(in: &subscriptions)
         // A draft can be opened and cancelled before AppKit has mounted a sheet. Observe its
         // binding too, so a queued external deep link never depends on an animation completing.
-        builtInReview?.session.$draft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
+        builtInReview?.session.$noteDraft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
+        builtInReview?.session.$noteTypeDraft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
         builtInReview?.session.$batchDraft.dropFirst().sink { [weak self] _ in self?.sheetChanged() }.store(in: &subscriptions)
     }
 
@@ -151,7 +151,7 @@ final class VocabularyWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private var hasBlockingSheet: Bool {
-        window?.attachedSheet != nil || builtInReview?.session.draft != nil || builtInReview?.session.batchDraft != nil
+        window?.attachedSheet != nil || builtInReview?.session.batchDraft != nil
             || builtInReview?.session.noteTypeDraft != nil || builtInReview?.session.noteDraft != nil
     }
 

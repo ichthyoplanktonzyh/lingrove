@@ -71,12 +71,15 @@ struct VocabularyBrowsingScaleTests {
         var edited = original; edited.senses[0].note = "Cold scoped edit"
         #expect(await store.update(edited, basedOn: original, scope: store.operationScope))
         await browse.waitForPage()
-        #expect(store.isLoaded && store.entries.count == 205 && browse.total == 205 && browse.entries.count == 200)
-        #expect(store.readIndex.entriesByID[original.id]?.senses[0].note == "Cold scoped edit")
+        #expect(!store.isLoaded && store.entries.isEmpty && browse.total == 205 && browse.entries.count == 200)
+        #expect(store.lastEntryCommit?.entry?.senses[0].note == "Cold scoped edit")
         store.browse(.init(tag: "even")); await browse.waitForPage()
         await browse.waitForDetail()
         #expect(browse.total == 103 && browse.entries.count == 100)
         #expect(browse.detail?.id == original.id)
+        await store.load()
+        #expect(store.isLoaded && store.entries.count == 205)
+        #expect(store.readIndex.entriesByID[original.id]?.senses[0].note == "Cold scoped edit")
         await store.shutdown(); try repository.shutdown()
     }
 

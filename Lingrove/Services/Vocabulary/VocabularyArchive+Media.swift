@@ -65,8 +65,8 @@ extension VocabularyArchive {
     }
 
     /// Restore validates a complete portable backup before saving. The replacement leaves the
-    /// notebook intact on failure. Stable sense IDs and optional Anki receipts return with the content; the
-    /// engine refreshes built-in material without replacing its scheduling/history tables.
+    /// notebook intact on failure. Stable corpus identities and relationships return with the
+    /// content; the engine refreshes existing Notes without replacing Card scheduling/history.
     func restore(from source: URL) throws -> VocabularyArchiveSnapshot {
         let values = try source.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
         guard values.isRegularFile == true, let count = values.fileSize, count <= Self.maximumBackupBytes else {
@@ -75,7 +75,8 @@ extension VocabularyArchive {
         let backup = try JSONDecoder().decode(VocabularyBackup.self,
             from: VocabularyImageStorage.boundedRead(source, maximum: Self.maximumBackupBytes))
         guard backup.version == 1 else { throw VocabularyError.unsupportedVersion }
-        try validate(backup.document)
+        // The engine creates one fully validated restore state before staging or committing.
+        // Revalidating the entire decoded graph here duplicated that proof.
         let references = Set(Self.imageReferences(backup.document))
         guard Set(references.map(\.filename)) == Set(backup.images.keys),
               backup.images.values.reduce(0, { $0 + $1.count }) <= Self.maximumMediaBytes else { throw VocabularyError.invalidArchive }

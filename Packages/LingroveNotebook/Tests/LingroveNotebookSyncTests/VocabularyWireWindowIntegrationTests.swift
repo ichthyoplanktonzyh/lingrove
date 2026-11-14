@@ -175,7 +175,7 @@ struct VocabularyWireWindowIntegrationTests {
     func accumulatorReturnsOnlyFullyCheckedRecords() throws {
         let document = try VocabularyWireTestFixture.document()
         let projection = try VocabularyWireProjectionCodec.project(document, notebookID: VocabularyWireTestFixture.notebookID)
-        #expect(Set(projection.entities.map(\.entityType)) == Set(VocabularyWireEntityKind.allCases))
+        #expect(Set(projection.entities.map(\.entityType)) == Set(VocabularyWireEntityKind.allCases).subtracting([.reviewDraft, .reviewTemplate]))
 
         let records = try Self.rows(from: projection.entities)
         let built = try Self.window(records: records, scope: Self.scope, initialized: true)
@@ -189,7 +189,7 @@ struct VocabularyWireWindowIntegrationTests {
         let verified = try accumulator.finish(recordsJSON: persistedBytes, now: Self.now)
         #expect(persistedBytes == built.recordsJSON)
         #expect(verified.records.count == projection.entities.count)
-        #expect(Set(verified.records.map(\.entity.entityType)) == Set(VocabularyWireEntityKind.allCases))
+        #expect(Set(verified.records.map(\.entity.entityType)) == Set(VocabularyWireEntityKind.allCases).subtracting([.reviewDraft, .reviewTemplate]))
         #expect(verified.records.allSatisfy { $0.version.rawValue == "1" })
         #expect(throws: VocabularyWireWindowError.incompleteWindow) {
             _ = try accumulator.finish(recordsJSON: persistedBytes, now: Self.now)
@@ -381,35 +381,21 @@ struct VocabularyWireWindowIntegrationTests {
         }
     }
 
-    @Test("A verified full graph crosses the server shadow and retains private Anki and audio state")
+    @Test("A verified full graph crosses the server shadow and retains private explanations")
     func completeGraphRoundTripsThroughTransportAndShadow() throws {
         let original = try VocabularyWireTestFixture.document()
         let projection = try VocabularyWireProjectionCodec.project(original, notebookID: VocabularyWireTestFixture.notebookID)
         let built = try Self.window(records: Self.rows(from: projection.entities), scope: Self.scope, initialized: true)
         let remoteBytes = try #require(String(data: built.recordsJSON, encoding: .utf8))
-        #expect(!remoteBytes.contains("http://localhost:8765"))
-        #expect(!remoteBytes.contains(VocabularyWireTestFixture.currentReceiptFingerprint))
-        #expect(!remoteBytes.contains(VocabularyWireTestFixture.currentReceiptFilename))
+        #expect(!remoteBytes.contains("occurrenceIdentity"))
         let verified = try Self.verify(built)
 
         let shadow = try VocabularyWireServerShadow.empty(scope: Self.scope).applying(verified, now: Self.now)
         let result = try shadow.materialize(preserving: projection.privateState)
         #expect(result.document == original)
-        #expect(result.unattachedPrivateState.reviews.isEmpty)
         #expect(result.unattachedPrivateState.explanations.isEmpty)
 
-        let review = try #require(result.document.savedSenses.first { $0.id == VocabularyWireTestFixture.targetSenseID }?.review)
-        #expect(review.bindings.map(\.id) == [
-            VocabularyWireTestFixture.currentBindingID,
-            VocabularyWireTestFixture.mergedBindingID
-        ])
-        #expect(review.activeBindingID == VocabularyWireTestFixture.mergedBindingID)
-        let receiptFilenames = (review.plan.audioReceipts?.values.map(\.filename) ?? []) +
-            review.preservedPlans.flatMap { $0.audioReceipts?.values.map(\.filename) ?? [] }
-        #expect(Set(receiptFilenames) == Set([
-            VocabularyWireTestFixture.currentReceiptFilename,
-            VocabularyWireTestFixture.preservedReceiptFilename
-        ]))
+
     }
 
     @Test("Empty and uninitialized windows preserve initialized books and reject materialization")
@@ -619,7 +605,6 @@ extension VocabularyWireWindowIntegrationTests {
         #expect(!result.shadow.initialized)
         #expect(result.shadow.records.isEmpty)
         #expect(result.materialization.document == original)
-        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
     }
 
     @Test("Rebase combines independent fields and add-only tags while retaining local private tools")
@@ -638,7 +623,6 @@ extension VocabularyWireWindowIntegrationTests {
         #expect(result.shadow.sequence.rawValue == "2")
         #expect(result.materialization.document == expected)
         #expect(try result.shadow.materialize().document.savedSenses.first { $0.id == original.savedSenses[index].id }?.note == original.savedSenses[index].note)
-        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(result.materialization.unattachedPrivateState.explanations.isEmpty)
     }
 
@@ -668,26 +652,6 @@ extension VocabularyWireWindowIntegrationTests {
         try Self.expectRebaseConflict(local, base: base, window: reverted, field: "tags")
     }
 
-    @Test("Remote plan retirement returns private bindings and audio instead of recreating the plan")
-    func rebaseReturnsUnattachedPrivateStateAcrossPlanDeletion() throws {
-        let original = try VocabularyWireTestFixture.document()
-        let base = try Self.rebaseBase(original)
-        let index = try #require(original.savedSenses.firstIndex { $0.id == VocabularyWireTestFixture.targetSenseID })
-        var remote = original
-        remote.savedSenses[index].review = nil
-        let result = try VocabularyWireRebase.prepare(local: original, base: base,
-            window: Self.rebaseDelta(original: original, remote: remote), now: Self.now)
-        #expect(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[index].id }?.review == nil)
-        #expect(result.materialization.unattachedPrivateState.reviews.contains {
-            $0.senseID == VocabularyWireTestFixture.targetSenseID && $0.role == .legacy && !$0.bindings.isEmpty && !$0.audio.isEmpty
-        })
-        let next = try Self.verify(Self.window(records: [], scope: Self.scope, mode: .incremental,
-            afterSequence: "2", highWaterSequence: "2", initialized: true))
-        let again = try VocabularyWireRebase.prepare(local: result.materialization.document, base: result.shadow,
-            window: next, retaining: result.materialization.unattachedPrivateState, now: Self.now)
-        #expect(again.materialization.document == result.materialization.document)
-        #expect(again.materialization.unattachedPrivateState == result.materialization.unattachedPrivateState)
-    }
 
     @Test("Rebase rejects colliding offline creation and re-creation of a confirmed deleted identity")
     func rebaseRejectsCreationAndRetiredIdentityCollisions() throws {
@@ -733,7 +697,7 @@ extension VocabularyWireWindowIntegrationTests {
     func relationshipRestorationRoundTrip() throws {
         let original = try VocabularyWireTestFixture.document(), base = try Self.rebaseBase(original)
         let kinds = ["categoryOverride"]
-        let removed = try base.records.filter { kinds.contains($0.entity.entityType.rawValue) }.map {
+        let removed = base.records.filter { kinds.contains($0.entity.entityType.rawValue) }.map {
             Self.tombstone(entityType: $0.entity.entityType.rawValue, entityID: $0.entity.entityID, version: "2")
         }
         let deletion = try Self.verify(Self.window(records: removed, scope: Self.scope, mode: .incremental,
@@ -781,10 +745,10 @@ extension VocabularyWireWindowIntegrationTests {
     func uploadInitialPublicGraphAndRestore() throws {
         let original = try VocabularyWireTestFixture.document(), base = VocabularyWireServerShadow.empty(scope: Self.scope)
         let batch = try #require(try VocabularyWireUploadPlanner.make(local: original, base: base))
-        #expect(batch.request.members.count == 38)
-        #expect(Set(batch.request.members.map(\.change.entityType)).count == 27)
+        #expect(batch.request.members.count == 35)
+        #expect(Set(batch.request.members.map(\.change.entityType)).count == 25)
         let bytes = try batch.encodedBody(), text = String(decoding: bytes, as: UTF8.self)
-        #expect(!text.contains("private-profile")); #expect(!text.contains("http://localhost:8765"))
+        #expect(!text.contains("occurrenceIdentity"))
         let restored = try VocabularyWireUploadPlanner.restore(body: bytes, targetEntities: batch.targetEntities,
             expectedBaseSequence: .zero, base: base)
         #expect(restored.request.groupID == batch.request.groupID)
@@ -839,7 +803,6 @@ extension VocabularyWireWindowIntegrationTests {
         let result = try VocabularyWireRebase.prepare(local: later, base: base, window: window, acknowledging: acknowledgement, now: Self.now)
         #expect(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[0].id }?.note == "later value")
         #expect(Set(result.materialization.document.savedSenses.first { $0.id == original.savedSenses[0].id }?.tags ?? []) == Set(original.savedSenses[0].tags + ["c", "b", "later"]))
-        #expect(result.materialization.unattachedPrivateState.reviews.isEmpty)
         #expect(throws: VocabularyWireRebaseError.self) {
             try VocabularyWireRebase.prepare(local: later, base: base, window: window, now: Self.now)
         }

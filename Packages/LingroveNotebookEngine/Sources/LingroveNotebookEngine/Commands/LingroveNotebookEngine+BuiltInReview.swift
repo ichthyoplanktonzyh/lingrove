@@ -4,37 +4,6 @@ import LingroveNotebook
 /// Nonoptional saved-action entry points for the native Mac window. They compose existing
 /// writers rather than nesting transactions or inventing a second rating/undo implementation.
 extension LingroveNotebookEngine {
-    @discardableResult
-    public func enrollBuiltInNotebookSense(_ draft: LingroveNotebookCardDraft, input: CardEditorInput,
-                                          media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction) throws -> [LingroveNotebookReviewEnrollment] {
-        guard action.cards.isEmpty, draft.source.senseId == action.selection.senseID,
-              action.scope.document.catalog.contains(where: { entry in
-                  entry.id == action.selection.entryID && entry.senses.contains { $0.id == action.selection.senseID }
-              }) else { throw VocabularyError.editConflict }
-        return try enrollLingroveNotebookSenses([draft], scope: action.scope,
-            preparedInputs: [draft.id: input], media: media, action: action)
-    }
-
-    /// A native multi-selection freezes one action per sense. The shared batch validates all
-    /// actions under one writer lock and commits all enrollments or none; intent IDs survive retry.
-    @discardableResult
-    public func enrollBuiltInNotebookSenses(_ drafts: [LingroveNotebookCardDraft], inputs: [UUID: CardEditorInput],
-                                           media: [ReviewMaterialPreparedMedia] = [],
-                                           actions: [NotebookBuiltInReviewAction]) throws -> [LingroveNotebookReviewEnrollment] {
-        guard let first = actions.first, actions.count == drafts.count,
-              Set(actions.map { $0.selection.senseID }).count == actions.count,
-              drafts.allSatisfy({ draft in actions.contains { $0.selection.senseID == draft.source.senseId } }),
-              actions.allSatisfy({ $0.scope == first.scope }) else { throw VocabularyError.editConflict }
-        return try enrollLingroveNotebookSenses(drafts, scope: first.scope, preparedInputs: inputs,
-            media: media, actions: actions)
-    }
-
-    public func addBuiltInNotebookExercise(_ draft: LingroveNotebookCardDraft, input: CardEditorInput,
-                                          media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction) throws -> Card {
-        guard draft.source.senseId == action.selection.senseID else { throw VocabularyError.editConflict }
-        return try addNotebookExercise(draft, scope: action.scope, input: input, media: media, action: action)
-    }
-
     public func setBuiltInNotebookReviewStatus(_ status: LingroveNotebookReviewStatus,
                                               action: NotebookBuiltInReviewAction, requestID: UUID) throws {
         _ = try setLingroveNotebookReviewStatus(status, enrollments: action.enrollments,
@@ -116,29 +85,5 @@ extension LingroveNotebookEngine {
             throw LocalStoreError.validation("Saved exercise scheduling state is invalid")
         }
         return value
-    }
-
-    /// An unavailable source can still have explicitly retained, authored practice material.
-    /// This uses the same native Card writer; keeping its old generated baseline means a later
-    /// returning source follows untouched fields and continues to respect manual ownership.
-    public func saveRetainedBuiltInNotebookMaterial(link: LingroveNotebookCardLink, card: Card,
-                                                   input: CardEditorInput, materialPlan: ReviewMaterialPlan? = nil,
-                                                   media: [ReviewMaterialPreparedMedia] = [], action: NotebookBuiltInReviewAction) throws {
-        try core.inTransaction {
-            try Task.checkCancellation()
-            try requireBuiltInReviewActionInTransaction(action)
-            try requireCurrentNotebookCardLink(link)
-            guard link.cardId == card.cardId, link.allowsUnavailableMaterial, action.cards.contains(card) else {
-                throw VocabularyError.editConflict
-            }
-            let plan = materialPlan ?? link.materialPlan
-            try LingroveNotebookReviewMediaStore(core: core).register(plan: plan, source: link.source, snapshot: action.scope, supplied: media)
-            try Task.checkCancellation()
-            let next = try persistCardMutation(workspaceId: action.scope.workspaceId, input: input,
-                initialMetadata: nil, cardId: card.cardId, cloudSettings: workspaceSettingsStore.loadCloudSettings(),
-                now: nowIsoTimestamp())
-            _ = try lingroveNotebookCardLinkStore.update(link, generatedContent: link.generatedContent,
-                sourceRevision: action.scope.revision, materialPlan: plan, cardOperationId: next.lastOperationId)
-        }
     }
 }

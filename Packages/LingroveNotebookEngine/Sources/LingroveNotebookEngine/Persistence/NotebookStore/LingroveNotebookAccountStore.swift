@@ -139,15 +139,14 @@ public nonisolated struct LingroveNotebookAccountStore {
             guard UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) == localNotebookID,
                   digest(json) == DatabaseCore.columnText(statement: row, index: 2) else { throw LingroveNotebookSyncStoreError.corruptState }
             let state = try LingroveNotebookPrivateStateCodec.decode(json, notebookID: localNotebookID)
-            return VocabularyWirePrivateState(notebookID: remoteNotebookID, reviews: state.reviews, explanations: state.explanations)
+            return VocabularyWirePrivateState(notebookID: remoteNotebookID, explanations: state.explanations)
         }.first
     }
 
     public static func combinePrivate(_ first: VocabularyWirePrivateState?, _ second: VocabularyWirePrivateState?, notebookID: UUID) -> VocabularyWirePrivateState {
-        var reviews = first?.reviews ?? [], explanations = first?.explanations ?? []
-        for value in second?.reviews ?? [] where !reviews.contains(value) { reviews.append(value) }
+        var explanations = first?.explanations ?? []
         for value in second?.explanations ?? [] where !explanations.contains(value) { explanations.append(value) }
-        return .init(notebookID: notebookID, reviews: reviews, explanations: explanations)
+        return .init(notebookID: notebookID, explanations: explanations)
     }
 
     /// Called after a complete authorized bootstrap has been verified. Creating
@@ -496,11 +495,11 @@ public nonisolated struct LingroveNotebookAccountStore {
             }
             guard let entity = local else { continue }
             if let old = values[key], !VocabularyWireJSON.object(old.fields).hasSameWireValue(as: .object(entity.fields)) {
-                // Root presence flags describe the target collection shape;
-                // source templates are materialized below only if compatible.
+                // The current wire root reserves a false template flag. Note definitions
+                // travel through their own sync protocol, outside this corpus union.
                 if entity.entityType == .notebookSettings {
                     var fields = old.fields
-                    fields["reviewTemplatesPresent"] = .bool(source.reviewTemplates != nil || target.reviewTemplates != nil)
+                    fields["reviewTemplatesPresent"] = .bool(false)
                     values[key] = .init(entityType: .notebookSettings, entityID: entity.entityID, fields: fields)
                     continue
                 }

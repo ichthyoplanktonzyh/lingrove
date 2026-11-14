@@ -116,6 +116,7 @@ final class NoteAnkiSession: ObservableObject {
                 choices = [:]
                 return false
             }
+            hasAssociation = result.noteID != nil
             return true
         } catch {
             if !(error is CancellationError) { message = error.localizedDescription }

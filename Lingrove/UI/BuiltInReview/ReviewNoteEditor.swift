@@ -16,7 +16,7 @@ struct ReviewNoteEditor: View {
         NavigationStack {
             Form {
                 if let sense {
-                    Picker(ReviewField.sentence.label, selection: $draft.note.exampleID) {
+                    Picker(String(localized: "Example sentence", table: "Vocabulary"), selection: $draft.note.exampleID) {
                         Text("—").tag(Optional<UUID>.none)
                         ForEach(sense.examples) { Text($0.text).tag(Optional($0.id)) }
                     }

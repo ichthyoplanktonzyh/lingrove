@@ -68,7 +68,7 @@ nonisolated struct VocabularyWireFields {
 }
 
 /// Leaf reconstruction mirrors the explicit public shape, including nullable
-/// choices. It never decodes a VocabularyReview wholesale from server JSON.
+/// choices. Private explanation context is restored only by the separate local overlay.
 nonisolated enum VocabularyWireReading {
     typealias J = VocabularyWireJSON
     typealias F = VocabularyWireFields
@@ -122,42 +122,6 @@ nonisolated enum VocabularyWireReading {
     static func block(_ value: J) throws -> VocabularyContentBlock {
         var f = try F(value); let result = VocabularyContentBlock(id: try f.uuid("id"), content: try content(f.take("content")))
         try f.finish(); return result
-    }
-    static func layout(_ value: J) throws -> ReviewLayout {
-        func parts(_ values: [J]) throws -> [ReviewCardPart] {
-            try values.map { row in
-                var f = try F(row); let result = ReviewCardPart(id: try f.uuid("id"), source: try f.raw("source", ReviewContentSource.self),
-                    blockID: try f.optional("blockId") { try F.uuid(F.string($0)) }, showCaption: try f.bool("showCaption"),
-                    content: try f.array("content").map(block))
-                try f.finish(); return result
-            }
-        }
-        var f = try F(value); let result = ReviewLayout(front: try parts(f.array("front")), back: try parts(f.array("back")))
-        try f.finish(); return result
-    }
-    static func plan(_ value: J) throws -> ReviewPlan {
-        var f = try F(value)
-        let id = try f.uuid("id"), name = try f.optional("name", F.string), decodedLayout = try f.optional("layout", layout)
-        let example = try f.optional("exampleId") { try F.uuid(F.string($0)) }
-        let deck = try f.optional("deck", F.string), answer = try f.optional("answer", F.string)
-        let recognition = try f.bool("recognition"), gap = try f.bool("gap"), notes = try f.bool("includeNotes"), explanation = try f.bool("includeExplanation")
-        let senseContent = try f.optional("includeSenseContent", F.bool)
-        var overrides: [String: String] = [:]
-        for row in try f.array("fieldOverrides") {
-            var item = try F(row); let field = try item.string("field"), text = try item.string("value")
-            guard overrides[field] == nil else { throw VocabularyWireError.invalidRecord }
-            overrides[field] = text; try item.finish()
-        }
-        let audio = try f.optional("audioKinds") { value -> Set<ReviewAudioKind> in
-            var result = Set<ReviewAudioKind>()
-            for raw in try F.array(value) {
-                guard let kind = ReviewAudioKind(rawValue: try F.string(raw)), result.insert(kind).inserted else { throw VocabularyWireError.invalidRecord }
-            }
-            return result
-        }
-        try f.finish()
-        return ReviewPlan(id: id, name: name, layout: decodedLayout, exampleID: example, deck: deck, answer: answer, recognition: recognition,
-            gap: gap, includeNotes: notes, includeExplanation: explanation, includeSenseContent: senseContent, fieldOverrides: overrides, audioKinds: audio)
     }
     static func input(_ value: J) throws -> LearningExplanationInput {
         var f = try F(value); let result = LearningExplanationInput(target: try f.string("target"), dictionaryForm: try f.string("dictionaryForm"),

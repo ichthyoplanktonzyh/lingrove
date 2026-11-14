@@ -25,7 +25,7 @@ struct VocabularyWireProjectionCodecTests {
         let projection = try VocabularyWireProjectionCodec.project(
             document, notebookID: VocabularyWireTestFixture.notebookID
         )
-        #expect(Set(projection.entities.map(\.entityType)) == Set(VocabularyWireEntityKind.allCases))
+        #expect(Set(projection.entities.map(\.entityType)) == Set(VocabularyWireEntityKind.allCases).subtracting([.reviewDraft, .reviewTemplate]))
         #expect(VocabularyWireEntityKind.allCases.count == 27)
 
         // Exercise Codable as well as the mapper. A server may return rows in any physical order;
@@ -51,21 +51,16 @@ struct VocabularyWireProjectionCodecTests {
         #expect(materialized.document.sources.first { $0.id == document.sources[1].id }?.encounteredAt.timeIntervalSinceReferenceDate == 811_111_119.1234567)
         #expect(materialized.document.catalog.first { $0.id == document.catalog[0].id }?.language == nil)
         #expect(materialized.document.catalog.first { $0.id == document.catalog[0].id }?.senses.first { $0.id == document.catalog[0].senses[0].id }?.meaningLanguage == nil)
-        #expect(materialized.unattachedPrivateState.reviews.isEmpty)
         #expect(materialized.unattachedPrivateState.explanations.isEmpty)
     }
 
     @Test("Nil and empty optional collections retain distinct wire presence")
     func nilAndEmptyPresenceRoundTrips() throws {
         var nilDocument = try VocabularyWireTestFixture.document()
-        nilDocument.reviewTemplates = nil
         nilDocument.savedSenses[1].content = nil
-        nilDocument.savedSenses[1].reviewCards = nil
 
         var emptyDocument = nilDocument
-        emptyDocument.reviewTemplates = []
         emptyDocument.savedSenses[1].content = []
-        emptyDocument.savedSenses[1].reviewCards = []
         try VocabularyDocumentValidation.validate(nilDocument)
         try VocabularyDocumentValidation.validate(emptyDocument)
 
@@ -113,7 +108,7 @@ struct VocabularyWireProjectionCodecTests {
         }
     }
 
-    @Test("Private Anki fields, audio receipts, and explanation identity stay off public wire")
+    @Test("Private explanation identity stays off public wire")
     func publicEntitiesExcludePrivateOverlayFields() throws {
         let document = try VocabularyWireTestFixture.document()
         let projection = try VocabularyWireProjectionCodec.project(
@@ -122,26 +117,8 @@ struct VocabularyWireProjectionCodecTests {
         let bytes = try JSONEncoder().encode(projection.entities)
         let json = try #require(String(data: bytes, encoding: .utf8))
 
-        #expect(!json.contains("http://localhost:8765"))
-        #expect(!json.contains("private-profile"))
-        #expect(!json.contains("Private model"))
-        #expect(!json.contains("Private deck"))
-        #expect(!json.contains("private note text"))
-        #expect(!json.contains(VocabularyWireTestFixture.currentReceiptFingerprint))
-        #expect(!json.contains(VocabularyWireTestFixture.preservedReceiptFingerprint))
-        #expect(!json.contains(VocabularyWireTestFixture.currentReceiptFilename))
-        #expect(!json.contains(VocabularyWireTestFixture.preservedReceiptFilename))
         #expect(!json.contains("occurrenceIdentity"))
 
-        let localReview = try #require(projection.privateState.reviews.first)
-        #expect(localReview.bindings.map(\.id) == [
-            VocabularyWireTestFixture.currentBindingID,
-            VocabularyWireTestFixture.mergedBindingID
-        ])
-        #expect(Set(localReview.audio.map(\.planID)) == Set([
-            VocabularyWireTestFixture.currentPlanID,
-            VocabularyWireTestFixture.preservedPlanID
-        ]))
         #expect(projection.privateState.explanations.contains {
             $0.occurrenceIdentity == "local-only:candidate-explanation"
         })
@@ -243,7 +220,6 @@ struct VocabularyWireProjectionCodecTests {
         )
         let localStateWithPriorKey = VocabularyWirePrivateState(
             notebookID: VocabularyWireTestFixture.notebookID,
-            reviews: projection.privateState.reviews,
             explanations: projection.privateState.explanations + [staleLocalExplanation]
         )
         let changedSourceKind = projection.entities.map { entity in
@@ -365,164 +341,9 @@ struct VocabularyWireProjectionCodecTests {
         }
     }
 
-    @Test("Deleting a plan returns its bindings and audio receipts as unattached state")
-    func deletedPlanLeavesPrivateStateUnattached() throws {
-        let document = try VocabularyWireTestFixture.document()
-        let projection = try VocabularyWireProjectionCodec.project(
-            document, notebookID: VocabularyWireTestFixture.notebookID
-        )
-        let withoutLegacyPlan = projection.entities.filter {
-            !($0.entityType == .reviewDraft && $0.entityID == VocabularyWireTestFixture.legacyDraftID)
-        }
-        let materialized = try VocabularyWireProjectionCodec.materializeComplete(
-            withoutLegacyPlan, notebookID: VocabularyWireTestFixture.notebookID,
-            preserving: projection.privateState
-        )
-        let collection = try #require(materialized.document.savedSenses.first {
-            $0.id == VocabularyWireTestFixture.targetSenseID
-        })
-        #expect(collection.review == nil)
-        let residue = try #require(materialized.unattachedPrivateState.reviews.first)
-        #expect(residue.bindings.map(\.id) == [
-            VocabularyWireTestFixture.currentBindingID,
-            VocabularyWireTestFixture.mergedBindingID
-        ])
-        #expect(residue.audio.count == 2)
 
-        let reprojected = try VocabularyWireProjectionCodec.project(
-            materialized.document, notebookID: VocabularyWireTestFixture.notebookID,
-            retaining: materialized.unattachedPrivateState
-        )
-        let repeated = try VocabularyWireProjectionCodec.materializeComplete(
-            withoutLegacyPlan, notebookID: VocabularyWireTestFixture.notebookID,
-            preserving: reprojected.privateState
-        )
-        #expect(repeated.document == materialized.document)
-        #expect(repeated.unattachedPrivateState.reviews == reprojected.privateState.reviews)
-    }
 
-    @Test("A changed plan leaves only its receipt unattached across repeated projection")
-    func changedPlanRetainsBindingsAndActiveChoice() throws {
-        for scenario in [
-            VocabularyWireTestFixture.BindingScenario.multipleWithMergedActive,
-            .singleWithoutActive
-        ] {
-            let document = try VocabularyWireTestFixture.document(bindingScenario: scenario)
-            let projection = try VocabularyWireProjectionCodec.project(
-                document, notebookID: VocabularyWireTestFixture.notebookID
-            )
-            let editedRemote = Self.changeLegacyPlanAnswer(in: projection.entities)
-            let first = try VocabularyWireProjectionCodec.materializeComplete(
-                editedRemote, notebookID: VocabularyWireTestFixture.notebookID,
-                preserving: projection.privateState
-            )
-            let firstReview = try #require(first.document.savedSenses.first {
-                $0.id == VocabularyWireTestFixture.targetSenseID
-            }?.review)
-            let originalReview = try #require(document.savedSenses.first {
-                $0.id == VocabularyWireTestFixture.targetSenseID
-            }?.review)
-            #expect(firstReview.bindings == originalReview.bindings)
-            #expect(firstReview.activeBindingID == originalReview.activeBindingID)
-            #expect(firstReview.plan.answer == "Answer updated by the server")
 
-            let residue = try #require(first.unattachedPrivateState.reviews.first)
-            #expect(residue.bindings.isEmpty)
-            #expect(residue.activeBindingID == nil)
-            #expect(residue.audio.map(\.planID) == [VocabularyWireTestFixture.currentPlanID])
-
-            let secondProjection = try VocabularyWireProjectionCodec.project(
-                first.document, notebookID: VocabularyWireTestFixture.notebookID,
-                retaining: first.unattachedPrivateState
-            )
-            #expect(secondProjection.privateState.reviews.count == 2)
-            let second = try VocabularyWireProjectionCodec.materializeComplete(
-                editedRemote, notebookID: VocabularyWireTestFixture.notebookID,
-                preserving: secondProjection.privateState
-            )
-            let secondReview = try #require(second.document.savedSenses.first {
-                $0.id == VocabularyWireTestFixture.targetSenseID
-            }?.review)
-            #expect(secondReview.bindings == originalReview.bindings)
-            #expect(secondReview.activeBindingID == originalReview.activeBindingID)
-            #expect(secondReview.plan.audioReceipts == nil)
-            #expect(secondReview.preservedPlans.first?.audioReceipts != nil)
-            #expect(second.unattachedPrivateState.reviews.first?.audio.map(\.planID) == [
-                VocabularyWireTestFixture.currentPlanID
-            ])
-        }
-    }
-
-    @Test("Merged private bindings keep origin IDs and only restore a shared explicit selection")
-    func mergedBindingOriginsAndActiveSelectionAreConservative() throws {
-        let document = try VocabularyWireTestFixture.document()
-        let projection = try VocabularyWireProjectionCodec.project(
-            document, notebookID: VocabularyWireTestFixture.notebookID
-        )
-        let privateReview = try #require(projection.privateState.reviews.first)
-        let firstBinding = try #require(privateReview.bindings.first)
-        let mergedBinding = try #require(privateReview.bindings.last)
-        #expect(mergedBinding.originSenseID == VocabularyWireTestFixture.mergedSenseID)
-
-        func localReview(bindings: [AnkiNoteBinding], active: UUID?) -> VocabularyWirePrivateState.Review {
-            .init(
-                senseID: VocabularyWireTestFixture.targetSenseID, role: .legacy,
-                bindings: bindings, activeBindingID: active, audio: []
-            )
-        }
-        let twoExplicitAgree = VocabularyWirePrivateState(
-            notebookID: VocabularyWireTestFixture.notebookID,
-            reviews: [
-                localReview(bindings: [firstBinding, mergedBinding], active: mergedBinding.id),
-                localReview(bindings: [firstBinding, mergedBinding], active: mergedBinding.id)
-            ], explanations: projection.privateState.explanations
-        )
-        let agreeingResult = try VocabularyWireProjectionCodec.materializeComplete(
-            projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
-            preserving: twoExplicitAgree
-        )
-        let agreeingReview = try #require(agreeingResult.document.savedSenses.first {
-            $0.id == VocabularyWireTestFixture.targetSenseID
-        }?.review)
-        #expect(agreeingReview.bindings.map(\.id) == [firstBinding.id, mergedBinding.id])
-        #expect(agreeingReview.activeBindingID == mergedBinding.id)
-
-        let conflicting = VocabularyWirePrivateState(
-            notebookID: VocabularyWireTestFixture.notebookID,
-            reviews: [
-                localReview(bindings: [firstBinding], active: firstBinding.id),
-                localReview(bindings: [mergedBinding], active: mergedBinding.id)
-            ], explanations: projection.privateState.explanations
-        )
-        let conflictingResult = try VocabularyWireProjectionCodec.materializeComplete(
-            projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
-            preserving: conflicting
-        )
-        let conflictingReview = try #require(conflictingResult.document.savedSenses.first {
-            $0.id == VocabularyWireTestFixture.targetSenseID
-        }?.review)
-        #expect(conflictingReview.bindings.map(\.id) == [firstBinding.id, mergedBinding.id])
-        #expect(conflictingReview.activeBindingID == nil)
-
-        let nilAndExplicit = VocabularyWirePrivateState(
-            notebookID: VocabularyWireTestFixture.notebookID,
-            reviews: [
-                localReview(bindings: [firstBinding], active: nil),
-                localReview(bindings: [mergedBinding], active: mergedBinding.id)
-            ], explanations: projection.privateState.explanations
-        )
-        let nilAndExplicitResult = try VocabularyWireProjectionCodec.materializeComplete(
-            projection.entities, notebookID: VocabularyWireTestFixture.notebookID,
-            preserving: nilAndExplicit
-        )
-        let nilAndExplicitReview = try #require(nilAndExplicitResult.document.savedSenses.first {
-            $0.id == VocabularyWireTestFixture.targetSenseID
-        }?.review)
-        #expect(nilAndExplicitReview.activeBindingID == nil)
-    }
-
-    /// The external validator uses this one explicitly selected test in two processes. It
-    /// exchanges only public entity JSON; each Swift invocation builds the private overlay locally.
     @Test(
         "nativeWireInteropBridge",
         .enabled(if: ProcessInfo.processInfo.environment["LINGROVE_NOTEBOOK_NATIVE_WIRE_MODE"] != nil)
@@ -560,25 +381,10 @@ struct VocabularyWireProjectionCodecTests {
                 remoteEntities, notebookID: notebookID, preserving: localState
             )
             #expect(materialized.document == document)
-            #expect(materialized.unattachedPrivateState.reviews.isEmpty)
             #expect(materialized.unattachedPrivateState.explanations.isEmpty)
 
         default:
             Issue.record("LINGROVE_NOTEBOOK_NATIVE_WIRE_MODE must be 'export' or 'verify'.")
-        }
-    }
-
-    private static func changeLegacyPlanAnswer(in entities: [VocabularyWireEntity]) -> [VocabularyWireEntity] {
-        entities.map { entity in
-            guard entity.entityType == .reviewDraft,
-                  entity.entityID == VocabularyWireTestFixture.legacyDraftID,
-                  let planValue = entity.fields["plan"],
-                  case let .object(existingPlan) = planValue else { return entity }
-            var plan = existingPlan
-            plan["answer"] = .string("Answer updated by the server")
-            var fields = entity.fields
-            fields["plan"] = .object(plan)
-            return .init(entityType: entity.entityType, entityID: entity.entityID, fields: fields)
         }
     }
 

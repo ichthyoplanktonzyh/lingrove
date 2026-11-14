@@ -74,28 +74,6 @@ struct BuiltInReviewExperienceTests {
         #expect(session.contentSelections == [fixture.selection])
     }
 
-    @Test func authoredPreviewMatchesPracticeAndRestoresOnlySelectedFace() async throws {
-        let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
-        let session = fixture.session
-        session.open(selection: nil); await session.waitForIdle()
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        var draft = try #require(session.draft)
-        #expect(draft.previewParts(answer: false) != nil)
-        draft.front = "My own question"
-        draft.back = "My own answer"
-        draft.chooseMaterial(.init(layout: .init(front: [.init(source: .meaning)], back: [.init(source: .expression)])))
-        #expect(draft.front == "My own question" && draft.back == "My own answer")
-        #expect(draft.previewParts(answer: false) == nil && draft.previewParts(answer: true) == nil)
-        draft.restoreGeneratedFace(answer: false)
-        #expect(draft.previewParts(answer: false) != nil && !draft.isAuthored(answer: false))
-        #expect(draft.back == "My own answer" && draft.isAuthored(answer: true))
-        session.save(draft); await session.waitForIdle()
-        session.start()
-        let context = try #require(session.practice?.phase.context)
-        #expect(context.card.frontText == draft.front && context.card.backText == draft.back)
-        #expect(session.resolvedParts(context, answer: false) != nil)
-        #expect(session.resolvedParts(context, answer: true) == nil)
-    }
 
     @Test func addingBatchReturnsToPickerWithoutStartingPractice() async throws {
         let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
@@ -142,70 +120,11 @@ struct BuiltInReviewExperienceTests {
         }
     }
 
-    @Test func richMaterialSavesAndReopensRecipeManualFaceImageAndAudioWithoutAnki() async throws {
-        let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
-        let session = fixture.session
-        let store = VocabularyStore(repository: fixture.repository)
-        await store.load()
-        session.materialStore = store
-        let speech = ReviewFakeSpeechExporter()
-        session.materialSpeech = speech
-        let audio = ReviewAudioPreparation(speech: speech)
-        defer { audio.discard() }
-        session.open(selection: fixture.selection); await session.waitForIdle()
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        var draft = try #require(session.draft)
-        let image = try await store.prepareImage(VocabularyImageTestFixture.png())
-        var plan = draft.materialPlan
-        plan.name = "Harbor with sound"
-        plan.exampleID = try #require(draft.snapshot.document.entries.first?.senses.first?.examples.first?.id)
-        plan.layout.front.append(.init(source: .sentenceAudio))
-        plan.layout.back.append(.init(source: .custom, content: [
-            .init(content: .text(.init(text: "A safe anchorage", bold: true))),
-            .init(content: .image(image.reference, caption: "Blue harbor"))]))
-        draft.chooseMaterial(plan)
-        draft.importedImages[image.reference.filename] = image.data
-        let cancelled = BuiltInReviewMaterialPreparation.stageImages(draft)
-        session.draft = nil
-        #expect(cancelled.preparedMedia.count == 1)
-        #expect(try fixture.review().statistics.exercises == 0)
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        let replacementID = try #require(session.draft).id
-        // New sheets own fresh intent IDs; media generation is still only in memory.
-        draft = try BuiltInReviewDraft(content: try #require(session.content), selection: fixture.selection)
-        session.draft = draft
-        #expect(replacementID != draft.id)
-        draft.chooseMaterial(plan)
-        draft.importedImages[image.reference.filename] = image.data
-        draft = try await BuiltInReviewMaterialPreparation.prepare(.sentence, draft: draft, audio: audio, audition: true)
-        draft = BuiltInReviewMaterialPreparation.stageImages(draft)
-        draft.front = "My authored prompt"
-        session.save(draft); await session.waitForIdle()
-        let content = try #require(session.content)
-        let group = try #require(content.review.groups[fixture.selection.senseID])
-        let card = try #require(group.cards.first)
-        let link = try #require(content.review.links.first { $0.cardId == card.cardId })
-        #expect(card.frontText == "My authored prompt" && link.materialPlan == draft.materialPlan)
-        #expect(speech.exports == 1 && content.statistics.exercises == 1)
-        session.edit(card: card, link: link, selection: fixture.selection, basedOn: content)
-        let reopened = try #require(session.draft)
-        #expect(reopened.materialPlan.layout == draft.materialPlan.layout && reopened.front == "My authored prompt")
-        let media = await session.savedMaterialMedia(reopened)
-        #expect(media.count == 2 && media.contains { $0.data == image.data })
-        session.draft = nil
-        session.start(); await session.waitForIdle()
-        #expect(session.savedAudio.count == 1 && session.images.count == 1)
-        let context = try #require(session.practice?.phase.context)
-        #expect(session.resolvedParts(context, answer: false) == nil, "Authored faces retain their own text")
-        #expect(session.resolvedParts(context, answer: true)?.count == 2)
-        session.reveal(); session.rate(.good); await session.waitForIdle()
-        #expect(try fixture.review().statistics.ratingRecords == 1)
-        await store.shutdown()
-    }
 
     @Test func batchEnrollmentResumesExistingParticipationWithoutDuplicatingExercisesOrHistory() async throws {
         let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
         let store = VocabularyStore(repository: fixture.repository)
+        await store.load()
         await store.save(.init(expression: "anchor", dictionaryForm: "anchor", language: .english,
             kind: .word, meaning: "a device securing a boat", meaningLanguage: .english))
         let entry = try #require(store.entries.first { $0.expression == "anchor" })
@@ -232,20 +151,17 @@ struct BuiltInReviewExperienceTests {
         let fixture = try ReviewNativePresentationFixture(); defer { fixture.cleanUp() }
         let session = fixture.session
         session.open(selection: fixture.selection); await session.waitForIdle()
-        // This journey edits a directly authored Card face. Note-owned cards use the note
-        // editor and the engine correctly rejects writes through the standalone Card editor.
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        session.save(try #require(session.draft))
+        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
         await session.waitForIdle()
         session.start(); session.reveal()
         let context = try #require(session.practice?.phase.context)
-        session.edit(card: context.card, link: context.link, selection: fixture.selection, basedOn: try #require(session.content))
-        var draft = try #require(session.draft)
-        draft.front = "A revised practice prompt"
-        session.save(draft); await session.waitForIdle()
+        session.editNoteType(try #require(context.action.noteCards[context.card.cardId]).noteType)
+        var draft = try #require(session.noteTypeDraft)
+        draft.type.templates[0].front = "A revised practice prompt"
+        session.saveNoteType(draft); await session.waitForIdle()
         #expect(session.route == .practice && session.practice?.answered == 0)
         guard case let .question(current) = session.practice?.phase else { Issue.record("An edited question must be shown again"); return }
-        #expect(current.card.cardId == context.card.cardId && current.card.frontText == draft.front)
+        #expect(current.card.cardId == context.card.cardId && current.card.frontText == "A revised practice prompt")
         #expect(try fixture.review().statistics.ratingRecords == 0)
     }
 
@@ -258,13 +174,13 @@ struct BuiltInReviewExperienceTests {
         let window = try #require(fixture.window.window)
         let original = NSApp.appearance
         window.appearance = NSAppearance(named: appearance)
-        fixture.review.session.prepare(selection: selection, basedOn: try #require(fixture.review.session.content))
+        fixture.review.session.editNoteType()
         try await Task.sleep(for: .milliseconds(200))
         try capture(window: try #require(window.attachedSheet), name: "shared-material-editor", appearance: appearance)
         #expect(window.attachedSheet != nil)
-        fixture.review.session.draft = nil
+        fixture.review.session.noteTypeDraft = nil
         try await Task.sleep(for: .milliseconds(100))
-        await fixture.anki.testConnection(model: ReviewLayoutPolicy.model)
+        await fixture.anki.testConnection()
         fixture.window.reviewNavigation.target = .anki
         try await Task.sleep(for: .milliseconds(150))
         try capture(window: window, name: "review-anki-destination", appearance: appearance)

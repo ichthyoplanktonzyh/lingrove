@@ -30,9 +30,12 @@ def main():
     parser.add_argument("--tail-only", action="store_true", help="Rerun the corrected CLI retry and remaining destinations")
     parser.add_argument("--native-checks", action="store_true", help="Run affected native repository/lifecycle checks before timing")
     parser.add_argument("--checks-only", action="store_true", help="Run affected native checks without the operation inventory")
+    parser.add_argument("--check-selector", action="append", help="Select a focused native check; repeat for several selectors")
     parser.add_argument("--remaining-only", action="store_true", help="Measure the remaining load/save/organization paths")
     parser.add_argument("--paged-only", action="store_true", help="Measure page/detail readiness and fresh first-write fallbacks")
     parser.add_argument("--keep-build-on-failure", action="store_true")
+    parser.add_argument("--keep-build-on-success", action="store_true",
+                        help="Retain disposable build/package caches for report audit; caller must clean after validation")
     parser.add_argument("--packages-from", type=Path, help="Reuse this benchmark's package cache after a failed build")
     args = parser.parse_args()
     base = ROOT / "build/corpus-operation-benchmark" / args.label
@@ -152,7 +155,7 @@ def main():
                     raise RuntimeError(label + " did not execute passing measurements")
 
             if args.native_checks or args.checks_only:
-                execute("native-checks", "100", 1, selectors=[
+                execute("native-checks", "100", 1, selectors=args.check_selector or [
                     "LingroveTests/VocabularyUnifiedRepositoryTests",
                     "LingroveTests/VocabularyLifecycleTests",
                     "LingroveTests/VocabularyBrowsingScaleTests",
@@ -165,7 +168,8 @@ def main():
                     "LingroveTests/VocabularySearchPolicyTests",
                     "LingroveTests/VocabularySearchPreparationTests",
                     "LingroveTests/VocabularyGraphTests",
-                    "LingroveTests/VocabularyEntryImportTests"])
+                    "LingroveTests/VocabularyEntryImportTests",
+                    "LingroveTests/VocabularyContentTests"])
             if args.checks_only:
                 completed = True
             elif args.paged_only:
@@ -189,7 +193,8 @@ def main():
                         if path.is_dir() and (path.name.startswith("seed-") or path.name.startswith("trial-")):
                             shutil.rmtree(path)
             retire = [host.parent]
-            if completed or not args.keep_build_on_failure:
+            keep_build = args.keep_build_on_success if completed else args.keep_build_on_failure
+            if not keep_build:
                 retire.extend([DD, packages])
             for path in retire:
                 if path.exists():

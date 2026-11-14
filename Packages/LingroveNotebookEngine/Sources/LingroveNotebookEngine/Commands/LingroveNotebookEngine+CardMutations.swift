@@ -6,14 +6,8 @@ extension LingroveNotebookEngine {
         workspaceId: String,
         input: CardEditorInput,
         cardId: String?,
-        mediaAssetIdsReadyForUpload: Set<String>,
-        notebookDraft: LingroveNotebookCardDraft? = nil
+        mediaAssetIdsReadyForUpload: Set<String>
     ) throws -> Card {
-        if let notebookDraft {
-            guard cardId == nil, workspaceId == notebookDraft.source.workspaceId else { throw VocabularyError.editConflict }
-            return try self.saveNewLingroveNotebookCard(draft: notebookDraft, input: input,
-                mediaAssetIdsReadyForUpload: mediaAssetIdsReadyForUpload)
-        }
         try self.cardStore.validateCardInput(input: input)
 
         return try self.core.inTransaction {

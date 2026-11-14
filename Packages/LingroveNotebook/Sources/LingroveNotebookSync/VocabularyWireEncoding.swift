@@ -2,9 +2,8 @@ import CryptoKit
 import Foundation
 import LingroveNotebook
 
-/// Explicit leaf encoders make the privacy boundary visible. In particular, no
-/// VocabularyReview or ReviewPlan is encoded wholesale before stripping fields:
-/// binding endpoints and audio receipts never enter a public JSON value.
+/// Explicit corpus encoders keep private explanation context outside public JSON. Notes,
+/// template definitions and their Anki bindings belong to the separate Note sync boundary.
 nonisolated enum VocabularyWireCoding {
     typealias J = VocabularyWireJSON
     static func language(_ value: LearningLanguage?) -> J { .optional(value) { .string($0.rawValue) } }
@@ -32,21 +31,6 @@ nonisolated enum VocabularyWireCoding {
             return .object(["type": .string("image"), "image": .object(["digest": .string(image.digest), "width": .number(Double(image.width)),
                  "height": .number(Double(image.height)), "byteCount": .number(Double(image.byteCount))]), "caption": .string(caption)])
         }
-    }
-    static func layout(_ value: ReviewLayout) -> J {
-        func parts(_ values: [ReviewCardPart]) -> J {
-            .array(values.map { .object(["id": .uuid($0.id), "source": .string($0.source.rawValue), "blockId": .optional($0.blockID, J.uuid),
-                "showCaption": .bool($0.showCaption), "content": .array($0.content.map(block))]) })
-        }
-        return .object(["front": parts(value.front), "back": parts(value.back)])
-    }
-    static func plan(_ value: ReviewPlan) -> J {
-        .object(["id": .uuid(value.id), "name": .optional(value.name, J.string), "layout": .optional(value.layout, layout),
-            "exampleId": .optional(value.exampleID, J.uuid), "deck": .optional(value.deck, J.string), "answer": .optional(value.answer, J.string),
-            "recognition": .bool(value.recognition), "gap": .bool(value.gap), "includeNotes": .bool(value.includeNotes),
-            "includeExplanation": .bool(value.includeExplanation), "includeSenseContent": .optional(value.includeSenseContent, J.bool),
-            "fieldOverrides": .array(value.fieldOverrides.sorted { $0.key < $1.key }.map { .object(["field": .string($0.key), "value": .string($0.value)]) }),
-            "audioKinds": .optional(value.audioKinds) { .array($0.map(\.rawValue).sorted().map(J.string)) }])
     }
     static func input(_ value: LearningExplanationInput) -> J {
         .object(["target": .string(value.target), "dictionaryForm": .string(value.dictionaryForm), "language": language(value.language),
@@ -90,7 +74,7 @@ nonisolated struct VocabularyWireEncoder {
     static func id(_ value: UUID) -> String { value.uuidString.lowercased() }
 
     mutating func encode(_ document: VocabularyDocument, notebookID: UUID) throws -> [VocabularyWireEntity] {
-        append(.notebookSettings, Self.id(notebookID), ["documentVersion": .number(Double(VocabularyDocument.currentVersion)), "reviewTemplatesPresent": .bool(document.reviewTemplates != nil)])
+        append(.notebookSettings, Self.id(notebookID), ["documentVersion": .number(Double(VocabularyDocument.currentVersion)), "reviewTemplatesPresent": .bool(false)])
         for (rank, entry) in document.catalog.enumerated() {
             append(.entry, Self.id(entry.id), rank: rank, ["expression": .string(entry.expression), "dictionaryForm": .string(entry.dictionaryForm),
                 "language": C.language(entry.language), "kind": .string(entry.kind.rawValue), "createdAt": .date(entry.createdAt), "updatedAt": .date(entry.updatedAt)])
@@ -102,7 +86,7 @@ nonisolated struct VocabularyWireEncoder {
                     "createdAt": .date(sense.createdAt), "updatedAt": .date(sense.updatedAt),
                     "isSavedWithoutContext": .bool(sense.isSavedWithoutContext), "note": .string(sense.note),
                     "tags": .array(sense.tags.sorted().map(J.string)), "savedAt": .optional(sense.savedAt, J.date),
-                    "contentPresent": .bool(sense.content != nil), "reviewCardsPresent": .bool(sense.reviewCards != nil)])
+                    "contentPresent": .bool(sense.content != nil), "reviewCardsPresent": .bool(false)])
                 explanations(sense.explanations, kind: .senseExplanation, owner: sense.id, field: "senseId")
             }
         }
@@ -125,14 +109,8 @@ nonisolated struct VocabularyWireEncoder {
             for (rank, block) in (sense.content ?? []).enumerated() {
                 append(.contentBlock, Self.id(block.id), rank: rank, ["senseId": .uuid(sense.id), "content": C.content(block.content)])
             }
-            if let review = sense.review { reviewDraft(review, senseID: sense.id, legacy: true, rank: 0) }
-            for (rank, review) in (sense.reviewCards ?? []).enumerated() {
-                reviewDraft(review, senseID: sense.id, legacy: false, rank: rank + (sense.review == nil ? 0 : 1))
-            }
         }
-        for (rank, template) in (document.reviewTemplates ?? []).enumerated() {
-            append(.reviewTemplate, Self.id(template.id), rank: rank, ["name": .string(template.name), "layout": C.layout(template.layout)])
-        }
+
         semantic(document.semantics); classification(document.classification)
         let keys = entities.map { $0.entityType.rawValue + ":" + $0.entityID }
         guard Set(keys).count == keys.count else { throw VocabularyWireError.duplicateEntity }
@@ -145,12 +123,6 @@ nonisolated struct VocabularyWireEncoder {
             append(kind, Self.id(owner) + ":" + Self.id(value.id), rank: rank, fields)
         }
     }
-    private mutating func reviewDraft(_ value: VocabularyReview, senseID: UUID, legacy: Bool, rank: Int) {
-        let key = Self.id(senseID) + (legacy ? ":legacy" : ":card:" + Self.id(value.plan.id))
-        append(.reviewDraft, key, rank: rank, ["senseId": .uuid(senseID), "role": .string(legacy ? "legacy" : "card"),
-            "plan": C.plan(value.plan), "preservedPlans": .array(value.preservedPlans.map(C.plan))])
-    }
-
     private mutating func semantic(_ index: VocabularySemanticIndex) {
         for (rank, node) in index.nodes.enumerated() {
             append(.meaningNode, Self.id(node.id), rank: rank, ["kind": .string(node.kind.rawValue), "definition": .string(node.definition),

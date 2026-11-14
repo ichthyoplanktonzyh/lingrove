@@ -26,9 +26,7 @@ struct NotebookChangeTrackingIntegrationTests {
         next.catalog[0].senses[0].note = "e\u{301}"; cases.append(next)
         next = saved.document; next.catalog[0].updatedAt = Date(timeIntervalSince1970: 1); cases.append(next)
         next = saved.document; next.catalog[0].senses[0].tags = ["synthetic"]; cases.append(next)
-        next = saved.document; next.reviewTemplates = []; cases.append(next)
         next = saved.document
-        next.reviewTemplates = [.init(id: UUID(), name: "Synthetic", layout: .init())]; cases.append(next)
         next = saved.document
         next.semantics.nodes = [.init(id: UUID(), labels: [.init(text: "New meaning")])]; cases.append(next)
         next = saved.document

@@ -8,6 +8,32 @@ import Testing
 /// receipt must refresh pages/favorites without claiming the complete interface is loaded.
 @MainActor
 struct VocabularyColdEntryCommandTests {
+    @Test func coldReviewedEditorKeepsPagesPartial() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-local-editor-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let database = folder.appendingPathComponent("primary.sqlite"), media = folder.appendingPathComponent("Media")
+        let seed = VocabularyArchive(url: database, mediaDirectoryURL: media)
+        _ = try await seed.save(capture("reviewed edit", contextual: true)); await seed.shutdown()
+        let repository = try MacNotebookRepository(databaseURL: database, mediaDirectoryURL: media)
+        let saved = try repository.snapshot(), original = try #require(saved.document.entries.first)
+        let sense = try #require(original.senses.first)
+        _ = try repository.engine.enrollReviewNotes(selections: [.init(entryID: original.id, senseID: sense.id)], version: .init(saved))
+        let store = VocabularyStore(repository: repository), browse = try #require(store.browsing)
+        do {
+            store.browse(.init()); await browse.waitForPage()
+            browse.select(senseID: sense.id); await browse.waitForDetail()
+            var edited = original; edited.senses[0].note = "Updated through the paged editor"
+            #expect(await store.update(edited, basedOn: original, scope: store.operationScope))
+            #expect(!store.isLoaded && store.entries.isEmpty && store.lastEntryCommit?.entry?.senses[0].note == edited.senses[0].note)
+            await browse.waitForPage(); await browse.waitForDetail()
+            #expect(browse.total == 1 && store.completeSnapshot == nil)
+            await store.load()
+            #expect(store.entries[0].senses.count == 1 && store.entries[0].senses.contains { $0.note == edited.senses[0].note })
+            #expect(try repository.engine.loadLingroveNotebookCardLinks(workspaceId: saved.workspaceId).count == 1)
+            await store.shutdown(); try repository.shutdown()
+        } catch { await store.shutdown(); try? repository.shutdown(); throw error }
+    }
+
     @Test func coldContextCaptureAndDeletionStayPartialAndCanLaterLoadTheWholeCorpus() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("lingrove-local-command-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

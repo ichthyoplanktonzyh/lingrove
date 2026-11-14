@@ -284,7 +284,7 @@ private struct HomeLearningAnkiScene: View {
 /// Update and enables the review entry even though the surrounding Home model did not change.
 private struct HomeLearningAnkiEditor: View {
     @ObservedObject var model: HomeLearningDemoModel
-    @ObservedObject var session: AnkiReviewSession
+    @ObservedObject var session: NoteAnkiSession
     @ObservedObject var store: VocabularyStore
     @State private var operation: Task<Void, Never>?
     var body: some View {
@@ -295,18 +295,24 @@ private struct HomeLearningAnkiEditor: View {
                 Text(String(localized: "Front", table: "Vocabulary")).tag(false)
                 Text(String(localized: "Back", table: "Vocabulary")).tag(true)
             }.pickerStyle(.segmented).labelsHidden()
-            Form { VocabularyReviewLayoutEditor(session: session, store: store, operation: $operation,
-                hostedSide: $model.previewBack, previewFirst: true) }.formStyle(.grouped)
+            if let material = session.material,
+               let template = material.type.templates.first(where: \.enabled),
+               let rendered = try? ReviewTemplateRenderer.render(type: material.type, template: template,
+                    fields: material.export.fields.filter { $0.key != "LingroveNoteID" }) {
+                ReviewNoteWebView(html: model.previewBack ? rendered.backHTML : rendered.frontHTML,
+                    css: rendered.css, images: session.images)
+            }
+
             HStack {
-                Button(session.binding?.noteID == nil ? String(localized: "Add to Anki", table: "Vocabulary")
+                Button(!session.hasAssociation ? String(localized: "Add to Anki", table: "Vocabulary")
                     : String(localized: "Update Anki", table: "Vocabulary")) {
                     operation = Task { defer { operation = nil }; await model.sendCard() }
-                }.disabled(operation != nil || session.busy || session.validationMessage != nil)
+                }.disabled(operation != nil || session.busy || session.material == nil)
                 Button(String(localized: "Review in Anki", table: "Vocabulary")) {
                     operation = Task { defer { operation = nil }; await model.reviewCard() }
-                }.disabled(operation != nil || session.binding?.noteID == nil)
+                }.disabled(operation != nil || !session.hasAssociation)
             }
-            if let message = model.reviewFailure ?? session.message ?? session.validationMessage {
+            if let message = model.reviewFailure ?? session.message {
                 Text(message).font(.callout).foregroundStyle(.secondary)
             }
             if model.ankiDestinationShown {

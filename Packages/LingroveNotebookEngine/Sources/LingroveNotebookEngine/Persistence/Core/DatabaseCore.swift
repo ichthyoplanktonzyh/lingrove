@@ -371,6 +371,17 @@ public final class DatabaseCore {
             throw LocalStoreError.database("Failed to open local database: \(message)")
         }
 
+        if !readOnly {
+            do {
+                // Establish the database's private mode before enabling WAL: SQLite derives
+                // newly created sidecar permissions from this file. Readers never chmod it.
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: databaseURL.path)
+            } catch {
+                // Permission admission failed before the handle could escape to a store.
+                sqlite3_close(connection)
+                throw LocalStoreError.database("Failed to make the local database private: \(error.localizedDescription)")
+            }
+        }
         return connection
     }
 

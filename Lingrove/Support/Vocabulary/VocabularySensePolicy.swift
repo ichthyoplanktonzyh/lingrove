@@ -108,10 +108,6 @@ nonisolated enum VocabularySensePolicy {
         try VocabularySenseEditingPolicy.merge(source: source, into: target, in: &entry, now: now)
     }
 
-    static func move(exampleID: UUID, from source: UUID, to target: UUID?, in entry: inout VocabularyEntry, now: Date) throws -> UUID {
-        try VocabularySenseEditingPolicy.move(exampleID: exampleID, from: source, to: target, in: &entry, now: now)
-    }
-
     private static func addTranslation(_ text: String, language: LearningLanguage?, to example: inout VocabularyExample) {
         guard !text.isEmpty else { return }
         let variant = VocabularyMeaning(text: text, language: language)

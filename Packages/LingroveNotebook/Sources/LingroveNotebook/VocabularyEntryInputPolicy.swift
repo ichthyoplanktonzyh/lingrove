@@ -29,13 +29,30 @@ public nonisolated enum VocabularyEntryInputPolicy {
             throw VocabularyEntryInputError.invalidInput
         }
         guard !value.example.isEmpty || value.exampleTranslation.isEmpty else { throw VocabularyEntryInputError.translationWithoutExample }
+        guard !value.meaning.isEmpty || !value.note.isEmpty || !value.example.isEmpty else {
+            throw VocabularyEntryInputError.invalidInput
+        }
         return value
     }
 
     public static func plan(_ inputs: [VocabularyEntryInput], into document: VocabularyDocument, now: Date) throws -> Plan {
+        let batch = try batch(inputs, existing: document.entries, now: now)
+        var plan = Plan(document: document); plan.result = batch.result
+        plan.document.entries = batch.entries
+        return plan
+    }
+
+    /// Manual creation can plan against just the matching headwords. The SQL writer checks
+    /// global keys/relationships; this value does not claim to be a complete document.
+    public struct Batch: Sendable {
+        public var entries: [VocabularyEntry]
+        public var result = VocabularyEntryImportResult()
+    }
+
+    public static func batch(_ inputs: [VocabularyEntryInput], existing: [VocabularyEntry], now: Date) throws -> Batch {
         guard !inputs.isEmpty, inputs.count <= 100 else { throw VocabularyEntryInputError.invalidInput }
-        var plan = Plan(document: document)
-        var entries = document.entries
+        var plan = Batch(entries: existing)
+        var entries = existing
         // A batch retains headword ownership as it grows. Normalize each saved key once,
         // rather than rescanning/re-normalizing the entire corpus for every input row.
         var offsets: [String: Int] = [:]
@@ -73,7 +90,7 @@ public nonisolated enum VocabularyEntryInputPolicy {
             plan.result.addedExamples += examples.count
             plan.result.addedTranslations += value.exampleTranslation.isEmpty ? 0 : 1
         }
-        plan.document.entries = entries
+        plan.entries = entries
         return plan
     }
 }

@@ -9,10 +9,9 @@ struct VocabularyRowReconstructionTests {
     @Test func sharedIndexConsumesEveryRowAndRejectsHiddenChildrenAndOrphans() throws {
         let document = Self.fixture()
         let encoded = try VocabularyPersistenceCodec.encode(VocabularyEntrySaveState(validating: document))
-        #expect(try VocabularyPersistenceCodec.decodeSaveState(.init(rows: encoded.rows.reversed(),
-            reviewTemplatesPresent: true)).document == document)
+        #expect(try VocabularyPersistenceCodec.decodeSaveState(.init(rows: encoded.rows.reversed())).document == document)
         func replacing(_ row: VocabularyPersistenceRow) -> VocabularyPersistenceRows {
-            .init(rows: encoded.rows.map { $0.key == row.key ? row : $0 }, reviewTemplatesPresent: true)
+            .init(rows: encoded.rows.map { $0.key == row.key ? row : $0 })
         }
         let header = try #require(encoded.rows.first { $0.entity == .entries })
         guard case var .entry(entry) = header.record.payload else { throw VocabularyError.invalidArchive }
@@ -31,9 +30,9 @@ struct VocabularyRowReconstructionTests {
         let wrongIndex = try VocabularyPersistenceRow(record: .init(table: header.entity, id: header.id,
             parentID: nil, position: 0, payload: header.record.payload, extra: extra))
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decodeSaveState(replacing(wrongIndex)) }
-        let duplicate = VocabularyPersistenceRows(rows: encoded.rows + [header], reviewTemplatesPresent: true)
+        let duplicate = VocabularyPersistenceRows(rows: encoded.rows + [header])
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decodeSaveState(duplicate) }
-        let detached = VocabularyPersistenceRows(rows: encoded.rows.filter { $0.entity != .entries }, reviewTemplatesPresent: true)
+        let detached = VocabularyPersistenceRows(rows: encoded.rows.filter { $0.entity != .entries })
         #expect(throws: (any Error).self) { try VocabularyEntryRowProjection(detached) }
     }
 
@@ -53,8 +52,8 @@ struct VocabularyRowReconstructionTests {
         #expect(change.repositioned.filter { $0.entity == .blocks }.count == 2)
         #expect(change.removed.filter { $0.entity == .senseExplanations }.count == 1)
         let expected = try VocabularyPersistenceCodec.encode(next)
-        #expect(try change.projection.rows(reviewTemplatesPresent: true).keyedRows() == expected.keyedRows())
-        #expect(try VocabularyPersistenceCodec.decodeSaveState(change.projection.rows(reviewTemplatesPresent: true)).document == edited)
+        #expect(try change.projection.rows().keyedRows() == expected.keyedRows())
+        #expect(try VocabularyPersistenceCodec.decodeSaveState(change.projection.rows()).document == edited)
         #expect(try VocabularyPersistenceCodec.decodeSaveState(before).document == document)
     }
 
@@ -71,6 +70,6 @@ struct VocabularyRowReconstructionTests {
                 model: "Synthetic", createdAt: now.addingTimeInterval(Double(index)))
         }
         entry.senses = [sense]
-        return .init(entries: [entry], reviewTemplates: [.init(id: UUID(), name: "Synthetic", layout: .init())])
+        return .init(entries: [entry])
     }
 }

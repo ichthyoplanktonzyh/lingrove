@@ -72,11 +72,8 @@ struct VocabularyGraphViewTests {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))
         await store.save(.init(expression: "light", dictionaryForm: "light", language: .english, kind: .word, meaning: "光；光线"))
         let entryID = try #require(store.entries.first?.id)
-        _ = await store.createSense(entryID: entryID)
-        let baseline = try #require(store.entries.first)
-        var entry = baseline
-        entry.senses[1].meaning = "轻的；重量小"
-        #expect(await store.update(entry, basedOn: baseline))
+        let added = try await store.addEntries([.init(expression: "light", language: .english, meaning: "轻的；重量小")])
+        let second = try #require(added.selection)
         let speech = LearningSpeechController(settings: LearningSpeechSettings(defaults: defaults))
         let host = NSHostingView(rootView: VocabularyNotebookView(store: store, speech: speech, preferences: defaults))
         let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 1040, height: 700),
@@ -93,7 +90,7 @@ struct VocabularyGraphViewTests {
         #expect(canvas.accessibilityChildren()?.count == 3)
         let accessible = try #require(canvas.accessibilityChildren()?.first as? NSAccessibilityElement)
         #expect(accessible.isAccessibilityEnabled())
-        canvas.activate(.sense(.init(entryID: entryID, senseID: entry.senses[1].id)))
+        canvas.activate(.sense(second))
         for _ in 0..<8 { try await Task.sleep(for: .milliseconds(40)); host.layoutSubtreeIfNeeded() }
         #expect(findCanvas(host) != nil)
         let output = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

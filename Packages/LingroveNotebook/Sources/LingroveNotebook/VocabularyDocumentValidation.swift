@@ -63,8 +63,8 @@ public nonisolated enum VocabularyDocumentValidation {
         return (next, entries, identifiers)
     }
 
-    /// Keep the historical identity scopes and insertion order. Expanding this namespace to
-    /// explanation, binding or template IDs would reject previously valid notebooks.
+    /// Corpus entry/content identities share one namespace. Explanation identities remain
+    /// local to their owner; Note and template identities belong to their separate store.
     public static func validate(_ document: VocabularyDocument) throws {
         _ = try validate(document, entries: document.entries)
     }
@@ -82,7 +82,6 @@ public nonisolated enum VocabularyDocumentValidation {
             throw VocabularyError.invalidArchive
         }
         if !lifecycleChecked { try VocabularyLifecyclePolicy.validate(document) }
-        try VocabularyReviewValidation.validateTemplates(document.reviewTemplates ?? [])
         var allIDs = Set<UUID>(), identifiers: [UUID: Set<UUID>] = [:]
         for entry in entries {
             let ids = try entryIdentifiers(entry)
@@ -94,7 +93,7 @@ public nonisolated enum VocabularyDocumentValidation {
         return identifiers
     }
 
-    /// IDs retain the historical cross-entry namespace; explanation and binding IDs stay local.
+    /// IDs share the corpus cross-entry namespace; explanation IDs stay local to their owner.
     static func entryIdentifiers(_ entry: VocabularyEntry) throws -> Set<UUID> {
         var ids = Set<UUID>()
         guard ids.insert(entry.id).inserted, !VocabularyIdentityPolicy.normalized(entry.expression).isEmpty else {
@@ -105,8 +104,6 @@ public nonisolated enum VocabularyDocumentValidation {
             for block in sense.content ?? [] {
                 guard ids.insert(block.id).inserted else { throw VocabularyError.invalidArchive }
             }
-            if let review = sense.review { try VocabularyReviewValidation.validate(review) }
-            try VocabularyReviewValidation.validateCards(sense.reviewCards ?? [], ids: &ids)
             let input = VocabularyExplanationIdentity.input(for: entry, sense: sense, example: nil)
             guard ids.insert(sense.id).inserted, sense.mergedFrom.allSatisfy({ ids.insert($0).inserted }),
                   sense.explanations.count <= 128,
@@ -143,18 +140,7 @@ public nonisolated enum VocabularyDocumentValidation {
     }
 
     public static func imageReferences(_ document: VocabularyDocument) -> [VocabularyImageReference] {
-        let personal = document.catalog.flatMap(\.senses).flatMap { sense in
-            VocabularyContentPolicy.images(sense.content ?? []) + senseLayouts(sense).flatMap {
-                VocabularyContentPolicy.images($0.customContent)
-            }
-        }
-        return personal + (document.reviewTemplates ?? []).flatMap { VocabularyContentPolicy.images($0.layout.customContent) }
-    }
-
-    private static func senseLayouts(_ sense: VocabularySense) -> [ReviewLayout] {
-        ([sense.review].compactMap { $0 } + (sense.reviewCards ?? [])).flatMap {
-            ([$0.plan] + $0.preservedPlans).compactMap(\.layout)
-        }
+        document.catalog.flatMap(\.senses).flatMap { VocabularyContentPolicy.images($0.content ?? []) }
     }
 
     /// Image staging precedes whole-document preparation. Checking only media here preserves
@@ -162,8 +148,6 @@ public nonisolated enum VocabularyDocumentValidation {
     public static func validateMediaContent(_ next: VocabularyDocument) throws {
         for sense in next.catalog.flatMap(\.senses) {
             try VocabularyContentPolicy.validate(sense.content ?? [])
-            for layout in senseLayouts(sense) { try VocabularyReviewValidation.validate(layout) }
         }
-        try VocabularyReviewValidation.validateTemplates(next.reviewTemplates ?? [])
     }
 }

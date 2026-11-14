@@ -63,7 +63,7 @@ nonisolated struct VocabularyWireDecoder {
         guard root.entityID == id(notebookID) else { throw VocabularyWireError.notebookMismatch }
         var settings = try fields(root)
         guard try settings.integer("documentVersion") == VocabularyDocument.currentVersion else { throw VocabularyWireError.unsupportedVersion }
-        let hasTemplates = try settings.bool("reviewTemplatesPresent"); try settings.finish()
+        guard try settings.bool("reviewTemplatesPresent") == false else { throw VocabularyWireError.invalidRecord }; try settings.finish()
         var entries: [VocabularyEntry] = []
         for row in rows(.entry) {
             var f = try fields(row); let entryID = try uuid(row)
@@ -97,16 +97,10 @@ nonisolated struct VocabularyWireDecoder {
             try f.finish(); value.explanations = try explanations(.interpretationExplanation, owner: claimID, field: "interpretationId")
             interpretations.append(value)
         }
-        var templates: [ReviewLayoutTemplate] = []
-        for row in rows(.reviewTemplate) {
-            var f = try fields(row); let value = ReviewLayoutTemplate(id: try uuid(row), name: try f.string("name"), layout: try R.layout(f.take("layout")))
-            try f.finish(); templates.append(value)
-        }
-        guard hasTemplates || templates.isEmpty else { throw VocabularyWireError.invalidRecord }
         let semantics = try semantic(), classification = try classification()
         guard used == all else { throw VocabularyWireError.incompleteSnapshot }
         return VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
-            interpretations: interpretations, reviewTemplates: hasTemplates ? templates : nil, semantics: semantics, classification: classification)
+            interpretations: interpretations, semantics: semantics, classification: classification)
     }
 
     private mutating func sense(_ row: E, entryID: UUID) throws -> VocabularySense {
@@ -120,7 +114,8 @@ nonisolated struct VocabularyWireDecoder {
         value.note = try f.string("note")
         value.tags = try f.array("tags").map(F.string)
         value.savedAt = try f.optional("savedAt", F.date)
-        let contentPresent = try f.bool("contentPresent"), cardsPresent = try f.bool("reviewCardsPresent")
+        let contentPresent = try f.bool("contentPresent")
+        guard try f.bool("reviewCardsPresent") == false else { throw VocabularyWireError.invalidRecord }
         try f.finish()
         value.explanations = try explanations(.senseExplanation, owner: senseID, field: "senseId")
         var blocks: [VocabularyContentBlock] = []
@@ -128,21 +123,8 @@ nonisolated struct VocabularyWireDecoder {
             var body = try fields(block); guard try body.uuid("senseId") == senseID else { throw VocabularyWireError.invalidRecord }
             blocks.append(.init(id: try uuid(block), content: try R.content(body.take("content")))); try body.finish()
         }
-        var legacy: VocabularyReview?, cards: [VocabularyReview] = []
-        for draft in children(.reviewDraft, "senseId", senseID) {
-            var body = try fields(draft); guard try body.uuid("senseId") == senseID else { throw VocabularyWireError.invalidRecord }
-            let role = try body.string("role"), plan = try R.plan(body.take("plan")), retained = try body.array("preservedPlans").map(R.plan)
-            try body.finish(); let value = VocabularyReview(plan: plan, preservedPlans: retained)
-            if role == "legacy" {
-                try key(draft, id(senseID) + ":legacy"); guard legacy == nil else { throw VocabularyWireError.duplicateEntity }; legacy = value
-            } else if role == "card" {
-                try key(draft, id(senseID) + ":card:" + id(plan.id)); cards.append(value)
-            } else { throw VocabularyWireError.invalidRecord }
-        }
-        guard contentPresent || blocks.isEmpty, cardsPresent || cards.isEmpty else { throw VocabularyWireError.invalidRecord }
+        guard contentPresent || blocks.isEmpty else { throw VocabularyWireError.invalidRecord }
         value.content = contentPresent ? blocks : nil
-        value.review = legacy
-        value.reviewCards = cardsPresent ? cards : nil
         return value
     }
 

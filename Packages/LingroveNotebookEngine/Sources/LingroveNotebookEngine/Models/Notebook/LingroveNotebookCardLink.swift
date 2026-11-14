@@ -21,44 +21,34 @@ public nonisolated struct LingroveNotebookCardSource: Codable, Hashable, Sendabl
     }
 }
 
-/// One editor session owns one creation intent. Reusing this ID after an uncertain save result
-/// finds the same linked Card; opening another draft intentionally allows another exercise.
-/// Generated content is frozen separately from the editable native CardFormState.
-public nonisolated struct LingroveNotebookCardDraft: Codable, Hashable, Sendable, Identifiable {
-    public let id: UUID
-    public let source: LingroveNotebookCardSource
-    public let sourceRevision: UInt64
-    public let generatedContent: CardEditorInput
-    public let materialPlan: ReviewMaterialPlan?
+/// Note reconciliation creates this value inside its transaction to persist provenance.
+/// Stable Note/template membership owns creation identity; callers cannot author another recipe.
+nonisolated struct ReviewNoteCardLinkDraft {
+    let id: UUID
+    let source: LingroveNotebookCardSource
+    let sourceRevision: UInt64
+    let generatedContent: CardEditorInput
 
-    public init(id: UUID, source: LingroveNotebookCardSource, sourceRevision: UInt64, generatedContent: CardEditorInput, materialPlan: ReviewMaterialPlan? = nil) {
-        self.id = id
-        self.source = source
-        self.sourceRevision = sourceRevision
-        self.generatedContent = generatedContent
-        self.materialPlan = materialPlan
-    }
+
 }
 
-/// A durable relationship contains no Card scheduling fields and no Anki identities. A nil
-/// generatedContent means an existing Card was associated: its faces are manually owned until
-/// the person explicitly chooses to replace them. Deleting a link leaves a tombstone, not a
-/// Card deletion. Revision is local CAS state, independent of the notebook document revision.
+/// A durable Note Card relationship contains provenance, its generated projection and local
+/// CAS revision. Scheduling and review events remain owned by CardStore.
 public nonisolated struct LingroveNotebookCardLink: Codable, Hashable, Sendable, Identifiable {
     public let id: UUID
     public let source: LingroveNotebookCardSource
     public let cardId: String
     public let generatedContent: CardEditorInput?
-    public let materialPlan: ReviewMaterialPlan?
     public let sourceRevision: UInt64
     public let creationFingerprint: String
     public let revision: UInt64
     public let createdAt: String
     public let updatedAt: String
     public let deletedAt: String?
-    public var allowsUnavailableMaterial: Bool = false
 
-    public init(id: UUID, source: LingroveNotebookCardSource, cardId: String, generatedContent: CardEditorInput?, sourceRevision: UInt64, creationFingerprint: String, revision: UInt64, createdAt: String, updatedAt: String, deletedAt: String?, allowsUnavailableMaterial: Bool = false, materialPlan: ReviewMaterialPlan? = nil) {
+    public init(id: UUID, source: LingroveNotebookCardSource, cardId: String, generatedContent: CardEditorInput?,
+                sourceRevision: UInt64, creationFingerprint: String, revision: UInt64, createdAt: String,
+                updatedAt: String, deletedAt: String?) {
         self.id = id
         self.source = source
         self.cardId = cardId
@@ -69,22 +59,9 @@ public nonisolated struct LingroveNotebookCardLink: Codable, Hashable, Sendable,
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
-        self.allowsUnavailableMaterial = allowsUnavailableMaterial
-        self.materialPlan = materialPlan
     }
 }
 
-/// Presentation resolves a historical sense to today's destination. The optional example is
-/// material owned by that sense, never the identity of the exercise. Moving it to another sense
-/// leaves the original material unavailable rather than moving the person's review history.
-public nonisolated struct LingroveNotebookCardMaterial: Sendable {
-    public let selection: VocabularySelection
-    public let exampleId: UUID?
-    public let content: CardEditorInput
-
-    public init(selection: VocabularySelection, exampleId: UUID?, content: CardEditorInput) {
-        self.selection = selection
-        self.exampleId = exampleId
-        self.content = content
-    }
-}
+/// Pure identities and source resolution shared by Note persistence and source navigation.
+/// It has no card-authoring state: Note fields and templates own every generated face.
+public nonisolated enum LingroveNotebookCardMaterial {}

@@ -2,7 +2,7 @@ import LingroveNotebook
 import LingroveNotebookEngine
 
 /// Label/navigation projection only. The actual enrollment and Card source keep their frozen
-/// identity, so a moved example or renamed expression cannot silently retarget a practice record.
+/// identity, so a consolidated sense or renamed expression cannot silently retarget a practice record.
 enum BuiltInReviewSource {
     static func value(_ selection: VocabularySelection, in scope: LingroveNotebookSnapshot)
         -> (entry: VocabularyEntry, sense: VocabularySense)? {

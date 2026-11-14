@@ -51,69 +51,7 @@ struct BuiltInNotebookReviewIntegrationTests {
         }
     }
 
-    @Test("Exact committed intents replay without reactivating a later participation choice")
-    func exactReplayRetainsCurrentState() throws {
-        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
-        let (saved, selection) = try source(fixture)
-        let engine = fixture.db
-        let initial = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        let initialAction = NotebookBuiltInReviewAction(content: initial, selection: selection)
-        let first = try engine.enrollBuiltInNotebookSense(draft, input: draft.generatedContent, action: initialAction)
-        let beforeReplay = try rowCounts(engine)
-        #expect(try engine.enrollBuiltInNotebookSense(draft, input: draft.generatedContent, action: initialAction) == first)
-        #expect(try rowCounts(engine) == beforeReplay)
-        let enrolled = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let additionalDraft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        let additionalAction = NotebookBuiltInReviewAction(content: enrolled, selection: selection)
-        let added = try engine.addBuiltInNotebookExercise(additionalDraft, input: additionalDraft.generatedContent, action: additionalAction)
-        #expect(try engine.addBuiltInNotebookExercise(additionalDraft,
-            input: additionalDraft.generatedContent, action: additionalAction).cardId == added.cardId)
-        var content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let pauseAction = NotebookBuiltInReviewAction(content: content, selection: selection)
-        let pauseID = UUID()
-        try engine.setBuiltInNotebookReviewStatus(.paused, action: pauseAction, requestID: pauseID)
-        content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        try engine.setBuiltInNotebookReviewStatus(.active, action: .init(content: content, selection: selection), requestID: UUID())
-        let beforeStatusReplay = try rowCounts(engine)
-        try engine.setBuiltInNotebookReviewStatus(.paused, action: pauseAction, requestID: pauseID)
-        content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        #expect(content.review.groups[selection.senseID]?.status == .active && content.statistics.exercises == 2)
-        #expect(try rowCounts(engine) == beforeStatusReplay)
-        #expect(throws: (any Error).self) {
-            try engine.enrollBuiltInNotebookSense(draft, input: .init(frontText: "changed intent", backText: "", tags: []), action: initialAction)
-        }
-    }
 
-    @Test("Opening/preparing is read-only; explicit authored enrollment commits atomically")
-    func explicitEnrollmentAndAtomicPreparation() throws {
-        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
-        let (saved, selection) = try source(fixture)
-        let engine = fixture.db
-        let before = try rowCounts(engine)
-        let content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let prepared = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        #expect(content.queue.isEmpty && content.statistics.exercises == 0)
-        #expect(try rowCounts(engine) == before)
-        let action = NotebookBuiltInReviewAction(content: content, selection: selection)
-        #expect(throws: (any Error).self) {
-            try engine.enrollBuiltInNotebookSense(prepared, input: .init(frontText: "", backText: "invalid", tags: []), action: action)
-        }
-        #expect(try rowCounts(engine) == before)
-        let authored = CardEditorInput(frontText: "My own question", backText: prepared.generatedContent.backText, tags: ["authored"])
-        _ = try engine.enrollBuiltInNotebookSense(prepared, input: authored, action: action)
-        let committedRows = try rowCounts(engine)
-        _ = try engine.enrollBuiltInNotebookSense(prepared, input: authored, action: action)
-        #expect(try rowCounts(engine) == committedRows)
-        let enrolled = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let card = try #require(enrolled.queue.first)
-        #expect(card.frontText == authored.frontText && card.backText == authored.backText && card.reps == 0)
-        #expect(enrolled.statistics.activeSenses == 1 && enrolled.statistics.exercises == 1 && enrolled.statistics.readyExercises == 1)
-        #expect(enrolled.review.links.first?.generatedContent == prepared.generatedContent)
-        #expect(try engine.loadLingroveNotebook(workspaceId: saved.workspaceId) == saved)
-        try fixture.reopen()
-        #expect(try fixture.db.loadBuiltInNotebookReview(scope: saved, now: now).queue.first?.cardId == card.cardId)
-    }
 
     @Test("Invalid persisted scheduling is rejected by notebook reads and ratings without repair or journal writes")
     func invalidScheduleFailsWithoutMutation() throws {
@@ -147,19 +85,11 @@ struct BuiltInNotebookReviewIntegrationTests {
         let engine = fixture.db
         let generic = try engine.saveCard(workspaceId: saved.workspaceId,
             input: .init(frontText: "Independent", backText: "No enrollment", tags: []), cardId: nil, mediaAssetIdsReadyForUpload: [])
-        let other = saved.document.entries[0].senses[1]
-        let merelyLinked = try engine.saveNewLingroveNotebookCard(
-            draft: LingroveNotebookCardMaterial.draft(snapshot: saved, selection: .init(entryID: selection.entryID, senseID: other.id)),
-            input: .init(frontText: "Linked only", backText: "Not selected", tags: []), mediaAssetIdsReadyForUpload: [])
         var content = try enroll(engine, saved: saved, selection: selection)
         let defaultID = try #require(content.queue.first).cardId
-        let extra = try engine.addBuiltInNotebookExercise(LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection),
-            input: .init(frontText: "Second question", backText: "Same sense", tags: []),
-            action: .init(content: content, selection: selection))
-        content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        #expect(Set(content.queue.map(\.cardId)) == Set([defaultID, extra.cardId]))
-        #expect(!content.queue.contains { $0.cardId == generic.cardId || $0.cardId == merelyLinked.cardId })
-        #expect(content.statistics.activeSenses == 1 && content.statistics.exercises == 2)
+        #expect(content.queue.count == 1 && content.noteCards[defaultID] != nil)
+        #expect(!content.queue.contains { $0.cardId == generic.cardId })
+        #expect(content.statistics.activeSenses == 1 && content.statistics.exercises == 1)
         let baseline = content.review.groups[selection.senseID]?.cards
         try engine.setBuiltInNotebookReviewStatus(.paused, action: .init(content: content, selection: selection), requestID: UUID())
         content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
@@ -171,7 +101,7 @@ struct BuiltInNotebookReviewIntegrationTests {
         try engine.setBuiltInNotebookReviewStatus(.active, action: .init(content: content, selection: selection), requestID: UUID())
         try fixture.reopen()
         content = try fixture.db.loadBuiltInNotebookReview(scope: saved, now: now)
-        #expect(Set(content.queue.map(\.cardId)) == Set([defaultID, extra.cardId]))
+        #expect(Set(content.queue.map(\.cardId)) == Set([defaultID]))
         #expect(try fixture.db.loadReviewEventCount() == 0)
     }
 
@@ -195,10 +125,10 @@ struct BuiltInNotebookReviewIntegrationTests {
         content = try fixture.db.loadBuiltInNotebookReview(scope: saved, now: now)
         #expect(content.queue.isEmpty && content.statistics.ratingRecords == 1)
         let card = try #require(content.review.groups[selection.senseID]?.cards.first)
-        let link = try #require(content.review.links.first { $0.cardId == card.cardId })
-        try fixture.db.prepareNotebookExercise(link: link, card: card, snapshot: saved, exampleID: nil,
-            input: .init(frontText: "Edited after rating", backText: card.backText, tags: card.tags),
-            action: .init(content: content, selection: selection))
+        let model = try #require(content.noteCards[card.cardId])
+        var type = model.noteType; type.revision += 1
+        type.templates[0].front = "Edited after rating"
+        try fixture.db.saveReviewNoteType(type, expected: model.noteType, scope: saved)
         content = try fixture.db.loadBuiltInNotebookReview(scope: saved, now: now)
         let undo = try #require(content.undoByCardID[card.cardId])
         try fixture.db.undoBuiltInNotebookRating(undo, action: .init(content: content, selection: selection))
@@ -217,19 +147,9 @@ struct BuiltInNotebookReviewIntegrationTests {
         var content = try enroll(engine, saved: saved, selection: selection)
         let oldAction = NotebookBuiltInReviewAction(content: content, selection: selection)
         let card = try #require(content.queue.first)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
         _ = try engine.submitBuiltInNotebookRating(submission(card, .good), card: card, action: oldAction)
         let before = try rowCounts(engine)
-        #expect(throws: (any Error).self) { try engine.addBuiltInNotebookExercise(draft, input: draft.generatedContent, action: oldAction) }
         #expect(throws: (any Error).self) { try engine.setBuiltInNotebookReviewStatus(.paused, action: oldAction, requestID: UUID()) }
-        let staleLink = try #require(content.review.links.first { $0.cardId == card.cardId })
-        #expect(throws: (any Error).self) {
-            try engine.prepareNotebookExercise(link: staleLink, card: card, snapshot: saved, exampleID: nil,
-                input: .init(frontText: "stale edit", backText: "stale", tags: []), action: oldAction)
-        }
-        #expect(throws: (any Error).self) {
-            try engine.retainNotebookExercise(link: staleLink, card: card, snapshot: saved, action: oldAction)
-        }
         #expect(try rowCounts(engine) == before)
         content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
         let staleUndo = try #require(content.undoByCardID[card.cardId])
@@ -254,58 +174,12 @@ struct BuiltInNotebookReviewIntegrationTests {
             linkedWorkspaceId: saved.workspaceId, activeWorkspaceId: saved.workspaceId, linkedEmail: nil)
         let afterSwitch = try rowCounts(engine)
         #expect(throws: (any Error).self) { try engine.undoBuiltInNotebookRating(freshUndo, action: .init(content: fresh, selection: selection)) }
-        #expect(throws: (any Error).self) { try engine.addBuiltInNotebookExercise(draft, input: draft.generatedContent, action: oldAction) }
         #expect(try rowCounts(engine) == afterSwitch)
         let freshScope = try engine.loadLingroveNotebook(workspaceId: saved.workspaceId)
         #expect(freshScope.generation != saved.generation)
         #expect(try engine.loadActiveCard(workspaceId: saved.workspaceId, cardId: card.cardId).reps == 2)
     }
 
-    @Test("Source refresh is three-way; missing and returning sources preserve retained memory")
-    func materialRefreshRetainAndSourceReturn() throws {
-        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
-        let (saved, selection) = try source(fixture)
-        let engine = fixture.db
-        let initial = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        _ = try engine.enrollBuiltInNotebookSense(draft,
-            input: .init(frontText: "Authored question", backText: draft.generatedContent.backText, tags: draft.generatedContent.tags),
-            action: .init(content: initial, selection: selection))
-        var content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let card = try #require(content.queue.first)
-        _ = try engine.submitBuiltInNotebookRating(submission(card, .good), card: card,
-            action: .init(content: content, selection: selection))
-        let rated = try engine.loadActiveCard(workspaceId: saved.workspaceId, cardId: card.cardId)
-        var changedDocument = saved.document
-        changedDocument.entries[0].senses[0].meaning = "new generated answer"
-        let changed = try engine.saveLingroveNotebook(changedDocument, basedOn: saved, restoringBackup: true)
-        let updated = try engine.loadActiveCard(workspaceId: saved.workspaceId, cardId: card.cardId)
-        #expect(updated.frontText == "Authored question" && updated.backText == "new generated answer")
-        #expect(updated.reps == rated.reps && updated.dueAt == rated.dueAt)
-        let removed = try engine.saveLingroveNotebook(VocabularyDocument(), basedOn: changed, restoringBackup: true)
-        content = try engine.loadBuiltInNotebookReview(scope: removed, now: now)
-        #expect(content.review.groups.count == 1 && !content.eligibleCardIDs.contains(card.cardId))
-        let link = try #require(content.review.links.first { $0.cardId == card.cardId })
-        let baseline = try #require(content.review.groups[selection.senseID]?.cards.first)
-        try engine.retainNotebookExercise(link: link, card: baseline, snapshot: removed,
-            action: .init(content: content, selection: selection))
-        content = try engine.loadBuiltInNotebookReview(scope: removed, now: now)
-        #expect(content.eligibleCardIDs.contains(card.cardId))
-        let retainedLink = try #require(content.review.links.first { $0.cardId == card.cardId })
-        try engine.saveRetainedBuiltInNotebookMaterial(link: retainedLink, card: baseline,
-            input: .init(frontText: "Saved material edit", backText: baseline.backText, tags: baseline.tags),
-            action: .init(content: content, selection: selection))
-        var returningDocument = changed.document
-        returningDocument.entries[0].senses[0].meaning = "answer after source returns"
-        let returned = try engine.saveLingroveNotebook(returningDocument, basedOn: removed, restoringBackup: true)
-        try fixture.reopen()
-        content = try fixture.db.loadBuiltInNotebookReview(scope: returned, now: now)
-        let restored = try #require(content.review.groups[selection.senseID]?.cards.first)
-        #expect(restored.frontText == "Saved material edit" && restored.reps == rated.reps && restored.dueAt == rated.dueAt)
-        #expect(restored.backText == "answer after source returns")
-        #expect(content.statistics.ratingRecords == 1 && content.eligibleCardIDs.contains(card.cardId))
-        #expect(try fixture.db.core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []) == 0)
-    }
 
     private func source(_ fixture: NotebookMediaDatabaseFixture) throws -> (LingroveNotebookSnapshot, VocabularySelection) {
         let saved = try fixture.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
@@ -316,8 +190,7 @@ struct BuiltInNotebookReviewIntegrationTests {
     private func enroll(_ engine: LingroveNotebookEngine, saved: LingroveNotebookSnapshot,
                         selection: VocabularySelection) throws -> NotebookBuiltInReviewSnapshot {
         let content = try engine.loadBuiltInNotebookReview(scope: saved, now: now)
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        _ = try engine.enrollBuiltInNotebookSense(draft, input: draft.generatedContent, action: .init(content: content, selection: selection))
+        _ = try engine.enrollReviewNotes(selections: [selection], type: content.defaultNoteType, scope: saved)
         return try engine.loadBuiltInNotebookReview(scope: saved, now: now)
     }
 

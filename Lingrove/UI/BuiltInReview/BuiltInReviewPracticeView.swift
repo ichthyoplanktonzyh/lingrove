@@ -10,7 +10,6 @@ import SwiftUI
 struct BuiltInReviewPracticeView: View {
     @ObservedObject var session: BuiltInReviewSession
     let content: NotebookBuiltInReviewSnapshot
-    @State private var selection: LingroveReviewTextSelection?
 
     private var isAnswerVisible: Bool {
         if case .answer = session.practice?.phase { return true }
@@ -36,17 +35,7 @@ struct BuiltInReviewPracticeView: View {
                     if let model = context.action.noteCards[context.card.cardId] {
                         ReviewNotePracticeView(session: session, context: context, model: model, answer: isAnswerVisible)
                     } else {
-                        ScrollViewReader { proxy in
-                            ScrollView {
-                                LingroveReadableContentLayout(maxWidth: lingroveReadableContentMaxWidth, horizontalPadding: 24) {
-                                    activeCard(context).padding(.vertical, 24)
-                                }
-                            }
-                            .onChange(of: isAnswerVisible) { _, visible in
-                                if visible { proxy.scrollTo("back", anchor: .top) }
-                            }
-                            .onChange(of: context.card.cardId) { _, _ in proxy.scrollTo("front", anchor: .top) }
-                        }
+                        Text(BuiltInReviewCopy.text("error.load")).foregroundStyle(.red).padding()
                     }
                     Divider()
                     let options = try? lingroveMakeReviewAnswerOptions(card: context.card,
@@ -66,7 +55,6 @@ struct BuiltInReviewPracticeView: View {
             }
         }
         .disabled(session.isBusy)
-        .sheet(item: $selection) { LingroveReviewTextSelectionSheet(selection: $0) }
         .accessibilityIdentifier("builtinReview.practice")
     }
 
@@ -200,61 +188,4 @@ struct BuiltInReviewPracticeView: View {
         .accessibilityIdentifier("builtinReview.completed")
     }
 
-    private func activeCard(_ context: BuiltInReviewCardContext) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 10) {
-                HStack(spacing: 8) {
-                    Label(context.card.tags.isEmpty ? String(localized: "No tags", table: "ReviewCards")
-                        : context.card.tags.joined(separator: ", "), systemImage: "tag")
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
-                    Label {
-                        Text(BuiltInReviewCopy.text("count.cardReviews") + ": " + context.card.reps.formatted())
-                    } icon: { Image(systemName: "arrow.clockwise") }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-                .layoutPriority(1)
-
-                Spacer(minLength: 12)
-
-                if session.onOpenSource != nil, BuiltInReviewSource.value(context.group.selection, in: context.snapshot) != nil {
-                    Button { session.openSource(context) } label: {
-                        Label(BuiltInReviewCopy.text("action.source"), systemImage: "arrow.up.forward.square")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .accessibilityIdentifier("builtinReview.practice.source")
-                }
-
-                Button {
-                    session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content)
-                } label: { Image(systemName: "pencil") }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .accessibilityLabel(String(localized: "Edit card", table: "ReviewCards"))
-                    .help(String(localized: "Edit card", table: "ReviewCards"))
-                    .accessibilityIdentifier("builtinReview.practice.edit")
-            }
-
-            face(context, answer: false).id("front")
-            if isAnswerVisible { face(context, answer: true).id("back") }
-        }
-    }
-
-    private func face(_ context: BuiltInReviewCardContext, answer: Bool) -> some View {
-        let title = String(localized: answer ? "Back" : "Front", table: "ReviewCards")
-        let text = answer ? context.card.backText : context.card.frontText
-        return LingroveReviewCardSideView(label: title, content: session.images, sourceText: text,
-            onSelectText: { selection = .init(title: title, sourceText: text) },
-            isSpeechPlaying: session.isSpeaking(context, answer: answer),
-            onToggleSpeech: { session.speak(context, answer: answer) },
-            showsSpeechButton: session.canSpeak, surfaceStyle: answer ? .back : .front,
-            material: session.resolvedParts(context, answer: answer), workspaceID: context.snapshot.workspaceId,
-            audio: session.savedAudio, onPlayAudio: { session.playSavedAudio($0, context: context) })
-    }
 }

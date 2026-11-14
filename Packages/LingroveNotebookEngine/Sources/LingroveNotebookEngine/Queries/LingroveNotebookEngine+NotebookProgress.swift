@@ -32,6 +32,7 @@ extension LingroveNotebookEngine {
             let ownedEvent = """
                 EXISTS (SELECT 1 FROM notebook_review_exercises exercise
                     JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                     WHERE exercise.workspace_id=event.workspace_id AND exercise.card_id=event.card_id
                         AND enrollment.notebook_id=?)
                 """
@@ -59,6 +60,7 @@ extension LingroveNotebookEngine {
                 SELECT COUNT(*) FROM cards WHERE cards.workspace_id=? AND cards.deleted_at IS NULL
                     AND EXISTS(SELECT 1 FROM notebook_review_exercises exercise
                         JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                         WHERE exercise.workspace_id=cards.workspace_id AND exercise.card_id=cards.card_id
                             AND enrollment.notebook_id=?)
                 """, values: values)
@@ -76,6 +78,9 @@ extension LingroveNotebookEngine {
             FROM notebook_review_enrollments enrollment
             LEFT JOIN notebook_senses sense ON sense.workspace_id=enrollment.workspace_id AND sense.id=enrollment.sense_id
             WHERE enrollment.workspace_id=? AND enrollment.notebook_id=?
+                AND EXISTS(SELECT 1 FROM notebook_review_exercises exercise
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
+                    WHERE exercise.workspace_id=enrollment.workspace_id AND exercise.enrollment_id=enrollment.enrollment_id)
             """, values: [.text(workspace), .text(notebookID.uuidString)]) { row in
             try Task.checkCancellation()
             guard let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
@@ -125,6 +130,7 @@ extension LingroveNotebookEngine {
                 AND \(cardStoreNotebookReviewEligibilitySQL)
                 AND EXISTS(SELECT 1 FROM notebook_review_exercises exercise
                     JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                     JOIN notebook_card_links link ON link.workspace_id=exercise.workspace_id AND link.link_id=exercise.link_id
                     WHERE exercise.workspace_id=cards.workspace_id AND exercise.card_id=cards.card_id
                         AND enrollment.notebook_id=? AND link.notebook_id=enrollment.notebook_id

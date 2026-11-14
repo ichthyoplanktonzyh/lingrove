@@ -50,7 +50,7 @@ struct LearningReviewSettingsSection: View {
                 HStack {
                     Button(String(localized: "Test connection", table: "Vocabulary")) {
                         saveKey()
-                        if keyError == nil { Task { await controller.testConnection(model: ReviewLayoutPolicy.model) } }
+                        if keyError == nil { Task { await controller.testConnection() } }
                     }.disabled(controller.testing || controller.sendingSenseID != nil)
                     if controller.testing { ProgressView().controlSize(.small) }
                     if let message = keyError ?? controller.connectionMessage {
@@ -69,7 +69,6 @@ struct LearningReviewSettingsSection: View {
                 } else {
                     TextField(String(localized: "Deck", table: "Vocabulary"), text: $settings.deck)
                 }
-                LabeledContent(String(localized: "Note type", table: "Vocabulary"), value: ReviewLayoutPolicy.model)
             }
             templates
         }
@@ -83,16 +82,7 @@ struct LearningReviewSettingsSection: View {
 
     private var templates: some View {
         Section(String(localized: "Card templates", table: "Vocabulary")) {
-            ForEach(store.reviewTemplates) { template in
-                HStack {
-                    Text(template.name)
-                    Spacer()
-                    Button(role: .destructive) { Task { [scope = store.operationScope] in
-                        try? await store.removeTemplate(template.id, scope: scope) } } label: {
-                        Image(systemName: "trash")
-                    }.buttonStyle(.borderless).help(String(localized: "Delete", table: "Vocabulary"))
-                }
-            }
+            Button(String(localized: "Card templates", table: "Vocabulary")) { store.onRequestReviewTemplates?() }
         }.settingsItem(.ankiReviewFields)
     }
 

@@ -86,7 +86,10 @@ struct ReviewNoteSyncTests {
         _ = try f.db.enrollReviewNotes(selections: [selection], type: type, scope: scope)
         #expect(try f.db.loadBuiltInNotebookReview(scope: scope, now: Date()).noteCards.count == 1)
         document.entries[0].senses[0].note = "Now present"
-        let updated = try f.db.saveLingroveNotebook(document, basedOn: scope)
+        try f.reopen()
+        #expect(try f.db.trySaveNotebookEntry(document.entries[0], basedOn: .init(scope)) != nil)
+        #expect(f.db.core.notebookSaveCache == nil)
+        let updated = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
         let before = try f.db.loadBuiltInNotebookReview(scope: updated, now: Date())
         #expect(before.queue.count == 2)
         let card = try #require(before.queue.first)

@@ -83,7 +83,7 @@ struct NotebookMutationPlanIntegrationTests {
             #expect(change.semanticChange.updatedMappings.count == (step == 0 ? 1 : 0))
             let delta = try cache.projection.applying(change)
             let expected = try VocabularyPersistenceCodec.encode(change.document).keyedRows()
-            #expect(try delta.projection.rows(reviewTemplatesPresent: false).keyedRows() == expected)
+            #expect(try delta.projection.rows().keyedRows() == expected)
             #expect(!delta.changed.contains { [.meaningNodes, .meaningLabels, .usagePatterns].contains($0.entity) })
             saved = try f.db.saveNotebookEntry(entry, basedOn: saved)
         }

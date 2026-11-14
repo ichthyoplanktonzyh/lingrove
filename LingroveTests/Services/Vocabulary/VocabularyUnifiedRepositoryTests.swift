@@ -191,8 +191,8 @@ struct VocabularyUnifiedRepositoryTests {
             let oldDocument = try #require(f.store.completeSnapshot).document
             let oldEntry = try #require(f.store.entries.first)
             let anki = AnkiReviewController(settings: AnkiReviewSettings(defaults: f.defaults, credentials: AnkiCredentialStore(service: nil)),
-                store: f.store, client: ReviewFakeAnki(), activateAnki: {})
-            let oldAnkiSession = AnkiReviewSession(controller: anki, entry: oldEntry, sense: oldEntry.senses[0])
+                store: f.store, repository: f.repository, client: ReviewFakeAnki(), activateAnki: {})
+            let oldAnkiSession = NoteAnkiSession(controller: anki, selection: .init(entryID: oldEntry.id, senseID: oldEntry.senses[0].id))
             let settings = LanguageLearningSettings(defaults: f.defaults)
             let model = LearningModelController(profile: settings.explanation,
                 client: OpenAICompatibleAPIClient(session: URLSession(configuration: .ephemeral)), localModelURL: { _ in URL(fileURLWithPath: "/unused-synthetic-model.gguf") })
@@ -212,8 +212,7 @@ struct VocabularyUnifiedRepositoryTests {
             await #expect(throws: (any Error).self) {
                 try await f.store.addEntries([.init(expression: "additional", meaning: "a new word")], scope: oldScope)
             }
-            #expect(oldAnkiSession.current == nil)
-            let oldAnkiSaved = await oldAnkiSession.save()
+            let oldAnkiSaved = await oldAnkiSession.send()
             #expect(!oldAnkiSaved)
             #expect(!(await f.store.update(oldEntry, basedOn: oldEntry, scope: oldScope)))
             // Return to the same notebook at the same revision: its new generation must still reject

@@ -979,3 +979,243 @@ changes and unknown raw mutations retain conservative invalidation. Reviewed sou
 media-reference changes and foreign semantic citations still have complete fallbacks. Tag
 filtering remains a global JSON scan (210.708ms at 20k in this run), and image/dense-alias shape
 candidates still need focused scale measurement.
+
+## Closed entry dependencies and indexed tags (2026-11-13)
+
+[ADR 0009](adr/0009-closed-entry-dependencies-and-tag-index.md) extends certified cold commands to
+reviewed-source edits, cited interpretations, shared sources, editor saves, sense creation and
+media-reference changes. One closed dependency packet reuses the existing lossless codec,
+semantic reconciliation, row/CAS/journal writer and history-preserving material rules.
+The partial receipt still leaves the complete store unloaded. Pure retirement does not refresh
+unchanged sibling material. Example movement remains outside this scope pending business modeling.
+
+Media ownership/metadata checks use one indexed batch and pins use set SQL. Reference removal
+checks other canonical owners, including templates with an independent identity namespace.
+A trigger-maintained relational tag projection replaces repeated JSON tag scans. Tagged owner
+selection is materialized before sorting to avoid a newest-first workspace walk for selective tags.
+
+The [raw paired results](benchmarks/corpus-entry-dependencies-2026-11-13.json) contain 120 passing
+Release arm64 engine samples: ten operations, two sizes, two revisions and three trials.
+Before packages are archived from `c2cf05a1`. Each size shares one closed canonical seed before
+per-variant installation/certification; each timed command uses a fresh connection/copy.
+The corpus has two senses/four examples per entry, 1.4× as many semantic nodes/mappings,
+2k/4k enrolled senses, 1k ratings, 512 distinct referenced PNGs and one prepared owned image.
+One reviewed source has eight additional templates (nine exercises total). Release medians in ms:
+
+| Engine operation | 10k before | 10k after | 20k before | 20k after |
+| --- | ---: | ---: | ---: | ---: |
+| Append context to a reviewed sense (nine exercises) | 3390.543 | 35.792 | 7916.098 | 37.503 |
+| Edit a reviewed note (nine exercises) | 3364.977 | 39.422 | 7939.858 | 42.523 |
+| Edit an interpretation cited by a semantic mapping | 3368.781 | 23.164 | 7742.711 | 26.509 |
+| Capture a new entry reusing an existing source | 3350.025 | 23.328 | 7309.926 | 26.383 |
+| Ordinary capture with 512 referenced images | 55.168 | 22.684 | 60.927 | 24.327 |
+| Attach a prepared owned image | 3340.094 | 28.360 | 9061.281 | 32.467 |
+| Remove one of two owners of an image | 3354.428 | 23.938 | 7561.119 | 23.841 |
+| Remove the last document owner of an image | 3376.902 | 25.790 | 9497.026 | 25.957 |
+| Create a sense through the engine command | 56.194 | 24.738 | 60.525 | 15.674 |
+| Read an English page for group-2 | 30.656 | 13.034 | 53.751 | 26.191 |
+
+All post-change mutations in this inventory return local receipts; the tag window is a page read.
+The three-trial engine numbers exclude draft/detail construction, staging, fixture copies and
+assertions. Image attachment uses already prepared owned bytes. The 512 PNGs are 2×1 pixels:
+they measure media registry/pin density, not large-file decode/staging throughput. Timings do
+not include frame painting, network/model work or a purged OS disk cache; they are observations,
+not percentile guarantees. Native Store timers use a different fixture/milestone and stay separate.
+
+Combined open/install/strict-complete-validation setup was 3141.656→3223.724ms at 10k and
+8920.707→8858.333ms at 20k (one observation each). These are not command timings or an isolated
+index-installation comparison. Missing/stale proof still requires that full validation; its
+cost has not been eliminated. The complete earlier 43-operation scan and dense-alias/large-PNG
+throughput workloads were not rerun in this checkpoint.
+
+## Content-bearing authoring and example metadata (2026-11-13)
+
+The user confirmed removal of durable empty-sense placeholders and the manual example
+sentence/fragment/unknown picker. `VocabularySenseContentPolicy` now owns the pure draft-content
+test, shared by editor admission and its Save state. Meanings, personal notes, supporting examples
+and rich text/images are content; tags, review configuration and generation receipts alone are not.
+Manual input/capture reject content-free creation. Changed/new editor senses require content;
+existing untouched records keep their read contract. The separate `createSense` archive/store
+commands were retired. Tests/benchmarks now prepare additional senses with actual authored content.
+The example picker was removed without replacing source-supplied metadata with a manual task or
+new inference request. Note edits preserve that metadata. Image-only content and meaningful
+manual creation without examples remain valid.
+
+Shared-package checks passed 129 tests with three opt-in interop bridges skipped. A signed
+private Release build-for-testing passed, followed by 99 passing native checks, one optional
+visible-desktop skip and one failing lifecycle fixture: it created a bare word before asserting
+stale-editor rejection. That fixture now creates a real meaning. Only that test source changed;
+the lifecycle suite's seven checks then passed, for 100 distinct passing native checks overall.
+The first method-specific recovery selected zero Swift Testing cases; the runner rejected it,
+and it contributes no passing-test evidence. The corrected suite selection executed actual tests.
+The earlier partial-editor test's two obsolete full-load assertions also passed after correction.
+No native operation timing inventory was run after the business changes; the paired engine
+measurements above describe the preceding optimization tree. Source manifests preserve both stages.
+
+The existing graph test fixture was updated to prepare a content-bearing sense and compiled;
+this checkpoint does not claim new on-screen graph validation. New/changed Swift lines pass lint
+and diff checks. Final source manifests match the checkpoint tree. Owned DerivedData, package
+copies, private hosts and synthetic databases were removed and cleanup verified. The installed
+Dev app and real corpus were not accessed or replaced. This was the pre-unification checkpoint;
+the subsequent Note-only decision is recorded below.
+
+## Note-only authoring and practice (2026-11-14)
+
+All native authoring, batch enrollment, source material refresh, practice and Anki sending now
+use Note/Note Type. Legacy recipe writers, preparation/material screens, direct face editing,
+retained-source fallback and old Anki sessions are removed. The user explicitly waived existing
+card content/history compatibility; there is no conversion or dual-path rendering. Corpus data
+is outside this retirement scope. Installed Dev and its real corpus are not used for validation.
+
+Note/template membership governs native queue, participation, history and Progress reads. Card
+still owns FSRS and future review history. The generated face and baseline use literal byte
+comparison, preserving their consistency across canonically equivalent Unicode source edits.
+The Home sample now uses production Notes in a disposable repository with a synthetic transport.
+
+The Note capability boundary remains text, rich content and owned images. Dynamic gap generation
+and recorded audio/video preparation are not part of this cleanup. External Anki engine reuse
+remains deferred. See REVIEW_TEMPLATE_DESIGN.md and ANKI_NOTE_SYNC.md.
+
+Final Note-only checkpoint passed 144 engine tests (122 Swift Testing + 22 XCTest), four Cloud
+adapter tests and 77 signed private Release native tests. One optional visible-desktop journey
+was not run; no native tests failed. The source/test hashes match the final validation host.
+The new Home sample explicitly loads its disposable repository before capture; batch admission
+validates source IDs once inside the engine transaction instead of constructing legacy drafts.
+Canonical archive fixtures now exercise the actual engine; database writer connections enforce
+0600 before WAL initialization. Read-only handles do not change file permissions. Changed Swift
+lines and diff checks pass. DerivedData, copied packages, private host and owned Home sample
+directories were removed and cleanup verified. No operation timing inventory or Dev installation
+was performed. Evidence: build/note-unification-validation.json and
+build/corpus-operation-benchmark/note-unification-complete-2026-11-14/.
+
+
+## Scoped Notes and corpus model retirement (2026-11-14)
+
+The next authorized slice scopes Note/type edits to affected owners, removes obsolete embedded
+corpus review fields/codecs and retires independent example movement. Example append/edit and
+whole-sense consolidation remain. This is a data/model change within the existing local SQLite
+architecture; it does not replace the repository, scheduler or synchronization boundaries.
+
+`ReviewNoteStore` now reads one Note/type by ID and selects type dependents through
+`notebook_notes_by_type`. The shared rendering pipeline groups memberships once, resolves one
+canonical source per affected Note, borrows the reconciliation result and refreshes each member
+once. Type edits preserve used template IDs and custom fields; source/type/admission failures
+roll back alongside Card face changes. Scoped tests poison unrelated payloads and protect
+unrelated material with SQL triggers, test late failures and conditional question admission, and
+retain existing Card IDs, schedules and review events.
+
+The corpus no longer models `review`, `reviewCards` or `reviewTemplates`. Its row codec emits
+26 families rather than 29. Old recipe/binding/template validation, media traversal and plan-ID
+admission indexes are removed. Certificate validation version 2 revokes earlier proofs.
+Note/type/Anki receipts and Card scheduling retain their separate owners. Two false wire presence
+flags, two reserved wire entity tags and zero SQL framing columns remain structural fields of
+the current transport/storage envelope; they do not parse or revive legacy card payloads.
+No historical card content/history conversion is supplied, as explicitly requested.
+
+Paired Release engine medians below use the same closed synthetic seed per variant/sample,
+three independent trials, 512 tiny owned PNGs and 1,000 retained ratings. Source/draft reads and
+postconditions are outside the timer; these are writer timings, not UI painting latency.
+
+| Public engine writer | 10k before | 10k after | 20k before | 20k after |
+| --- | ---: | ---: | ---: | ---: |
+| Edit one Note | 1685.606ms | 6.934ms | 5540.336ms | 11.845ms |
+| Edit type used by one Note / eight cards | 1717.229ms | 5.552ms | 5712.034ms | 10.424ms |
+| Edit shared type / 2,000 or 4,000 Notes | 14848.399ms | 3424.903ms | 55355.646ms | 6947.359ms |
+
+The shared-type operation genuinely changes thousands of questions and remains linear work in
+one atomic transaction. It is not a constant-time operation. Samples, ranges, seed hashes and
+source manifests are recorded in [paired measurements](benchmarks/note-local-writers-2026-11-14.json).
+Final corpus retirement also removed dormant SQL references/header reads after the paired run;
+a subsequent source-resolver fix handles retired/merged identities. The paired numbers describe the
+localized implementation before that boundary fix; the final native operation scan uses the fixed tree.
+
+
+Final corrected-tree writer medians on fresh equivalent seeds were 9.891/14.508ms for one
+Note, 10.190/13.136ms for a one-Note/eight-card type, and 2895.221/6770.702ms for a shared type
+at 10k/20k entries (three trials each). These new seed files are not the earlier physical pair.
+The source resolver now uses a scalar subquery so a missing canonical source yields SQL NULL,
+then resolves aliases or preserves sourceMissing; it does not mistake zero rows for SQL failure.
+Regression tests edit both the Note and type after source deletion/merge without losing memory.
+
+The final signed private Release scan passed all 84 windows at both sizes: 378 samples, 35
+frequent windows with three trials per size and the rest one full-scan observation. At 20k,
+favorites took about 150–161ms; Note edit including Review reload was 482.757ms and rating plus
+reload 511.957ms. These include model data publication, not screen painting. Full corpus loading
+(8.46s) is a separate complete consumer, not paged first-row readiness. Full Review snapshot
+reload remains a measured follow-up candidate; the writer and UI fixtures cannot be subtracted
+to isolate one internal method. See the [complete measured inventory](benchmarks/corpus-note-operations-2026-11-14.md).
+
+The initial wide native run found three stale CLI fixture assumptions (localized display label,
+no-op revision, and empty creation). The corrected CLI suite executed 33 passing tests. A genuine
+source-retirement bug was then caught by the new smoke window, fixed and covered by the new
+storage scenarios plus eight passing related native checks. Shared engine full execution passed
+148 tests; Cloud passed four, and shared corpus packages executed 117 with three opt-in interop
+skips. No unresolved functional failure remains in these selected checks. Final source manifests,
+per-run summaries and cleanup verification are consolidated in build/note-local-validation.json.
+The installed Dev application/data were not opened, copied, replaced or used as a fixture.
+
+### Seven measured large-corpus groups (2026-11-14)
+
+The following boundaries address the remaining material costs, without pursuing tiny cached
+read differences. They retain one database, the existing archive/session owners and atomic
+writes; they do not introduce a second canonical corpus or a partial save baseline.
+
+1. Review reads group exercises, live Note Cards, availability and undo markers once inside
+   the read transaction. The content index reuses unchanged corpus labels/selections and
+   group order across review-only state refreshes, with conservative corpus invalidation.
+2. Literal browsing/CLI search keeps per-entry searchable fields and per-query repeated-field
+   decisions. Unicode uses Foundation localized matching; ASCII uses literal lowercase lookup
+   except for Turkish/Azeri locales. Proven entry insert/remove receipts update search documents
+   locally when no meaning destination is removed; unknown/graph changes use the full path.
+3. Cold CLI status uses scalar counts; a warm status reuses checked connection counts only
+   after exact version and durable corpus-token checks. Single/batch material reads load only the selected lexical
+   owners and closed evidence/semantic dependencies. Empty-query list reads only bounded
+   summaries. Fenced read results never set the UI's complete-load flag or populate its corpus
+   with partial material. Text queries and general resource reads retain complete searchable
+   inputs where that contract still requires them.
+4. Warm favorite/editor planning resolves target/duplicate ownership by indexed headword detail,
+   avoiding repeated whole-corpus normalization and evidence joins. The complete consumer still
+   receives a coherent complete receipt; eligible cold commands retain their certified local path.
+5. Manual batch import applies sealed entry changes to retained checked state and computes one
+   final touched-row difference, journal and revision. Merge undo retains its entry, owned
+   patterns/mappings, removed images and exact version rather than an old complete corpus.
+   Shared semantic nodes, relations and classification retain current ownership.
+6. `ReviewTemplateRenderer.Prepared` parses a Note Type once per affected batch. Name/CSS/default
+   changes update the type without rewriting Card material; field/template changes still update
+   all actual dependents atomically, retaining Card identities, schedules and rating history.
+7. Restore relies on the engine's complete pre-write validation and no longer repeats that full
+   graph traversal in the archive. Envelope/image checks remain. Full canonical loading and
+   backup encoding remain explicitly complete consumers, separate from paged first-row readiness.
+
+The shared-type [same-seed comparison](benchmarks/corpus-seven-groups-shared-types-2026-11-14.json)
+uses Release engine calls only: 20k/4k Notes CSS 2742.339→2.710ms and actual template changes
+6689.099→5944.399ms (three independent trials). It is separate from app/model publication timing.
+
+The [final seven-group report](benchmarks/corpus-seven-groups-2026-11-14.md) records 84 windows /
+378 samples at 10k and 20k, plus 70 scoped tail samples after fixing warm status count reuse.
+At 20k, three-trial medians were 41.877ms for a first no-context favorite, 35.578ms for a
+translation edit and 17.834ms for search preparation after a favorite. Single-scan observations
+were 340.742ms for repeat Review opening, 7.488ms for a CLI summary page, 2.193ms for one entry,
+579.528ms for manual import50, 198.493ms for merge undo and 5772.887ms for backup restore.
+First complete search preparation remained 524.904ms and complete corpus loading 8178.954ms;
+no material speedup is claimed for those complete consumers. Full source manifests matched.
+
+The scan exposed two read regressions during development: a CLI page planner selecting a
+workspace ID scan, and warm status doing full SQL counts (138.307ms). The page now pins the
+existing parent index; status reuses checked counts with exact version/corpus-token checks
+(0.429ms in the final 20k scoped tail). SQL VM-work and raw mutation tests protect both choices.
+Cold counts still use SQL without constructing a complete corpus. No mutable row cache relies
+on version alone.
+
+Shared engine execution passed 152 existing tests plus four focused material/count/page tests;
+shared corpus packages passed119 with3 optional external interop skips; Cloud passed4. Native
+selected checks passed180 distinct tests through initial execution and a scoped tag-assertion
+recovery, with one optional desktop journey unexecuted. The stale tag test assumed sense array
+position; its corrected ID assertions and unrelated-sense retention both passed. Final CLI33
+passed after paging correction and again after status correction. Script tests125 and strict
+SwiftLint passed. These are executed tests, not merely build-for-testing success. The installed
+Dev and real corpus were untouched; no new deployment or legacy-data conversion was performed.
+
+Final audit removed repository DerivedData, copied package caches, before-source copies and
+private hosts/fixtures, then verified their absence. The final source manifest covers1,870
+unchanged files; cleanup evidence lives in `build/seven-group-optimization/cleanup.json`.

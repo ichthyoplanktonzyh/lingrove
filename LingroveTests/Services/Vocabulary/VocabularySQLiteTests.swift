@@ -14,24 +14,16 @@ struct VocabularySQLiteTests {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true); return url
     }
 
-    @Test func relationalRoundTripRetainsImagesExplanationCardsBindingsAndTemplates() async throws {
+    @Test func canonicalRoundTripRetainsImagesAndExplanations() async throws {
         let directory = try folder(); defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("notebook.sqlite")
         var (entries, image) = try VocabularyExportTests().fixture()
         entries[0].senses[0].examples[0].ranges = [.init(NSRange(location: 4, length: 4))]
-        let senseID = entries[0].senses[0].id
         let capture = VocabularyCapture(expression: entries[0].expression, dictionaryForm: entries[0].dictionaryForm,
             language: .english, kind: .word, example: entries[0].senses[0].examples[0])
         entries[0].senses[0].examples[0].explanations = [.init(id: UUID(), input: LearningExplanationPolicy.input(capture),
             language: .chinese, result: .init(meaning: "金融机构", explanation: "保留语境解释"), model: "fixture", createdAt: Date())]
-        let binding = AnkiNoteBinding(originSenseID: senseID, endpoint: "http://127.0.0.1:8765", profile: "Fixture",
-            noteID: 42, model: AnkiReviewPolicy.presetName, deck: "Default", identityField: "LingroveID",
-            mapping: AnkiReviewPolicy.presetMapping, fields: ["LingroveID": senseID.uuidString.lowercased()])
-        let review = VocabularyReview(plan: .init(layout: ReviewLayoutPolicy.preset(0)), bindings: [binding], activeBindingID: binding.id)
-        entries[0].senses[0].review = review; entries[0].senses[0].reviewCards = [review]
-        entries[0].senses[1].reviewCards = []
-        let template = ReviewLayoutTemplate(name: "Fixture", layout: ReviewLayoutPolicy.preset(0))
-        let document = VocabularyDocument(entries: entries, reviewTemplates: [template])
+        let document = VocabularyDocument(entries: entries)
         let archive = VocabularyArchive(url: url)
         let snapshot = try await archive.commitWithImages(document, supplied: [image.reference.filename: image.data])
         #expect(snapshot.document == document)
@@ -40,12 +32,13 @@ struct VocabularySQLiteTests {
         #expect(try await reopened.load().revision == snapshot.revision)
         #expect(try await reopened.image(image.reference) == image.data)
         #expect(try Data(contentsOf: url).starts(with: Data("SQLite format 3\0".utf8)))
-        let database = try VocabularySQLiteDatabase(url: url)
-        #expect(try database.connection.rows("PRAGMA foreign_key_check").isEmpty)
-        for (table, count) in [("entries", 2), ("senses", 3), ("usages", 1), ("reviews", 2),
-                               ("bindings", 2), ("blocks", 3), ("templates", 1), ("usage_explanations", 1)] {
-            #expect(try database.connection.rows("SELECT count(*) FROM " + table) == [[.integer(Int64(count))]])
+        let counts = try await reopened.perform(basedOn: nil) { archive in
+            let core = try archive.persistence().core
+            return try [core.scalarInt(sql: "SELECT COUNT(*) FROM pragma_foreign_key_check", values: []),
+                core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_entries", values: []),
+                core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_senses", values: [])]
         }
+        #expect(counts == [0, 2, 3])
         let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? NSNumber
         #expect(mode?.intValue == 0o600)
     }
@@ -82,15 +75,22 @@ struct VocabularySQLiteTests {
     @Test func staleConnectionCannotOverwriteAnotherCommitAndArchiveRefreshes() async throws {
         let directory = try folder(); defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("notebook.sqlite")
-        let first = try VocabularySQLiteDatabase(url: url), second = try VocabularySQLiteDatabase(url: url)
-        let source = VocabularyDocument(entries: try VocabularyExportTests().fixture().entries)
-        _ = try first.write(source, previous: .init(), expectedRevision: 0)
-        #expect(throws: VocabularyError.editConflict) { _ = try second.write(.init(), previous: .init(), expectedRevision: 0) }
-        #expect(try second.read().document == source)
-        let archive = VocabularyArchive(url: url); _ = try await archive.load()
-        var changed = source; changed.entries[0].senses[0].note = "Other writer"
-        _ = try first.write(changed, previous: source, expectedRevision: 1)
-        #expect(try await archive.load().document == changed)
+        let first = VocabularyArchive(url: url), second = VocabularyArchive(url: url)
+        let (entries, image) = try VocabularyExportTests().fixture()
+        let source = VocabularyDocument(entries: entries)
+        let original = try await first.commitWithImages(source, supplied: [image.reference.filename: image.data])
+        _ = try await second.load()
+        var changed = original.document.entries[0]
+        changed.senses[0].note = "First writer"
+        _ = try await first.update(changed, basedOn: original.document.entries[0])
+        var stale = original.document.entries[0]
+        stale.senses[0].note = "Stale writer"
+        await #expect(throws: VocabularyError.editConflict) {
+            try await second.update(stale, basedOn: original.document.entries[0])
+        }
+        let refreshed = try await second.load().document.entries.first { $0.id == changed.id }
+        #expect(refreshed?.senses.first { $0.id == changed.senses[0].id }?.note == "First writer")
+
     }
 
     @Test func databaseConstraintAndCorruptPayloadFailWithoutResettingData() throws {
@@ -112,18 +112,21 @@ struct VocabularySQLiteTests {
         let url = directory.appendingPathComponent("notebook.sqlite"), archive = VocabularyArchive(url: url)
         let (entries, original) = try VocabularyExportTests().fixture()
         let before = try await archive.commitWithImages(.init(entries: entries), supplied: [original.reference.filename: original.data])
-        let database = try VocabularySQLiteDatabase(url: url)
-        try database.connection.execute("CREATE TRIGGER fail_commit BEFORE UPDATE ON state BEGIN SELECT RAISE(ABORT,'fixture'); END")
+        _ = try await archive.perform(basedOn: nil) { archive in
+            try archive.persistence().core.executeScript(sql: """
+                CREATE TRIGGER fail_commit BEFORE UPDATE ON notebook_state BEGIN SELECT RAISE(ABORT,'fixture'); END;
+                """, errorContext: "Install an atomic-save fault")
+        }
         let image = try VocabularyImageStorage.prepare(VocabularyImageTestFixture.png(width: 100, height: 60))
-        var edited = entries[0]
+        var edited = before.document.entries[0]
         edited.senses[0].content = [.init(content: .image(image.reference, caption: "Must not survive"))]
-        await #expect(throws: VocabularyError.self) {
-            _ = try await archive.update(edited, basedOn: entries[0], importedImages: [image.reference.filename: image.data])
+        await #expect(throws: (any Error).self) {
+            _ = try await archive.update(edited, basedOn: before.document.entries[0],
+                importedImages: [image.reference.filename: image.data])
         }
         #expect(try await archive.load().document == before.document)
         #expect(try await archive.image(original.reference) == original.data)
         await #expect(throws: (any Error).self) { _ = try await archive.image(image.reference) }
-        #expect(!FileManager.default.fileExists(atPath: url.path + ".media/" + image.reference.filename))
     }
 
     @Test func exportsCannotReplaceWALSidecarsOrAHardLinkToTheDatabase() async throws {
@@ -131,7 +134,9 @@ struct VocabularySQLiteTests {
         let url = directory.appendingPathComponent("notebook.sqlite")
         // macOS invalidates SQLite's open vnode when a live file gains a link. Construct the
         // alias while closed so this tests our export guard rather than that OS protection.
-        do { let database = try VocabularySQLiteDatabase(url: url); database.connection.close() }
+        let initial = VocabularyArchive(url: url)
+        _ = try await initial.load()
+        await initial.shutdown()
         let link = directory.appendingPathComponent("innocent.json")
         try FileManager.default.linkItem(at: url, to: link)
         let archive = VocabularyArchive(url: url)
@@ -159,16 +164,15 @@ struct VocabularySQLiteTests {
         #expect(try first.read().document == source)
     }
 
-    @Test func symlinkDatabaseIsRejectedAndOldJSONIsIgnored() async throws {
+    @Test func unsupportedDevelopmentSchemaFailsWithoutResettingTheDatabase() async throws {
         let directory = try folder(); defer { try? FileManager.default.removeItem(at: directory) }
-        let old = directory.appendingPathComponent("notebook-v3.json"), bytes = Data("Old JSON is not imported".utf8)
-        try bytes.write(to: old)
         let url = directory.appendingPathComponent("notebook.sqlite")
-        #expect(try await VocabularyArchive(url: url).load().document.entries.isEmpty)
-        #expect(try Data(contentsOf: old) == bytes)
-        let link = directory.appendingPathComponent("linked.sqlite")
-        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
-        await #expect(throws: VocabularyError.self) { _ = try await VocabularyArchive(url: link).load() }
-        #expect(try Data(contentsOf: old) == bytes)
+        do {
+            let old = try VocabularySQLiteDatabase(url: url)
+            old.connection.close()
+        }
+        let before = try Data(contentsOf: url)
+        await #expect(throws: (any Error).self) { try await VocabularyArchive(url: url).load() }
+        #expect(try Data(contentsOf: url) == before)
     }
 }

@@ -155,8 +155,8 @@ struct HomeLearningDemoTests {
         await model.store.save(early)
         await model.prepareReview()
         let session = try #require(model.ankiSession)
-        #expect(session.validationMessage == nil)
-        let example = session.current?.sense.examples.first { $0.id == session.plan.exampleID }
+        #expect(session.message == nil && session.material != nil)
+        let example = session.material?.sense.examples.first { $0.id == session.material?.note.exampleID }
         #expect(example?.meaning.isEmpty == false)
         #expect(await session.send())
     }
@@ -169,15 +169,15 @@ struct HomeLearningDemoTests {
         defer { model.stop() }
         await model.prepareReview()
         let session = try #require(model.ankiSession)
-        #expect(session.validationMessage == nil)
-        #expect(session.plan.layout != nil)
+        #expect(session.message == nil && session.material != nil)
+        #expect(session.material?.type.templates.isEmpty == false)
         await model.sendCard()
-        let id = try #require(session.binding?.noteID, Comment(rawValue: session.message ?? "Missing Anki receipt"))
-        #expect(id > 0)
-        #expect(session.binding?.fields["Front"]?.contains(session.current?.entry.expression ?? "missing") == true)
-        session.plan.name = "Example card"
+        let id = session.material?.note.id
+        #expect(session.hasAssociation, Comment(rawValue: session.message ?? "Missing Anki receipt"))
+        #expect(id != nil)
+        #expect(session.material?.export.fields["Expression"]?.contains(session.material?.entry.expression ?? "missing") == true)
         await model.sendCard()
-        #expect(session.binding?.noteID == id)
+        #expect(session.material?.note.id == id && session.hasAssociation)
         await model.reviewCard()
         #expect(model.ankiDestinationShown)
         #expect(model.reviewFailure == nil)

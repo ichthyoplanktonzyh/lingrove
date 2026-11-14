@@ -38,43 +38,6 @@ public struct LingroveNotebookReviewMediaStore {
         }
     }
 
-    /// Caller already owns its saved-source writer transaction. All supplied data is checked
-    /// before the first row is inserted; a subsequent failure still rolls back every row.
-    public func register(plan: ReviewMaterialPlan?, source: LingroveNotebookCardSource,
-                         snapshot: LingroveNotebookSnapshot, supplied: [ReviewMaterialPreparedMedia]) throws {
-        guard let plan else {
-            guard supplied.isEmpty else { throw VocabularyError.invalidContent }; return
-        }
-        try ReviewMaterialResolver.validate(plan)
-        var references = Set(plan.layout.customContent.compactMap { block -> ReviewMaterialMediaReference? in
-            if case let .image(image, _) = block.content { .init(image: image) } else { nil }
-        })
-        references.formUnion(plan.audio.values.map(\.reference))
-        if let selection = LingroveNotebookCardMaterial.resolvedSelection(source: source, snapshot: snapshot),
-           let entry = snapshot.document.entries.first(where: { $0.id == selection.entryID }),
-           let sense = entry.senses.first(where: { $0.id == selection.senseID }),
-           let resolved = try? LingroveNotebookCardMaterial.mediaReferences(entry: entry, sense: sense, plan: plan) {
-            references.formUnion(resolved)
-        }
-        guard references.reduce(0, { $0 + $1.byteCount }) <= 16 * 1024 * 1024,
-              Set(supplied.map { $0.reference.digest }).count == supplied.count,
-              supplied.count <= 128, supplied.allSatisfy({ $0.reference.isValid }), supplied.reduce(0, { $0 + $1.reference.byteCount }) <= 16 * 1024 * 1024 else { throw VocabularyError.invalidContent }
-        for prepared in supplied { try Self.validate(prepared) }
-        let byDigest = Dictionary(uniqueKeysWithValues: supplied.map { ($0.reference.digest, $0) })
-        for reference in references.sorted(by: { $0.digest < $1.digest }) {
-            try Task.checkCancellation()
-            if let prepared = byDigest[reference.digest] {
-                try insert(prepared, workspaceID: source.workspaceId)
-            } else if let existing = try media(reference: reference, workspaceID: source.workspaceId) {
-                guard existing.reference == reference else { throw VocabularyError.invalidContent }
-            } else if let image = reference.image {
-                // Existing corpus ownership authorizes reuse. A foreign cache hit alone does not.
-                let bytes = try LingroveNotebookMediaStore(core: core).ownedImage(image, workspaceId: source.workspaceId)
-                try insert(.init(reference: reference, data: bytes), workspaceID: source.workspaceId)
-            } else { throw VocabularyError.invalidContent }
-        }
-    }
-
     public func media(assetID: String, workspaceID: String) throws -> ReviewMaterialPreparedMedia? {
         try load(whereClause: "media_asset_id=?", value: assetID, workspaceID: workspaceID)
     }

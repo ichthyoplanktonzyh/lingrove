@@ -312,9 +312,7 @@ private final class NotebookProgressMacFixture {
 
     func enroll() throws {
         let content = try review()
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: selection)
-        _ = try repository.engine.enrollBuiltInNotebookSense(draft, input: draft.generatedContent,
-            action: .init(content: content, selection: selection))
+        _ = try repository.engine.enrollReviewNotes(selections: [selection], type: content.defaultNoteType, scope: content.scope)
     }
 
     func rate(_ rating: ReviewRating, engine: LingroveNotebookEngine? = nil, offset: Double = 0) throws {
@@ -350,9 +348,14 @@ private final class NotebookProgressMacFixture {
         let offsets: [Int?] = [0, 8, 31, 91, 361, 721, nil]
         for offset in offsets {
             var content = try review()
-            let draft = try LingroveNotebookCardMaterial.draft(snapshot: content.scope, selection: selection)
-            let card = try engine.addBuiltInNotebookExercise(draft, input: draft.generatedContent,
-                action: .init(content: content, selection: selection))
+            let base = content.defaultNoteType
+            var type = base; type.revision += 1
+            let templateID = UUID()
+            type.templates.append(.init(id: templateID, name: "Forecast", front: "{{Expression}}", back: "{{Meaning}}"))
+            try repository.engine.saveReviewNoteType(type, expected: base, scope: content.scope)
+            content = try review()
+            let cardID = try #require(content.noteCards.first { $0.value.templateID == templateID }?.key)
+            let card = try #require(content.review.groups[selection.senseID]?.cards.first { $0.cardId == cardID })
             if let offset {
                 content = try review()
                 _ = try engine.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,

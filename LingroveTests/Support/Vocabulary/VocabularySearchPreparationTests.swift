@@ -7,6 +7,30 @@ import Testing
 /// set. These synthetic values need neither a database nor an embedding model.
 @MainActor
 struct VocabularySearchPreparationTests {
+    @Test func unassociatedInsertAndRemovalKeepExistingRetrievalDocuments() throws {
+        let fixture = VocabularySearchPolicyTests.influenceFixture()
+        var entries = fixture.entries, preparation = VocabularySearchPreparation()
+        let first = UUID()
+        let before = preparation.prepare(entries: entries, semantics: fixture.semantics, revision: first)
+        let now = Date()
+        let added = VocabularyEntry(id: UUID(), expression: "new word", dictionaryForm: "new word", language: .english, kind: .word,
+            senses: [.init(id: UUID(), meaning: "A new unassociated meaning", createdAt: now, updatedAt: now)],
+            createdAt: now, updatedAt: now)
+        entries.append(added)
+        let second = UUID()
+        let inserted = preparation.prepare(entries: entries, semantics: fixture.semantics, revision: second,
+            entryChange: .init(baseRevision: first, revision: second, entryID: added.id))
+        #expect(inserted.rebuiltSenses == [added.senses[0].id] && inserted.rebuiltMeanings.isEmpty)
+        #expect(inserted.meanings.map(\.fingerprint) == before.meanings.map(\.fingerprint))
+        try sameAsFull(inserted, entries: entries, semantics: fixture.semantics)
+        entries.removeLast()
+        let third = UUID()
+        let removed = preparation.prepare(entries: entries, semantics: fixture.semantics, revision: third,
+            entryChange: .init(baseRevision: second, revision: third, entryID: added.id))
+        #expect(removed.rebuiltSenses.isEmpty && removed.rebuiltMeanings.isEmpty)
+        try sameAsFull(removed, entries: entries, semantics: fixture.semantics)
+    }
+
     @Test func anAnnotationSaveKeepsBoundedExampleRetrievalMaterialStable() throws {
         var entry = try #require(VocabularySearchPolicyTests.influenceFixture().entries.first)
         let now = Date(timeIntervalSince1970: 100)

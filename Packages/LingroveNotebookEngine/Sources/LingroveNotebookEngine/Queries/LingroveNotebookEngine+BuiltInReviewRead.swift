@@ -79,12 +79,14 @@ extension LingroveNotebookEngine {
             SELECT COUNT(*) FROM review_events event WHERE event.workspace_id=? AND
             EXISTS (SELECT 1 FROM notebook_review_exercises exercise
                 JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                 WHERE exercise.workspace_id=event.workspace_id AND exercise.card_id=event.card_id AND enrollment.notebook_id=?)
             """, values: values)
         let undos = try core.scalarInt(sql: """
             SELECT COUNT(*) FROM notebook_review_undo undo WHERE undo.workspace_id=? AND
             EXISTS (SELECT 1 FROM notebook_review_exercises exercise
                 JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                 WHERE exercise.workspace_id=undo.workspace_id AND exercise.card_id=undo.card_id AND enrollment.notebook_id=?)
             """, values: values)
         return (ratings, undos)
@@ -98,6 +100,7 @@ extension LingroveNotebookEngine {
             FROM review_events event WHERE event.workspace_id=? AND
                 EXISTS(SELECT 1 FROM notebook_review_exercises exercise
                     JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
+                    JOIN notebook_note_cards member ON member.workspace_id=exercise.workspace_id AND member.card_id=exercise.card_id
                     WHERE exercise.workspace_id=event.workspace_id AND exercise.card_id=event.card_id AND enrollment.notebook_id=?)
             ORDER BY event.reviewed_at_client DESC,event.review_event_id DESC LIMIT 12
             """, values: [.text(scope.workspaceId), .text(scope.notebookId.uuidString)]) {

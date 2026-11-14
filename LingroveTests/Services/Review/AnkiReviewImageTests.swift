@@ -1,77 +1,52 @@
-import LingroveNotebook
 import Foundation
+import LingroveNotebook
 import Testing
 @testable import Lingrove
 
-extension AnkiReviewTests {
-    @Test func imageAnswerUploadsBeforeNoteAndUpdatesKeepStableIdentity() async throws {
-        let (controller, fake, defaults, name) = try await fixture()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let baseline = controller.store.entries[0]
-        let image = try await controller.store.prepareImage(VocabularyImageTestFixture.png())
-        var edited = baseline
-        edited.senses[0].content = [.init(content: .image(image.reference, caption: "A river bank"))]
-        #expect(await controller.store.update(edited, basedOn: baseline, importedImages: [image.reference.filename: image.data]))
-        let first = try session(controller)
-        first.plan.answer = ""; first.plan.gap = false
-        await fake.loseNextAddReply()
-        #expect(await first.send() == false)
-        #expect(await fake.mediaCount() == 1)
-        let retry = try session(controller)
-        #expect(await retry.send())
-        let noteID = try #require(controller.store.entries[0].senses[0].review?.activeBinding?.noteID)
-        #expect(await fake.values(noteID)?["Meaning"]?.contains(image.reference.filename) == true)
-        #expect(await fake.counts().add == 1)
-        let update = try session(controller)
-        update.plan.answer = "River bank"
-        #expect(await update.send())
-        #expect(controller.store.entries[0].senses[0].review?.activeBinding?.noteID == noteID)
-        #expect(await fake.counts().add == 1)
+/// Note media uses the real source owner and sender with a synthetic Anki transport. These
+/// checks protect upload/retry identity and profile fences without retaining a recipe editor.
+@Suite(.serialized) @MainActor
+struct NoteAnkiMediaTests {
+    @Test func imageUploadAndLostReplyReuseTheSameNote() async throws {
+        try await withImage { fixture, fake, controller, selection, filename in
+            let session = NoteAnkiSession(controller: controller, selection: selection)
+            await session.load()
+            fake.lose("addNote")
+            #expect(!(await session.send()))
+            #expect(fake.mediaNames().contains(filename))
+            #expect(await session.send())
+            #expect(fake.count() == 1)
+            #expect(fake.fields()["RichContent"]?.contains(filename) == true)
+            let review = try fixture.repository.engine.loadLingroveNotebookReviewSnapshot(scope: fixture.repository.snapshot())
+            #expect(review.groups.isEmpty)
+        }
     }
 
-    @Test func legacyGapTemplateMustUpgradeBeforeSendingSenseContent() async throws {
-        let (controller, fake, defaults, name) = try await fixture()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let baseline = controller.store.entries[0]
-        var edited = baseline
-        edited.senses[0].content = [.init(content: .text(.init(text: "secret explanation")))]
-        #expect(await controller.store.update(edited, basedOn: baseline))
-        await fake.setLegacyTemplate()
-        let draft = try session(controller)
-        draft.plan.gap = true
-        #expect(await draft.send() == false)
-        #expect(await fake.counts().add == 0)
-        await draft.updateTemplate()
-        #expect(await draft.send())
-        #expect(await fake.counts().add == 1)
+    @Test func profileChangeDuringImageUploadRejectsNoteCreation() async throws {
+        try await withImage { _, fake, controller, selection, _ in
+            let session = NoteAnkiSession(controller: controller, selection: selection)
+            await session.load()
+            fake.switchProfileDuringNextMediaUpload()
+            #expect(!(await session.send()))
+            #expect(fake.count() == 0)
+        }
     }
 
-    @Test func profileChangingDuringImageUploadCannotCreateNote() async throws {
-        let (controller, fake, defaults, name) = try await fixture()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let baseline = controller.store.entries[0]
-        let image = try await controller.store.prepareImage(VocabularyImageTestFixture.png())
-        var edited = baseline
-        edited.senses[0].content = [.init(content: .image(image.reference, caption: ""))]
-        #expect(await controller.store.update(edited, basedOn: baseline, importedImages: [image.reference.filename: image.data]))
-        await fake.switchProfileAfterNextMedia("Other profile")
-        #expect(try await session(controller).send() == false)
-        #expect(await fake.counts().add == 0)
-    }
-
-    @Test(arguments: [false, true]) func finalTemplateReadCannotRedirectWritesToAnotherProfile(updating: Bool) async throws {
-        let (controller, fake, defaults, name) = try await fixture()
-        defer { defaults.removePersistentDomain(forName: name) }
-        if updating { #expect(try await session(controller).send()) }
-        let baseline = controller.store.entries[0]
-        var edited = baseline
-        edited.senses[0].content = [.init(content: .text(.init(text: "A financial institution")))]
-        #expect(await controller.store.update(edited, basedOn: baseline))
-        let draft = try session(controller)
-        draft.plan.includeSenseContent = true; draft.plan.gap = true
-        await fake.switchProfileOnSecondTemplateRead()
-        #expect(await draft.send() == false)
-        #expect(await fake.counts().add == (updating ? 1 : 0))
-        #expect(await fake.counts().update == 0)
+    private func withImage(_ body: (NotebookWorkspaceFixture, NoteAnkiFake, AnkiReviewController,
+                                    VocabularySelection, String) async throws -> Void) async throws {
+        let fixture = try NotebookWorkspaceFixture()
+        do {
+            let selection = try await fixture.seed()
+            let original = try #require(fixture.store.entries.first { $0.id == selection.entryID })
+            let image = try await fixture.store.prepareImage(VocabularyImageTestFixture.png())
+            var edited = original
+            edited.senses[0].content = [.init(content: .image(image.reference, caption: "Synthetic harbor"))]
+            #expect(await fixture.store.update(edited, basedOn: original, importedImages: [image.reference.filename: image.data]))
+            let fake = NoteAnkiFake()
+            let controller = AnkiReviewController(settings: fixture.anki.settings, store: fixture.store,
+                repository: fixture.repository, client: fake, activateAnki: {})
+            try await body(fixture, fake, controller, selection, image.reference.filename)
+            await fixture.cleanUp()
+        } catch { await fixture.cleanUp(); throw error }
     }
 }

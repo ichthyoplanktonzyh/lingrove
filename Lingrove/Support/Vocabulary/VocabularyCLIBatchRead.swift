@@ -5,9 +5,10 @@ import LingroveNotebook
 /// Keeping selection and cumulative budgeting here prevents a CLI/MCP batch from becoming a
 /// loop of separate reads with mismatched revisions, or silently returning only the found IDs.
 nonisolated enum VocabularyCLIBatchRead {
-    static func read(_ selection: CLIReadSelection, from document: VocabularyDocument) throws -> [String: CLIJSON] {
+    static func read(_ selection: CLIReadSelection, from document: VocabularyDocument,
+                     joinedEntries: [VocabularyEntry]? = nil) throws -> [String: CLIJSON] {
         try selection.validate()
-        let entries = document.entries
+        let entries = joinedEntries ?? document.entries
         let selected: [VocabularyEntry]
         switch selection.kind {
         case .entries:
@@ -25,7 +26,7 @@ nonisolated enum VocabularyCLIBatchRead {
             }
         }
         try VocabularyCLIReadBudget.validate(selected)
-        let projection = NotebookSenseProjection(document)
+        let projection = NotebookSenseProjection(document, selecting: Set(selected.flatMap(\.senses).map(\.id)))
         let values = switch selection.kind {
         case .entries: try selected.map { try projection.entry($0) }
         case .senses: try zip(selection.ids, selected).map { id, entry in try projection.sense(id, in: entry) }

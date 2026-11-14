@@ -15,8 +15,9 @@ refresh alone never enrolls an Anki-only Note. Mobile consumes this rule from th
 Repeated sends find the stable `LingroveNoteID` field and update the same remote note. Models are
 namespaced by workspace and type ID; template names use stable IDs to avoid accidental card
 replacement on local display-name edits. These internal Anki names are not final presentation
-polish. Existing legacy per-card associations retain their explicit editor; no old exercise or
-Anki association is automatically migrated. New batch exports use the shared default type.
+polish. Legacy per-card authoring/editing has been removed; existing card content/history or
+Anki associations are not migrated. `NoteAnkiBatchSession` freezes one shared type per run and
+uses the same sender for every selected sense.
 
 ## Boundaries
 

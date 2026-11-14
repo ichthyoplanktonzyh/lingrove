@@ -31,6 +31,10 @@ presentation rule; any explicit preferred sense would be a separate user choice.
 An explicit choice that two saved senses of one expression represent the same meaning. The target
 retains its definition, explanation, notes and semantic links; the source contributes its examples.
 
+**Sense draft / 义项草稿**:
+Language material being authored before it is saved as a sense. An empty placeholder or tags alone
+are not saved sense content; a definition, explanation, personal note or supporting example supplies content.
+
 **Meaning category / 意义类别**:
 A reusable organizing class containing meaning nodes, such as degree or minimal degree.
 Categories may have several parents, and a meaning node may belong to several categories.
@@ -106,6 +110,11 @@ of the same example as a different meaning.
 Independent examples of a sense form an unordered membership. A review that uses a particular
 example references that example's identity. The original sentence/dialogue and authored
 explanation retain their internal structure and sequence.
+
+**Example addition / 追加例句**:
+Adding another contextual sentence or fragment to support an existing sense. A sense can have
+multiple examples; addition does not independently reassign an existing example to another sense.
+_Avoid_: equating example addition with example movement or with sense consolidation.
 
 **Contextual lookup / 语境查读**:
 During acquisition, the interpretation of the chosen expression given the available sentence or fragment. It may
@@ -185,3 +194,15 @@ _Avoid_：一次性制卡预设
 **来源字段（Source Field）**：由语料的指定内容提供的笔记字段。
 
 **自定义字段（Custom Field）**：用户为复习单独填写、不会被来源更新覆盖的笔记字段。
+
+The native application uses Note/Note Type as its only card-authoring and practice model.
+Per-exercise recipes and direct generated-face editing have no product entrance or engine
+writer. Existing legacy card content/history are not migrated, per the 2026-11-14 user decision.
+New Note Cards continue to retain their own future schedule/history; personal corpus content
+is independent of this retirement.
+
+Note writes load the selected Note/type by identity; type edits select only dependent Notes through
+an index. Source projection, template reconciliation and generated Card refresh happen once per
+affected Note in the same transaction. A shared type edit deliberately updates all its dependents.
+The corpus has no embedded `review`, `reviewCards` or `reviewTemplates` fields or recipe codecs.
+Example addition remains supported; independent example transfer has no policy/archive/store API.

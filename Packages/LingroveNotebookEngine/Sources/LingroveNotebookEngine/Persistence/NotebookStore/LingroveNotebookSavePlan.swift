@@ -49,7 +49,7 @@ struct LingroveNotebookSavePlan {
             senses.contains($0.id) || !$0.mergedFrom.allSatisfy { !senses.contains($0) }
         }) { ids.insert(entry.id) }
         entryIDs = ids
-        reviewSenseIDs = before.allReviewMaterial || after.allReviewMaterial ? nil :
+        reviewSenseIDs =
             Self.reviewIDs(entries: previous.state.entries, ids: ids).union(Self.reviewIDs(entries: state.entries, ids: ids))
         requiresEntryReload = false
     }
@@ -75,8 +75,6 @@ struct LingroveNotebookSavePlan {
         }
         let sources = old.sourceIDs.union(new.sourceIDs), occurrences = old.occurrenceIDs.union(new.occurrenceIDs)
         let claims = old.interpretationIDs.union(new.interpretationIDs)
-        let templates = old.allReviewMaterial || new.allReviewMaterial ||
-            (previous.state.document.reviewTemplates != nil) != (state.document.reviewTemplates != nil)
         func fragment(_ document: VocabularyDocument) -> VocabularyDocument {
             func selected<T: Identifiable>(_ records: [T], _ family: VocabularyPersistenceEntity) -> [T] where T.ID == UUID {
                 guard let ids = families[family], !ids.isEmpty else { return [] }
@@ -87,7 +85,6 @@ struct LingroveNotebookSavePlan {
                 sources: sources.isEmpty ? [] : document.sources.filter { sources.contains($0.id) },
                 occurrences: occurrences.isEmpty ? [] : document.occurrences.filter { occurrences.contains($0.id) },
                 interpretations: claims.isEmpty ? [] : document.interpretations.filter { claims.contains($0.id) },
-                reviewTemplates: templates ? document.reviewTemplates : nil,
                 semantics: .init(nodes: selected(graph.nodes, .meaningNodes), patterns: selected(graph.patterns, .usagePatterns),
                     mappings: selected(graph.mappings, .meaningMappings), relations: selected(graph.relations, .meaningRelations),
                     cues: selected(graph.cues, .retrievalCues), cueTargets: selected(graph.cueTargets, .cueTargets)),

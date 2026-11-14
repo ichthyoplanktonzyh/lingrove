@@ -1,9 +1,11 @@
 import Foundation
 @testable import Lingrove
 
-/// Stateful legacy-protocol fixture. Model structure, notes and card identities survive calls,
+/// The MainActor test suite owns this bounded synthetic Anki collection. Its model, notes and card identities survive calls,
 /// including replies deliberately lost after commit. No real Anki profile or transport is used.
-actor NoteAnkiFake: AnkiConnecting {
+@MainActor
+final class NoteAnkiFake: AnkiConnecting {
+    init() {}
     struct Note { var model: String; var fields: [String: String] }
     struct Card { var note: Int64; var ordinal: Int; var suspended = false; var deck = "Default" }
     var models: [String: NoteAnkiJournal.Shape] = [:]
@@ -11,6 +13,11 @@ actor NoteAnkiFake: AnkiConnecting {
     var cards: [Int64: Card] = [:]
     var next: Int64 = 1000
     var lost: String?
+    var profile = "Synthetic"
+    var profileAfterMedia: String?
+    var uploaded: [String] = []
+    func switchProfileDuringNextMediaUpload() { profileAfterMedia = "Other synthetic profile" }
+    func mediaNames() -> [String] { uploaded }
     func lose(_ action: String) { lost = action }
     func count() -> Int { notes.count }
     func modelCount() -> Int { models.count }
@@ -21,7 +28,7 @@ actor NoteAnkiFake: AnkiConnecting {
     func suspendManually(_ ids: Set<Int64>) { for id in ids { cards[id]?.suspended = true } }
     func suspendedCount() -> Int { cards.values.filter(\.suspended).count }
     func allSuspended() -> Bool { !cards.isEmpty && cards.values.allSatisfy(\.suspended) }
-    func perform(_ action: String, params: [String: AnkiValue], connection: AnkiConnection) async throws -> AnkiValue {
+    @MainActor func perform(_ action: String, params: [String: AnkiValue], connection: AnkiConnection) async throws -> AnkiValue {
         let result = try dispatch(action, params)
         if lost == action { lost = nil; throw URLError(.networkConnectionLost) }
         return result
@@ -29,7 +36,7 @@ actor NoteAnkiFake: AnkiConnecting {
     private func dispatch(_ action: String, _ p: [String: AnkiValue]) throws -> AnkiValue {
         let name = p["modelName"]?.string ?? ""
         switch action {
-        case "getActiveProfile": return .string("Synthetic")
+        case "getActiveProfile": return .string(profile)
         case "deckNames": return .list(["Default", "Other"])
         case "modelNames": return .list(Array(models.keys))
         case "modelFieldNames": return .list(models[name]!.fields)
@@ -95,7 +102,11 @@ actor NoteAnkiFake: AnkiConnecting {
         case "changeDeck": for id in p["cards"]!.array! { cards[id.integer!]!.deck = p["deck"]!.string! }
         case "areSuspended": return .array(p["cards"]!.array!.map { .bool(cards[$0.integer!]!.suspended) })
         case "suspend", "unsuspend": for id in p["cards"]!.array! { cards[id.integer!]!.suspended = action == "suspend" }; return .bool(true)
-        case "storeMediaFile": return p["filename"]!
+        case "storeMediaFile":
+            let name = p["filename"]!.string!
+            uploaded.append(name)
+            if let next = profileAfterMedia { profile = next; profileAfterMedia = nil }
+            return .string(name)
         default: throw AnkiReviewError.message("Unexpected fake action: " + action)
         }
         return .null

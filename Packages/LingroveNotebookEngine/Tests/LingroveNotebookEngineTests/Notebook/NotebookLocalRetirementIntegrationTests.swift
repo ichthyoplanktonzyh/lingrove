@@ -72,39 +72,6 @@ struct NotebookLocalRetirementIntegrationTests {
         #expect(try storedCards(fixture) == cards && fixture.db.loadReviewEventCount() == history.count)
     }
 
-    @Test func retiringMergedAliasesKeepsLegacyFacesAndExplicitlyRetainedExercises() throws {
-        let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
-        let saved = try seed(fixture), entry = try #require(saved.document.entries.first)
-        let first = entry.senses[0], survivor = entry.senses[1]
-        let selection = VocabularySelection(entryID: entry.id, senseID: first.id)
-        _ = try fixture.db.enrollReviewNotes(selections: [selection], version: .init(saved))
-        let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-        _ = try fixture.db.addNotebookExercise(draft)
-        let retained = try fixture.db.addNotebookExercise(LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection))
-        let retainedLink = try #require(try fixture.db.lingroveNotebookCardLinkStore.load(workspaceId: fixture.workspace,
-            cardId: retained.cardId).first)
-        _ = try fixture.db.lingroveNotebookCardLinkStore.update(retainedLink, generatedContent: retainedLink.generatedContent,
-            sourceRevision: saved.revision, allowingUnavailableMaterial: true)
-        var document = saved.document, merged = survivor
-        merged.mergedFrom = [first.id]; merged.examples = first.examples
-        document.entries[0].senses = [merged]
-        let baseline = try fixture.db.saveLingroveNotebook(document, basedOn: saved, restoringBackup: true)
-        let links = try fixture.db.loadLingroveNotebookCardLinks(workspaceId: fixture.workspace), cards = try storedCards(fixture)
-        let noteCardIDs = Set(try ReviewNoteStore(core: fixture.db.core).memberships(workspace: fixture.workspace).map(\.cardID))
-        try fixture.reopen()
-        let receipt = try #require(try fixture.db.tryRemoveNotebookSense(survivor.id, from: entry.id, basedOn: .init(baseline)))
-        #expect(receipt.entry == nil && fixture.db.core.notebookSaveCache == nil)
-        for link in links {
-            let expected = !noteCardIDs.contains(link.cardId) && link.allowsUnavailableMaterial ? "retained" : "sourceMissing"
-            #expect(try status(fixture, cardID: link.cardId) == expected)
-        }
-        #expect(try storedCards(fixture) == cards && fixture.db.loadLingroveNotebookCardLinks(workspaceId: fixture.workspace) == links)
-        let complete = try fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace)
-        #expect(complete.document.entries.isEmpty && !complete.document.sources.isEmpty)
-        let excluded = try fixture.db.cardStore.loadNotebookExcludedReviewCardIds(workspaceId: fixture.workspace)
-        #expect(!excluded.contains(retained.cardId))
-        #expect(noteCardIDs.isSubset(of: excluded))
-    }
 
     @Test(arguments: ["material", "journal"])
     func failureRollsBackCorpusProofAndAllReviewState(stage: String) throws {

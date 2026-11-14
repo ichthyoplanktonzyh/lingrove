@@ -128,12 +128,14 @@ struct VocabularyLifecycleTests {
 
     @Test func aStaleEditorCannotRecreateADeletedEntry() async throws {
         let archive = VocabularyArchive(url: nil)
-        let saved = try await archive.save(.init(expression: "bank", dictionaryForm: "bank", language: .english, kind: .word))
+        let saved = try await archive.save(.init(expression: "bank", dictionaryForm: "bank", language: .english,
+            kind: .word, meaning: "A financial institution"))
         let baseline = saved.document.entries[0]
         _ = try await archive.remove(id: baseline.id)
         var edited = baseline; edited.senses[0].note = "Stale note"
         await #expect(throws: VocabularyError.editConflict) { _ = try await archive.update(edited, basedOn: baseline) }
         #expect(try await archive.load().document.entries.isEmpty)
+        await archive.shutdown()
     }
 
     @Test func echoingACapturedSourcePreservesItsExactTimestampAcrossTheCLIUnixEpoch() async throws {

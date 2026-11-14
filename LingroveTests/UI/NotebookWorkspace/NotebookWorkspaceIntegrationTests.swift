@@ -145,20 +145,20 @@ struct NotebookWorkspaceIntegrationTests {
             window.setFrameOrigin(.init(x: -3000, y: -3000))
             await fixture.review.session.waitForIdle()
             let content = try workspaceRequire(fixture.review.session.content)
-            fixture.review.session.prepare(selection: source, basedOn: content)
-            let draftID = try workspaceRequire(fixture.review.session.draft).id
-            fixture.review.session.draft?.front = "An unsaved review draft"
+            fixture.review.session.editNoteType()
+            let draftID = try workspaceRequire(fixture.review.session.noteTypeDraft).id
+            fixture.review.session.noteTypeDraft?.type.templates[0].front = "An unsaved review draft"
             try await workspaceEventually { window.attachedSheet != nil }
             fixture.window.navigate(to: .corpus)
             fixture.window.show(selectedID: other.entryID, senseID: other.senseID)
             workspaceExpect(fixture.window.navigation.destination == .review)
             workspaceExpect(!fixture.window.windowShouldClose(window))
-            workspaceExpect(fixture.review.session.draft?.id == draftID)
-            workspaceExpect(fixture.review.session.draft?.front == "An unsaved review draft")
+            workspaceExpect(fixture.review.session.noteTypeDraft?.id == draftID)
+            workspaceExpect(fixture.review.session.noteTypeDraft?.type.templates[0].front == "An unsaved review draft")
             try await captureWorkspace(window, name: "review-draft-protected")
             // Cancel belongs to the sheet. Only after its binding and native lifetime end may
             // the pending source request replace corpus selection; no preparation was written.
-            fixture.review.session.draft = nil
+            fixture.review.session.noteTypeDraft = nil
             try await workspaceEventually { window.attachedSheet == nil && fixture.window.navigation.destination == .corpus }
             workspaceExpect(fixture.window.corpusHost?.rootView.selectedID == other.entryID)
             workspaceExpect(fixture.window.corpusHost?.rootView.selectedSenseID == other.senseID)
@@ -267,9 +267,9 @@ struct NotebookWorkspaceIntegrationTests {
             workspaceExpect(keyboard.keyboardAction(for: digit, isKeyWindow: true) == nil)
             workspaceExpect(keyboard.keyboardAction(for: try key("z", window: host, modifiers: .command), isKeyWindow: true) == nil)
             host.makeFirstResponder(nil)
-            session.prepare(selection: selection, basedOn: try workspaceRequire(session.content))
+            session.editNoteType()
             workspaceExpect(keyboard.keyboardAction(for: digit, isKeyWindow: true) == nil)
-            session.draft = nil
+            session.noteTypeDraft = nil
             keyboard.setPresentationActive(false) // Corpus/progress is now the visible destination.
             workspaceExpect(keyboard.keyboardAction(for: digit, isKeyWindow: true) == nil)
             keyboard.shutdown()

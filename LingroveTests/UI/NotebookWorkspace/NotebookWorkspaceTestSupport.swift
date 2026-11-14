@@ -40,7 +40,7 @@ final class NotebookWorkspaceFixture {
         search = .init(store: store, directoryURL: directory.appendingPathComponent("search-models"), cacheURL: nil)
         review = .init(repository: repository, speech: speech)
         anki = .init(settings: AnkiReviewSettings(defaults: defaults, credentials: AnkiCredentialStore(service: nil)),
-            store: store, client: ReviewFakeAnki(), speech: speech, activateAnki: {})
+            store: store, repository: repository, client: ReviewFakeAnki(), speech: speech, activateAnki: {})
         let probe = progress
         let progressRepository = repository
         window = .init(store: store, speech: speech, dictionaryProvider: LearningLexiconService(resourceURL: nil),
@@ -74,7 +74,7 @@ final class NotebookWorkspaceFixture {
     func cleanUp() async {
         // End test-owned sheets explicitly; this is teardown, never a production navigation path.
         if let sheet = window.window?.attachedSheet { window.window?.endSheet(sheet) }
-        review.session.draft = nil
+        review.session.noteTypeDraft = nil
         window.close()
         settingsWindow?.close()
         await review.shutdownAfterDraining()

@@ -467,7 +467,7 @@ struct VocabularyNotebookView: View {
         }
         .sheet(isPresented: $showingBatch) {
             if let review {
-                VocabularyReviewBatchSheet(controller: review, selections: batchSelection.sorted {
+                VocabularyNoteAnkiBatchSheet(controller: review, selections: batchSelection.sorted {
                     $0.senseID.uuidString < $1.senseID.uuidString
                 })
             }
@@ -2125,12 +2125,6 @@ private struct VocabularySingleEntryRow: View {
                         .transition(.opacity)
                 }
                 Spacer(minLength: 4)
-                if !(sense.reviewCards ?? []).isEmpty {
-                    Image(systemName: "rectangle.stack.fill")
-                        .font(textSize.font(9.5, sidebar: true))
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-                }
                 Text((entry.language?.compactLabel ?? String(localized: "Unspecified", table: "Learning")))
                     .font(textSize.font(10.5, weight: .semibold, sidebar: true))
                     .foregroundStyle(.secondary)

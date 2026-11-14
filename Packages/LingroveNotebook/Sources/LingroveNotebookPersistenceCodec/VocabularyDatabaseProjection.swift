@@ -42,10 +42,6 @@ nonisolated enum VocabularyDatabaseProjection {
             children.removeAll(keepingCapacity: true); append(collection, position: previousSenses + offset, to: &children)
             for row in children { try visit(row) }
         }
-        for (position, template) in (document.reviewTemplates ?? []).enumerated().dropFirst(previous?.reviewTemplates?.count ?? 0) {
-            try visit(.init(table: .templates, id: template.id.uuidString, parentID: nil,
-                position: position, payload: .template(template)))
-        }
         if previous == nil && !validated {
             try VocabularySemanticPolicy.validate(document.semantics, entries: document.entries)
             try VocabularyClassificationPolicy.validate(document.classification, nodes: document.semantics.nodes)
@@ -77,19 +73,14 @@ nonisolated enum VocabularyDatabaseProjection {
     static func append(_ collection: VocabularySenseStorageRecord, position: Int, to rows: inout [Row]) {
         let id = collection.id.uuidString
         var header = collection
-        header.interpretationIDs = []; header.review = nil
+        header.interpretationIDs = []
         header.content = collection.content == nil ? nil : []
-        header.reviewCards = collection.reviewCards == nil ? nil : []
         rows.append(.init(table: .collections, id: id, parentID: nil, position: position,
             payload: .collection(header), extra: [collection.senseID.uuidString]))
         for (position, block) in (collection.content ?? []).enumerated() {
             rows.append(.init(table: .blocks, id: block.id.uuidString, parentID: id, position: position, payload: .block(block)))
         }
-        if let review = collection.review { append(review, id: id + ":legacy", parent: id, position: 0, to: &rows) }
-        for (position, review) in (collection.reviewCards ?? []).enumerated() {
-            append(review, id: id + ":card:" + review.plan.id.uuidString, parent: id,
-                position: position + (collection.review == nil ? 0 : 1), to: &rows)
-        }
+
     }
 
     private static func append(_ records: [LearningExplanationRecord], parent: String, table: Row.Table, to rows: inout [Row]) {
@@ -99,27 +90,18 @@ nonisolated enum VocabularyDatabaseProjection {
         }
     }
 
-    private static func append(_ review: VocabularyReview, id: String, parent: String, position: Int, to rows: inout [Row]) {
-        var header = review; header.bindings = []
-        rows.append(.init(table: .reviews, id: id, parentID: parent, position: position, payload: .review(header)))
-        for (position, binding) in review.bindings.enumerated() {
-            rows.append(.init(table: .bindings, id: id + ":" + binding.id.uuidString, parentID: id,
-                position: position, payload: .binding(binding)))
-        }
-    }
-
-    static func document(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyDocument {
+    static func document(_ rows: [Row], migratingDevCorpus: Bool = false) throws -> VocabularyDocument {
         let index = try VocabularyDatabaseRowIndex(rows)
-        let document = try reconstruct(index, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        let document = try reconstruct(index, migratingDevCorpus: migratingDevCorpus)
         if !migratingDevCorpus { try checkRows(index, document: document, validated: false) }
         return document
     }
 
     /// One full validation establishes the joined-entry proof and the lossless row check.
     /// The writer can retain it instead of immediately repeating both after a cold SQL read.
-    static func state(_ rows: [Row], hasTemplates: Bool, migratingDevCorpus: Bool = false) throws -> VocabularyEntrySaveState {
+    static func state(_ rows: [Row], migratingDevCorpus: Bool = false) throws -> VocabularyEntrySaveState {
         let index = try VocabularyDatabaseRowIndex(rows)
-        let document = try reconstruct(index, hasTemplates: hasTemplates, migratingDevCorpus: migratingDevCorpus)
+        let document = try reconstruct(index, migratingDevCorpus: migratingDevCorpus)
         let state = try VocabularyEntrySaveState(validating: document)
         if !migratingDevCorpus {
             try checkRows(index, document: document, validated: true)
@@ -140,7 +122,7 @@ nonisolated enum VocabularyDatabaseProjection {
         guard count == index.rows.count else { throw VocabularyError.invalidArchive }
     }
 
-    private static func reconstruct(_ index: VocabularyDatabaseRowIndex, hasTemplates: Bool, migratingDevCorpus: Bool) throws -> VocabularyDocument {
+    private static func reconstruct(_ index: VocabularyDatabaseRowIndex, migratingDevCorpus: Bool) throws -> VocabularyDocument {
         let graph = Graph(index: index)
         let entries = try graph.children(.entries).map { row in
             guard case var .entry(entry) = row.payload else { throw VocabularyError.invalidArchive }
@@ -160,12 +142,8 @@ nonisolated enum VocabularyDatabaseProjection {
             guard case var .usage(value) = row.payload else { throw VocabularyError.invalidArchive }
             value.explanations = try graph.explanations(.usageExplanations, parent: row.id); return value
         }
-        let templates = try graph.children(.templates).map { row in
-            guard case let .template(value) = row.payload else { throw VocabularyError.invalidArchive }; return value
-        }
-        var result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences,
-            interpretations: interpretations,
-            reviewTemplates: hasTemplates ? templates : nil, semantics: try VocabularySemanticDatabaseProjection.index(index),
+        var result = VocabularyDocument(catalog: entries, sources: sources, occurrences: occurrences, interpretations: interpretations,
+            semantics: try VocabularySemanticDatabaseProjection.index(index),
             classification: try VocabularyClassificationRows.index(index))
         let records = try graph.all(.collections).map { try graph.collection($0) }
         if migratingDevCorpus { return try migrateDevCorpus(result, records: records) }
@@ -241,15 +219,6 @@ nonisolated enum VocabularyDatabaseProjection {
                 guard case let .block(value) = row.payload else { throw VocabularyError.invalidArchive }; return value
             }
             value.content = value.content == nil ? nil : blocks
-            for child in try children(.reviews, parent: row.id) {
-                guard case var .review(review) = child.payload else { throw VocabularyError.invalidArchive }
-                review.bindings = try children(.bindings, parent: child.id).map { row in
-                    guard case let .binding(value) = row.payload else { throw VocabularyError.invalidArchive }; return value
-                }
-                if child.id == row.id + ":legacy" { value.review = review } else {
-                    guard value.reviewCards != nil else { throw VocabularyError.invalidArchive }; value.reviewCards?.append(review)
-                }
-            }
             return value
         }
     }

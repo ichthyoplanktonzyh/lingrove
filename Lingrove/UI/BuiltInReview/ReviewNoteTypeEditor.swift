@@ -283,11 +283,11 @@ enum ReviewNoteEditorCopy {
     static let sources: [ReviewNoteField.Source] = [.expression, .meaning, .sentence, .translation, .notes, .richContent, .custom]
     static func label(_ source: ReviewNoteField.Source) -> String {
         switch source {
-        case .expression: ReviewField.expression.label
-        case .meaning: ReviewField.meaning.label
-        case .sentence: ReviewField.sentence.label
-        case .translation: ReviewField.translation.label
-        case .notes: ReviewField.notes.label
+        case .expression: String(localized: "Expression", table: "Vocabulary")
+        case .meaning: String(localized: "Review answer", table: "Vocabulary")
+        case .sentence: String(localized: "Example sentence", table: "Vocabulary")
+        case .translation: String(localized: "Translation", table: "Learning")
+        case .notes: String(localized: "Notes", table: "Vocabulary")
         case .richContent: String(localized: "Content source", table: "Vocabulary")
         case .custom: String(localized: "Custom content", table: "Vocabulary")
         }

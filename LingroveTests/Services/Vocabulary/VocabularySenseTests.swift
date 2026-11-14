@@ -96,39 +96,7 @@ struct VocabularySenseTests {
         #expect(VocabularyPolicy.matches(entry, query: "金融机构"))
     }
 
-    @Test func movedUsageReceivesLateExplanationAndOldDestinationResolvesItsCurrentOwner() async throws {
-        let store = VocabularyStore(archive: VocabularyArchive(url: nil))
-        let first = capture("I went to the bank."), second = capture("The bank opened early.")
-        await store.save(first); await store.save(second)
-        let entry = try #require(store.entries.first)
-        let destination = try #require(store.explanationDestination(first))
-        let usage = try #require(entry.examples.first)
-        let result = record(first, meaning: "银行")
-        #expect(await store.moveExample(entryID: entry.id, exampleID: usage.id, source: entry.senses[0].id,
-            target: entry.senses[1].id))
-        await store.saveExplanation(result)
-        #expect(store.entries[0].senses[0].examples.isEmpty)
-        #expect(store.entries[0].senses[1].examples.contains { $0.id == usage.id && $0.explanations == [result] })
-        #expect(await store.adoptExplanation(result, at: destination))
-        #expect(store.entries[0].senses[1].meaningOrigin == .user)
-        var opened: VocabularySelection?
-        store.openSelection = { opened = $0 }
-        store.show(first)
-        #expect(opened == .init(entryID: entry.id, senseID: entry.senses[1].id))
-    }
 
-    @Test func movingToANewSenseAndDeletingTheUsageCannotResurrectItsOldOwner() async throws {
-        let store = VocabularyStore(archive: VocabularyArchive(url: nil)), capture = capture("We sat beside the bank.")
-        await store.save(capture)
-        let entry = try #require(store.entries.first), result = record(capture, meaning: "河岸")
-        #expect(await store.moveExample(entryID: entry.id, exampleID: entry.examples[0].id, source: entry.senses[0].id, target: nil))
-        let destination = try #require(store.explanationDestination(capture))
-        #expect(destination.senseID != entry.senses[0].id && store.entries[0].senses.count == 2)
-        #expect(await store.removeSense(entryID: entry.id, senseID: destination.senseID))
-        await store.saveExplanation(result)
-        #expect(store.entries[0].senses.count == 1 && store.entries[0].examples.isEmpty)
-        #expect(!(await store.adoptExplanation(result, at: destination)))
-    }
 
     @Test func invalidOwnershipCannotReplaceTheLastGoodArchive() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -167,24 +135,6 @@ struct VocabularySenseTests {
         #expect(!store.isPending(first) && !store.isPending(second))
     }
 
-    @Test func conflictingOccurrencesFailClosedWithoutLosingEitherIdentity() async throws {
-        let archive = VocabularyArchive(url: nil)
-        _ = try await archive.save(capture("I went to the bank."))
-        let snapshot = try await archive.save(capture("The bank opened early."))
-        let baseline = try #require(snapshot.document.entries.first)
-        var invalid = baseline
-        invalid.senses[1].examples[0].text = invalid.examples[0].text
-        invalid.senses[1].examples[0].ranges = invalid.examples[0].ranges
-        let source = invalid.senses[0].id, target = invalid.senses[1].id, usage = invalid.examples[0].id
-        #expect(throws: VocabularyError.editConflict) {
-            _ = try VocabularySensePolicy.move(exampleID: usage, from: source, to: target, in: &invalid, now: Date())
-        }
-        var explicitMerge = invalid
-        try VocabularySensePolicy.merge(source: source, into: target, in: &explicitMerge, now: Date())
-        #expect(explicitMerge.senses[0].examples.count == 2, "Explicit merge retains distinct source identities")
-        await #expect(throws: (any Error).self) { try await archive.update(invalid, basedOn: baseline) }
-        #expect(try await archive.load().document == snapshot.document)
-    }
 
     @Test func aStaleDeleteForAMergedAliasCannotDeleteTheSurvivingSense() async throws {
         let store = VocabularyStore(archive: VocabularyArchive(url: nil))

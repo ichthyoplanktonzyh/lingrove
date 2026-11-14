@@ -9,43 +9,14 @@ public struct LingroveNotebookReviewMaterialStore {
 
     public func refreshInTransaction(_ snapshot: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil,
                                      entries: [VocabularyEntry]? = nil) throws {
+        try refreshInTransaction(version: .init(snapshot), entries: entries ?? snapshot.document.entries, senseIDs: senseIDs)
+    }
+
+    /// Full and local notebook writers share material projection and history retention.
+    /// The local writer supplies every live/historical affected source and its complete entry.
+    func refreshInTransaction(version: LingroveNotebookVersion, entries: [VocabularyEntry], senseIDs: Set<UUID>? = nil) throws {
         guard senseIDs?.isEmpty != true else { return }
-        let links = LingroveNotebookCardLinkStore(core: core)
-        let cards = CardStore(core: core)
-        let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()
-        let selectedLinks = try senseIDs.map { try links.load(workspaceId: snapshot.workspaceId, senseIDs: $0) }
-            ?? links.load(workspaceId: snapshot.workspaceId)
-        let noteCards = try ReviewNoteStore(core: core).ownedCardIDs(workspace: snapshot.workspaceId,
-            cardIDs: Set(selectedLinks.map(\.cardId)))
-        // Narrow entry transactions already know which live and historical senses changed.
-        // Other links keep their previous material revision and need no new render or journal.
-        for link in selectedLinks {
-            if noteCards.contains(link.cardId) { continue }
-            guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: snapshot.workspaceId, cardId: link.cardId), card.deletedAt == nil else { continue }
-            let material = LingroveNotebookCardMaterial.resolve(source: link.source, snapshot: snapshot, materialPlan: link.materialPlan)
-            let state = material == nil && link.allowsUnavailableMaterial ? "retained" : material == nil ? (LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: snapshot) == nil ? "sourceMissing" : "exampleMissing") : "ready"
-            try setStatus(state, cardID: card.cardId, workspace: snapshot.workspaceId)
-            guard let material else { continue }
-            try LingroveNotebookReviewMediaStore(core: core).register(plan: link.materialPlan, source: link.source, snapshot: snapshot, supplied: [])
-            let current = CardEditorInput(frontText: card.frontText, backText: card.backText, tags: card.tags)
-            let proposed = LingroveNotebookCardMaterial.refreshed(current: current, previous: link.generatedContent, latest: material.content)
-            let generated = link.generatedContent == nil ? nil : material.content
-            let changesCard = !LingroveNotebookCardMaterial.sameStoredBytes(current, proposed)
-            guard changesCard || !LingroveNotebookCardMaterial.sameStoredBytes(link.generatedContent, generated)
-                    || link.sourceRevision != snapshot.revision else { continue }
-            var operationID: String?
-            if changesCard {
-                let now = nowIsoTimestamp(), id = UUID().uuidString.lowercased()
-                let next = try cards.saveCard(workspaceId: card.workspaceId, input: proposed, initialMetadata: nil,
-                    cardId: card.cardId, installationId: settings.installationId, operationId: id, now: now)
-                try OutboxStore(core: core).enqueueCardUpsertOperation(workspaceId: card.workspaceId,
-                    installationId: settings.installationId, operationId: id, clientUpdatedAt: now,
-                    card: next, isInitialCreate: false, reviewScheduleImpact: false)
-                operationID = id
-            }
-            _ = try links.update(link, generatedContent: generated, sourceRevision: snapshot.revision, cardOperationId: operationID)
-        }
-        try ReviewNoteStore(core: core).refreshInTransaction(snapshot, senseIDs: senseIDs, entries: entries)
+        try ReviewNoteStore(core: core).refreshInTransaction(version: version, entries: entries, senseIDs: senseIDs)
     }
 
     /// The certified local writer supplies only IDs it just retired, including merged aliases.
@@ -56,19 +27,6 @@ public struct LingroveNotebookReviewMaterialStore {
     func retireSourcesInTransaction(version: LingroveNotebookVersion, senseIDs: Set<UUID>) throws {
         guard !senseIDs.isEmpty else { return }
         let notes = ReviewNoteStore(core: core)
-        let selectedLinks = try LingroveNotebookCardLinkStore(core: core).load(workspaceId: version.workspaceId,
-            notebookId: version.notebookId, senseIDs: senseIDs)
-        let noteCards = try notes.ownedCardIDs(workspace: version.workspaceId, cardIDs: Set(selectedLinks.map(\.cardId)))
-        let cards = CardStore(core: core)
-        for link in selectedLinks where !noteCards.contains(link.cardId) {
-            try Task.checkCancellation()
-            guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: version.workspaceId, cardId: link.cardId),
-                  card.deletedAt == nil else { continue }
-            // Explicitly retained legacy exercises may use their saved faces after source
-            // retirement. Shared Notes keep their existing sourceMissing rule below.
-            try setStatus(link.allowsUnavailableMaterial ? "retained" : "sourceMissing",
-                cardID: card.cardId, workspace: version.workspaceId)
-        }
         let selectedNotes = try notes.notes(version: version, senseIDs: senseIDs)
         let members = try notes.memberships(workspace: version.workspaceId, noteIDs: Set(selectedNotes.map(\.id)))
         // Validate only definitions belonging to the affected members. A malformed/missing

@@ -49,13 +49,39 @@ extension ReviewNoteStore {
         return (entry, sense)
     }
 
+    /// Note edits resolve their own source from canonical rows. Ordinary IDs use a primary-key
+    /// lookup; only a retired sense requires alias resolution. No partial notebook is invented.
+    func source(for note: ReviewNote, workspace: String) throws -> (VocabularyEntry, VocabularySense)? {
+        // scalarOptionalText expects one result row. A scalar subquery yields SQL NULL when
+        // the source was retired, allowing alias lookup or sourceMissing instead of an error.
+        let direct = try core.scalarOptionalText(sql: "SELECT (SELECT parent_id FROM notebook_senses WHERE workspace_id=? AND id=?)",
+            values: [.text(workspace), .text(note.senseID.uuidString)])
+        if let direct {
+            guard let entry = UUID(uuidString: direct) else { throw VocabularyError.invalidArchive }
+            return try source(for: .init(entryID: entry, senseID: note.senseID), workspace: workspace)
+        }
+        let aliases = try core.query(sql: """
+            SELECT sense.parent_id,sense.id FROM notebook_senses sense
+            JOIN json_each(sense.payload_json,'$.mergedFrom') alias
+            WHERE sense.workspace_id=? AND alias.value=?
+            """, values: [.text(workspace), .text(note.senseID.uuidString)]) { row in
+            guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
+                  let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else {
+                throw VocabularyError.invalidArchive
+            }
+            return VocabularySelection(entryID: entry, senseID: sense)
+        }
+        guard aliases.count <= 1 else { throw VocabularyError.invalidArchive }
+        return try aliases.first.map { try source(for: $0, workspace: workspace) }
+    }
+
     private func decodeSourcePayload<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
         try core.decoder.decode(type, from: Data(json.utf8))
     }
 }
 
 /// The collection row owns these two template fields. Blocks and accepted evidence are read
-/// separately, so enrollment never decodes the source's Anki bindings or other senses.
+/// separately, so enrollment never decodes unrelated senses or a complete corpus snapshot.
 private struct ReviewSourceCollection: Decodable {
     let senseID: UUID
     let note: String

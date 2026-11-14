@@ -17,27 +17,10 @@ enum VocabularyWireTestFixture {
     static let acceptedInterpretationID = id(321)
     static let candidateInterpretationID = id(322)
 
-    static let currentPlanID = id(401)
-    static let preservedPlanID = id(402)
-    static let cardPlanID = id(403)
-    static let legacyDraftID = Self.targetSenseID.uuidString.lowercased() + ":legacy"
-
-    static let currentBindingID = id(411)
-    static let mergedBindingID = id(412)
-    static let currentReceiptFingerprint = String(repeating: "a", count: 64)
-    static let preservedReceiptFingerprint = String(repeating: "b", count: 64)
-    static let currentReceiptFilename = "lingrove-" + String(repeating: "c", count: 64) + ".mp3"
-    static let preservedReceiptFilename = "lingrove-" + String(repeating: "d", count: 64) + ".wav"
-
-    enum BindingScenario {
-        case multipleWithMergedActive
-        case singleWithoutActive
-    }
-
     /// Returns a graph that passes the same strict validator used before projection.
     /// The target is intentionally ranked before a lower-UUID entry, and the second
-    /// sense represents a merged-away identity without changing its private binding origin.
-    static func document(bindingScenario: BindingScenario = .multipleWithMergedActive) throws -> VocabularyDocument {
+    /// sense represents a merged-away identity with retained source evidence.
+    static func document() throws -> VocabularyDocument {
         let createdAt = Date(timeIntervalSinceReferenceDate: 811_111_111.125)
         let updatedAt = Date(timeIntervalSinceReferenceDate: 811_111_113.375)
         let savedAt = Date(timeIntervalSinceReferenceDate: 811_111_117.625)
@@ -124,53 +107,6 @@ enum VocabularyWireTestFixture {
             kind: .expression, senses: [otherSense], createdAt: createdAt, updatedAt: updatedAt
         )
 
-        let currentReceipt = ReviewAudioReceipt(
-            fingerprint: currentReceiptFingerprint, textHash: String(repeating: "e", count: 64),
-            endpoint: "http://localhost:8765", profile: "private-profile-current", filename: currentReceiptFilename
-        )
-        let preservedReceipt = ReviewAudioReceipt(
-            fingerprint: preservedReceiptFingerprint, textHash: String(repeating: "f", count: 64),
-            endpoint: "http://localhost:8765", profile: "private-profile-preserved", filename: preservedReceiptFilename
-        )
-        let currentPlan = ReviewPlan(
-            id: currentPlanID, name: "Current preparation", deck: "Notebook deck", answer: "Current answer",
-            includeNotes: true, fieldOverrides: ["Back": "A local override"],
-            audioKinds: [.expression], audioReceipts: [.expression: currentReceipt]
-        )
-        let preservedPlan = ReviewPlan(
-            id: preservedPlanID, name: "Prior preparation", answer: "Preserved answer",
-            audioKinds: [.sentence], audioReceipts: [.sentence: preservedReceipt]
-        )
-
-        let bindings: [AnkiNoteBinding]
-        let activeBindingID: UUID?
-        switch bindingScenario {
-        case .multipleWithMergedActive:
-            bindings = [
-                Self.binding(id: currentBindingID, originSenseID: targetSenseID, noteID: 7101),
-                Self.binding(id: mergedBindingID, originSenseID: mergedSenseID, noteID: 7102)
-            ]
-            activeBindingID = mergedBindingID
-        case .singleWithoutActive:
-            bindings = [Self.binding(id: currentBindingID, originSenseID: mergedSenseID, noteID: 7101)]
-            activeBindingID = nil
-        }
-        let privateReview = VocabularyReview(
-            plan: currentPlan, bindings: bindings, activeBindingID: activeBindingID,
-            preservedPlans: [preservedPlan]
-        )
-
-        let reviewCardLayout = ReviewLayout(
-            front: [ReviewCardPart(id: id(421), source: .expression)],
-            back: [ReviewCardPart(
-                id: id(422), source: .custom,
-                content: [.init(id: id(423), content: .text(.init(text: "Card-only note", style: .paragraph, bold: true)))]
-            )]
-        )
-        let reviewCard = VocabularyReview(plan: ReviewPlan(
-            id: cardPlanID, name: "Flexible card", layout: reviewCardLayout,
-            includeExplanation: true, includeSenseContent: false
-        ))
         let collectionContent = [VocabularyContentBlock(
             id: id(431), content: .text(.init(text: "Personal study note", style: .heading, italic: true))
         )]
@@ -247,19 +183,10 @@ enum VocabularyWireTestFixture {
             )]
         )
 
-        let template = ReviewLayoutTemplate(
-            id: id(561), name: "Reusable template",
-            layout: ReviewLayout(
-                front: [ReviewCardPart(id: id(562), source: .expression)],
-                back: [ReviewCardPart(id: id(563), source: .meaning)]
-            )
-        )
         var target = targetEntry, other = otherEntry
         target.senses[0].note = "Keep the evidence with this sense."
         target.senses[0].tags = ["review", "ordered"]
         target.senses[0].content = collectionContent
-        target.senses[0].review = privateReview
-        target.senses[0].reviewCards = [reviewCard]
         target.senses[0].savedAt = savedAt
         other.senses[0].note = "Candidate has no accepted reading."
         other.senses[0].tags = ["candidate"]
@@ -268,7 +195,7 @@ enum VocabularyWireTestFixture {
             catalog: [target, other], sources: [candidateSource, acceptedSource],
             occurrences: [candidateOccurrence, acceptedOccurrence],
             interpretations: [candidateWithExplanation, accepted],
-            reviewTemplates: [template], semantics: semantic, classification: classification
+            semantics: semantic, classification: classification
         )
         try VocabularyDocumentValidation.validate(document)
         return document
@@ -276,18 +203,6 @@ enum VocabularyWireTestFixture {
 
     static func id(_ suffix: Int) -> UUID {
         UUID(uuidString: "00000000-0000-4000-8000-\(String(format: "%012d", suffix))")!
-    }
-
-    private static func binding(id: UUID, originSenseID: UUID, noteID: Int64) -> AnkiNoteBinding {
-        let identityField = ReviewField.identity.rawValue
-        return .init(
-            id: id, originSenseID: originSenseID, endpoint: "http://localhost:8765",
-            profile: "private-profile-\(noteID)", noteID: noteID, model: "Private model",
-            deck: "Private deck", identityField: identityField,
-            mapping: [.identity: identityField, .expression: "Expression", .meaning: "Meaning"],
-            fields: [identityField: originSenseID.uuidString.lowercased(), "Expression": "private note text"],
-            syncedAt: Date(timeIntervalSinceReferenceDate: 811_111_143.5)
-        )
     }
 
     private static func explanation(

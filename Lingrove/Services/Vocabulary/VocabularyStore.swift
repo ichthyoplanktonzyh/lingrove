@@ -12,7 +12,6 @@ import Logging
 final class VocabularyStore: ObservableObject {
     @Published private(set) var semantics = VocabularySemanticIndex()
     @Published private(set) var classification = VocabularyClassificationIndex()
-    @Published private(set) var reviewTemplates: [ReviewLayoutTemplate] = []
     @Published private(set) var entries: [VocabularyEntry] = []
     @Published private(set) var contentRevision = UUID()
     @Published private(set) var lastEntryCommit: LingroveNotebookEntryCommit?
@@ -261,8 +260,15 @@ final class VocabularyStore: ObservableObject {
                 message: "The notebook is unavailable; its original data has been preserved."))
         }
         do {
-            let (result, snapshot) = try await access { archive in try archive.executeCLI(request) }
-            await apply(snapshot)
+            let execution = try await access(preparingFullSnapshot: false) { archive in try archive.executeCLI(request) }
+            let result: CLIJSON
+            switch execution {
+            case let .complete(value, snapshot):
+                await apply(snapshot); result = value
+            case let .read(value, version):
+                if let repository, !(try repository.version()).hasSameOwner(as: version) { throw VocabularyError.editConflict }
+                result = value
+            }
             return .init(requestID: request.id, ok: true, result: result)
         } catch let error as CLIError {
             return .failure(request.id, error)
@@ -395,7 +401,7 @@ final class VocabularyStore: ObservableObject {
                     expectedRevision: expectedRevision)
             }
             await apply(snapshot)
-            guard matches(.init(undo.after)), revision == undo.after.revision else { return true }
+            guard matches(undo.after), revision == undo.after.revision else { return true }
             senseMergeUndo = undo; canUndoSenseMerge = true
             return true
         } catch { report(error); return false }
@@ -404,24 +410,10 @@ final class VocabularyStore: ObservableObject {
     func undoLastSenseMerge() async -> VocabularySelection? {
         guard let undo = senseMergeUndo else { return nil }
         do {
-            let snapshot = try await access(scope: .init(undo.after)) { archive in try archive.undoSenseMerge(undo) }
+            let snapshot = try await access(scope: undo.after) { archive in try archive.undoSenseMerge(undo) }
             await apply(snapshot)
             return undo.selection
         } catch { report(error); return nil }
-    }
-
-    func moveExample(
-        entryID: UUID, exampleID: UUID, source: UUID, target: UUID?, scope: VocabularyOperationScope? = nil
-    ) async -> Bool {
-        await mutation(scope: scope) { archive in
-            try archive.moveExample(entryID: entryID, exampleID: exampleID, source: source, target: target)
-        }
-    }
-
-    func createSense(entryID: UUID, scope: VocabularyOperationScope? = nil) async -> UUID? {
-        let id = UUID()
-        let saved = await mutation(scope: scope) { archive in try archive.createSense(entryID: entryID, senseID: id) }
-        return saved ? id : nil
     }
 
     /// Confirmation plans against the current document in the original business lifetime.
@@ -470,42 +462,6 @@ final class VocabularyStore: ObservableObject {
         await mutation(scope: scope) { archive in try archive.updateClassification(value, basedOn: baseline) }
     }
 
-    func saveReview(
-        entryID: UUID, senseID: UUID, value: VocabularyReview, expected: VocabularyReview?, cardID: UUID? = nil,
-        importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
-    ) async throws {
-        try await applyMutation(scope: scope) { archive in
-            try archive.saveReview(entryID: entryID, senseID: senseID, value: value, expected: expected,
-                cardID: cardID, importedImages: importedImages)
-        }
-    }
-
-    func recordAnkiBinding(
-        entryID: UUID, senseID: UUID, binding: AnkiNoteBinding, cardID: UUID? = nil, scope: VocabularyOperationScope? = nil
-    ) async throws {
-        try await applyMutation(scope: scope) { archive in
-            try archive.recordAnkiBinding(entryID: entryID, senseID: senseID, binding: binding, cardID: cardID)
-        }
-    }
-
-    func removeReview(
-        entryID: UUID, senseID: UUID, cardID: UUID, expected: VocabularyReview, scope: VocabularyOperationScope? = nil
-    ) async throws {
-        try await applyMutation(scope: scope) { archive in
-            try archive.removeReview(entryID: entryID, senseID: senseID, cardID: cardID, expected: expected)
-        }
-    }
-
-    func saveTemplate(
-        _ template: ReviewLayoutTemplate, importedImages: [String: Data] = [:], scope: VocabularyOperationScope? = nil
-    ) async throws {
-        try await applyMutation(scope: scope) { archive in try archive.saveTemplate(template, importedImages: importedImages) }
-    }
-
-    func removeTemplate(_ id: UUID, scope: VocabularyOperationScope? = nil) async throws {
-        try await applyMutation(scope: scope) { archive in try archive.removeTemplate(id) }
-    }
-
     func remove(_ capture: VocabularyCapture, scope: VocabularyOperationScope? = nil) async {
         LingroveLogger.learning.debug("Vocabulary remove requested")
         await change(capture) { try await applyMutation(scope: scope) { archive in try archive.remove(capture) } }
@@ -515,7 +471,12 @@ final class VocabularyStore: ObservableObject {
         _ entry: VocabularyEntry, basedOn baseline: VocabularyEntry, importedImages: [String: Data] = [:],
         scope: VocabularyOperationScope? = nil
     ) async -> Bool {
-        await mutation(scope: scope) { archive in try archive.update(entry, basedOn: baseline, importedImages: importedImages) }
+        do {
+            try await applyEntryMutation(scope: scope) { archive in
+                try archive.updateIncrementally(entry, basedOn: baseline, importedImages: importedImages)
+            }
+            return true
+        } catch { report(error); return false }
     }
 
     func prepareImage(_ data: Data) async throws -> VocabularyPreparedImage {
@@ -653,7 +614,6 @@ final class VocabularyStore: ObservableObject {
         entries = prepared.entries
         semantics = snapshot.document.semantics
         classification = snapshot.document.classification
-        reviewTemplates = snapshot.document.reviewTemplates ?? []
         revision = snapshot.revision
         hasAppliedSnapshot = true
         lastEntryCommit = nil
@@ -707,7 +667,7 @@ final class VocabularyStore: ObservableObject {
         senseMergeUndo = nil; canUndoSenseMerge = false
         operationScope = scope; scopeIdentity = UUID(); revision = 0; isLoaded = false
         hasAppliedSnapshot = false; readIndex = .init(); searchEntryChange = nil; contentRevision = UUID()
-        entries = []; semantics = .init(); classification = .init(); reviewTemplates = []
+        entries = []; semantics = .init(); classification = .init()
         completeSnapshot = nil
         lastEntryCommit = nil
         browsing?.reset()

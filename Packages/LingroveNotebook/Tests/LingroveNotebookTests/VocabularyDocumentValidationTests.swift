@@ -5,51 +5,6 @@ import Testing
 /// Public-contract tests for document validation shared by the Mac archive and notebook store.
 /// Synthetic stable identities keep these boundary cases independent of a platform archive.
 struct VocabularyDocumentValidationTests {
-    @Test func emptyReviewNeedsNoAnkiSetupAndPersistedReceiptsKeepLegacyValidation() throws {
-        let senseID = Self.id(101)
-        let unboundReview = VocabularyReview(plan: ReviewPlan())
-        try VocabularyReviewValidation.validate(unboundReview)
-        try VocabularyDocumentValidation.validate(VocabularyDocument(entries: [
-            Self.entry(id: Self.id(100), senseID: senseID, review: unboundReview)
-        ]))
-
-        let hash = String(repeating: "a", count: 64)
-        let audio = ReviewAudioReceipt(
-            fingerprint: hash,
-            textHash: hash,
-            endpoint: "http://localhost:8765",
-            profile: "local-test-profile",
-            filename: "lingrove-\(hash).mp3"
-        )
-        let binding = Self.binding(id: Self.id(102), senseID: senseID)
-        let review = VocabularyReview(
-            plan: ReviewPlan(audioReceipts: [.expression: audio]),
-            bindings: [binding],
-            activeBindingID: binding.id
-        )
-        try VocabularyDocumentValidation.validate(VocabularyDocument(entries: [
-            Self.entry(id: Self.id(103), senseID: senseID, review: review)
-        ]))
-
-        #expect(VocabularyReviewValidation.legacyAnkiEndpoint("http://localhost:8765/")?.host == "localhost")
-        #expect(VocabularyReviewValidation.legacyAnkiEndpoint("http://anki.example") == nil)
-        #expect(VocabularyReviewValidation.legacyAnkiEndpoint("https://localhost:8765") == nil)
-        #expect(VocabularyReviewValidation.validAudioFilename("lingrove-\(hash).mp3"))
-        #expect(!VocabularyReviewValidation.validAudioFilename("bank-expression-fixture.mp3"))
-
-        let remoteAudio = ReviewAudioReceipt(
-            fingerprint: hash,
-            textHash: hash,
-            endpoint: "http://anki.example",
-            profile: "local-test-profile",
-            filename: "lingrove-\(hash).mp3"
-        )
-        var invalidReview = review
-        invalidReview.plan = ReviewPlan(audioReceipts: [.expression: remoteAudio])
-        #expect(throws: VocabularyError.invalidArchive) {
-            try VocabularyReviewValidation.validate(invalidReview)
-        }
-    }
 
     @Test func strictValidationRejectsStaleExplanationWhilePreparePrunesAndKeepsStableIDs() throws {
         var originalEntry = Self.entry(id: Self.id(201), senseID: Self.id(202))
@@ -101,27 +56,8 @@ struct VocabularyDocumentValidationTests {
         #expect(broken.interpretations.count == 1)
     }
 
-    @Test func globalIdentityCollisionsFailWhileBindingAndTemplateIDsRemainScoped() throws {
-        let localID = Self.id(401)
-        let senseID = Self.id(402)
-        let localLayout = ReviewLayout(front: [
-            ReviewCardPart(id: localID, source: .expression)
-        ])
-        let binding = Self.binding(id: localID, senseID: senseID)
-        let review = VocabularyReview(
-            plan: ReviewPlan(id: Self.id(403), layout: localLayout),
-            bindings: [binding],
-            activeBindingID: localID
-        )
-        let template = ReviewLayoutTemplate(
-            id: localID,
-            name: "Reusable layout",
-            layout: ReviewLayout(front: [ReviewCardPart(id: localID, source: .expression)])
-        )
-        let valid = VocabularyDocument(
-            entries: [Self.entry(id: Self.id(404), senseID: senseID, review: review)],
-            reviewTemplates: [template]
-        )
+    @Test func globalCorpusIdentityCollisionsFail() throws {
+        let valid = VocabularyDocument(entries: [Self.entry(id: Self.id(404), senseID: Self.id(402))])
         try VocabularyDocumentValidation.validate(valid)
 
         let collisionID = Self.id(405)
@@ -141,47 +77,14 @@ struct VocabularyDocumentValidationTests {
         }
     }
 
-    @Test func imageOwnershipIncludesSensePreservedFlexibleAndTemplateLayouts() throws {
-        let senseImage = Self.imageBlock("1", id: Self.id(501))
-        let currentPlanImage = Self.imageBlock("2", id: Self.id(502))
-        let preservedPlanImage = Self.imageBlock("3", id: Self.id(503))
-        let flexibleCardImage = Self.imageBlock("4", id: Self.id(504))
-        let templateImage = Self.imageBlock("5", id: Self.id(505))
-
-        let review = VocabularyReview(
-            plan: ReviewPlan(
-                id: Self.id(506),
-                layout: ReviewLayout(front: [Self.customPart(id: Self.id(507), content: currentPlanImage)])
-            ),
-            preservedPlans: [ReviewPlan(
-                id: Self.id(508),
-                layout: ReviewLayout(back: [Self.customPart(id: Self.id(509), content: preservedPlanImage)])
-            )]
-        )
-        let flexibleCard = VocabularyReview(plan: ReviewPlan(
-            id: Self.id(510),
-            layout: ReviewLayout(front: [Self.customPart(id: Self.id(511), content: flexibleCardImage)])
-        ))
-        let template = ReviewLayoutTemplate(
-            id: Self.id(512),
-            name: "Template with image",
-            layout: ReviewLayout(back: [Self.customPart(id: Self.id(513), content: templateImage)])
-        )
-        let document = VocabularyDocument(
-            entries: [Self.entry(
-                id: Self.id(514),
-                senseID: Self.id(515),
-                content: [senseImage],
-                review: review,
-                reviewCards: [flexibleCard]
-            )],
-            reviewTemplates: [template]
-        )
-
-        let digests = Set(VocabularyDocumentValidation.imageReferences(document).map(\.digest))
-        #expect(digests == Set((1...5).map { String(repeating: String($0), count: 64) }))
+    @Test func imageOwnershipFollowsCorpusContentOnly() throws {
+        let image = Self.imageBlock("1", id: Self.id(501))
+        let document = VocabularyDocument(entries: [Self.entry(id: Self.id(514), senseID: Self.id(515), content: [image])])
+        #expect(Set(VocabularyDocumentValidation.imageReferences(document).map(\.digest)) == [String(repeating: "1", count: 64)])
         try VocabularyDocumentValidation.validateMediaContent(document)
         try VocabularyDocumentValidation.validate(document)
+        let object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(document)) as? [String: Any])
+        #expect(object["reviewTemplates"] == nil)
     }
 
     @Test func explanationIdentityDistinguishesNoContextAndUnknownUsage() throws {
@@ -232,16 +135,12 @@ struct VocabularyDocumentValidationTests {
         expression: String = "bank",
         dictionaryForm: String? = nil,
         explanations: [LearningExplanationRecord] = [],
-        content: [VocabularyContentBlock]? = nil,
-        review: VocabularyReview? = nil,
-        reviewCards: [VocabularyReview]? = nil
+        content: [VocabularyContentBlock]? = nil
     ) -> VocabularyEntry {
         let sense = VocabularySense(
             id: senseID,
             meaning: "a meaning",
             explanations: explanations,
-            review: review,
-            reviewCards: reviewCards,
             content: content,
             createdAt: referenceDate,
             updatedAt: referenceDate
@@ -258,21 +157,6 @@ struct VocabularyDocumentValidationTests {
         )
     }
 
-    private static func binding(id: UUID, senseID: UUID) -> AnkiNoteBinding {
-        AnkiNoteBinding(
-            id: id,
-            originSenseID: senseID,
-            endpoint: "http://127.0.0.1:8765",
-            profile: "Local Anki",
-            noteID: 42,
-            model: "Basic",
-            deck: "Vocabulary",
-            identityField: ReviewField.identity.rawValue,
-            mapping: [.identity: ReviewField.identity.rawValue],
-            fields: [ReviewField.identity.rawValue: senseID.uuidString.lowercased()]
-        )
-    }
-
     private static func imageBlock(_ hexDigit: String, id: UUID) -> VocabularyContentBlock {
         let image = VocabularyImageReference(
             digest: String(repeating: hexDigit, count: 64),
@@ -281,10 +165,6 @@ struct VocabularyDocumentValidationTests {
             byteCount: 256
         )
         return VocabularyContentBlock(id: id, content: .image(image, caption: "caption"))
-    }
-
-    private static func customPart(id: UUID, content: VocabularyContentBlock) -> ReviewCardPart {
-        ReviewCardPart(id: id, source: .custom, content: [content])
     }
 
     private static func id(_ suffix: Int) -> UUID {

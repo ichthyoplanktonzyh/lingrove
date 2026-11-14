@@ -3,6 +3,23 @@ import Testing
 @testable import LingroveNotebook
 
 struct ReviewTemplateRendererTests {
+    @Test func onePreparedDefinitionRendersIndependentNotesAndKeepsFieldValuesLiteral() throws {
+        var type = ReviewNoteDefaults.type
+        type.templates[0].front = "{{#Expression}}<b>{{Expression}}</b>{{/Expression}}"
+        type.templates[0].back = "{{FrontSide}} / {{text:Meaning}}"
+        let prepared = try ReviewTemplateRenderer.Prepared(type)
+        let first = try prepared.render(templateID: type.templates[0].id,
+            fields: ["Expression": "literal {{Meaning}}", "Meaning": "<b>one</b>"])
+        let second = try prepared.render(templateID: type.templates[0].id,
+            fields: ["Expression": "second", "Meaning": "<b>two</b>"])
+        #expect(first.frontHTML == "<b>literal {{Meaning}}</b>" && first.backHTML == "<b>literal {{Meaning}}</b> / one")
+        #expect(second.frontHTML == "<b>second</b>" && second.backHTML == "<b>second</b> / two")
+        #expect(throws: ReviewTemplateError.self) {
+            try prepared.render(templateID: type.templates[0].id, fields: ["Unexpected": "value"])
+        }
+        #expect(throws: ReviewTemplateError.self) { try prepared.render(templateID: UUID(), fields: [:]) }
+    }
+
     @Test func nestedConditionsFrontSideAndLiteralFieldBraces() throws {
         var type = ReviewNoteDefaults.type
         type.templates[0].front = "{{#Expression}}<b>{{Expression}}</b>{{^Meaning}}missing{{/Meaning}}{{/Expression}}"

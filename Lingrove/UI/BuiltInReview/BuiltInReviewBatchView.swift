@@ -10,12 +10,12 @@ struct BuiltInReviewBatchView: View {
 
     var body: some View {
         NavigationStack {
-            List(batch.drafts) { draft in
-                let source = BuiltInReviewSource.value(draft.selection, in: draft.snapshot)
+            List(batch.selections, id: \.senseID) { selection in
+                let source = BuiltInReviewSource.value(selection, in: batch.content.scope)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(source?.entry.expression ?? BuiltInReviewCopy.text("state.missingSource")).fontWeight(.semibold)
                     Text(source?.sense.meaning ?? "").foregroundStyle(.secondary)
-                    Text(batch.content.review.groups[draft.selection.senseID].map { BuiltInReviewCopy.status($0.status) }
+                    Text(batch.content.review.groups[selection.senseID].map { BuiltInReviewCopy.status($0.status) }
                         ?? BuiltInReviewCopy.text("status.notSelected")).font(.caption).foregroundStyle(.secondary)
                 }.padding(.vertical, 5)
             }

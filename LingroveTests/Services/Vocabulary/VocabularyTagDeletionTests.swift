@@ -38,7 +38,7 @@ struct VocabularyTagDeletionTests {
                     let kept = try #require(current.senses.first { $0.id == sense.id })
                     #expect(kept.tags == sense.tags.filter { $0 != "CLI Test" })
                     #expect(kept.meaning == sense.meaning && kept.note == sense.note && kept.content == sense.content)
-                    #expect(kept.examples == sense.examples && kept.review == sense.review)
+                    #expect(kept.examples == sense.examples)
                 }
             }
             #expect(store.entries.flatMap(\.senses).flatMap(\.tags).contains("cli test"))
@@ -63,7 +63,11 @@ struct VocabularyTagDeletionTests {
             #expect(await store.removeTag("CLI Test", scope: store.operationScope))
             // Deletion is immediate even if the sheet is cancelled. It must not publish its note.
             let afterDeletion = try await archive.load()
-            #expect(afterDeletion.document.entries.first { $0.id == original.id }?.senses[0].note == original.senses[0].note)
+            // Sense membership is unordered. Indexed reads may return a different array order;
+            // draft reconciliation and these assertions must follow the edited identity.
+            let editedID = original.senses[0].id
+            #expect(afterDeletion.document.entries.first { $0.id == original.id }?.senses.first { $0.id == editedID }?.note
+                == original.senses[0].note)
             VocabularySenseEditingPolicy.removeTag("CLI Test", from: &baseline)
             VocabularySenseEditingPolicy.removeTag("CLI Test", from: &draft)
             var conflict = draft
@@ -72,9 +76,14 @@ struct VocabularyTagDeletionTests {
             #expect(try await archive.load().document == afterDeletion.document)
             #expect(await store.update(draft, basedOn: baseline))
             let saved = try #require(store.entries.first { $0.id == original.id })
-            #expect(saved.senses[0].note == "Unsaved editor note")
-            #expect(saved.senses[0].meaning == "A concurrent definition")
-            #expect(Set(saved.senses[0].tags) == ["keep", "new tag"])
+            let editedSense = try #require(saved.senses.first { $0.id == editedID })
+            #expect(editedSense.note == "Unsaved editor note")
+            #expect(editedSense.meaning == "A concurrent definition")
+            #expect(Set(editedSense.tags) == ["keep", "new tag"])
+            for sense in original.senses where sense.id != editedID {
+                let retained = try #require(saved.senses.first { $0.id == sense.id })
+                #expect(retained.note == sense.note && retained.meaning == sense.meaning)
+            }
             #expect(!store.entries.flatMap(\.senses).flatMap(\.tags).contains("CLI Test"))
         }
     }

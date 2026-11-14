@@ -11,15 +11,13 @@ nonisolated struct VocabularySenseStorageRecord: Codable, Equatable, Identifiabl
     var note = ""
     var tags: [String] = []
     var content: [VocabularyContentBlock]?
-    var review: VocabularyReview?
-    var reviewCards: [VocabularyReview]?
     var savedAt: Date?
 
     static func records(for entries: some Sequence<VocabularyEntry>) -> [Self] {
         entries.flatMap(\.senses).map { sense in
             .init(senseID: sense.id,
                 isSavedWithoutContext: sense.isSavedWithoutContext, note: sense.note, tags: sense.tags,
-                content: sense.content, review: sense.review, reviewCards: sense.reviewCards,
+                content: sense.content,
                 savedAt: sense.savedAt)
         }
     }
@@ -42,13 +40,12 @@ nonisolated struct VocabularySenseStorageRecord: Codable, Equatable, Identifiabl
     func apply(to sense: inout VocabularySense) {
         sense.isSavedWithoutContext = isSavedWithoutContext
         sense.note = note; sense.tags = tags; sense.content = content
-        sense.review = review; sense.reviewCards = reviewCards
         sense.savedAt = savedAt
     }
 
     static func stripFields(from sense: inout VocabularySense) {
         sense.isSavedWithoutContext = false
         sense.note = ""; sense.tags = []; sense.content = nil
-        sense.review = nil; sense.reviewCards = nil; sense.savedAt = nil
+        sense.savedAt = nil
     }
 }

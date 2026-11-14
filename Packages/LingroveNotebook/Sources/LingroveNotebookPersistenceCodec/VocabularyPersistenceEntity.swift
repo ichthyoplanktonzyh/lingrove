@@ -7,7 +7,7 @@ public nonisolated enum VocabularyPersistenceEntity: String, Codable, CaseIterab
     case entries, senses, sources, occurrences, usages, collections
     case collectionInterpretations = "collection_interpretations"
     case senseExplanations = "sense_explanations", usageExplanations = "usage_explanations"
-    case blocks, reviews, bindings, templates
+    case blocks
     case meaningNodes = "meaning_nodes", meaningLabels = "meaning_labels", meaningRoles = "meaning_roles"
     case usagePatterns = "usage_patterns", patternSlots = "pattern_slots", meaningMappings = "meaning_mappings"
     case mappingRoles = "mapping_roles", mappingEvidence = "mapping_evidence", meaningRelations = "meaning_relations"
@@ -20,22 +20,21 @@ public nonisolated enum VocabularyPersistenceEntity: String, Codable, CaseIterab
     /// This also reads existing rows without rewriting their payloads or IDs on database open.
     public var hasBusinessOrder: Bool {
         switch self {
-        case .senseExplanations, .usageExplanations, .blocks, .reviews, .bindings, .templates: true
+        case .senseExplanations, .usageExplanations, .blocks: true
         default: false
         }
     }
 
     public var parent: Self? {
         switch self {
-        case .entries, .templates, .meaningNodes, .retrievalCues, .sources, .usages, .collections: nil
+        case .entries, .meaningNodes, .retrievalCues, .sources, .usages, .collections: nil
         case .classificationFrameworks, .categories, .categoryParents, .categoryMemberships: nil
         case .categoryOverrides: .categories
         case .occurrences: .sources
         case .senses: .entries
         case .senseExplanations: .senses
-        case .blocks, .reviews, .collectionInterpretations: .collections
+        case .blocks, .collectionInterpretations: .collections
         case .usageExplanations: .usages
-        case .bindings: .reviews
         case .meaningLabels, .meaningRoles, .meaningRelations: .meaningNodes
         case .usagePatterns, .meaningMappings: .senses
         case .patternSlots: .usagePatterns

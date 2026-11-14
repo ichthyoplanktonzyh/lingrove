@@ -79,24 +79,39 @@ nonisolated struct VocabularySearchPreparation {
             rebuiltSenses: senses.changed, rebuiltMeanings: meanings.changed)
     }
 
-    /// A same-membership edit cannot alter meaning destinations. Reuse their array and grouped
-    /// semantic material, replacing only this entry's document slots. Insert/delete/merge or a
-    /// missing receipt still takes the complete path, without trusting a partial change chain.
+    /// A proven entry delta reuses semantic material and unaffected document slots. Membership
+    /// changes rebuild the lightweight order map; removing a linked meaning destination or a
+    /// missing receipt takes the complete semantic path.
     private mutating func prepareEntry(_ id: UUID, entries: [VocabularyEntry]) -> Snapshot? {
-        guard let material, let entry = entries.first(where: { $0.id == id }),
-              entrySenses[id] == entry.senses.map(\.id) else { return nil }
+        guard let material else { return nil }
+        let entry = entries.first { $0.id == id }
+        guard entry != nil || entrySenses[id] != nil else { return nil }
+        let old = Set(entrySenses[id] ?? []), live = Set(entry?.senses.map(\.id) ?? [])
+        let removed = old.subtracting(live)
+        // A removed meaning destination changes semantic groups. Those edits need the full
+        // semantic pass; unassociated insertions/removals do not invalidate every other field.
+        guard removed.isEmpty || orderedMeanings.allSatisfy({ removed.isDisjoint(with: $0.senseIDs) }) else { return nil }
         var changed = Set<UUID>(), embeddingChanged = false
         var normalization = Normalization()
-        for sense in entry.senses {
+        for sense in entry?.senses ?? [] {
+            guard let entry else { continue }
             let fields = material.fields(entry: entry, sense: sense)
             let input = SenseInput(selection: .init(entryID: entry.id, senseID: sense.id), language: entry.language,
                 display: [entry.expression, entry.dictionaryForm, sense.displayTitle], tags: sense.tags, fields: fields)
-            guard senseInputs[sense.id] != input, let offset = documentOffsets[sense.id] else { continue }
+            guard senseInputs[sense.id] != input else { continue }
             let document = VocabularySearchPolicy.document(entry: entry, sense: sense, fields: fields,
                 normalizing: { normalization.value($0) })
             embeddingChanged = embeddingChanged || documents[sense.id]?.fingerprint != document.fingerprint
-            senseInputs[sense.id] = input; documents[sense.id] = document; orderedDocuments[offset] = document
+            senseInputs[sense.id] = input; documents[sense.id] = document
+            if let offset = documentOffsets[sense.id] { orderedDocuments[offset] = document }
             changed.insert(sense.id)
+        }
+        for id in removed { documents.removeValue(forKey: id); senseInputs.removeValue(forKey: id) }
+        if old != live {
+            entrySenses[id] = entry.map { $0.senses.map(\.id) }
+            orderedDocuments = entries.flatMap { entry in entry.senses.compactMap { documents[$0.id] } }
+            documentOffsets = Dictionary(uniqueKeysWithValues: orderedDocuments.enumerated().map { ($0.element.id, $0.offset) })
+            embeddingChanged = true
         }
         if embeddingChanged { embeddingRevision = UUID() }
         return .init(documents: orderedDocuments, meanings: orderedMeanings, embeddingRevision: embeddingRevision,

@@ -51,55 +51,66 @@ extension ReviewNoteStore {
     /// existing CardStore keeps FSRS/reps/events when replacing its readable face projection.
     func refreshInTransaction(_ scope: LingroveNotebookSnapshot, senseIDs: Set<UUID>? = nil,
                               entries: [VocabularyEntry]? = nil) throws {
+        try refreshInTransaction(version: .init(scope), entries: entries ?? scope.document.entries, senseIDs: senseIDs)
+    }
+
+    /// This projection needs complete affected entries and a version, not a whole corpus.
+    /// Template reconciliation and Card writes remain identical for full and local commands.
+    func refreshInTransaction(version: LingroveNotebookVersion, entries: [VocabularyEntry], senseIDs: Set<UUID>? = nil) throws {
         guard senseIDs?.isEmpty != true else { return }
-        let definitions = try types(workspace: scope.workspaceId)
-        let selected = try senseIDs.map { try notes(version: .init(scope), senseIDs: $0) } ?? notes(scope: scope)
-        let members = try senseIDs == nil ? memberships(workspace: scope.workspaceId) :
-            memberships(workspace: scope.workspaceId, noteIDs: Set(selected.map(\.id)))
-        guard !members.isEmpty else { return }
-        let admitted = Set(members.map(\.noteID))
-        let sources = NotebookReviewSourceIndex(entries: entries ?? scope.document.entries)
-        for note in selected where admitted.contains(note.id) {
-            guard let type = definitions.first(where: { $0.id == note.noteTypeID }) else { throw VocabularyError.invalidArchive }
-            // A deleted source is a material-admission state, not an invalid deletion. Do not
-            // generate new Cards without a source; existing members below keep memory/history
-            // and are marked unavailable by the same material writer as an absent example.
-            if let (entry, sense) = sources.source(for: note) {
-                try reconcile(note, type: type, version: .init(scope), entry: entry, sense: sense)
+        let selected = try senseIDs.map { try notes(version: version, senseIDs: $0) } ?? notes(version: version)
+        guard !selected.isEmpty else { return }
+        let definitions = try senseIDs == nil ? types(workspace: version.workspaceId) :
+            types(workspace: version.workspaceId, ids: Set(selected.map(\.noteTypeID)))
+        let members = try senseIDs == nil ? memberships(workspace: version.workspaceId) :
+            memberships(workspace: version.workspaceId, noteIDs: Set(selected.map(\.id)))
+        let sources = NotebookReviewSourceIndex(entries: entries)
+        try refreshNotes(selected, definitions: definitions, members: members, version: version) { sources.source(for: $0) }
+    }
+
+    /// Source writers supply their checked entries; Note/type writers supply indexed canonical
+    /// source reads. Both use this one affected-membership pipeline inside their transaction.
+    /// Existing members are borrowed once and reconciliation returns new ones without rereading.
+    func refreshNotes(_ selected: [ReviewNote], definitions: [ReviewNoteType], members: [Membership],
+                      version: LingroveNotebookVersion,
+                      source: (ReviewNote) throws -> (VocabularyEntry, VocabularySense)?) throws {
+        let grouped = Dictionary(grouping: members, by: \.noteID)
+        let types = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
+        let compiled = try Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, try ReviewTemplateRenderer.Prepared($0)) })
+        for note in selected {
+            try Task.checkCancellation()
+            guard let existing = grouped[note.id], !existing.isEmpty else { continue }
+            guard let type = types[note.noteTypeID] else { throw VocabularyError.invalidArchive }
+            let material = try source(note)
+            let current: [Membership]
+            if let (entry, sense) = material {
+                current = try reconcile(note, type: type, version: version, entry: entry, sense: sense, knownMembers: existing, prepared: compiled[note.noteTypeID])
+            } else { current = existing }
+            for member in current {
+                let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
+                try refreshCard(member.cardID, model: model, version: version, source: material, prepared: compiled[note.noteTypeID])
             }
-        }
-        // Reconciliation can create members for newly enabled templates. Read the selected
-        // membership again, while retaining the already decoded Notes/type definitions/index.
-        let liveMembers = try senseIDs == nil ? memberships(workspace: scope.workspaceId) :
-            memberships(workspace: scope.workspaceId, noteIDs: admitted)
-        let notesByID = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
-        let typesByID = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
-        for member in liveMembers {
-            guard let note = notesByID[member.noteID], let type = typesByID[note.noteTypeID] else {
-                throw VocabularyError.invalidArchive
-            }
-            let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
-            try refreshCard(member.cardID, model: model, version: .init(scope), source: sources.source(for: note))
         }
     }
 
     /// Both corpus edits and enrollment use this same material writer. The enrollment
     /// transaction already has its source and calls it only for the note it admitted.
     func refreshCard(_ cardID: String, model: NotebookReviewNoteCard, version: LingroveNotebookVersion,
-                     source: (VocabularyEntry, VocabularySense)?) throws {
+                     source: (VocabularyEntry, VocabularySense)?, prepared: ReviewTemplateRenderer.Prepared? = nil) throws {
         let cards = CardStore(core: core), links = LingroveNotebookCardLinkStore(core: core)
         let workspace = version.workspaceId
         guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: workspace, cardId: cardID),
               card.deletedAt == nil else { return }
         let input = try source.flatMap { entry, sense in
-            let rendered = try? model.render(entry: entry, sense: sense)
+            let rendered = try? model.render(entry: entry, sense: sense, using: prepared)
             return try rendered.map { try cardInput($0, sense: sense, workspace: workspace) }
         }
         let ready = input.map { !$0.frontText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
         try LingroveNotebookReviewMaterialStore(core: core).setStatus(ready ? "ready" : "sourceMissing",
             cardID: cardID, workspace: workspace)
         guard ready, let input, let link = try links.load(workspaceId: workspace, cardId: cardID).first else { return }
-        let changed = card.frontText != input.frontText || card.backText != input.backText || card.tags != input.tags
+        let changed = !LingroveNotebookCardMaterial.sameStoredBytes(
+            .init(frontText: card.frontText, backText: card.backText, tags: card.tags), input)
         var operation: String?
         if changed {
             let settings = try WorkspaceSettingsStore(core: core).loadCloudSettings()

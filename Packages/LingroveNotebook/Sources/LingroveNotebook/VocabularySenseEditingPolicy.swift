@@ -90,50 +90,10 @@ public nonisolated enum VocabularySenseEditingPolicy {
         merged.isSavedWithoutContext = merged.isSavedWithoutContext || original.isSavedWithoutContext
         merged.mergedFrom = Array(Set(merged.mergedFrom + [original.id] + original.mergedFrom))
             .sorted { $0.uuidString < $1.uuidString }
-        merged.reviewCards = (merged.reviewCards ?? []) + (original.reviewCards ?? [])
-        merged.review = mergedReview(merged.review, original.review)
         merged.updatedAt = now
         entry.senses[to] = merged
         entry.senses.remove(at: from)
         entry.updatedAt = now
     }
 
-    public static func move(exampleID: UUID, from source: UUID, to target: UUID?, in entry: inout VocabularyEntry, now: Date) throws -> UUID {
-        guard let from = entry.senses.firstIndex(where: { $0.id == source }),
-              let usage = entry.senses[from].examples.first(where: { $0.id == exampleID }) else {
-            throw VocabularyError.editConflict
-        }
-        let targetID: UUID
-        if let target {
-            guard let to = entry.senses.firstIndex(where: { $0.id == target }), to != from else { throw VocabularyError.invalidContent }
-            guard !entry.senses[to].examples.contains(where: {
-                VocabularyIdentityPolicy.exampleKey($0) == VocabularyIdentityPolicy.exampleKey(usage)
-            }) else { throw VocabularyError.editConflict }
-            targetID = entry.senses[to].id
-            entry.senses[to].examples.append(usage)
-            entry.senses[to].updatedAt = now
-        } else {
-            let id = UUID(); targetID = id
-            entry.senses.append(VocabularySense(id: id, meaning: "", examples: [usage], createdAt: now, updatedAt: now))
-        }
-        entry.senses[from].examples.removeAll { $0.id == exampleID }
-        entry.senses[from].updatedAt = now
-        // A sense can own notes or future review references even with no examples. Only an
-        // explicit delete removes it; moving the last usage does not destroy its identity.
-        entry.updatedAt = now
-        return targetID
-    }
-
-    private static func mergedReview(_ target: VocabularyReview?, _ source: VocabularyReview?) -> VocabularyReview? {
-        guard var result = target ?? source else { return nil }
-        guard let target, let source else { return result }
-        result = target
-        for binding in source.bindings where !result.bindings.contains(where: {
-            $0.endpoint == binding.endpoint && $0.profile == binding.profile &&
-                ($0.noteID != nil && $0.noteID == binding.noteID || $0.originSenseID == binding.originSenseID)
-        }) { result.bindings.append(binding) }
-        result.preservedPlans += [source.plan] + source.preservedPlans
-        if result.bindings.count > 1 { result.activeBindingID = nil } else { result.activeBindingID = result.bindings.first?.id }
-        return result
-    }
 }

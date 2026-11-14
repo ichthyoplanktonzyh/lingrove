@@ -70,14 +70,6 @@ struct VocabularyEntryEditor: View {
                                     )
                                 }
                             TextField(String(localized: "Translation", table: "Vocabulary"), text: $example.translation, axis: .vertical)
-                            Picker(String(localized: "Context type", table: "Vocabulary"), selection: $example.completeness) {
-                                Text(String(localized: "Example sentence", table: "Vocabulary"))
-                                    .tag(VocabularyExample.Completeness.sentence)
-                                Text(String(localized: "Context fragment", table: "Vocabulary"))
-                                    .tag(VocabularyExample.Completeness.fragment)
-                                Text(String(localized: "Unspecified", table: "Learning"))
-                                    .tag(VocabularyExample.Completeness.unknown)
-                            }
                             HStack {
                                 Spacer()
                                 Button(String(localized: "Delete", table: "Vocabulary"), role: .destructive) {
@@ -233,6 +225,7 @@ struct VocabularyEntryEditor: View {
             .accessibilityIdentifier("vocabularySaveEdit")
             .buttonStyle(.borderedProminent)
             .disabled(saving || importingImage || draft.expression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(draft.senses.first { $0.id == senseID }.map(VocabularySenseContentPolicy.hasContent) != true)
             .disabled(draft.senses.first { $0.id == senseID }?.examples.contains {
                 $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             } ?? true)

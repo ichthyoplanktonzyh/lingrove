@@ -184,19 +184,19 @@ public struct LingroveNotebookReviewSyncStore {
                     guard value.card.workspaceId == workspace, value.link.source.workspaceId == workspace,
                           value.link.source.notebookId == binding.scope.notebookID, value.link.cardId == value.card.cardId else { throw LingroveNotebookNetworkError.identityMismatch }
                     let link = remote(value.link, book: local.notebookId, sourceRevision: local.revision)
-                    if let plan = link.materialPlan {
-                        guard response.protocolVersion >= 2, plan.exampleID == link.source.exampleId else { throw LingroveNotebookNetworkError.invalidReply }
-                        try resources.register(plan: plan, source: link.source, snapshot: local, supplied: [])
-                    }
                     let pendingLink = try core.scalarInt(sql: "SELECT COUNT(*) FROM notebook_card_link_operations WHERE workspace_id=? AND link_id=?", values: [.text(workspace), .text(link.id.uuidString)])
                     if pendingLink == 0 {
                         try core.execute(sql: """
-                            INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json)
-                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,link_id) DO UPDATE SET example_id=excluded.example_id,generated_content_json=excluded.generated_content_json,
-                            source_revision=excluded.source_revision,revision=excluded.revision,updated_at=excluded.updated_at,deleted_at=excluded.deleted_at,allows_unavailable_material=excluded.allows_unavailable_material,material_plan_json=excluded.material_plan_json
+                            INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,
+                                generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at)
+                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,link_id) DO UPDATE SET
+                            example_id=excluded.example_id,generated_content_json=excluded.generated_content_json,
+                            source_revision=excluded.source_revision,revision=excluded.revision,
+                            updated_at=excluded.updated_at,deleted_at=excluded.deleted_at
                             """, values: [.text(workspace), .text(link.id.uuidString), .text(local.notebookId.uuidString), .text(link.source.entryId.uuidString), .text(link.source.senseId.uuidString),
                                 link.source.exampleId.map { .text($0.uuidString) } ?? .null, .text(link.cardId), try link.generatedContent.map { .text(try core.encodeJsonString(value: $0)) } ?? .null,
-                                .integer(Int64(link.sourceRevision)), .text(link.creationFingerprint), .integer(Int64(link.revision)), .text(link.createdAt), .text(link.updatedAt), link.deletedAt.map(SQLiteValue.text) ?? .null, .integer(link.allowsUnavailableMaterial ? 1 : 0), try link.materialPlan.map { .text(try core.encodeJsonString(value: $0)) } ?? .null])
+                                .integer(Int64(link.sourceRevision)), .text(link.creationFingerprint), .integer(Int64(link.revision)),
+                                .text(link.createdAt), .text(link.updatedAt), link.deletedAt.map(SQLiteValue.text) ?? .null])
                     }
                     try core.execute(sql: "INSERT INTO notebook_review_exercises(workspace_id,enrollment_id,card_id,link_id,created_at) VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,card_id) DO NOTHING",
                         values: [.text(workspace), .text(value.enrollmentId.uuidString), .text(value.card.cardId), .text(link.id.uuidString), .text(link.createdAt)])
@@ -295,7 +295,7 @@ public struct LingroveNotebookReviewSyncStore {
         .init(id: value.id, source: .init(workspaceId: value.source.workspaceId, notebookId: book, entryId: value.source.entryId,
             senseId: value.source.senseId, exampleId: value.source.exampleId), cardId: value.cardId, generatedContent: value.generatedContent,
             sourceRevision: sourceRevision ?? value.sourceRevision, creationFingerprint: value.creationFingerprint, revision: value.revision,
-            createdAt: value.createdAt, updatedAt: value.updatedAt, deletedAt: value.deletedAt, allowsUnavailableMaterial: value.allowsUnavailableMaterial, materialPlan: value.materialPlan)
+            createdAt: value.createdAt, updatedAt: value.updatedAt, deletedAt: value.deletedAt)
     }
 
     public init(core: DatabaseCore) {

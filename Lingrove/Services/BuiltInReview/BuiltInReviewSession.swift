@@ -30,25 +30,21 @@ final class BuiltInReviewSession: ObservableObject {
     @Published var route: BuiltInReviewRoute = .overview
     @Published var noteDraft: ReviewNoteEditorDraft?
     @Published var noteTypeDraft: ReviewNoteTypeEditorDraft?
-    @Published var draft: BuiltInReviewDraft?
     @Published var batchDraft: BuiltInReviewBatchDraft?
     @Published private(set) var practice: BuiltInReviewPractice?
     @Published private(set) var isRefreshing = false
     @Published private(set) var isMutating = false
     @Published private(set) var message: String?
     @Published private(set) var images: [BuiltInReviewSavedImage] = []
-    @Published private(set) var savedAudio: [BuiltInReviewSavedAudio] = []
     var onOpenSource: ((VocabularySelection) -> Void)?
     var onBrowseCorpus: (() -> Void)?
     var onOpenProgress: (() -> Void)?
     var materialStore: VocabularyStore?
-    var materialSpeech: (any SpeechExporting)?
 
     private let repository: MacNotebookRepository
     private let io: BuiltInReviewIO
     let speech: LearningSpeechController?
     private let speechOwnerID = UUID()
-    private var savedPlaybackID: String?
     private var subscriptions = Set<AnyCancellable>()
     private var readTask: Task<Void, Never>?
     private var writeTask: Task<Void, Never>?
@@ -76,6 +72,7 @@ final class BuiltInReviewSession: ObservableObject {
         io = BuiltInReviewIO(databaseURL: repository.databaseURL, mediaDirectoryURL: repository.mediaDirectoryURL)
         repository.$change.dropFirst().sink { [weak self] change in
             guard !change.domains.isDisjoint(with: [.corpus, .review]) else { return }
+            if change.domains.contains(.corpus) { self?.browserIndex = nil }
             self?.repositoryDidChange()
         }.store(in: &subscriptions)
         speech?.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
@@ -103,7 +100,6 @@ final class BuiltInReviewSession: ObservableObject {
         imageTask?.cancel()
         readTask = nil
         imageTask = nil
-        draft = nil
         noteTypeDraft = nil
         noteDraft = nil
         batchDraft = nil
@@ -113,7 +109,6 @@ final class BuiltInReviewSession: ObservableObject {
         addedCount = 0
         practice = nil
         images = []
-        savedAudio = []
         message = nil
         isRefreshing = false
         isMutating = writeTask != nil
@@ -133,7 +128,6 @@ final class BuiltInReviewSession: ObservableObject {
         imageTask?.cancel(); imageTask = nil
         isRefreshing = false
         images = []
-        savedAudio = []
         stopOwnSpeech()
     }
 
@@ -154,6 +148,7 @@ final class BuiltInReviewSession: ObservableObject {
         readIdentity = operation
         let savedLifetime = lifetime
         let previous = content
+        let previousIndex = browserIndex
         let version: LingroveNotebookVersion
         do { version = try repository.version() } catch {
             readTask = nil
@@ -177,7 +172,7 @@ final class BuiltInReviewSession: ObservableObject {
         isRefreshing = true
         readTask = Task { [weak self, io] in
             do {
-                let (value, index) = try await io.load(version: version, savedScope: savedScope, now: Date())
+                let (value, index) = try await io.load(version: version, savedScope: savedScope, now: Date(), reusing: previousIndex)
                 guard let self, self.isVisible, self.isActive, self.lifetime == savedLifetime, self.readIdentity == operation,
                       !Task.isCancelled else { return }
                 guard try self.repository.version() == version else {
@@ -237,13 +232,6 @@ final class BuiltInReviewSession: ObservableObject {
 
     func showAdding() { addedCount = 0; route = .adding }
 
-    func prepare(selection: VocabularySelection, additional: Bool = false, basedOn value: NotebookBuiltInReviewSnapshot) {
-        guard canAct(in: value.scope) else { return }
-        do { draft = try .init(content: value, selection: selection, additional: additional) } catch {
-            message = BuiltInReviewCopy.text("error.source")
-        }
-    }
-
     func requestBatch(_ selections: [VocabularySelection]) {
         pendingBatchSelections = selections
         preparePendingBatch()
@@ -256,7 +244,7 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     func saveBatch(_ batch: BuiltInReviewBatchDraft) {
-        guard batchDraft?.id == batch.id, !batch.drafts.isEmpty else { return }
+        guard batchDraft?.id == batch.id, !batch.selections.isEmpty else { return }
         mutate(.batch(batch), scope: batch.content.scope, destination: route == .adding ? .adding : .content)
     }
 
@@ -270,24 +258,6 @@ final class BuiltInReviewSession: ObservableObject {
         // Check both fences after suspension; neither check decodes the corpus on MainActor.
         guard try repository.version() == version, change == participationRevision else { throw VocabularyError.editConflict }
         return value
-    }
-
-    func savedMaterialMedia(_ draft: BuiltInReviewDraft) async -> [ReviewMaterialPreparedMedia] {
-        (try? await io.materialMedia(draft: draft)) ?? []
-    }
-
-    func edit(card: Card, link: LingroveNotebookCardLink, selection: VocabularySelection,
-              basedOn value: NotebookBuiltInReviewSnapshot) {
-        guard canAct(in: value.scope) else { return }
-        draft = .init(content: value, card: card, link: link, selection: selection)
-    }
-
-    func save(_ value: BuiltInReviewDraft) {
-        guard draft?.id == value.id, value.canSave else { return }
-        let destination = route == .practice ? .practice : detailDestination(for: value.selection)
-        let cardID: String?
-        if case let .editing(card, _) = value.purpose { cardID = card.cardId } else { cardID = nil }
-        mutate(.save(value), scope: value.snapshot, destination: destination, preferredCardID: cardID)
     }
 
     /// Corpus admission keeps the corpus window in place. The app-owned session retains this
@@ -347,10 +317,6 @@ final class BuiltInReviewSession: ObservableObject {
         mutate(.status(status, action, UUID()), scope: value.scope, destination: detailDestination(for: selection))
     }
 
-    func retain(_ context: BuiltInReviewCardContext) {
-        mutate(.retain(context), scope: context.snapshot, destination: detailDestination(for: context.group.selection))
-    }
-
     private func detailDestination(for selection: VocabularySelection) -> BuiltInReviewRoute {
         // Wide management can show its first result without navigating into detail.
         // Keep that browser route after edits so its current filter still governs the pane.
@@ -361,7 +327,6 @@ final class BuiltInReviewSession: ObservableObject {
         guard let value = content, canAct(in: value.scope) else { return }
         let due = dueCards(selection: selection, in: value)
         guard !due.isEmpty else { route = .overview; return }
-        draft = nil
         message = nil
         practice = .init(selection: selection, initialDueCount: due.count)
         route = .practice
@@ -386,7 +351,6 @@ final class BuiltInReviewSession: ObservableObject {
         stopOwnSpeech()
         imageTask?.cancel()
         images = []
-        savedAudio = []
         practice = nil
         route = .overview
     }
@@ -406,31 +370,6 @@ final class BuiltInReviewSession: ObservableObject {
         let plain = BuiltInReviewText.plain(text)
         speech?.toggle(.init(target: speechTarget(context, answer: answer), text: plain,
             language: answer ? sense?.meaningLanguage : entry?.language))
-    }
-
-    func playSavedAudio(_ audio: BuiltInReviewSavedAudio, context: BuiltInReviewCardContext) {
-        guard isActive, practice?.phase.context?.card == context.card else { return }
-        if savedPlaybackID == audio.id, speech?.activeTarget?.ownerID == speechOwnerID,
-           speech?.activeTarget?.itemID == "review.audio" {
-            materialSpeech?.stop(ownerID: speechOwnerID)
-            savedPlaybackID = nil
-            return
-        }
-        let language = BuiltInReviewSource.value(context.group.selection, in: context.snapshot)?.entry.language ?? .english
-        do {
-            try materialSpeech?.audition(.init(data: audio.data, fileExtension: audio.fileExtension),
-                ownerID: speechOwnerID, language: language)
-            savedPlaybackID = audio.id
-        } catch { message = error.localizedDescription }
-    }
-
-    func resolvedParts(_ context: BuiltInReviewCardContext, answer: Bool) -> [ReviewResolvedPart]? {
-        let text = answer ? context.card.backText : context.card.frontText
-        let generated = answer ? context.link.generatedContent?.backText : context.link.generatedContent?.frontText
-        guard text == generated, let plan = context.link.materialPlan,
-              let source = BuiltInReviewSource.value(context.group.selection, in: context.snapshot),
-              let resolved = try? ReviewMaterialResolver.resolve(entry: source.entry, sense: source.sense, plan: plan) else { return nil }
-        return answer ? resolved.back : resolved.front
     }
 
     func isSpeaking(_ context: BuiltInReviewCardContext, answer: Bool) -> Bool {
@@ -507,15 +446,13 @@ final class BuiltInReviewSession: ObservableObject {
         repository.publishChange()
         isPublishing = false
         guard isVisible, lifetime == savedLifetime, writePresentationIdentity == operation else { return }
-        draft = nil
         noteTypeDraft = nil
         noteDraft = nil
         batchDraft = nil
         route = destination
         addedCount = 0
         if case let .enrollNotes(selections, _, _) = command { addedCount = selections.count }
-        if case let .save(value) = command, case .enrollment = value.purpose { addedCount = 1 }
-        if case let .batch(value) = command { addedCount = value.drafts.count; browsing.selectedSenseIDs = [] }
+        if case let .batch(value) = command { addedCount = value.selections.count; browsing.selectedSenseIDs = [] }
         if case .rate = command { practice?.answered += 1 }
         if case .undo = command { practice?.answered = max(0, (practice?.answered ?? 0) - 1) }
         stopOwnSpeech()
@@ -578,7 +515,6 @@ final class BuiltInReviewSession: ObservableObject {
             practice.phase = .finished
             imageTask?.cancel()
             images = []
-        savedAudio = []
         }
         self.practice = practice
     }
@@ -594,14 +530,12 @@ final class BuiltInReviewSession: ObservableObject {
     private func loadImages(_ context: BuiltInReviewCardContext) {
         imageTask?.cancel()
         images = []
-        savedAudio = []
         imageTask = Task { [weak self, io] in
-            let (images, audio) = (try? await io.savedMedia(context: context)) ?? ([], [])
+            let images = (try? await io.savedMedia(context: context)) ?? []
             guard let self, self.isVisible, self.isActive, !Task.isCancelled,
                   self.practice?.phase.context?.card == context.card,
                   self.practice?.phase.context?.snapshot == context.snapshot else { return }
             self.images = images
-            self.savedAudio = audio
         }
     }
 
@@ -613,14 +547,12 @@ final class BuiltInReviewSession: ObservableObject {
             // command already executing inside SQLite. Quit must still observe that drain.
             isMutating = writeTask != nil
         }
-        draft = nil
         noteTypeDraft = nil
         noteDraft = nil
         batchDraft = nil
         practice = nil
         imageTask?.cancel()
         images = []
-        savedAudio = []
         if route == .practice { route = .overview }
         stopOwnSpeech()
     }
@@ -641,8 +573,6 @@ final class BuiltInReviewSession: ObservableObject {
     }
 
     private func stopOwnSpeech() {
-        savedPlaybackID = nil
-        materialSpeech?.stop(ownerID: speechOwnerID)
         guard let target = speech?.activeTarget, target.ownerID == speechOwnerID else { return }
         speech?.stop(target: target)
     }

@@ -15,6 +15,8 @@ final class VocabularyBrowserCache: ObservableObject {
     }
     private var key: Key?
     private var scoped: [VocabularyEntry] = []
+    private var literalIndex = VocabularyLiteralSearchIndex()
+    private var literalNeedsPreparation = true
     private var literalQuery: String?
     private var literal: [VocabularyEntry] = []
     private var meaningQuery: String?
@@ -28,6 +30,7 @@ final class VocabularyBrowserCache: ObservableObject {
     func entries(store: VocabularyStore, language: LearningLanguage?, tag: String, newestFirst: Bool) -> [VocabularyEntry] {
         let next = Key(revision: store.contentRevision, language: language, tag: tag, newestFirst: newestFirst)
         guard key != next else { return scoped }
+        literalNeedsPreparation = true
         key = next; literalQuery = nil; meaningQuery = nil; unclassifiedQuery = nil; expandedRows = nil
         scoped = store.entries.compactMap { entry in
             guard language == nil || entry.language == language else { return nil }
@@ -47,8 +50,10 @@ final class VocabularyBrowserCache: ObservableObject {
         if literalQuery != query {
             expandedRows = nil
             literalQuery = query
-            literal = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? entries :
-                entries.filter { VocabularyPolicy.matches($0, query: query) }
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, literalNeedsPreparation {
+                literalIndex.prepare(entries); literalNeedsPreparation = false
+            }
+            literal = literalIndex.matching(entries, query: query)
         }
         return literal
     }

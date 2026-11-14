@@ -4,6 +4,7 @@ import CryptoKit
 import Foundation
 import LingroveNotebook
 import LingroveNotebookEngine
+import LingroveNotebookStorage
 import SwiftUI
 import Testing
 @testable import Lingrove
@@ -32,8 +33,8 @@ struct BuiltInReviewSessionIntegrationTests {
         let session = fixture.session
         session.open(selection: fixture.selection)
         await session.waitForIdle()
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        let draftID = try #require(session.draft?.id)
+        session.editNoteType()
+        let draftID = try #require(session.noteTypeDraft?.id)
         let participation = session.participationRevision
         let other = try LingroveNotebookEngine(databaseURL: fixture.repository.databaseURL,
             mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
@@ -42,10 +43,10 @@ struct BuiltInReviewSessionIntegrationTests {
         fixture.repository.publishChange()
         #expect(fixture.repository.change.domains == .synchronization)
         #expect(!session.isRefreshing && !session.isBusy)
-        #expect(session.draft?.id == draftID && session.participationRevision == participation)
+        #expect(session.noteTypeDraft?.id == draftID && session.participationRevision == participation)
         fixture.repository.publishChange()
         #expect(fixture.repository.change.domains.isEmpty)
-        #expect(!session.isRefreshing && session.draft?.id == draftID)
+        #expect(!session.isRefreshing && session.noteTypeDraft?.id == draftID)
     }
 
     @Test("Prepare/cancel, explicit enrollment, window keyboard rating, reopen and persisted undo")
@@ -60,28 +61,19 @@ struct BuiltInReviewSessionIntegrationTests {
         await session.waitForIdle()
         var content = try #require(session.content)
         #expect(content.statistics.exercises == 0)
-        session.prepare(selection: fixture.selection, basedOn: content)
-        var cancelled = try #require(session.draft)
+        session.editNoteType()
+        let cancelled = try #require(session.noteTypeDraft)
         fixture.repository.publishChange()
         await session.waitForIdle()
-        #expect(session.draft?.id == cancelled.id, "An unchanged sync ACK must not discard an editor")
-        cancelled.front = "Cancelled prompt"
-        session.draft = nil
+        #expect(session.noteTypeDraft?.id == cancelled.id)
+        session.noteTypeDraft = nil
         #expect(try fixture.repository.engine.loadActiveCardCount(workspaceId: content.scope.workspaceId) == 0)
-        session.prepare(selection: fixture.selection, basedOn: content)
-        var prepared = try #require(session.draft)
-        if let example = content.scope.document.entries.first?.senses.first?.examples.first {
-            prepared.chooseExample(example.id)
-            #expect(prepared.exampleID == example.id && prepared.front == "harbor")
-        }
-        prepared.front = "My native prompt"
-        let preparationHost = NSWindow(contentRect: .init(x: 0, y: 0, width: 620, height: 650),
-            styleMask: [.titled], backing: .buffered, defer: false)
-        preparationHost.isReleasedWhenClosed = false
-        preparationHost.contentView = NSHostingView(rootView: BuiltInReviewPreparationView(session: session, draft: prepared))
-        try await capture(preparationHost, name: "native-preparation", minimumWidth: 620, minimumHeight: 650)
-        preparationHost.close()
-        session.save(prepared)
+        session.editNoteType()
+        var prepared = try #require(session.noteTypeDraft)
+        prepared.type.templates[0].front = "My native prompt"
+        session.saveNoteType(prepared)
+        await session.waitForIdle()
+        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
         await session.waitForIdle()
         content = try #require(session.content)
         #expect(content.statistics.activeSenses == 1 && content.statistics.exercises == 1)
@@ -158,18 +150,22 @@ struct BuiltInReviewSessionIntegrationTests {
         session.open(selection: fixture.selection)
         await session.waitForIdle()
         let initial = try #require(session.content)
-        session.prepare(selection: fixture.selection, basedOn: initial)
-        let stale = try #require(session.draft)
+        session.editNoteType()
+        let stale = try #require(session.noteTypeDraft)
         var changed = initial.scope.document
         changed.entries[0].senses[0].meaning = "Changed by another window"
         _ = try fixture.repository.engine.saveLingroveNotebook(changed, basedOn: initial.scope)
         fixture.repository.publishChange()
-        #expect(session.draft == nil)
+        #expect(session.noteTypeDraft == nil)
         await session.waitForIdle()
         #expect(session.content?.scope.revision != initial.scope.revision)
         let io = BuiltInReviewIO(databaseURL: fixture.repository.databaseURL, mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
-        do { try await io.perform(.save(stale)); Issue.record("A stale preparation wrote after a source revision change") }
-        catch { #expect(try fixture.repository.engine.loadActiveCardCount(workspaceId: initial.scope.workspaceId) == 0) }
+        do {
+            try await io.perform(.noteType(stale.type, stale.expected, stale.scope, stale.makeDefault))
+            Issue.record("A stale preparation wrote after a source revision change")
+        } catch {
+            #expect(try fixture.repository.engine.loadActiveCardCount(workspaceId: initial.scope.workspaceId) == 0)
+        }
         let fresh = try #require(session.content)
         session.enrollDefault(selection: fixture.selection, basedOn: fresh)
         await session.waitForIdle()
@@ -195,15 +191,9 @@ struct BuiltInReviewSessionIntegrationTests {
         let session = fixture.session
         session.open(selection: fixture.selection)
         await session.waitForIdle()
-        // This fixture exercises the retained material reader. Default enrollment now creates
-        // Note-owned faces, which correctly reject generic Card edits; prepare a material Card
-        // explicitly so this test continues to cover local PNG loading rather than Note editing.
-        session.prepare(selection: fixture.selection, basedOn: try #require(session.content))
-        session.save(try #require(session.draft))
+        session.enrollDefault(selection: fixture.selection, basedOn: try #require(session.content))
         await session.waitForIdle()
         var content = try #require(session.content)
-        var group = try #require(content.review.groups[fixture.selection.senseID])
-        var card = try #require(group.cards.first)
         let png = try #require(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 8, pixelsHigh: 8,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
         let pixel = NSColor(deviceRed: 0.1, green: 0.4, blue: 0.9, alpha: 1)
@@ -218,31 +208,22 @@ struct BuiltInReviewSessionIntegrationTests {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try bytes.write(to: folder.appendingPathComponent("saved-asset.png"))
         }
-        let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-        let assetID = UUID().uuidString.lowercased()
-        let asset = MediaAsset(mediaAssetId: assetID, workspaceId: content.scope.workspaceId, mimeType: "image/png",
-            sizeBytes: Int64(bytes.count), sha256: digest, sourceUrl: "https://unused.invalid/image.png", createdAt: nowIsoTimestamp(),
-            clientUpdatedAt: nowIsoTimestamp(), lastModifiedByReplicaId: "synthetic", lastOperationId: UUID().uuidString,
-            updatedAt: nowIsoTimestamp(), deletedAt: nil)
-        try fixture.repository.engine.mediaAssetStore.upsertMediaAsset(workspaceId: content.scope.workspaceId, mediaAsset: asset)
-        let url = fixture.repository.mediaDirectoryURL.appendingPathComponent(try mediaBlobCacheRelativePath(sha256: digest))
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try bytes.write(to: url)
-        let link = try #require(content.review.links.first { $0.cardId == card.cardId })
-        let face = "Local image\n\n" + (try managedImageMarkdownReference(mediaAssetId: assetID, altText: "fixture"))
-            + "\n\n![Remote](https://unused.invalid/never-fetch.png)"
-        try fixture.repository.engine.prepareNotebookExercise(link: link, card: card, snapshot: content.scope,
-            exampleID: nil, input: .init(frontText: face, backText: card.backText, tags: card.tags),
-            action: .init(content: content, selection: fixture.selection))
+        let imported = try VocabularyImageStorage.prepare(bytes)
+        var document = content.scope.document
+        document.entries[0].senses[0].content = [.init(content: .image(imported.reference, caption: "fixture"))]
+        _ = try fixture.repository.engine.saveLingroveNotebook(document, basedOn: content.scope,
+            images: [imported.reference.filename: imported.data])
+        let assetID = LingroveNotebookCardMaterial.mediaAssetID(reference: .init(image: imported.reference),
+            workspaceID: content.scope.workspaceId)
         fixture.repository.publishChange()
         await session.waitForIdle()
         content = try #require(session.content)
-        group = try #require(content.review.groups[fixture.selection.senseID])
-        card = try #require(group.cards.first)
+        let group = try #require(content.review.groups[fixture.selection.senseID])
+        let card = try #require(group.cards.first)
         let context = try #require(session.context(card: card, group: group, content: content))
         let io = BuiltInReviewIO(databaseURL: fixture.repository.databaseURL, mediaDirectoryURL: fixture.repository.mediaDirectoryURL)
-        let (images, _) = try await io.savedMedia(context: context)
-        #expect(images.count == 1 && images.first?.data == bytes && images.first?.id == assetID)
+        let images = try await io.savedMedia(context: context)
+        #expect(images.count == 1 && images.first?.data == imported.data && images.first?.id == assetID)
         session.start()
         await session.waitForIdle()
         #expect(session.images.count == 1)

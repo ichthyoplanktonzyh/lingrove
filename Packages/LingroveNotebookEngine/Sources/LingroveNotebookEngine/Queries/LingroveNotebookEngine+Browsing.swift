@@ -82,7 +82,7 @@ extension LingroveNotebookEngine {
         try core.inReadTransaction { try browseFenceInTransaction() }
     }
 
-    private func browseFenceInTransaction() throws -> NotebookBrowseFence {
+    func browseFenceInTransaction() throws -> NotebookBrowseFence {
         guard let version = try currentNotebookVersionInTransaction() else { throw VocabularyError.editConflict }
         return try .init(version: version, corpus: core.notebookChangeStamp().corpus)
     }
@@ -97,6 +97,7 @@ extension LingroveNotebookEngine {
             let fence = try browseFenceInTransaction()
             if let cursor, cursor.fence != fence || cursor.query != query { throw VocabularyError.editConflict }
             let workspace = fence.version.workspaceId
+            let indexedTags = try query.tag.isEmpty ? false : NotebookTagIndex.available(in: core, workspace: workspace)
             var filter = """
                 e.workspace_id=? AND EXISTS (SELECT 1 FROM notebook_senses saved
                  WHERE saved.workspace_id=e.workspace_id AND saved.parent_id=e.id)
@@ -107,11 +108,16 @@ extension LingroveNotebookEngine {
                 // Build the matching sense IDs once, then use canonical ID/parent indexes.
                 // A correlated json_each per headword repeatedly opens collection rows and
                 // can turn a selective tag into tens of thousands of random payload reads.
+                let taggedSenses = indexedTags ? """
+                    SELECT sense_id FROM notebook_collection_tags WHERE workspace_id=? AND tag=?
+                    """ : """
+                    SELECT c.sense_id FROM notebook_collections c,json_each(c.payload_json,'$.tags') tag
+                    WHERE c.workspace_id=? AND tag.value=?
+                    """
                 filter += """
                  AND e.id IN (SELECT s.parent_id FROM notebook_senses s
                   WHERE s.workspace_id=? AND s.id IN (
-                   SELECT c.sense_id FROM notebook_collections c,json_each(c.payload_json,'$.tags') tag
-                   WHERE c.workspace_id=? AND tag.value=?))
+                   \(taggedSenses)))
                 """
                 values += [.text(workspace), .text(workspace), .text(query.tag)]
             }
@@ -123,11 +129,20 @@ extension LingroveNotebookEngine {
                     """
                 values += [.real(cursor.createdAt), .real(cursor.createdAt), .text(cursor.id)]
             }
-            let headers = try core.query(sql: """
+            // Materialize the tagged owners before sorting. Otherwise SQLite can choose the
+            // newest-first workspace index and walk every untagged headword to satisfy LIMIT.
+            let headerSQL = query.tag.isEmpty ? """
                 SELECT e.id,e.expression,e.language,json_extract(e.payload_json,'$.createdAt')
                 FROM notebook_entries e WHERE \(filter)
                 ORDER BY json_extract(e.payload_json,'$.createdAt') \(query.newestFirst ? "DESC" : "ASC"),e.id ASC LIMIT ?
-                """, values: values + [.integer(Int64(limit + 1))]) { row -> NotebookBrowseHeader in
+                """ : """
+                WITH matched AS MATERIALIZED (
+                    SELECT e.id,e.expression,e.language,json_extract(e.payload_json,'$.createdAt') created_at
+                    FROM notebook_entries e WHERE \(filter))
+                SELECT id,expression,language,created_at FROM matched
+                ORDER BY created_at \(query.newestFirst ? "DESC" : "ASC"),id ASC LIMIT ?
+                """
+            let headers = try core.query(sql: headerSQL, values: values + [.integer(Int64(limit + 1))]) { row -> NotebookBrowseHeader in
                 guard let id = UUID(uuidString: try Self.browseText(row, 0)),
                       [SQLITE_FLOAT, SQLITE_INTEGER].contains(sqlite3_column_type(row, 3)) else { throw VocabularyError.invalidArchive }
                 let rawLanguage = try Self.browseText(row, 2)
@@ -141,7 +156,10 @@ extension LingroveNotebookEngine {
                 var senseValues: [SQLiteValue] = [.text(workspace), .text(header.id.uuidString)]
                 var senseFilter = "s.workspace_id=? AND s.parent_id=?"
                 if !query.tag.isEmpty {
-                    senseFilter += """
+                    senseFilter += indexedTags ? """
+                         AND EXISTS (SELECT 1 FROM notebook_collection_tags tag
+                         WHERE tag.workspace_id=s.workspace_id AND tag.tag=? AND tag.sense_id=s.id)
+                        """ : """
                          AND EXISTS (SELECT 1 FROM notebook_collections c,json_each(c.payload_json,'$.tags') tag
                          WHERE c.workspace_id=s.workspace_id AND c.sense_id=s.id AND tag.value=?)
                         """
@@ -203,7 +221,7 @@ extension LingroveNotebookEngine {
             guard !rows.isEmpty else { return .init(fence: fence, entry: nil, decodedRows: 0, mappedSenseIDs: []) }
             let senses = "SELECT id FROM notebook_senses WHERE workspace_id=? AND parent_id=?"
             let base: [SQLiteValue] = [.text(workspace), .text(id)]
-            let document = try VocabularyPersistenceCodec.decode(.init(rows: rows, reviewTemplatesPresent: false))
+            let document = try VocabularyPersistenceCodec.decode(.init(rows: rows))
             let entries = document.entries
             guard entries.count == 1, let entry = entries.first, entry.id.uuidString == id else { throw VocabularyError.invalidArchive }
             try Task.checkCancellation()
@@ -236,7 +254,10 @@ extension LingroveNotebookEngine {
     public func notebookBrowseTags(expected: NotebookBrowseFence) throws -> [String] {
         try core.inReadTransaction {
             guard try browseFenceInTransaction() == expected else { throw VocabularyError.editConflict }
-            return try core.query(sql: """
+            let indexed = try NotebookTagIndex.available(in: core, workspace: expected.version.workspaceId)
+            return try core.query(sql: indexed ? """
+                SELECT DISTINCT tag FROM notebook_collection_tags WHERE workspace_id=? ORDER BY tag
+                """ : """
                 SELECT DISTINCT tag.value FROM notebook_collections c,json_each(c.payload_json,'$.tags') tag
                 WHERE c.workspace_id=? ORDER BY tag.value
                 """, values: [.text(expected.version.workspaceId)]) { try Self.browseText($0, 0) }
@@ -260,11 +281,9 @@ extension LingroveNotebookEngine {
         try append(.senses, "parent_id=?", [.text(id)])
         try append(.senseExplanations, "parent_id IN (\(senses))", base)
         try append(.collections, "sense_id IN (\(senses))", base)
-        for entity in [VocabularyPersistenceEntity.blocks, .reviews, .collectionInterpretations] {
+        for entity in [VocabularyPersistenceEntity.blocks, .collectionInterpretations] {
             try append(entity, "parent_id IN (\(collections))", [.text(workspace)] + base)
         }
-        try append(.bindings, "parent_id IN (SELECT id FROM notebook_reviews WHERE workspace_id=? AND parent_id IN (\(collections)))",
-            [.text(workspace), .text(workspace)] + base)
         try append(.usages, "sense_id IN (\(senses))", base)
         try append(.usageExplanations, "parent_id IN (\(usages))", [.text(workspace)] + base)
         try append(.occurrences, "id IN (\(occurrences))", [.text(workspace)] + base)

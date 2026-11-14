@@ -30,7 +30,7 @@ struct VocabularyPersistenceCodecTests {
         let rows = try VocabularyPersistenceCodec.encode(document)
         #expect(try VocabularyPersistenceCodec.decode(rows) == document)
         let removed = try #require(rows.rows.first { $0.entity == .meaningLabels && $0.position == 0 })
-        let broken = VocabularyPersistenceRows(rows: rows.rows.filter { $0.entity != .meaningLabels || $0.parentID != removed.parentID }, reviewTemplatesPresent: false)
+        let broken = VocabularyPersistenceRows(rows: rows.rows.filter { $0.entity != .meaningLabels || $0.parentID != removed.parentID })
         #expect(throws: (any Error).self) { try VocabularyPersistenceCodec.decode(broken) }
     }
 
@@ -52,7 +52,7 @@ struct VocabularyPersistenceCodecTests {
         let appended = try capture("second", in: baseline)
         let previousRows = try VocabularyPersistenceCodec.encode(baseline)
         let delta = try #require(try VocabularyPersistenceCodec.appendedCaptureRows(from: baseline, to: appended))
-        let rebuilt = VocabularyPersistenceRows(rows: previousRows.rows + delta, reviewTemplatesPresent: false)
+        let rebuilt = VocabularyPersistenceRows(rows: previousRows.rows + delta)
         let expected = try VocabularyPersistenceCodec.encode(appended)
         #expect(try rebuilt.keyedRows() == expected.keyedRows())
         #expect(try VocabularyPersistenceCodec.decode(rebuilt) == appended)
@@ -60,39 +60,6 @@ struct VocabularyPersistenceCodecTests {
         #expect(try VocabularyPersistenceCodec.appendedCaptureRows(from: baseline, to: existingEntry) == nil)
     }
 
-    @Test func frozenSchema5RowsRoundTripThroughPublicCodecValues() throws {
-        let directory = try VocabularyStorageTestSupport.temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let url = try VocabularyStorageTestSupport.copiedSchema5Fixture(to: directory)
-        let database = try VocabularySQLiteDatabase(url: url)
-        defer { database.connection.close() }
-
-        let historical = try database.read().document
-        let encoded = try VocabularyPersistenceCodec.encode(historical)
-        // Rebuild each value from exactly what a SQL adapter stores: trusted family/identity
-        // columns, one opaque JSON payload, and every typed index column including NULLs.
-        let reopenedRows = try encoded.rows.map { row in
-            try VocabularyPersistenceRow(
-                entity: row.entity,
-                id: row.id,
-                parentID: row.parentID,
-                position: row.position,
-                payload: row.encodedPayload(),
-                indexValues: row.indexValues
-            )
-        }
-        let reopened = try VocabularyPersistenceCodec.decode(.init(
-            rows: reopenedRows,
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent
-        ))
-
-        #expect(reopened == historical)
-        #expect(reopened.catalog.map(\.id) == historical.catalog.map(\.id))
-        #expect(reopened.catalog.map { $0.senses.map(\.id) } == historical.catalog.map { $0.senses.map(\.id) })
-        #expect(reopened.sources.map(\.id) == historical.sources.map(\.id))
-        #expect(reopened.occurrences.map(\.id) == historical.occurrences.map(\.id))
-        #expect(reopened.interpretations.map(\.id) == historical.interpretations.map(\.id))
-    }
 
     @Test func frozenCoreGraphEmitsCurrentPersistenceFamilies() throws {
         let fixtureURL = try #require(Bundle.module.url(
@@ -143,7 +110,7 @@ struct VocabularyPersistenceCodecTests {
         let initiallyEmitted = Set(frozenRows.rows.map { $0.entity.rawValue })
         let currentFamilies = Set(VocabularyPersistenceEntity.allCases.filter { $0 != .collectionInterpretations }.map(\.rawValue))
         let missingFromFrozenCore = currentFamilies.subtracting(initiallyEmitted)
-        #expect(missingFromFrozenCore == ["sense_explanations", "templates"])
+        #expect(missingFromFrozenCore == ["sense_explanations"])
 
         // The frozen graph predates one independent sense explanation and has no review-layout
         // template. Add the two missing leaf examples inline so the golden document stays pristine.
@@ -160,11 +127,7 @@ struct VocabularyPersistenceCodecTests {
         )]
         entry.senses[0] = sense
         document.catalog[0] = entry
-        document.reviewTemplates = [ReviewLayoutTemplate(
-            id: UUID(uuidString: "74000000-0000-0000-0000-000000000001")!,
-            name: "Codec template",
-            layout: ReviewLayout()
-        )]
+
 
         let encoded = try VocabularyPersistenceCodec.encode(document)
         #expect(Set(encoded.rows.map { $0.entity.rawValue }) == currentFamilies)
@@ -175,8 +138,7 @@ struct VocabularyPersistenceCodecTests {
                 payload: row.encodedPayload(), orderedIndexes: row.entity.indexKeys.map { row.indexValue($0) })
         }
         #expect(bulk == encoded.rows)
-        #expect(try VocabularyPersistenceCodec.decode(.init(rows: bulk,
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent)) == document)
+        #expect(try VocabularyPersistenceCodec.decode(.init(rows: bulk)) == document)
     }
 
     @Test func allPersistenceFamiliesHaveStableNamesAndIndexColumnOrder() {
@@ -191,9 +153,6 @@ struct VocabularyPersistenceCodecTests {
             "sense_explanations": [],
             "usage_explanations": [],
             "blocks": [],
-            "reviews": [],
-            "bindings": [],
-            "templates": [],
             "meaning_nodes": ["kind"],
             "meaning_labels": ["language", "text", "preferred"],
             "meaning_roles": ["name"],
@@ -214,7 +173,7 @@ struct VocabularyPersistenceCodecTests {
 
         // Column order is part of the adapter contract because SQLite binds values positionally.
         // The explicit family list also makes a new persisted row shape a deliberate review point.
-        #expect(VocabularyPersistenceEntity.allCases.count == 29)
+        #expect(VocabularyPersistenceEntity.allCases.count == 26)
         #expect(Set(VocabularyPersistenceEntity.allCases.map(\.rawValue)) == Set(expected.keys))
         for entity in VocabularyPersistenceEntity.allCases {
             #expect(entity.indexKeys.map(\.rawValue) == expected[entity.rawValue, default: []])
@@ -222,17 +181,6 @@ struct VocabularyPersistenceCodecTests {
         }
     }
 
-    @Test func headerPreservesAbsentVersusExplicitlyEmptyReviewTemplates() throws {
-        let absent = try VocabularyPersistenceCodec.encode(VocabularyDocument(reviewTemplates: nil))
-        let empty = try VocabularyPersistenceCodec.encode(VocabularyDocument(reviewTemplates: []))
-
-        #expect(absent.rows.isEmpty)
-        #expect(empty.rows.isEmpty)
-        #expect(!absent.reviewTemplatesPresent)
-        #expect(empty.reviewTemplatesPresent)
-        #expect(try VocabularyPersistenceCodec.decode(absent).reviewTemplates == nil)
-        #expect(try VocabularyPersistenceCodec.decode(empty).reviewTemplates == [])
-    }
 
     @Test func explicitNullIndexColumnIsDifferentFromMissingColumn() throws {
         let category = VocabularyCategory(
@@ -289,15 +237,13 @@ struct VocabularyPersistenceCodecTests {
         let encoded = try VocabularyPersistenceCodec.encode(database.read().document)
         let first = try #require(encoded.rows.first)
         let duplicate = VocabularyPersistenceRows(
-            rows: encoded.rows + [first],
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent
+            rows: encoded.rows + [first]
         )
         #expect(throws: VocabularyError.invalidArchive) { try duplicate.keyedRows() }
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(duplicate) }
 
         let withoutSources = VocabularyPersistenceRows(
-            rows: encoded.rows.filter { $0.entity != .sources },
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent
+            rows: encoded.rows.filter { $0.entity != .sources }
         )
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(withoutSources) }
 
@@ -311,8 +257,7 @@ struct VocabularyPersistenceCodecTests {
             indexValues: secondSource.indexValues
         )
         let gappedRows = VocabularyPersistenceRows(
-            rows: encoded.rows.map { $0.key == gappedSource.key ? gappedSource : $0 },
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent
+            rows: encoded.rows.map { $0.key == gappedSource.key ? gappedSource : $0 }
         )
         #expect(try VocabularyPersistenceCodec.decode(gappedRows) == database.read().document)
 
@@ -328,56 +273,24 @@ struct VocabularyPersistenceCodecTests {
             indexValues: contradictoryIndexes
         )
         let inconsistentRows = VocabularyPersistenceRows(
-            rows: encoded.rows.map { $0.key == entry.key ? contradictoryEntry : $0 },
-            reviewTemplatesPresent: encoded.reviewTemplatesPresent
+            rows: encoded.rows.map { $0.key == entry.key ? contradictoryEntry : $0 }
         )
         #expect(throws: VocabularyError.invalidArchive) { try VocabularyPersistenceCodec.decode(inconsistentRows) }
     }
 
-    @Test func rowEqualityUsesDecodedValuesRatherThanJSONKeyOrSetOrder() throws {
-        let review = VocabularyReview(plan: ReviewPlan(
-            id: UUID(uuidString: "72000000-0000-0000-0000-000000000001")!,
-            fieldOverrides: ["front": "one", "meaning": "two"],
-            audioKinds: [.expression, .sentence]
-        ))
-        let sortedEncoder = JSONEncoder()
-        sortedEncoder.outputFormatting = [.sortedKeys]
-        let firstPayload = try sortedEncoder.encode(review)
-
-        var object = try #require(try JSONSerialization.jsonObject(with: firstPayload) as? [String: Any])
-        var plan = try #require(object["plan"] as? [String: Any])
-        let audioKinds = try #require(plan["audioKinds"] as? [String])
-        plan["audioKinds"] = Array(audioKinds.reversed())
-        object["plan"] = plan
-        #expect(Array(audioKinds.reversed()) != audioKinds)
-        let reorderedSet = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-        let originalJSON = try #require(String(data: reorderedSet, encoding: .utf8))
-        let orderedOverrides = #""front":"one","meaning":"two""#
-        let reversedOverrides = #""meaning":"two","front":"one""#
-        #expect(originalJSON.contains(orderedOverrides))
-        let reorderedJSON = originalJSON.replacingOccurrences(
-            of: orderedOverrides,
-            with: reversedOverrides
-        )
-        #expect(reorderedJSON.contains(reversedOverrides))
-        #expect(reorderedJSON != originalJSON)
-
-        let first = try VocabularyPersistenceRow(
-            entity: .reviews,
-            id: "review-1",
-            parentID: "collection-1",
-            position: 0,
-            payload: firstPayload
-        )
-        let reordered = try VocabularyPersistenceRow(
-            entity: .reviews,
-            id: "review-1",
-            parentID: "collection-1",
-            position: 0,
-            payload: Data(reorderedJSON.utf8)
-        )
-
-        #expect(first == reordered)
+    @Test func rowEqualityUsesDecodedValuesRatherThanJSONKeyOrder() throws {
+        let source = VocabularySourceSnapshot(id: UUID(), text: "A saved source", kind: .authored,
+            appBundleIdentifier: nil, encounteredAt: Date(timeIntervalSinceReferenceDate: 100))
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let bytes = try encoder.encode(source)
+        let text = try #require(String(data: bytes, encoding: .utf8))
+        let reordered = try JSONSerialization.data(withJSONObject: JSONSerialization.jsonObject(with: bytes), options: [.prettyPrinted])
+        #expect(String(data: reordered, encoding: .utf8) != text)
+        let first = try VocabularyPersistenceRow(entity: .sources, id: source.id.uuidString,
+            parentID: nil, position: 0, payload: bytes)
+        let second = try VocabularyPersistenceRow(entity: .sources, id: source.id.uuidString,
+            parentID: nil, position: 0, payload: reordered)
+        #expect(first == second)
     }
 
     @Test func aBatchDecoderRejectsBadRowsAndCanContinueWithoutLosingLiteralText() throws {
@@ -393,12 +306,12 @@ struct VocabularyPersistenceCodecTests {
         }
         let restored = try decoder.decode(row.key, parentID: nil, position: 0, payload: row.encodedPayload(), orderedIndexes: indexes)
         #expect(try restored.encodedPayload() == row.encodedPayload())
-        #expect(Data(try VocabularyPersistenceCodec.decode(.init(rows: [restored], reviewTemplatesPresent: false))
+        #expect(Data(try VocabularyPersistenceCodec.decode(.init(rows: [restored]))
             .catalog[0].expression.utf8) == Data(entry.expression.utf8))
         var wrong = indexes; wrong[2] = "Different indexed expression"
         let inconsistent = try decoder.decode(row.key, parentID: nil, position: 0, payload: row.encodedPayload(), orderedIndexes: wrong)
         #expect(throws: VocabularyError.invalidArchive) {
-            try VocabularyPersistenceCodec.decodeSaveState(.init(rows: [inconsistent], reviewTemplatesPresent: false))
+            try VocabularyPersistenceCodec.decodeSaveState(.init(rows: [inconsistent]))
         }
     }
 }

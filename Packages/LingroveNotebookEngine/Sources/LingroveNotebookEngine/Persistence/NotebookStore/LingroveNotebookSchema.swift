@@ -16,7 +16,8 @@ public enum LingroveNotebookSchema {
         ("notebook_usages_occurrence_fk", "notebook_usages", "workspace_id,occurrence_id"),
         ("notebook_mapping_evidence_usage_fk", "notebook_mapping_evidence", "workspace_id,usage_id"),
         ("notebook_collection_interpretations_usage_fk", "notebook_collection_interpretations", "workspace_id,usage_id"),
-        ("notebook_notes_source", "notebook_notes", "workspace_id,notebook_id,json_extract(payload_json,'$.senseID')")
+        ("notebook_notes_source", "notebook_notes", "workspace_id,notebook_id,json_extract(payload_json,'$.senseID')"),
+        ("notebook_notes_by_type", "notebook_notes", "workspace_id,notebook_id,json_extract(payload_json,'$.noteTypeID')")
     ]
 
     private static var readIndexSQL: String {

@@ -61,10 +61,6 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
     public var explanations: [LearningExplanationRecord] = []
     public var alternateMeanings: [VocabularyMeaning] = []
     public var mergedFrom: [UUID] = []
-    /// Absence is distinct from an empty review draft.
-    public var review: VocabularyReview?
-    /// Flexible cards have independent review identities. Legacy review records are not migrated.
-    public var reviewCards: [VocabularyReview]?
     public var content: [VocabularyContentBlock]?
     public var savedAt: Date?
     public let createdAt: Date
@@ -86,8 +82,6 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
         explanations: [LearningExplanationRecord] = [],
         alternateMeanings: [VocabularyMeaning] = [],
         mergedFrom: [UUID] = [],
-        review: VocabularyReview? = nil,
-        reviewCards: [VocabularyReview]? = nil,
         content: [VocabularyContentBlock]? = nil,
         savedAt: Date? = nil,
         createdAt: Date,
@@ -106,8 +100,6 @@ public nonisolated struct VocabularySense: Codable, Equatable, Identifiable, Sen
         self.explanations = explanations
         self.alternateMeanings = alternateMeanings
         self.mergedFrom = mergedFrom
-        self.review = review
-        self.reviewCards = reviewCards
         self.content = content
         self.savedAt = savedAt
         self.createdAt = createdAt
@@ -276,7 +268,6 @@ public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
     public var sources: [VocabularySourceSnapshot]
     public var occurrences: [VocabularySourceOccurrence]
     public var interpretations: [VocabularyInterpretation]
-    public var reviewTemplates: [ReviewLayoutTemplate]?
     public var semantics: VocabularySemanticIndex
     public var classification: VocabularyClassificationIndex
 
@@ -285,11 +276,10 @@ public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
         set { VocabularyNotebookProjection.replace(newValue, in: &self) }
     }
 
-    public init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [], reviewTemplates: [ReviewLayoutTemplate]? = nil,
+    public init(schemaVersion: Int? = nil, entries: [VocabularyEntry] = [],
          semantics: VocabularySemanticIndex = .init(), classification: VocabularyClassificationIndex = .init()) {
         self.schemaVersion = schemaVersion ?? Self.requiredVersion(for: entries)
         self.catalog = []; self.sources = []; self.occurrences = []; self.interpretations = []
-        self.reviewTemplates = reviewTemplates
         self.semantics = semantics
         self.classification = classification
         VocabularyNotebookProjection.replace(entries, in: &self)
@@ -297,17 +287,17 @@ public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
 
     public init(catalog: [VocabularyEntry], sources: [VocabularySourceSnapshot], occurrences: [VocabularySourceOccurrence],
          interpretations: [VocabularyInterpretation],
-         reviewTemplates: [ReviewLayoutTemplate]? = nil, semantics: VocabularySemanticIndex = .init(),
+         semantics: VocabularySemanticIndex = .init(),
          classification: VocabularyClassificationIndex = .init()) {
         schemaVersion = Self.currentVersion
         self.catalog = catalog; self.sources = sources; self.occurrences = occurrences
         self.interpretations = interpretations
-        self.reviewTemplates = reviewTemplates; self.semantics = semantics
+        self.semantics = semantics
         self.classification = classification
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, catalog, sources, occurrences, interpretations, reviewTemplates, semantics, classification
+        case schemaVersion, catalog, sources, occurrences, interpretations, semantics, classification
     }
 
     public init(from decoder: Decoder) throws {
@@ -318,7 +308,6 @@ public nonisolated struct VocabularyDocument: Codable, Equatable, Sendable {
         sources = try values.decode([VocabularySourceSnapshot].self, forKey: .sources)
         occurrences = try values.decode([VocabularySourceOccurrence].self, forKey: .occurrences)
         interpretations = try values.decode([VocabularyInterpretation].self, forKey: .interpretations)
-        reviewTemplates = try values.decodeIfPresent([ReviewLayoutTemplate].self, forKey: .reviewTemplates)
         semantics = try values.decode(VocabularySemanticIndex.self, forKey: .semantics)
         classification = try values.decode(VocabularyClassificationIndex.self, forKey: .classification)
     }

@@ -71,12 +71,17 @@ final class MacNotebookSyncFixture {
                 createdAt: date, updatedAt: date)], createdAt: date, updatedAt: date)])
         let saved = try repository.engine.saveLingroveNotebook(document, basedOn: repository.snapshot(), images: [image.filename: Self.png])
         if withReview {
-            let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved,
-                selection: .init(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id))
-            let enrollment = try #require(try repository.engine.enrollNotebookSenses([draft], basedOn: saved).first)
+            let draft = VocabularySelection(entryID: saved.document.entries[0].id, senseID: saved.document.entries[0].senses[0].id)
+            let note = try #require(try repository.engine.enrollReviewNotes(
+                selections: [draft], type: ReviewNoteDefaults.type, scope: saved).first)
+            let enrollment = try #require(try repository.engine.loadLingroveNotebookReviewSnapshot(scope: saved)
+                .groups[note.senseID]?.enrollments.first)
             let exercise = try #require(try repository.engine.lingroveNotebookReviewStore.exercises(enrollment).first)
-            _ = try repository.engine.submitNotebookRating(.init(cardId: exercise.cardId, rating: .good,
-                reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "Asia/Shanghai"), basedOn: saved)
+            let content = try repository.engine.loadBuiltInNotebookReview(scope: saved, now: Date())
+            let card = try #require(content.review.groups[note.senseID]?.cards.first { $0.cardId == exercise.cardId })
+            _ = try repository.engine.submitBuiltInNotebookRating(.init(cardId: card.cardId, rating: .good,
+                reviewedAtClient: nowIsoTimestamp(), reviewedTimeZone: "Asia/Shanghai"), card: card,
+                action: .init(content: content, selection: draft))
         }
         repository.publishChange()
         return saved

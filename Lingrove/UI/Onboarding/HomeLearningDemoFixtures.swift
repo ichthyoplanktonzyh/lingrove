@@ -142,7 +142,38 @@ nonisolated struct HomeDemoAudioGenerator: SpeechAudioGenerating {
 actor HomeDemoAnki: AnkiConnecting {
     private var notes: [Int64: [String: AnkiValue]] = [:]
     private var media: Set<String> = []
+    private var models: [String: NoteAnkiJournal.Shape] = [:]
+    // This fake deliberately mirrors the transport action table; the production sender owns
+    // all business decisions. Splitting this dispatch would hide the supported protocol surface.
+    // swiftlint:disable:next cyclomatic_complexity
     func perform(_ action: String, params: [String: AnkiValue], connection: AnkiConnection) async throws -> AnkiValue {
+        let name = params["modelName"]?.string ?? ""
+        switch action {
+        case "modelNames": return .list(Array(models.keys))
+        case "modelFieldNames": return .list(models[name]?.fields ?? [])
+        case "modelTemplates": return .object(models[name]?.templates ?? [:])
+        case "modelStyling": return .object(["css": .string(models[name]?.css ?? "")])
+        case "findModelsByName":
+            return .array((params["modelNames"]?.array ?? []).compactMap { value in
+                guard let shape = models[value.string ?? ""] else { return nil }
+                return .object(["tmpls": .array(shape.order.enumerated().map { index, key in
+                    .object(["name": .string(key), "ord": .number(Double(index))])
+                })])
+            })
+        case "createModel":
+            let rows = params["cardTemplates"]?.array?.compactMap(\.object) ?? []
+            let templates = rows.compactMap { row -> (String, AnkiValue)? in
+                guard let key = row["Name"]?.string else { return nil }
+                return (key, .object(["Front": row["Front"] ?? .string(""), "Back": row["Back"] ?? .string("")]))
+            }
+            models[name] = .init(fields: params["inOrderFields"]?.array?.compactMap(\.string) ?? [],
+                order: rows.compactMap { $0["Name"]?.string }, templates: Dictionary(uniqueKeysWithValues: templates),
+                css: params["css"]?.string ?? "")
+            return .null
+        case "areSuspended": return .array((params["cards"]?.array ?? []).map { _ in .bool(false) })
+        case "suspend", "unsuspend": return .bool(true)
+        default: break
+        }
         if let value = metadata(action, params: params) { return value }
         switch action {
         case "findNotes":
@@ -168,7 +199,7 @@ actor HomeDemoAnki: AnkiConnecting {
     }
     private func matchingNotes(_ query: String) -> AnkiValue {
         .array(notes.compactMap { id, note in
-                guard let identity = note["fields"]?.object?["LingroveID"]?.string,
+                guard let identity = note["fields"]?.object?["LingroveNoteID"]?.string,
                       query.contains(identity) else { return nil }
                 return .number(Double(id))
             })
@@ -176,27 +207,19 @@ actor HomeDemoAnki: AnkiConnecting {
     private func notesInfo(_ ids: [AnkiValue]) -> AnkiValue {
         .array(ids.map { value in
                 guard let id = value.integer, let note = notes[id] else { return .object([:]) }
-                return .object(["noteId": .number(Double(id)), "modelName": note["modelName"] ?? .string(ReviewLayoutPolicy.model),
+                return .object(["noteId": .number(Double(id)), "modelName": note["modelName"] ?? .string(""),
                     "fields": .object((note["fields"]?.object ?? [:]).mapValues { .object(["value": $0]) })])
             })
     }
     private func metadata(_ action: String, params: [String: AnkiValue]) -> AnkiValue? {
         let fixed: [String: AnkiValue] = [
             "findCards": .array([.number(1)]),
-            "cardsInfo": .array([.object(["deckName": .string("Default")])]),
+            "cardsInfo": .array([.object(["cardId": .number(1), "ord": .number(0), "deckName": .string("Default")])]),
             "guiDeckOverview": .bool(true), "version": .number(6),
-            "getActiveProfile": .string("Lingrove Demo"), "deckNames": .list(["Default"]),
-            "modelNames": .list([ReviewLayoutPolicy.model, AnkiReviewPolicy.presetName])
+            "getActiveProfile": .string("Lingrove Demo"), "deckNames": .list(["Default"])
         ]
         if let value = fixed[action] { return value }
-        switch action {
-        case "modelFieldNames": return .list(params["modelName"]?.string == ReviewLayoutPolicy.model
-            ? ["LingroveID", "Front", "Back"] : ReviewField.allCases.map(\.rawValue))
-        case "modelTemplates": return .object(params["modelName"]?.string == ReviewLayoutPolicy.model
-            ? ReviewLayoutPolicy.templates : AnkiNoteTemplate.templates)
-        case "modelStyling": return .object(["css": .string(ReviewLayoutPolicy.css)])
-        default: return nil
-        }
+        return nil
     }
 
 }

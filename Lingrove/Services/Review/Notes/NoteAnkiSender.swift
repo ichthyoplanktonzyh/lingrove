@@ -33,16 +33,16 @@ final class NoteAnkiSender {
         _ material: NoteAnkiIO.Material, scope: ReviewOperationScope, deck: String,
         choices: [String: Bool] = [:], expectedRemote: [String: String] = [:], moveExisting: Bool = false
     ) async throws -> Result {
-        try controller.begin(material.sense.id, cardID: material.note.id)
+        try controller.begin(material.sense.id, noteID: material.note.id)
         do {
             let result = try await perform(
                 material, scope: scope,
                 options: .init(deck: deck, choices: choices, expectedRemote: expectedRemote, moveExisting: moveExisting))
             controller.finish(
-                material.sense.id, cardID: material.note.id, wrote: result.conflicts.isEmpty, scope: .init(material.scope))
+                material.sense.id, noteID: material.note.id, wrote: result.conflicts.isEmpty, scope: .init(material.scope))
             return result
         } catch {
-            controller.finish(material.sense.id, cardID: material.note.id, error: error, scope: .init(material.scope))
+            controller.finish(material.sense.id, noteID: material.note.id, error: error, scope: .init(material.scope))
             throw error
         }
     }

@@ -10,6 +10,5 @@ public nonisolated struct VocabularyPersistenceMaterialRoots: Sendable {
     public var occurrenceIDs: Set<UUID> = []
     public var interpretationIDs: Set<UUID> = []
     public var organizationRoots: Set<VocabularyPersistenceRow.Key> = []
-    public var allReviewMaterial = false
     public init() {}
 }

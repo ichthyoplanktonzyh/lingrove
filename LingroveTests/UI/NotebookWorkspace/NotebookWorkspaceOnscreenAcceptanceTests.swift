@@ -41,7 +41,7 @@ struct NotebookWorkspaceOnscreenAcceptanceTests {
             workspaceExpect(final.review.groups[selection.senseID]?.cards.first?.reps == 1)
             workspaceExpect(fixture.window.navigation.destination == .corpus)
             workspaceExpect(fixture.window.corpusHost?.rootView.selectedSenseID == selection.senseID)
-            workspaceExpect(fixture.review.session.draft == nil)
+            workspaceExpect(fixture.review.session.noteTypeDraft == nil)
             let fence = try fixture.repository.engine.notebookProgressReadFence()
             let progress = try await NotebookProgressIO(databaseURL: fixture.repository.databaseURL,
                 mediaDirectoryURL: fixture.repository.mediaDirectoryURL).load(scope: fence.scope, now: Date(), calendar: .current)

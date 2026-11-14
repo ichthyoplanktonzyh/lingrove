@@ -9,13 +9,15 @@ import Foundation
 extension VocabularyArchive {
     // One closed command switch keeps scope admission and the common response budget in view.
     // swiftlint:disable:next cyclomatic_complexity
-    func executeCLI(_ request: CLIRequest) throws -> (CLIJSON, VocabularyArchiveSnapshot) {
+    func executeCLI(_ request: CLIRequest) throws -> VocabularyCLIExecution {
         guard request.version == CLIServiceIdentity.protocolVersion, request.expiresAt > Date() else {
             throw CLIError(code: .timeout, message: "Request expired or protocol version is unsupported.")
         }
         if request.command == .apply {
-            return try storageAccess(write: true) { try applyCLI(request) }
+            let (value, snapshot) = try storageAccess(write: true) { try applyCLI(request) }
+            return .complete(value, snapshot)
         }
+        if let read = try boundedCLIRead(request) { return read }
         let snapshot = try load()
         if let supplied = request.readScope {
             guard let scope = snapshot.scope,
@@ -25,25 +27,19 @@ extension VocabularyArchive {
         let result: CLIJSON
         switch request.command {
         case .hello: throw CLIError.invalid("Handshake belongs to the CLI transport.")
-        case .status:
-            result = .object(["storage": .string("sqlite"), "schemaVersion": .integer(Int64(LocalDatabaseSchema.currentVersion)),
-                "revision": .integer(Int64(snapshot.revision)), "entryCount": .integer(Int64(snapshot.document.catalog.count)),
-                "sourceCount": .integer(Int64(snapshot.document.sources.count)),
-                "occurrenceCount": .integer(Int64(snapshot.document.occurrences.count)),
-                "interpretationCount": .integer(Int64(snapshot.document.interpretations.count)),
-                "resources": .array(CLIResourceContract.names.map(CLIJSON.string)),
-                "senseCount": .integer(Int64(snapshot.document.catalog.reduce(0) { $0 + $1.senses.count })),
-                "languages": .array(LearningLanguage.allCases.map { .string($0.rawValue) }),
-                "kinds": .array(VocabularyEntry.Kind.allCases.map { .string($0.rawValue) })])
         case .list:
             let limit = request.limit ?? 50, offset = request.offset ?? 0
             guard (1...200).contains(limit), offset >= 0, (request.query?.utf8.count ?? 0) <= 4_096,
                   request.language == nil || request.language == "und" || LearningLanguage(rawValue: request.language ?? "") != nil else {
                 throw CLIError.invalid("Use a supported language, a limit of 1–200 and a nonnegative offset.")
             }
-            let values = snapshot.document.entries.filter {
-                (request.language == nil || ($0.language?.rawValue ?? "und") == request.language)
-                    && VocabularyPolicy.matches($0, query: request.query ?? "")
+            let entries = (snapshot.joinedEntries ?? snapshot.document.entries).filter {
+                request.language == nil || ($0.language?.rawValue ?? "und") == request.language
+            }
+            let values: [VocabularyEntry]
+            if (request.query ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { values = entries } else {
+                cliLiteralIndex.prepare(entries)
+                values = cliLiteralIndex.matching(entries, query: request.query ?? "")
             }
             let page = values.dropFirst(min(offset, values.count)).prefix(limit).map { entry in
                 CLIJSON.object(["entryID": .string(entry.id.uuidString), "expression": .string(Self.cliSummary(entry.expression)),
@@ -58,45 +54,13 @@ extension VocabularyArchive {
             result = .object(["revision": .integer(Int64(snapshot.revision)), "total": .integer(Int64(values.count)),
                 "offset": .integer(Int64(offset)), "entries": .array(page),
                 "nextOffset": offset < values.count && page.count < values.count - offset ? .integer(Int64(offset + page.count)) : .null])
-        case .get:
-            guard let id = request.entryID, let entry = snapshot.document.entries.first(where: { $0.id == id }) else {
-                throw CLIError(code: .notFound, message: "Entry not found.")
-            }
-            try VocabularyCLIReadBudget.validate(entry)
-            result = .object(["revision": .integer(Int64(snapshot.revision)),
-                "entry": try NotebookSenseProjection(snapshot.document).entry(entry)])
-        case .sense:
-            guard let id = request.senseID,
-                  var entry = snapshot.document.entries.first(where: { $0.senses.contains { $0.id == id } }) else {
-                throw CLIError(code: .notFound, message: "Sense not found.")
-            }
-            entry.senses.removeAll { $0.id != id }
-            try VocabularyCLIReadBudget.validate(entry)
-            result = .object(["revision": .integer(Int64(snapshot.revision)),
-                "sense": try NotebookSenseProjection(snapshot.document).sense(id, in: entry)])
-        case .readMany:
-            guard let selection = request.readSelection else { throw CLIError.invalid("Batch read selection is missing.") }
-            var material = try VocabularyCLIBatchRead.read(selection, from: snapshot.document)
-            material["revision"] = .integer(Int64(snapshot.revision))
-            result = .object(material)
-        case .image:
-            guard request.readScope != nil, let senseID = request.senseID, let digest = request.imageID,
-                  let sense = snapshot.document.catalog.lazy.flatMap(\.senses).first(where: { $0.id == senseID }),
-                  let reference = VocabularyContentPolicy.images(sense.content ?? []).first(where: { $0.digest == digest }),
-                  let scope = snapshot.scope else {
-                throw CLIError(code: .notFound, message: "Image is not present in this sense and notebook scope.")
-            }
-            let bytes = try LingroveNotebookMediaStore(core: persistence().core)
-                .image(reference, scope: scope, requireActiveWorkspace: true)
-            result = .object(["revision": .integer(Int64(snapshot.revision)), "senseID": .string(senseID.uuidString),
-                "imageID": .string(digest), "mimeType": .string("image/png"), "dataBase64": .string(bytes.base64EncodedString())])
         case .resourceList, .resourceGet: result = try readCLIResources(request, snapshot: snapshot)
-        case .apply: preconditionFailure("Handled before the read path")
+        case .apply, .status, .get, .sense, .readMany, .image: preconditionFailure("Handled before the full read path")
         }
         guard try JSONEncoder().encode(result).count <= CLIInputPolicy.maximumBytes - 8_192 else {
             throw CLIError.invalid("Read result is too large. Read one sense or a smaller resource page.")
         }
-        return (try addingScope(to: result, snapshot: snapshot), snapshot)
+        return .complete(try addingScope(to: result, snapshot: snapshot), snapshot)
     }
 
     private static func cliSummary(_ value: String) -> String {

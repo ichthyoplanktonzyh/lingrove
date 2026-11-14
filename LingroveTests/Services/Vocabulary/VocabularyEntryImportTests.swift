@@ -4,6 +4,33 @@ import Testing
 @testable import Lingrove
 
 struct VocabularyEntryImportTests {
+    @Test func emptyCreationAndEditorDraftsCannotWriteButExampleMetadataSurvivesEditing() async throws {
+        let archive = VocabularyArchive(url: nil)
+        let empty = try await archive.load()
+        await #expect(throws: VocabularyError.invalidContent) {
+            try await archive.save(.init(expression: "placeholder", dictionaryForm: "placeholder", language: .english, kind: .word))
+        }
+        let afterRejectedCapture = try await archive.load()
+        #expect(afterRejectedCapture.revision == empty.revision && afterRejectedCapture.document.entries.isEmpty)
+        let (saved, _) = try await archive.addEntries([.init(expression: "word", meaning: "A saved meaning")])
+        let original = try #require(saved.document.entries.first)
+        var blank = original
+        blank.senses.append(.init(id: UUID(), meaning: "", createdAt: Date(), updatedAt: Date()))
+        await #expect(throws: VocabularyError.invalidContent) { try await archive.update(blank, basedOn: original) }
+        blank = original; blank.senses[0].meaning = " \n"
+        await #expect(throws: VocabularyError.invalidContent) { try await archive.update(blank, basedOn: original) }
+        #expect(try await archive.load().revision == saved.revision)
+        let context = VocabularyExample(id: UUID(), text: "A supplied context fragment", translation: "译文", ranges: [],
+            completeness: .unknown, meaning: "", createdAt: Date())
+        let contextual = try await archive.save(.init(expression: "context", dictionaryForm: "context", language: .english,
+            kind: .word, meaning: "A contextual meaning", example: context))
+        let owner = try #require(contextual.document.entries.first { $0.expression == "context" })
+        var edited = owner; edited.senses[0].note = "A personal note"
+        let updated = try await archive.update(edited, basedOn: owner)
+        #expect(updated.document.entries.first { $0.id == owner.id }?.examples.first?.completeness == .unknown)
+        await archive.shutdown()
+    }
+
     @Test func manualAdditionPersistsAndGroupsDifferentMeaningsWithoutReplacingContent() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -37,17 +64,17 @@ struct VocabularyEntryImportTests {
         let archive = VocabularyArchive(url: nil)
         let initial = try await archive.load()
         #expect(throws: VocabularyEntryInputError.self) {
-            try VocabularyEntryInputPolicy.plan([.init(expression: "hello"), .init(expression: "")],
+            try VocabularyEntryInputPolicy.plan([.init(expression: "hello", meaning: "A greeting"), .init(expression: "")],
                 into: initial.document, now: Date())
         }
         do {
-            _ = try await archive.addEntries([.init(expression: "hello"), .init(expression: "")])
+            _ = try await archive.addEntries([.init(expression: "hello", meaning: "A greeting"), .init(expression: "")])
             Issue.record("An invalid row must block the whole batch")
         } catch is VocabularyEntryInputError { }
         #expect(try await archive.load().revision == initial.revision)
         let cancelled = Task {
             withUnsafeCurrentTask { $0?.cancel() }
-            return try await archive.addEntries([.init(expression: "cancelled")])
+            return try await archive.addEntries([.init(expression: "cancelled", meaning: "A cancelled draft")])
         }
         do { _ = try await cancelled.value; Issue.record("A cancelled task must not write") } catch is CancellationError { }
         #expect(try await archive.load().document.entries.isEmpty)

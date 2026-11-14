@@ -36,12 +36,7 @@ nonisolated struct VocabularyContentTests {
         var edited = original
         edited.senses[0].content = [.init(content: .text(.init(text: "River bank", bold: true))),
             .init(content: .image(image.reference, caption: "河岸"))]
-        let binding = AnkiNoteBinding(originSenseID: original.senses[0].id, endpoint: "http://127.0.0.1:8765", profile: "Fixture",
-            noteID: 42, model: AnkiReviewPolicy.presetName, deck: "Default", identityField: "LingroveID",
-            mapping: AnkiReviewPolicy.presetMapping, fields: ["LingroveID": original.senses[0].id.uuidString.lowercased()])
         _ = try await archive.update(edited, basedOn: original, importedImages: [image.reference.filename: image.data])
-        _ = try await archive.saveReview(entryID: original.id, senseID: original.senses[0].id,
-            value: .init(plan: .init(), bindings: [binding], activeBindingID: binding.id), expected: nil)
         let reopened = VocabularyArchive(url: url)
         #expect(try await reopened.load().document.entries[0].senses[0].content == edited.senses[0].content)
         #expect(try await reopened.image(image.reference) == image.data)
@@ -52,7 +47,6 @@ nonisolated struct VocabularyContentTests {
         let result = try await restored.restore(from: backup)
         #expect(result.document.entries[0].senses[0].id == original.senses[0].id)
         #expect(result.document.entries[0].senses[0].content == edited.senses[0].content)
-        #expect(result.document.entries[0].senses[0].review?.activeBinding == binding)
         #expect(try await restored.image(image.reference) == image.data)
     }
 
@@ -96,8 +90,10 @@ nonisolated struct VocabularyContentTests {
     @Test func mergingSensesPreservesBlocksAndSharedImageUntilLastReferenceIsRemoved() async throws {
         let archive = VocabularyArchive(url: nil)
         let original = try await archive.save(capture()).document.entries[0]
-        let secondID = UUID()
-        let withTwo = try await archive.createSense(entryID: original.id, senseID: secondID).document.entries[0]
+        let (added, result) = try await archive.addEntries([.init(expression: original.expression,
+            language: original.language, kind: original.kind, meaning: "Another authored meaning")])
+        let secondID = try #require(result.selection?.senseID)
+        let withTwo = try #require(added.document.entries.first { $0.id == original.id })
         let image = try await archive.prepareImage(VocabularyImageTestFixture.png())
         var edited = withTwo
         edited.senses[0].content = [.init(content: .image(image.reference, caption: "first"))]
@@ -130,34 +126,13 @@ nonisolated struct VocabularyContentTests {
         #expect(!VocabularyContentPolicy.valid(invalid))
     }
 
-    @Test func imageOnlyReviewHasAnswerMediaAndGapFrontNeverRevealsIt() async throws {
-        let archive = VocabularyArchive(url: nil)
-        var entry = try await archive.save(capture()).document.entries[0]
-        let image = try await archive.prepareImage(VocabularyImageTestFixture.png())
-        entry.senses[0].meaning = ""
-        entry.senses[0].content = [.init(content: .image(image.reference, caption: "<river>"))]
-        #expect(VocabularyPolicy.matches(entry, query: "river"))
-        let plan = ReviewCardPolicy.initialPlan(entry.senses[0])
-        let content = try ReviewCardPolicy.content(entry: entry, sense: entry.senses[0], plan: plan)
-        #expect(content.answer.isEmpty)
-        let values = ReviewCardPolicy.values(content, identity: entry.senses[0].id).reduce(into: [String: String]()) { $0[$1.key.rawValue] = $1.value }
-        #expect(values["Meaning"]?.contains(image.reference.filename) == true)
-        #expect(values["Meaning"]?.contains("&lt;river&gt;") == true)
-        #expect(!AnkiNoteTemplate.preview(fields: values, gap: false, back: false).contains(image.reference.filename))
-        #expect(!AnkiNoteTemplate.preview(fields: values, gap: true, back: false).contains(image.reference.filename))
-        #expect(AnkiNoteTemplate.preview(fields: values, gap: false, back: true).contains(image.reference.filename))
-        var excluded = plan; excluded.includeSenseContent = false
-        #expect(throws: (any Error).self) { try ReviewCardPolicy.content(entry: entry, sense: entry.senses[0], plan: excluded) }
-    }
 
-    @Test func formattingEscapesTextAndLegacyPlansRemainUnchanged() throws {
+    @Test func formattingEscapesText() throws {
         let block = VocabularyContentBlock(content: .text(.init(text: "<script>&", style: .bullet, bold: true, italic: true)))
         let html = VocabularyContentPolicy.html([block])
         #expect(html.contains("&lt;script&gt;&amp;"))
         #expect(html.contains("<strong>") && html.contains("<em>") && html.contains("<li>"))
         #expect(!html.contains("<script>"))
-        let legacy = try JSONDecoder().decode(ReviewPlan.self, from: JSONEncoder().encode(ReviewPlan()))
-        #expect(legacy.includeSenseContent == nil)
     }
 
     @Test func validBackupRepairsCorruptedMediaAndHasPrivatePermissions() async throws {

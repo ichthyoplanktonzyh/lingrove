@@ -213,33 +213,17 @@ struct BuiltInReviewSenseView: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
-            } else if context.group.hasUnavailableMaterial ||
-                LingroveNotebookCardMaterial.resolve(source: context.link.source, snapshot: content.scope) == nil {
-                HStack(spacing: 10) {
-                    Label(BuiltInReviewCopy.text(context.link.allowsUnavailableMaterial ? "material.retained" : "material.unavailable"),
-                        systemImage: context.link.allowsUnavailableMaterial ? "archivebox" : "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(context.link.allowsUnavailableMaterial ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
-                    if !context.link.allowsUnavailableMaterial {
-                        Button(BuiltInReviewCopy.text("action.retain")) { session.retain(context) }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .accessibilityIdentifier("builtinReview.retain")
-                    }
-                }
             }
 
             HStack(spacing: 8) {
                 Button {
                     if let model = content.noteCards[context.card.cardId] {
                         session.editNote(model)
-                    } else {
-                        session.edit(card: context.card, link: context.link, selection: context.group.selection, basedOn: content)
                     }
                 } label: {
                     Label(BuiltInReviewCopy.text("action.edit"), systemImage: "pencil")
                 }
-                .disabled(source == nil && !context.link.allowsUnavailableMaterial)
+                .disabled(source == nil)
                 .accessibilityIdentifier("builtinReview.edit." + context.card.cardId)
 
                 if let model = content.noteCards[context.card.cardId] {

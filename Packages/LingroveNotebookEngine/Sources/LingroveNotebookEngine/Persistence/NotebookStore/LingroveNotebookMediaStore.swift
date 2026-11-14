@@ -52,14 +52,16 @@ public struct LingroveNotebookMediaStore {
         guard references.reduce(0, { $0 + $1.byteCount }) <= VocabularyDocumentValidation.maximumMediaBytes else {
             throw VocabularyError.oversizedArchive
         }
+        let registrations = try registrations(references, workspace: workspaceId)
         for reference in references {
             try Task.checkCancellation()
-            let mapped = try self.assetId(reference, workspaceId: workspaceId)
+            let registration = registrations[reference.digest]
+            let mapped = registration?.assetID
             if !staged.contains(reference) {
                 // A digest alone cannot import bytes owned only by another workspace, even
                 // though the physical cache deduplicates both workspaces' files by hash.
-                guard let mapped else { throw VocabularyError.invalidContent }
-                if existing.contains(reference), try self.hasRegisteredBytesMetadata(reference, assetId: mapped, workspaceId: workspaceId) {
+                guard mapped != nil else { throw VocabularyError.invalidContent }
+                if existing.contains(reference), registration?.trustedMetadata == true {
                     continue
                 }
                 _ = try self.readBlob(reference)

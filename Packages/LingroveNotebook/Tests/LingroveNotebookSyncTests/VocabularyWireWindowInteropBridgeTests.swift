@@ -35,7 +35,6 @@ struct VocabularyWireWindowInteropBridgeTests {
         #expect(initial.sequence.rawValue == "1")
         let initialMaterial = try initial.materialize(preserving: privateState)
         #expect(initialMaterial.document == original)
-        #expect(initialMaterial.unattachedPrivateState.reviews.isEmpty)
         #expect(initialMaterial.unattachedPrivateState.explanations.isEmpty)
 
         let deltaEnvelope = try envelope("LINGROVE_NATIVE_WINDOW_DELTA")
@@ -57,7 +56,6 @@ struct VocabularyWireWindowInteropBridgeTests {
         expected.semantics.patterns[pattern].collocations += (0..<100).map { String(format: "%03d", $0) + String(repeating: "猫", count: 10_900) }
         let material = try updated.materialize(preserving: privateState)
         #expect(material.document == expected)
-        #expect(material.unattachedPrivateState.reviews.isEmpty)
         #expect(material.unattachedPrivateState.explanations.isEmpty)
     }
 }

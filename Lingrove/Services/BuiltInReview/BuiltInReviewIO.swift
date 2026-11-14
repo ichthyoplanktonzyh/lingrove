@@ -12,12 +12,10 @@ actor BuiltInReviewIO {
         case enrollNotes([VocabularySelection], ReviewNoteType, LingroveNotebookSnapshot)
         case noteType(ReviewNoteType, ReviewNoteType?, LingroveNotebookSnapshot, Bool)
         case note(ReviewNoteEditorDraft)
-        case save(BuiltInReviewDraft)
         case batch(BuiltInReviewBatchDraft)
         case status(LingroveNotebookReviewStatus, NotebookBuiltInReviewAction, UUID)
         case rate(BuiltInReviewCardContext, ReviewRating, Date, String)
         case undo(BuiltInReviewUndoAction)
-        case retain(BuiltInReviewCardContext)
     }
 
     private let databaseURL: URL
@@ -28,14 +26,15 @@ actor BuiltInReviewIO {
         self.mediaDirectoryURL = mediaDirectoryURL
     }
 
-    func load(version: LingroveNotebookVersion, savedScope: LingroveNotebookSnapshot?, now: Date) throws
+    func load(version: LingroveNotebookVersion, savedScope: LingroveNotebookSnapshot?, now: Date,
+              reusing index: BuiltInReviewContentState? = nil) throws
         -> (NotebookBuiltInReviewSnapshot, BuiltInReviewContentState) {
         try Task.checkCancellation()
         let engine = try LingroveNotebookEngine(readOnlyDatabaseURL: databaseURL, mediaDirectoryURL: mediaDirectoryURL)
         defer { try? engine.close() }
         let snapshot = try engine.loadBuiltInNotebookReview(version: version, now: now, savedScope: savedScope)
         try Task.checkCancellation()
-        return (snapshot, BuiltInReviewContentState(snapshot))
+        return (snapshot, BuiltInReviewContentState(snapshot, reusing: index))
     }
 
     func participation(selection: VocabularySelection, version: LingroveNotebookVersion) throws -> LingroveNotebookParticipation {
@@ -54,10 +53,8 @@ actor BuiltInReviewIO {
             case let .note(draft):
                 var value = draft.note; value.revision = draft.expected.revision + 1
                 try engine.saveReviewNote(value, expected: draft.expected, scope: draft.scope)
-            case let .save(draft):
-                try save(draft, using: engine)
             case let .batch(batch):
-                _ = try engine.enrollReviewNotes(selections: batch.drafts.map(\.selection),
+                _ = try engine.enrollReviewNotes(selections: batch.selections,
                     type: batch.content.defaultNoteType, scope: batch.content.scope)
             case let .status(status, action, requestID):
                 try engine.setBuiltInNotebookReviewStatus(status, action: action, requestID: requestID)
@@ -67,31 +64,6 @@ actor BuiltInReviewIO {
                     card: context.card, action: context.action)
             case let .undo(undo):
                 try engine.undoBuiltInNotebookRating(undo.identity, action: undo.action)
-            case let .retain(context):
-                try engine.retainNotebookExercise(link: context.link, card: context.card,
-                    snapshot: context.snapshot, action: context.action)
-            }
-        }
-    }
-
-    /// Draft purpose selects the storage operation after command dispatch. Borrow the connection
-    /// already opened by `perform` so every save keeps the same cancellation and close boundary.
-    private func save(_ draft: BuiltInReviewDraft, using engine: LingroveNotebookEngine) throws {
-        switch draft.purpose {
-        case .enrollment:
-            _ = try engine.enrollBuiltInNotebookSense(draft.creationDraft(), input: draft.input,
-                media: draft.preparedMedia, action: draft.action)
-        case .additionalExercise:
-            _ = try engine.addBuiltInNotebookExercise(draft.creationDraft(), input: draft.input,
-                media: draft.preparedMedia, action: draft.action)
-        case let .editing(card, link):
-            if LingroveNotebookCardMaterial.resolvedSelection(source: link.source, snapshot: draft.snapshot) == nil {
-                try engine.saveRetainedBuiltInNotebookMaterial(link: link, card: card, input: draft.input,
-                    materialPlan: draft.materialPlan, media: draft.preparedMedia, action: draft.action)
-            } else {
-                try engine.prepareNotebookExercise(link: link, card: card, snapshot: draft.snapshot,
-                    exampleID: draft.exampleID, input: draft.input, materialPlan: draft.materialPlan,
-                    media: draft.preparedMedia, action: draft.action)
             }
         }
     }
@@ -99,10 +71,10 @@ actor BuiltInReviewIO {
     /// Rendering can read only a bounded local PNG referenced by this exact saved Card. An
     /// unfamiliar HTTPS image, a source_url or an arbitrary path is never fetched by opening a
     /// face. Metadata ownership, byte count and digest are rechecked before bytes leave IO.
-    func savedMedia(context: BuiltInReviewCardContext) throws -> ([BuiltInReviewSavedImage], [BuiltInReviewSavedAudio]) {
+    func savedMedia(context: BuiltInReviewCardContext) throws -> [BuiltInReviewSavedImage] {
         try withEngine(readOnly: true) { engine in
             try engine.withBuiltInReviewCardRead(version: .init(context.snapshot), card: context.card, link: context.link) {
-                (try readImages(context: context, engine: engine), try readAudio(context: context, engine: engine))
+                try readImages(context: context, engine: engine)
             }
         }
     }
@@ -110,8 +82,7 @@ actor BuiltInReviewIO {
     private func readImages(context: BuiltInReviewCardContext, engine: LingroveNotebookEngine) throws -> [BuiltInReviewSavedImage] {
         let ids = managedMediaAssetIdsReferencedInMarkdown(text: context.card.frontText + "\n" + context.card.backText)
         var result: [BuiltInReviewSavedImage] = []
-        // A recipe can combine the corpus's image allowance with card-only content.
-        // Bound the combined read as well as each blob, without hiding valid later parts.
+        // Bound the complete face as well as each blob before bytes reach WebKit.
         var remainingBytes = Int64(VocabularyContentPolicy.maximumSenseImageBytes * 2)
         for id in ids.sorted().prefix(128) {
             try Task.checkCancellation()
@@ -138,35 +109,6 @@ actor BuiltInReviewIO {
             remainingBytes -= Int64(bytes.count)
         }
         return result
-    }
-
-    private func readAudio(context: BuiltInReviewCardContext, engine: LingroveNotebookEngine) throws -> [BuiltInReviewSavedAudio] {
-        let recordings = (context.link.materialPlan?.audio ?? [:]).sorted { $0.key.rawValue < $1.key.rawValue }
-        return try recordings.compactMap { kind, audio in
-            let id = LingroveNotebookCardMaterial.mediaAssetID(reference: audio.reference,
-                workspaceID: context.snapshot.workspaceId)
-            guard let media = try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
-                workspaceID: context.snapshot.workspaceId) else { return nil }
-            return .init(id: id, kind: kind, data: media.data,
-                fileExtension: audio.reference.mimeType == "audio/mpeg" ? "mp3" : "wav")
-        }
-    }
-
-    /// A sheet may reopen card-only resources without importing them into the corpus. The same
-    /// saved scope fences this read; bytes remain in the sheet until an explicit writer uses them.
-    func materialMedia(draft: BuiltInReviewDraft) throws -> [ReviewMaterialPreparedMedia] {
-        try withEngine(readOnly: true) { engine in
-            try engine.withNotebookRead(version: .init(draft.snapshot)) {
-                let images = VocabularyContentPolicy.images(draft.materialPlan.layout.customContent)
-                    .map(ReviewMaterialMediaReference.init(image:))
-                let references = Set(images + draft.materialPlan.audio.values.map(\.reference))
-                return try references.compactMap { reference in
-                    let id = LingroveNotebookCardMaterial.mediaAssetID(reference: reference, workspaceID: draft.snapshot.workspaceId)
-                    return try LingroveNotebookReviewMediaStore(core: engine.core).media(assetID: id,
-                        workspaceID: draft.snapshot.workspaceId)
-                }
-            }
-        }
     }
 
     private func withEngine<T>(readOnly: Bool = false, _ operation: (LingroveNotebookEngine) throws -> T) throws -> T {

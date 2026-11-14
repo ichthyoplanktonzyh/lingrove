@@ -35,9 +35,13 @@ def main():
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--focus", action="store_true", help="Measure entry save and three deletion cases without a full-save window")
     parser.add_argument("--cold-only", action="store_true", help="Measure a fresh engine's first load without mutations")
+    parser.add_argument("--candidates", action="store_true", help="Independent cold commands against a reviewed, image-rich corpus")
+    parser.add_argument("--baseline-only", action="store_true", help="Investigate only the archived revision before implementation")
     args = parser.parse_args()
     assert args.entries >= 5000 and args.trials > 0
-    assert not (args.focus and args.cold_only)
+    assert sum((args.focus, args.cold_only, args.candidates)) <= 1
+    assert not args.baseline_only or args.candidates
+    variants = ("before",) if args.baseline_only else ("before", "after")
     base = ROOT / "build/corpus-data-layer-paired" / args.label
     base.mkdir(parents=True, exist_ok=False)
     tool = base / "tool"
@@ -69,23 +73,56 @@ def main():
             (tool / "Package.swift").write_text(MANIFEST)
             fixture = ROOT / "scripts/validation/fixtures/CorpusDataLayerPaired.swift"
             shutil.copyfile(fixture, tool / "Sources/main.swift")
+            candidate_fixture = ROOT / "scripts/validation/fixtures/CorpusCandidateOperations.swift"
+            shutil.copyfile(candidate_fixture, tool / "Sources/CorpusCandidateOperations.swift")
             files = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard", "Packages"],
                 cwd=ROOT, text=True).splitlines()
             (base / "source-hashes.json").write_text(json.dumps({path: digest(ROOT / path)
                 for path in sorted(set(files)) if (ROOT / path).is_file()}, indent=2) + "\n")
             binaries = {}
             for name, path in (("before", source), ("after", ROOT)):
+                if name not in variants:
+                    continue
                 environment = dict(os.environ, LINGROVE_PAIRED_SOURCE=str(path))
                 common = ["swift", "build", "-c", "release", "--package-path", str(tool), "--scratch-path", str(scratch[name])]
                 run("build-" + name, common + ["--jobs", "8"], environment)
                 location = subprocess.check_output(common + ["--show-bin-path"], cwd=ROOT, env=environment, text=True).strip()
                 binaries[name] = str(Path(location) / "PairedCorpus")
             seed.mkdir()
-            run("seed", [binaries["before"], "seed", str(seed), str(args.entries)])
+            run("seed", [binaries["before"], "seed", str(seed), str(args.entries)],
+                dict(os.environ, LINGROVE_PAIRED_CANDIDATES="1" if args.candidates else "0"))
             seed_hash = digest(seed / "primary.sqlite")
             result = {"seedSHA256": seed_hash, "beforeCommit": args.before, "fixtureSHA256": digest(fixture),
                 "configuration": "Release", "architecture": "arm64", "entries": args.entries,
                 "enrolledSenses": args.entries // 5, "ratings": 1000, "samples": []}
+            if args.candidates:
+                result["candidateFixtureSHA256"] = digest(candidate_fixture)
+                result["imageCount"] = 512
+                result["extraTemplatesOnReviewedSource"] = 8
+                result["preparation"] = {}
+                # Schema/index installation may revoke an old certificate. Certify each
+                # variant outside the command timers, then close before cloning trials.
+                for name in variants:
+                    prepared = base / (name + "-prepared-0")
+                    shutil.copytree(seed, prepared)
+                    run("prepare-" + name, [binaries[name], "prepare", str(prepared), str(args.entries)])
+                    result["preparation"][name] = json.loads((base / ("prepare-" + name + ".log")).read_text().splitlines()[-1])
+                cases = ["reviewed_append", "reviewed_note", "cited_example_edit",
+                         "shared_source", "plain_capture_images", "image_add", "image_remove_shared",
+                         "image_remove_last", "sense_create", "tag_filter"]
+                for trial in range(1, args.trials + 1):
+                    for case in cases:
+                        for name in variants:
+                            folder = base / (name + "-" + case + "-" + str(trial))
+                            shutil.copytree(base / (name + "-prepared-0"), folder)
+                            label = folder.name
+                            run(label, [binaries[name], case, str(folder), str(args.entries)])
+                            sample = json.loads((base / (label + ".log")).read_text().splitlines()[-1])
+                            result["samples"].append(dict(sample, variant=name, trial=trial, operation=case))
+                            shutil.rmtree(folder)
+                assert digest(seed / "primary.sqlite") == seed_hash
+                (base / "results.json").write_text(json.dumps(result, indent=2) + "\n")
+                return
             for trial in range(1, args.trials + 1):
                 for name in ("before", "after"):
                     folder = base / (name + "-" + str(trial))

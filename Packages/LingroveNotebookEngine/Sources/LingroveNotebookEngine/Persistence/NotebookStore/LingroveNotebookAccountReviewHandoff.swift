@@ -35,8 +35,10 @@ public nonisolated struct LingroveNotebookAccountReviewHandoff {
             for link in links {
                 let replacement = forkedNotebookLinkID(source: source, target: target, original: link)
                 try core.execute(sql: """
-                INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json)
-                SELECT ?,?,?,entry_id,sense_id,example_id,?,generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at,allows_unavailable_material,material_plan_json
+                INSERT INTO notebook_card_links(workspace_id,link_id,notebook_id,entry_id,sense_id,example_id,card_id,
+                    generated_content_json,source_revision,creation_fingerprint,revision,created_at,updated_at,deleted_at)
+                SELECT ?,?,?,entry_id,sense_id,example_id,?,generated_content_json,source_revision,creation_fingerprint,
+                    revision,created_at,updated_at,deleted_at
                 FROM notebook_card_links WHERE workspace_id=? AND link_id=?
                 """, values: [.text(target), .text(replacement), .text(notebookID.uuidString), .text(new), .text(source), .text(link)])
                 if let value = try LingroveNotebookCardLinkStore(core: core).find(workspaceId: target, id: UUID(uuidString: replacement)!), let generated = value.generatedContent {

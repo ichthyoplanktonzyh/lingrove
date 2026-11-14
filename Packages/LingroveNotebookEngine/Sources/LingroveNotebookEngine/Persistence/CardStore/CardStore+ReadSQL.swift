@@ -40,7 +40,7 @@ NOT EXISTS (
             OR NOT EXISTS(SELECT 1 FROM notebook_card_links link WHERE link.workspace_id=notebook_exercise.workspace_id
                 AND link.link_id=notebook_exercise.link_id AND link.deleted_at IS NULL)
             OR EXISTS(SELECT 1 FROM notebook_review_material_state material WHERE material.workspace_id=notebook_exercise.workspace_id
-                AND material.card_id=notebook_exercise.card_id AND material.status NOT IN ('ready','retained')))
+                AND material.card_id=notebook_exercise.card_id AND material.status !='ready'))
 )
 """
 

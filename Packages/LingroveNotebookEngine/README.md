@@ -59,16 +59,15 @@ import LingroveNotebookEngine
 
 let engine = try LingroveNotebookEngine(databaseURL: databaseURL, mediaDirectoryURL: mediaURL)
 let saved = try engine.loadLingroveNotebook(workspaceId: workspaceID)
-let draft = try LingroveNotebookCardMaterial.draft(snapshot: saved, selection: selection)
-let enrollment = try engine.enrollNotebookSenses([draft], basedOn: saved)
+let notes = try engine.enrollReviewNotes(selections: [selection],
+    type: ReviewNoteDefaults.type, scope: saved)
 ```
 
-Native screens retain the saved `LingroveNotebookSnapshot` alongside their draft. Use
-`enrollNotebookSenses(_:basedOn:)`, `setNotebookReviewStatus(_:enrollments:basedOn:requestID:)`
-and `submitNotebookRating(_:basedOn:expectedCardOperationID:)` so the transaction checks the
-durable generation even after an account/workspace ABA switch. Preparation/retain/undo and
-source save likewise use their snapshot or generation fence. Old mobile labels remain thin
-compatibility entry points; they do not contain another operation body.
+Native screens retain the saved `LingroveNotebookSnapshot` alongside their Note/type draft.
+Use `enrollReviewNotes`, `saveReviewNote`, `saveReviewNoteType` and the built-in rating/status/undo
+commands so their transactions check the exact source, question and durable generation.
+An account/workspace ABA switch cannot grant an old callback a new lifetime. Generic Card/FSRS
+persistence remains infrastructure; it does not create notebook enrollment or a Note association.
 
 The typed stores expose B's required stages without a network dependency: capture/check
 `LingroveNotebookWindowBinding`; pending/next/frozen upload/control; prepare/commit apply;
@@ -78,57 +77,38 @@ code must freeze/encode data while borrowing these synchronous boundaries and re
 before waiting for HTTP. A failed review lane does not change the corpus cursor. B-to-A port
 adapters and app lifecycle wiring belong to the integration checkpoint, not this package.
 
-## Shared review material
+## Shared Note authoring and practice
 
-`LingroveNotebook.ReviewMaterialPlan` owns an ordered `ReviewLayout`, stable selected example,
-optional name and typed audio descriptors. It contains no Anki deck, field mapping, filename or
-receipt. `ReviewMaterialResolver` reads saved entry/sense values and resolves text, content blocks,
-gap prompts and audio kinds identically for both targets. Anki chooses safe HTML; the engine's
-`LingroveNotebookCardMaterial.render(entry:sense:plan:workspaceID:)` chooses safe native Markdown
-and scoped `fcasset:` IDs. Source text is escaped before markup; custom block formatting remains
-explicit. Audio hashes exact source UTF-8 bytes, so a changed expression/sentence requires fresh
-recording rather than silently playing an old one.
+`LingroveNotebook/ReviewNotes` owns Note fields, Note Types, templates, projection and rendering.
+`ReviewNoteStore` persists definitions, source/example bindings, custom fields and stable
+Note × Template membership. `enrollReviewNotes` creates all members in one source-scoped
+transaction; source, Note or type edits refresh affected members without changing FSRS/history.
+The Card projection and its baseline compare literal stored bytes, including Unicode encoding.
 
-A draft and durable `LingroveNotebookCardLink.materialPlan` retain that recipe. Create, prepare,
-retained edit, source refresh, remote apply, card-ID repair and explicit account ownership copy
-preserve it. The generated front/back/tags baseline remains separate from edited Card fields.
-Refresh updates a field only when its literal stored bytes still equal that baseline; scheduler
-fields and immutable events remain owned by the Card writer. A missing source/example/block or
-stale recording blocks ordinary queue admission; explicitly retained saved faces remain usable.
+Native queue, participation, history and Progress accept only Note-owned Cards. Source loss
+marks material `sourceMissing`; it does not delete the Note/Card or its future rating history.
+Pausing/withdrawing changes participation, while ratings/undo remain Card-owned. Source images
+are validated against workspace ownership and registered as bounded review media atomically.
+Native reads use exact saved-context transactions and never fetch a source URL while rendering.
 
-Hosts hold `[ReviewMaterialPreparedMedia]` in their editor until the explicit command. Native
-`enrollBuiltInNotebookSense`, atomic `enrollBuiltInNotebookSenses(_:inputs:media:actions:)`,
-`addBuiltInNotebookExercise`, `prepareNotebookExercise` and `saveRetainedBuiltInNotebookMaterial`
-accept those bytes. Every selected batch group supplies its own frozen action, and one failure
-rolls back the complete batch. The media store verifies digest, bounded type/size and PNG decoding
-or audio signatures. Source image reuse additionally requires the same workspace's corpus map.
-A cancelled/failed save creates no review-media rows or files. Native reads borrow the existing
-exact saved-context transaction and call `media(assetID:workspaceID:)`; a source URL or arbitrary
-filesystem path never enters rendering. Saved review resources remain retained with workspace
-ownership, including hidden generated media and histories; workspace deletion removes them.
+The per-exercise recipe writers, direct Card preparation/editing, retained-face override and
+recipe refresh were removed on 2026-11-14. The user waived existing legacy card content/history
+compatibility; no migration or dual runtime is provided. Historical corpus codec DTOs are not
+native authoring interfaces. Dynamic gap generation and audio/video preparation are outside
+this cleanup's Note capability scope.
 
-## Review wire version 2
+## Review wire version 3
 
-Rich recipes and their resources require the existing held review lane's **version 2** contract.
-A pending resource is sent first as one bounded `media` item (`reference` plus base64 `data`), with
-no dependent Card operations in that request. The response must use version 2 and provide exactly
-the sent digest set in `acknowledgedMedia`. The same transaction stores that ACK and the review
-cursor. Later recipe/Card requests retain version 2 and their ordinary exact operation ACKs.
-Plain existing workspaces may still request version 1; an updated server may answer version 2
-when delivering rich material. A version 2 request can never accept a version 1 response.
+The held review lane synchronizes Note/type/member/default definitions and exact operation ACKs
+through `LingroveNotebookReviewRequest/Response` v3. Definition changes fence stale question
+ratings and retain changes made during an in-flight request. Pending owned media is sent first
+as one bounded item with an exact digest acknowledgement; a later envelope carries dependent
+Card/link operations. Unsupported versions, missing media acknowledgements and malformed scoped
+state fail without retiring pending work. Network calls remain outside SQLite transactions.
 
-Incoming version 2 responses may include bounded `media` before `exercise` changes. The engine
-validates and registers those workspace-owned bytes with the recipe/Card/ACK/cursor transaction.
-Each reference is at most 4 MiB; a recipe holds at most 16 MiB, requests at most 7 MiB encoded,
-and the transport retains its 8 MiB response limit. Images use PNG dimensions; audio uses only
-`audio/wav` or `audio/mpeg`. No credentials, local path, Anki receipt, endpoint or voice credential
-is serialized. Unsupported protocol/format, absent media ACKs or missing owned bytes fail and
-leave requests pending; an old server cannot silently discard recipe/audio and report sync success.
-
-The independent backend/mobile repository must explicitly adopt this contract and the schema-39
-shared snapshot before real rich-material synchronization is available. Local cross-database
-codec/apply tests are evidence for this boundary, not a deployed server or physical-device pass.
-No service endpoint, hosting configuration, consent rule or production deployment changes here.
+The independent backend/mobile repository adopts reviewed shared snapshots separately. Mac
+package tests demonstrate local storage/codec/adapter behavior and do not claim deployment or
+physical-device validation. See `docs/REPOSITORY_BOUNDARIES.md` for repository ownership.
 
 ## Validation and provenance
 

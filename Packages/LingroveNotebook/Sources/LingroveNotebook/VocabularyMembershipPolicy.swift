@@ -90,9 +90,7 @@ public extension VocabularySense {
               lhs.explanations == rhs.explanations,
               VocabularyMembershipPolicy.sameMeanings(lhs.alternateMeanings, rhs.alternateMeanings),
               VocabularyMembershipPolicy.sameValues(lhs.mergedFrom, rhs.mergedFrom) else { return false }
-        guard lhs.review == rhs.review,
-              lhs.reviewCards == rhs.reviewCards,
-              lhs.content == rhs.content,
+        guard lhs.content == rhs.content,
               lhs.savedAt == rhs.savedAt else { return false }
         guard lhs.createdAt == rhs.createdAt,
               lhs.updatedAt == rhs.updatedAt,
@@ -130,7 +128,6 @@ public extension VocabularyDocument {
               VocabularyMembershipPolicy.same(lhs.sources, rhs.sources),
               VocabularyMembershipPolicy.same(lhs.occurrences, rhs.occurrences) else { return false }
         guard VocabularyMembershipPolicy.same(lhs.interpretations, rhs.interpretations),
-              lhs.reviewTemplates == rhs.reviewTemplates,
               lhs.semantics == rhs.semantics,
               lhs.classification == rhs.classification else { return false }
         return true

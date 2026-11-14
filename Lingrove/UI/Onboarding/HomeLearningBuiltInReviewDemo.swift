@@ -73,7 +73,6 @@ private final class HomeBuiltInReviewExample {
         store = .init(repository: repository)
         session = .init(repository: repository, speech: speech)
         session.materialStore = store
-        session.materialSpeech = speech
     }
 
     func prepare() async throws {

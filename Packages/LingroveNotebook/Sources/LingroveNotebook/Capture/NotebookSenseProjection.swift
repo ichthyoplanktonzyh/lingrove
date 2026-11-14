@@ -4,7 +4,8 @@ import Foundation
 /// Text is plain, images are authorized references, and provenance stays on examples. Internal
 /// generation receipts, alternate legacy meanings and native formatting are not authoring input.
 public nonisolated struct NotebookSenseProjection {
-    private let document: VocabularyDocument
+    private let catalog: [VocabularyEntry]
+    private let selectedSenses: Set<UUID>?
     private let sources: [UUID: VocabularySourceSnapshot]
     private let occurrences: [UUID: VocabularySourceOccurrence]
     private let examples: [UUID?: [VocabularyInterpretation]]
@@ -12,31 +13,50 @@ public nonisolated struct NotebookSenseProjection {
     private let nodes: [UUID: VocabularyMeaningNode]
     private let patterns: [UUID: VocabularyUsagePattern]
 
-    public init(_ document: VocabularyDocument) {
-        self.document = document
-        sources = Dictionary(uniqueKeysWithValues: document.sources.map { ($0.id, $0) })
-        occurrences = Dictionary(uniqueKeysWithValues: document.occurrences.map { ($0.id, $0) })
-        examples = Dictionary(grouping: document.interpretations.filter { $0.status == .accepted }, by: \.senseID)
-        links = Dictionary(grouping: document.semantics.mappings, by: \.senseID)
-        nodes = Dictionary(uniqueKeysWithValues: document.semantics.nodes.map { ($0.id, $0) })
-        patterns = Dictionary(uniqueKeysWithValues: document.semantics.patterns.map { ($0.id, $0) })
+    /// A selected projection indexes only the named senses and their reachable evidence and
+    /// semantic links. It is a read view, never a partial canonical document or a save proof.
+    public init(_ document: VocabularyDocument, selecting senseIDs: Set<UUID>? = nil) {
+        selectedSenses = senseIDs
+        catalog = senseIDs.map { selected in
+            document.catalog.compactMap { entry in
+                var entry = entry; entry.senses.removeAll { !selected.contains($0.id) }
+                return entry.senses.isEmpty ? nil : entry
+            }
+        } ?? document.catalog
+        let claims = document.interpretations.filter { claim in
+            claim.status == .accepted && (senseIDs.map { ids in claim.senseID.map(ids.contains) == true } ?? true)
+        }
+        let occurrenceIDs = Set(claims.map(\.occurrenceID))
+        let selectedOccurrences = document.occurrences.filter { occurrenceIDs.contains($0.id) }
+        let sourceIDs = Set(selectedOccurrences.map(\.sourceID))
+        sources = Dictionary(uniqueKeysWithValues: document.sources.lazy.filter { sourceIDs.contains($0.id) }.map { ($0.id, $0) })
+        occurrences = Dictionary(uniqueKeysWithValues: selectedOccurrences.map { ($0.id, $0) })
+        examples = Dictionary(grouping: claims, by: \.senseID)
+        let mappings = document.semantics.mappings.filter { senseIDs?.contains($0.senseID) ?? true }
+        links = Dictionary(grouping: mappings, by: \.senseID)
+        let nodeIDs = Set(mappings.map(\.nodeID)), patternIDs = Set(mappings.compactMap(\.patternID))
+        nodes = Dictionary(uniqueKeysWithValues: document.semantics.nodes.lazy.filter { nodeIDs.contains($0.id) }.map { ($0.id, $0) })
+        patterns = Dictionary(uniqueKeysWithValues: document.semantics.patterns.lazy.filter { patternIDs.contains($0.id) }.map { ($0.id, $0) })
     }
 
     public func entry(_ entry: VocabularyEntry) throws -> NotebookToolJSON {
+        guard selectedSenses.map({ ids in entry.senses.allSatisfy { ids.contains($0.id) } }) ?? true else {
+            throw NotebookToolError(code: .notFound, message: "Entry exceeds the selected read scope.")
+        }
         var value = header(entry)
         value["senses"] = .array(try entry.senses.map { try sense($0, entry: entry) })
         return .object(value)
     }
 
     public func sense(_ id: UUID) throws -> NotebookToolJSON {
-        guard let entry = document.catalog.first(where: { $0.senses.contains { $0.id == id } }) else {
+        guard let entry = catalog.first(where: { $0.senses.contains { $0.id == id } }) else {
             throw NotebookToolError(code: .notFound, message: "Sense not found. Read its headword again.")
         }
         return try sense(id, in: entry)
     }
 
     public func sense(_ id: UUID, in entry: VocabularyEntry) throws -> NotebookToolJSON {
-        guard let sense = entry.senses.first(where: { $0.id == id }) else {
+        guard selectedSenses?.contains(id) != false, let sense = entry.senses.first(where: { $0.id == id }) else {
             throw NotebookToolError(code: .notFound, message: "Sense not found. Read its headword again.")
         }
         return try self.sense(sense, entry: entry)
@@ -44,7 +64,7 @@ public nonisolated struct NotebookSenseProjection {
 
     public func senses() throws -> [UUID: NotebookToolJSON] {
         var result: [UUID: NotebookToolJSON] = [:]
-        for entry in document.catalog {
+        for entry in catalog {
             for sense in entry.senses { result[sense.id] = try self.sense(sense, entry: entry) }
         }
         return result
