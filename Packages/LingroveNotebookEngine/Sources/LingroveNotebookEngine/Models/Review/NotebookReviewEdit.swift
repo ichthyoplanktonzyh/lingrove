@@ -9,6 +9,7 @@ public nonisolated struct NotebookReviewEdit: Sendable {
     public let corpus: NotebookChangeToken
     public let baseReview: NotebookChangeToken
     public let review: NotebookChangeToken
+    public let synchronization: NotebookChangeToken
     public let style: ReviewNoteType?
     public let selection: Selection?
     public let hasPendingSync: Bool
@@ -31,7 +32,7 @@ extension LingroveNotebookEngine {
         // A successful CAS edit increments a Note/type revision. Mark this local edit pending;
         // normal ACK reconciliation computes the complete digest. UI receipt construction must
         // not decode every unrelated Note/type just to hash that same new state again.
-        return .init(version: .init(scope), corpus: stamp.corpus, baseReview: base, review: stamp.review, style: style,
+        return .init(version: .init(scope), corpus: stamp.corpus, baseReview: base, review: stamp.review, synchronization: stamp.synchronization, style: style,
             selection: selected.flatMap { value in senseIDs.map { .init(senseIDs: $0, groups: value.groups, links: value.links, noteCards: value.noteCards) } },
             hasPendingSync: true)
     }

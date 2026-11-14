@@ -160,6 +160,9 @@ import Testing
         #expect(styleEdit.selection == nil && styleEdit.style == style)
         #expect(stylePatched.noteCards == styledFull.noteCards && stylePatched.links == styledFull.links)
         #expect(stylePatched.groups.mapValues(\.cards) == styledFull.groups.mapValues(\.cards))
+        #expect(try f.db.notebookChanges().stamp.synchronization == styleEdit.synchronization)
+        try f.db.core.execute(sql: "INSERT INTO notebook_note_sync_state(workspace_id,acknowledged_digest,acknowledged_state) VALUES(?,'receipt-test','{}') ON CONFLICT(workspace_id) DO UPDATE SET acknowledged_digest='receipt-test'", values: [.text(f.workspace)])
+        #expect(try f.db.notebookChanges().stamp.synchronization != styleEdit.synchronization)
     }
 
     @Test func literalFieldsMatchSharedProjectionAndDoNotEstablishWriterProof() throws {
