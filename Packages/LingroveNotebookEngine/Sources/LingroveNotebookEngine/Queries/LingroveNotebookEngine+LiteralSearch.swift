@@ -6,7 +6,7 @@ import SQLite3
 /// summary destinations and confirmed joins, never a document, image bytes or writer proof.
 /// Reuse requires the exact corpus fence and locale; raw writes invalidate it as revisions do.
 public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
-    struct Mapping: Sendable { let sense: UUID; let node: UUID; let text: String }
+    struct Mapping: Sendable { let sense: UUID; let node: UUID; let text: Field }
     let headers: [NotebookEntrySummary]
     let fields: [UUID: [Field]]
     let nodes: [UUID: [Field]]
@@ -25,13 +25,18 @@ public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
     /// case folding retain Foundation's literal user-facing semantics instead of SQLite LIKE.
     struct Matcher {
         let locale: Locale
+        let asciiTerms: [String: String]
         var decisions: [String: [String: Bool]] = [:]
+        init(locale: Locale, terms: [String]) {
+            self.locale = locale
+            asciiTerms = Dictionary(terms.filter { $0.utf8.allSatisfy { $0 < 128 } }.map { ($0, $0.lowercased()) }, uniquingKeysWith: { first, _ in first })
+        }
         mutating func contains(_ field: Field, _ term: String) -> Bool {
             if let cached = decisions[term]?[field.text] { return cached }
             let language = locale.language.languageCode?.identifier
             let result: Bool
-            if language != "tr", language != "az", let ascii = field.ascii, term.utf8.allSatisfy({ $0 < 128 }) {
-                result = ascii.range(of: term.lowercased(), options: .literal) != nil
+            if language != "tr", language != "az", let ascii = field.ascii, let needle = asciiTerms[term] {
+                result = ascii.range(of: needle, options: .literal) != nil
             } else { result = field.text.localizedStandardContains(term) }
             decisions[term, default: [:]][field.text] = result
             return result
@@ -42,7 +47,7 @@ public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
         let phrase = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if phrase.isEmpty { return .init(fence: fence, entries: headers) }
         let terms = phrase.split(whereSeparator: \.isWhitespace).map(String.init)
-        var matcher = Matcher(locale: Locale(identifier: locale))
+        var matcher = Matcher(locale: Locale(identifier: locale), terms: terms + [phrase])
         var direct = Set<UUID>()
         for (sense, values) in fields {
             try Task.checkCancellation()
@@ -53,7 +58,7 @@ public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
         for (text, node) in cues where matcher.contains(text, phrase) { matchedNodes.insert(node) }
         var patternSenses = Set<UUID>()
         for (text, sense) in patterns where matcher.contains(text, phrase) { patternSenses.insert(sense) }
-        for mapping in mappings where direct.contains(mapping.sense) || patternSenses.contains(mapping.sense) || matcher.contains(Field(mapping.text), phrase) {
+        for mapping in mappings where direct.contains(mapping.sense) || patternSenses.contains(mapping.sense) || matcher.contains(mapping.text, phrase) {
             matchedNodes.insert(mapping.node)
         }
         let linked = Set(mappings.filter { matchedNodes.contains($0.node) }.map(\.sense))
@@ -99,12 +104,12 @@ extension LingroveNotebookEngine {
             let rows = try core.query(sql: """
                 SELECT e.id,e.expression,e.language,json_extract(e.payload_json,'$.dictionaryForm'),
                        s.id,s.meaning,
-                       COALESCE((SELECT json_extract(b.payload_json,'$.content.text._0.text')
+                       CASE WHEN s.meaning='' THEN COALESCE((SELECT json_extract(b.payload_json,'$.content.text._0.text')
                         FROM notebook_collections c JOIN notebook_blocks b ON b.workspace_id=c.workspace_id AND b.parent_id=c.id
                         WHERE c.workspace_id=s.workspace_id AND c.sense_id=s.id AND json_type(b.payload_json,'$.content.text')='object'
-                        ORDER BY b.position LIMIT 1),''),
-                       EXISTS(SELECT 1 FROM notebook_blocks b WHERE b.workspace_id=s.workspace_id AND b.parent_id=s.id
-                        AND json_type(b.payload_json,'$.content.image')='object')
+                        ORDER BY b.position LIMIT 1),'') ELSE '' END,
+                       CASE WHEN s.meaning='' THEN EXISTS(SELECT 1 FROM notebook_blocks b WHERE b.workspace_id=s.workspace_id AND b.parent_id=s.id
+                        AND json_type(b.payload_json,'$.content.image')='object') ELSE 0 END
                 FROM notebook_entries e JOIN notebook_senses s ON s.workspace_id=e.workspace_id AND s.parent_id=e.id
                 WHERE e.workspace_id=?
                 ORDER BY json_extract(e.payload_json,'$.createdAt') DESC,e.id,json_extract(s.payload_json,'$.createdAt'),s.id
@@ -174,7 +179,7 @@ extension LingroveNotebookEngine {
                 """, values: [.text(workspace)]) { row -> NotebookLiteralSearchMaterial.Mapping in
                 guard let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                       let node = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else { throw VocabularyError.invalidArchive }
-                return .init(sense: sense, node: node, text: (DatabaseCore.columnOptionalText(statement: row, index: 2) ?? "") + " " + (DatabaseCore.columnOptionalText(statement: row, index: 3) ?? ""))
+                return .init(sense: sense, node: node, text: .init((DatabaseCore.columnOptionalText(statement: row, index: 2) ?? "") + " " + (DatabaseCore.columnOptionalText(statement: row, index: 3) ?? "")))
             }
             let cues = try core.query(sql: """
                 SELECT c.text,t.meaning_id FROM notebook_retrieval_cues c JOIN notebook_cue_targets t

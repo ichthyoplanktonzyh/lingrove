@@ -78,6 +78,9 @@ import Testing
         let result = try f.db.notebookEntries(lookupKeys: keys, expected: .init(scope))
         #expect(Set(result.entries.map(\.id)) == Set(doc.entries.prefix(2).map(\.id)))
         #expect(f.db.core.notebookSaveCache == nil)
+        try f.db.core.execute(sql: "UPDATE notebook_collections SET payload_json=json_set(payload_json,'$.note','Raw edit') WHERE workspace_id=?",
+            values: [.text(f.workspace)])
+        #expect(throws: VocabularyError.editConflict) { try f.db.saveNotebookEntries(result.entries, basedOn: scope, expectedCorpus: result.fence.corpus) }
         let detail = try f.db.notebookEntryDetail(entryID: doc.entries[0].id)
         var next = try #require(detail.entry); next.senses[0].note = "Changed"
         _ = try f.db.saveNotebookEntry(next, basedOn: detail)

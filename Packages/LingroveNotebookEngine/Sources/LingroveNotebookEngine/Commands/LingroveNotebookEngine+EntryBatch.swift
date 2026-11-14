@@ -8,12 +8,13 @@ extension LingroveNotebookEngine {
     /// The caller's snapshot is a CAS fence, never the source of validation authority.
     public func saveNotebookEntries(_ entries: [VocabularyEntry], basedOn baseline: LingroveNotebookSnapshot,
                                     images: [String: Data] = [:],
-                                    restoringOwnedSemantics original: VocabularySemanticIndex? = nil) throws -> LingroveNotebookSnapshot {
+                                    restoringOwnedSemantics original: VocabularySemanticIndex? = nil, expectedCorpus: NotebookChangeToken? = nil) throws -> LingroveNotebookSnapshot {
         guard !entries.isEmpty, entries.count <= 100, Set(entries.map(\.id)).count == entries.count,
               original == nil || entries.count == 1 else { throw VocabularyError.invalidContent }
         let media = LingroveNotebookMediaStore(core: core)
         let staged = try images.isEmpty ? [] : media.stageSuppliedImages(document: .init(entries: entries), supplied: images)
         return try core.inTransaction {
+            if let expectedCorpus, try core.notebookChangeStamp().corpus != expectedCorpus { throw VocabularyError.editConflict }
             let store = lingroveNotebookStore
             try store.checkActiveWorkspace(baseline.workspaceId, required: true)
             let current = try store.readSnapshot(workspaceId: baseline.workspaceId)
