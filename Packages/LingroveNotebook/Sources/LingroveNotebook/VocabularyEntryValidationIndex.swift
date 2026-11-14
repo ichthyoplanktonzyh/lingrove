@@ -61,7 +61,7 @@ struct VocabularyEntryValidationIndex: Sendable {
         var result = self; result.semanticIDs.subtract(removing); result.semanticIDs.formUnion(adding); return result
     }
 
-    private mutating func insert(_ entry: VocabularyEntry, ids: Set<UUID>) {
+    mutating func insert(_ entry: VocabularyEntry, ids: Set<UUID>) {
         keys[VocabularyIdentityPolicy.entryKey(entry)] = entry.id
         for id in ids { owners[id] = entry.id }
         for example in entry.examples { acceptedOccurrences[example.occurrenceID ?? example.id] = entry.id }

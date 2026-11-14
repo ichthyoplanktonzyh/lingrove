@@ -242,6 +242,38 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 
+    /// The sealed append proof keeps graph/directory and all existing lexical owners unchanged.
+    /// Encode the final suffix once, instead of copying the growing projection for each member.
+    public func applying(_ change: VocabularyEntryAppendChange) throws -> VocabularyEntryRowChange {
+        var next = self, delta = Delta()
+        let document = change.state.document, previous = change.previous
+        for (position, source) in document.sources.enumerated().dropFirst(previous.sources.count) {
+            try next.replace(keys: [], records: [.init(table: .sources, id: source.id.uuidString, parentID: nil,
+                position: position, payload: .source(source))], delta: &delta)
+        }
+        for (position, occurrence) in document.occurrences.enumerated().dropFirst(previous.occurrences.count) {
+            try next.replace(keys: [], records: [.init(table: .occurrences, id: occurrence.id.uuidString,
+                parentID: occurrence.sourceID.uuidString, position: position, payload: .occurrence(occurrence))], delta: &delta)
+        }
+        for claim in change.claims {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(claim, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .usages, id: claim.id.uuidString), records: records, delta: &delta)
+        }
+        let entries = document.catalog.dropFirst(previous.catalog.count)
+        for (position, entry) in zip(entries.indices, entries) {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(entry, position: position, to: &records)
+            try next.replaceGroup(.init(entity: .entries, id: entry.id.uuidString), records: records, delta: &delta)
+        }
+        for collection in VocabularySenseStorageRecord.records(for: entries) {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(collection, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: records, delta: &delta)
+        }
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
+    }
+
     private struct Delta {
         var changed: [VocabularyPersistenceRow] = []
         var removed: [VocabularyPersistenceRow] = []

@@ -18,6 +18,10 @@ fails through the same guarded Core. Neither initializer discovers a bundle, use
 endpoint or running application.
 
 `DatabaseCore` owns the SQLite handle, prepared statement lifetimes and one recursive lock.
+Its write pool leases at most 64 idle prepared statements, keyed by literal SQL bytes (including
+Unicode spelling). Successful execution resets the statement and clears bindings before reuse;
+failed statements are finalized, SQLite v2 handles schema recompilation, and close finalizes the
+pool. Idle bindings retain no payload values, and statements never cross connection ownership.
 The lock survives connection close; a synchronous transaction holds it across BEGIN, all
 borrowed stores and COMMIT/ROLLBACK. Its raw handle is internal. Public execute/query access
 exists for the mobile schema initializer and coordinated legacy stores, not for a network
@@ -139,6 +143,13 @@ An entry editor can retain `NotebookEntryDetail` and submit it through the detai
 `saveNotebookEntry`. The engine compares the durable corpus clock inside either the certified
 writer or the fully validated fallback. A partial detail is never accepted as a complete document.
 `notebookEntries(lookupKeys:expected:)` resolves batch owners in one frozen read transaction.
+An all-new batch of at most 100 entries uses `VocabularyEntryAppendChange`, a proof produced
+only by the checked domain state. One mutable preparation checks each member against the
+preceding members, then the codec encodes the final lexical suffix and appended evidence once.
+This avoids repeating large value copies for every imported word. Existing-owner or merge-undo
+batches retain their established per-entry reconciliation; all paths finish through the same
+CAS, media, journal, review-material and receipt transaction. The caller's baseline supplies no
+validation authority, and a failed member leaves the original state available for retry.
 
 `notebookLiteralSearchMaterial` projects searchable scalar fields, accepted evidence and confirmed
 meaning/cue/pattern joins without loading the full document or classification directory. A browser
@@ -148,8 +159,11 @@ retrieval neither creates relations nor establishes a writer's validation certif
 Repeated fields share one immutable `NotebookSearchTextTable`. Per-term decision storage is
 bounded by its distinct field count; multi-term searches progressively narrow the candidates.
 ASCII-only operands use a linear byte matcher, while all non-ASCII or Turkic-locale cases keep
-Foundation's existing localized comparison. Accepted usage joins resolve source row positions
-before reading wide payloads in physical order; those positions never leave the read transaction.
+Foundation's existing localized comparison. `NotebookAcceptedSearchEvidence` owns a transient
+accepted-use → occurrence → source join inside the pinned read transaction. Each table is read
+in physical row order, and only referenced source payloads are decoded. Candidate uses remain
+excluded and shared sources serve each admitted interpretation; transient rowids never leave
+the transaction or enter persisted search metadata.
 `prepareNotebookSearch` adds a rebuildable, workspace-owned projection in two private SQLite
 metadata tables, excluded from canonical backup/sync and deleted with the workspace. Exact
 schema/epoch/corpus/owner fences, checksum and bounded format-2 decoding admit a cache read.

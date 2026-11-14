@@ -123,6 +123,38 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
             claims: self.projectionLookup.claimIDs(senses: oldSenses).union(incomingClaims).compactMap { projectionLookup.claim($0, in: next) })
     }
 
+    /// A bounded import of new lexical owners shares one mutable preparation. Every member is
+    /// checked against earlier members before insertion, so colliding identities/occurrences
+    /// still reject the entire batch. Existing-owner edits retain the ordinary reconciliation.
+    public func appendingEntries(_ inputs: [VocabularyEntry]) throws -> VocabularyEntryAppendChange {
+        let ids = Set(inputs.map(\.id))
+        guard !inputs.isEmpty, inputs.count <= 100, ids.count == inputs.count,
+              entries.allSatisfy({ !ids.contains($0.id) }) else { throw VocabularyError.invalidContent }
+        var next = document, joined = entries, checkedIDs = identifiers
+        var lookup = projectionLookup, validation = validationIndex, media = mediaIndex
+        var claims: [VocabularyInterpretation] = []
+        for input in inputs {
+            try Task.checkCancellation()
+            let incoming = Set(input.examples.map(\.id))
+            guard incoming.allSatisfy({ lookup.claim($0, in: next)?.senseID == nil }) else { throw VocabularyError.invalidArchive }
+            let pruned = VocabularyDocumentValidation.pruningExplanations(input)
+            _ = try VocabularyDocumentValidation.entryIdentifiers(pruned)
+            VocabularyNotebookProjection.replaceEntry(pruned, in: &next, offsets: &lookup)
+            guard let entry = VocabularyNotebookProjection.entry(input.id, in: next, lookup: lookup) else { throw VocabularyError.invalidArchive }
+            let entryIDs = try VocabularyDocumentValidation.entryIdentifiers(entry)
+            try validation.validate(entry, ids: entryIDs)
+            validation.insert(entry, ids: entryIDs)
+            checkedIDs[entry.id] = entryIDs; joined.append(entry)
+            media = media.replacing(entry.id, with: entry)
+            claims += incoming.compactMap { lookup.claim($0, in: next) }
+        }
+        try Task.checkCancellation()
+        return .init(previous: document,
+            state: .init(document: next, entries: joined, identifiers: checkedIDs, validationIndex: validation,
+                semanticIndex: semanticIndex, projectionLookup: lookup, mediaIndex: media),
+            claims: claims)
+    }
+
     /// Removing an existing sense cannot introduce an ID. Reuse the proof for unrelated entries
     /// and recheck the changed graph, including candidates that lost their saved destination.
     public func removingSense(_ senseID: UUID, from entryID: UUID) throws -> VocabularyEntrySaveChange {
@@ -193,6 +225,18 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         let state = changed.isEmpty ? self : Self(document: next, entries: joined, identifiers: identifiers,
             validationIndex: validationIndex, semanticIndex: semanticIndex, projectionLookup: projectionLookup, mediaIndex: mediaIndex)
         return .init(state: state, entryIDs: changed)
+    }
+}
+
+/// Only a checked save state can produce this append proof. The row adapter consumes the new
+/// lexical suffix and appended evidence once; the SQL writer owns atomicity and CAS as before.
+public nonisolated struct VocabularyEntryAppendChange: Sendable {
+    public let previous: VocabularyDocument
+    public let state: VocabularyEntrySaveState
+    public let claims: [VocabularyInterpretation]
+    fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState,
+                     claims: [VocabularyInterpretation]) {
+        self.previous = previous; self.state = state; self.claims = claims
     }
 }
 

@@ -35,6 +35,10 @@ public final class DatabaseCore {
     /// close. This longer-lived lock serializes native access with close. It is recursive because
     /// transactions call the same query/execute methods while already holding connection ownership.
     private let connectionLock = NSRecursiveLock()
+    // Only idle write statements live here; the lock leases one to an execute call. Resetting
+    // and clearing every binding releases payloads between calls. Queries retain their existing
+    // short lifetime, and close finalizes all idle statements before releasing the connection.
+    private var writeStatements: [Data: OpaquePointer] = [:]
 
     public let mediaDirectoryURL: URL
     public var diagnostics: ((NotebookStorageDiagnostic) -> Void)?
@@ -76,6 +80,7 @@ public final class DatabaseCore {
     public func clearDefaultWorkspaceCreationSignal() { self.createdDefaultWorkspaceId = nil }
 
     deinit {
+        for statement in writeStatements.values { sqlite3_finalize(statement) }
         if self.isClosed == false {
             sqlite3_close_v2(self.connection)
         }
@@ -88,6 +93,8 @@ public final class DatabaseCore {
             return
         }
 
+        for statement in writeStatements.values { sqlite3_finalize(statement) }
+        writeStatements.removeAll()
         let closeResult = sqlite3_close_v2(self.connection)
         guard closeResult == SQLITE_OK else {
             throw LocalStoreError.database("Failed to close database connection: \(self.lastErrorMessage())")
@@ -111,13 +118,29 @@ public final class DatabaseCore {
         self.connectionLock.lock()
         defer { self.connectionLock.unlock() }
         try self.requireOpenConnection()
-        var statement: OpaquePointer?
-        let prepareResult = sqlite3_prepare_v2(connection, sql, -1, &statement, nil)
-        guard prepareResult == SQLITE_OK, let statement else {
-            throw LocalStoreError.database("Failed to prepare statement: \(self.lastErrorMessage())")
+        // SQL literals use SQLite's byte semantics. Swift String equality folds NFC/NFD,
+        // which must never make two different statements share a compiled literal.
+        let sqlKey = Data(sql.utf8)
+        let statement: OpaquePointer
+        if let idle = writeStatements.removeValue(forKey: sqlKey) { statement = idle }
+        else {
+            var prepared: OpaquePointer?
+            let result = sqlite3_prepare_v2(connection, sql, -1, &prepared, nil)
+            guard result == SQLITE_OK, let prepared else {
+                if let prepared { sqlite3_finalize(prepared) }
+                throw LocalStoreError.database("Failed to prepare statement: \(self.lastErrorMessage())")
+            }
+            statement = prepared
         }
+        var succeeded = false
         defer {
-            sqlite3_finalize(statement)
+            if succeeded, !isClosed, sqlKey.count <= 16_384 {
+                sqlite3_reset(statement); sqlite3_clear_bindings(statement)
+                // The bounded pool needs no global lifetime or cross-connection sharing.
+                if writeStatements.count >= 64, let key = writeStatements.keys.first,
+                   let retired = writeStatements.removeValue(forKey: key) { sqlite3_finalize(retired) }
+                if let replaced = writeStatements.updateValue(statement, forKey: sqlKey) { sqlite3_finalize(replaced) }
+            } else { sqlite3_finalize(statement) }
         }
 
         try self.bind(values: values, to: statement)
@@ -126,6 +149,7 @@ public final class DatabaseCore {
             throw LocalStoreError.database("Failed to execute statement: \(self.lastErrorMessage())")
         }
 
+        succeeded = true
         return Int(sqlite3_changes(connection))
     }
 

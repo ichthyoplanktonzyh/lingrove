@@ -25,16 +25,24 @@ extension LingroveNotebookEngine {
             var state = cached.state, projection = cached.projection
             var touched = Set<VocabularyPersistenceRow.Key>()
             var ownedSenses = Set<UUID>()
-            for entry in entries {
-                try Task.checkCancellation()
-                if let old = state.entries.first(where: { $0.id == entry.id }) {
-                    ownedSenses.formUnion(old.senses.flatMap { [$0.id] + $0.mergedFrom })
-                }
-                ownedSenses.formUnion(entry.senses.flatMap { [$0.id] + $0.mergedFrom })
-                let change = try state.replacing(entry)
+            let incoming = Set(entries.map(\.id))
+            if original == nil, state.entries.allSatisfy({ !incoming.contains($0.id) }) {
+                let change = try state.appendingEntries(entries)
                 let rows = try projection.applying(change)
                 touched.formUnion((rows.changed + rows.removed + rows.repositioned).map(\.key))
                 state = change.state; projection = rows.projection
+            } else {
+                for entry in entries {
+                    try Task.checkCancellation()
+                    if let old = state.entries.first(where: { $0.id == entry.id }) {
+                        ownedSenses.formUnion(old.senses.flatMap { [$0.id] + $0.mergedFrom })
+                    }
+                    ownedSenses.formUnion(entry.senses.flatMap { [$0.id] + $0.mergedFrom })
+                    let change = try state.replacing(entry)
+                    let rows = try projection.applying(change)
+                    touched.formUnion((rows.changed + rows.removed + rows.repositioned).map(\.key))
+                    state = change.state; projection = rows.projection
+                }
             }
             if let original {
                 // Merge undo may restore only patterns/mappings owned by this lexical group.

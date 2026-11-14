@@ -7,6 +7,29 @@ import LingroveNotebook
 /// lexical/semantic groups. Every database here is private synthetic state.
 @MainActor
 struct NotebookEntryBatchTests {
+    @Test func appendProofMatchesSequentialPreparationAndRejectsCrossMemberIdentities() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let original = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),
+            basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let batch = try VocabularyEntryInputPolicy.batch((0..<12).map {
+            .init(expression: "append\($0)", meaning: "Meaning \($0)", example: "An append\($0) example.")
+        }, existing: [], now: Date(timeIntervalSince1970: 1_700_000_000))
+        let cached = try #require(f.db.core.notebookSaveCache)
+        let appended = try cached.state.appendingEntries(batch.entries)
+        var sequential = cached.state
+        for entry in batch.entries { sequential = try sequential.replacing(entry).state }
+        #expect(appended.state.document == sequential.document)
+        #expect(appended.state.entries == sequential.entries)
+        var invalid = batch.entries
+        invalid[1].senses[0] = invalid[0].senses[0]
+        #expect(throws: (any Error).self) { try f.db.saveNotebookEntries(invalid, basedOn: original) }
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == original)
+        let saved = try f.db.saveNotebookEntries(batch.entries, basedOn: original)
+        #expect(saved.document == sequential.document)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace).document == sequential.document)
+    }
+
     @Test func batchUsesOneRevisionAndFailureLeavesNoPartialEntries() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let original = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),

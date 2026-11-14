@@ -161,22 +161,7 @@ extension LingroveNotebookEngine {
                 FROM notebook_collections c JOIN notebook_blocks b ON b.workspace_id=c.workspace_id AND b.parent_id=c.id WHERE c.workspace_id=?
                 """, columns: 2)
             try append("SELECT parent_id,json_extract(payload_json,'$.result.meaning'),json_extract(payload_json,'$.result.explanation') FROM notebook_sense_explanations WHERE workspace_id=?", columns: 2)
-            // Resolve the narrow accepted-use join before reading source payloads. Reading the
-            // wide source rows in physical order avoids repeatedly evicting SQLite pages while
-            // hopping between occurrence/source indexes on a large, context-heavy notebook.
-            // rowid is transient read order inside this transaction, never durable identity.
-            try append("""
-                WITH accepted AS MATERIALIZED (
-                    SELECT u.sense_id,json_extract(u.payload_json,'$.meaning') AS meaning,
-                           json_extract(u.payload_json,'$.translation') AS translation,s.rowid AS source_row
-                    FROM notebook_usages u JOIN notebook_occurrences o ON o.workspace_id=u.workspace_id AND o.id=u.occurrence_id
-                    JOIN notebook_sources s ON s.workspace_id=o.workspace_id AND s.id=o.parent_id
-                    WHERE u.workspace_id=? AND u.status='accepted' ORDER BY s.rowid
-                )
-                SELECT a.sense_id,a.meaning,a.translation,json_extract(s.payload_json,'$.text')
-                FROM accepted a JOIN notebook_sources s ON s.rowid=a.source_row
-                """, columns: 3)
-            try append("SELECT u.sense_id,json_extract(v.value,'$.text') FROM notebook_usages u,json_each(u.payload_json,'$.translationVariants') v WHERE u.workspace_id=? AND u.status='accepted'", columns: 1)
+            try appendAcceptedSearchEvidence(workspace: workspace, fields: &fields, texts: &texts)
             try append("""
                 SELECT u.sense_id,json_extract(x.payload_json,'$.result.meaning'),json_extract(x.payload_json,'$.result.explanation')
                 FROM notebook_usages u JOIN notebook_usage_explanations x ON x.workspace_id=u.workspace_id AND x.parent_id=u.id

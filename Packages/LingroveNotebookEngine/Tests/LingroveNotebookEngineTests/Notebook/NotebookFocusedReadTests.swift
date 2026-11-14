@@ -208,6 +208,32 @@ import Testing
         #expect(f.db.core.notebookSaveCache == nil)
     }
 
+    @Test func canonicalSearchJoinsSharedSourcesAndExcludesCandidateEvidence() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        var entries = document().entries
+        let date = Date(timeIntervalSince1970: 1_700_000_000), source = UUID()
+        for index in 0..<2 {
+            entries[index].senses[0].examples = [.init(id: UUID(), sourceID: source, sourceKind: .authored,
+                text: "Shared accepted source marker", translation: "Translation \(index)", ranges: [],
+                completeness: .sentence, meaning: "Accepted interpretation \(index)", createdAt: date)]
+        }
+        var doc = VocabularyDocument(entries: entries)
+        let candidateSource = VocabularySourceSnapshot(id: UUID(), text: "Candidate evidence marker", kind: .authored,
+            appBundleIdentifier: nil, encounteredAt: date)
+        let occurrence = VocabularySourceOccurrence(id: UUID(), sourceID: candidateSource.id, ranges: [])
+        doc.sources.append(candidateSource); doc.occurrences.append(occurrence)
+        doc.interpretations.append(.init(id: UUID(), occurrenceID: occurrence.id, senseID: entries[2].senses[0].id,
+            status: .candidate, meaning: "Candidate meaning marker", translation: "Candidate translation marker", createdAt: date))
+        _ = try seed(f, doc); try f.reopen()
+        let material = try f.db.notebookLiteralSearchMaterial()
+        for query in ["Shared accepted source marker", "Translation 0", "Translation 1", "Accepted interpretation 0",
+                      "Candidate evidence marker", "Candidate meaning marker", "Candidate translation marker"] {
+            let expected = Set(doc.entries.filter { VocabularyNotebookQuery.matches($0, query: query) }.map(\.id))
+            #expect(Set(try material.results(matching: query).entries.map(\.id)) == expected, "\(query)")
+        }
+        #expect(f.db.core.notebookSaveCache == nil)
+    }
+
     @Test func cancelledSearchCannotReturnCachedMaterialOrChangeCorpus() async throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         _ = try seed(f, document()); try f.reopen()
