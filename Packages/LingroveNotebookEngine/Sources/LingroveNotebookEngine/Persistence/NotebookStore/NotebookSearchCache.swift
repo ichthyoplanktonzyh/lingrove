@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import LingroveNotebook
+import LingroveNotebookPersistenceCodec
 import SQLite3
 
 /// Rebuildable search data belongs to the primary database, separately from canonical rows.
@@ -32,31 +33,61 @@ enum NotebookSearchCache {
     }
 
     struct EntryEdit: Codable {
+        struct Owner: Codable {
+            let entryID: UUID
+            let previousSenseIDs: Set<UUID>
+            let entry: VocabularyEntry?
+        }
         let base: NotebookBrowseFence
         let fence: NotebookBrowseFence
-        let entryID: UUID
-        let previousSenseIDs: Set<UUID>
-        let entry: VocabularyEntry?
+        let owners: [Owner]
     }
 
-    /// Only the certified closed-entry writer calls this, after all canonical statements.
-    /// A missing delta, raw SQL, semantic edit or rollback breaks the exact clock chain and
-    /// forces canonical preparation. Saving one entry never encodes the complete search cache.
+    /// The transaction records bounded, admitted entry deltas, never a full search payload.
+    /// Any missing frame, semantic change, shared evidence edit or rollback breaks the clock
+    /// chain and requests canonical preparation. Cached data cannot certify these writers.
     static func record(in core: DatabaseCore, base: NotebookBrowseFence,
                        commit: LingroveNotebookEntryCommit) throws {
-        guard !commit.changesSemantics, commit.version != commit.base,
+        guard !commit.changesSemantics, commit.version != commit.base else { return }
+        try append(in: core, edit: .init(base: base, fence: .init(version: commit.version, corpus: commit.corpus),
+            owners: [.init(entryID: commit.entryID, previousSenseIDs: commit.previousSenseIDs, entry: commit.entry)]))
+    }
+
+    static func record(in core: DatabaseCore, base: NotebookBrowseFence,
+                       plan: LingroveNotebookSavePlan, previous: LingroveNotebookSnapshot, entries previousEntries: [VocabularyEntry], saved: LingroveNotebookSnapshot) throws {
+        guard plan.entryIDs.count <= 100,
               try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=?",
                 values: [.text(base.version.workspaceId)]) == 1 else { return }
-        let count = try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates WHERE workspace_id=?",
-            values: [.text(base.version.workspaceId)])
-        if count >= 64 {
-            try core.execute(sql: "DELETE FROM notebook_literal_search_updates WHERE workspace_id=?", values: [.text(base.version.workspaceId)])
+        let semantic: Set<VocabularyPersistenceEntity> = [.meaningNodes, .meaningLabels, .meaningRoles,
+            .usagePatterns, .patternSlots, .meaningMappings, .mappingRoles, .mappingEvidence, .meaningRelations, .retrievalCues, .cueTargets]
+        let rows = plan.rows.changed + plan.rows.removed + plan.rows.repositioned
+        guard !rows.contains(where: { semantic.contains($0.key.entity) }) else { return }
+        let evidence = rows.filter { $0.key.entity == .sources || $0.key.entity == .occurrences }
+        if !evidence.isEmpty {
+            let sources = Set(previous.document.sources.map(\.id)), occurrences = Set(previous.document.occurrences.map(\.id))
+            guard !evidence.contains(where: {
+                guard let id = UUID(uuidString: $0.key.id) else { return true }
+                return $0.key.entity == .sources ? sources.contains(id) : occurrences.contains(id)
+            }) else { return }
         }
-        let edit = EntryEdit(base: base, fence: .init(version: commit.version, corpus: commit.corpus),
-            entryID: commit.entryID, previousSenseIDs: commit.previousSenseIDs, entry: commit.entry)
-        let bytes = try encode(edit)
+        let old = Dictionary(uniqueKeysWithValues: previousEntries.filter { plan.entryIDs.contains($0.id) }.map { ($0.id,$0) })
+        let next = Dictionary(uniqueKeysWithValues: plan.state.entries.filter { plan.entryIDs.contains($0.id) }.map { ($0.id,$0) })
+        try append(in: core, edit: .init(base: base, fence: .init(version: .init(saved), corpus: core.notebookCacheToken()),
+            owners: plan.entryIDs.map { .init(entryID: $0, previousSenseIDs: Set(old[$0]?.senses.flatMap { [$0.id] + $0.mergedFrom } ?? []), entry: next[$0]) }))
+    }
+
+    private static func append(in core: DatabaseCore, edit: EntryEdit) throws {
+        let workspace = edit.base.version.workspaceId
+        guard try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=?", values: [.text(workspace)]) == 1 else { return }
+        let bytes = try encode(edit), maximumJournalBytes = 8 * 1_024 * 1_024
+        guard bytes.count <= maximumJournalBytes else { return }
+        let usage = try core.query(sql: "SELECT count(*),coalesce(sum(length(payload)),0) FROM notebook_literal_search_updates WHERE workspace_id=?",
+            values: [.text(workspace)]) { (Int(sqlite3_column_int64($0, 0)), Int(sqlite3_column_int64($0, 1))) }.first
+        if let usage, usage.0 >= 64 || usage.1 + bytes.count > maximumJournalBytes {
+            try core.execute(sql: "DELETE FROM notebook_literal_search_updates WHERE workspace_id=?", values: [.text(workspace)])
+        }
         try core.execute(sql: "INSERT INTO notebook_literal_search_updates(workspace_id,payload,sha256) VALUES(?,?,?)",
-            values: [.text(base.version.workspaceId), .blob(bytes), .text(digest(bytes))])
+            values: [.text(workspace), .blob(bytes), .text(digest(bytes))])
     }
 
     static func encode<T: Encodable>(_ value: T) throws -> Data {

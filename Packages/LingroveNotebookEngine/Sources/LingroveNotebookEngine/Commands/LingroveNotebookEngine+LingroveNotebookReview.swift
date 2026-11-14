@@ -78,7 +78,7 @@ extension LingroveNotebookEngine {
         let rows = try NotebookReviewReadRows(core: core, scope: current, selecting: senseIDs)
         let noteCards = try senseIDs == nil ? ReviewNoteStore(core: core).cardModels(scope: current) :
             ReviewNoteStore(core: core).cardModels(version: .init(current), cardIDs: Set(rows.exercises.values.flatMap { $0.map(\.cardId) }))
-        return try assembleNotebookReview(version: .init(current), entries: current.document.entries, rows: rows,
+        return try assembleNotebookReview(version: .init(current), entries: current.document.catalog, rows: rows,
             noteCards: noteCards, selecting: senseIDs) { try pendingOverride ?? (core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current)) }
     }
 

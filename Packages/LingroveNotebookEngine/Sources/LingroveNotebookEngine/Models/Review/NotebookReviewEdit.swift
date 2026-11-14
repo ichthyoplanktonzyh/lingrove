@@ -27,7 +27,7 @@ public nonisolated struct NotebookReviewEdit: Sendable {
 extension LingroveNotebookEngine {
     func reviewEdit(scope: LingroveNotebookSnapshot, base: NotebookChangeToken,
                     style: ReviewNoteType? = nil, senseIDs: Set<UUID>? = nil) throws -> NotebookReviewEdit {
-        try reviewEdit(version: .init(scope), base: base, style: style, senseIDs: senseIDs, entries: scope.document.entries)
+        try reviewEdit(version: .init(scope), base: base, style: style, senseIDs: senseIDs, entries: scope.document.catalog)
     }
 
     func reviewEdit(version: LingroveNotebookVersion, base: NotebookChangeToken, style: ReviewNoteType? = nil,

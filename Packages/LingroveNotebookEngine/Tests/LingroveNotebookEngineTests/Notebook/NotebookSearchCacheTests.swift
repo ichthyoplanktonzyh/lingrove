@@ -68,6 +68,25 @@ import Testing
         #expect(try f.db.prepareNotebookSearch().preparation == .canonical)
     }
 
+    @Test func warmAndBatchWritersShareOneProjectionFrame() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let doc = try seed(f); _ = try f.db.prepareNotebookSearch()
+        var scope = try f.db.loadLingroveNotebook(workspaceId: f.workspace)
+        var first = doc.entries[0]; first.senses[0].note = "warm update marker"
+        scope = try f.db.saveNotebookEntry(first, basedOn: scope)
+        let warm = try f.db.prepareNotebookSearch()
+        #expect(warm.preparation == .incremental)
+        #expect(try warm.results(matching: "warm update marker").entries.map(\.id) == [first.id])
+        var batch = Array(doc.entries.suffix(2))
+        for index in batch.indices { batch[index].senses[0].note = "batch update marker" }
+        _ = try f.db.saveNotebookEntries(batch, basedOn: scope)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 1)
+        let updated = try f.db.prepareNotebookSearch(reusing: warm)
+        #expect(updated.preparation == .incremental)
+        #expect(Set(try updated.results(matching: "batch update marker").entries.map(\.id)) == Set(batch.map(\.id)))
+        #expect(try updated.results(matching: "").entries == f.db.notebookLiteralSearchMaterial().results(matching: "").entries)
+    }
+
     @Test func localDeletionRemovesOnlyItsCachedOwner() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let doc = try seed(f); _ = try f.db.prepareNotebookSearch()

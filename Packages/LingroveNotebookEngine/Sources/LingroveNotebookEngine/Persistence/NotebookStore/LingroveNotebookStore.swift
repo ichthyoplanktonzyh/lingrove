@@ -115,6 +115,8 @@ public struct LingroveNotebookStore {
         try Task.checkCancellation()
         if current.revision > 0, plan.rows.changed.isEmpty && plan.rows.removed.isEmpty && plan.rows.repositioned.isEmpty { return current }
             let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
+            let searchBase = try NotebookBrowseFence(version: .init(current), corpus: core.notebookCacheToken())
+            let searchEntries = core.notebookSaveCache?.state.entries ?? []
             try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId)
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
@@ -134,6 +136,7 @@ public struct LingroveNotebookStore {
         core.notebookSaveCache = .init(snapshot: saved, state: plan.state, projection: plan.rows.projection,
             token: try core.notebookCacheToken(), lineage: lineage, committedChange: plan.receipt(from: current, to: saved))
         try NotebookEntryCheckpoint.record(in: core, version: .init(saved), media: plan.state.mediaReferences)
+        try NotebookSearchCache.record(in: core, base: searchBase, plan: plan, previous: current, entries: searchEntries, saved: saved)
             return saved
     }
 

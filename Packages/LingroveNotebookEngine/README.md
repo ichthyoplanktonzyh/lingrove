@@ -153,8 +153,10 @@ before reading wide payloads in physical order; those positions never leave the 
 `prepareNotebookSearch` adds a rebuildable, workspace-owned projection in two private SQLite
 metadata tables, excluded from canonical backup/sync and deleted with the workspace. Exact
 schema/epoch/corpus/owner fences, checksum and bounded format-2 decoding admit a cache read.
-The certified local-entry writer appends one small delta in its existing transaction; a later
-search applies a consecutive clock chain and compacts it. Semantic changes, raw writes, missed
+Certified local-entry and checked complete/batch writers append one bounded transaction delta;
+the journal is capped at 64 frames / 8 MiB, with at most 100 affected entries per frame. A later
+search applies a consecutive clock chain and compacts it. Existing shared-evidence changes,
+semantic changes, raw writes, missed
 deltas, generation changes or corrupt data rebuild through the canonical scanner. This cache
 is never a writer certificate. The first metadata installation conservatively invalidates an
 older certificate; normal full validation re-establishes it before local writes resume.
