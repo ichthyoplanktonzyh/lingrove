@@ -19,6 +19,17 @@ import Testing
         try fixture.db.saveLingroveNotebook(document, basedOn: fixture.db.loadLingroveNotebook(workspaceId: fixture.workspace))
     }
 
+    @Test func ordinaryCardWithoutCorpusDoesNotCreateOrLoadNotebook() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let db = try LingroveNotebookEngine(databaseURL: directory.appendingPathComponent("primary.sqlite"), mediaDirectoryURL: directory.appendingPathComponent("Media"))
+        defer { try? db.close(); try? FileManager.default.removeItem(at: directory) }
+        let workspace = try #require(try db.workspaceSettingsStore.loadCloudSettings().activeWorkspaceId)
+        #expect(try db.notebookReviewQuestion(cardID: "ordinary-card", workspaceID: workspace) == nil)
+        #expect(try db.currentNotebookVersion() == nil)
+        #expect(db.core.notebookSaveCache == nil)
+    }
+
     @Test func detailEditorChecksRawClockAndPreservesUnrelatedOwners() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let original = document(); _ = try seed(f, original); try f.reopen()
@@ -120,6 +131,32 @@ import Testing
         #expect(try f.db.notebookReviewQuestion(cardID: "ordinary-card", workspaceID: f.workspace) == nil)
         #expect(throws: VocabularyError.editConflict) { try f.db.notebookReviewQuestion(cardID: card.key, workspaceID: "another-owner") }
         #expect(try f.db.loadReviewEventCount() == 0)
+    }
+
+    @Test func noteAndStyleReceiptsMatchCompleteReviewWithoutReadingOtherGroups() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let doc = document(), scope = try seed(f, doc)
+        _ = try f.db.enrollReviewNotes(selections: doc.entries.map { .init(entryID: $0.id, senseID: $0.senses[0].id) },
+            type: ReviewNoteDefaults.type, scope: scope)
+        let original = try f.db.loadLingroveNotebookReviewSnapshot(scope: scope)
+        let model = try #require(original.noteCards.values.first)
+        let before = try f.db.notebookChanges()
+        var note = model.note; note.revision += 1
+        note.customFields[model.noteType.fields.last!.id.uuidString.lowercased()] = "Receipt field"
+        let edit = try f.db.saveReviewNoteWithReceipt(note, expected: model.note, scope: scope)
+        #expect(edit.baseReview == before.stamp.review && edit.selection?.senseIDs.contains(note.senseID) == true)
+        let patched = try #require(edit.applying(to: original))
+        let full = try f.db.loadLingroveNotebookReviewSnapshot(scope: scope)
+        #expect(patched.noteCards == full.noteCards && patched.links == full.links)
+        #expect(patched.groups.mapValues(\.cards) == full.groups.mapValues(\.cards))
+        #expect(patched.groups.mapValues(\.hasUnavailableMaterial) == full.groups.mapValues(\.hasUnavailableMaterial))
+        var style = model.noteType; style.revision += 1; style.css += "\np{color:orange}"
+        let styleEdit = try f.db.saveReviewNoteTypeWithReceipt(style, expected: model.noteType, scope: scope)
+        let stylePatched = try #require(styleEdit.applying(to: patched))
+        let styledFull = try f.db.loadLingroveNotebookReviewSnapshot(scope: scope)
+        #expect(styleEdit.selection == nil && styleEdit.style == style)
+        #expect(stylePatched.noteCards == styledFull.noteCards && stylePatched.links == styledFull.links)
+        #expect(stylePatched.groups.mapValues(\.cards) == styledFull.groups.mapValues(\.cards))
     }
 
     @Test func literalFieldsMatchSharedProjectionAndDoNotEstablishWriterProof() throws {

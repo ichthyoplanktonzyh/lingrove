@@ -59,11 +59,17 @@ extension LingroveNotebookEngine {
 
     public func saveReviewNoteType(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
                                   scope: LingroveNotebookSnapshot, makeDefault: Bool = false) throws {
+        _ = try saveReviewNoteTypeWithReceipt(proposed, expected: expected, scope: scope, makeDefault: makeDefault)
+    }
+
+    public func saveReviewNoteTypeWithReceipt(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
+                                              scope: LingroveNotebookSnapshot, makeDefault: Bool = false) throws -> NotebookReviewEdit {
         try core.inTransaction {
             try Task.checkCancellation()
             try requireCurrentScopeInTransaction(scope, requireRevision: true)
             let store = ReviewNoteStore(core: core)
             let version = LingroveNotebookVersion(scope)
+            let baseReview = try core.notebookChangeStamp().review
             let current = try store.type(id: proposed.id, workspace: scope.workspaceId)
             guard current == expected, proposed.revision == (current?.revision ?? 0) + 1 else { throw VocabularyError.editConflict }
             // CSS and the type's display name do not change generated plain faces or template
@@ -71,7 +77,7 @@ extension LingroveNotebookEngine {
             if let current, current.fields == proposed.fields, current.templates == proposed.templates {
                 try store.put(proposed, workspace: scope.workspaceId)
                 if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
-                return
+                return try reviewEdit(scope: scope, base: baseReview, style: proposed)
             }
             let fieldIDs = Set(proposed.fields.map { $0.id.uuidString.lowercased() })
             let affected = try store.notes(version: version, typeID: proposed.id)
@@ -86,6 +92,7 @@ extension LingroveNotebookEngine {
             try store.refreshNotes(affected, definitions: [proposed], members: usedTemplates, version: version) {
                 try store.source(for: $0, workspace: scope.workspaceId)
             }
+            return try reviewEdit(scope: scope, base: baseReview)
         }
     }
 
@@ -142,11 +149,16 @@ extension LingroveNotebookEngine {
     }
 
     public func saveReviewNote(_ proposed: ReviewNote, expected: ReviewNote, scope: LingroveNotebookSnapshot) throws {
+        _ = try saveReviewNoteWithReceipt(proposed, expected: expected, scope: scope)
+    }
+
+    public func saveReviewNoteWithReceipt(_ proposed: ReviewNote, expected: ReviewNote, scope: LingroveNotebookSnapshot) throws -> NotebookReviewEdit {
         try core.inTransaction {
             try requireCurrentScopeInTransaction(scope, requireRevision: true)
             try Task.checkCancellation()
             let store = ReviewNoteStore(core: core)
             let version = LingroveNotebookVersion(scope)
+            let baseReview = try core.notebookChangeStamp().review
             guard proposed.id == expected.id, proposed.noteTypeID == expected.noteTypeID,
                   proposed.senseID == expected.senseID, proposed.entryID == expected.entryID,
                   proposed.revision == expected.revision + 1, try store.note(id: expected.id, version: version) == expected,
@@ -158,6 +170,9 @@ extension LingroveNotebookEngine {
             try store.refreshNotes([proposed], definitions: [type], members: members, version: version) {
                 try store.source(for: $0, workspace: scope.workspaceId)
             }
+            let source = try store.source(for: proposed, workspace: scope.workspaceId)
+            let ids = Set([proposed.senseID] + (source.map { [$0.1.id] + $0.1.mergedFrom } ?? []))
+            return try reviewEdit(scope: scope, base: baseReview, senseIDs: ids)
         }
     }
 

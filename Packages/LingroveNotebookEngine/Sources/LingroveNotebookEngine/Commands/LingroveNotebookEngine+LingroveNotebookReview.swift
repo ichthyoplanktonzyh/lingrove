@@ -74,10 +74,12 @@ extension LingroveNotebookEngine {
     }
 
     /// The full notebook screen also reads queue and history in the same SQLite snapshot.
-    func loadLingroveNotebookReviewSnapshotInTransaction(current: LingroveNotebookSnapshot) throws -> LingroveNotebookReviewSnapshot {
-        let noteCards = try ReviewNoteStore(core: core).cardModels(scope: current)
-        let enrollments = try self.lingroveNotebookReviewStore.load(workspaceId: current.workspaceId)
-        let rows = try NotebookReviewReadRows(core: core, scope: current)
+    func loadLingroveNotebookReviewSnapshotInTransaction(current: LingroveNotebookSnapshot, selecting senseIDs: Set<UUID>? = nil, pendingOverride: Bool? = nil) throws -> LingroveNotebookReviewSnapshot {
+        let rows = try NotebookReviewReadRows(core: core, scope: current, selecting: senseIDs)
+        let noteCards = try senseIDs == nil ? ReviewNoteStore(core: core).cardModels(scope: current) :
+            ReviewNoteStore(core: core).cardModels(version: .init(current), cardIDs: Set(rows.exercises.values.flatMap { $0.map(\.cardId) }))
+        let enrollments = try senseIDs.map { try lingroveNotebookReviewStore.load(workspaceId: current.workspaceId,
+            notebookId: current.notebookId, senseIDs: $0) } ?? self.lingroveNotebookReviewStore.load(workspaceId: current.workspaceId)
         var currentSelections: [UUID: VocabularySelection] = [:]
         for entry in current.document.catalog {
             try Task.checkCancellation()
@@ -113,9 +115,10 @@ extension LingroveNotebookEngine {
             groups[senseId] = .init(selection: selection, enrollments: values, cards: cards, hasUnavailableMaterial: unavailable, undoableCardIDs: Set(undoable))
         }
         return .init(workspaceId: current.workspaceId, notebookId: current.notebookId, notebookRevision: current.revision,
-            groups: groups, links: try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId)
+            groups: groups, links: try (senseIDs.map { try self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId,
+                notebookId: current.notebookId, senseIDs: $0) } ?? self.lingroveNotebookCardLinkStore.load(workspaceId: current.workspaceId))
                 .filter { noteCards[$0.cardId] != nil }, hasPendingSync:
-                try core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current),
+                try pendingOverride ?? (core.scalarInt(sql: "SELECT (SELECT count(*) FROM notebook_review_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_card_link_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_held_card_operations WHERE workspace_id=?)+(SELECT count(*) FROM notebook_review_undo WHERE workspace_id=? AND pending=1)+(SELECT count(*) FROM notebook_review_history_adoptions WHERE workspace_id=? AND pending=1)", values: Array(repeating: .text(current.workspaceId), count: 5)) > 0 || ReviewNoteStore(core: core).hasPendingSync(scope: current)),
                 noteCards: noteCards)
     }
 }

@@ -8,6 +8,9 @@ public nonisolated struct NotebookReviewQuestion: Sendable {
     public let cardID: String
     public let fence: NotebookBrowseFence
     public let review: NotebookChangeToken
+    public let source: LingroveNotebookCardSource
+    public let expression: String
+    public let meaning: String
     public let model: NotebookReviewNoteCard
     public let rendered: ReviewRenderedCard
     public let images: [String: Data]
@@ -20,6 +23,12 @@ extension LingroveNotebookEngine {
     public func notebookReviewQuestion(cardID: String, workspaceID: String) throws -> NotebookReviewQuestion? {
         try core.inReadTransaction {
             try Task.checkCancellation()
+            if try currentNotebookVersionInTransaction() == nil {
+                guard try workspaceSettingsStore.loadCloudSettings().activeWorkspaceId == workspaceID else { throw VocabularyError.editConflict }
+                guard try core.scalarInt(sql: "SELECT count(*) FROM notebook_note_cards WHERE workspace_id=? AND card_id=?",
+                    values: [.text(workspaceID), .text(cardID)]) == 0 else { throw VocabularyError.invalidArchive }
+                return nil
+            }
             let fence = try browseFenceInTransaction()
             guard fence.version.workspaceId == workspaceID else { throw VocabularyError.editConflict }
             let store = ReviewNoteStore(core: core)
@@ -35,7 +44,9 @@ extension LingroveNotebookEngine {
                 images[reference.filename] = try LingroveNotebookMediaStore(core: core).ownedImage(reference, workspaceId: workspaceID)
             }
             return try .init(cardID: cardID, fence: fence, review: core.notebookChangeStamp().review,
-                model: model, rendered: rendered, images: images)
+                source: .init(workspaceId: workspaceID, notebookId: fence.version.notebookId,
+                    entryId: entry.id, senseId: sense.id, exampleId: model.note.exampleID),
+                expression: entry.expression, meaning: sense.meaning, model: model, rendered: rendered, images: images)
         }
     }
 }

@@ -149,3 +149,9 @@ retrieval neither creates relations nor establishes a writer's validation certif
 `notebookReviewQuestion` reads one Note/type/source and only the images referenced by its rendered
 faces. It returns a corpus fence, review clock and rating question token. Hosts recheck admission
 after asynchronous work. Generic Cards return nil; unavailable Note sources fail explicitly.
+
+Note commands also offer `WithReceipt` variants. They retain the same transactional writer,
+then return either one source group's review rows or a style-only definition. Presentation may
+apply that patch only across its exact base/final review clocks and unchanged corpus fence;
+concurrent ratings, enrollment and structural template changes use the complete reader. The
+receipt marks the new local edit pending until ordinary acknowledgement reconciliation.
