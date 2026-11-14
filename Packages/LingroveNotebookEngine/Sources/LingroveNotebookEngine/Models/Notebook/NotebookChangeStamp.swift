@@ -15,7 +15,7 @@ public nonisolated struct NotebookChangeDomains: OptionSet, Sendable {
 
 /// A transactionally captured dependency token. Schema changes invalidate derived state, and
 /// the random epoch prevents a rebuilt clock from reusing an earlier counter's identity.
-public nonisolated struct NotebookChangeToken: Equatable, Sendable {
+public nonisolated struct NotebookChangeToken: Equatable, Sendable, Codable {
     let schemaVersion: Int
     let epoch: String
     let value: Int64

@@ -28,6 +28,11 @@ nonisolated struct NotebookSearchTextTable: Sendable {
     struct Builder {
         private var ids: [String: Int] = [:]
         private var fields: [Field] = []
+        init() {}
+        init(_ table: NotebookSearchTextTable) {
+            fields = table.fields
+            ids = Dictionary(fields.enumerated().map { ($0.element.text, $0.offset) }, uniquingKeysWith: { first, _ in first })
+        }
         mutating func intern(_ text: String) -> Int {
             if let id = ids[text] { return id }
             let id = fields.count

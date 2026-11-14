@@ -27,14 +27,23 @@ public nonisolated struct NotebookReviewEdit: Sendable {
 extension LingroveNotebookEngine {
     func reviewEdit(scope: LingroveNotebookSnapshot, base: NotebookChangeToken,
                     style: ReviewNoteType? = nil, senseIDs: Set<UUID>? = nil) throws -> NotebookReviewEdit {
+        try reviewEdit(version: .init(scope), base: base, style: style, senseIDs: senseIDs, entries: scope.document.entries)
+    }
+
+    func reviewEdit(version: LingroveNotebookVersion, base: NotebookChangeToken, style: ReviewNoteType? = nil,
+                    senseIDs: Set<UUID>? = nil, entries: [VocabularyEntry] = []) throws -> NotebookReviewEdit {
         let stamp = try core.notebookChangeStamp()
-        let selected = try senseIDs.map { try loadLingroveNotebookReviewSnapshotInTransaction(current: scope, selecting: $0, pendingOverride: true) }
-        // A successful CAS edit increments a Note/type revision. Mark this local edit pending;
-        // normal ACK reconciliation computes the complete digest. UI receipt construction must
-        // not decode every unrelated Note/type just to hash that same new state again.
-        return .init(version: .init(scope), corpus: stamp.corpus, baseReview: base, review: stamp.review, synchronization: stamp.synchronization, style: style,
-            selection: selected.flatMap { value in senseIDs.map { .init(senseIDs: $0, groups: value.groups, links: value.links, noteCards: value.noteCards) } },
-            hasPendingSync: true)
+        let selected: NotebookReviewEdit.Selection?
+        if let senseIDs {
+            let rows = try NotebookReviewReadRows(core: core, version: version, selecting: senseIDs)
+            let models = try ReviewNoteStore(core: core).cardModels(version: version,
+                cardIDs: Set(rows.exercises.values.flatMap { $0.map(\.cardId) }))
+            let snapshot = try assembleNotebookReview(version: version, entries: entries, rows: rows,
+                noteCards: models, selecting: senseIDs, pending: { true })
+            selected = .init(senseIDs: senseIDs, groups: snapshot.groups, links: snapshot.links, noteCards: snapshot.noteCards)
+        } else { selected = nil }
+        return .init(version: version, corpus: stamp.corpus, baseReview: base, review: stamp.review,
+            synchronization: stamp.synchronization, style: style, selection: selected, hasPendingSync: true)
     }
 }
 

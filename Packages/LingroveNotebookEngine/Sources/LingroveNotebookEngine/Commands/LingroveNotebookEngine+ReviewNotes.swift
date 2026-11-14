@@ -64,35 +64,40 @@ extension LingroveNotebookEngine {
 
     public func saveReviewNoteTypeWithReceipt(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
                                               scope: LingroveNotebookSnapshot, makeDefault: Bool = false) throws -> NotebookReviewEdit {
+        try saveReviewNoteTypeWithReceipt(proposed, expected: expected, version: .init(scope), makeDefault: makeDefault)
+    }
+
+    public func saveReviewNoteTypeWithReceipt(_ proposed: ReviewNoteType, expected: ReviewNoteType?,
+                                              version: LingroveNotebookVersion, expectedCorpus: NotebookChangeToken? = nil,
+                                              makeDefault: Bool = false) throws -> NotebookReviewEdit {
         try core.inTransaction {
             try Task.checkCancellation()
-            try requireCurrentScopeInTransaction(scope, requireRevision: true)
+            try requireNoteEditVersion(version, corpus: expectedCorpus)
             let store = ReviewNoteStore(core: core)
-            let version = LingroveNotebookVersion(scope)
             let baseReview = try core.notebookChangeStamp().review
-            let current = try store.type(id: proposed.id, workspace: scope.workspaceId)
+            let current = try store.type(id: proposed.id, workspace: version.workspaceId)
             guard current == expected, proposed.revision == (current?.revision ?? 0) + 1 else { throw VocabularyError.editConflict }
             // CSS and the type's display name do not change generated plain faces or template
             // admission. The type revision still fences stale questions and syncs the new style.
             if let current, current.fields == proposed.fields, current.templates == proposed.templates {
-                try store.put(proposed, workspace: scope.workspaceId)
-                if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
-                return try reviewEdit(scope: scope, base: baseReview, style: proposed)
+                try store.put(proposed, workspace: version.workspaceId)
+                if makeDefault { try store.setDefault(proposed.id, workspace: version.workspaceId) }
+                return try reviewEdit(version: version, base: baseReview, style: proposed)
             }
             let fieldIDs = Set(proposed.fields.map { $0.id.uuidString.lowercased() })
             let affected = try store.notes(version: version, typeID: proposed.id)
             let noteIDs = Set(affected.map(\.id))
-            let usedTemplates = try store.memberships(workspace: scope.workspaceId, noteIDs: noteIDs)
+            let usedTemplates = try store.memberships(workspace: version.workspaceId, noteIDs: noteIDs)
             guard Set(usedTemplates.map(\.templateID)).isSubset(of: Set(proposed.templates.map(\.id))),
                   affected.allSatisfy({ Set($0.customFields.keys).isSubset(of: fieldIDs) }) else {
                 throw VocabularyError.invalidContent
             }
-            try store.put(proposed, workspace: scope.workspaceId)
-            if makeDefault { try store.setDefault(proposed.id, workspace: scope.workspaceId) }
+            try store.put(proposed, workspace: version.workspaceId)
+            if makeDefault { try store.setDefault(proposed.id, workspace: version.workspaceId) }
             try store.refreshNotes(affected, definitions: [proposed], members: usedTemplates, version: version) {
-                try store.source(for: $0, workspace: scope.workspaceId)
+                try store.source(for: $0, workspace: version.workspaceId)
             }
-            return try reviewEdit(scope: scope, base: baseReview)
+            return try reviewEdit(version: version, base: baseReview)
         }
     }
 
@@ -153,26 +158,32 @@ extension LingroveNotebookEngine {
     }
 
     public func saveReviewNoteWithReceipt(_ proposed: ReviewNote, expected: ReviewNote, scope: LingroveNotebookSnapshot) throws -> NotebookReviewEdit {
+        try saveReviewNoteWithReceipt(proposed, expected: expected, version: .init(scope))
+    }
+
+    public func saveReviewNoteWithReceipt(_ proposed: ReviewNote, expected: ReviewNote,
+                                         version: LingroveNotebookVersion, expectedCorpus: NotebookChangeToken? = nil,
+                                         expectedType: ReviewNoteType? = nil) throws -> NotebookReviewEdit {
         try core.inTransaction {
-            try requireCurrentScopeInTransaction(scope, requireRevision: true)
+            try requireNoteEditVersion(version, corpus: expectedCorpus)
             try Task.checkCancellation()
             let store = ReviewNoteStore(core: core)
-            let version = LingroveNotebookVersion(scope)
             let baseReview = try core.notebookChangeStamp().review
             guard proposed.id == expected.id, proposed.noteTypeID == expected.noteTypeID,
                   proposed.senseID == expected.senseID, proposed.entryID == expected.entryID,
                   proposed.revision == expected.revision + 1, try store.note(id: expected.id, version: version) == expected,
-                  let type = try store.type(id: proposed.noteTypeID, workspace: scope.workspaceId),
+                  let type = try store.type(id: proposed.noteTypeID, workspace: version.workspaceId),
                   Set(proposed.customFields.keys).isSubset(of: Set(type.fields.map { $0.id.uuidString.lowercased() })),
                   proposed.customFields.values.allSatisfy({ $0.utf8.count <= 131_072 }) else { throw VocabularyError.editConflict }
-            try store.put(proposed, scope: scope)
-            let members = try store.memberships(workspace: scope.workspaceId, noteID: proposed.id)
+            guard expectedType == nil || expectedType == type else { throw VocabularyError.editConflict }
+            try store.put(proposed, version: version)
+            let members = try store.memberships(workspace: version.workspaceId, noteID: proposed.id)
             try store.refreshNotes([proposed], definitions: [type], members: members, version: version) {
-                try store.source(for: $0, workspace: scope.workspaceId)
+                try store.source(for: $0, workspace: version.workspaceId)
             }
-            let source = try store.source(for: proposed, workspace: scope.workspaceId)
+            let source = try store.source(for: proposed, workspace: version.workspaceId)
             let ids = Set([proposed.senseID] + (source.map { [$0.1.id] + $0.1.mergedFrom } ?? []))
-            return try reviewEdit(scope: scope, base: baseReview, senseIDs: ids)
+            return try reviewEdit(version: version, base: baseReview, senseIDs: ids, entries: source.map { [$0.0] } ?? [])
         }
     }
 

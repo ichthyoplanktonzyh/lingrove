@@ -86,6 +86,7 @@ public final class LingroveNotebookEngine {
             try NotebookEntryCheckpoint.ensureInstalled(in: core)
             try NotebookTagIndex.ensureInstalled(in: core)
             try NotebookChangeTracking.ensureInstalled(in: core)
+            try NotebookSearchCache.ensureInstalled(in: core)
             try self.lingroveNotebookWindowStore.purgeExpired(now: Date())
         }
     }

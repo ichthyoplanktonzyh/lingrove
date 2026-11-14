@@ -150,13 +150,28 @@ bounded by its distinct field count; multi-term searches progressively narrow th
 ASCII-only operands use a linear byte matcher, while all non-ASCII or Turkic-locale cases keep
 Foundation's existing localized comparison. Accepted usage joins resolve source row positions
 before reading wide payloads in physical order; those positions never leave the read transaction.
-No persisted search index, new schema, writer cache or changes to search admission are introduced.
-The opt-in `NotebookSearchPerformanceTests` copies a supplied exported synthetic seed and reports
-preparation separately from queries. Do not point it at an application database.
+`prepareNotebookSearch` adds a rebuildable, workspace-owned projection in two private SQLite
+metadata tables, excluded from canonical backup/sync and deleted with the workspace. Exact
+schema/epoch/corpus/owner fences, checksum and bounded format-2 decoding admit a cache read.
+The certified local-entry writer appends one small delta in its existing transaction; a later
+search applies a consecutive clock chain and compacts it. Semantic changes, raw writes, missed
+deltas, generation changes or corrupt data rebuild through the canonical scanner. This cache
+is never a writer certificate. The first metadata installation conservatively invalidates an
+older certificate; normal full validation re-establishes it before local writes resume.
+The opt-in `NotebookSearchPerformanceTests` and `NotebookSearchProjectionScaleTests` copy supplied
+closed synthetic exports. The latter distinguishes unprimed preparation, persisted reopen and
+editing followed by search. Do not point either at an application database.
 
 `notebookReviewQuestion` reads one Note/type/source and only the images referenced by its rendered
 faces. It returns a corpus fence, review clock and rating question token. Hosts recheck admission
 after asynchronous work. Generic Cards return nil; unavailable Note sources fail explicitly.
+
+`notebookNoteEditor` returns one Note/type with its canonical sense subtree, source fence and
+review clock. `previewNotebookNote` checks the original Note/type and source again before
+rendering ephemeral edits and reading only referenced images. The version-based Note/type
+writers retain the same CAS, source refresh, atomic Card updates and history as complete callers;
+an optional exact corpus token also rejects raw same-revision source changes. Complete and
+selected review assembly share one implementation; no partial corpus snapshot is fabricated.
 
 Note commands also offer `WithReceipt` variants. They retain the same transactional writer,
 then return either one source group's review rows or a style-only definition. Presentation may

@@ -11,7 +11,10 @@ struct NotebookReviewReadRows {
     let undoable: Set<String>
 
     init(core: DatabaseCore, scope: LingroveNotebookSnapshot, selecting senseIDs: Set<UUID>? = nil) throws {
-        let workspace = SQLiteValue.text(scope.workspaceId)
+        try self.init(core: core, version: .init(scope), selecting: senseIDs)
+    }
+    init(core: DatabaseCore, version: LingroveNotebookVersion, selecting senseIDs: Set<UUID>? = nil) throws {
+        let workspace = SQLiteValue.text(version.workspaceId)
         let senseJSON = try senseIDs.map { String(decoding: try core.encoder.encode($0.map(\.uuidString).sorted()), as: UTF8.self) }
         let selected = senseJSON == nil ? "" : " AND enrollment.sense_id IN (SELECT value FROM json_each(?))"
         let rows = try core.query(sql: """
@@ -20,7 +23,7 @@ struct NotebookReviewReadRows {
             JOIN notebook_review_enrollments enrollment USING(workspace_id,enrollment_id)
             WHERE exercise.workspace_id=? AND enrollment.notebook_id=?\(selected)
             ORDER BY exercise.enrollment_id,exercise.created_at,exercise.card_id
-            """, values: [workspace, .text(scope.notebookId.uuidString)] + (senseJSON.map { [.text($0)] } ?? [])) { row in
+            """, values: [workspace, .text(version.notebookId.uuidString)] + (senseJSON.map { [.text($0)] } ?? [])) { row in
             guard let owner = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                   let link = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 2)) else {
                 throw VocabularyError.invalidArchive

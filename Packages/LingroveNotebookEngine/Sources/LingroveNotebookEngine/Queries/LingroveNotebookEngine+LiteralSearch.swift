@@ -6,14 +6,18 @@ import SQLite3
 /// summary destinations and confirmed joins, never a document, image bytes or writer proof.
 /// Reuse requires the exact corpus fence and locale; raw writes invalidate it as revisions do.
 public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
-    struct Mapping: Sendable { let sense: UUID; let node: UUID; let text: Int }
+    public enum Preparation: Sendable, Equatable { case canonical, persisted, incremental, memory }
+    public internal(set) var preparation: Preparation = .canonical
+    var entryDates: [UUID: Double] = [:]
+    struct Mapping: Sendable, Codable { let sense: UUID; let node: UUID; let text: Int }
+    struct Link: Sendable, Codable { let text: Int; let target: UUID }
     let texts: NotebookSearchTextTable
     let headers: [NotebookEntrySummary]
     let fields: [UUID: [Int]]
     let nodes: [UUID: [Int]]
     let mappings: [Mapping]
-    let cues: [(Int, UUID)]
-    let patterns: [(Int, UUID)]
+    let cues: [Link]
+    let patterns: [Link]
     public let fence: NotebookBrowseFence
     public let locale: String
 
@@ -45,12 +49,14 @@ public nonisolated struct NotebookLiteralSearchMaterial: Sendable {
             try Task.checkCancellation()
             if values.contains(where: { matcher.contains($0) }) { matchedNodes.insert(id) }
         }
-        for (text, node) in cues {
+        for link in cues {
+            let (text, node) = (link.text, link.target)
             try Task.checkCancellation()
             if matcher.contains(text) { matchedNodes.insert(node) }
         }
         var patternSenses = Set<UUID>()
-        for (text, sense) in patterns {
+        for link in patterns {
+            let (text, sense) = (link.text, link.target)
             try Task.checkCancellation()
             if matcher.contains(text) { patternSenses.insert(sense) }
         }
@@ -100,6 +106,7 @@ extension LingroveNotebookEngine {
             let fence = try browseFenceInTransaction(), workspace = fence.version.workspaceId
             var texts = NotebookSearchTextTable.Builder()
             var fields: [UUID: [Int]] = [:]
+            var dates: [UUID: Double] = [:]
             var headerOrder: [UUID] = [], headers: [UUID: NotebookEntrySummary] = [:]
             let rows = try core.query(sql: """
                 SELECT e.id,e.expression,e.language,json_extract(e.payload_json,'$.dictionaryForm'),
@@ -108,12 +115,13 @@ extension LingroveNotebookEngine {
                         FROM notebook_collections c JOIN notebook_blocks b ON b.workspace_id=c.workspace_id AND b.parent_id=c.id
                         WHERE c.workspace_id=s.workspace_id AND c.sense_id=s.id AND json_type(b.payload_json,'$.content.text')='object'
                         ORDER BY b.position LIMIT 1),'') ELSE '' END,
-                       CASE WHEN s.meaning='' THEN EXISTS(SELECT 1 FROM notebook_blocks b WHERE b.workspace_id=s.workspace_id AND b.parent_id=s.id
-                        AND json_type(b.payload_json,'$.content.image')='object') ELSE 0 END
+                       CASE WHEN s.meaning='' THEN EXISTS(SELECT 1 FROM notebook_collections c JOIN notebook_blocks b
+                        ON b.workspace_id=c.workspace_id AND b.parent_id=c.id WHERE c.workspace_id=s.workspace_id AND c.sense_id=s.id
+                        AND json_type(b.payload_json,'$.content.image')='object') ELSE 0 END,json_extract(e.payload_json,'$.createdAt')
                 FROM notebook_entries e JOIN notebook_senses s ON s.workspace_id=e.workspace_id AND s.parent_id=e.id
                 WHERE e.workspace_id=?
                 ORDER BY json_extract(e.payload_json,'$.createdAt') DESC,e.id,json_extract(s.payload_json,'$.createdAt'),s.id
-                """, values: [.text(workspace)]) { row -> (UUID, String, LearningLanguage?, String, NotebookEntrySummary.Sense) in
+                """, values: [.text(workspace)]) { row -> (UUID, String, LearningLanguage?, String, NotebookEntrySummary.Sense, Double) in
                 try Task.checkCancellation()
                 guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                       let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 4)) else { throw VocabularyError.invalidArchive }
@@ -122,9 +130,10 @@ extension LingroveNotebookEngine {
                     LearningLanguage(rawValue: DatabaseCore.columnText(statement: row, index: 2)),
                     DatabaseCore.columnOptionalText(statement: row, index: 3) ?? "",
                     .init(id: sense, title: meaning.isEmpty ? DatabaseCore.columnText(statement: row, index: 6) : meaning,
-                        hasImage: sqlite3_column_int(row, 7) != 0))
+                        hasImage: sqlite3_column_int(row, 7) != 0), sqlite3_column_double(row, 8))
             }
-            for (id, expression, language, dictionary, sense) in rows {
+            for (id, expression, language, dictionary, sense, date) in rows {
+                dates[id] = date
                 if let prior = headers[id] {
                     headers[id] = .init(id: id, expression: expression, language: language, senses: prior.senses + [sense])
                 } else { headerOrder.append(id); headers[id] = .init(id: id, expression: expression, language: language, senses: [sense]) }
@@ -193,21 +202,21 @@ extension LingroveNotebookEngine {
             let cues = try core.query(sql: """
                 SELECT c.text,t.meaning_id FROM notebook_retrieval_cues c JOIN notebook_cue_targets t
                 ON t.workspace_id=c.workspace_id AND t.parent_id=c.id WHERE c.workspace_id=? AND json_extract(t.payload_json,'$.provenance.status')='confirmed'
-                """, values: [.text(workspace)]) { row -> (Int, UUID) in
+                """, values: [.text(workspace)]) { row -> NotebookLiteralSearchMaterial.Link in
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else { throw VocabularyError.invalidArchive }
-                return (texts.intern(DatabaseCore.columnText(statement: row, index: 0)), id)
+                return .init(text: texts.intern(DatabaseCore.columnText(statement: row, index: 0)), target: id)
             }
             let patterns = try core.query(sql: """
                 SELECT parent_id,template,json_extract(payload_json,'$.note'),json_extract(payload_json,'$.collocations')
                 FROM notebook_usage_patterns WHERE workspace_id=? AND json_extract(payload_json,'$.provenance.status')='confirmed'
-                """, values: [.text(workspace)]) { row -> (Int, UUID) in
+                """, values: [.text(workspace)]) { row -> NotebookLiteralSearchMaterial.Link in
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else { throw VocabularyError.invalidArchive }
                 let json = DatabaseCore.columnOptionalText(statement: row, index: 3) ?? "[]"
                 let collocations = try core.decoder.decode([String].self, from: Data(json.utf8))
-                return (texts.intern(DatabaseCore.columnText(statement: row, index: 1) + " " + (DatabaseCore.columnOptionalText(statement: row, index: 2) ?? "") + " " + collocations.joined(separator: " ")), id)
+                return .init(text: texts.intern(DatabaseCore.columnText(statement: row, index: 1) + " " + (DatabaseCore.columnOptionalText(statement: row, index: 2) ?? "") + " " + collocations.joined(separator: " ")), target: id)
             }
             try Task.checkCancellation()
-            return .init(texts: texts.finish(), headers: headerOrder.compactMap { headers[$0] }, fields: fields, nodes: nodes, mappings: mappings,
+            return .init(entryDates: dates, texts: texts.finish(), headers: headerOrder.compactMap { headers[$0] }, fields: fields, nodes: nodes, mappings: mappings,
                 cues: cues, patterns: patterns, fence: fence, locale: locale)
         }
     }

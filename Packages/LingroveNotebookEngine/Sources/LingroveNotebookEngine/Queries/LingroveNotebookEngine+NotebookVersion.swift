@@ -5,7 +5,7 @@ import SQLite3
 /// A content-free fence for one committed notebook. UI admission and actor caches need only
 /// this identity, revision and durable account generation; decoding the corpus to obtain them
 /// would put every saved category and translation on the main thread's interaction path.
-public nonisolated struct LingroveNotebookVersion: Equatable, Sendable {
+public nonisolated struct LingroveNotebookVersion: Equatable, Sendable, Codable {
     public let workspaceId: String
     public let notebookId: UUID
     public let revision: UInt64

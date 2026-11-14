@@ -154,7 +154,9 @@ extension LingroveNotebookEngine {
         try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(version: version,
             entries: [plan.entry].compactMap { $0 }, senseIDs: plan.refreshSenseIDs.subtracting(plan.retiredSenseIDs))
         try NotebookEntryCheckpoint.record(in: core, version: version, media: plan.media)
-        return try .init(base: before, version: version, corpus: core.notebookCacheToken(),
+        let result = try LingroveNotebookEntryCommit(base: before, version: version, corpus: core.notebookCacheToken(),
             entryID: plan.entryID, entry: plan.entry, previousSenseIDs: oldSenseIDs, changesSemantics: plan.changesSemantics)
+        try NotebookSearchCache.record(in: core, base: .init(version: before, corpus: plan.checkpoint.token), commit: result)
+        return result
     }
 }

@@ -17,16 +17,16 @@ public nonisolated struct NotebookBrowseQuery: Equatable, Sendable {
 
 /// Revision alone is insufficient: raw SQL repairs also advance the durable corpus clock.
 /// Cursors and detail responses carry this fence across actor/UI boundaries.
-public nonisolated struct NotebookBrowseFence: Equatable, Sendable {
+public nonisolated struct NotebookBrowseFence: Equatable, Sendable, Codable {
     public let version: LingroveNotebookVersion
     public let corpus: NotebookChangeToken
 }
 
 /// One page owns these display/selection fields. Keeping them separate prevents a sidebar
 /// from fabricating complete entries whose missing examples or notes look like saved empties.
-public nonisolated struct NotebookEntrySummary: Equatable, Identifiable, Sendable {
+public nonisolated struct NotebookEntrySummary: Equatable, Identifiable, Sendable, Codable {
     /// A sidebar can name a destination without claiming to have loaded its full sense body.
-    public struct Sense: Equatable, Identifiable, Sendable {
+    public struct Sense: Equatable, Identifiable, Sendable, Codable {
         public let id: UUID
         public let title: String
         public let hasImage: Bool
