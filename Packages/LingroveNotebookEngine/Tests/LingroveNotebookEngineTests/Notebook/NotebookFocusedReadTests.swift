@@ -186,4 +186,38 @@ import Testing
         #expect(f.db.core.notebookSaveCache == nil)
         #expect(try f.db.notebookChanges().stamp == before.stamp)
     }
+
+    @Test func literalSearchPreservesUnicodeTermAndFieldBoundaries() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        var entries = document().entries
+        entries[0].expression = "UPPERCASE I"
+        entries[0].senses[0].meaning = "Café Cafe\u{301} 中文 Straße ﬁle Æsir İ ı Αθήνα"
+        entries[0].senses[0].note = "separate field shared"
+        entries[1].senses[0].meaning = "field shared"
+        entries[1].senses[0].note = "separate"
+        entries[2].senses[0].meaning = "shared shared"
+        _ = try seed(f, .init(entries: entries)); try f.reopen()
+        for locale in ["en_US", "tr_TR", "az_AZ"] {
+            let material = try f.db.notebookLiteralSearchMaterial(locale: locale)
+            for query in ["cafe", "CAFÉ", "Cafe\u{301}", "中文", "strasse", "ﬁle", "file", "æsir", "i", "İ", "ı", "αθήνα",
+                          "UPPERCASE cafe", "field separate", "shared shared", "shared\tfield", "  \n  ", "missing"] {
+                let expected = Set(entries.filter { VocabularyNotebookQuery.matches($0, query: query) }.map(\.id))
+                #expect(Set(try material.results(matching: query).entries.map(\.id)) == expected, "\(locale): \(query)")
+            }
+        }
+        #expect(f.db.core.notebookSaveCache == nil)
+    }
+
+    @Test func cancelledSearchCannotReturnCachedMaterialOrChangeCorpus() async throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        _ = try seed(f, document()); try f.reopen()
+        let material = try f.db.notebookLiteralSearchMaterial()
+        let before = try f.db.notebookChanges()
+        for query in ["", "word", "word missing"] {
+            let task = Task { try material.results(matching: query) }
+            task.cancel()
+            await #expect(throws: CancellationError.self) { try await task.value }
+        }
+        #expect(try f.db.notebookChanges().stamp == before.stamp)
+    }
 }

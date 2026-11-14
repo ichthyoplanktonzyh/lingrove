@@ -145,6 +145,14 @@ meaning/cue/pattern joins without loading the full document or classification di
 actor owns this disposable material and pages frozen summary results. Reuse requires its exact
 corpus fence and locale. Literal fields and semantic admission follow the shared browser rules;
 retrieval neither creates relations nor establishes a writer's validation certificate.
+Repeated fields share one immutable `NotebookSearchTextTable`. Per-term decision storage is
+bounded by its distinct field count; multi-term searches progressively narrow the candidates.
+ASCII-only operands use a linear byte matcher, while all non-ASCII or Turkic-locale cases keep
+Foundation's existing localized comparison. Accepted usage joins resolve source row positions
+before reading wide payloads in physical order; those positions never leave the read transaction.
+No persisted search index, new schema, writer cache or changes to search admission are introduced.
+The opt-in `NotebookSearchPerformanceTests` copies a supplied exported synthetic seed and reports
+preparation separately from queries. Do not point it at an application database.
 
 `notebookReviewQuestion` reads one Note/type/source and only the images referenced by its rendered
 faces. It returns a corpus fence, review clock and rating question token. Hosts recheck admission
