@@ -304,15 +304,82 @@ final class InputMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.resolveAcceptKeyDown(.init(keyCode: 17, flags: [.maskShift, .maskAlternate])), .consume)
         XCTAssertEqual(monitor.resolveAcceptKeyDown(.init(keyCode: Self.tab)), .passThrough)
         XCTAssertFalse(emojiCalled)
-        // Construct native events without posting them: the production callback must use the
-        // same ordering as the semantic resolver, including its old outer autocomplete gate.
-        guard let reading = CGEvent(keyboardEventSource: nil, virtualKey: 17, keyDown: true),
-              let tab = CGEvent(keyboardEventSource: nil, virtualKey: Self.tab, keyDown: true) else {
-            return XCTFail("Could not allocate test keyboard events")
-        }
-        reading.flags = [.maskShift, .maskAlternate]
-        XCTAssertNil(monitor.handleAcceptTap(type: .keyDown, event: reading))
-        XCTAssertNotNil(monitor.handleAcceptTap(type: .keyDown, event: tab))
+        // Exercise the production ordered-delivery seam without allocating native CGEvents.
+        XCTAssertTrue(monitor.handleKeyDelivery(.init(keyCode: 17, flags: [.maskShift, .maskAlternate]),
+            isSynthetic: false, mayConsume: true))
+        XCTAssertFalse(monitor.handleKeyDelivery(.init(keyCode: Self.tab), isSynthetic: false, mayConsume: true))
         XCTAssertFalse(emojiCalled)
+    }
+
+    func test_orderedDeliveryPreparesInlineDecisionBeforeConsumingTheSameKey() {
+        let monitor = makeMonitor()
+        monitor.captureInterceptionActive = true
+        var prepared = false
+        var sequence: [String] = []
+        monitor.onEvent = { _ in prepared = true; sequence.append("observe"); return false }
+        monitor.emojiCaptureKeyDecider = { _ in
+            sequence.append("decide")
+            return prepared ? .consume : .notHandled
+        }
+        XCTAssertTrue(monitor.handleKeyDelivery(.init(keyCode: Self.tab), isSynthetic: false, mayConsume: true))
+        XCTAssertEqual(sequence, ["observe", "decide"])
+    }
+
+    func test_alreadyPassedPrintableKeyRemainsTypingWhenAnOverlayBecameVisible() {
+        let monitor = makeMonitor()
+        monitor.acceptanceBindingProvider = { (0, []) }
+        monitor.isAcceptTapOwningAcceptKeys = true
+        monitor.shouldConsumeAcceptKeyProvider = { true }
+        let delivered = recordKinds(on: monitor, accepts: true)
+        var learningDecisions = 0
+        monitor.learningKeyDecider = { _ in learningDecisions += 1; return .consume }
+        XCTAssertFalse(monitor.handleKeyDelivery(.init(keyCode: 0, characters: "a"), isSynthetic: false, mayConsume: false))
+        XCTAssertEqual(delivered(), [.textMutation])
+        XCTAssertEqual(learningDecisions, 0, "A command cannot be started after its key already reached the host")
+    }
+
+    func test_syntheticAcceptKeyOnlyDrainsSuppressionAndNeverEntersCommandRouting() {
+        let monitor = makeMonitor()
+        var suppressed = 0
+        var decisions = 0
+        monitor.onSuppressedSyntheticInput = { suppressed += 1 }
+        monitor.learningKeyDecider = { _ in decisions += 1; return .consume }
+        let delivered = recordKinds(on: monitor, accepts: true)
+        XCTAssertFalse(monitor.handleKeyDelivery(.init(keyCode: Self.tab), isSynthetic: true, mayConsume: true))
+        XCTAssertEqual(suppressed, 1)
+        XCTAssertEqual(decisions, 0)
+        XCTAssertTrue(delivered().isEmpty)
+    }
+
+    func test_pendingSyntheticCountdownDoesNotSuppressTheNextPhysicalAcceptance() {
+        let suppression = InputSuppressionController()
+        let monitor = InputMonitor(permissionProvider: { true }, suppressionController: suppression)
+        Self.retainedMonitors.append(monitor)
+        monitor.isAcceptTapOwningAcceptKeys = true
+        monitor.shouldConsumeAcceptKeyProvider = { true }
+        suppression.registerSyntheticInsertion(expectedKeyDownCount: 2)
+        let delivered = recordKinds(on: monitor, accepts: true)
+        XCTAssertTrue(monitor.handleKeyDelivery(.init(keyCode: Self.tab), isSynthetic: false, mayConsume: true))
+        XCTAssertEqual(delivered(), [.acceptance])
+    }
+
+    func test_globalTogglePrecedesObservationAndAcceptance() {
+        let monitor = makeMonitor()
+        monitor.globalToggleKeyCodeProvider = { Self.tab }
+        var toggles = 0
+        monitor.onGlobalToggleHotkey = { toggles += 1 }
+        let delivered = recordKinds(on: monitor, accepts: true)
+        XCTAssertTrue(monitor.handleKeyDelivery(.init(keyCode: Self.tab), isSynthetic: false, mayConsume: true))
+        XCTAssertEqual(toggles, 1)
+        XCTAssertTrue(delivered().isEmpty)
+    }
+
+    func test_ordinaryDeliveryRetiresLearningReceiptWithoutAConsumeDecision() {
+        let monitor = makeMonitor()
+        var retired = 0
+        monitor.onPassedThroughLearningInput = { retired += 1 }
+        _ = recordKinds(on: monitor, accepts: false)
+        XCTAssertFalse(monitor.handleKeyDelivery(.init(keyCode: 0, characters: "中"), isSynthetic: false, mayConsume: false))
+        XCTAssertEqual(retired, 1)
     }
 }

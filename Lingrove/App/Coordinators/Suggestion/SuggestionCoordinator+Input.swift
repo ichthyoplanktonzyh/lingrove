@@ -434,6 +434,7 @@ extension SuggestionCoordinator {
                 baseline: HostPublishBaseline(
                     precedingText: baseline?.precedingText,
                     elementIdentifier: baseline?.elementIdentifier,
+                    identity: baseline?.identity,
                     selectionLocation: baseline?.selection.location,
                     requiresTextChange: requiresTextChange,
                     keystrokeUptimeNanoseconds: keystrokeUptimeNanoseconds
@@ -449,6 +450,7 @@ extension SuggestionCoordinator {
     private struct HostPublishBaseline {
         let precedingText: String?
         let elementIdentifier: String?
+        let identity: FocusedInputIdentity?
         let selectionLocation: Int?
         /// Correction must never run again against the same pre-replacement text on timeout.
         /// Ordinary keystrokes retain their fallback for hosts that publish no observable change.
@@ -468,7 +470,8 @@ extension SuggestionCoordinator {
             return
         }
 
-        focusModel.refreshNow()
+        focusModel.refreshAfterInput(since: baseline.keystrokeUptimeNanoseconds, identity: baseline.identity,
+            maxAgeMilliseconds: Self.hostPublishPollIntervalMs)
         guard pollGeneration == hostPublishPollGeneration else {
             return
         }

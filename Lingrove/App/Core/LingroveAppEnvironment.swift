@@ -492,9 +492,13 @@ final class LingroveAppEnvironment {
             unitRecognizer: learningLexicon,
             availability: learningAvailability
         )
+        let readingSourceReader = LearningReadingSourceReader(ocrRuntime: ocrRuntime, metrics: performanceMetricsStore,
+            trackingEnabled: { suggestionSettings.isPerformanceTrackingEnabled })
+        readingSourceReader.onRegionSelectionChanged = { [weak inputMonitor] in
+            inputMonitor?.setModalInterceptionActive($0)
+        }
         let reading = LearningReadingCoordinator(
-            service: learningService, reader: LearningReadingSourceReader(ocrRuntime: ocrRuntime, metrics: performanceMetricsStore,
-                trackingEnabled: { suggestionSettings.isPerformanceTrackingEnabled }),
+            service: learningService, reader: readingSourceReader,
             panel: readingPanel,
             recognizer: learningLexicon,
             availability: {
@@ -556,6 +560,28 @@ final class LingroveAppEnvironment {
             }
             if let decision = reading?.decide(event), decision != .notHandled { return decision }
             return sentencePreview?.decide(event) ?? .notHandled
+        }
+        inputMonitor.onPassedThroughLearningInput = { [weak reading, weak expressionAssist] in
+            if expressionAssist?.isActive != true { reading?.observePassedThroughInput() }
+        }
+        inputMonitor.learningBindingsProvider = {
+            let learning = suggestionSettings.languageLearning
+            var bindings: [InputKeyBinding] = []
+            if learning.translationEnabled {
+                bindings += [InputKeyBinding(learning.keyCode, learning.modifiers),
+                    InputKeyBinding(learning.replacementKeyCode, learning.replacementModifiers)]
+            }
+            for source in LearningReadingSource.allCases where learning.readingEnabled(source) {
+                let binding = learning.readingBinding(source)
+                bindings.append(InputKeyBinding(binding.key, binding.modifiers))
+            }
+            let expression = learning.expressionAssist
+            if expression.enabled { bindings.append(InputKeyBinding(expression.keyCode, expression.modifiers)) }
+            for command in VocabularyShortcutSettings.Command.allCases {
+                let binding = suggestionSettings.vocabularyShortcuts.binding(command)
+                bindings.append(InputKeyBinding(binding.key, binding.modifiers))
+            }
+            return bindings.filter { $0.keyCode != .max }
         }
         let inlineCommandCoordinator = InlineCommandCoordinator(
             emoji: emojiPickerController,
@@ -674,16 +700,17 @@ final class LingroveAppEnvironment {
             }
             .store(in: &cancellables)
 
-        // Key code changes reach InputMonitor through closures that read from the model
-        // at event time (set above), so no Combine subscription is needed here.
-
-        // The global-toggle hotkey is the exception: its tap is install-on-demand so a user who
-        // never binds it pays zero per-keystroke cost. Install/uninstall whenever the binding
-        // crosses the unbound/bound boundary or when the key code itself changes.
-        suggestionSettings.$globalToggleKeyCode
-            .removeDuplicates()
+        // The worker cannot evaluate UI-model closures. Publish a small routing snapshot after
+        // completed settings/focus changes; final command validation still reads live providers.
+        Publishers.MergeMany([
+            suggestionSettings.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+            suggestionSettings.languageLearning.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+            suggestionSettings.languageLearning.expressionAssist.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+            suggestionSettings.vocabularyShortcuts.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+            focusModel.$snapshot.map { _ in () }.eraseToAnyPublisher()
+        ])
             .sink { [weak inputMonitor] _ in
-                inputMonitor?.refreshToggleTap()
+                inputMonitor?.scheduleRoutingRefresh()
             }
             .store(in: &cancellables)
 

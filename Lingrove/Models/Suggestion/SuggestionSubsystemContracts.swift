@@ -37,6 +37,8 @@ protocol SuggestionFocusProviding: AnyObject {
     /// Each capture is a synchronous multi-IPC Accessibility walk, so hot-path consumers use this
     /// to skip a redundant capture that another caller performed moments earlier.
     var millisecondsSinceLastCapture: Int? { get }
+    /// Monotonic start of the last AX capture; nil providers conservatively perform another read.
+    var captureStartedUptimeNanoseconds: UInt64? { get }
 
     func refreshNow()
 
@@ -50,9 +52,21 @@ extension SuggestionFocusProviding {
     /// Conservative default: age unknown, so `refreshIfStale` always refreshes. Production
     /// providers report a real age; test fakes can ignore freshness entirely.
     var millisecondsSinceLastCapture: Int? { nil }
+    var captureStartedUptimeNanoseconds: UInt64? { nil }
 
     /// Default: nothing cached, nothing to invalidate.
     func invalidateTransientCaretCaches() {}
+
+    /// Reuses a timer/another consumer's post-key capture only for the very same focused input.
+    /// A pre-key capture is never made fresh merely because its slow AX calls finished later.
+    func refreshAfterInput(since inputAt: UInt64, identity: FocusedInputIdentity?, maxAgeMilliseconds: Int) {
+        let sameIdentity = identity != nil && snapshot.context?.identity == identity
+        if !FocusCaptureFreshnessPolicy.canReuseAfterInput(captureStartedAt: captureStartedUptimeNanoseconds,
+            inputAt: inputAt, ageMilliseconds: millisecondsSinceLastCapture,
+            maxAgeMilliseconds: maxAgeMilliseconds, sameIdentity: sameIdentity) {
+            refreshNow()
+        }
+    }
 
     /// Refreshes only when the last capture is older than `maxAgeMilliseconds`. The suggestion
     /// pipeline performs several captures per keystroke (host-publish poll, post-debounce check,
@@ -77,9 +91,8 @@ protocol SuggestionInputMonitoring: AnyObject {
     /// full session validation before the tap consumes the original key.
     var shouldConsumeAcceptKeyProvider: @MainActor @Sendable () -> Bool { get set }
 
-    /// Drives the lifecycle of the active accept-key tap. The coordinator turns this on while
-    /// a suggestion overlay is visible and off otherwise, so Lingrove only sits in the synchronous
-    /// keystroke path during the brief windows it actually needs to consume the accept key.
+    /// Publishes accept-key ownership to the independent input thread. Only a matching key while
+    /// this is active needs a synchronous confirmation; ordinary typing bypasses the main actor.
     func setAcceptInterceptionActive(_ active: Bool)
 }
 

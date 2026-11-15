@@ -41,7 +41,7 @@ Lingrove/
 │   ├── ExpressionAssist/             bounded requests, candidate contracts and interaction preferences
 │   ├── Focus/                        focus snapshots and tracking state
 │   ├── History/                      typing-history records, archive, and preferences
-│   ├── Input/                        keyboard event values
+│   ├── Input/                        keyboard event values and immutable input-thread routing snapshots
 │   ├── LanguageLearning/             model profiles, traces, languages, sentence/chunk/unit and dictionary contracts
 │   ├── Onboarding/                   onboarding templates
 │   ├── Permissions/                  TCC permission values
@@ -66,7 +66,7 @@ Lingrove/
 │   │   ├── Chromium/                 Chromium AX enablement and diagnostics
 │   │   └── Resolution/               focus snapshots, geometry, bounded AX walks
 │   ├── History/                      typing-history store, recording, and encrypted vault
-│   ├── Input/                        event taps and input-source monitoring
+│   ├── Input/                        dedicated event-tap thread, main-actor routing facade and input-source monitoring
 │   ├── LanguageLearning/             native/Endpoint tasks, offline lexicon, dictionary sessions, telemetry and editor captures
 │   ├── ModelManagement/              model discovery, download, and validation
 │   ├── Notebook/                     shared repository, account ownership and app-owned sync lifecycle

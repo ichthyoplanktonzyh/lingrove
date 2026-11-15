@@ -44,6 +44,9 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     }
     private var pointerEvidence: PointerEvidence?
     var isSelectingRegion: Bool { picker.isSelecting }
+    /// The composition root publishes this explicit modal keyboard ownership to the input worker.
+    /// It changes around the selection await, independently of focus polling or OCR completion.
+    var onRegionSelectionChanged: (@MainActor (Bool) -> Void)?
 
     init(ocrRuntime: OCRRuntime, metrics: PerformanceMetricsStore? = nil, trackingEnabled: @escaping () -> Bool = { false }) {
         self.ocrRuntime = ocrRuntime
@@ -58,6 +61,7 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
     func forget() {
         revision = UUID()
         picker.cancel()
+        onRegionSelectionChanged?(false)
         selection.forget()
         receipt = nil
         window = nil
@@ -114,7 +118,14 @@ final class LearningReadingSourceReader: LearningReadingSelecting {
                             "Allow Screen Recording for Lingrove in System Settings to translate screen text.",
                         table: "Learning"))
             }
-            let region = try await picker.select()
+            let region: CGRect
+            do {
+                onRegionSelectionChanged?(true)
+                // A cancelled selection may resume after a replacement request opened its own
+                // picker. Only this acquisition's revision may release the newer modal owner.
+                defer { if revision == id { onRegionSelectionChanged?(false) } }
+                region = try await picker.select()
+            }
             try Task.checkCancellation()
             guard validate() else {
                 throw CancellationError()

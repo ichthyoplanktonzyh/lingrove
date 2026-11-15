@@ -1219,3 +1219,74 @@ Dev and real corpus were untouched; no new deployment or legacy-data conversion 
 Final audit removed repository DerivedData, copied package caches, before-source copies and
 private hosts/fixtures, then verified their absence. The final source manifest covers1,870
 unchanged files; cleanup evidence lives in `build/seven-group-optimization/cleanup.json`.
+
+### Typing input isolation checkpoint (2026-11-15)
+
+`InputMonitor` now publishes immutable physical-key routing to one `InputEventTapWorker` on a
+dedicated native run loop. Ordinary keys and marked synthetic insertions return without waiting
+for MainActor. Candidate commands observe and decide in one ordered main-queue transaction,
+preserving emoji/macro commits, exact shortcut modifiers, successful-insertion-before-consumption,
+rapid Tab suppression and final-chunk delivery. Only explicit screen-region selection owns all keys;
+its revision guards prevent an old cancelled selection from releasing a newer modal owner.
+Reading receipts are retired asynchronously after ordinary passed-through input.
+
+`FocusCaptureFreshnessPolicy` permits retry reuse only for a fresh capture started after the input
+with the same element and focus sequence. A recent explicit refresh can replace a timer tick; the
+timer's own previous capture cannot thin its normal cadence. Explicit insertion/replacement
+validation remains unconditional. Settings, focus, presentation, native generation and app services
+remain owned by the existing composition graph.
+
+Release/arm64 build-for-testing and isolated-host execution passed **238 distinct tests**
+(255 parameterized executions), zero failures/skips and no reported runtime warnings, across
+18 selected input, acceptance, inline-feature, reading/writing/expression and focus suites.
+Changed production sources and new tests passed strict SwiftLint; the generated Xcode project
+was refreshed. These are executed tests, including the intentional-main-actor-stall regression.
+The host used its own `.input.validation` bundle identity and synthetic fixtures.
+
+The controlled scheduling probe held MainActor for 300ms. Its previous main-thread bridge waited
+300.745458ms. The new ordinary-input dispatch path, over 256 samples, measured p50 0.000667ms,
+p95 0.000917ms, p99 0.001166ms and maximum 0.003625ms. These numbers cover callback dispatch
+only: they exclude Quartz transport, host editing, IME composition and screen presentation, and
+do not establish a native end-to-end input latency or a manual multi-host acceptance pass.
+Evidence is retained under `build/input-latency-validation/` (test summary and dispatch probe).
+
+Root integration built the separate `Lingrove Dev` scheme in Release, matched the installed signing
+requirement, then quit through the app-owned Settings Quit action before replacing the bundle.
+The installed binary timestamp advanced and its SHA-256 is recorded in `integration.json`.
+The updated app launched successfully: a native process sample observed `Lingrove.InputEventTap`
+running its own run loop, and Quartz reported one enabled tap belonging to the new process.
+No corpus, account or preference content was copied/reset for validation or installation. Manual
+multi-host typing feel and keystroke-to-screen latency remain outside this checkpoint's measured
+claims. Repository DerivedData and the private validation host are removed after verification.
+
+User acceptance and follow-up resource audit: the user reported **noticeably improved typing**
+after installation. A disposable AppKit text editor under `build/input-native-smoke/` accepted
+the synthetic Chinese sentence `今天的天气很好。`; the user confirmed that physical Option-T opened
+the translation card, and the editor retained the original sentence. Tool-generated Option-T
+instead reached the editor as a literal character. Tool-generated Unicode also failed to exercise
+Sogou's marked-text composition. These automation paths are not native global-shortcut/IME passes;
+they are recorded as tool limitations, with physical-key verification kept separate.
+
+The user subsequently reported a chassis/charger electrical chirp while typing. A six-second
+native sample found the new input thread waiting on its run loop throughout the sample; completion
+and learning-model threads were executing Metal prefill/decode. The recent eight-minute Console
+window contained 35 learning generation starts. `pmset -g therm` reported no recorded thermal or
+performance warning at that observation. These establish real inference activity, not the acoustic
+source or a measured before/after energy regression. No claim of hardware diagnosis is made.
+
+The unchanged residency policy keeps an enabled local completion model warm, keeps an eligible
+translation model warm, and loads explanation on demand with a 60-second idle release. During this
+follow-up the mapped models were Gemma E2B Q6 and TranslateGemma 4B Q4; the earlier sample used
+Hy-MT2 7B for translation. Runtime/model settings therefore differ between observations. The
+user's fast-completion mode was enabled. Input isolation removes an input-delivery dependency;
+it does not itself reduce inference work. The input fix changes neither model selection nor
+sampling, prompt budgets or the number of independent inference sessions. Admission/coalescing
+and power behavior need a separate controlled workload before changing generation timing or warm
+residency; unloading weights indiscriminately can add repeated cold loads without reducing typing
+generation churn.
+
+The bounded native smoke checkpoint leaves physical consecutive Tab acceptance and true marked-text
+IME composition **unverified**; neither is counted as a manual pass. The synthetic editor was
+closed after the tool compatibility limit was reached. Its evidence is under
+`build/input-native-smoke/`; the user-assisted physical Option-T result is distinct from the failed
+simulated shortcut. No model, timing or user preference was changed during this follow-up.

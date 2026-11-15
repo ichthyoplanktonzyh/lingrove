@@ -24,7 +24,7 @@ final class InputSuppressionController {
     /// inserter posts with `virtualKey: 0`, so if a user binds the accept key to keyCode 0 the accept
     /// tap would otherwise treat our own inserted text as accept-key presses and swallow the
     /// insertion. The value is an arbitrary sentinel; real events default this field to 0.
-    static let syntheticEventUserData: Int64 = 0x436F_7461_6262_79
+    nonisolated static let syntheticEventUserData: Int64 = 0x436F_7461_6262_79
 
     /// Arms a short-lived suppression window for the synthetic keydown events Lingrove is about to post.
     ///

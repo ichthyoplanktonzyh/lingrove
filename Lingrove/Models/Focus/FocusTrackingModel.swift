@@ -122,4 +122,6 @@ extension FocusTrackingModel: SuggestionFocusProviding {
     var millisecondsSinceLastCapture: Int? {
         tracker.millisecondsSinceLastCapture
     }
+
+    var captureStartedUptimeNanoseconds: UInt64? { tracker.captureStartedUptimeNanoseconds }
 }

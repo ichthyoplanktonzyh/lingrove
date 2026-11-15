@@ -138,7 +138,6 @@ final class LearningReadingCoordinator {
         workspaceObserver = nil
     }
 
-    // swiftlint:disable cyclomatic_complexity
     /// The consuming tap does no AX reads. Unknown apps and conflicting bindings return the
     /// original event to the host; capture and generation run after that synchronous decision.
     /// Keep synchronous shortcut arbitration together so event consumption has one ordered exit path.
@@ -184,10 +183,16 @@ final class LearningReadingCoordinator {
         }
         // All ordinary host input retires the receipt before AX can publish a changed selection.
         // Modifier transitions are not keyDown events, so holding Option does not dismiss a card.
-        if isActive { dismiss() }
+        observePassedThroughInput()
         return .notHandled
     }
-    // swiftlint:enable cyclomatic_complexity
+
+    /// Ordinary keys already reached the host on the independent input thread. Retire their old
+    /// reading receipt asynchronously; running the command decider here could start a shortcut
+    /// after its original key had been passed through. Modal region selection still owns its keys.
+    func observePassedThroughInput() {
+        if isActive, !reader.isSelectingRegion { dismiss() }
+    }
 
     func dismiss(reason: String = "explicit-or-invalidation") {
         if document != nil || panel.isVisible {

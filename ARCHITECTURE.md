@@ -255,15 +255,28 @@ alone.
 
 ## Global Input and Insertion
 
-[InputMonitor.swift](Lingrove/Services/Input/InputMonitor.swift) owns three event-tap responsibilities:
+[InputMonitor.swift](Lingrove/Services/Input/InputMonitor.swift) owns main-actor input policy and
+coordinator callbacks. Its app-lifetime [InputEventTapWorker](Lingrove/Services/Input/InputEventTapWorker.swift)
+owns one Quartz tap on a dedicated native run loop. A small immutable
+[routing snapshot](Lingrove/Models/Input/InputEventTapRouting.swift) names only candidate shortcuts,
+active acceptance bindings and modal panel keys. Ordinary typing and synthetic insertion events
+return immediately on the input thread, with observation queued in order on the main queue. Slow
+AX queries on MainActor therefore cannot delay those ordinary keys' delivery to another application.
 
-- A steady listen-only observer for typing, deletion, navigation, and pointer activity.
-- A conditional consuming tap while a suggestion or inline-command capture needs interception.
-- A separate consuming tap for the configured global-toggle shortcut.
-
-The conditional tap consumes a matching key only after the owning coordinator succeeds. Stale taps,
+A candidate key observes and confirms on the main queue as one transaction; this preserves the
+emoji/macro observer-before-consume contract. Such explicit commands may still wait for MainActor
+and insertion confirmation. Only the screen-region selector temporarily owns all keyboard input.
+The tap consumes a matching key only after the owning coordinator succeeds. Stale routing,
 missing overlays, rejected sessions, and revoked permission fail open so the host receives the key.
 Word/phrase and full-tail acceptance have independent configurable key/modifier bindings.
+Settings/focus changes publish routing after their backing properties change; each command still
+validates live state. Shutdown fails open immediately and retires the native thread without joining
+it from MainActor. The tap remains installed through final-chunk synthetic insertion.
+
+Focus polling and input retries share completed captures. `FocusCaptureFreshnessPolicy` only permits
+post-input reuse when the capture started after the key, has the same element/focus sequence and
+remains within the retry freshness bound. Timer ticks skip a duplicate walk within one base poll
+interval. Explicit pre-insertion/replacement captures are not deduplicated.
 
 [InputSuppressionController.swift](Lingrove/Services/Input/InputSuppressionController.swift) marks and
 counts Lingrove-generated events so insertion does not re-enter the typing pipeline.

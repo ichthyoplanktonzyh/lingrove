@@ -138,7 +138,9 @@ final class FocusTracker {
         let interval = effectiveInterval()
         scheduledInterval = interval
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            // This timer is installed exclusively on the main run loop. Enter directly rather
+            // than accumulating another unstructured main-actor task for each overdue tick.
+            MainActor.assumeIsolated {
                 self?.handleTimerTick()
             }
         }
@@ -182,6 +184,7 @@ final class FocusTracker {
     func refreshNow() {
         backoff.reset()
         performCaptureAndPublish()
+        lastExplicitCaptureUptimeNanoseconds = lastCaptureUptimeNanoseconds
         rescheduleTimerIfIntervalChanged()
     }
 
@@ -199,6 +202,12 @@ final class FocusTracker {
     /// is re-armed to a longer interval, so an idle machine stops waking ~12.5x/second only to skip
     /// the walk it would not run anyway. That wasteful wake was the dominant idle cost in #280.
     private func handleTimerTick() {
+        // An input-driven capture may have just refreshed the same shared state. Keep the timer's
+        // original cadence, but do not immediately repeat that IPC walk or count a fake idle poll.
+        if FocusCaptureFreshnessPolicy.shouldSkipTimerCapture(completedAt: lastExplicitCaptureUptimeNanoseconds,
+            now: DispatchTime.now().uptimeNanoseconds, intervalNanoseconds: UInt64(pollInterval * 1_000_000_000)) {
+            return
+        }
         backoff.recordCapture(didChange: performCaptureAndPublish())
         rescheduleTimerIfIntervalChanged()
     }
@@ -208,6 +217,11 @@ final class FocusTracker {
     /// when another caller just performed one. Uses uptime (monotonic) so wall-clock adjustments
     /// cannot fake freshness.
     private var lastCaptureUptimeNanoseconds: UInt64?
+    /// Only an explicit refresh can replace a timer tick. Comparing against the previous timer's
+    /// completion would skip alternate ticks simply because its AX work consumed a few milliseconds.
+    private var lastExplicitCaptureUptimeNanoseconds: UInt64?
+    /// Completion time alone cannot prove that an AX read saw a keystroke; consumers use its start.
+    private(set) var captureStartedUptimeNanoseconds: UInt64?
 
     /// Age of the last capture in milliseconds, or `nil` before the first capture.
     var millisecondsSinceLastCapture: Int? {
@@ -224,6 +238,7 @@ final class FocusTracker {
     /// backoff uses this to decide whether to stay fast or stretch the poll stride.
     @discardableResult
     private func performCaptureAndPublish() -> Bool {
+        captureStartedUptimeNanoseconds = DispatchTime.now().uptimeNanoseconds
         pollSequence += 1
         let capture: FocusCaptureResult
         if let reason = captureHoldReason() {
