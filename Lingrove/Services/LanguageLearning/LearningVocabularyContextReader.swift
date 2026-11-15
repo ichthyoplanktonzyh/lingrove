@@ -54,18 +54,24 @@ enum LearningVocabularyContextReader {
     }
 
     static func log(_ context: LearningReadingContext?, candidates: Int = 1, exhausted: Bool = false) {
-        LingroveLogger.learning.debug("Reading context captured", metadata: [
-            "request_id": .string(LearningRequestTrace.requestID ?? "unscoped"),
-            "method": .string(context?.window.method.rawValue ?? "unavailable"),
-            "scope": .string(context.map { $0.isComplete ? "complete" : $0.completeness.rawValue } ?? "none"),
-            "left_boundary": .string(context?.left.rawValue ?? "unknown"),
-            "right_boundary": .string(context?.right.rawValue ?? "unknown"),
-            "context_utf16": .stringConvertible(context?.text.utf16.count ?? 0),
-            "window_utf16": .stringConvertible(context?.window.text.utf16.count ?? 0),
-            "candidate_count": .stringConvertible(candidates), "deadline_exhausted": .stringConvertible(exhausted),
-            "target_offset": .stringConvertible(context?.target.location ?? -1),
-            "sentence_count": .stringConvertible(context?.sentenceCount ?? 0),
-            "ocr_confidence": .string(context?.window.confidence.map(String.init(describing:)) ?? "unavailable")
-        ])
+        // Keep the log's lazy behavior while giving older Swift compilers small, independently
+        // typed expressions instead of one large overloaded metadata dictionary.
+        guard LingroveLogger.learning.logLevel <= .debug else { return }
+        let scope = context.map { $0.isComplete ? "complete" : $0.completeness.rawValue } ?? "none"
+        let confidence = context?.window.confidence.map { String(describing: $0) } ?? "unavailable"
+        var metadata: Logger.Metadata = [:]
+        metadata["request_id"] = .string(LearningRequestTrace.requestID ?? "unscoped")
+        metadata["method"] = .string(context?.window.method.rawValue ?? "unavailable")
+        metadata["scope"] = .string(scope)
+        metadata["left_boundary"] = .string(context?.left.rawValue ?? "unknown")
+        metadata["right_boundary"] = .string(context?.right.rawValue ?? "unknown")
+        metadata["context_utf16"] = .stringConvertible(context?.text.utf16.count ?? 0)
+        metadata["window_utf16"] = .stringConvertible(context?.window.text.utf16.count ?? 0)
+        metadata["candidate_count"] = .stringConvertible(candidates)
+        metadata["deadline_exhausted"] = .stringConvertible(exhausted)
+        metadata["target_offset"] = .stringConvertible(context?.target.location ?? -1)
+        metadata["sentence_count"] = .stringConvertible(context?.sentenceCount ?? 0)
+        metadata["ocr_confidence"] = .string(confidence)
+        LingroveLogger.learning.debug("Reading context captured", metadata: metadata)
     }
 }
