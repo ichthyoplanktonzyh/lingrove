@@ -316,16 +316,19 @@ final class LearningReadingCoordinator {
         let trace = traceID ?? capture.traceID ?? RequestID.generate()
         let resolution = LearningReadingLanguageResolver.resolve(text: capture.text,
             context: capture.context?.text, hint: capture.context?.languageHint ?? capture.languageHint)
-        LingroveLogger.learning.debug("Reading source language resolved", metadata: [
-            "request_id": .string(trace), "origin": .string(capture.source.rawValue),
-            "source_language": .string(resolution.language?.rawValue ?? "und"),
-            "language_evidence": .string(resolution.evidence.rawValue),
-            "selection_utf16": .stringConvertible(capture.text.utf16.count),
-            "context_utf16": .stringConvertible(capture.context?.text.utf16.count ?? 0),
-            "context_method": .string(capture.context?.window.method.rawValue ?? "unavailable"),
-            "context_complete": .stringConvertible(capture.context?.isComplete ?? false),
-            "context_completeness": .string(capture.context?.completeness.rawValue ?? "none")
-        ])
+        if LingroveLogger.learning.logLevel <= .debug {
+            var metadata: Logger.Metadata = [:]
+            metadata["request_id"] = .string(trace)
+            metadata["origin"] = .string(capture.source.rawValue)
+            metadata["source_language"] = .string(resolution.language?.rawValue ?? "und")
+            metadata["language_evidence"] = .string(resolution.evidence.rawValue)
+            metadata["selection_utf16"] = .stringConvertible(capture.text.utf16.count)
+            metadata["context_utf16"] = .stringConvertible(capture.context?.text.utf16.count ?? 0)
+            metadata["context_method"] = .string(capture.context?.window.method.rawValue ?? "unavailable")
+            metadata["context_complete"] = .stringConvertible(capture.context?.isComplete ?? false)
+            metadata["context_completeness"] = .string(capture.context?.completeness.rawValue ?? "none")
+            LingroveLogger.learning.debug("Reading source language resolved", metadata: metadata)
+        }
         // Source detection is advisory. Exact capture validation still gates the request, but
         // ambiguous short words and technical labels must reach both lookup and translation.
         let source = resolution.language

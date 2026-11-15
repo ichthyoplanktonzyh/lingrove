@@ -114,21 +114,27 @@ nonisolated enum LearningReadingOCRPolicy {
         for _ in 0..<8 {
             for side in 0..<2 where active[side] {
                 let edge = edges[side]
-                let candidates = lines.indices.filter { candidate in
+                let candidates: [Int] = lines.indices.filter { candidate -> Bool in
                     guard !included.contains(candidate), let rect = lines[candidate].boundingBox,
                           let edgeRect = lines[edge].boundingBox,
                           side == 0 ? rect.midY > edgeRect.midY : rect.midY < edgeRect.midY else { return false }
                     let scale = CGAffineTransform(scaleX: imageSize.width, y: imageSize.height)
-                    let first = edgeRect.applying(scale), second = rect.applying(scale)
-                    let overlap = max(0, min(first.maxX, second.maxX) - max(first.minX, second.minX))
-                    return abs(first.midY - second.midY) > max(first.height, second.height) * 0.6 &&
-                        abs(first.minX - second.minX) < max(first.height, second.height) * 3 &&
-                        overlap >= min(first.width, second.width) * 0.6
+                    let first: CGRect = edgeRect.applying(scale)
+                    let second: CGRect = rect.applying(scale)
+                    let height: CGFloat = max(first.height, second.height)
+                    let width: CGFloat = min(first.width, second.width)
+                    let overlap: CGFloat = max(0, min(first.maxX, second.maxX) - max(first.minX, second.minX))
+                    let separated = abs(first.midY - second.midY) > height * 0.6
+                    let aligned = abs(first.minX - second.minX) < height * 3
+                    return separated && aligned && overlap >= width * 0.6
                 }
-                guard let next = candidates.min(by: {
-                    abs((lines[$0].boundingBox?.midY ?? 0) - (lines[edge].boundingBox?.midY ?? 0)) <
-                        abs((lines[$1].boundingBox?.midY ?? 0) - (lines[edge].boundingBox?.midY ?? 0))
-                }), continuous(lines[edge], lines[next], imageSize: imageSize, pitch: pitch),
+                let edgeY: CGFloat = lines[edge].boundingBox?.midY ?? 0
+                let closest = candidates.min { first, second in
+                    let firstDistance: CGFloat = abs((lines[first].boundingBox?.midY ?? 0) - edgeY)
+                    let secondDistance: CGFloat = abs((lines[second].boundingBox?.midY ?? 0) - edgeY)
+                    return firstDistance < secondDistance
+                }
+                guard let next = closest, continuous(lines[edge], lines[next], imageSize: imageSize, pitch: pitch),
                     lines[next].text.utf16.count + 1 <= budget else { active[side] = false; continue }
                 // Inspect the closest row before testing continuity. Filtering out a heading or
                 // list item first could otherwise jump over it and splice two unrelated blocks.
@@ -180,16 +186,25 @@ nonisolated enum LearningReadingOCRPolicy {
     private static func typicalPitch(_ lines: [OCRTextHygiene.OCRLine], index: Int, imageSize: CGSize) -> CGFloat? {
         let scale = CGAffineTransform(scaleX: imageSize.width, y: imageSize.height)
         guard let reference = lines[index].boundingBox?.applying(scale) else { return nil }
-        let boxes = lines.compactMap { $0.boundingBox?.applying(scale) }.filter {
-            min($0.height, reference.height) > 0 && max($0.height, reference.height) < min($0.height, reference.height) * 1.4 &&
-                abs($0.minX - reference.minX) < reference.height * 2 &&
-                abs($0.midY - reference.midY) < reference.height * 12
-        }.sorted { $0.midY > $1.midY }
-        let pitches = zip(boxes, boxes.dropFirst()).compactMap { first, second -> CGFloat? in
-            let distance = first.midY - second.midY
-            return distance > max(first.height, second.height) * 0.8 &&
-                distance < min(first.height, second.height) * 3 ? distance : nil
-        }.sorted()
+        // Named, typed stages keep these geometry predicates tractable for older Swift solvers.
+        let transformed: [CGRect] = lines.compactMap { $0.boundingBox?.applying(scale) }
+        let matching: [CGRect] = transformed.filter { box in
+            let smallerHeight: CGFloat = min(box.height, reference.height)
+            let largerHeight: CGFloat = max(box.height, reference.height)
+            let similarHeight = smallerHeight > 0 && largerHeight < smallerHeight * 1.4
+            let sameColumn = abs(box.minX - reference.minX) < reference.height * 2
+            let nearby = abs(box.midY - reference.midY) < reference.height * 12
+            return similarHeight && sameColumn && nearby
+        }
+        let boxes: [CGRect] = matching.sorted { $0.midY > $1.midY }
+        var pitches: [CGFloat] = []
+        for (first, second) in zip(boxes, boxes.dropFirst()) {
+            let distance: CGFloat = first.midY - second.midY
+            let lowerBound: CGFloat = max(first.height, second.height) * 0.8
+            let upperBound: CGFloat = min(first.height, second.height) * 3
+            if distance > lowerBound && distance < upperBound { pitches.append(distance) }
+        }
+        pitches.sort()
         guard pitches.count >= 2 else { return nil }
         return pitches[(pitches.count - 1) / 2]
     }
