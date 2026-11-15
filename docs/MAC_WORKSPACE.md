@@ -1285,8 +1285,11 @@ and power behavior need a separate controlled workload before changing generatio
 residency; unloading weights indiscriminately can add repeated cold loads without reducing typing
 generation churn.
 
-The bounded native smoke checkpoint leaves physical consecutive Tab acceptance and true marked-text
-IME composition **unverified**; neither is counted as a manual pass. The synthetic editor was
-closed after the tool compatibility limit was reached. Its evidence is under
-`build/input-native-smoke/`; the user-assisted physical Option-T result is distinct from the failed
-simulated shortcut. No model, timing or user preference was changed during this follow-up.
+The user-assisted physical-key retest also passed two consecutive Tab acceptances. After deleting
+the fixture's trailing `x`, the user accepted two chunks; the native editor contained exactly
+`In the morning, I like to drink coffee.` with no literal Tab characters and retained editing
+focus. Sogou Pinyin was selected during acceptance. True marked-text IME composition remains
+**unverified**, distinct from this successful acceptance check. The synthetic editor was closed
+after the user's confirmation. Evidence is under `build/input-native-smoke/`; the physical-key
+results are distinct from the failed simulated shortcut. No model, timing or user preference was
+changed during this follow-up.
