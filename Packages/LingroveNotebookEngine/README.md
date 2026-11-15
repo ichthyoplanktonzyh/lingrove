@@ -155,6 +155,14 @@ single-owner reconciliation and owned-semantic restoration. All paths finish thr
 CAS, media, journal, review-material and receipt transaction. The caller's baseline supplies no
 validation authority, and a failed member leaves the original state available for retry.
 
+`VocabularyTagRemovalChange` additionally seals exact removed tag multiplicities and affected
+owner/review IDs. Tags are public sense membership, so a nonempty removal needs no second
+corpus-fragment hash. This proof alone permits upserting existing entry/sense/collection rows
+without retiring owners; generic edits keep their delete/insert path for uniqueness-key swaps.
+The review adapter receives complete affected entries (including historical aliases) and keeps
+the established conservative sense scope, Card material writer and scheduling/history rules.
+No partial document or host dirty-ID list grants this permission.
+
 `notebookLiteralSearchMaterial` projects searchable scalar fields, accepted evidence and confirmed
 meaning/cue/pattern joins without loading the full document or classification directory. A browser
 actor owns this disposable material and pages frozen summary results. Reuse requires its exact
@@ -170,7 +178,7 @@ excluded and shared sources serve each admitted interpretation; transient rowids
 the transaction or enter persisted search metadata.
 `prepareNotebookSearch` adds a rebuildable, workspace-owned projection in two private SQLite
 metadata tables, excluded from canonical backup/sync and deleted with the workspace. Exact
-schema/epoch/corpus/owner fences, checksum and bounded format-2 decoding admit a cache read.
+schema/epoch/corpus/owner fences, checksum and bounded format-3 decoding admit a cache read.
 Certified local-entry and checked complete/batch writers append one bounded transaction delta;
 the journal is capped at 64 frames / 8 MiB, with at most 100 affected entries per frame. Readers
 bound the journal before decoding, verify its complete consecutive fence/checksum chain, and
@@ -180,6 +188,13 @@ builder/final ordering pass. A reader without memory verifies the persisted base
 the complete chain. Small edits retain the durable journal; a full projection checkpoint is
 written after 8 frames or 512 KiB, outside the read transaction and with the same final CAS.
 This amortizes encoding/fsync rather than moving full projection work into an editor's save.
+Pure tag removal uses a small tag/count-by-live-sense frame instead of serializing every touched
+entry. Replay subtracts exactly those field occurrences, preserving equal words in notes,
+definitions, examples and semantic joins. Tag-only chains retain the text table and summary
+ordering without building the full string/owner indexes. Mixed entry/tag chains still replay in
+order. These frames require private cache version 3 and its binary marker; writers append only
+to that version, so older readers cannot silently ignore a new tag frame. Older caches rebuild
+from canonical data; no corpus schema/backup/sync migration occurs.
 Existing shared-evidence changes,
 semantic changes, raw writes, missed
 deltas, generation changes or corrupt data rebuild through the canonical scanner. This cache
@@ -188,6 +203,9 @@ older certificate; normal full validation re-establishes it before local writes 
 The opt-in `NotebookSearchPerformanceTests` and `NotebookSearchProjectionScaleTests` copy supplied
 closed synthetic exports. The latter distinguishes unprimed preparation, persisted reopen and
 editing followed by search. Do not point either at an application database.
+The canonical scanner reads meaning variants alongside sense headers, joins each collection's
+note/tags in one physical pass without duplicating note occurrences, and reads semantic payloads
+in physical order. Search admission and Unicode comparison remain shared with the browser.
 
 `notebookReviewQuestion` reads one Note/type/source and only the images referenced by its rendered
 faces. It returns a corpus fence, review clock and rating question token. Hosts recheck admission

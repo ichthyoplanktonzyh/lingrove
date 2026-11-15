@@ -170,6 +170,9 @@ import Testing
         var doc = document(); var entries = doc.entries
         entries[0].senses[0].note = "Café 中文"
         entries[0].senses[0].tags = ["search-tag"]
+        entries[0].senses[0].standaloneMeanings = [.init(text: "Localized definition needle", language: .chinese)]
+        entries[0].senses[0].alternateMeanings = [.init(text: "Alternate definition needle", language: .english)]
+        entries[1].senses[0].note = "A note without any tags"
         entries[0].senses[0].content = [.init(content: .text(.init(text: "Formatted body")))]
         entries[0].senses[0].examples = [.init(id: UUID(), sourceKind: .authored, text: "Evidence source text", translation: "Translation needle",
             translationVariants: [.init(text: "Variant needle", language: .english)], ranges: [], completeness: .sentence, meaning: "Example meaning", createdAt: Date())]
@@ -177,7 +180,8 @@ import Testing
         _ = try seed(f, doc); try f.reopen()
         let before = try f.db.notebookChanges()
         let material = try f.db.notebookLiteralSearchMaterial(locale: "en_US")
-        for query in ["cafe", "中文", "search-tag", "Formatted", "Evidence", "Translation", "Variant", "Example meaning", "lemma0 cafe", "missing"] {
+        for query in ["cafe", "中文", "search-tag", "Localized definition needle", "Alternate definition needle", "without any tags",
+                      "Formatted", "Evidence", "Translation", "Variant", "Example meaning", "lemma0 cafe", "missing"] {
             let result = try material.results(matching: query)
             let expected = Set(doc.entries.filter { VocabularyNotebookQuery.matches($0, query: query) }.map(\.id))
             #expect(Set(result.entries.map(\.id)) == expected, "Search parity: \(query)")

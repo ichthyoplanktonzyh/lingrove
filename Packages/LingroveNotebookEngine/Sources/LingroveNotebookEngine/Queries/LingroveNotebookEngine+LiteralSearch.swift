@@ -117,27 +117,38 @@ extension LingroveNotebookEngine {
                         ORDER BY b.position LIMIT 1),'') ELSE '' END,
                        CASE WHEN s.meaning='' THEN EXISTS(SELECT 1 FROM notebook_collections c JOIN notebook_blocks b
                         ON b.workspace_id=c.workspace_id AND b.parent_id=c.id WHERE c.workspace_id=s.workspace_id AND c.sense_id=s.id
-                        AND json_type(b.payload_json,'$.content.image')='object') ELSE 0 END,json_extract(e.payload_json,'$.createdAt')
+                        AND json_type(b.payload_json,'$.content.image')='object') ELSE 0 END,json_extract(e.payload_json,'$.createdAt'),
+                       CASE WHEN json_array_length(s.payload_json,'$.standaloneMeanings')>0 THEN
+                        (SELECT json_group_array(json_extract(value,'$.text')) FROM json_each(s.payload_json,'$.standaloneMeanings')) END,
+                       CASE WHEN json_array_length(s.payload_json,'$.alternateMeanings')>0 THEN
+                        (SELECT json_group_array(json_extract(value,'$.text')) FROM json_each(s.payload_json,'$.alternateMeanings')) END
                 FROM notebook_entries e JOIN notebook_senses s ON s.workspace_id=e.workspace_id AND s.parent_id=e.id
                 WHERE e.workspace_id=?
                 ORDER BY json_extract(e.payload_json,'$.createdAt') DESC,e.id,json_extract(s.payload_json,'$.createdAt'),s.id
-                """, values: [.text(workspace)]) { row -> (UUID, String, LearningLanguage?, String, NotebookEntrySummary.Sense, Double) in
+                """, values: [.text(workspace)]) { row -> (UUID, String, LearningLanguage?, String, NotebookEntrySummary.Sense, Double, [String]) in
                 try Task.checkCancellation()
                 guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                       let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 4)) else { throw VocabularyError.invalidArchive }
                 let meaning = DatabaseCore.columnText(statement: row, index: 5)
+                var variants: [String] = []
+                for column in [Int32(9), Int32(10)] {
+                    if let json = DatabaseCore.columnOptionalText(statement: row, index: column) {
+                        variants += try core.decoder.decode([String?].self, from: Data(json.utf8)).compactMap { $0 }
+                    }
+                }
                 return (entry, DatabaseCore.columnText(statement: row, index: 1),
                     LearningLanguage(rawValue: DatabaseCore.columnText(statement: row, index: 2)),
                     DatabaseCore.columnOptionalText(statement: row, index: 3) ?? "",
                     .init(id: sense, title: meaning.isEmpty ? DatabaseCore.columnText(statement: row, index: 6) : meaning,
-                        hasImage: sqlite3_column_int(row, 7) != 0), sqlite3_column_double(row, 8))
+                        hasImage: sqlite3_column_int(row, 7) != 0), sqlite3_column_double(row, 8), variants)
             }
-            for (id, expression, language, dictionary, sense, date) in rows {
+            for (id, expression, language, dictionary, sense, date, variants) in rows {
                 dates[id] = date
                 if let prior = headers[id] {
                     headers[id] = .init(id: id, expression: expression, language: language, senses: prior.senses + [sense])
                 } else { headerOrder.append(id); headers[id] = .init(id: id, expression: expression, language: language, senses: [sense]) }
                 fields[sense.id] = [expression, dictionary, sense.title].map { texts.intern($0) }
+                if !variants.isEmpty { fields[sense.id, default: []] += variants.filter { !$0.isEmpty }.map { texts.intern($0) } }
             }
             func append(_ sql: String, columns: Int) throws {
                 _ = try core.query(sql: sql, values: [.text(workspace)]) { row -> Bool in
@@ -151,11 +162,13 @@ extension LingroveNotebookEngine {
                     return true
                 }
             }
-            for path in ["standaloneMeanings", "alternateMeanings"] {
-                try append("SELECT s.id,json_extract(v.value,'$.text') FROM notebook_senses s,json_each(s.payload_json,'$.\(path)') v WHERE s.workspace_id=?", columns: 1)
-            }
-            try append("SELECT sense_id,json_extract(payload_json,'$.note') FROM notebook_collections WHERE workspace_id=?", columns: 1)
-            try append("SELECT c.sense_id,t.value FROM notebook_collections c,json_each(c.payload_json,'$.tags') t WHERE c.workspace_id=?", columns: 1)
+            // One physical pass supplies notes and tags. Emit the note only for the first
+            // tag (or the empty-array row), preserving one reference per authored field.
+            try append("""
+                SELECT c.sense_id,CASE WHEN t.key IS NULL OR t.key=0 THEN json_extract(c.payload_json,'$.note') END,t.value
+                FROM notebook_collections c LEFT JOIN json_each(c.payload_json,'$.tags') t ON 1
+                WHERE c.rowid IN (SELECT rowid FROM notebook_collections WHERE workspace_id=?)
+                """, columns: 2)
             try append("""
                 SELECT c.sense_id,json_extract(b.payload_json,'$.content.text._0.text'),json_extract(b.payload_json,'$.content.image.caption')
                 FROM notebook_collections c JOIN notebook_blocks b ON b.workspace_id=c.workspace_id AND b.parent_id=c.id WHERE c.workspace_id=?
@@ -168,17 +181,20 @@ extension LingroveNotebookEngine {
                 WHERE u.workspace_id=? AND u.status='accepted'
                 """, columns: 2)
             var nodes: [UUID: [Int]] = [:]
-            for (id, values) in try core.query(sql: "SELECT id,json_extract(payload_json,'$.definition'),json_extract(payload_json,'$.scopeNote') FROM notebook_meaning_nodes WHERE workspace_id=?", values: [.text(workspace)], map: { row -> (UUID, [String]) in
+            _ = try core.query(sql: "SELECT id,json_extract(payload_json,'$.definition'),json_extract(payload_json,'$.scopeNote') FROM notebook_meaning_nodes WHERE rowid IN (SELECT rowid FROM notebook_meaning_nodes WHERE workspace_id=?)", values: [.text(workspace)]) { row -> Bool in
+                try Task.checkCancellation()
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else { throw VocabularyError.invalidArchive }
-                return (id, [1,2].map { DatabaseCore.columnOptionalText(statement: row, index: Int32($0)) ?? "" })
-            }) { nodes[id] = values.map { texts.intern($0) } }
+                nodes[id] = [1,2].map { texts.intern(DatabaseCore.columnOptionalText(statement: row, index: Int32($0)) ?? "") }
+                return true
+            }
             for (id, text) in try core.query(sql: "SELECT parent_id,text FROM notebook_meaning_labels WHERE workspace_id=?", values: [.text(workspace)], map: { row -> (UUID, String) in
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else { throw VocabularyError.invalidArchive }
                 return (id, DatabaseCore.columnText(statement: row, index: 1))
             }) { nodes[id, default: []].append(texts.intern(text)) }
             let mappings = try core.query(sql: """
                 SELECT parent_id,meaning_id,json_extract(payload_json,'$.conditions'),json_extract(payload_json,'$.nuance')
-                FROM notebook_meaning_mappings WHERE workspace_id=? AND json_extract(payload_json,'$.provenance.status')='confirmed'
+                FROM notebook_meaning_mappings WHERE rowid IN (SELECT rowid FROM notebook_meaning_mappings WHERE workspace_id=?)
+                AND json_extract(payload_json,'$.provenance.status')='confirmed'
                 """, values: [.text(workspace)]) { row -> NotebookLiteralSearchMaterial.Mapping in
                 guard let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
                       let node = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 1)) else { throw VocabularyError.invalidArchive }

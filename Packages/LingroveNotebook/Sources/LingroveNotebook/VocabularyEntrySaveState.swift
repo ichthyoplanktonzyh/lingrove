@@ -253,10 +253,19 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
             throw VocabularyError.invalidContent
         }
         var next = document, joined = entries, changed = Set<UUID>()
+        var removedBySense: [UUID: Int] = [:], reviewSenseIDs = Set<UUID>()
         for index in next.catalog.indices {
             try Task.checkCancellation()
+            for sense in next.catalog[index].senses {
+                let count = sense.tags.filter { $0 == tag }.count
+                if count > 0 {
+                    removedBySense[sense.id] = count
+                }
+            }
             if VocabularySenseEditingPolicy.removeTag(tag, from: &next.catalog[index], now: now) {
                 changed.insert(next.catalog[index].id)
+                // Retain the established conservative review scope for the complete owner.
+                reviewSenseIDs.formUnion(next.catalog[index].senses.flatMap { [$0.id] + $0.mergedFrom })
             }
         }
         if !changed.isEmpty {
@@ -266,7 +275,7 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         }
         let state = changed.isEmpty ? self : Self(document: next, entries: joined, identifiers: identifiers,
             validationIndex: validationIndex, semanticIndex: semanticIndex, projectionLookup: projectionLookup, mediaIndex: mediaIndex)
-        return .init(state: state, entryIDs: changed)
+        return .init(state: state, entryIDs: changed, tag: tag, removedBySense: removedBySense, reviewSenseIDs: reviewSenseIDs)
     }
 }
 
@@ -303,7 +312,14 @@ public nonisolated struct VocabularyEntryBatchChange: Sendable {
 public nonisolated struct VocabularyTagRemovalChange: Sendable {
     public let state: VocabularyEntrySaveState
     public let entryIDs: Set<UUID>
-    fileprivate init(state: VocabularyEntrySaveState, entryIDs: Set<UUID>) { self.state = state; self.entryIDs = entryIDs }
+    public let tag: String
+    public let removedBySense: [UUID: Int]
+    public let reviewSenseIDs: Set<UUID>
+    fileprivate init(state: VocabularyEntrySaveState, entryIDs: Set<UUID>, tag: String,
+                     removedBySense: [UUID: Int], reviewSenseIDs: Set<UUID>) {
+        self.state = state; self.entryIDs = entryIDs; self.tag = tag
+        self.removedBySense = removedBySense; self.reviewSenseIDs = reviewSenseIDs
+    }
 }
 
 /// Only the validated state's narrow command can construct this change. Codec and public-intent

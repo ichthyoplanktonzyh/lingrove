@@ -45,8 +45,8 @@ extension LingroveNotebookEngine {
             let change = try cached.state.removingTag(tag)
             guard !change.entryIDs.isEmpty else { return current }
             let rows = try cached.projection.applying(change)
-            let plan = try LingroveNotebookSavePlan(previous: cached, state: change.state, rows: rows, knownEntryIDs: change.entryIDs)
-            let publicChange = try plan.hasPublicChanges(previous: cached)
+            let plan = LingroveNotebookSavePlan(tagRemoval: change, rows: rows)
+            let publicChange = VocabularyWirePublicIntent.hasChanges(change)
             try Task.checkCancellation()
             return try store.commit(plan, current: current, publicChange: publicChange,
                 operationId: operationId, lineage: cached.lineage)

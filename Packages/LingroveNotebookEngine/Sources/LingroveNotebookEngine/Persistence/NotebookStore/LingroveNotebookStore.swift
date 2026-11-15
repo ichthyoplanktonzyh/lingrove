@@ -117,7 +117,14 @@ public struct LingroveNotebookStore {
             let next = plan.state.document, changed = plan.rows.changed, removed = plan.rows.removed
             let searchBase = try NotebookBrowseFence(version: .init(current), corpus: core.notebookCacheToken())
             let searchEntries = core.notebookSaveCache?.state.entries ?? []
-            try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId)
+            if plan.tagRemoval != nil {
+                // The sealed tag command retains every owner, parent and uniqueness key.
+                // Do not retire/reinsert owners and recheck all their unchanged dependents.
+                let allowed: Set<VocabularyPersistenceEntity> = [.entries, .senses, .collections]
+                guard removed.isEmpty, plan.rows.repositioned.isEmpty,
+                      changed.allSatisfy({ allowed.contains($0.entity) }) else { throw VocabularyError.invalidArchive }
+                for row in changed { try upsert(row, workspaceId: current.workspaceId) }
+            } else { try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId) }
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
             let count = try self.core.execute(sql: """
@@ -131,8 +138,9 @@ public struct LingroveNotebookStore {
         try recordRepositioned(plan.rows.repositioned, workspaceId: current.workspaceId, operationId: operationId,
             journalOffset: changed.count + removed.count)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
+        let reviewEntries = plan.tagRemoval == nil ? plan.state.entries : plan.state.entries.filter { plan.entryIDs.contains($0.id) }
         try LingroveNotebookReviewMaterialStore(core: core).refreshInTransaction(saved,
-            senseIDs: plan.reviewSenseIDs, entries: plan.state.entries)
+            senseIDs: plan.reviewSenseIDs, entries: reviewEntries)
         core.notebookSaveCache = .init(snapshot: saved, state: plan.state, projection: plan.rows.projection,
             token: try core.notebookCacheToken(), lineage: lineage, committedChange: plan.receipt(from: current, to: saved))
         try NotebookEntryCheckpoint.record(in: core, version: .init(saved), media: plan.state.mediaReferences)

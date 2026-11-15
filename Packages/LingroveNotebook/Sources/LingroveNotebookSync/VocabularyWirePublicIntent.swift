@@ -6,6 +6,10 @@ import LingroveNotebook
 /// rows. Private tool receipts and timestamp-only bookkeeping must not undo a
 /// user's cancellation. This local comparison is not a server canonical hash.
 public nonisolated enum VocabularyWirePublicIntent {
+    /// The sealed command changes only public sense-tag membership and bookkeeping dates.
+    /// A nonempty removal is public by construction; no corpus fragment needs serialization.
+    public static func hasChanges(_ change: VocabularyTagRemovalChange) -> Bool { !change.removedBySense.isEmpty }
+
     /// The writer has already validated both complete states. These domain-shaped fragments
     /// contain the roots selected by its actual row delta; they deliberately omit unchanged
     /// owners and may reference records outside the fragment. This is a pure comparison, not

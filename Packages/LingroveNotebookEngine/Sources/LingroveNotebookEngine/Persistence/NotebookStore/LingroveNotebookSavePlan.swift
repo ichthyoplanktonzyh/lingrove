@@ -12,10 +12,18 @@ struct LingroveNotebookSavePlan {
     let entryIDs: Set<UUID>
     let reviewSenseIDs: Set<UUID>?
     let requiresEntryReload: Bool
+    let tagRemoval: VocabularyTagRemovalChange?
+
+    /// Only the domain's annotation-only proof permits retained-owner upserts. Identity,
+    /// parentage, uniqueness keys and evidence cannot change through this command.
+    init(tagRemoval change: VocabularyTagRemovalChange, rows: VocabularyEntryRowChange) {
+        state = change.state; self.rows = rows; entryIDs = change.entryIDs
+        reviewSenseIDs = change.reviewSenseIDs; requiresEntryReload = false; tagRemoval = change
+    }
 
     init(previous: LingroveNotebookSaveCache, state: VocabularyEntrySaveState,
          rows: VocabularyEntryRowChange, knownEntryIDs: Set<UUID>? = nil) throws {
-        self.state = state; self.rows = rows
+        self.state = state; self.rows = rows; tagRemoval = nil
         if let knownEntryIDs {
             entryIDs = knownEntryIDs
             reviewSenseIDs = Self.reviewIDs(entries: previous.state.entries, ids: knownEntryIDs)

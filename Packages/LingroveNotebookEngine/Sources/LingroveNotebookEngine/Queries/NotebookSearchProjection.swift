@@ -57,15 +57,33 @@ extension NotebookLiteralSearchMaterial {
     /// still checks ownership against its own starting state; only derived work is shared.
     func applying(_ edits: [NotebookSearchCache.EntryEdit]) -> Self? {
         guard !edits.isEmpty, edits.count <= NotebookSearchCache.maximumJournalFrames else { return nil }
-        var oldHeaders = Dictionary(uniqueKeysWithValues: headers.map { ($0.id,$0) })
-        var ownersBySense = Dictionary(uniqueKeysWithValues: headers.flatMap { entry in entry.senses.map { ($0.id,entry.id) } })
+        let includesEntries = edits.contains { !$0.owners.isEmpty }
+        var oldHeaders = includesEntries ? Dictionary(uniqueKeysWithValues: headers.map { ($0.id,$0) }) : [:]
+        var ownersBySense = includesEntries ? Dictionary(uniqueKeysWithValues: headers.flatMap { entry in entry.senses.map { ($0.id,entry.id) } }) : [:]
         var fields = fields, dates = entryDates, cursor = fence
         var changed = Set<UUID>()
         var liveSenses = Set(ownersBySense.keys)
-        var builder = NotebookSearchTextTable.Builder(texts)
+        var builder = includesEntries ? NotebookSearchTextTable.Builder(texts) : NotebookSearchTextTable.Builder()
         for edit in edits {
-            guard !Task.isCancelled, edit.base == cursor, edit.owners.count <= 100,
-                  Set(edit.owners.map(\.entryID)).count == edit.owners.count else { return nil }
+            guard !Task.isCancelled, edit.base == cursor, edit.hasValidShape else { return nil }
+            if let removal = edit.tagRemoval {
+                // Remove exactly the tag occurrences. Identical words in meanings, notes,
+                // examples or semantic fields keep their own references and remain searchable.
+                let currentTexts = includesEntries ? builder.finish() : texts
+                let references = Set(currentTexts.fields.enumerated().compactMap { $0.element.text == removal.tag ? $0.offset : nil })
+                guard !references.isEmpty, removal.counts.count <= fields.count else { return nil }
+                for (sense, count) in removal.counts {
+                    guard !Task.isCancelled, let values = fields[sense] else { return nil }
+                    var removed = 0
+                    let retained = values.filter { value in
+                        if removed < count, references.contains(value) { removed += 1; return false }
+                        return true
+                    }
+                    guard removed == count else { return nil }
+                    fields[sense] = retained
+                }
+                cursor = edit.fence; continue
+            }
             var priorOwners: [UUID: UUID] = [:]
             for owner in edit.owners {
                 guard !Task.isCancelled else { return nil }
@@ -126,10 +144,13 @@ extension NotebookLiteralSearchMaterial {
             cursor = edit.fence
         }
         // Retain the large already-ordered run; only the small changed suffix needs merging.
-        var ordered = headers.filter { !changed.contains($0.id) }
-        ordered.append(contentsOf: changed.compactMap { oldHeaders[$0] })
-        ordered.sort { dates[$0.id] == dates[$1.id] ? $0.id.uuidString < $1.id.uuidString : (dates[$0.id] ?? 0) > (dates[$1.id] ?? 0) }
-        return .init(preparation: .incremental, entryDates: dates, texts: builder.finish(), headers: ordered,
+        var ordered = headers
+        if !changed.isEmpty {
+            ordered = headers.filter { !changed.contains($0.id) }
+            ordered.append(contentsOf: changed.compactMap { oldHeaders[$0] })
+            ordered.sort { dates[$0.id] == dates[$1.id] ? $0.id.uuidString < $1.id.uuidString : (dates[$0.id] ?? 0) > (dates[$1.id] ?? 0) }
+        }
+        return .init(preparation: .incremental, entryDates: dates, texts: includesEntries ? builder.finish() : texts, headers: ordered,
             fields: fields, nodes: nodes, mappings: mappings, cues: cues, patterns: patterns,
             fence: cursor, locale: locale)
     }

@@ -9,7 +9,7 @@ import SQLite3
 /// writer journals only its admitted entry delta in the same transaction as the corpus change.
 /// Neither a cached payload nor this journal can authorize a corpus/review write.
 enum NotebookSearchCache {
-    static let format = 2
+    static let format = 3
     static let maximumBytes = 128 * 1_024 * 1_024
     static let maximumJournalBytes = 8 * 1_024 * 1_024
     static let maximumJournalFrames = 64
@@ -42,9 +42,23 @@ enum NotebookSearchCache {
             let previousSenseIDs: Set<UUID>
             let entry: VocabularyEntry?
         }
+        struct TagRemoval: Codable {
+            let tag: String
+            let counts: [UUID: Int]
+        }
         let base: NotebookBrowseFence
         let fence: NotebookBrowseFence
         let owners: [Owner]
+        let tagRemoval: TagRemoval?
+        init(base: NotebookBrowseFence, fence: NotebookBrowseFence, owners: [Owner], tagRemoval: TagRemoval? = nil) {
+            self.base = base; self.fence = fence; self.owners = owners; self.tagRemoval = tagRemoval
+        }
+        var hasValidShape: Bool {
+            guard owners.count <= 100, Set(owners.map(\.entryID)).count == owners.count else { return false }
+            guard let tagRemoval else { return true }
+            return owners.isEmpty && !tagRemoval.tag.isEmpty && tagRemoval.tag.utf8.count <= 200 &&
+                !tagRemoval.counts.isEmpty && tagRemoval.counts.values.allSatisfy { (1...100).contains($0) }
+        }
     }
 
     /// The transaction records bounded, admitted entry deltas, never a full search payload.
@@ -59,9 +73,14 @@ enum NotebookSearchCache {
 
     static func record(in core: DatabaseCore, base: NotebookBrowseFence,
                        plan: LingroveNotebookSavePlan, previous: LingroveNotebookSnapshot, entries previousEntries: [VocabularyEntry], saved: LingroveNotebookSnapshot) throws {
+        if let removal = plan.tagRemoval {
+            try append(in: core, edit: .init(base: base, fence: .init(version: .init(saved), corpus: core.notebookCacheToken()),
+                owners: [], tagRemoval: .init(tag: removal.tag, counts: removal.removedBySense)))
+            return
+        }
         guard plan.entryIDs.count <= 100,
-              try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=?",
-                values: [.text(base.version.workspaceId)]) == 1 else { return }
+              try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=? AND format_version=?",
+                values: [.text(base.version.workspaceId), .integer(Int64(format))]) == 1 else { return }
         let semantic: Set<VocabularyPersistenceEntity> = [.meaningNodes, .meaningLabels, .meaningRoles,
             .usagePatterns, .patternSlots, .meaningMappings, .mappingRoles, .mappingEvidence, .meaningRelations, .retrievalCues, .cueTargets]
         let rows = plan.rows.changed + plan.rows.removed + plan.rows.repositioned
@@ -82,7 +101,8 @@ enum NotebookSearchCache {
 
     private static func append(in core: DatabaseCore, edit: EntryEdit) throws {
         let workspace = edit.base.version.workspaceId
-        guard try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=?", values: [.text(workspace)]) == 1 else { return }
+        guard edit.hasValidShape, try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=? AND format_version=?",
+            values: [.text(workspace), .integer(Int64(format))]) == 1 else { return }
         let bytes = try encode(edit)
         guard bytes.count <= maximumJournalBytes else { return }
         let usage = try core.query(sql: "SELECT count(*),coalesce(sum(length(payload)),0) FROM notebook_literal_search_updates WHERE workspace_id=?",
@@ -166,6 +186,7 @@ extension LingroveNotebookEngine {
         for update in updates {
             try Task.checkCancellation()
             guard let edit = NotebookSearchCache.decode(NotebookSearchCache.EntryEdit.self, bytes: update.0, sha256: update.1),
+                  edit.hasValidShape,
                   edit.base == cursor, edit.fence.version.hasSameOwner(as: fence.version),
                   edit.fence.corpus.epoch == cursor.corpus.epoch,
                   edit.fence.corpus.schemaVersion == cursor.corpus.schemaVersion,

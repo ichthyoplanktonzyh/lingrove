@@ -6,7 +6,7 @@ import LingroveNotebook
 /// Each count and byte range is checked before allocation/read; no borrowed memory escapes
 /// Data.withUnsafeBytes. A failed checksum/shape/format always requests canonical preparation.
 enum NotebookSearchBinaryCodec {
-    private static let magic: UInt32 = 0x3253474c // LGS2, little endian
+    private static let magic: UInt32 = 0x3353474c // LGS3, little endian; tag-journal-aware cache readers
     static func encode(_ value: NotebookSearchProjection) -> Data? {
         guard value.fence.corpus.schemaVersion >= 0, value.fence.corpus.value >= 0 else { return nil }
         var writer = Writer()
