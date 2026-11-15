@@ -77,18 +77,29 @@ extension ReviewNoteStore {
         let grouped = Dictionary(grouping: members, by: \.noteID)
         let types = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
         let compiled = try Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, try ReviewTemplateRenderer.Prepared($0)) })
-        for note in selected {
+        // At most 128 Notes (each with at most 16 template members) share these temporary
+        // row reads. Rendering and CardStore writes retain their individual ownership rules.
+        for start in stride(from: 0, to: selected.count, by: 128) {
             try Task.checkCancellation()
-            guard let existing = grouped[note.id], !existing.isEmpty else { continue }
-            guard let type = types[note.noteTypeID] else { throw VocabularyError.invalidArchive }
-            let material = try source(note)
-            let current: [Membership]
-            if let (entry, sense) = material {
-                current = try reconcile(note, type: type, version: version, entry: entry, sense: sense, knownMembers: existing, prepared: compiled[note.noteTypeID])
-            } else { current = existing }
-            for member in current {
-                let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
-                try refreshCard(member.cardID, model: model, version: version, source: material, prepared: compiled[note.noteTypeID])
+            let page = selected[start..<min(start + 128, selected.count)]
+            let cardIDs = Set(page.flatMap { grouped[$0.id] ?? [] }.map(\.cardID))
+            let cards = try CardStore(core: core).loadCardsIncludingDeleted(workspaceId: version.workspaceId, cardIds: cardIDs)
+            let liveIDs = Set(cards.values.filter { $0.deletedAt == nil }.map(\.cardId))
+            let links = try LingroveNotebookCardLinkStore(core: core).load(workspaceId: version.workspaceId, cardIds: liveIDs)
+            for note in page {
+                try Task.checkCancellation()
+                guard let existing = grouped[note.id], !existing.isEmpty else { continue }
+                guard let type = types[note.noteTypeID] else { throw VocabularyError.invalidArchive }
+                let material = try source(note)
+                let current: [Membership]
+                if let (entry, sense) = material {
+                    current = try reconcile(note, type: type, version: version, entry: entry, sense: sense, knownMembers: existing, prepared: compiled[note.noteTypeID])
+                } else { current = existing }
+                for member in current {
+                    let model = NotebookReviewNoteCard(note: note, noteType: type, templateID: member.templateID)
+                    try refreshCard(member.cardID, model: model, version: version, source: material, prepared: compiled[note.noteTypeID],
+                        storedCard: cards[member.cardID], storedLinks: links[member.cardID])
+                }
             }
         }
     }
@@ -96,10 +107,11 @@ extension ReviewNoteStore {
     /// Both corpus edits and enrollment use this same material writer. The enrollment
     /// transaction already has its source and calls it only for the note it admitted.
     func refreshCard(_ cardID: String, model: NotebookReviewNoteCard, version: LingroveNotebookVersion,
-                     source: (VocabularyEntry, VocabularySense)?, prepared: ReviewTemplateRenderer.Prepared? = nil) throws {
+                     source: (VocabularyEntry, VocabularySense)?, prepared: ReviewTemplateRenderer.Prepared? = nil,
+                     storedCard: Card? = nil, storedLinks: [LingroveNotebookCardLink]? = nil) throws {
         let cards = CardStore(core: core), links = LingroveNotebookCardLinkStore(core: core)
         let workspace = version.workspaceId
-        guard let card = try cards.loadOptionalCardIncludingDeleted(workspaceId: workspace, cardId: cardID),
+        guard let card = try storedCard ?? cards.loadOptionalCardIncludingDeleted(workspaceId: workspace, cardId: cardID),
               card.deletedAt == nil else { return }
         let input = try source.flatMap { entry, sense in
             let rendered = try? model.render(entry: entry, sense: sense, using: prepared)
@@ -108,7 +120,7 @@ extension ReviewNoteStore {
         let ready = input.map { !$0.frontText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
         try LingroveNotebookReviewMaterialStore(core: core).setStatus(ready ? "ready" : "sourceMissing",
             cardID: cardID, workspace: workspace)
-        guard ready, let input, let link = try links.load(workspaceId: workspace, cardId: cardID).first else { return }
+        guard ready, let input, let link = try (storedLinks ?? links.load(workspaceId: workspace, cardId: cardID)).first else { return }
         let changed = !LingroveNotebookCardMaterial.sameStoredBytes(
             .init(frontText: card.frontText, backText: card.backText, tags: card.tags), input)
         var operation: String?

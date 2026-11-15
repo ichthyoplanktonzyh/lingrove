@@ -31,6 +31,51 @@ import Testing
         #expect(try f.db.prepareNotebookSearch(reusing: hit, locale: "en_US").preparation == .memory)
     }
 
+    @Test func deferredPreparationReturnsVerifiedResultsBeforeAnyCacheWrite() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        _ = try seed(f)
+        let before = try f.db.notebookChanges()
+        let preparation = try f.db.prepareNotebookSearchForBrowsing(locale: "en_US")
+        #expect(preparation.requiresCheckpoint && preparation.material.preparation == .canonical)
+        #expect(try preparation.material.results(matching: "cafe").entries.count == 3)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache", values: []) == 0)
+        #expect(f.db.core.notebookSaveCache == nil)
+        try f.db.checkpointNotebookSearch(preparation)
+        #expect(try f.db.notebookChanges().stamp == before.stamp)
+        try f.reopen()
+        let reopened = try f.db.prepareNotebookSearchForBrowsing(locale: "en_US")
+        #expect(!reopened.requiresCheckpoint && reopened.material.preparation == .persisted)
+        #expect(try reopened.material.results(matching: "cafe").entries == preparation.material.results(matching: "cafe").entries)
+    }
+
+    @Test func delayedCheckpointRejectsSameRevisionEditsWithoutPublishingStaleResults() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        _ = try seed(f)
+        let preparation = try f.db.prepareNotebookSearchForBrowsing()
+        try f.db.core.execute(sql: "UPDATE notebook_collections SET payload_json=json_set(payload_json,'$.note','newer raw marker') WHERE workspace_id=?",
+            values: [.text(f.workspace)])
+        #expect(throws: VocabularyError.editConflict) { try f.db.checkpointNotebookSearch(preparation) }
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache", values: []) == 0)
+        let fresh = try f.db.prepareNotebookSearchForBrowsing()
+        #expect(try fresh.material.results(matching: "newer raw marker").entries.count == 3)
+        try f.db.checkpointNotebookSearch(fresh)
+        try f.reopen()
+        #expect(try f.db.prepareNotebookSearch().results(matching: "newer raw marker").entries.count == 3)
+    }
+
+    @Test func cancelledCheckpointCannotWriteOrChangeCanonicalClocks() async throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        _ = try seed(f)
+        let preparation = try f.db.prepareNotebookSearchForBrowsing()
+        let before = try f.db.notebookChanges()
+        let task = Task { try f.db.checkpointNotebookSearch(preparation) }
+        task.cancel()
+        do { try await task.value; Issue.record("Cancelled checkpoint succeeded") }
+        catch is CancellationError { }
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache", values: []) == 0)
+        #expect(try f.db.notebookChanges().stamp == before.stamp)
+    }
+
     @Test func localEditsReplayAcrossConnectionsWithoutRewritingEveryProjection() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let doc = try seed(f)

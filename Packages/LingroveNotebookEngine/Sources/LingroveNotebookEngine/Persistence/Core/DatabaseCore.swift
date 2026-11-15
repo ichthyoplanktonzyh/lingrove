@@ -158,6 +158,15 @@ public final class DatabaseCore {
         values: [SQLiteValue],
         map: (OpaquePointer) throws -> T
     ) throws -> [T] {
+        var rows: [T] = []
+        try forEachRow(sql: sql, values: values) { rows.append(try map($0)) }
+        return rows
+    }
+
+    /// Synchronous engine projections consume a statement one row at a time. The connection
+    /// lock and finalization lifetime match query; visitors must copy any borrowed SQL bytes.
+    /// No pointer or statement escapes into a UI value or a later asynchronous task.
+    func forEachRow(sql: String, values: [SQLiteValue], visit: (OpaquePointer) throws -> Void) throws {
         self.connectionLock.lock()
         defer { self.connectionLock.unlock() }
         try self.requireOpenConnection()
@@ -172,11 +181,10 @@ public final class DatabaseCore {
 
         try self.bind(values: values, to: statement)
 
-        var rows: [T] = []
         while true {
             let stepResult = sqlite3_step(statement)
             if stepResult == SQLITE_ROW {
-                rows.append(try map(statement))
+                try visit(statement)
                 continue
             }
 
@@ -186,8 +194,6 @@ public final class DatabaseCore {
 
             throw LocalStoreError.database("Failed to execute query: \(self.lastErrorMessage())")
         }
-
-        return rows
     }
 
     public func scalarInt(sql: String, values: [SQLiteValue]) throws -> Int {

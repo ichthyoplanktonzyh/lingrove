@@ -304,18 +304,19 @@ public struct LingroveNotebookStore {
         for entity in VocabularyPersistenceEntity.allCases {
             let indexKeys = entity.indexKeys
             let columns = ["id", "parent_id", "position", "payload_json"] + indexKeys.map(\.rawValue)
-            // The composite primary key already provides this order within a workspace.
-            // Canonical reconstruction consumes IDs in this sequence; make index selection
-            // explicit rather than depending on whichever owner index SQLite chooses.
-            rows += try self.core.query(sql: "SELECT \(columns.joined(separator: ",")) FROM \(LingroveNotebookSchema.table(entity)) WHERE workspace_id=? ORDER BY id",
+            let table = LingroveNotebookSchema.table(entity)
+            // The codec owns canonical ID/business-position ordering. Read payloads in
+            // physical order instead of fetching wide rows through the UUID index first.
+            try self.core.forEachRow(sql: "SELECT \(columns.joined(separator: ",")) FROM \(table) WHERE rowid IN (SELECT rowid FROM \(table) WHERE workspace_id=?) ORDER BY rowid",
                 values: [.text(workspaceId)]) { statement in
+                try Task.checkCancellation()
                 let position = sqlite3_column_int64(statement, 2)
                 guard sqlite3_column_type(statement, 2) == SQLITE_INTEGER,
                       position >= 0, position <= Int64(Int.max) else { throw VocabularyError.invalidArchive }
                 let indexes = try indexKeys.indices.map { try Self.optionalText(statement, Int32($0 + 4)) }
-                return try decoder.decode(.init(entity: entity, id: Self.requiredText(statement, 0)),
+                rows.append(try decoder.decode(.init(entity: entity, id: Self.requiredText(statement, 0)),
                     parentID: Self.optionalText(statement, 1), position: Int(position),
-                    payload: Data(Self.requiredText(statement, 3).utf8), orderedIndexes: indexes)
+                    payload: Data(Self.requiredText(statement, 3).utf8), orderedIndexes: indexes))
             }
         }
         return rows

@@ -96,6 +96,29 @@ struct NotebookMaterialReadTests {
         #expect(small > 0 && large < small * 2, "Selected sense SQL VM steps: \(small) / \(large)")
     }
 
+    @Test func batchOwnerLookupUsesSelectiveKeysWhenTheWorkspaceGrows() throws {
+        func work(_ count: Int) throws -> Int {
+            let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+            let entries = (0..<count).map { makeEntry("word\($0)") }
+            let saved = try f.db.saveLingroveNotebook(.init(entries: entries), basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+            let probe = MaterialReadSQLWork()
+            sqlite3_trace_v2(f.db.core.connection, UInt32(SQLITE_TRACE_PROFILE), { _, context, statement, _ in
+                guard let context, let statement, let sql = sqlite3_sql(OpaquePointer(statement)),
+                      String(cString: sql).contains("lookup_key IN") else { return 0 }
+                Unmanaged<MaterialReadSQLWork>.fromOpaque(context).takeUnretainedValue().steps +=
+                    Int(sqlite3_stmt_status(OpaquePointer(statement), SQLITE_STMTSTATUS_VM_STEP, 0))
+                return 0
+            }, Unmanaged.passUnretained(probe).toOpaque())
+            defer { sqlite3_trace_v2(f.db.core.connection, 0, nil, nil) }
+            let keys = Set(entries.prefix(3).map(VocabularyIdentityPolicy.entryKey)).union(["missing-owner"])
+            let result = try f.db.notebookEntries(lookupKeys: keys, expected: .init(saved))
+            #expect(result.entries.map(\.id.uuidString) == entries.prefix(3).map(\.id.uuidString).sorted())
+            return probe.steps
+        }
+        let small = try work(100), large = try work(2_000)
+        #expect(small > 0 && large < small * 2, "Owner lookup SQL VM steps: \(small) / \(large)")
+    }
+
     @Test func countsReuseOnlyTheCurrentCheckedCacheAndRawChangesForceSQLCounts() throws {
         let fixture = try NotebookMediaDatabaseFixture(); defer { fixture.cleanUp() }
         _ = try fixture.db.saveLingroveNotebook(.init(entries: [makeEntry("counted")]),
@@ -130,6 +153,35 @@ struct NotebookMaterialReadTests {
         }
         return .init(id: UUID(), expression: expression, dictionaryForm: expression, language: language,
             kind: .word, senses: senses, createdAt: now, updatedAt: now)
+    }
+
+    @Test func pagedMaterialRefreshMatchesIndividualRowsAndSkipsDeletedCardsBeforeDecodingLinks() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let entries = (0..<260).map { makeEntry("material\($0)") }
+        let saved = try f.db.saveLingroveNotebook(.init(entries: entries), basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        _ = try f.db.enrollReviewNotes(selections: entries.map { .init(entryID: $0.id, senseID: $0.senses[0].id) }, version: .init(saved))
+        let cards = CardStore(core: f.db.core), links = LingroveNotebookCardLinkStore(core: f.db.core)
+        let original = try cards.loadCardsIncludingDeleted(workspaceId: f.workspace)
+        let retired = try #require(original.first)
+        try f.db.core.execute(sql: "UPDATE cards SET deleted_at=? WHERE workspace_id=? AND card_id=?",
+            values: [.text(nowIsoTimestamp()), .text(f.workspace), .text(retired.cardId)])
+        try f.db.core.execute(sql: "UPDATE notebook_card_links SET generated_content_json='not-json' WHERE workspace_id=? AND card_id=?",
+            values: [.text(f.workspace), .text(retired.cardId)])
+        var next = saved.document
+        for owner in next.catalog.indices { next.catalog[owner].senses[0].tags = ["bulk-tag"] }
+        _ = try f.db.saveLingroveNotebook(next, basedOn: saved)
+        let ids = Set(original.map(\.cardId)).union(["missing-card"])
+        let loaded = try cards.loadCardsIncludingDeleted(workspaceId: f.workspace, cardIds: ids)
+        #expect(loaded.count == original.count && loaded[retired.cardId]?.deletedAt != nil)
+        let liveIDs = Set(loaded.values.filter { $0.deletedAt == nil }.map(\.cardId))
+        let selectedLinks = try links.load(workspaceId: f.workspace, cardIds: liveIDs)
+        for id in liveIDs {
+            #expect(loaded[id] == (try cards.loadOptionalCardIncludingDeleted(workspaceId: f.workspace, cardId: id)))
+            #expect(selectedLinks[id] == (try links.load(workspaceId: f.workspace, cardId: id)))
+            #expect(loaded[id]?.tags.contains("bulk-tag") == true)
+        }
+        #expect(loaded[retired.cardId]?.tags == retired.tags)
+        #expect(try f.db.loadReviewEventCount() == 0)
     }
 }
 

@@ -9,11 +9,24 @@ private let isoTimestampUtcCalendar: Calendar = {
     return calendar
 }()
 
-public func formatIsoTimestamp(date: Date) -> String {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return formatter.string(from: date)
+/// Formatting is frequent inside bulk material/link writes. One locked Foundation formatter
+/// retains the existing rounding/spelling while avoiding thousands of calendar constructions.
+/// The unchecked conformance is confined to this private lock-protected mutable formatter.
+private final class IsoTimestampFormatter: @unchecked Sendable {
+    private let lock = NSLock()
+    private let formatter: ISO8601DateFormatter = {
+        let value = ISO8601DateFormatter()
+        value.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return value
+    }()
+    func string(from date: Date) -> String {
+        lock.lock(); defer { lock.unlock() }
+        return formatter.string(from: date)
+    }
 }
+private let isoTimestampFormatter = IsoTimestampFormatter()
+
+public func formatIsoTimestamp(date: Date) -> String { isoTimestampFormatter.string(from: date) }
 
 public func parseIsoTimestamp(value: String) -> Date? {
     parseStrictIsoTimestamp(value: value)

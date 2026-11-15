@@ -25,6 +25,23 @@ public struct LingroveNotebookCardLinkStore {
             values: [.text(workspaceId), .text(id.uuidString)], map: self.decode).first
     }
 
+    /// Material refresh selects only a bounded page's live Cards. Keep each Card's established
+    /// first-link order in memory so SQL can use its selective Card index.
+    func load(workspaceId: String, cardIds: Set<String>) throws -> [String: [LingroveNotebookCardLink]] {
+        guard !cardIds.isEmpty else { return [:] }
+        let ids = String(decoding: try core.encoder.encode(cardIds.sorted()), as: UTF8.self)
+        let rows = try core.query(sql: """
+            SELECT \(Self.columns) FROM notebook_card_links
+            WHERE workspace_id=? AND card_id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL
+            """, values: [.text(workspaceId), .text(ids)]) {
+            (DatabaseCore.columnText(statement: $0, index: 1), try decode($0))
+        }
+        let ordered = rows.sorted {
+            $0.1.createdAt == $1.1.createdAt ? $0.0 < $1.0 : $0.1.createdAt < $1.1.createdAt
+        }.map { $0.1 }
+        return Dictionary(grouping: ordered, by: \.cardId)
+    }
+
     /// Material refresh already has the affected live/historical sense IDs. Select matching
     /// links in SQL instead of decoding every enrollment in a large workspace.
     func load(workspaceId: String, notebookId: UUID? = nil, senseIDs: Set<UUID>) throws -> [LingroveNotebookCardLink] {

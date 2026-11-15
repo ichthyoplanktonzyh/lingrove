@@ -66,4 +66,32 @@ struct DatabaseCoreStatementTests {
         try core.close(); try core.close()
         #expect(throws: (any Error).self) { try core.execute(sql: "UPDATE values_test SET text=NULL", values: []) }
     }
+
+    @Test func streamingVisitorCopiesValuesAndFinalizesWhenTheVisitorThrows() throws {
+        enum Stop: Error { case reachedSecondRow }
+        let (core, root) = try fixture()
+        defer { try? core.close(); try? FileManager.default.removeItem(at: root) }
+        try core.execute(sql: "INSERT INTO values_test(id,text) VALUES(1,'Café'),(2,'中文'),(3,'last')", values: [])
+        var copied: [String] = []
+        #expect(throws: Stop.self) {
+            try core.forEachRow(sql: "SELECT id,text FROM values_test ORDER BY id", values: []) { row in
+                copied.append(DatabaseCore.columnText(statement: row, index: 1))
+                if DatabaseCore.columnInt64(statement: row, index: 0) == 2 { throw Stop.reachedSecondRow }
+            }
+        }
+        try core.execute(sql: "UPDATE values_test SET text='replacement' WHERE id=1", values: [])
+        #expect(copied == ["Café", "中文"])
+        #expect(try core.scalarInt(sql: "SELECT count(*) FROM values_test", values: []) == 3)
+        let remaining = try core.withConnectionAccess {
+            var cursor: OpaquePointer?, count = 0
+            while let next = sqlite3_next_stmt(core.connection, cursor) {
+                if sqlite3_stmt_busy(next) != 0 { count += 1 }
+                cursor = next
+            }
+            return count
+        }
+        #expect(remaining == 0)
+        try core.close()
+        #expect(throws: (any Error).self) { try core.forEachRow(sql: "SELECT 1", values: []) { _ in } }
+    }
 }

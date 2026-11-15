@@ -108,7 +108,7 @@ extension LingroveNotebookEngine {
             var fields: [UUID: [Int]] = [:]
             var dates: [UUID: Double] = [:]
             var headerOrder: [UUID] = [], headers: [UUID: NotebookEntrySummary] = [:]
-            let rows = try core.query(sql: """
+            try core.forEachRow(sql: """
                 SELECT e.id,e.expression,e.language,json_extract(e.payload_json,'$.dictionaryForm'),
                        s.id,s.meaning,
                        CASE WHEN s.meaning='' THEN COALESCE((SELECT json_extract(b.payload_json,'$.content.text._0.text')
@@ -125,10 +125,10 @@ extension LingroveNotebookEngine {
                 FROM notebook_entries e JOIN notebook_senses s ON s.workspace_id=e.workspace_id AND s.parent_id=e.id
                 WHERE e.workspace_id=?
                 ORDER BY json_extract(e.payload_json,'$.createdAt') DESC,e.id,json_extract(s.payload_json,'$.createdAt'),s.id
-                """, values: [.text(workspace)]) { row -> (UUID, String, LearningLanguage?, String, NotebookEntrySummary.Sense, Double, [String]) in
+                """, values: [.text(workspace)]) { row in
                 try Task.checkCancellation()
                 guard let entry = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)),
-                      let sense = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 4)) else { throw VocabularyError.invalidArchive }
+                      let senseID = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 4)) else { throw VocabularyError.invalidArchive }
                 let meaning = DatabaseCore.columnText(statement: row, index: 5)
                 var variants: [String] = []
                 for column in [Int32(9), Int32(10)] {
@@ -136,30 +136,28 @@ extension LingroveNotebookEngine {
                         variants += try core.decoder.decode([String?].self, from: Data(json.utf8)).compactMap { $0 }
                     }
                 }
-                return (entry, DatabaseCore.columnText(statement: row, index: 1),
-                    LearningLanguage(rawValue: DatabaseCore.columnText(statement: row, index: 2)),
-                    DatabaseCore.columnOptionalText(statement: row, index: 3) ?? "",
-                    .init(id: sense, title: meaning.isEmpty ? DatabaseCore.columnText(statement: row, index: 6) : meaning,
-                        hasImage: sqlite3_column_int(row, 7) != 0), sqlite3_column_double(row, 8), variants)
-            }
-            for (id, expression, language, dictionary, sense, date, variants) in rows {
-                dates[id] = date
-                if let prior = headers[id] {
-                    headers[id] = .init(id: id, expression: expression, language: language, senses: prior.senses + [sense])
-                } else { headerOrder.append(id); headers[id] = .init(id: id, expression: expression, language: language, senses: [sense]) }
-                fields[sense.id] = [expression, dictionary, sense.title].map { texts.intern($0) }
-                if !variants.isEmpty { fields[sense.id, default: []] += variants.filter { !$0.isEmpty }.map { texts.intern($0) } }
+                let expression = DatabaseCore.columnText(statement: row, index: 1)
+                let language = LearningLanguage(rawValue: DatabaseCore.columnText(statement: row, index: 2))
+                let dictionary = DatabaseCore.columnOptionalText(statement: row, index: 3) ?? ""
+                let sense = NotebookEntrySummary.Sense(id: senseID,
+                    title: meaning.isEmpty ? DatabaseCore.columnText(statement: row, index: 6) : meaning,
+                    hasImage: sqlite3_column_int(row, 7) != 0)
+                dates[entry] = sqlite3_column_double(row, 8)
+                if let prior = headers[entry] {
+                    headers[entry] = .init(id: entry, expression: expression, language: language, senses: prior.senses + [sense])
+                } else { headerOrder.append(entry); headers[entry] = .init(id: entry, expression: expression, language: language, senses: [sense]) }
+                fields[senseID] = [expression, dictionary, sense.title].map { texts.intern($0) }
+                if !variants.isEmpty { fields[senseID, default: []] += variants.filter { !$0.isEmpty }.map { texts.intern($0) } }
             }
             func append(_ sql: String, columns: Int) throws {
-                _ = try core.query(sql: sql, values: [.text(workspace)]) { row -> Bool in
+                try core.forEachRow(sql: sql, values: [.text(workspace)]) { row in
                     try Task.checkCancellation()
-                    guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)), fields[id] != nil else { return false }
+                    guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)), fields[id] != nil else { return }
                     for column in 1...columns {
                         if let text = DatabaseCore.columnOptionalText(statement: row, index: Int32(column)), !text.isEmpty {
                             fields[id, default: []].append(texts.intern(text))
                         }
                     }
-                    return true
                 }
             }
             // One physical pass supplies notes and tags. Emit the note only for the first
@@ -181,11 +179,10 @@ extension LingroveNotebookEngine {
                 WHERE u.workspace_id=? AND u.status='accepted'
                 """, columns: 2)
             var nodes: [UUID: [Int]] = [:]
-            _ = try core.query(sql: "SELECT id,json_extract(payload_json,'$.definition'),json_extract(payload_json,'$.scopeNote') FROM notebook_meaning_nodes WHERE rowid IN (SELECT rowid FROM notebook_meaning_nodes WHERE workspace_id=?)", values: [.text(workspace)]) { row -> Bool in
+            try core.forEachRow(sql: "SELECT id,json_extract(payload_json,'$.definition'),json_extract(payload_json,'$.scopeNote') FROM notebook_meaning_nodes WHERE rowid IN (SELECT rowid FROM notebook_meaning_nodes WHERE workspace_id=?)", values: [.text(workspace)]) { row in
                 try Task.checkCancellation()
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else { throw VocabularyError.invalidArchive }
                 nodes[id] = [1,2].map { texts.intern(DatabaseCore.columnOptionalText(statement: row, index: Int32($0)) ?? "") }
-                return true
             }
             for (id, text) in try core.query(sql: "SELECT parent_id,text FROM notebook_meaning_labels WHERE workspace_id=?", values: [.text(workspace)], map: { row -> (UUID, String) in
                 guard let id = UUID(uuidString: DatabaseCore.columnText(statement: row, index: 0)) else { throw VocabularyError.invalidArchive }

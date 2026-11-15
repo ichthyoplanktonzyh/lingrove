@@ -163,6 +163,14 @@ The review adapter receives complete affected entries (including historical alia
 the established conservative sense scope, Card material writer and scheduling/history rules.
 No partial document or host dirty-ID list grants this permission.
 
+Bounded owner lookup leaves SQL ordering out of the selective lookup-key query and sorts only
+the at-most-100 matches. Complete snapshot reads select workspace-owned row addresses through
+an index before reading payloads in physical order; the codec still owns canonical ID and
+business-position ordering and full relationship/row-shape validation. `DatabaseCore.forEachRow`
+shares the query lock, binding and statement-finalization lifetime with the array API, allowing
+complete/scalar projections to avoid temporary decoded-row arrays. Borrowed SQLite pointers
+never outlive their synchronous visitor.
+
 Large annotation writes reuse the row map's writer-owned Dictionary buffer across overlay
 compactions; retained readers still get normal copy-on-write isolation at the first mutation.
 The SQL adapter batches only these retained-owner upserts (at most 100 rows / 900 binds).
@@ -173,11 +181,26 @@ checks cancellation and affected-row counts; header, rows, journal, review refre
 still commit or roll back together. General writers retain their existing row ordering and
 payload path; no canonical schema, cache, backup or synchronization format changes.
 
+Material refresh reads Cards and live links in pages of 128 Notes (at most 16 members per Note).
+Missing/deleted Cards retain their prior skip behavior; newly reconciled members use the
+ordinary row reader. Rendering and CardStore writes remain authoritative, including media,
+content outbox, monotonic link revisions and schedule/history retention. Immutable regex
+patterns and one private lock-protected ISO formatter avoid repeated setup while keeping the
+existing HTML fallback and timestamp bytes; they do not cache generated card faces.
+
 `notebookLiteralSearchMaterial` projects searchable scalar fields, accepted evidence and confirmed
 meaning/cue/pattern joins without loading the full document or classification directory. A browser
 actor owns this disposable material and pages frozen summary results. Reuse requires its exact
 corpus fence and locale. Literal fields and semantic admission follow the shared browser rules;
 retrieval neither creates relations nor establishes a writer's validation certificate.
+
+`prepareNotebookSearchForBrowsing` returns an engine-created `NotebookSearchPreparation` with
+verified material and optional checkpoint work. A host may return search results first, then
+call `checkpointNotebookSearch` on its connection owner. That write checks the exact active
+workspace/generation/corpus fence both before encoding and inside its SQL transaction. Stale or
+cancelled work cannot replace a newer projection. The original `prepareNotebookSearch` retains
+synchronous checkpoint behavior for existing callers. Neither API changes canonical-save
+durability; cache encoding/fsync is deferred work, not eliminated work.
 Repeated fields share one immutable `NotebookSearchTextTable`. Per-term decision storage is
 bounded by its distinct field count; multi-term searches progressively narrow the candidates.
 ASCII-only operands use a linear byte matcher, while all non-ASCII or Turkic-locale cases keep

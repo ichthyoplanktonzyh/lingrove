@@ -3,6 +3,22 @@ import Testing
 @testable import LingroveNotebook
 
 struct ReviewTemplateRendererTests {
+    @Test func sharedPatternsKeepTheEstablishedUnicodeAndMarkupFallback() {
+        func reference(_ html: String) -> String {
+            guard html.contains("<") || html.contains("&") else { return html }
+            return html.replacingOccurrences(of: "<(script|style)\\b[^>]*>[\\s\\S]*?</\\1>", with: "", options: [.regularExpression, .caseInsensitive])
+                .replacingOccurrences(of: "<(br\\s*/?|/p|/div|/section|/li|/h[1-6])>", with: "\n", options: .regularExpression)
+                .replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "&nbsp;", with: " ").replacingOccurrences(of: "&quot;", with: "\"")
+                .replacingOccurrences(of: "&#39;", with: "'").replacingOccurrences(of: "&lt;", with: "<")
+                .replacingOccurrences(of: "&gt;", with: ">").replacingOccurrences(of: "&amp;", with: "&")
+        }
+        for text in ["", "Café 🐈 中文", "<p>é</p><br/>中文", "<BR>case", "<ScRiPt>x<y</sCrIpT><b>safe</b>",
+                     "<style>p{color:red}</style>body", "&lt;literal&gt; &amp;lt; &#39;", "<p title='>'>value</p>", "<script>unfinished"] {
+            #expect(ReviewTemplateRenderer.plainText(text) == reference(text))
+        }
+    }
+
     @Test func onePreparedDefinitionRendersIndependentNotesAndKeepsFieldValuesLiteral() throws {
         var type = ReviewNoteDefaults.type
         type.templates[0].front = "{{#Expression}}<b>{{Expression}}</b>{{/Expression}}"

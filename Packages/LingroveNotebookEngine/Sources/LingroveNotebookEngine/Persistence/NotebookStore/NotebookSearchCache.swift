@@ -132,27 +132,49 @@ enum NotebookSearchCache {
     }
 }
 
+/// The engine prepares verified retrieval material and names optional cache maintenance.
+/// Hosts may return the material first and checkpoint later on their connection owner. A
+/// preparation cannot be authored by a host and never authorizes canonical/review writes.
+public struct NotebookSearchPreparation: Sendable {
+    public let material: NotebookLiteralSearchMaterial
+    public let requiresCheckpoint: Bool
+    fileprivate init(material: NotebookLiteralSearchMaterial, requiresCheckpoint: Bool) {
+        self.material = material; self.requiresCheckpoint = requiresCheckpoint
+    }
+}
+
 extension LingroveNotebookEngine {
     /// A page actor can reuse memory, then durable projection data, then canonical scalars.
     /// Every path uses the exact current corpus/owner fence. Persisting is best effort and
     /// separate from the read; cancellation and source conflicts still propagate normally.
     public func prepareNotebookSearch(reusing previous: NotebookLiteralSearchMaterial? = nil,
                                       locale: String = Locale.current.identifier) throws -> NotebookLiteralSearchMaterial {
+        let preparation = try prepareNotebookSearchForBrowsing(reusing: previous, locale: locale)
+        try checkpointNotebookSearch(preparation)
+        return preparation.material
+    }
+
+    /// Read-only preparation returns without encoding/fsyncing an optional complete cache.
+    /// The caller owns maintenance scheduling; the later write checks the exact SQL fence.
+    public func prepareNotebookSearchForBrowsing(reusing previous: NotebookLiteralSearchMaterial? = nil,
+                                                locale: String = Locale.current.identifier) throws -> NotebookSearchPreparation {
         let hit: (material: NotebookLiteralSearchMaterial, compact: Bool)?
         do { hit = try core.inReadTransaction { try cachedNotebookSearch(previous: previous, locale: locale) } }
         catch is CancellationError { throw CancellationError() }
-        catch { try Task.checkCancellation(); return try rebuildNotebookSearch(locale: locale) }
+        catch { try Task.checkCancellation(); return try uncheckpointedNotebookSearch(locale: locale) }
         if let hit {
-            if hit.compact { try persistNotebookSearch(hit.material) }
-            return hit.material
+            return .init(material: hit.material, requiresCheckpoint: hit.compact)
         }
-        return try rebuildNotebookSearch(locale: locale)
+        return try uncheckpointedNotebookSearch(locale: locale)
     }
 
-    private func rebuildNotebookSearch(locale: String) throws -> NotebookLiteralSearchMaterial {
-        let material = try notebookLiteralSearchMaterial(locale: locale)
-        try persistNotebookSearch(material)
-        return material
+    public func checkpointNotebookSearch(_ preparation: NotebookSearchPreparation) throws {
+        guard preparation.requiresCheckpoint else { return }
+        try persistNotebookSearch(preparation.material)
+    }
+
+    private func uncheckpointedNotebookSearch(locale: String) throws -> NotebookSearchPreparation {
+        .init(material: try notebookLiteralSearchMaterial(locale: locale), requiresCheckpoint: true)
     }
 
     private func cachedNotebookSearch(previous: NotebookLiteralSearchMaterial?, locale: String) throws -> (material: NotebookLiteralSearchMaterial, compact: Bool)? {
@@ -225,6 +247,9 @@ extension LingroveNotebookEngine {
         try Task.checkCancellation()
         guard try core.withConnectionAccess({ sqlite3_db_readonly(core.connection, "main") == 0 }),
               try core.tableExists(name: "notebook_literal_search_cache") else { return }
+        // Reject a superseded preparation before allocating its encoded payload, then repeat
+        // the check in the transaction so edits/account changes during encoding cannot win.
+        guard try notebookBrowseFence() == material.fence else { throw VocabularyError.editConflict }
         guard let bytes = NotebookSearchBinaryCodec.encode(NotebookSearchProjection(material)) else { return }
         do {
             try core.inTransaction {

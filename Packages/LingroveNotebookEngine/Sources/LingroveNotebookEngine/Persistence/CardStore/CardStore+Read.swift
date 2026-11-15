@@ -250,6 +250,16 @@ extension CardStore {
         return cards.first
     }
 
+    /// A bounded material-refresh page borrows the same non-resetting Card decoder as an
+    /// individual refresh. Missing/deleted cards keep their existing skip behavior.
+    func loadCardsIncludingDeleted(workspaceId: String, cardIds: Set<String>) throws -> [String: Card] {
+        guard !cardIds.isEmpty else { return [:] }
+        let ids = String(decoding: try core.encoder.encode(cardIds.sorted()), as: UTF8.self)
+        let cards = try core.query(sql: "SELECT \(cardStoreSelectColumnsSQL) FROM cards WHERE workspace_id=? AND card_id IN (SELECT value FROM json_each(?))",
+            values: [.text(workspaceId), .text(ids)]) { try mapCard(statement: $0) }
+        return Dictionary(uniqueKeysWithValues: cards.map { ($0.cardId, $0) })
+    }
+
     public func loadReviewEvents(workspaceId: String, excludingNotebookHeld: Bool = false) throws -> [ReviewEvent] {
         let exclusion = excludingNotebookHeld ? """
             AND NOT EXISTS(SELECT 1 FROM notebook_card_sync_holds h

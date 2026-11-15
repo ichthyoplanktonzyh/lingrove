@@ -127,15 +127,23 @@ public nonisolated enum ReviewTemplateRenderer {
             .replacingOccurrences(of: "'", with: "&#39;")
     }
 
+    // Fixed patterns are programmer-owned literals. NSRegularExpression is immutable after
+    // construction and can be shared by concurrent renderers; no content enters a regex.
+    private static let scriptMarkup = try! NSRegularExpression(pattern: "<(script|style)\\b[^>]*>[\\s\\S]*?</\\1>", options: .caseInsensitive)
+    private static let lineMarkup = try! NSRegularExpression(pattern: "<(br\\s*/?|/p|/div|/section|/li|/h[1-6])>")
+    private static let otherMarkup = try! NSRegularExpression(pattern: "<[^>]*>")
+
     /// Plain fallback is for copy/speech/search, never a second rendering engine. Decode entities
     /// after removing markup so an escaped user literal such as &lt;tag&gt; stays visible text.
     public static func plainText(_ html: String) -> String {
         // Most source fields are already plain text. Regex markup stripping cannot affect
         // them, and an empty optional field needs no regex work to decide a conditional.
         guard html.contains("<") || html.contains("&") else { return html }
-        return html.replacingOccurrences(of: "<(script|style)\\b[^>]*>[\\s\\S]*?</\\1>", with: "", options: [.regularExpression, .caseInsensitive])
-            .replacingOccurrences(of: "<(br\\s*/?|/p|/div|/section|/li|/h[1-6])>", with: "\n", options: .regularExpression)
-            .replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
+        var stripped = html
+        for (pattern, replacement) in [(scriptMarkup, ""), (lineMarkup, "\n"), (otherMarkup, "")] {
+            stripped = pattern.stringByReplacingMatches(in: stripped, range: NSRange(stripped.startIndex..<stripped.endIndex, in: stripped), withTemplate: replacement)
+        }
+        return stripped
             .replacingOccurrences(of: "&nbsp;", with: " ").replacingOccurrences(of: "&quot;", with: "\"")
             .replacingOccurrences(of: "&#39;", with: "'").replacingOccurrences(of: "&lt;", with: "<")
             .replacingOccurrences(of: "&gt;", with: ">").replacingOccurrences(of: "&amp;", with: "&")
