@@ -31,7 +31,7 @@ import Testing
         #expect(try f.db.prepareNotebookSearch(reusing: hit, locale: "en_US").preparation == .memory)
     }
 
-    @Test func localEditsReplayAcrossConnectionsAndCompactAfterSearch() throws {
+    @Test func localEditsReplayAcrossConnectionsWithoutRewritingEveryProjection() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let doc = try seed(f)
         let before = try f.db.prepareNotebookSearch()
@@ -48,8 +48,8 @@ import Testing
         for query in ["", "updated", "marker 0", "cafe", "中文", "original note", "lemma1"] {
             #expect(try patched.results(matching: query).entries == complete.results(matching: query).entries)
         }
-        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 0)
-        #expect(try f.db.prepareNotebookSearch().preparation == .persisted)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 2)
+        #expect(try f.db.prepareNotebookSearch().preparation == .incremental)
         #expect(try before.results(matching: "updated").entries.isEmpty)
     }
 
@@ -80,7 +80,7 @@ import Testing
         var batch = Array(doc.entries.suffix(2))
         for index in batch.indices { batch[index].senses[0].note = "batch update marker" }
         _ = try f.db.saveNotebookEntries(batch, basedOn: scope)
-        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 1)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 2)
         let updated = try f.db.prepareNotebookSearch(reusing: warm)
         #expect(updated.preparation == .incremental)
         #expect(Set(try updated.results(matching: "batch update marker").entries.map(\.id)) == Set(batch.map(\.id)))
@@ -98,6 +98,57 @@ import Testing
         #expect(try next.results(matching: "word0").entries.isEmpty)
         #expect(try next.results(matching: "").entries.count == 2)
         #expect(try next.results(matching: "").entries == f.db.notebookLiteralSearchMaterial().results(matching: "").entries)
+    }
+
+    @Test func memoryReplaysOnlyTheNewSuffixAndColdReadersStillVerifyTheBase() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let doc = try seed(f); var material = try f.db.prepareNotebookSearch()
+        for index in 0..<2 {
+            let detail = try f.db.notebookEntryDetail(entryID: doc.entries[index].id)
+            var entry = try #require(detail.entry); entry.senses[0].note = "suffix marker \(index)"
+            _ = try f.db.saveNotebookEntry(entry, basedOn: detail)
+            material = try f.db.prepareNotebookSearch(reusing: material)
+        }
+        // A valid memory witness can avoid the large payload; a new reader cannot.
+        try f.db.core.execute(sql: "UPDATE notebook_literal_search_cache SET payload=?", values: [.blob(Data([0]))])
+        let detail = try f.db.notebookEntryDetail(entryID: doc.entries[2].id)
+        var entry = try #require(detail.entry); entry.senses[0].note = "suffix marker 2"
+        _ = try f.db.saveNotebookEntry(entry, basedOn: detail)
+        let hit = try f.db.prepareNotebookSearch(reusing: material)
+        #expect(hit.preparation == .incremental)
+        #expect(try hit.results(matching: "suffix marker").entries.count == 3)
+        try f.reopen()
+        let cold = try f.db.prepareNotebookSearch()
+        #expect(cold.preparation == .canonical && f.db.core.notebookSaveCache == nil)
+        #expect(try cold.results(matching: "suffix marker").entries == hit.results(matching: "suffix marker").entries)
+    }
+
+    @Test func journalCompactsAtItsBoundAndRejectsOversizedOrImpossibleMetadata() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let doc = try seed(f); var material = try f.db.prepareNotebookSearch()
+        for index in 0..<NotebookSearchCache.compactAfterFrames {
+            let detail = try f.db.notebookEntryDetail(entryID: doc.entries[0].id)
+            var entry = try #require(detail.entry); entry.senses[0].note = "bounded marker \(index)"
+            _ = try f.db.saveNotebookEntry(entry, basedOn: detail)
+            material = try f.db.prepareNotebookSearch(reusing: material)
+            let count = try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: [])
+            #expect(count == (index + 1 == NotebookSearchCache.compactAfterFrames ? 0 : index + 1))
+        }
+        try f.reopen()
+        let persisted = try f.db.prepareNotebookSearch()
+        #expect(persisted.preparation == .persisted)
+        #expect(try persisted.results(matching: "bounded marker").entries == material.results(matching: "bounded marker").entries)
+        let malformed = NotebookBrowseFence(version: .init(workspaceId: persisted.fence.version.workspaceId,
+            notebookId: persisted.fence.version.notebookId, revision: UInt64.max, generation: persisted.fence.version.generation), corpus: persisted.fence.corpus)
+        try f.db.core.execute(sql: "UPDATE notebook_literal_search_cache SET fence_json=?",
+            values: [.text(String(decoding: try JSONEncoder().encode(malformed), as: UTF8.self))])
+        #expect(try f.db.prepareNotebookSearch().preparation == .canonical)
+        for _ in 0...NotebookSearchCache.maximumJournalFrames {
+            try f.db.core.execute(sql: "INSERT INTO notebook_literal_search_updates(workspace_id,payload,sha256) VALUES(?,?,?)",
+                values: [.text(f.workspace), .blob(Data([0])), .text("invalid")])
+        }
+        #expect(try f.db.prepareNotebookSearch().preparation == .canonical)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_updates", values: []) == 0)
     }
 
     @Test func corruptPayloadOrValidChecksumWithInvalidReferencesFallsBack() throws {

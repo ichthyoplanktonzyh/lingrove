@@ -11,6 +11,10 @@ import SQLite3
 enum NotebookSearchCache {
     static let format = 2
     static let maximumBytes = 128 * 1_024 * 1_024
+    static let maximumJournalBytes = 8 * 1_024 * 1_024
+    static let maximumJournalFrames = 64
+    static let compactAfterFrames = 8
+    static let compactAfterBytes = 512 * 1_024
     static func ensureInstalled(in core: DatabaseCore) throws {
         guard try !core.tableExists(name: "notebook_literal_search_cache") ||
                 !core.tableExists(name: "notebook_literal_search_updates") else { return }
@@ -79,11 +83,11 @@ enum NotebookSearchCache {
     private static func append(in core: DatabaseCore, edit: EntryEdit) throws {
         let workspace = edit.base.version.workspaceId
         guard try core.scalarInt(sql: "SELECT count(*) FROM notebook_literal_search_cache WHERE workspace_id=?", values: [.text(workspace)]) == 1 else { return }
-        let bytes = try encode(edit), maximumJournalBytes = 8 * 1_024 * 1_024
+        let bytes = try encode(edit)
         guard bytes.count <= maximumJournalBytes else { return }
         let usage = try core.query(sql: "SELECT count(*),coalesce(sum(length(payload)),0) FROM notebook_literal_search_updates WHERE workspace_id=?",
             values: [.text(workspace)]) { (Int(sqlite3_column_int64($0, 0)), Int(sqlite3_column_int64($0, 1))) }.first
-        if let usage, usage.0 >= 64 || usage.1 + bytes.count > maximumJournalBytes {
+        if let usage, usage.0 >= maximumJournalFrames || usage.1 + bytes.count > maximumJournalBytes {
             try core.execute(sql: "DELETE FROM notebook_literal_search_updates WHERE workspace_id=?", values: [.text(workspace)])
         }
         try core.execute(sql: "INSERT INTO notebook_literal_search_updates(workspace_id,payload,sha256) VALUES(?,?,?)",
@@ -114,13 +118,13 @@ extension LingroveNotebookEngine {
     /// separate from the read; cancellation and source conflicts still propagate normally.
     public func prepareNotebookSearch(reusing previous: NotebookLiteralSearchMaterial? = nil,
                                       locale: String = Locale.current.identifier) throws -> NotebookLiteralSearchMaterial {
-        let hit: NotebookLiteralSearchMaterial?
+        let hit: (material: NotebookLiteralSearchMaterial, compact: Bool)?
         do { hit = try core.inReadTransaction { try cachedNotebookSearch(previous: previous, locale: locale) } }
         catch is CancellationError { throw CancellationError() }
         catch { try Task.checkCancellation(); return try rebuildNotebookSearch(locale: locale) }
         if let hit {
-            if hit.preparation == .incremental { try persistNotebookSearch(hit) }
-            return hit
+            if hit.compact { try persistNotebookSearch(hit.material) }
+            return hit.material
         }
         return try rebuildNotebookSearch(locale: locale)
     }
@@ -131,55 +135,69 @@ extension LingroveNotebookEngine {
         return material
     }
 
-    private func cachedNotebookSearch(previous: NotebookLiteralSearchMaterial?, locale: String) throws -> NotebookLiteralSearchMaterial? {
+    private func cachedNotebookSearch(previous: NotebookLiteralSearchMaterial?, locale: String) throws -> (material: NotebookLiteralSearchMaterial, compact: Bool)? {
         try Task.checkCancellation()
         let fence = try browseFenceInTransaction()
         if let previous, previous.fence == fence {
-            var hit = previous.localized(locale); hit.preparation = .memory; return hit
+            var hit = previous.localized(locale); hit.preparation = .memory; return (hit, false)
         }
         guard try core.tableExists(name: "notebook_literal_search_cache") else { return nil }
         let rows = try core.query(sql: """
-            SELECT fence_json,payload,sha256 FROM notebook_literal_search_cache
-            WHERE workspace_id=? AND format_version=? AND length(payload)<=?
+            SELECT fence_json FROM notebook_literal_search_cache
+            WHERE workspace_id=? AND format_version=? AND length(payload) BETWEEN 1 AND ?
             """, values: [.text(fence.version.workspaceId), .integer(Int64(NotebookSearchCache.format)),
-                .integer(Int64(NotebookSearchCache.maximumBytes))]) { row in
-                (DatabaseCore.columnText(statement: row, index: 0), NotebookSearchCache.blob(row, 1),
-                 DatabaseCore.columnText(statement: row, index: 2))
-            }
+                .integer(Int64(NotebookSearchCache.maximumBytes))]) { DatabaseCore.columnText(statement: $0, index: 0) }
         guard let row = rows.first,
-              let base = try? JSONDecoder().decode(NotebookBrowseFence.self, from: Data(row.0.utf8)),
+              let base = try? JSONDecoder().decode(NotebookBrowseFence.self, from: Data(row.utf8)),
               base.version.hasSameOwner(as: fence.version), base.corpus.schemaVersion == fence.corpus.schemaVersion,
-              base.corpus.epoch == fence.corpus.epoch else { return nil }
-        var material: NotebookLiteralSearchMaterial
-        if let previous, previous.fence == base { material = previous.localized(locale) }
-        else {
-            guard NotebookSearchCache.digest(row.1) == row.2,
-                  let payload = NotebookSearchBinaryCodec.decode(row.1),
-                  let restored = payload.material(fence: base, locale: locale) else { return nil }
-            material = restored
-        }
-        if base == fence { material.preparation = .persisted; return material }
+              base.corpus.epoch == fence.corpus.epoch, base.version.revision <= fence.version.revision,
+              base.corpus.value >= 0, base.corpus.value <= fence.corpus.value else { return nil }
+        let usage = try core.query(sql: "SELECT count(*),coalesce(sum(length(payload)),0) FROM notebook_literal_search_updates WHERE workspace_id=?",
+            values: [.text(fence.version.workspaceId)]) { (Int(sqlite3_column_int64($0, 0)), Int(sqlite3_column_int64($0, 1))) }.first
+        guard let usage, usage.0 <= NotebookSearchCache.maximumJournalFrames,
+              usage.1 <= NotebookSearchCache.maximumJournalBytes else { return nil }
         let updates = try core.query(sql: """
             SELECT payload,sha256 FROM notebook_literal_search_updates WHERE workspace_id=? ORDER BY sequence
             """, values: [.text(fence.version.workspaceId)]) { row in
                 (NotebookSearchCache.blob(row, 0), DatabaseCore.columnText(statement: row, index: 1))
             }
-        var cursor = base
+        var cursor = base, edits: [NotebookSearchCache.EntryEdit] = []
+        var suffix = previous?.fence == base ? 0 : nil
         for update in updates {
             try Task.checkCancellation()
             guard let edit = NotebookSearchCache.decode(NotebookSearchCache.EntryEdit.self, bytes: update.0, sha256: update.1),
                   edit.base == cursor, edit.fence.version.hasSameOwner(as: fence.version),
                   edit.fence.corpus.epoch == cursor.corpus.epoch,
                   edit.fence.corpus.schemaVersion == cursor.corpus.schemaVersion,
+                  cursor.version.revision < UInt64(Int64.max),
                   edit.fence.version.revision == cursor.version.revision + 1,
                   edit.fence.corpus.value > cursor.corpus.value,
-                  let next = material.applying(edit) else { return nil }
-            material = next; cursor = edit.fence
+                  edit.fence.corpus.value <= fence.corpus.value else { return nil }
+            edits.append(edit); cursor = edit.fence
+            if previous?.fence == cursor { suffix = edits.count }
         }
         guard cursor == fence else { return nil }
+        var material: NotebookLiteralSearchMaterial
+        if let previous, suffix != nil { material = previous.localized(locale) }
+        else {
+            let blobs = try core.query(sql: "SELECT payload,sha256 FROM notebook_literal_search_cache WHERE workspace_id=?",
+                values: [.text(fence.version.workspaceId)]) { (NotebookSearchCache.blob($0, 0), DatabaseCore.columnText(statement: $0, index: 1)) }
+            guard let blob = blobs.first, NotebookSearchCache.digest(blob.0) == blob.1,
+                  let payload = NotebookSearchBinaryCodec.decode(blob.0),
+                  let restored = payload.material(fence: base, locale: locale) else { return nil }
+            material = restored; suffix = 0
+        }
+        let remaining = Array(edits.dropFirst(suffix ?? 0))
+        if !remaining.isEmpty {
+            guard let updated = material.applying(remaining) else { try Task.checkCancellation(); return nil }
+            material = updated
+        }
+        try Task.checkCancellation()
+        if base == fence { material.preparation = .persisted; return (material, false) }
         material.preparation = .incremental
-        // The caller compacts after ending this read transaction, never in an editor's Save.
-        return material
+        // Small edits retain the bounded journal. Amortize full encoding/fsync over multiple
+        // reads; a later reader without memory still verifies/replays the complete chain once.
+        return (material, edits.count >= NotebookSearchCache.compactAfterFrames || usage.1 >= NotebookSearchCache.compactAfterBytes)
     }
 
     private func persistNotebookSearch(_ material: NotebookLiteralSearchMaterial) throws {

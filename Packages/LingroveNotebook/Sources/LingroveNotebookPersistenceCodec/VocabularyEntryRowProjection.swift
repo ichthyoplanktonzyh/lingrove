@@ -274,6 +274,64 @@ public nonisolated struct VocabularyEntryRowProjection: Sendable {
         return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
     }
 
+    /// Replace selected owners once from a sealed final state. Intermediate member changes
+    /// never copy the row map or leak into the journal; retained evidence is still append-only.
+    public func applying(_ change: VocabularyEntryBatchChange) throws -> VocabularyEntryRowChange {
+        var next = self, delta = Delta()
+        let document = change.state.document, previous = change.previous
+        let entries = document.catalog.filter { change.entryIDs.contains($0.id) }
+        let oldEntries = previous.catalog.filter { change.entryIDs.contains($0.id) }
+        for (position, entry) in document.catalog.enumerated() where change.entryIDs.contains(entry.id) {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(entry, position: position, to: &records)
+            try next.replaceGroup(.init(entity: .entries, id: entry.id.uuidString), records: records, delta: &delta)
+        }
+        for (position, source) in document.sources.enumerated().dropFirst(previous.sources.count) {
+            try next.replace(keys: [], records: [.init(table: .sources, id: source.id.uuidString, parentID: nil,
+                position: position, payload: .source(source))], delta: &delta)
+        }
+        for (position, occurrence) in document.occurrences.enumerated().dropFirst(previous.occurrences.count) {
+            try next.replace(keys: [], records: [.init(table: .occurrences, id: occurrence.id.uuidString,
+                parentID: occurrence.sourceID.uuidString, position: position, payload: .occurrence(occurrence))], delta: &delta)
+        }
+        let liveClaims = Set(change.claims.map(\.id))
+        for claim in change.previousClaims where !liveClaims.contains(claim.id) {
+            try next.replaceGroup(.init(entity: .usages, id: claim.id.uuidString), records: [], delta: &delta)
+        }
+        for claim in change.claims {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(claim, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .usages, id: claim.id.uuidString), records: records, delta: &delta)
+        }
+        let collections = VocabularySenseStorageRecord.records(for: entries), live = Set(collections.map(\.id))
+        for old in VocabularySenseStorageRecord.records(for: oldEntries) where !live.contains(old.id) {
+            try next.replaceGroup(.init(entity: .collections, id: old.id.uuidString), records: [], delta: &delta)
+        }
+        for collection in collections {
+            var records: [VocabularyDatabaseRecord] = []
+            VocabularyDatabaseProjection.append(collection, position: 0, to: &records)
+            try next.replaceGroup(.init(entity: .collections, id: collection.id.uuidString), records: records, delta: &delta)
+        }
+        let semantic = change.semanticChange
+        if !semantic.isEmpty {
+            for id in semantic.removedPatternIDs { try next.replaceSemanticGroup(.init(entity: .usagePatterns, id: id.uuidString), records: [], delta: &delta) }
+            for id in semantic.removedMappingIDs { try next.replaceSemanticGroup(.init(entity: .meaningMappings, id: id.uuidString), records: [], delta: &delta) }
+            let updates = Dictionary(uniqueKeysWithValues: semantic.updatedMappings.map { ($0.id, $0) })
+            for (position, value) in document.semantics.patterns.enumerated() {
+                try next.reposition(.init(entity: .usagePatterns, id: value.id.uuidString), position: position, delta: &delta)
+            }
+            for (position, value) in document.semantics.mappings.enumerated() {
+                let key = Key(entity: .meaningMappings, id: value.id.uuidString)
+                if let updated = updates[value.id] {
+                    var records: [VocabularyDatabaseRecord] = []
+                    VocabularySemanticDatabaseProjection.append(updated, position: position, to: &records)
+                    try next.replaceSemanticGroup(key, records: records, delta: &delta)
+                } else { try next.reposition(key, position: position, delta: &delta) }
+            }
+        }
+        return .init(projection: next, changed: delta.changed, removed: delta.removed, repositioned: delta.repositioned)
+    }
+
     private struct Delta {
         var changed: [VocabularyPersistenceRow] = []
         var removed: [VocabularyPersistenceRow] = []

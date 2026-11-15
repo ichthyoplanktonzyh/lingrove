@@ -7,6 +7,69 @@ import LingroveNotebook
 /// lexical/semantic groups. Every database here is private synthetic state.
 @MainActor
 struct NotebookEntryBatchTests {
+    @Test func existingOwnerBatchMatchesSequentialRowsAndKeepsManualCreationDistinct() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let inputs = (0..<6).map { VocabularyEntryInput(expression: "existing\($0)", meaning: "First sense", example: "First context \($0).") }
+        let initial = try VocabularyEntryInputPolicy.batch(inputs, existing: [], now: Date(timeIntervalSince1970: 1_700_000_000))
+        let original = try f.db.saveNotebookEntries(initial.entries, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let selected = initial.entries[0]
+        _ = try f.db.enrollReviewNotes(selections: [.init(entryID: selected.id, senseID: selected.senses[0].id)], version: .init(original))
+        let cached = try #require(f.db.core.notebookSaveCache)
+        let batch = try VocabularyEntryInputPolicy.batch(inputs + [.init(expression: "one new owner", meaning: "New sense")],
+            existing: cached.state.entries, now: Date(timeIntervalSince1970: 1_700_000_100))
+        let proof = try cached.state.replacingEntries(batch.entries)
+        var sequential = cached.state, projection = cached.projection
+        for entry in batch.entries {
+            let change = try sequential.replacing(entry)
+            projection = try projection.applying(change).projection; sequential = change.state
+        }
+        #expect(proof.state.document == sequential.document)
+        let rows = try cached.projection.applying(proof)
+        let actual = try rows.projection.rows().keyedRows().mapValues { try $0.encodedPayload() }
+        let expected = try projection.rows().keyedRows().mapValues { try $0.encodedPayload() }
+        #expect(actual == expected)
+        var invalid = batch.entries
+        invalid[1].senses.append(try #require(invalid[0].senses.last))
+        #expect(throws: (any Error).self) { try f.db.saveNotebookEntries(invalid, basedOn: original) }
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == original)
+        let rejected = try #require(batch.entries[1].senses.last)
+        try f.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER reject_existing_batch BEFORE INSERT ON notebook_senses WHEN NEW.id='\(rejected.id.uuidString)'
+            BEGIN SELECT RAISE(ABORT,'Synthetic existing-owner batch failure'); END;
+            """, errorContext: "Reject late batch member")
+        #expect(throws: (any Error).self) { try f.db.saveNotebookEntries(batch.entries, basedOn: original) }
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == original)
+        try f.db.core.executeScript(sql: "DROP TRIGGER reject_existing_batch", errorContext: "Retry batch")
+        let saved = try f.db.saveNotebookEntries(batch.entries, basedOn: original)
+        #expect(saved.revision == original.revision + 1 && saved.document == sequential.document)
+        #expect(saved.document.entries.filter { $0.expression.hasPrefix("existing") }.allSatisfy { $0.senses.count == 2 })
+        #expect(try f.db.loadBuiltInNotebookReview(scope: saved, now: Date()).statistics.exercises == 1)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace).document == saved.document)
+    }
+
+    @Test func compoundSemanticRetractionMatchesSequentialPreparation() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        var document = LingroveNotebookReviewCompletionTests.document()
+        let entry = document.entries[0], sense = entry.senses[0]
+        let node = VocabularyMeaningNode(id: UUID(), labels: [.init(text: "Shared meaning")])
+        document.semantics = .init(nodes: [node], mappings: [.init(nodeID: node.id, senseID: sense.id, evidenceIDs: sense.examples.map(\.id))])
+        let original = try f.db.saveLingroveNotebook(document, basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let cached = try #require(f.db.core.notebookSaveCache)
+        var edited = entry
+        edited.senses[0].examples[0].meaning = "Revised interpretation"
+        let new = try VocabularyEntryInputPolicy.batch([.init(expression: "another owner", meaning: "Separate sense")], existing: [], now: Date()).entries
+        let inputs = [edited] + new
+        var sequential = cached.state
+        for entry in inputs { sequential = try sequential.replacing(entry).state }
+        let proof = try cached.state.replacingEntries(inputs)
+        #expect(!proof.semanticChange.isEmpty && proof.state.document == sequential.document)
+        let saved = try f.db.saveNotebookEntries(inputs, basedOn: original)
+        #expect(saved.document == sequential.document)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace).document == saved.document)
+    }
+
     @Test func appendProofMatchesSequentialPreparationAndRejectsCrossMemberIdentities() throws {
         let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
         let original = try f.db.saveLingroveNotebook(LingroveNotebookReviewCompletionTests.document(),

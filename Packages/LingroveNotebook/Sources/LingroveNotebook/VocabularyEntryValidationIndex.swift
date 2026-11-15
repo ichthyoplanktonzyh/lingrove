@@ -41,19 +41,24 @@ struct VocabularyEntryValidationIndex: Sendable {
     func replacing(_ old: VocabularyEntry?, with entry: VocabularyEntry?, oldIDs: Set<UUID>, newIDs: Set<UUID>,
                    removedSemanticIDs: Set<UUID>) -> Self {
         var result = self
+        result.replace(old, with: entry, oldIDs: oldIDs, newIDs: newIDs, removedSemanticIDs: removedSemanticIDs)
+        return result
+    }
+
+    mutating func replace(_ old: VocabularyEntry?, with entry: VocabularyEntry?, oldIDs: Set<UUID>, newIDs: Set<UUID>,
+                          removedSemanticIDs: Set<UUID>) {
         let oldKey = old.map(VocabularyIdentityPolicy.entryKey), newKey = entry.map(VocabularyIdentityPolicy.entryKey)
         if oldKey != newKey {
-            if let oldKey { result.keys.removeValue(forKey: oldKey) }
-            if let newKey, let entry { result.keys[newKey] = entry.id }
+            if let oldKey { keys.removeValue(forKey: oldKey) }
+            if let newKey, let entry { keys[newKey] = entry.id }
         }
-        for id in oldIDs.subtracting(newIDs) { result.owners.removeValue(forKey: id) }
-        if let entry { for id in newIDs.subtracting(oldIDs) { result.owners[id] = entry.id } }
+        for id in oldIDs.subtracting(newIDs) { owners.removeValue(forKey: id) }
+        if let entry { for id in newIDs.subtracting(oldIDs) { owners[id] = entry.id } }
         let before = Set(old?.examples.map { $0.occurrenceID ?? $0.id } ?? [])
         let after = Set(entry?.examples.map { $0.occurrenceID ?? $0.id } ?? [])
-        for id in before.subtracting(after) { result.acceptedOccurrences.removeValue(forKey: id) }
-        if let entry { for id in after.subtracting(before) { result.acceptedOccurrences[id] = entry.id } }
-        if !removedSemanticIDs.isEmpty { result.semanticIDs.subtract(removedSemanticIDs) }
-        return result
+        for id in before.subtracting(after) { acceptedOccurrences.removeValue(forKey: id) }
+        if let entry { for id in after.subtracting(before) { acceptedOccurrences[id] = entry.id } }
+        if !removedSemanticIDs.isEmpty { semanticIDs.subtract(removedSemanticIDs) }
     }
 
     func updatingSemanticIDs(removing: Set<UUID>, adding: Set<UUID>) -> Self {

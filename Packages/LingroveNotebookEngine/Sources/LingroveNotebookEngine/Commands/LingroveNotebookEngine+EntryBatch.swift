@@ -31,6 +31,11 @@ extension LingroveNotebookEngine {
                 let rows = try projection.applying(change)
                 touched.formUnion((rows.changed + rows.removed + rows.repositioned).map(\.key))
                 state = change.state; projection = rows.projection
+            } else if original == nil {
+                let change = try state.replacingEntries(entries)
+                let rows = try projection.applying(change)
+                touched.formUnion((rows.changed + rows.removed + rows.repositioned).map(\.key))
+                state = change.state; projection = rows.projection
             } else {
                 for entry in entries {
                     try Task.checkCancellation()

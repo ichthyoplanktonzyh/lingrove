@@ -146,8 +146,12 @@ writer or the fully validated fallback. A partial detail is never accepted as a 
 An all-new batch of at most 100 entries uses `VocabularyEntryAppendChange`, a proof produced
 only by the checked domain state. One mutable preparation checks each member against the
 preceding members, then the codec encodes the final lexical suffix and appended evidence once.
-This avoids repeating large value copies for every imported word. Existing-owner or merge-undo
-batches retain their established per-entry reconciliation; all paths finish through the same
+This avoids repeating large value copies for every imported word. Existing-owner and mixed
+batches use `VocabularyEntryBatchChange`: one mutable ownership index/document still checks
+and reconciles each member in input order, then the codec compares only the final affected
+groups. Explicit manual creation continues to add a new sense under an existing headword;
+matching wording never silently deduplicates that user action. Merge undo retains its existing
+single-owner reconciliation and owned-semantic restoration. All paths finish through the same
 CAS, media, journal, review-material and receipt transaction. The caller's baseline supplies no
 validation authority, and a failed member leaves the original state available for retry.
 
@@ -168,8 +172,15 @@ the transaction or enter persisted search metadata.
 metadata tables, excluded from canonical backup/sync and deleted with the workspace. Exact
 schema/epoch/corpus/owner fences, checksum and bounded format-2 decoding admit a cache read.
 Certified local-entry and checked complete/batch writers append one bounded transaction delta;
-the journal is capped at 64 frames / 8 MiB, with at most 100 affected entries per frame. A later
-search applies a consecutive clock chain and compacts it. Existing shared-evidence changes,
+the journal is capped at 64 frames / 8 MiB, with at most 100 affected entries per frame. Readers
+bound the journal before decoding, verify its complete consecutive fence/checksum chain, and
+reuse a memory witness only when its exact fence belongs to that chain. They avoid reading the
+large payload for an admitted memory witness and replay the required suffix with one text
+builder/final ordering pass. A reader without memory verifies the persisted base and replays
+the complete chain. Small edits retain the durable journal; a full projection checkpoint is
+written after 8 frames or 512 KiB, outside the read transaction and with the same final CAS.
+This amortizes encoding/fsync rather than moving full projection work into an editor's save.
+Existing shared-evidence changes,
 semantic changes, raw writes, missed
 deltas, generation changes or corrupt data rebuild through the canonical scanner. This cache
 is never a writer certificate. The first metadata installation conservatively invalidates an

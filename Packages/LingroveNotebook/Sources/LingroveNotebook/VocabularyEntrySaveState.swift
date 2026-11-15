@@ -155,6 +155,48 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
             claims: claims)
     }
 
+    /// A compound edit retains one mutable document and ownership index. Members still run in
+    /// input order against the preceding checked member; only the final sealed difference
+    /// escapes. Manual creation under existing headwords therefore still adds distinct senses.
+    public func replacingEntries(_ inputs: [VocabularyEntry]) throws -> VocabularyEntryBatchChange {
+        let ids = Set(inputs.map(\.id))
+        guard !inputs.isEmpty, inputs.count <= 100, ids.count == inputs.count else { throw VocabularyError.invalidContent }
+        var next = document, joined = entries, checkedIDs = identifiers
+        var lookup = projectionLookup, validation = validationIndex, semantic = semanticIndex, media = mediaIndex
+        var semanticChange = VocabularySemanticEntryChange.empty, affectedClaims = Set<UUID>()
+        var positions = Dictionary(uniqueKeysWithValues: joined.enumerated().map { ($0.element.id, $0.offset) })
+        for input in inputs {
+            try Task.checkCancellation()
+            let old = positions[input.id].map { joined[$0] }
+            let oldSenses = Set(old?.senses.map(\.id) ?? [])
+            let incoming = Set(input.examples.map(\.id))
+            guard incoming.allSatisfy({ lookup.claim($0, in: next)?.senseID.map(oldSenses.contains) ?? true }) else {
+                throw VocabularyError.invalidArchive
+            }
+            affectedClaims.formUnion(lookup.claimIDs(senses: oldSenses)); affectedClaims.formUnion(incoming)
+            let pruned = VocabularyDocumentValidation.pruningExplanations(input)
+            _ = try VocabularyDocumentValidation.entryIdentifiers(pruned)
+            VocabularyNotebookProjection.replaceEntry(pruned, in: &next, offsets: &lookup)
+            guard let entry = VocabularyNotebookProjection.entry(input.id, in: next, lookup: lookup) else { throw VocabularyError.invalidArchive }
+            let entryIDs = try VocabularyDocumentValidation.entryIdentifiers(entry)
+            try validation.validate(entry, ids: entryIDs)
+            let change = semantic.reconciling(&next.semantics, previous: old, current: entry)
+            semantic = change.0; semanticChange = semanticChange.combining(change.1)
+            validation.replace(old, with: entry, oldIDs: checkedIDs[entry.id] ?? [], newIDs: entryIDs,
+                removedSemanticIDs: change.1.removedIdentifiers)
+            checkedIDs[entry.id] = entryIDs
+            if let index = positions[entry.id] { joined[index] = entry }
+            else { positions[entry.id] = joined.count; joined.append(entry) }
+            media = media.replacing(entry.id, with: entry)
+        }
+        try Task.checkCancellation()
+        return .init(previous: document, state: .init(document: next, entries: joined, identifiers: checkedIDs,
+            validationIndex: validation, semanticIndex: semantic, projectionLookup: lookup, mediaIndex: media),
+            entryIDs: ids, semanticChange: semanticChange,
+            previousClaims: affectedClaims.compactMap { projectionLookup.claim($0, in: document) },
+            claims: affectedClaims.compactMap { lookup.claim($0, in: next) })
+    }
+
     /// Removing an existing sense cannot introduce an ID. Reuse the proof for unrelated entries
     /// and recheck the changed graph, including candidates that lost their saved destination.
     public func removingSense(_ senseID: UUID, from entryID: UUID) throws -> VocabularyEntrySaveChange {
@@ -237,6 +279,23 @@ public nonisolated struct VocabularyEntryAppendChange: Sendable {
     fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState,
                      claims: [VocabularyInterpretation]) {
         self.previous = previous; self.state = state; self.claims = claims
+    }
+}
+
+/// The checked domain state owns this final batch proof. It cannot be constructed by a host's
+/// dirty-ID hints. The codec consumes affected lexical groups and reconciled semantic deltas;
+/// the engine still owns SQL fences, media, review/history and atomic commit.
+public nonisolated struct VocabularyEntryBatchChange: Sendable {
+    public let previous: VocabularyDocument
+    public let state: VocabularyEntrySaveState
+    public let entryIDs: Set<UUID>
+    public let semanticChange: VocabularySemanticEntryChange
+    public let previousClaims: [VocabularyInterpretation]
+    public let claims: [VocabularyInterpretation]
+    fileprivate init(previous: VocabularyDocument, state: VocabularyEntrySaveState, entryIDs: Set<UUID>,
+                     semanticChange: VocabularySemanticEntryChange, previousClaims: [VocabularyInterpretation], claims: [VocabularyInterpretation]) {
+        self.previous = previous; self.state = state; self.entryIDs = entryIDs; self.semanticChange = semanticChange
+        self.previousClaims = previousClaims; self.claims = claims
     }
 }
 

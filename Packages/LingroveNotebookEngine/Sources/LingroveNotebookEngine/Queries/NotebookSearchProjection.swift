@@ -50,54 +50,83 @@ extension NotebookLiteralSearchMaterial {
     /// A certified local entry edit leaves semantic rows and all other owners unchanged.
     /// The persisted base/final clock chain is checked by the engine, not by the UI.
     func applying(_ edit: NotebookSearchCache.EntryEdit) -> Self? {
-        guard edit.base == fence, edit.owners.count <= 100, Set(edit.owners.map(\.entryID)).count == edit.owners.count else { return nil }
-        let oldHeaders = Dictionary(uniqueKeysWithValues: headers.map { ($0.id,$0) })
-        let ownersBySense = Dictionary(uniqueKeysWithValues: headers.flatMap { entry in entry.senses.map { ($0.id,entry.id) } })
-        let changed = Set(edit.owners.map(\.entryID))
-        var fields = fields, dates = entryDates, headers = headers.filter { !changed.contains($0.id) }
+        applying([edit])
+    }
+
+    /// Replay a verified chain with one field builder and final ordering pass. Each frame
+    /// still checks ownership against its own starting state; only derived work is shared.
+    func applying(_ edits: [NotebookSearchCache.EntryEdit]) -> Self? {
+        guard !edits.isEmpty, edits.count <= NotebookSearchCache.maximumJournalFrames else { return nil }
+        var oldHeaders = Dictionary(uniqueKeysWithValues: headers.map { ($0.id,$0) })
+        var ownersBySense = Dictionary(uniqueKeysWithValues: headers.flatMap { entry in entry.senses.map { ($0.id,entry.id) } })
+        var fields = fields, dates = entryDates, cursor = fence
         var liveSenses = Set(ownersBySense.keys)
         var builder = NotebookSearchTextTable.Builder(texts)
-        for owner in edit.owners {
-            let oldIDs = Set(oldHeaders[owner.entryID]?.senses.map(\.id) ?? [])
-            guard owner.entry?.id == owner.entryID || owner.entry == nil,
-                  oldIDs.isSubset(of: owner.previousSenseIDs),
-                  owner.previousSenseIDs.allSatisfy({ ownersBySense[$0] == nil || ownersBySense[$0] == owner.entryID }),
-                  (owner.entry?.senses ?? []).allSatisfy({ ownersBySense[$0.id] == nil || oldIDs.contains($0.id) }) else { return nil }
-            for id in owner.previousSenseIDs { fields.removeValue(forKey: id); liveSenses.remove(id) }
-            if let entry = owner.entry {
-                for sense in entry.senses { guard liveSenses.insert(sense.id).inserted else { return nil } }
-                let summary = NotebookEntrySummary(id: entry.id, expression: entry.expression, language: entry.language,
-                    senses: entry.senses.sorted { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }.map { sense in
-                        let body = (sense.content ?? []).compactMap { block -> String? in
-                            if case .text(let value) = block.content { return value.text }; return nil
-                        }.first ?? ""
-                        return .init(id: sense.id, title: sense.meaning.isEmpty ? body : sense.meaning,
-                            hasImage: sense.meaning.isEmpty && !VocabularyContentPolicy.images(sense.content ?? []).isEmpty)
-                    })
-                for sense in entry.senses {
-                    var values = [entry.expression, entry.dictionaryForm, summary.senses.first { $0.id == sense.id }?.title ?? ""]
-                    var additional = [sense.meaning, sense.note] + sense.tags
-                        + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
-                    additional += (sense.content ?? []).map { block in
-                        switch block.content { case .text(let value): value.text; case .image(_, let caption): caption }
-                    }
-                    additional += sense.explanations.flatMap { [$0.result.meaning, $0.result.explanation] }
-                    for example in sense.examples {
-                        additional += [example.text, example.translation, example.meaning] + example.translationVariants.map(\.text)
-                        additional += example.explanations.flatMap { [$0.result.meaning, $0.result.explanation] }
-                    }
-                    values += additional.filter { !$0.isEmpty }
-                    fields[sense.id] = values.map { builder.intern($0) }
+        for edit in edits {
+            guard !Task.isCancelled, edit.base == cursor, edit.owners.count <= 100,
+                  Set(edit.owners.map(\.entryID)).count == edit.owners.count else { return nil }
+            var priorOwners: [UUID: UUID] = [:]
+            for owner in edit.owners {
+                guard !Task.isCancelled else { return nil }
+                let oldIDs = Set(oldHeaders[owner.entryID]?.senses.map(\.id) ?? [])
+                guard owner.entry?.id == owner.entryID || owner.entry == nil,
+                      oldIDs.isSubset(of: owner.previousSenseIDs),
+                      owner.previousSenseIDs.allSatisfy({ ownersBySense[$0] == nil || ownersBySense[$0] == owner.entryID }),
+                      (owner.entry?.senses ?? []).allSatisfy({ ownersBySense[$0.id] == nil || oldIDs.contains($0.id) }),
+                      owner.entry?.createdAt.timeIntervalSinceReferenceDate.isFinite != false else { return nil }
+                for id in owner.previousSenseIDs {
+                    guard priorOwners[id] == nil || priorOwners[id] == owner.entryID else { return nil }
+                    priorOwners[id] = owner.entryID
                 }
-                headers.append(summary)
-                dates[entry.id] = entry.createdAt.timeIntervalSinceReferenceDate
-            } else {
-                dates.removeValue(forKey: owner.entryID)
             }
+            for owner in edit.owners {
+                guard (owner.entry?.senses ?? []).allSatisfy({ priorOwners[$0.id] == nil || priorOwners[$0.id] == owner.entryID }) else { return nil }
+                for id in owner.previousSenseIDs {
+                    fields.removeValue(forKey: id); liveSenses.remove(id); ownersBySense.removeValue(forKey: id)
+                }
+            }
+            for owner in edit.owners {
+                if let entry = owner.entry {
+                    for sense in entry.senses {
+                        guard liveSenses.insert(sense.id).inserted, sense.createdAt.timeIntervalSinceReferenceDate.isFinite else { return nil }
+                        ownersBySense[sense.id] = entry.id
+                    }
+                    let summary = NotebookEntrySummary(id: entry.id, expression: entry.expression, language: entry.language,
+                        senses: entry.senses.sorted { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }.map { sense in
+                            let body = (sense.content ?? []).compactMap { block -> String? in
+                                if case .text(let value) = block.content { return value.text }; return nil
+                            }.first ?? ""
+                            return .init(id: sense.id, title: sense.meaning.isEmpty ? body : sense.meaning,
+                                hasImage: sense.meaning.isEmpty && !VocabularyContentPolicy.images(sense.content ?? []).isEmpty)
+                        })
+                    for sense in entry.senses {
+                        var values = [entry.expression, entry.dictionaryForm, summary.senses.first { $0.id == sense.id }?.title ?? ""]
+                        var additional = [sense.meaning, sense.note] + sense.tags
+                            + sense.standaloneMeanings.map(\.text) + sense.alternateMeanings.map(\.text)
+                        additional += (sense.content ?? []).map { block in
+                            switch block.content { case .text(let value): value.text; case .image(_, let caption): caption }
+                        }
+                        additional += sense.explanations.flatMap { [$0.result.meaning, $0.result.explanation] }
+                        for example in sense.examples {
+                            additional += [example.text, example.translation, example.meaning] + example.translationVariants.map(\.text)
+                            additional += example.explanations.flatMap { [$0.result.meaning, $0.result.explanation] }
+                        }
+                        values += additional.filter { !$0.isEmpty }
+                        fields[sense.id] = values.map { builder.intern($0) }
+                    }
+                    oldHeaders[entry.id] = summary
+                    dates[entry.id] = entry.createdAt.timeIntervalSinceReferenceDate
+                } else {
+                    oldHeaders.removeValue(forKey: owner.entryID)
+                    dates.removeValue(forKey: owner.entryID)
+                }
+            }
+            cursor = edit.fence
         }
+        var headers = Array(oldHeaders.values)
         headers.sort { dates[$0.id] == dates[$1.id] ? $0.id.uuidString < $1.id.uuidString : (dates[$0.id] ?? 0) > (dates[$1.id] ?? 0) }
         return .init(preparation: .incremental, entryDates: dates, texts: builder.finish(), headers: headers,
             fields: fields, nodes: nodes, mappings: mappings, cues: cues, patterns: patterns,
-            fence: edit.fence, locale: locale)
+            fence: cursor, locale: locale)
     }
 }
