@@ -163,6 +163,16 @@ The review adapter receives complete affected entries (including historical alia
 the established conservative sense scope, Card material writer and scheduling/history rules.
 No partial document or host dirty-ID list grants this permission.
 
+Large annotation writes reuse the row map's writer-owned Dictionary buffer across overlay
+compactions; retained readers still get normal copy-on-write isolation at the first mutation.
+The SQL adapter batches only these retained-owner upserts (at most 100 rows / 900 binds).
+It copies their just-saved canonical payloads into the existing pending-row journal in batches
+of 200, preserving original mutation ordinals, parent/position metadata and index JSON. This
+avoids a second payload encoding without retaining a whole encoded-corpus buffer. Every batch
+checks cancellation and affected-row counts; header, rows, journal, review refresh and receipts
+still commit or roll back together. General writers retain their existing row ordering and
+payload path; no canonical schema, cache, backup or synchronization format changes.
+
 `notebookLiteralSearchMaterial` projects searchable scalar fields, accepted evidence and confirmed
 meaning/cue/pattern joins without loading the full document or classification directory. A browser
 actor owns this disposable material and pages frozen summary results. Reuse requires its exact

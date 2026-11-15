@@ -123,7 +123,7 @@ public struct LingroveNotebookStore {
                 let allowed: Set<VocabularyPersistenceEntity> = [.entries, .senses, .collections]
                 guard removed.isEmpty, plan.rows.repositioned.isEmpty,
                       changed.allSatisfy({ allowed.contains($0.entity) }) else { throw VocabularyError.invalidArchive }
-                for row in changed { try upsert(row, workspaceId: current.workspaceId) }
+                try upsertRetainedRows(changed, workspaceId: current.workspaceId)
             } else { try writeRows(changed: changed, removed: removed, workspaceId: current.workspaceId) }
             let revision = current.revision + 1
             let now = nowIsoTimestamp()
@@ -134,7 +134,8 @@ public struct LingroveNotebookStore {
                     .text(current.workspaceId), .text(current.notebookId.uuidString), .integer(Int64(current.revision))])
             guard count == 1 else { throw VocabularyError.editConflict }
             try self.recordPending(current: .init(current), revision: revision, changed: changed, removed: removed,
-                publicChange: publicChange, operationId: operationId, now: now)
+                publicChange: publicChange, operationId: operationId, now: now,
+                copyingStoredPayloads: plan.tagRemoval != nil)
         try recordRepositioned(plan.rows.repositioned, workspaceId: current.workspaceId, operationId: operationId,
             journalOffset: changed.count + removed.count)
             let saved = LingroveNotebookSnapshot(workspaceId: current.workspaceId, notebookId: current.notebookId, revision: revision, document: next, generation: current.generation)
@@ -322,15 +323,46 @@ public struct LingroveNotebookStore {
 
     private func upsert(_ row: VocabularyPersistenceRow, workspaceId: String) throws {
         let columns = ["workspace_id", "id", "parent_id", "position", "payload_json"] + row.entity.indexKeys.map(\.rawValue)
-        guard let payload = String(data: try row.encodedPayload(), encoding: .utf8) else { throw VocabularyError.invalidArchive }
-        let values: [SQLiteValue] = [.text(workspaceId), .text(row.id), row.parentID.map(SQLiteValue.text) ?? .null,
-            .integer(Int64(row.position)), .text(payload)] + row.entity.indexKeys.map { row.indexValue($0).map(SQLiteValue.text) ?? .null }
+        let values = try rowValues(row, workspaceId: workspaceId)
         let updates = columns.dropFirst(2).map { "\($0)=excluded.\($0)" }.joined(separator: ",")
         try self.core.execute(sql: """
             INSERT INTO \(LingroveNotebookSchema.table(row.entity))(\(columns.joined(separator: ",")))
             VALUES(\(Array(repeating: "?", count: columns.count).joined(separator: ",")))
             ON CONFLICT(workspace_id,id) DO UPDATE SET \(updates)
             """, values: values)
+    }
+
+    /// Only the sealed annotation plan reaches this path: every owner/key remains in place.
+    /// Group indices rather than copying large row values, and bound temporary binds/payloads.
+    /// General writers retain their established delete/insert ordering for key changes.
+    private func upsertRetainedRows(_ rows: [VocabularyPersistenceRow], workspaceId: String) throws {
+        let groups = Dictionary(grouping: rows.indices, by: { rows[$0].entity })
+        for entity in VocabularyPersistenceEntity.allCases {
+            guard let indices = groups[entity] else { continue }
+            let columns = ["workspace_id", "id", "parent_id", "position", "payload_json"] + entity.indexKeys.map(\.rawValue)
+            let updates = columns.dropFirst(2).map { "\($0)=excluded.\($0)" }.joined(separator: ",")
+            let placeholders = "(" + Array(repeating: "?", count: columns.count).joined(separator: ",") + ")"
+            let batchSize = max(1, min(100, 900 / columns.count))
+            for start in stride(from: 0, to: indices.count, by: batchSize) {
+                try Task.checkCancellation()
+                let batch = indices[start..<min(start + batchSize, indices.count)]
+                var values: [SQLiteValue] = []
+                values.reserveCapacity(batch.count * columns.count)
+                for index in batch { values += try rowValues(rows[index], workspaceId: workspaceId) }
+                let count = try core.execute(sql: """
+                    INSERT INTO \(LingroveNotebookSchema.table(entity))(\(columns.joined(separator: ",")))
+                    VALUES \(Array(repeating: placeholders, count: batch.count).joined(separator: ","))
+                    ON CONFLICT(workspace_id,id) DO UPDATE SET \(updates)
+                    """, values: values)
+                guard count == batch.count else { throw VocabularyError.editConflict }
+            }
+        }
+    }
+
+    private func rowValues(_ row: VocabularyPersistenceRow, workspaceId: String) throws -> [SQLiteValue] {
+        guard let payload = String(data: try row.encodedPayload(), encoding: .utf8) else { throw VocabularyError.invalidArchive }
+        return [.text(workspaceId), .text(row.id), row.parentID.map(SQLiteValue.text) ?? .null,
+            .integer(Int64(row.position)), .text(payload)] + row.entity.indexKeys.map { row.indexValue($0).map(SQLiteValue.text) ?? .null }
     }
 
     /// Copy SQLite-owned bytes before the statement is finalized. Unlike a display fallback,
@@ -353,13 +385,19 @@ public struct LingroveNotebookStore {
     // swiftlint:disable:next function_parameter_count
     func recordPending(
         current: LingroveNotebookVersion, revision: UInt64, changed: [VocabularyPersistenceRow],
-        removed: [VocabularyPersistenceRow], publicChange: Bool, operationId: String, now: String
+        removed: [VocabularyPersistenceRow], publicChange: Bool, operationId: String, now: String,
+        copyingStoredPayloads: Bool = false
     ) throws {
+        guard !copyingStoredPayloads || removed.isEmpty else { throw VocabularyError.invalidArchive }
         try self.core.execute(sql: """
             INSERT INTO notebook_pending_transactions(operation_id,workspace_id,notebook_id,base_revision,revision,has_templates,created_at,has_public_change)
             VALUES(?,?,?,?,?,?,?,?)
             """, values: [.text(operationId), .text(current.workspaceId), .text(current.notebookId.uuidString),
                 .integer(Int64(current.revision)), .integer(Int64(revision)), .integer(0), .text(now), .integer(publicChange ? 1 : 0)])
+        if copyingStoredPayloads {
+            try recordStoredPendingRows(changed, workspaceId: current.workspaceId, operationId: operationId)
+            return
+        }
         // This journal is local persistence, including optional legacy adapter metadata.
         // Upload projection filters tool-local fields and adds remote versions;
         // this journal remains complete for local recovery and exact retirement.
@@ -373,6 +411,31 @@ public struct LingroveNotebookStore {
                 """, values: [.text(operationId), .integer(Int64(position)), .text(row.entity.rawValue), .text(row.id),
                     .text(action), row.parentID.map(SQLiteValue.text) ?? .null, .integer(Int64(row.position)),
                     payload.map(SQLiteValue.text) ?? .null, .text(try journalIndexes(row))])
+        }
+    }
+
+    /// Annotation rows were just persisted by this transaction. Copy their exact SQL payloads
+    /// into the existing journal shape, avoiding a second JSON encoding and per-row SQL call.
+    /// Original ordinals survive grouping; missing rows fail and roll back the whole command.
+    private func recordStoredPendingRows(_ rows: [VocabularyPersistenceRow], workspaceId: String, operationId: String) throws {
+        let groups = Dictionary(grouping: rows.indices, by: { rows[$0].entity })
+        for entity in VocabularyPersistenceEntity.allCases {
+            guard let indices = groups[entity] else { continue }
+            for start in stride(from: 0, to: indices.count, by: 200) {
+                try Task.checkCancellation()
+                let batch = indices[start..<min(start + 200, indices.count)]
+                var values: [SQLiteValue] = []
+                for index in batch {
+                    values += [.text(rows[index].id), .integer(Int64(index)), .text(try journalIndexes(rows[index]))]
+                }
+                let count = try core.execute(sql: """
+                    WITH changed(id,ordinal,indexes) AS (VALUES \(Array(repeating: "(?,?,?)", count: batch.count).joined(separator: ",")))
+                    INSERT INTO notebook_pending_rows(operation_id,position,entity,entity_id,action,parent_id,entity_position,payload_json,indexes_json)
+                    SELECT ?,changed.ordinal,?,r.id,'upsert',r.parent_id,r.position,r.payload_json,changed.indexes
+                    FROM changed JOIN \(LingroveNotebookSchema.table(entity)) r ON r.workspace_id=? AND r.id=changed.id
+                    """, values: values + [.text(operationId), .text(entity.rawValue), .text(workspaceId)])
+                guard count == batch.count else { throw VocabularyError.editConflict }
+            }
         }
     }
 

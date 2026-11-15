@@ -46,6 +46,11 @@ struct VocabularyProjectionMap<Key: Hashable & Sendable, Value: Sendable>: Senda
     private mutating func compactIfNeeded() {
         let limit = max(128, min(2_048, base.count / 4))
         guard updates.count + removed.count > limit else { return }
-        base = materialized(); updates = [:]; removed = []
+        // Mutate the base through Dictionary's copy-on-write. The first compaction still
+        // isolates a retained snapshot; later compactions can reuse this writer's unique
+        // buffer instead of forcing another complete copy through materialized().
+        for key in removed { base.removeValue(forKey: key) }
+        for (key, value) in updates { base[key] = value }
+        updates = [:]; removed = []
     }
 }

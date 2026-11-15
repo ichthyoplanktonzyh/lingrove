@@ -111,4 +111,49 @@ import Testing
         #expect(try f.db.core.scalarInt(sql: "SELECT format_version FROM notebook_literal_search_cache", values: []) == NotebookSearchCache.format)
         #expect(NotebookSearchBinaryCodec.decode(legacy) == nil)
     }
+
+    @Test func broadTagBatchesKeepExactJournalOrderAndRollBackEarlierBatches() throws {
+        let f = try NotebookMediaDatabaseFixture(); defer { f.cleanUp() }
+        let saved = try f.db.saveLingroveNotebook(document(1_500), basedOn: f.db.loadLingroveNotebook(workspaceId: f.workspace))
+        let cached = try #require(f.db.core.notebookSaveCache)
+        let beforeRows = try cached.projection.rows().keyedRows()
+        let fence = try f.db.notebookBrowseFence()
+        try f.db.core.executeScript(sql: """
+            CREATE TEMP TRIGGER reject_broad_tag_journal BEFORE INSERT ON notebook_pending_rows
+            WHEN NEW.operation_id='broad-tag-failure' AND NEW.position>=600
+            BEGIN SELECT RAISE(ABORT,'Synthetic failure after earlier journal batches'); END;
+            """, errorContext: "Protect broad annotation atomicity")
+        #expect(throws: (any Error).self) {
+            try f.db.removeNotebookTag("tagneedle", basedOn: saved, operationId: "broad-tag-failure")
+        }
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == saved)
+        #expect(try f.db.notebookBrowseFence() == fence)
+        #expect(try f.db.core.scalarInt(sql: "SELECT count(*) FROM notebook_pending_transactions WHERE operation_id='broad-tag-failure'", values: []) == 0)
+        let restored = try #require(f.db.core.notebookSaveCache)
+        #expect(try restored.projection.rows().keyedRows() == beforeRows)
+        #expect(try cached.projection.rows().keyedRows() == beforeRows)
+        // Rollback reloads the canonical projection, whose unordered owner rows may have
+        // a different enumeration. Preserve this retry plan's ordinals, not the old cache's.
+        let expected = try restored.projection.applying(restored.state.removingTag("tagneedle")).changed
+            .map { $0.entity.rawValue + "/" + $0.id }
+        let next = try f.db.removeNotebookTag("tagneedle", basedOn: saved, operationId: "broad-tag-retry")
+        let journal = try f.db.core.query(sql: "SELECT entity,entity_id FROM notebook_pending_rows WHERE operation_id='broad-tag-retry' ORDER BY position", values: []) {
+            DatabaseCore.columnText(statement: $0, index: 0) + "/" + DatabaseCore.columnText(statement: $0, index: 1)
+        }
+        #expect(journal == expected && journal.count == 4_500)
+        for (entity, table) in [("entries", "notebook_entries"), ("senses", "notebook_senses"), ("collections", "notebook_collections")] {
+            let mismatches = try f.db.core.scalarInt(sql: """
+                SELECT count(*) FROM notebook_pending_rows j LEFT JOIN \(table) r
+                ON r.workspace_id=? AND r.id=j.entity_id
+                WHERE j.operation_id='broad-tag-retry' AND j.entity=? AND
+                (r.id IS NULL OR j.payload_json IS NOT r.payload_json OR j.parent_id IS NOT r.parent_id
+                  OR j.entity_position IS NOT r.position OR j.action!='upsert')
+                """, values: [.text(f.workspace), .text(entity)])
+            #expect(mismatches == 0)
+        }
+        #expect(try cached.projection.rows().keyedRows() == beforeRows)
+        try f.reopen()
+        #expect(try f.db.loadLingroveNotebook(workspaceId: f.workspace) == next)
+        #expect(try f.db.browseNotebook(.init(tag: "tagneedle")).total == 0)
+    }
 }

@@ -7,17 +7,21 @@ import Testing
 /// overlay compaction and exact author bytes when Swift's canonical String equality agrees.
 struct VocabularyProjectionRetentionTests {
     @Test func retainedMapsSurviveCompactionRemovalAndReinsertion() {
-        let initial = Dictionary(uniqueKeysWithValues: (0..<4_096).map { ($0, "old-\($0)") })
+        let initial = Dictionary(uniqueKeysWithValues: (0..<16_384).map { ($0, "old-\($0)") })
         let before = VocabularyProjectionMap(initial)
         var next = before, expected = initial
-        for id in 0..<3_000 {
+        for id in 0..<12_000 {
             if id.isMultiple(of: 3) { _ = next.removeValue(forKey: id); expected.removeValue(forKey: id) }
             else { next[id] = "new-\(id)"; expected[id] = "new-\(id)" }
         }
         let retained = next
-        for id in 0..<3_000 { next[id] = "again-\(id)" }
+        var final = initial
+        for id in 0..<12_000 { next[id] = "again-\(id)"; final[id] = "again-\(id)" }
         #expect(Dictionary(uniqueKeysWithValues: initial.keys.compactMap { key in before[key].map { (key, $0) } }) == initial)
         #expect(Dictionary(uniqueKeysWithValues: initial.keys.compactMap { key in retained[key].map { (key, $0) } }) == expected)
+        #expect(Dictionary(uniqueKeysWithValues: initial.keys.compactMap { key in next[key].map { (key, $0) } }) == final)
+        #expect(Set(before.values) == Set(initial.values) && Set(retained.values) == Set(expected.values))
+        #expect(Set(next.values) == Set(final.values))
         #expect(next[0] == "again-0" && retained[0] == nil && before[0] == "old-0")
     }
 
