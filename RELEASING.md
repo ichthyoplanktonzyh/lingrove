@@ -5,10 +5,11 @@ version/build metadata. `scripts/package_dmg.py` validates the production app an
 explicit installer/legal inputs; `scripts/build_dmg.sh` is its shell entry point. GitHub Actions
 retains the separate future Developer ID/notarization/update workflow.
 
-## Current public release: 0.9.0 (build 7)
+## Release candidate: 0.9.2 (build 9)
 
-The latest GitHub Release is **Lingrove（拾语）v0.9.0**. The universal installer is
-`Lingrove-0.9.0-universal.dmg`. See the [release notes](releases/lingrove-0.9.0.md).
+The next release is **Lingrove（拾语）v0.9.2**, packaged as
+`Lingrove-0.9.2-universal.dmg`. See the [release notes](releases/lingrove-0.9.2.md).
+The currently published v0.9.1 remains available until the new download has been verified.
 
 The production app uses SQLite schema 41 and corpus sync v9. Existing production databases do
 not migrate automatically. The one-time Dev corpus migration was performed separately. Account
@@ -87,7 +88,7 @@ Hold `/tmp/lingrove-mobile-validation.lock` for Xcode, native preparation and pa
 Build from a clean committed source revision:
 
 ```sh
-scripts/build_dmg.sh --output-dir build/distributions/v0.9.0
+scripts/build_dmg.sh --output-dir build/distributions/v0.9.2
 ```
 
 The script prepares the pinned inference/native helpers, builds Release for arm64 and x86_64,
