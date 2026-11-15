@@ -60,6 +60,7 @@ extension NotebookLiteralSearchMaterial {
         var oldHeaders = Dictionary(uniqueKeysWithValues: headers.map { ($0.id,$0) })
         var ownersBySense = Dictionary(uniqueKeysWithValues: headers.flatMap { entry in entry.senses.map { ($0.id,entry.id) } })
         var fields = fields, dates = entryDates, cursor = fence
+        var changed = Set<UUID>()
         var liveSenses = Set(ownersBySense.keys)
         var builder = NotebookSearchTextTable.Builder(texts)
         for edit in edits {
@@ -86,6 +87,7 @@ extension NotebookLiteralSearchMaterial {
                 }
             }
             for owner in edit.owners {
+                changed.insert(owner.entryID)
                 if let entry = owner.entry {
                     for sense in entry.senses {
                         guard liveSenses.insert(sense.id).inserted, sense.createdAt.timeIntervalSinceReferenceDate.isFinite else { return nil }
@@ -123,9 +125,11 @@ extension NotebookLiteralSearchMaterial {
             }
             cursor = edit.fence
         }
-        var headers = Array(oldHeaders.values)
-        headers.sort { dates[$0.id] == dates[$1.id] ? $0.id.uuidString < $1.id.uuidString : (dates[$0.id] ?? 0) > (dates[$1.id] ?? 0) }
-        return .init(preparation: .incremental, entryDates: dates, texts: builder.finish(), headers: headers,
+        // Retain the large already-ordered run; only the small changed suffix needs merging.
+        var ordered = headers.filter { !changed.contains($0.id) }
+        ordered.append(contentsOf: changed.compactMap { oldHeaders[$0] })
+        ordered.sort { dates[$0.id] == dates[$1.id] ? $0.id.uuidString < $1.id.uuidString : (dates[$0.id] ?? 0) > (dates[$1.id] ?? 0) }
+        return .init(preparation: .incremental, entryDates: dates, texts: builder.finish(), headers: ordered,
             fields: fields, nodes: nodes, mappings: mappings, cues: cues, patterns: patterns,
             fence: cursor, locale: locale)
     }
