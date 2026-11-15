@@ -95,7 +95,7 @@ public nonisolated struct VocabularyEntrySaveState: Sendable {
         // candidate. A detached editor cannot steal another entry's accepted interpretation.
         let incomingClaims = Set(input.examples.map(\.id))
         guard incomingClaims.allSatisfy({ id in
-            projectionLookup.claim(id, in: document)?.senseID.map(oldSenses.contains) ?? true
+            self.projectionLookup.claim(id, in: document)?.senseID.map(oldSenses.contains) ?? true
         }) else { throw VocabularyError.invalidArchive }
 
         var next = document
