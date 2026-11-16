@@ -5,11 +5,12 @@ version/build metadata. `scripts/package_dmg.py` validates the production app an
 explicit installer/legal inputs; `scripts/build_dmg.sh` is its shell entry point. GitHub Actions
 retains the separate future Developer ID/notarization/update workflow.
 
-## Release candidate: 0.9.2 (build 9)
+## Current release: 0.9.2 (build 9)
 
-The next release is **Lingrove（拾语）v0.9.2**, packaged as
-`Lingrove-0.9.2-universal.dmg`. See the [release notes](releases/lingrove-0.9.2.md).
-The currently published v0.9.1 remains available until the new download has been verified.
+The published release is [**Lingrove（拾语）v0.9.2**](https://github.com/ichthyoplanktonzyh/lingrove/releases/tag/v0.9.2),
+packaged as `Lingrove-0.9.2-universal.dmg`. See the [release notes](releases/lingrove-0.9.2.md).
+The superseded v0.9.1 GitHub Release and attachments were removed after verifying the new
+download. Historical source tags remain available.
 
 The production app uses SQLite schema 41 and corpus sync v9. Existing production databases do
 not migrate automatically. The one-time Dev corpus migration was performed separately. Account
@@ -22,6 +23,31 @@ signing and Sparkle setup below is complete.
 The production scheme produces `Lingrove.app` (`io.ichthyoplanktonzyh.lingrove`). Lingrove Dev
 has its separate bundle, storage and credentials. Use synthetic fixtures and a private host for
 release validation to keep the installed user's application and data outside the test environment.
+
+## 0.9.2 acceptance checkpoint — 2026-11-16
+
+- The installer and `v0.9.2` tag identify clean source
+  `19d57982b41f40f74bafa1da93db17da308eadf0`. Documentation-only follow-ups retain that
+  tag and the original installer bytes. The Universal Release build passed.
+- Local app-hosted Release regression executed 348 tests (365 executions including parameter
+  cases), with no failures or skips. It covered input routing, shortcuts, acceptance, focus,
+  reading OCR geometry, lookup caches, and settings. All 125 Python tooling tests passed.
+- Cloud Build, Lint and XcodeGen checks passed. The full cloud Debug test job compiled and
+  executed part of the suite, then repeatedly hit test-host malloc failures in settings tests
+  before the 25-minute job limit cancelled it. It did not pass full validation. The affected
+  settings suites passed the local Release checkpoint above; the cloud host failure remains
+  unresolved and is disclosed in the public release notes.
+- Mounted DMG contents, nested signatures, both slices of all 11 Mach-O files, test-bundle and
+  test-entitlement exclusion, and local SHA-256 passed. The isolated test app and repo-scoped
+  DerivedData were removed. The installed Dev app and its user data were not used or replaced.
+- All four GitHub attachment SHA-256 values match local artifacts. The public installer HEAD
+  returned HTTP 200 with the exact 66,118,886-byte length; a tail range returned HTTP 206 and
+  matched local bytes. The downloaded prefix also matched. The slow full-download probe was
+  stopped after these bounded checks; no completed full-download hash is claimed.
+- v0.9.2 is the sole stable/latest GitHub Release. v0.9.1 and its attachments were removed
+  after public-download verification; its source tag remains unchanged. Intel hardware,
+  fresh-machine Gatekeeper installation and real IME marked-text composition remain unverified.
+  The electrical-noise report remains unresolved; this checkpoint makes no power-reduction claim.
 
 ## 0.9.0 acceptance checkpoint — 2026-11-09
 
