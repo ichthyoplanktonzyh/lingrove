@@ -103,9 +103,7 @@ struct LingroveAccountServerView: View {
             } else {
                 // Repeat the exact proposed services at the consent boundary. A user reviewing
                 // this alert should not have to dismiss it to discover the network destination.
-                Text(LingroveNibomoAccountCopy.text("settings.account.server.confirmationMessage")
-                    + "\n\n" + LingroveNibomoAccountCopy.text("settings.account.server.apiUrl") + ": " + proposedAPI
-                    + "\n" + LingroveNibomoAccountCopy.text("settings.account.server.authUrl") + ": " + proposedAuth)
+                Text(connectionConfirmationMessage)
             }
         }
         .accessibilityIdentifier("account.server.screen")
@@ -117,6 +115,13 @@ struct LingroveAccountServerView: View {
         case .applicationDefault: String(localized: "Use app default", table: "Account")
         case .custom: LingroveNibomoAccountCopy.text("settings.account.server.confirmationTitle.apply")
         }
+    }
+
+    private var connectionConfirmationMessage: String {
+        let introduction = LingroveNibomoAccountCopy.text("settings.account.server.confirmationMessage")
+        let apiLine = LingroveNibomoAccountCopy.text("settings.account.server.apiUrl") + ": " + proposedAPI
+        let authLine = LingroveNibomoAccountCopy.text("settings.account.server.authUrl") + ": " + proposedAuth
+        return introduction + "\n\n" + apiLine + "\n" + authLine
     }
 
     private var confirmationButton: String {

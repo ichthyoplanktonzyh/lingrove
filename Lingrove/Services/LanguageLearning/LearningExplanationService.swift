@@ -214,21 +214,33 @@ final class LearningExplanationService: LearningLookupGenerating {
     }
 
     private var lookupCacheBytes: Int {
-        lookupCache.values.reduce(0) { $0 + lookupInputBytes($1.input) + $1.model.utf8.count +
-            $1.result.meaning.utf8.count + $1.result.sentenceTranslation.utf8.count }
+        lookupCache.values.reduce(0) { total, record in
+            let inputBytes = lookupInputBytes(record.input)
+            let resultBytes = record.result.meaning.utf8.count + record.result.sentenceTranslation.utf8.count
+            return total + inputBytes + record.model.utf8.count + resultBytes
+        }
     }
     private var detailCacheBytes: Int {
-        detailCache.reduce(0) { $0 + lookupInputBytes($1.key.input) + $1.value.result.explanation.utf8.count +
-            $1.value.model.utf8.count + ($1.key.basic?.meaning.utf8.count ?? 0) +
-            ($1.key.basic?.sentenceTranslation.utf8.count ?? 0) }
+        detailCache.reduce(0) { total, entry in
+            let inputBytes = lookupInputBytes(entry.key.input)
+            let basicMeaningBytes = entry.key.basic?.meaning.utf8.count ?? 0
+            let basicTranslationBytes = entry.key.basic?.sentenceTranslation.utf8.count ?? 0
+            let resultBytes = entry.value.result.explanation.utf8.count + entry.value.model.utf8.count
+            return total + inputBytes + resultBytes + basicMeaningBytes + basicTranslationBytes
+        }
     }
     private func lookupInputBytes(_ input: LearningLookupInput) -> Int {
-        input.target.target.utf8.count + input.target.dictionaryForm.utf8.count + input.target.context.utf8.count +
-            input.referenceTranslation.utf8.count + (input.target.occurrenceIdentity?.utf8.count ?? 0) + input.target.ranges.count * 16
+        let targetBytes = input.target.target.utf8.count + input.target.dictionaryForm.utf8.count
+        let contextBytes = input.target.context.utf8.count + input.referenceTranslation.utf8.count
+        let identityBytes = input.target.occurrenceIdentity?.utf8.count ?? 0
+        return targetBytes + contextBytes + identityBytes + input.target.ranges.count * 16
     }
     private var cacheBytes: Int {
-        cache.values.reduce(0) { $0 + $1.input.target.utf8.count + $1.input.context.utf8.count +
-            $1.input.dictionaryForm.utf8.count + $1.result.meaning.utf8.count + $1.result.explanation.utf8.count }
+        cache.values.reduce(0) { total, record in
+            let targetBytes = record.input.target.utf8.count + record.input.dictionaryForm.utf8.count
+            let resultBytes = record.result.meaning.utf8.count + record.result.explanation.utf8.count
+            return total + targetBytes + record.input.context.utf8.count + resultBytes
+        }
     }
     func recordDisplay(requestID: String) { telemetry.recordDisplay(source: .explanation, requestID: requestID) }
 }
